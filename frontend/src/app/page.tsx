@@ -8,7 +8,7 @@ export default function Home() {
       fontSize: '3rem',
       fontWeight: 'bold'
     }}>
-      Hello Huyen Thuong!
+      Hello HThuong!
     </div>
   );
 }
