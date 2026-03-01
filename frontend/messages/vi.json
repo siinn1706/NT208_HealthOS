@@ -1,0 +1,223 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "about": "Về chúng tôi",
+    "features": "Tính năng",
+    "plans": "Gói dịch vụ",
+    "articles": "Kiến thức sức khỏe",
+    "signIn": "Đăng nhập",
+    "register": "Đăng ký",
+    "tryFree": "Dùng thử",
+    "navigation": "Điều hướng",
+    "switchLang": "EN"
+  },
+  "common": {
+    "readMore": "Đọc thêm",
+    "viewAll": "Xem tất cả",
+    "getStarted": "Bắt đầu ngay",
+    "learnMore": "Tìm hiểu thêm",
+    "loadMore": "Tải thêm",
+    "by": "Tác giả:",
+    "close": "Đóng",
+    "noResults": "Không tìm thấy kết quả nào.",
+    "all": "Tất cả",
+    "search": "Tìm kiếm...",
+    "sort": "Sắp xếp",
+    "submit": "Gửi yêu cầu"
+  },
+  "footer": {
+    "tagline": "Bác sĩ cá nhân ảo của bạn",
+    "menuTitle": "Menu",
+    "helpTitle": "Hỗ trợ",
+    "downloadTitle": "Tải ứng dụng",
+    "blog": "Blog",
+    "career": "Tuyển dụng",
+    "menuServices": "Tính năng",
+    "menuPlans": "Gói dịch vụ",
+    "security": "Bảo mật",
+    "media": "Truyền thông",
+    "partnership": "Đối tác",
+    "faq": "FAQ",
+    "terms": "Điều khoản dịch vụ",
+    "privacy": "Chính sách bảo mật",
+    "googlePlay": "Google Play",
+    "appStore": "App Store",
+    "forDoctors": "Bạn là bác sĩ?",
+    "joinAsDoctor": "Tham gia HealthOS",
+    "copyright": "Bản quyền © 2026 HealthOS. Đã đăng ký bảo hộ."
+  },
+  "home": {
+    "hero": {
+      "badge": "#1 Bác sĩ cá nhân ảo tại NT208.Q22.ANTT",
+      "title": "Bác sĩ cá nhân ảo của bạn,",
+      "titleHighlight": "mọi lúc mọi nơi",
+      "description": "Quản lý hồ sơ y tế, theo dõi dinh dưỡng, phân tích bữa ăn bằng AI, kết nối wearable và nhận cảnh báo sức khỏe realtime — tất cả trong một ứng dụng.",
+      "cta": "Bắt đầu miễn phí",
+      "floatingBrand": "HealthOS",
+      "floatingStatus": "Đang hoạt động",
+      "floatingScoreLabel": "Chỉ số sức khỏe",
+      "imageAlt": "Bác sĩ"
+    },
+    "about": {
+      "badge": "Về chúng tôi",
+      "title": "Bảo vệ sức khỏe toàn diện, thông minh hơn mỗi ngày",
+      "description": "HealthOS sử dụng AI tiên tiến để giúp bạn hiểu rõ cơ thể mình hơn — từ quản lý hồ sơ y tế đến phân tích dinh dưỡng và kết nối thiết bị đeo thông minh.",
+      "imageAlt": "Đội ngũ chuyên gia y tế"
+    },
+    "features": {
+      "badge": "Tính năng",
+      "title": "Tất cả những gì bạn cần để sống khỏe",
+      "subtitle": "Từ quản lý hồ sơ đến phân tích AI — HealthOS bao phủ mọi khía cạnh sức khỏe của bạn.",
+      "tab1": "Tính năng cốt lõi",
+      "tab2": "Trí tuệ nhân tạo",
+      "tab3": "Realtime & Wearables",
+      "tab4": "Mục tiêu & Gamification"
+    },
+    "plans": {
+      "badge": "Gói dịch vụ",
+      "title": "Chọn gói phù hợp cho bạn",
+      "subtitle": "Bắt đầu với gói miễn phí, nâng cấp bất cứ lúc nào để mở khóa toàn bộ tính năng AI và wearable.",
+      "popular": "Phổ biến nhất",
+      "free": "Miễn phí",
+      "month": "/tháng",
+      "ctaFree": "Dùng ngay miễn phí",
+      "ctaPaid": "Chọn gói này",
+      "all": "Tất cả",
+      "catFree": "Miễn phí",
+      "catPersonal": "Cá nhân",
+      "catFamily": "Gia đình",
+      "catPro": "Chuyên nghiệp"
+    },
+    "testimonials": {
+      "badge": "Người dùng nói gì",
+      "title": "Hàng nghìn người đã tin dùng HealthOS"
+    },
+    "articles": {
+      "badge": "Kiến thức sức khỏe",
+      "title": "Đọc để sống khỏe hơn mỗi ngày",
+      "seeAll": "Xem tất cả bài viết"
+    },
+    "contact": {
+      "title": "Bắt đầu hành trình sức khỏe của bạn hôm nay",
+      "description": "Điền thông tin bên dưới, chúng tôi sẽ liên hệ hỗ trợ bạn ngay."
+    }
+  },
+  "about": {
+    "meta": {
+      "title": "Về chúng tôi",
+      "description": "HealthOS được xây dựng bởi đội ngũ bác sĩ và kỹ sư với mục tiêu mang AI y tế đến mọi gia đình Việt Nam."
+    },
+    "hero": {
+      "title": "Chúng tôi đặt sức khỏe của bạn lên hàng đầu",
+      "description": "HealthOS được xây dựng bởi đội ngũ bác sĩ và kỹ sư với mục tiêu duy nhất: mang công nghệ AI y tế đến từng gia đình Việt Nam, giúp mọi người chủ động bảo vệ sức khỏe.",
+      "imageAlt": "Đội ngũ HealthOS"
+    },
+    "story": {
+      "badge": "Câu chuyện của chúng tôi",
+      "title": "Hành trình không ngừng đổi mới vì sức khỏe cộng đồng",
+      "description": "Từ một ý tưởng đơn giản — mọi người xứng đáng có một bác sĩ cá nhân — HealthOS đã trở thành nền tảng y tế số hàng đầu Việt Nam.",
+      "card1Title": "Sứ mệnh",
+      "card1Desc": "Dân chủ hóa chăm sóc sức khỏe bằng AI, giúp mọi người tiếp cận thông tin y tế chính xác và kịp thời.",
+      "card2Title": "Giá trị",
+      "card2Desc": "Bảo mật dữ liệu, minh bạch thuật toán, và luôn đặt lợi ích sức khỏe người dùng lên trên hết.",
+      "card3Title": "Công nghệ",
+      "card3Desc": "AI phân tích ảnh bữa ăn, thuật toán phát hiện bất thường sinh trắc học và đồng bộ dữ liệu wearable thời gian thực."
+    },
+    "vision": {
+      "badge": "Tầm nhìn",
+      "title": "Tiếp cận dịch vụ y tế chất lượng cao, mọi lúc mọi nơi",
+      "description1": "Chúng tôi tin rằng mỗi người đều xứng đáng được tiếp cận thông tin y tế đáng tin cậy và được hỗ trợ bởi AI tiên tiến — bất kể họ ở đâu.",
+      "description2": "HealthOS hướng đến xây dựng hệ sinh thái y tế số toàn diện: từ phòng ngừa đến theo dõi, từ cá nhân đến gia đình.",
+      "imageAlt": "Tầm nhìn HealthOS"
+    },
+    "mission": {
+      "badge": "Sứ mệnh",
+      "title": "Cung cấp chăm sóc toàn diện dựa trên bằng chứng khoa học",
+      "description1": "HealthOS tích hợp dữ liệu từ hồ sơ y tế, thiết bị đeo và nhật ký dinh dưỡng để tạo nên bức tranh toàn diện về sức khỏe của bạn.",
+      "description2": "Chúng tôi phối hợp chặt chẽ với các bác sĩ và chuyên gia y tế để đảm bảo mọi tư vấn AI đều được lâm sàng kiểm chứng.",
+      "imageAlt": "Bác sĩ phối hợp với HealthOS"
+    },
+    "team": {
+      "badge": "Đội ngũ",
+      "title": "Những con người tâm huyết đứng sau HealthOS"
+    },
+    "faq": {
+      "badge": "FAQ",
+      "title": "Câu hỏi thường gặp",
+      "subtitle": "Không tìm thấy câu trả lời? Liên hệ với chúng tôi qua form bên dưới."
+    },
+    "contact": {
+      "title": "Bắt đầu hành trình sức khỏe của bạn hôm nay",
+      "description": "Điền thông tin bên dưới, chúng tôi sẽ liên hệ hỗ trợ bạn ngay."
+    },
+    "disclaimer": {
+      "title": "⚕️ Lưu ý y khoa quan trọng",
+      "text": "HealthOS cung cấp thông tin sức khỏe mang tính tham khảo và không thay thế lời khuyên từ bác sĩ có chuyên môn. Luôn tham khảo ý kiến bác sĩ trước khi đưa ra quyết định y tế quan trọng."
+    }
+  },
+  "services": {
+    "meta": {
+      "title": "Tính năng",
+      "description": "Khám phá hệ sinh thái HealthOS: hồ sơ y tế, AI, wearables và cảnh báo realtime."
+    },
+    "badge": "Tính năng",
+    "title": "Tất cả những công cụ bạn cần",
+    "subtitle": "Khám phá hệ sinh thái HealthOS với đầy đủ tính năng quản lý sức khỏe cá nhân thông minh.",
+    "tab1Label": "Tính năng cốt lõi",
+    "tab1Desc": "Nền tảng quản lý hồ sơ và dữ liệu sức khỏe cá nhân.",
+    "tab2Label": "Trí tuệ nhân tạo",
+    "tab2Desc": "AI phân tích bữa ăn, phát hiện bất thường và đưa ra gợi ý cá nhân hóa.",
+    "tab3Label": "Realtime & Wearables",
+    "tab3Desc": "Theo dõi các chỉ số sinh trắc học liên tục và nhận cảnh báo kịp thời.",
+    "tab4Label": "Mục tiêu & Gamification",
+    "tab4Desc": "Đặt mục tiêu sức khỏe, theo dõi tiến độ và thi đua cùng cộng đồng HealthOS."
+  },
+  "plans": {
+    "meta": {
+      "title": "Gói dịch vụ",
+      "description": "Chọn gói HealthOS phù hợp với nhu cầu và ngân sách của bạn."
+    },
+    "badge": "Gói dịch vụ",
+    "title": "Đầu tư vào sức khỏe của bạn",
+    "subtitle": "Chọn gói dịch vụ phù hợp với nhu cầu. Tất cả gói có bảo đảm hoàn tiền trong 30 ngày.",
+    "searchPlaceholder": "Tìm kiếm gói dịch vụ...",
+    "sort": "Sắp xếp",
+    "noResults": "Không tìm thấy gói phù hợp. Hãy thử danh mục khác.",
+    "popular": "Phổ biến",
+    "free": "Miễn phí",
+    "month": "/tháng",
+    "cta": "Chọn gói này",
+    "ctaFree": "Dùng miễn phí",
+    "includes": "Bao gồm:",
+    "all": "Tất cả",
+    "catFree": "Miễn phí",
+    "catPersonal": "Cá nhân",
+    "catFamily": "Gia đình",
+    "catPro": "Chuyên nghiệp"
+  },
+  "articles": {
+    "meta": {
+      "title": "Kiến thức sức khỏe",
+      "description": "Đọc các bài viết chuyên sâu về dinh dưỡng, wearables, AI y tế và sống khỏe từ HealthOS."
+    },
+    "badge": "Kiến thức sức khỏe",
+    "featuredTitle": "Bài viết mới nhất về sức khỏe",
+    "listingTitle": "Khám phá kiến thức sức khỏe chuyên sâu",
+    "noResults": "Không tìm thấy bài viết nào trong danh mục này.",
+    "loadMore": "Tải thêm bài viết",
+    "all": "Tất cả",
+    "catNutrition": "Dinh dưỡng",
+    "catWearable": "Wearable",
+    "catAI": "AI & Sức khỏe",
+    "catRecords": "Hồ sơ y tế",
+    "catLifestyle": "Lối sống"
+  },
+  "form": {
+    "name": "Họ và tên",
+    "email": "Địa chỉ email",
+    "phone": "Số điện thoại",
+    "message": "Bạn cần hỗ trợ gì?",
+    "submit": "Gửi yêu cầu",
+    "success": "Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể."
+  }
+}
