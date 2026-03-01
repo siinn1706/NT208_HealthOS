@@ -1,2 +1,26 @@
+# ─── Web framework ────────────────────────────────────────────────
 fastapi
 uvicorn[standard]
+
+# ─── Settings & validation ────────────────────────────────────────
+pydantic-settings
+
+# ─── Database ─────────────────────────────────────────────────────
+sqlalchemy[asyncio]
+asyncpg
+
+# ─── Redis ────────────────────────────────────────────────────────
+redis[hiredis]
+
+# ─── Object Storage ────────────────────────────────────────────────
+boto3
+
+# ─── Auth / Security ──────────────────────────────────────────────
+python-jose[cryptography]
+passlib[bcrypt]
+
+# ─── HTTP client (call AI worker etc.) ───────────────────────────
+httpx
+
+# ─── Dev / migrations (uncomment when ready) ─────────────────────
+# alembic

@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic-settings
+# email: aiosmtplib fastapi-mail
+# push: firebase-admin

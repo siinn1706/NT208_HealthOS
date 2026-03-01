@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "meal.analyzed",
+  "description": "Emitted by AI Worker when food analysis is complete",
+  "type": "object",
+  "required": ["event", "version", "payload", "metadata"],
+  "properties": {
+    "event": { "type": "string", "const": "meal.analyzed" },
+    "version": { "type": "string", "const": "1.0" },
+    "payload": {
+      "type": "object",
+      "required": ["meal_id", "status"],
+      "properties": {
+        "meal_id": { "type": "string", "format": "uuid" },
+        "status": { "type": "string", "enum": ["analyzed", "failed"] },
+        "nutrition": {
+          "type": "object",
+          "properties": {
+            "calories": { "type": "number" },
+            "protein_g": { "type": "number" },
+            "carbs_g": { "type": "number" },
+            "fat_g": { "type": "number" },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "error": { "type": "string" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_id": { "type": "string", "format": "uuid" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

@@ -1,0 +1,200 @@
+openapi: "3.1.0"
+info:
+  title: HealthOS BFF API
+  version: "1.0.0"
+  description: |
+    BFF (Backend For Frontend) API — Next.js Route Handlers.
+    Base URL: http://localhost:3000/api/v1
+    
+    Tất cả request từ FE phải đi qua BFF, không gọi thẳng Core BE.
+    BFF kiểm tra session, lấy access token, forward tới Core BE.
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development (BFF embedded in Next.js)
+
+security:
+  - CookieAuth: []
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: healthos.session
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    AuthSession:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            display_name:
+              type: string
+        expires_at:
+          type: string
+          format: date-time
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: BFF health check
+      security: []
+      responses:
+        "200":
+          description: BFF is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  core_api:
+                    type: string
+                    enum: [reachable, unreachable]
+
+  /auth/session:
+    get:
+      tags: [Auth]
+      summary: Get current session info
+      security: []
+      responses:
+        "200":
+          description: Active session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: No active session
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user (proxied from Core BE)
+      responses:
+        "200":
+          description: User profile
+
+  /health-data:
+    get:
+      tags: [Health Data]
+      summary: Aggregated health overview for dashboard
+      description: BFF aggregates meals + health_metrics + latest alerts into one payload
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        "200":
+          description: Aggregated health data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      meals_summary:
+                        type: object
+                      metrics_summary:
+                        type: object
+                      recent_alerts:
+                        type: array
+                        items:
+                          type: object
+
+  /meals:
+    post:
+      tags: [Meals]
+      summary: Create meal log (forwards multipart to Core BE)
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Forwarded response from Core BE
+
+  /plans:
+    get:
+      tags: [Plans]
+      summary: List subscription plans (static or from Core BE)
+      security: []
+      responses:
+        "200":
+          description: Available plans
+
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List connected wearable devices for current user
+      responses:
+        "200":
+          description: Connected devices
+    post:
+      tags: [Devices]
+      summary: Connect a new wearable device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider:
+                  type: string
+                  enum: [apple_health, google_fit, garmin, fitbit]
+                auth_code:
+                  type: string
+      responses:
+        "201":
+          description: Device connected
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications for current user
+      parameters:
+        - name: unread_only
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Notifications list
