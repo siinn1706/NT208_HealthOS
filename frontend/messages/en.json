@@ -1,0 +1,223 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About Us",
+    "features": "Features",
+    "plans": "Plans",
+    "articles": "Health Insights",
+    "signIn": "Sign In",
+    "register": "Sign Up",
+    "tryFree": "Try Free",
+    "navigation": "Navigation",
+    "switchLang": "VI"
+  },
+  "common": {
+    "readMore": "Read More",
+    "viewAll": "View All",
+    "getStarted": "Get Started",
+    "learnMore": "Learn More",
+    "loadMore": "Load More",
+    "by": "By",
+    "close": "Close",
+    "noResults": "No results found.",
+    "all": "All",
+    "search": "Search...",
+    "sort": "Sort",
+    "submit": "Submit"
+  },
+  "footer": {
+    "tagline": "Your Virtual Personal Doctor",
+    "menuTitle": "Menu",
+    "helpTitle": "Help",
+    "downloadTitle": "Download App",
+    "blog": "Blog",
+    "career": "Career",
+    "menuServices": "Features",
+    "menuPlans": "Plans",
+    "security": "Security",
+    "media": "Media",
+    "partnership": "Partnership",
+    "faq": "FAQ",
+    "terms": "Terms & Conditions",
+    "privacy": "Privacy Policy",
+    "googlePlay": "Google Play",
+    "appStore": "App Store",
+    "forDoctors": "Are you a Doctor?",
+    "joinAsDoctor": "Join HealthOS",
+    "copyright": "Copyright © 2026 HealthOS. All Rights Reserved."
+  },
+  "home": {
+    "hero": {
+      "badge": "#1 Virtual Personal Doctor in NT208.Q22.ANTT",
+      "title": "Your Virtual Personal Doctor,",
+      "titleHighlight": "Anytime, Anywhere",
+      "description": "Manage medical records, track nutrition, analyze meals with AI, connect wearables and receive realtime health alerts — all in one app.",
+      "cta": "Get Started Free",
+      "floatingBrand": "HealthOS",
+      "floatingStatus": "Active",
+      "floatingScoreLabel": "Health Score",
+      "imageAlt": "Doctor"
+    },
+    "about": {
+      "badge": "About Us",
+      "title": "Comprehensive Health Protection, Smarter Every Day",
+      "description": "HealthOS uses advanced AI to help you understand your body better — from managing medical records to nutrition analysis and smart wearable integration.",
+      "imageAlt": "Healthcare professionals team"
+    },
+    "features": {
+      "badge": "Features",
+      "title": "Everything You Need to Live Healthy",
+      "subtitle": "From records management to AI analysis — HealthOS covers every aspect of your health.",
+      "tab1": "Core Features",
+      "tab2": "AI Intelligence",
+      "tab3": "Realtime & Wearables",
+      "tab4": "Goals & Gamification"
+    },
+    "plans": {
+      "badge": "Plans",
+      "title": "Choose the Right Plan For You",
+      "subtitle": "Start free, upgrade anytime to unlock full AI and wearable features.",
+      "popular": "Most Popular",
+      "free": "Free",
+      "month": "/mo",
+      "ctaFree": "Get Started Free",
+      "ctaPaid": "Choose This Plan",
+      "all": "All",
+      "catFree": "Free",
+      "catPersonal": "Personal",
+      "catFamily": "Family",
+      "catPro": "Professional"
+    },
+    "testimonials": {
+      "badge": "What Users Say",
+      "title": "Thousands of People Trust HealthOS"
+    },
+    "articles": {
+      "badge": "Health Insights",
+      "title": "Read to Live Healthier Every Day",
+      "seeAll": "See All Articles"
+    },
+    "contact": {
+      "title": "Start Your Health Journey Today",
+      "description": "Fill in your information below and we'll reach out to support you right away."
+    }
+  },
+  "about": {
+    "meta": {
+      "title": "About Us",
+      "description": "HealthOS is built by doctors and engineers with one goal: bring AI-powered healthcare to every family in Vietnam."
+    },
+    "hero": {
+      "title": "We Put Your Health First",
+      "description": "HealthOS is built by a team of doctors and engineers with one single goal: bring AI-powered medical technology to every Vietnamese family, empowering everyone to proactively protect their health.",
+      "imageAlt": "HealthOS Team"
+    },
+    "story": {
+      "badge": "Our Story",
+      "title": "Continual Evolution and Dedication to Improving Human Well-being",
+      "description": "From a simple idea — everyone deserves a personal doctor — HealthOS has grown into Vietnam's leading digital health platform.",
+      "card1Title": "Mission",
+      "card1Desc": "Democratize healthcare through AI, giving everyone access to accurate and timely medical information.",
+      "card2Title": "Values",
+      "card2Desc": "Data privacy, algorithmic transparency, and always putting users' health interests first.",
+      "card3Title": "Technology",
+      "card3Desc": "AI meal photo analysis, biometric anomaly detection algorithms, and real-time wearable data synchronization."
+    },
+    "vision": {
+      "badge": "Our Vision",
+      "title": "Access to High-Quality Healthcare, Anytime and Anywhere",
+      "description1": "We believe everyone deserves access to reliable medical information supported by advanced AI — regardless of where they are or their income level.",
+      "description2": "HealthOS aims to build a comprehensive digital health ecosystem: from prevention to monitoring, from individuals to families.",
+      "imageAlt": "HealthOS Vision"
+    },
+    "mission": {
+      "badge": "Our Mission",
+      "title": "Provide Comprehensive, Evidence-Based Care",
+      "description1": "HealthOS integrates data from medical records, wearables and nutrition journals to create a comprehensive picture of your health.",
+      "description2": "We work closely with doctors and medical experts to ensure all AI recommendations are clinically validated.",
+      "imageAlt": "Doctors collaborating with HealthOS"
+    },
+    "team": {
+      "badge": "Our Team",
+      "title": "The Passionate People Behind HealthOS"
+    },
+    "faq": {
+      "badge": "FAQ",
+      "title": "Frequently Asked Questions",
+      "subtitle": "Can't find an answer? Contact us via the form below."
+    },
+    "contact": {
+      "title": "Start Your Health Journey Today",
+      "description": "Fill in your information below and we'll reach out to support you right away."
+    },
+    "disclaimer": {
+      "title": "⚕️ Important Medical Disclaimer",
+      "text": "HealthOS provides health information for reference purposes only and does not replace advice from qualified medical professionals. Always consult a doctor before making important medical decisions."
+    }
+  },
+  "services": {
+    "meta": {
+      "title": "Features",
+      "description": "Explore the HealthOS ecosystem: medical records, AI, wearables and realtime alerts."
+    },
+    "badge": "Features",
+    "title": "All the Tools You Need",
+    "subtitle": "Explore the HealthOS ecosystem with full smart personal health management features.",
+    "tab1Label": "Core Features",
+    "tab1Desc": "Foundation for managing personal health records and data.",
+    "tab2Label": "AI Intelligence",
+    "tab2Desc": "AI meal analysis, anomaly detection and personalized recommendations.",
+    "tab3Label": "Realtime & Wearables",
+    "tab3Desc": "Continuously monitor biometric indicators and receive timely alerts.",
+    "tab4Label": "Goals & Gamification",
+    "tab4Desc": "Set health goals, track progress, and compete with the HealthOS community."
+  },
+  "plans": {
+    "meta": {
+      "title": "Plans",
+      "description": "Choose the HealthOS plan that fits your needs and budget."
+    },
+    "badge": "Service Plans",
+    "title": "Invest in Your Health",
+    "subtitle": "Choose the plan that fits your needs. All plans come with a 30-day money-back guarantee.",
+    "searchPlaceholder": "Search plans...",
+    "sort": "Sort",
+    "noResults": "No plans found. Try a different category.",
+    "popular": "Popular",
+    "free": "Free",
+    "month": "/mo",
+    "cta": "Choose This Plan",
+    "ctaFree": "Get Started Free",
+    "includes": "Includes:",
+    "all": "All",
+    "catFree": "Free",
+    "catPersonal": "Personal",
+    "catFamily": "Family",
+    "catPro": "Professional"
+  },
+  "articles": {
+    "meta": {
+      "title": "Health Insights",
+      "description": "Read in-depth articles on nutrition, wearables, AI health, and healthy living from HealthOS."
+    },
+    "badge": "Health Insights",
+    "featuredTitle": "Latest Health Articles",
+    "listingTitle": "Explore In-Depth Health Knowledge",
+    "noResults": "No articles found in this category.",
+    "loadMore": "Load More Articles",
+    "all": "All",
+    "catNutrition": "Nutrition",
+    "catWearable": "Wearable",
+    "catAI": "AI & Health",
+    "catRecords": "Medical Records",
+    "catLifestyle": "Lifestyle"
+  },
+  "form": {
+    "name": "Full Name",
+    "email": "Email Address",
+    "phone": "Phone Number",
+    "message": "How can we help you?",
+    "submit": "Send Request",
+    "success": "Thank you for reaching out! We'll get back to you as soon as possible."
+  }
+}
