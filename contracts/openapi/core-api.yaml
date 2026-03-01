@@ -1,0 +1,314 @@
+openapi: "3.1.0"
+info:
+  title: HealthOS Core API
+  version: "1.0.0"
+  description: |
+    REST API cho Core Backend Service của HealthOS.
+    Base URL: http://localhost:8000
+    Tất cả endpoint đặt dưới /v1/
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.healthos.example.com
+    description: Production
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: NOT_FOUND
+            message:
+              type: string
+              example: Resource not found.
+            details:
+              type: object
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    MealCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "Phở bò tái"
+        notes:
+          type: string
+        logged_at:
+          type: string
+          format: date-time
+
+    MealResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, analyzed, failed]
+        nutrition_result:
+          $ref: "#/components/schemas/NutritionResult"
+        logged_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    NutritionResult:
+      type: object
+      properties:
+        calories:
+          type: number
+          format: float
+        protein_g:
+          type: number
+          format: float
+        carbs_g:
+          type: number
+          format: float
+        fat_g:
+          type: number
+          format: float
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+
+    HealthMetric:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        metric_type:
+          type: string
+          enum: [heart_rate, steps, sleep_minutes, weight_kg, blood_pressure_systolic, blood_pressure_diastolic]
+        value:
+          type: number
+          format: float
+        unit:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum: [manual, apple_health, google_fit, garmin, fitbit]
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheck"
+
+  /v1/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/meals:
+    get:
+      tags: [Meals]
+      summary: List meal logs
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: date_from
+          in: query
+          schema: { type: string, format: date }
+        - name: date_to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Paginated meal list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MealResponse"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMeta"
+    post:
+      tags: [Meals]
+      summary: Create a meal log (with optional image upload)
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                notes:
+                  type: string
+                logged_at:
+                  type: string
+                  format: date-time
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Meal created, analysis enqueued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/MealResponse"
+
+  /v1/meals/{meal_id}:
+    get:
+      tags: [Meals]
+      summary: Get single meal with nutrition result
+      parameters:
+        - name: meal_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Meal detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/MealResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/health-metrics:
+    get:
+      tags: [Health Metrics]
+      summary: List health metrics
+      parameters:
+        - name: metric_type
+          in: query
+          schema:
+            type: string
+            enum: [heart_rate, steps, sleep_minutes, weight_kg, blood_pressure_systolic, blood_pressure_diastolic]
+        - name: date_from
+          in: query
+          schema: { type: string, format: date }
+        - name: date_to
+          in: query
+          schema: { type: string, format: date }
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [manual, apple_health, google_fit, garmin, fitbit]
+      responses:
+        "200":
+          description: Health metrics list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HealthMetric"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMeta"

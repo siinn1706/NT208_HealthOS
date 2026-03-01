@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+httpx
+boto3          # S3/MinIO object storage
+Pillow         # Image processing
+# torch        # Uncomment when adding ML model
+# torchvision  # Uncomment when adding ML model
+pydantic-settings

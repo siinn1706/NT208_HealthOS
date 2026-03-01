@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# HealthOS Local Setup Script (Unix/macOS/Linux/WSL)
+# Run from repo root: bash infra/scripts/setup.sh
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+echo "=== HealthOS Setup ==="
+echo "Root: $ROOT_DIR"
+
+# ─── Copy .env files ──────────────────────────────────────────────
+copy_env() {
+    local src="$1" dest="$2"
+    if [ ! -f "$dest" ]; then
+        cp "$src" "$dest"
+        echo "[ENV] Created $dest"
+    else
+        echo "[ENV] $dest already exists, skipping."
+    fi
+}
+
+copy_env "$ROOT_DIR/infra/env/frontend.env.example" "$ROOT_DIR/frontend/.env.local"
+copy_env "$ROOT_DIR/infra/env/backend.env.example"  "$ROOT_DIR/backend/.env"
+copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/ai-worker/.env"
+copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/queue-worker/.env"
+copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/notification/.env"
+
+# ─── Docker mode ──────────────────────────────────────────────────
+if [[ "${1:-}" == "--docker" ]]; then
+    echo "[DOCKER] Starting full stack..."
+    cd "$ROOT_DIR"
+    docker compose -f infra/docker/docker-compose.dev.yml up -d
+    echo "[DOCKER] Stack running. Ports: FE=3000 BE=8000 AI=8001 PG=5432 Redis=6379 MinIO=9000"
+    exit 0
+fi
+
+# ─── Frontend ─────────────────────────────────────────────────────
+echo "[FE] Installing npm packages..."
+cd "$ROOT_DIR/frontend" && npm install
+echo "[FE] Done."
+
+# ─── Backend ──────────────────────────────────────────────────────
+echo "[BE] Setting up Python venv..."
+cd "$ROOT_DIR/backend"
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
+fi
+source .venv/bin/activate
+pip install -r requirements.txt
+echo "[BE] Done."
+
+echo ""
+echo "=== Setup complete ==="
+echo "Run: bash infra/scripts/start_all.sh to start all services"

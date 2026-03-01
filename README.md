@@ -10,8 +10,38 @@ HealthOS là hệ thống “bác sĩ cá nhân ảo” giúp bảo vệ sức k
 - 24520229 — Trà Chí Chung
 
 ## Cấu trúc repo
-- `frontend/`: FE (Next.js, App Router)
-- `backend/`: BE (FastAPI)
+
+```
+NT208_HealthOS/
+├── frontend/          # FE + BFF  (Next.js App Router + Route Handlers /api/v1/**)
+├── backend/           # Core BE   (FastAPI — layered architecture)
+├── services/
+│   ├── ai-worker/     # AI Service (food recognition, nutrition estimation)
+│   ├── queue-worker/  # Celery workers (async jobs, wearable sync, notifications)
+│   └── notification/  # Notification dispatcher (email, push, SMS)
+├── contracts/
+│   ├── openapi/       # OpenAPI 3.1 specs (core-api.yaml, bff-api.yaml)
+│   └── events/        # JSON Schema cho async events
+├── infra/
+│   ├── docker/        # docker-compose.dev.yml
+│   ├── env/           # .env.example files cho từng service
+│   └── scripts/       # setup.ps1, setup.sh
+├── tests/
+│   ├── integration/   # pytest — test HTTP endpoints thật
+│   ├── contract/      # schemathesis — validate vs OpenAPI spec
+│   └── e2e/           # playwright
+├── docs/
+│   ├── architecture/  # System context, container diagram, data flow
+│   ├── standards/     # Folder convention, code style, API conventions, git workflow
+│   └── migration/     # Script & path migration guide
+└── scratch/           # Tooling/prompts nội bộ (non-runtime)
+```
+
+**Tài liệu chuẩn bắt buộc đọc trước khi code:**
+- [Folder Convention](docs/standards/folder-convention.md)
+- [Code Style](docs/standards/code-style.md)
+- [API Conventions](docs/standards/api-conventions.md)
+- [Git Workflow](docs/standards/git-workflow.md)
 
 ## Hướng dẫn sử dụng GitHub
 
@@ -39,17 +69,72 @@ git push -u origin feature/<ten-branch>
 ```
 
 ## Công nghệ sử dụng
-- FE: Next.js (App Router)
-	- Login/portal, dashboard, chat UI, trang báo cáo
-	- Gọi HTTP API + subscribe realtime (WS)
-- BFF (tuỳ chọn): Next.js Route Handlers để gom API nhẹ, proxy auth, gọi nhiều service rồi trả về 1 payload cho FE (đỡ CORS/đỡ lộ key)
-- Core BE: FastAPI
-	- REST cho hồ sơ, nhật ký, ảnh bữa ăn, khuyến nghị
-	- WebSocket cho cảnh báo realtime/stream trạng thái
-- AI service (tách riêng càng tốt): FastAPI worker / background job
-	- OCR / nhận diện món ăn / ước lượng dinh dưỡng / rule-based cảnh báo
-- Data: PostgreSQL + object storage (ảnh) + Redis (cache/pubsub)
-- Queue/Worker: Celery/RQ/Dramatiq để xử lý ảnh, batch đồng bộ wearable, gửi notify (đỡ nghẽn request)
+
+| Lớp | Stack | Ghi chú |
+|-----|-------|---------|
+| FE | Next.js 16 App Router + React 19 | UI, i18n (next-intl), SSR/SSG |
+| BFF | Next.js Route Handlers `/api/v1/**` | Bắt buộc — proxy auth, aggregate payload |
+| Core BE | FastAPI + SQLAlchemy async | REST + WebSocket, layered architecture |
+| AI Worker | FastAPI + background tasks | Food recognition, nutrition estimation |
+| Queue | Celery + Redis broker | Async jobs: ảnh, sync wearable, notify |
+| Database | PostgreSQL 16 + asyncpg | ORM: SQLAlchemy 2 |
+| Cache | Redis 7 | Cache, pub/sub, rate-limit |
+| Storage | MinIO (local) / S3 (prod) | Ảnh bữa ăn, tài liệu y tế |
+| Auth | NextAuth (Auth.js) planned | OAuth/OIDC — TODO |
+| Infra | Docker Compose | Local dev stack |
+
+## Quick Start
+
+### Option A — Full stack với Docker (khuyến nghị)
+
+```bash
+# 1. Setup env files
+.\infra\scripts\setup.ps1          # Windows
+bash infra/scripts/setup.sh        # Unix/WSL
+
+# 2. Khởi động toàn bộ stack
+docker compose -f infra/docker/docker-compose.dev.yml up
+```
+
+Services sẽ chạy tại:
+| Service | URL |
+|---------|-----|
+| Frontend + BFF | http://localhost:3000 |
+| Core BE API | http://localhost:8000/docs |
+| AI Worker | http://localhost:8001/docs |
+| MinIO Console | http://localhost:9001 |
+
+---
+
+### Option B — Chạy thủ công từng service (như cũ)
+
+#### Frontend (Next.js)
+```bash
+start_FE.bat             # Windows (legacy)
+# hoặc:
+cd frontend && npm install && npm run dev
+```
+
+#### Backend (FastAPI)
+```bash
+start_BE.bat             # Windows (legacy)
+# hoặc:
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1    # Windows
+# source .venv/bin/activate   # Unix
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+#### Chạy FE + BE cùng lúc
+```bash
+start_ALL.bat
+```
+
+> **Migration note:** Script `.bat` cũ vẫn hoạt động. Xem [migration guide](docs/migration/script-and-path-mapping.md) để biết lộ trình chuyển sang scripts mới.
+
+---
 
 ## Chạy Frontend (Next.js)
 

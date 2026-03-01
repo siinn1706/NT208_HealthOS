@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "notification.requested",
+  "description": "Emitted by Core BE when a notification needs to be dispatched",
+  "type": "object",
+  "required": ["event", "version", "payload", "metadata"],
+  "properties": {
+    "event": { "type": "string", "const": "notification.requested" },
+    "version": { "type": "string", "const": "1.0" },
+    "payload": {
+      "type": "object",
+      "required": ["channels", "template", "recipient"],
+      "properties": {
+        "recipient": {
+          "type": "object",
+          "required": ["user_id"],
+          "properties": {
+            "user_id": { "type": "string", "format": "uuid" },
+            "email": { "type": "string", "format": "email" },
+            "push_token": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        },
+        "channels": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["email", "push", "sms", "in_app"] },
+          "minItems": 1
+        },
+        "template": {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": { "type": "string", "example": "alert.high_heart_rate" },
+            "variables": { "type": "object" }
+          }
+        },
+        "priority": { "type": "string", "enum": ["low", "normal", "high"], "default": "normal" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_id": { "type": "string", "format": "uuid" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

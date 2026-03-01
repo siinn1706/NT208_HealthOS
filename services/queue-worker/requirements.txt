@@ -1,0 +1,3 @@
+celery[redis]
+httpx
+pydantic-settings
