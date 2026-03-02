@@ -11,7 +11,7 @@ import {
   Activity,
   Bell,
   Target,
-  Bot,
+  MessageCircle,
   FileBarChart2,
   Settings,
   ChevronLeft,
@@ -19,6 +19,7 @@ import {
   HeartPulse,
 } from "lucide-react";
 import { useState } from "react";
+import { MOCK_CONVERSATIONS, MOCK_STRANGER_REQUESTS } from "@/data/chat";
 
 const NAV_ITEMS = [
   { key: "overview", icon: LayoutDashboard, href: "/dashboard" },
@@ -27,7 +28,7 @@ const NAV_ITEMS = [
   { key: "vitalsDevices", icon: Activity, href: "/dashboard/health" },
   { key: "reminders", icon: Bell, href: "/dashboard/reminders" },
   { key: "goals", icon: Target, href: "/dashboard/progress" },
-  { key: "aiAssistant", icon: Bot, href: "/dashboard/ai-chat" },
+  { key: "chat", icon: MessageCircle, href: "/dashboard/chat" },
   { key: "reports", icon: FileBarChart2, href: "/dashboard/reports" },
   { key: "settings", icon: Settings, href: "/dashboard/settings" },
 ] as const;
@@ -46,6 +47,10 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
   // Support both controlled (from DashboardShell) and uncontrolled modes
   const collapsed = collapsedProp !== undefined ? collapsedProp : internalCollapsed;
   const handleToggle = onToggle ?? (() => setInternalCollapsed((c) => !c));
+
+  const totalUnread =
+    MOCK_CONVERSATIONS.reduce((sum, c) => sum + c.unread_count, 0) +
+    MOCK_STRANGER_REQUESTS.filter((r) => r.status === "pending").length;
 
   return (
     <aside
@@ -98,10 +103,22 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
                     collapsed && "justify-center px-0"
                   )}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="relative flex-shrink-0">
+                    <Icon className="w-5 h-5" />
+                    {key === "chat" && totalUnread > 0 && collapsed && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#41BCE6] rounded-full" />
+                    )}
+                  </span>
                   {!collapsed && (
-                    <span className="truncate">
-                      {t(key as Parameters<typeof t>[0])}
+                    <span className="flex items-center gap-2 truncate flex-1 min-w-0">
+                      <span className="truncate">
+                        {t(key as Parameters<typeof t>[0])}
+                      </span>
+                      {key === "chat" && totalUnread > 0 && (
+                        <span className="ml-auto flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-[#41BCE6] text-[#0F2743] text-[10px] font-bold rounded-full flex items-center justify-center">
+                          {totalUnread > 99 ? "99+" : totalUnread}
+                        </span>
+                      )}
                     </span>
                   )}
                 </Link>
