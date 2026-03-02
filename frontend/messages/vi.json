@@ -301,6 +301,79 @@
       "noNotifications": "Không có thông báo mới",
       "profile": "Hồ sơ của tôi",
       "signOut": "Đăng xuất"
+    },
+    "profile": {
+      "title": "Hồ sơ cá nhân",
+      "subtitle": "Quản lý thông tin, chỉ số cơ thể và dữ liệu y tế của bạn",
+      "editButton": "Chỉnh sửa",
+      "saveButton": "Lưu thay đổi",
+      "cancelButton": "Hủy",
+      "saving": "Đang lưu...",
+      "avatarChange": "Đổi ảnh đại diện",
+      "memberSince": "Thành viên từ",
+      "emailReadOnly": "Email không thể thay đổi tại đây. Vui lòng dùng mục Bảo mật.",
+      "optional": "tuỳ chọn",
+      "notSpecified": "Chưa cập nhật",
+      "saveSuccess": "Cập nhật hồ sơ thành công!",
+      "saveError": "Lưu thất bại. Vui lòng thử lại.",
+      "addContact": "Thêm người liên hệ",
+      "removeContact": "Xóa",
+      "contactN": "Người liên hệ {n}",
+      "noContacts": "Chưa có người liên hệ khẩn cấp",
+      "sections": {
+        "basicInfo": "Thông tin cơ bản",
+        "bodyBasics": "Chỉ số cơ thể",
+        "contact": "Liên hệ",
+        "emergency": "Liên hệ khẩn cấp",
+        "medical": "Thông tin y tế"
+      },
+      "fields": {
+        "fullName": "Họ và tên",
+        "dateOfBirth": "Ngày sinh",
+        "gender": "Giới tính",
+        "bloodType": "Nhóm máu",
+        "heightCm": "Chiều cao",
+        "weightKg": "Cân nặng",
+        "phone": "Số điện thoại",
+        "email": "Email",
+        "address": "Địa chỉ",
+        "emergencyName": "Tên người liên hệ",
+        "emergencyRelationship": "Mối quan hệ",
+        "emergencyPhone": "SĐT người liên hệ",
+        "allergies": "Dị ứng",
+        "chronicConditions": "Bệnh nền",
+        "currentMedications": "Thuốc đang dùng",
+        "notes": "Ghi chú"
+      },
+      "genders": {
+        "male": "Nam",
+        "female": "Nữ",
+        "other": "Khác"
+      },
+      "relationships": {
+        "parent": "Cha/Mẹ",
+        "spouse": "Vợ/Chồng",
+        "sibling": "Anh/Chị/Em",
+        "child": "Con",
+        "friend": "Bạn bè",
+        "other": "Khác"
+      },
+      "bmi": {
+        "label": "BMI",
+        "underweight": "Thiếu cân",
+        "normal": "Bình thường",
+        "overweight": "Thừa cân",
+        "obese": "Béo phì"
+      },
+      "placeholders": {
+        "select": "Chọn...",
+        "address": "Số nhà, đường, quận, thành phố",
+        "emergencyName": "Nguyễn Văn B",
+        "allergies": "VD: Penicillin, hải sản...",
+        "chronicConditions": "VD: Tiểu đường type 2, viêm dạ dày...",
+        "currentMedications": "VD: Metformin 500mg 2 lần/ngày...",
+        "notes": "Ghi chú thêm về sức khoẻ..."
+      }
     }
   },
   "auth": {

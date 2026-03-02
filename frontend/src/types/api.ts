@@ -39,6 +39,36 @@ export interface User {
   created_at: string;
 }
 
+export interface EmergencyContact {
+  id?: string;
+  name: string | null;
+  relationship: string | null;
+  phone: string | null;
+}
+
+export interface MedicalInfo {
+  allergies: string | null;
+  chronic_conditions: string | null;
+  current_medications: string | null;
+  notes: string | null;
+}
+
+export interface UserProfile extends User {
+  full_name: string;
+  date_of_birth: string | null;
+  gender: "male" | "female" | "other" | null;
+  blood_type: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  phone: string | null;
+  address: string | null;
+  avatar_url: string | null;
+  emergency_contacts: EmergencyContact[];
+  medical_info: MedicalInfo;
+}
+
+export type UserProfileUpdate = Omit<UserProfile, "id" | "email" | "created_at">;
+
 // ─── Meals ──────────────────────────────────────────────────────────
 
 export type MealStatus = "pending" | "processing" | "analyzed" | "failed";

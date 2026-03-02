@@ -301,6 +301,79 @@
       "noNotifications": "No new notifications",
       "profile": "My Profile",
       "signOut": "Sign Out"
+    },
+    "profile": {
+      "title": "My Profile",
+      "subtitle": "Manage your personal info, body metrics, and medical data",
+      "editButton": "Edit Profile",
+      "saveButton": "Save Changes",
+      "cancelButton": "Cancel",
+      "saving": "Saving...",
+      "avatarChange": "Change avatar",
+      "memberSince": "Member since",
+      "emailReadOnly": "Email cannot be changed here. Please use Security settings.",
+      "optional": "optional",
+      "notSpecified": "Not specified",
+      "saveSuccess": "Profile updated successfully!",
+      "saveError": "Save failed. Please try again.",
+      "addContact": "Add Contact",
+      "removeContact": "Remove",
+      "contactN": "Contact {n}",
+      "noContacts": "No emergency contacts added",
+      "sections": {
+        "basicInfo": "Basic Information",
+        "bodyBasics": "Body Metrics",
+        "contact": "Contact",
+        "emergency": "Emergency Contact",
+        "medical": "Medical Basics"
+      },
+      "fields": {
+        "fullName": "Full Name",
+        "dateOfBirth": "Date of Birth",
+        "gender": "Gender",
+        "bloodType": "Blood Type",
+        "heightCm": "Height",
+        "weightKg": "Weight",
+        "phone": "Phone Number",
+        "email": "Email",
+        "address": "Address",
+        "emergencyName": "Contact Name",
+        "emergencyRelationship": "Relationship",
+        "emergencyPhone": "Contact Phone",
+        "allergies": "Allergies",
+        "chronicConditions": "Chronic Conditions",
+        "currentMedications": "Current Medications",
+        "notes": "Notes"
+      },
+      "genders": {
+        "male": "Male",
+        "female": "Female",
+        "other": "Other"
+      },
+      "relationships": {
+        "parent": "Parent",
+        "spouse": "Spouse",
+        "sibling": "Sibling",
+        "child": "Child",
+        "friend": "Friend",
+        "other": "Other"
+      },
+      "bmi": {
+        "label": "BMI",
+        "underweight": "Underweight",
+        "normal": "Normal",
+        "overweight": "Overweight",
+        "obese": "Obese"
+      },
+      "placeholders": {
+        "select": "Select...",
+        "address": "Street, district, city",
+        "emergencyName": "John Doe",
+        "allergies": "e.g. Penicillin, shellfish...",
+        "chronicConditions": "e.g. Type 2 diabetes, gastritis...",
+        "currentMedications": "e.g. Metformin 500mg twice daily...",
+        "notes": "Additional health notes..."
+      }
     }
   },
   "auth": {
