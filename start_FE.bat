@@ -1,7 +1,6 @@
 @echo off
 setlocal
 cd /d "%~dp0frontend"
-if not exist node_modules (
-  npm install
-)
+echo Installing/updating FE dependencies from package.json...
+npm install
 npm run dev
