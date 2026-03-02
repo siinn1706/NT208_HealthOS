@@ -1,9 +1,7 @@
-import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 
-export default async function LocaleLayout({
+export default async function AuthLayout({
   children,
   params,
 }: {
@@ -12,16 +10,13 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
 
-  // Reject unknown locales
   if (!routing.locales.includes(locale as "vi" | "en")) {
     notFound();
   }
 
-  const messages = await getMessages();
-
   return (
-    <NextIntlClientProvider messages={messages}>
+    <main className="min-h-screen flex items-center justify-center bg-background px-4 py-16">
       {children}
-    </NextIntlClientProvider>
+    </main>
   );
 }

@@ -85,7 +85,7 @@ export function Navbar() {
               <Globe className="h-3.5 w-3.5" />
               {otherLocale.toUpperCase()}
             </Link>
-            <Link href="/plans">
+            <Link href="/login">
               <Button variant="ghost" className="rounded-full text-night-200 hover:text-white hover:bg-night-800">
                 {t("signIn")}
               </Button>
@@ -132,7 +132,7 @@ export function Navbar() {
                   <Globe className="h-4 w-4" />
                   {otherLocale === "vi" ? "Tiếng Việt" : "English"}
                 </Link>
-                <Link href="/plans" onClick={() => setMobileOpen(false)}>
+                <Link href="/login" onClick={() => setMobileOpen(false)}>
                   <Button variant="outline" className="w-full rounded-full border-night-500/40 text-white hover:bg-night-800">
                     {t("signIn")}
                   </Button>
