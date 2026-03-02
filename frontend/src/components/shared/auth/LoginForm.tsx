@@ -126,6 +126,12 @@ export function LoginForm() {
        * router.push("/dashboard");
        */
 
+      // --- DEV BYPASS: admin/admin shortcut for local testing ---
+      if (email.trim() === "admin" && password === "admin") {
+        router.push("/dashboard");
+        return;
+      }
+
       // --- MOCK: simulate successful login ---
       await new Promise((resolve) => setTimeout(resolve, 1000));
       router.push("/");
@@ -180,14 +186,14 @@ export function LoginForm() {
             </div>
           )}
 
-          {/* Email */}
+          {/* Username or Email */}
           <div className="space-y-1.5">
-            <Label htmlFor="login-email">{t("email")}</Label>
+            <Label htmlFor="login-email">{t("loginIdentifier")}</Label>
             <Input
               id="login-email"
-              type="email"
-              placeholder={t("emailPlaceholder")}
-              autoComplete="email"
+              type="text"
+              placeholder={t("loginIdentifierPlaceholder")}
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
