@@ -220,6 +220,89 @@
     "submit": "Send Request",
     "success": "Thank you for reaching out! We'll get back to you as soon as possible."
   },
+  "dashboard": {
+    "greeting": "Good morning",
+    "greetingAfternoon": "Good afternoon",
+    "greetingEvening": "Good evening",
+    "overview": "Overview",
+    "alerts": {
+      "title": "Health Alerts",
+      "dismiss": "Dismiss",
+      "dismissAll": "Dismiss All",
+      "empty": "No active alerts"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "logMeal": "Log Meal",
+      "logMealDesc": "Add calories & nutrition",
+      "scanMeal": "Scan Meal",
+      "scanMealDesc": "AI photo analysis",
+      "addVital": "Add Vital",
+      "addVitalDesc": "Enter latest readings",
+      "logMedicine": "Log Medicine",
+      "logMedicineDesc": "Record dose taken"
+    },
+    "kpi": {
+      "caloriesBurned": "Calories Burned",
+      "caloriesTarget": "of {target} kcal",
+      "sleepScore": "Sleep Score",
+      "sleepUnit": "pts",
+      "heartRate": "Heart Rate",
+      "heartUnit": "bpm",
+      "steps": "Steps",
+      "stepsUnit": "steps"
+    },
+    "vitals": {
+      "title": "Vitals Trend",
+      "subtitle": "Last 7 days",
+      "heartRate": "Heart Rate",
+      "bloodPressureSys": "Systolic BP",
+      "bloodPressureDia": "Diastolic BP",
+      "loading": "Loading chart...",
+      "noData": "No vitals data yet"
+    },
+    "reminders": {
+      "title": "Today's Schedule",
+      "empty": "No reminders for today",
+      "ack": "Mark Done",
+      "types": {
+        "medicine": "Medicine",
+        "appointment": "Appointment",
+        "exercise": "Exercise"
+      }
+    },
+    "goals": {
+      "title": "Goal Progress",
+      "water": "Water Intake",
+      "steps": "Daily Steps",
+      "calories": "Calorie Goal",
+      "viewAll": "View All Goals"
+    },
+    "ai": {
+      "title": "AI Insight",
+      "subtitle": "Based on your data today",
+      "askAI": "Ask AI Assistant",
+      "loading": "Analyzing your health data..."
+    },
+    "nav": {
+      "overview": "Overview",
+      "profile": "Profile",
+      "nutrition": "Nutrition",
+      "vitalsDevices": "Vitals & Devices",
+      "reminders": "Reminders",
+      "goals": "Goals",
+      "aiAssistant": "AI Assistant",
+      "reports": "Reports",
+      "settings": "Settings"
+    },
+    "topnav": {
+      "searchPlaceholder": "Search records, medicines...",
+      "notifications": "Notifications",
+      "noNotifications": "No new notifications",
+      "profile": "My Profile",
+      "signOut": "Sign Out"
+    }
+  },
   "auth": {
     "loginTitle": "Sign In",
     "loginSubtitle": "Welcome back! Sign in to continue your health journey.",
@@ -229,6 +312,8 @@
     "verifySubtitle": "We've sent a 6-digit OTP to your email. Please enter the code to verify.",
     "email": "Email Address",
     "emailPlaceholder": "you@example.com",
+    "loginIdentifier": "Username or Email",
+    "loginIdentifierPlaceholder": "Enter your username or email",
     "password": "Password",
     "passwordPlaceholder": "••••••••",
     "confirmPassword": "Confirm Password",

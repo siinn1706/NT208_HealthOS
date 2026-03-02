@@ -220,6 +220,89 @@
     "submit": "Gửi yêu cầu",
     "success": "Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể."
   },
+  "dashboard": {
+    "greeting": "Chào buổi sáng",
+    "greetingAfternoon": "Chào buổi chiều",
+    "greetingEvening": "Chào buổi tối",
+    "overview": "Tổng quan",
+    "alerts": {
+      "title": "Cảnh báo sức khỏe",
+      "dismiss": "Bỏ qua",
+      "dismissAll": "Bỏ qua tất cả",
+      "empty": "Không có cảnh báo nào"
+    },
+    "quickActions": {
+      "title": "Thao tác nhanh",
+      "logMeal": "Ghi bữa ăn",
+      "logMealDesc": "Thêm calo & dinh dưỡng",
+      "scanMeal": "Chụp bữa ăn",
+      "scanMealDesc": "AI phân tích ảnh",
+      "addVital": "Thêm chỉ số",
+      "addVitalDesc": "Nhập số liệu mới nhất",
+      "logMedicine": "Ghi uống thuốc",
+      "logMedicineDesc": "Xác nhận đã uống"
+    },
+    "kpi": {
+      "caloriesBurned": "Calo tiêu thụ",
+      "caloriesTarget": "trên {target} kcal",
+      "sleepScore": "Chất lượng giấc ngủ",
+      "sleepUnit": "điểm",
+      "heartRate": "Nhịp tim",
+      "heartUnit": "bpm",
+      "steps": "Số bước",
+      "stepsUnit": "bước"
+    },
+    "vitals": {
+      "title": "Xu hướng chỉ số",
+      "subtitle": "7 ngày gần nhất",
+      "heartRate": "Nhịp tim",
+      "bloodPressureSys": "Huyết áp tâm thu",
+      "bloodPressureDia": "Huyết áp tâm trương",
+      "loading": "Đang tải biểu đồ...",
+      "noData": "Chưa có dữ liệu chỉ số"
+    },
+    "reminders": {
+      "title": "Lịch trình hôm nay",
+      "empty": "Không có nhắc nhở nào hôm nay",
+      "ack": "Đánh dấu hoàn thành",
+      "types": {
+        "medicine": "Thuốc",
+        "appointment": "Lịch khám",
+        "exercise": "Vận động"
+      }
+    },
+    "goals": {
+      "title": "Tiến độ mục tiêu",
+      "water": "Uống nước",
+      "steps": "Số bước mỗi ngày",
+      "calories": "Mục tiêu calo",
+      "viewAll": "Xem tất cả mục tiêu"
+    },
+    "ai": {
+      "title": "Gợi ý từ AI",
+      "subtitle": "Dựa trên dữ liệu của bạn hôm nay",
+      "askAI": "Hỏi Trợ lý AI",
+      "loading": "Đang phân tích dữ liệu sức khỏe..."
+    },
+    "nav": {
+      "overview": "Tổng quan",
+      "profile": "Hồ sơ",
+      "nutrition": "Dinh dưỡng",
+      "vitalsDevices": "Chỉ số & Thiết bị",
+      "reminders": "Nhắc nhở",
+      "goals": "Mục tiêu",
+      "aiAssistant": "Trợ lý AI",
+      "reports": "Báo cáo",
+      "settings": "Cài đặt"
+    },
+    "topnav": {
+      "searchPlaceholder": "Tìm hồ sơ, thuốc...",
+      "notifications": "Thông báo",
+      "noNotifications": "Không có thông báo mới",
+      "profile": "Hồ sơ của tôi",
+      "signOut": "Đăng xuất"
+    }
+  },
   "auth": {
     "loginTitle": "Đăng nhập",
     "loginSubtitle": "Chào mừng trở lại! Đăng nhập để tiếp tục hành trình sức khỏe của bạn.",
@@ -229,6 +312,8 @@
     "verifySubtitle": "Chúng tôi đã gửi mã OTP 6 số đến email của bạn. Vui lòng nhập mã để xác minh.",
     "email": "Địa chỉ email",
     "emailPlaceholder": "you@example.com",
+    "loginIdentifier": "Tên đăng nhập hoặc Email",
+    "loginIdentifierPlaceholder": "Nhập tên đăng nhập hoặc email",
     "password": "Mật khẩu",
     "passwordPlaceholder": "••••••••",
     "confirmPassword": "Xác nhận mật khẩu",
