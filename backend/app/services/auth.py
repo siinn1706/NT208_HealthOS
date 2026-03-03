@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -32,6 +33,7 @@ async def get_or_create_user_from_oauth(
             hashed_password=placeholder_password,
         )
         db.add(user)
+        # flush (not commit) so we get the generated id without closing the tx
         await db.flush()
 
         user_profile = UserProfile(
@@ -40,6 +42,7 @@ async def get_or_create_user_from_oauth(
             avatar_url=profile.avatar_url,
         )
         db.add(user_profile)
+        await db.flush()
         # Keep relationship in-memory to avoid lazy load later
         user.profile = user_profile
     else:
