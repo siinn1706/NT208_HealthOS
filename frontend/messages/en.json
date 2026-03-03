@@ -291,6 +291,8 @@
       "vitalsDevices": "Vitals & Devices",
       "reminders": "Reminders",
       "goals": "Goals",
+      "achievements": "Achievements",
+      "leaderboard": "Leaderboard",
       "chat": "Messages",
       "reports": "Reports",
       "settings": "Settings"
