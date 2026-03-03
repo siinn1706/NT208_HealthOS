@@ -1,8 +1,9 @@
 """Auth endpoints — OAuth session exchange, email OTP, and current user."""
+import asyncio
 import random
 
-import anyio
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 
@@ -125,9 +126,9 @@ async def request_email_otp(
     await redis.setex(cooldown_key, 60, "1")
 
     try:
-        await anyio.to_thread.run_sync(send_otp_email, body.email, code, body.purpose)
+        await asyncio.to_thread(send_otp_email, body.email, code, body.purpose)
     except Exception as exc:  # pragma: no cover - external I/O
-        # Best-effort cleanup
+        # Best-effort cleanup: remove the stored OTP so user can retry
         await redis.delete(otp_key)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -211,7 +212,24 @@ async def verify_email_otp(
         name=body.email,
         avatar_url=None,
     )
-    user = await get_or_create_user_from_oauth(synthetic_profile, db)
+    try:
+        user = await get_or_create_user_from_oauth(synthetic_profile, db)
+    except IntegrityError:
+        # Race condition: two simultaneous signups for the same email.
+        # Rollback and fetch the now-existing user.
+        await db.rollback()
+        from sqlalchemy import select as _select
+        result = await db.execute(_select(User).where(User.email == body.email))
+        user = result.scalar_one()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorDetail(
+                code="INTERNAL_ERROR",
+                message="An unexpected error occurred while creating your account.",
+                details={},
+            ).model_dump(),
+        ) from exc
     access_token = create_user_access_token(user)
 
     token = AuthToken(
