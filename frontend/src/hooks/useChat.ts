@@ -24,7 +24,7 @@ import type {
 export function useConversations() {
   const [conversations, setConversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
 
-  const sortedConversations = [...conversations].sort((a, b) => {
+  const sortedConversations = useMemo(() => [...conversations].sort((a, b) => {
     // AI always first
     if (a.type === "ai") return -1;
     if (b.type === "ai") return 1;
@@ -35,7 +35,7 @@ export function useConversations() {
     const aTime = a.last_message?.created_at ?? a.updated_at;
     const bTime = b.last_message?.created_at ?? b.updated_at;
     return new Date(bTime).getTime() - new Date(aTime).getTime();
-  });
+  }), [conversations]);
 
   const pinConversation = useCallback((id: string) => {
     setConversations((prev) =>
@@ -111,6 +111,10 @@ export function useMessages(conversationId: string | null) {
   );
   const [isTyping, setIsTyping] = useState(false);
 
+  // Stable ref to latest messagesMap — lets sendMessage stay dependency-free
+  const messagesMapRef = useRef(messagesMap);
+  useEffect(() => { messagesMapRef.current = messagesMap; }, [messagesMap]);
+
   const messages: Message[] = conversationId ? (messagesMap[conversationId] ?? []) : [];
 
   const sendMessage = useCallback(
@@ -121,7 +125,7 @@ export function useMessages(conversationId: string | null) {
       onMessageSent?: (msg: Message) => void
     ): Message => {
       const replyTo = replyToId
-        ? messagesMap[conversationId]?.find((m) => m.id === replyToId)
+        ? messagesMapRef.current[conversationId]?.find((m) => m.id === replyToId)
         : undefined;
 
       const newMsg: Message = {
@@ -149,7 +153,7 @@ export function useMessages(conversationId: string | null) {
       onMessageSent?.(newMsg);
       return newMsg;
     },
-    [messagesMap]
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const editMessage = useCallback((conversationId: string, messageId: string, content: string) => {

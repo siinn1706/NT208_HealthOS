@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
@@ -8,7 +8,7 @@ import { useConversations, useStrangerRequests } from "@/hooks/useChat";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
 import { ChatEmptyState } from "./ChatEmptyState";
-import type { Conversation } from "@/types/api";
+import type { Conversation, Message } from "@/types/api";
 import { cn } from "@/lib/utils";
 
 export function ChatLayout() {
@@ -36,7 +36,10 @@ export function ChatLayout() {
 
   const { requests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
 
-  const activeConversation: Conversation | undefined = conversations.find((c) => c.id === activeId);
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.id === activeId),
+    [conversations, activeId]
+  );
 
   const handleSelectConversation = useCallback(
     (id: string) => {
@@ -64,6 +67,29 @@ export function ChatLayout() {
       if (activeId === id) router.push(basePath);
     },
     [deleteConversation, activeId, router, basePath]
+  );
+
+  // Stable callbacks scoped to the active conversation
+  const activeConvId = activeConversation?.id;
+  const handlePinActive = useCallback(
+    () => { if (activeConvId) pinConversation(activeConvId); },
+    [activeConvId, pinConversation]
+  );
+  const handleMuteActive = useCallback(
+    () => { if (activeConvId) muteConversation(activeConvId); },
+    [activeConvId, muteConversation]
+  );
+  const handleDeleteActive = useCallback(
+    () => { if (activeConvId) handleDeleteConversation(activeConvId); },
+    [activeConvId, handleDeleteConversation]
+  );
+  const handleThemeChange = useCallback(
+    (themeId: string | null) => { if (activeConvId) setTheme(activeConvId, themeId); },
+    [activeConvId, setTheme]
+  );
+  const handleMessageSent = useCallback(
+    (msg: Message) => { if (activeConvId) updateLastMessage(activeConvId, msg); },
+    [activeConvId, updateLastMessage]
   );
 
   return (
@@ -116,11 +142,11 @@ export function ChatLayout() {
                 conversation={activeConversation}
                 conversations={conversations}
                 onBack={handleBack}
-                onPin={() => pinConversation(activeConversation.id)}
-                onMute={() => muteConversation(activeConversation.id)}
-                onDelete={() => handleDeleteConversation(activeConversation.id)}
-                onThemeChange={(themeId) => setTheme(activeConversation.id, themeId)}
-                onMessageSent={(msg) => updateLastMessage(activeConversation.id, msg)}
+                onPin={handlePinActive}
+                onMute={handleMuteActive}
+                onDelete={handleDeleteActive}
+                onThemeChange={handleThemeChange}
+                onMessageSent={handleMessageSent}
               />
             </motion.div>
           ) : (

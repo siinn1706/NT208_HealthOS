@@ -225,6 +225,24 @@ export interface ChatTheme {
   url: string;
 }
 
+/** Gradient layer — pure CSS, no image files */
+export interface ChatGradient {
+  id: string;           // "none" | "grad-*"
+  name: string;
+  css: string;          // CSS `background` value, empty string for id==="none"
+  type: "light" | "dark"; // determines which SVG variant to use over this gradient
+}
+
+/** Pattern layer — SVG repeat tile */
+export interface ChatPattern {
+  id: string;           // "none" | "pat-*"
+  name: string;
+  /** Canonical filename (no hash), e.g. "Theme_Cats.svg". Empty string for id==="none". */
+  filename: string;
+  /** Whether a light-mode (black-stroke) variant exists in /patterns/light/. */
+  hasLight: boolean;
+}
+
 export type ChatWsEventType =
   | "message.new"
   | "message.edited"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useMessages } from "@/hooks/useChat";
 import { ChatWindowHeader } from "./ChatWindowHeader";
 import { PinnedMessages } from "./PinnedMessages";
@@ -11,7 +11,6 @@ import { ConversationInfoPanel } from "./ConversationInfoPanel";
 import { ForwardMessageDialog } from "./ForwardMessageDialog";
 import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
-import { CHAT_THEMES } from "@/data/chat";
 import type { Conversation, Message } from "@/types/api";
 
 interface ChatWindowProps {
@@ -107,13 +106,11 @@ export function ChatWindow({
     [sendMessage]
   );
 
-  const pinnedMessages = messages.filter((m) => m.is_pinned);
-
-  const theme = CHAT_THEMES.find((t) => t.id === conversation.theme_id);
+  const pinnedMessages = useMemo(() => messages.filter((m) => m.is_pinned), [messages]);
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
-      <ChatBackground theme={theme} />
+      <ChatBackground themeId={conversation.theme_id} />
 
       <div className="relative z-10 flex flex-col h-full">
         <ChatWindowHeader
@@ -168,22 +165,26 @@ export function ChatWindow({
         />
       </div>
 
-      {/* Conversation info panel */}
-      <ConversationInfoPanel
-        open={showInfo}
-        onOpenChange={setShowInfo}
-        conversation={conversation}
-        messages={messages}
-      />
+      {/* Conversation info panel — lazy-mounted to avoid filtering all messages when closed */}
+      {showInfo && (
+        <ConversationInfoPanel
+          open={showInfo}
+          onOpenChange={setShowInfo}
+          conversation={conversation}
+          messages={messages}
+        />
+      )}
 
-      {/* Forward message dialog */}
-      <ForwardMessageDialog
-        open={!!forwardTarget}
-        onOpenChange={(open) => { if (!open) setForwardTarget(null); }}
-        message={forwardTarget}
-        conversations={conversations}
-        onForward={handleDoForward}
-      />
+      {/* Forward message dialog — lazy-mounted */}
+      {forwardTarget && (
+        <ForwardMessageDialog
+          open={!!forwardTarget}
+          onOpenChange={(open) => { if (!open) setForwardTarget(null); }}
+          message={forwardTarget}
+          conversations={conversations}
+          onForward={handleDoForward}
+        />
+      )}
     </div>
   );
 }

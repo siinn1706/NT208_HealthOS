@@ -1,15 +1,19 @@
 "use client";
 
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+
+// Stable plugin array — avoids ReactMarkdown re-parsing on every parent render
+const REMARK_PLUGINS = [remarkGfm] as const;
 
 interface AiMessageContentProps {
   content: string;
   className?: string;
 }
 
-export function AiMessageContent({ content, className }: AiMessageContentProps) {
+export const AiMessageContent = memo(function AiMessageContent({ content, className }: AiMessageContentProps) {
   return (
     <div
       className={cn(
@@ -26,7 +30,7 @@ export function AiMessageContent({ content, className }: AiMessageContentProps) 
         className
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>{content}</ReactMarkdown>
     </div>
   );
-}
+});

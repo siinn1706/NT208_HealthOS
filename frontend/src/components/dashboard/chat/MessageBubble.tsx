@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -9,7 +10,7 @@ import { MessageReactions } from "./MessageReactions";
 import { AiChatBadge } from "./AiChatBadge";
 import { AiMessageContent } from "./AiMessageContent";
 import { getInitials, formatChatTime } from "@/lib/chat-utils";
-import { MOCK_USERS, CURRENT_USER_ID } from "@/data/chat";
+import { MOCK_USERS_MAP, CURRENT_USER_ID } from "@/data/chat";
 import type { Message } from "@/types/api";
 
 interface MessageBubbleProps {
@@ -27,7 +28,7 @@ interface MessageBubbleProps {
   onForward?: () => void;
 }
 
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
   message,
   isOwn,
   isAi,
@@ -48,7 +49,7 @@ export function MessageBubble({
     ? null
     : isAi
     ? null
-    : MOCK_USERS.find((u) => u.user_id === message.sender_id);
+    : MOCK_USERS_MAP.get(message.sender_id) ?? null;
   const senderName = isAi ? "HealthOS AI" : sender?.display_name ?? "Unknown";
   const timeStr = formatChatTime(message.created_at, locale);
 
@@ -62,9 +63,9 @@ export function MessageBubble({
     );
   }
 
-  function handleCopy() {
+  const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(message.content).catch(() => {});
-  }
+  }, [message.content]);
 
   return (
     <>
@@ -116,7 +117,7 @@ export function MessageBubble({
                   ? t("you")
                   : message.reply_to.sender_id === "ai"
                   ? t("aiAssistant")
-                  : MOCK_USERS.find((u) => u.user_id === message.reply_to!.sender_id)?.display_name ?? "Unknown"}
+                  : MOCK_USERS_MAP.get(message.reply_to!.sender_id)?.display_name ?? "Unknown"}
               </span>
               {" · "}
               <span className="truncate">
@@ -203,7 +204,7 @@ export function MessageBubble({
       </div>
     </>
   );
-}
+});
 
 function MessageStatus({ status }: { status: Message["status"] }) {
   if (status === "sending") return <Clock className="w-3 h-3 text-muted-foreground" />;

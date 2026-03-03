@@ -3,17 +3,25 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { useTranslations } from "next-intl";
-import { CHAT_THEMES } from "@/data/chat";
+import {
+  CHAT_GRADIENTS,
+  CHAT_PATTERNS,
+  parseThemeId,
+  buildThemeId,
+  resolvePatternUrl,
+} from "@/data/chat";
+import type { ChatGradient, ChatPattern } from "@/types/api";
 import { cn } from "@/lib/utils";
 import { Check, X } from "lucide-react";
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface ChatThemePickerProps {
   open: boolean;
@@ -29,56 +37,87 @@ export function ChatThemePicker({
   onSelect,
 }: ChatThemePickerProps) {
   const t = useTranslations("chat");
-  const [previewId, setPreviewId] = useState<string | null | undefined>(undefined);
 
-  const gradients = CHAT_THEMES.filter((th) => th.type === "gradient");
-  const patterns = CHAT_THEMES.filter((th) => th.type === "pattern");
+  const { gradId: currentGradId, patId: currentPatId, opacity: initialOpacity } =
+    parseThemeId(currentThemeId);
 
-  // Live preview: use hover target, fallback to current selection
-  const displayId = previewId !== undefined ? previewId : currentThemeId;
-  const previewTheme = displayId ? CHAT_THEMES.find((th) => th.id === displayId) : null;
+  const [hoverGradId, setHoverGradId] = useState<string | undefined>(undefined);
+  const [hoverPatId,  setHoverPatId]  = useState<string | undefined>(undefined);
+  const [opacity, setOpacity]         = useState(initialOpacity);
 
-  function handleSelect(id: string | null) {
-    onSelect(id);
-    onOpenChange(false);
-    setPreviewId(undefined);
+  // Sync opacity each time the dialog is freshly opened
+  useEffect(() => {
+    if (open) setOpacity(parseThemeId(currentThemeId).opacity);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const displayGradId = hoverGradId !== undefined ? hoverGradId : currentGradId;
+  const displayPatId  = hoverPatId  !== undefined ? hoverPatId  : currentPatId;
+
+  const previewGrad = CHAT_GRADIENTS.find((g) => g.id === displayGradId);
+  const previewPat  = CHAT_PATTERNS.find((p)  => p.id === displayPatId);
+
+  // Gradient type drives the SVG variant (light/dark) everywhere
+  const currentGradType = CHAT_GRADIENTS.find((g) => g.id === currentGradId)?.type ?? "light";
+  const previewGradType = previewGrad?.type ?? "light";
+  const previewPatUrl   = previewPat?.filename
+    ? resolvePatternUrl(previewPat, previewGradType)
+    : "";
+
+  // Base gradient css for pattern thumbnail cards
+  const thumbGradCss =
+    CHAT_GRADIENTS.find((g) => g.id === currentGradId)?.css ||
+    CHAT_GRADIENTS[1].css;
+
+  function handleOpenChange(v: boolean) {
+    onOpenChange(v);
+    if (!v) { setHoverGradId(undefined); setHoverPatId(undefined); }
   }
 
+  function handleGradClick(gradId: string) {
+    onSelect(buildThemeId(gradId, currentPatId, opacity));
+  }
+
+  function handlePatClick(patId: string) {
+    onSelect(buildThemeId(currentGradId, patId, opacity));
+  }
+
+  function handleOpacityChange(val: number) {
+    setOpacity(val);
+    onSelect(buildThemeId(currentGradId, currentPatId, val));
+  }
+
+  const hasPreview = !!(previewGrad?.css || previewPat?.filename);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        onOpenChange(v);
-        if (!v) setPreviewId(undefined);
-      }}
-    >
-      <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-w-2xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden"
+      >
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-border flex-shrink-0">
           <DialogTitle>{t("changeTheme")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("changeTheme")}</DialogDescription>
         </DialogHeader>
 
-        {/* Live preview strip */}
-        <div
-          className="relative h-20 w-full flex-shrink-0 border-b border-border overflow-hidden transition-all duration-300"
-          style={
-            previewTheme
-              ? previewTheme.type === "pattern"
-                ? {
-                    backgroundImage: `url(${previewTheme.url})`,
-                    backgroundRepeat: "repeat",
-                    backgroundSize: "188px 406px", // half of 375×812 for compact preview
-                  }
-                : {
-                    backgroundImage: `url(${previewTheme.url})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center top",
-                  }
-              : {}
-          }
-        >
-          {previewTheme && <div className="absolute inset-0 bg-background/50" />}
+        {/* ── Live preview strip ── */}
+        <div className="relative h-[88px] w-full flex-shrink-0 border-b border-border overflow-hidden">
+          {previewGrad?.css && (
+            <div className="absolute inset-0" style={{ background: previewGrad.css }} />
+          )}
+          {previewPat?.filename && previewPatUrl && (
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url(${previewPatUrl})`,
+                backgroundRepeat: "repeat",
+                backgroundSize: "auto",
+                opacity: opacity / 100,
+                mixBlendMode: "overlay",
+              }}
+            />
+          )}
+          {hasPreview && <div className="absolute inset-0 bg-background/45" />}
           <div className="absolute inset-0 flex items-center justify-center px-4">
-            <div className="flex items-center gap-3 max-w-full">
+            <div className="flex items-center gap-3">
               <div className="px-3.5 py-2 rounded-2xl rounded-bl-sm bg-secondary/90 text-xs text-foreground backdrop-blur-sm shadow-sm">
                 Xin chào! 👋 Tôi có thể giúp gì?
               </div>
@@ -87,95 +126,82 @@ export function ChatThemePicker({
               </div>
             </div>
           </div>
-          {previewTheme && (
-            <Badge
-              variant="secondary"
-              className="absolute top-2 right-3 text-[10px] opacity-80 backdrop-blur-sm"
-            >
-              {previewTheme.name}
+          {hasPreview ? (
+            <Badge variant="secondary" className="absolute top-2 right-3 text-[10px] opacity-80 backdrop-blur-sm">
+              {[previewGrad?.css ? previewGrad.name : null, previewPat?.filename ? previewPat.name : null]
+                .filter(Boolean).join(" + ")}
             </Badge>
-          )}
-          {!previewTheme && (
+          ) : (
             <p className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-              {t("themeNone")} — {t("noConversation")}
+              {t("themeNone")}
             </p>
           )}
         </div>
 
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="px-6 py-4 space-y-6">
-            {/* None */}
-            <div>
-              <SectionLabel label={t("themeNone")} />
-              <button
-                onClick={() => handleSelect(null)}
-                onMouseEnter={() => setPreviewId(null)}
-                onMouseLeave={() => setPreviewId(undefined)}
-                className={cn(
-                  "w-full h-14 rounded-xl border-2 flex items-center justify-center gap-2 transition-all cursor-pointer",
-                  "hover:bg-secondary",
-                  currentThemeId === null
-                    ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-border bg-background"
-                )}
-              >
-                <X
-                  className={cn(
-                    "w-4 h-4",
-                    currentThemeId === null ? "text-primary" : "text-muted-foreground"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-sm",
-                    currentThemeId === null ? "text-primary font-medium" : "text-muted-foreground"
-                  )}
-                >
-                  {t("themeNone")}
-                </span>
-                {currentThemeId === null && (
-                  <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center ml-auto mr-2">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Gradients */}
-            <div>
-              <SectionLabel label={t("themeGradients")} count={gradients.length} />
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
-                {gradients.map((theme) => (
-                  <ThemeCard
-                    key={theme.id}
-                    theme={theme}
-                    isSelected={currentThemeId === theme.id}
-                    onHover={() => setPreviewId(theme.id)}
-                    onLeave={() => setPreviewId(undefined)}
-                    onSelect={() => handleSelect(theme.id)}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Patterns */}
-            <div>
-              <SectionLabel label={t("themePatterns")} count={patterns.length} />
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
-                {patterns.map((theme) => (
-                  <ThemeCard
-                    key={theme.id}
-                    theme={theme}
-                    isSelected={currentThemeId === theme.id}
-                    onHover={() => setPreviewId(theme.id)}
-                    onLeave={() => setPreviewId(undefined)}
-                    onSelect={() => handleSelect(theme.id)}
-                  />
-                ))}
-              </div>
-            </div>
+        {/* ── Opacity slider (sticky below preview, above gradients) ── */}
+        <div className="flex-shrink-0 px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-fit">
+              {t("themeOpacity")}
+            </span>
+            <span className="text-xs text-muted-foreground">0</span>
+            <Slider
+              value={[opacity]}
+              min={0}
+              max={100}
+              step={5}
+              onValueChange={([val]) => handleOpacityChange(val)}
+              className="flex-1"
+              disabled={!hasPreview}
+            />
+            <span className="text-xs text-muted-foreground">100</span>
+            <Badge variant="secondary" className="text-xs h-5 px-2 min-w-[3rem] justify-center">
+              {opacity}%
+            </Badge>
           </div>
-        </ScrollArea>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-scroll pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-track]:bg-transparent">
+          <div className="px-6 pt-4 pb-6 space-y-6">
+
+            {/* ── Gradient swatches (wrap, not scroll) ── */}
+            <div>
+              <SectionLabel label={t("themeGradients")} count={CHAT_GRADIENTS.length - 1} />
+              <div className="flex flex-wrap gap-2.5">
+                {CHAT_GRADIENTS.map((grad) => (
+                  <GradientSwatch
+                    key={grad.id}
+                    grad={grad}
+                    isSelected={currentGradId === grad.id}
+                    onHover={() => setHoverGradId(grad.id)}
+                    onLeave={() => setHoverGradId(undefined)}
+                    onSelect={() => handleGradClick(grad.id)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* ── Pattern grid ── */}
+            <div>
+              <SectionLabel label={t("themePatterns")} count={CHAT_PATTERNS.length - 1} />
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+                {CHAT_PATTERNS.map((pat) => (
+                  <PatternCard
+                    key={pat.id}
+                    pat={pat}
+                    baseGradCss={thumbGradCss}
+                    baseGradType={currentGradType}
+                    isSelected={currentPatId === pat.id}
+                    onHover={() => setHoverPatId(pat.id)}
+                    onLeave={() => setHoverPatId(undefined)}
+                    onSelect={() => handlePatClick(pat.id)}
+                  />
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -192,19 +218,59 @@ function SectionLabel({ label, count }: { label: string; count?: number }) {
   );
 }
 
-function ThemeCard({
-  theme,
-  isSelected,
-  onHover,
-  onLeave,
-  onSelect,
+function GradientSwatch({
+  grad, isSelected, onHover, onLeave, onSelect,
 }: {
-  theme: { id: string; name: string; url: string };
+  grad: ChatGradient;
   isSelected: boolean;
   onHover: () => void;
   onLeave: () => void;
   onSelect: () => void;
 }) {
+  const isNone = grad.id === "none";
+  return (
+    <button
+      onClick={onSelect}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      title={grad.name}
+      className={cn(
+        "relative w-11 h-11 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
+        "transition-all duration-150 cursor-pointer hover:scale-110 hover:shadow-md",
+        isSelected
+          ? "border-primary shadow-sm shadow-primary/40 scale-105"
+          : "border-border bg-background hover:border-primary/40"
+      )}
+      style={!isNone ? { background: grad.css } : {}}
+    >
+      {isNone && (
+        <X className={cn("w-4 h-4", isSelected ? "text-primary" : "text-muted-foreground")} />
+      )}
+      {isSelected && !isNone && (
+        <div className="absolute inset-0 rounded-full flex items-end justify-end p-0.5">
+          <div className="w-4 h-4 rounded-full bg-primary border-2 border-white flex items-center justify-center">
+            <Check className="w-2.5 h-2.5 text-white" />
+          </div>
+        </div>
+      )}
+    </button>
+  );
+}
+
+function PatternCard({
+  pat, baseGradCss, baseGradType, isSelected, onHover, onLeave, onSelect,
+}: {
+  pat: ChatPattern;
+  baseGradCss: string;
+  baseGradType: "light" | "dark";
+  isSelected: boolean;
+  onHover: () => void;
+  onLeave: () => void;
+  onSelect: () => void;
+}) {
+  const isNone     = pat.id === "none";
+  const patternUrl = pat.filename ? resolvePatternUrl(pat, baseGradType) : "";
+
   return (
     <button
       onClick={onSelect}
@@ -215,19 +281,29 @@ function ThemeCard({
         "aspect-[4/3] hover:scale-[1.06] hover:shadow-lg",
         isSelected
           ? "border-primary shadow-md shadow-primary/30 scale-[1.03]"
-          : "border-transparent hover:border-primary/40"
+          : "border-border hover:border-primary/40"
       )}
     >
-      <Image
-        src={theme.url}
-        alt={theme.name}
-        fill
-        className="object-cover"
-        sizes="(max-width: 640px) 25vw, 140px"
-        unoptimized
-      />
+      {/* Gradient base layer */}
+      <div className="absolute inset-0" style={{ background: baseGradCss }} />
 
-      {/* Selected checkmark */}
+      {isNone ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <X className={cn("w-5 h-5", isSelected ? "text-primary" : "text-muted-foreground/70")} />
+        </div>
+      ) : patternUrl ? (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(${patternUrl})`,
+            backgroundRepeat: "repeat",
+            backgroundSize: "120px auto",
+            opacity: 0.45,
+            mixBlendMode: "overlay",
+          }}
+        />
+      ) : null}
+
       {isSelected && (
         <div className="absolute inset-0 bg-primary/10 flex items-end justify-end p-1.5">
           <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
@@ -236,12 +312,9 @@ function ThemeCard({
         </div>
       )}
 
-      {/* Hover name label */}
       <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/75 to-transparent px-2 pb-1.5 pt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <p className="text-[10px] text-white font-medium truncate leading-tight">{theme.name}</p>
+        <p className="text-[10px] text-white font-medium truncate leading-tight">{pat.name}</p>
       </div>
     </button>
   );
 }
-
-

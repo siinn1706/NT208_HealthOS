@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   ContextMenu,
@@ -35,7 +36,7 @@ interface ConversationItemProps {
   onDelete: () => void;
 }
 
-export function ConversationItem({
+export const ConversationItem = memo(function ConversationItem({
   conversation,
   isActive,
   onClick,
@@ -97,7 +98,7 @@ export function ConversationItem({
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-1">
               <span className={cn(
-                "text-sm truncate",
+                "text-sm truncate min-w-0 flex-1",
                 conversation.unread_count > 0 ? "font-semibold" : "font-medium"
               )}>
                 {conversation.type === "ai" ? (
@@ -108,9 +109,9 @@ export function ConversationItem({
               </span>
               <span className="text-[11px] tabular-nums text-muted-foreground flex-shrink-0">{timeStr}</span>
             </div>
-            <div className="flex items-center justify-between gap-1 mt-0.5">
+            <div className="flex items-center justify-between gap-1 mt-0.5 min-w-0">
               <p className={cn(
-                "text-xs truncate",
+                "text-xs truncate min-w-0 flex-1",
                 conversation.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
               )}>
                 {conversation.last_message?.is_recalled
@@ -164,4 +165,4 @@ export function ConversationItem({
       </ContextMenuContent>
     </ContextMenu>
   );
-}
+});

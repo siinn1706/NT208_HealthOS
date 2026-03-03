@@ -9,6 +9,8 @@ import type {
   ChatParticipant,
   StrangerRequest,
   ChatTheme,
+  ChatGradient,
+  ChatPattern,
 } from "@/types/api";
 
 // ─── Current user (logged-in session) ────────────────────────────────
@@ -131,6 +133,9 @@ export const MOCK_USERS: ChatParticipant[] = [
     last_seen: "2026-03-01T22:00:00Z",
   },
 ];
+
+/** O(1) user lookup — use instead of MOCK_USERS.find() throughout the chat feature */
+export const MOCK_USERS_MAP = new Map(MOCK_USERS.map((u) => [u.user_id, u]));
 
 // ─── Mock Conversations ───────────────────────────────────────────────
 export const MOCK_CONVERSATIONS: Conversation[] = [
@@ -858,6 +863,100 @@ export const CHAT_THEMES: ChatTheme[] = [
   { id: "theme-renovation", name: "Renovation", type: "pattern", url: "/resources/chat/Theme_renovation-IE09aNMN.svg" },
   { id: "theme-t-city", name: "T-City", type: "pattern", url: "/resources/chat/Theme_T-City-BuaGB9UT.svg" },
 ];
+
+// ─── Chat Gradients (CSS-based — replaces gradient PNGs) ─────────────────────────────
+export const CHAT_GRADIENTS: ChatGradient[] = [
+  { id: "none",               name: "Không có màu",     css: "",                                                                                       type: "light" },
+  { id: "grad-default-light", name: "Mặc định sáng",    css: "linear-gradient(160deg, #e8f4fd 0%, #dff3e8 50%, #e0eaff 100%)",                         type: "light" },
+  { id: "grad-default-dark",  name: "Mặc định tối",     css: "linear-gradient(160deg, #141e30 0%, #1a2a4a 50%, #243b55 100%)",                         type: "dark"  },
+  { id: "grad-spring",        name: "Mùa xuân",         css: "linear-gradient(160deg, #f8d7ea 0%, #d4f1dc 50%, #fce4f0 100%)",                         type: "light" },
+  { id: "grad-summer",        name: "Mùa hè",           css: "linear-gradient(160deg, #ffeaa7 0%, #fdcb6e 40%, #ff7675 100%)",                         type: "light" },
+  { id: "grad-autumn",        name: "Mùa thu",          css: "linear-gradient(160deg, #f39c12 0%, #e74c3c 50%, #c0392b 100%)",                         type: "dark"  },
+  { id: "grad-warm-winter",   name: "Đông ấm",          css: "linear-gradient(160deg, #a29bfe 0%, #6c5ce7 40%, #fd79a8 100%)",                         type: "dark"  },
+  { id: "grad-fresh-morning", name: "Bình minh tươi",   css: "linear-gradient(160deg, #ffecd2 0%, #fcb69f 40%, #ff9a9e 100%)",                         type: "light" },
+  { id: "grad-frosty-morning",name: "Sương mai",        css: "linear-gradient(160deg, #e0f7fa 0%, #b2ebf2 50%, #dcedc8 100%)",                         type: "light" },
+  { id: "grad-polar-lights",  name: "Cực quang",        css: "linear-gradient(160deg, #0d324d 0%, #1abc9c 50%, #7f5a83 100%)",                         type: "dark"  },
+  { id: "grad-iridescent",    name: "Cầu vồng",         css: "linear-gradient(160deg, #f093fb 0%, #f5576c 25%, #4facfe 60%, #43e97b 100%)",             type: "dark"  },
+  { id: "grad-cold-sunrise",  name: "Bình minh lạnh",   css: "linear-gradient(160deg, #a8edea 0%, #fed6e3 50%, #ffeaa7 100%)",                         type: "light" },
+];
+
+// ─── Chat Patterns (SVG repeat tiles, light/dark variants) ─────────────────────
+export const CHAT_PATTERNS: ChatPattern[] = [
+  { id: "none",              name: "Không có họa tiết",  filename: "",                           hasLight: true  },
+  { id: "pat-cartoon-space", name: "Cartoon Space",       filename: "Theme_Cartoon Space.svg",    hasLight: true  },
+  { id: "pat-cats",          name: "Mèo",                 filename: "Theme_Cats.svg",             hasLight: true  },
+  { id: "pat-characters",    name: "Characters",          filename: "Theme_Characters.svg",       hasLight: true  },
+  { id: "pat-christmas",     name: "Giáng sinh",          filename: "Theme_Christmas.svg",        hasLight: true  },
+  { id: "pat-food",          name: "Món ăn",              filename: "Theme_Food.svg",             hasLight: true  },
+  { id: "pat-free-time",     name: "Thư giãn",            filename: "Theme_Free Time.svg",        hasLight: true  },
+  { id: "pat-fun-space",     name: "Vũ trụ vui",          filename: "Theme_Fun space.svg",        hasLight: true  },
+  { id: "pat-games-2",       name: "Games 2",             filename: "Theme_Games 2.svg",          hasLight: true  },
+  { id: "pat-games",         name: "Games",               filename: "Theme_Games.svg",            hasLight: true  },
+  { id: "pat-halloween",     name: "Halloween",           filename: "Theme_HALOWEEN.svg",         hasLight: true  },
+  { id: "pat-love",          name: "Tình yêu",            filename: "Theme_Love.svg",             hasLight: true  },
+  { id: "pat-magic-2",       name: "Magic 2",             filename: "Theme_Magic 2.svg",          hasLight: true  },
+  { id: "pat-magic-potion",  name: "Magic Potion",        filename: "Theme_Magic potion.svg",     hasLight: true  },
+  { id: "pat-magic",         name: "Magic",               filename: "Theme_Magic.svg",            hasLight: true  },
+  { id: "pat-renovation",    name: "Nội thất",            filename: "Theme_renovation.svg",       hasLight: true  },
+  { id: "pat-richness",      name: "Sang trọng",          filename: "Theme_Richness.svg",         hasLight: true  },
+  { id: "pat-sea-world",     name: "Biển cả",             filename: "Theme_Sea World.svg",        hasLight: true  },
+  { id: "pat-sightseeing",   name: "Du lịch",             filename: "Theme_Sightseeing.svg",      hasLight: true  },
+  { id: "pat-snowflakes",    name: "Bông tuyết",          filename: "Theme_Snowflakes.svg",       hasLight: true  },
+  { id: "pat-space-cat",     name: "Mèo vũ trụ",          filename: "Theme_Space Cat.svg",        hasLight: true  },
+  { id: "pat-space",         name: "Vũ trụ",              filename: "Theme_Space.svg",            hasLight: true  },
+  { id: "pat-sport",         name: "Thể thao",            filename: "Theme_Sport.svg",            hasLight: true  },
+  { id: "pat-star-wars-2",   name: "Star Wars 2",         filename: "Theme_Star Wars 2.svg",      hasLight: true  },
+  { id: "pat-star-wars",     name: "Star Wars",           filename: "Theme_Star Wars.svg",        hasLight: true  },
+  { id: "pat-sweet-love",    name: "Tình yêu ngọt",       filename: "Theme_Sweet Love.svg",       hasLight: true  },
+  { id: "pat-sweets",        name: "Kẹo ngọt",            filename: "Theme_Sweets.svg",           hasLight: true  },
+  { id: "pat-t-city",        name: "T-City",              filename: "Theme_T-City.svg",           hasLight: true  },
+  { id: "pat-unicorn",       name: "Kỳ lân",              filename: "Theme_Unicorn.svg",          hasLight: true  },
+  { id: "pat-witch",         name: "Phù thủy",            filename: "Theme_Witch.svg",            hasLight: true  },
+  { id: "pat-wizard",        name: "Phù thủy 2",          filename: "Theme_Wizard world.svg",     hasLight: true  },
+  { id: "pat-woodland",      name: "Rừng",                filename: "Theme_Woodland.svg",         hasLight: true  },
+  { id: "pat-zoo",           name: "Súc vật",             filename: "Theme_Zoo.svg",              hasLight: true  },
+];
+
+/**
+ * Resolves a pattern's URL by picking the light or dark SVG variant.
+ * Falls back to the dark variant when no light version exists.
+ */
+export function resolvePatternUrl(
+  pattern: Pick<import("@/types/api").ChatPattern, "filename" | "hasLight">,
+  gradientType: "light" | "dark"
+): string {
+  if (!pattern.filename) return "";
+  const variant = gradientType === "light" && pattern.hasLight ? "light" : "dark";
+  return `/resources/chat/patterns/${variant}/${encodeURIComponent(pattern.filename)}`;
+}
+
+/**
+ * Parse a composite theme_id ("gradId|patId|opacity") into its components.
+ * - opacity: integer 0-100, default 45
+ * - Handles legacy 2-part and single-type ids for backward compat.
+ */
+export function parseThemeId(themeId: string | null): { gradId: string; patId: string; opacity: number } {
+  const defaults = { gradId: "none", patId: "none", opacity: 45 };
+  if (!themeId) return defaults;
+  const parts = themeId.split("|");
+  if (parts.length >= 2) {
+    const opacity = parts[2]
+      ? Math.min(100, Math.max(0, parseInt(parts[2], 10)))
+      : 45;
+    return { gradId: parts[0] || "none", patId: parts[1] || "none", opacity };
+  }
+  return defaults;
+}
+
+/**
+ * Build a composite theme_id.
+ * Returns null if both are "none" (no theme active).
+ * @param opacity integer 0-100, default 45
+ */
+export function buildThemeId(gradId: string, patId: string, opacity: number = 45): string | null {
+  if (gradId === "none" && patId === "none") return null;
+  return `${gradId}|${patId}|${opacity}`;
+}
 
 // ─── Emoji reactions (Facebook-style 6) ──────────────────────────────
 export const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "😡"] as const;

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,21 +54,22 @@ export function ConversationList({
 
   const pendingCount = strangerRequests.filter((r) => r.status === "pending").length;
 
-  const filteredConversations = searchQuery.trim()
-    ? conversations.filter((c) => {
-        const q = searchQuery.toLowerCase();
-        const name =
-          c.type === "ai"
-            ? "healthos ai"
-            : c.type === "group"
-            ? (c.name ?? "").toLowerCase()
-            : (c.participants.find((p) => p.user_id !== "user-me")?.display_name ?? "").toLowerCase();
-        return (
-          name.includes(q) ||
-          (c.last_message?.content.toLowerCase().includes(q) ?? false)
-        );
-      })
-    : conversations;
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const q = searchQuery.toLowerCase();
+    return conversations.filter((c) => {
+      const name =
+        c.type === "ai"
+          ? "healthos ai"
+          : c.type === "group"
+          ? (c.name ?? "").toLowerCase()
+          : (c.participants.find((p) => p.user_id !== "user-me")?.display_name ?? "").toLowerCase();
+      return (
+        name.includes(q) ||
+        (c.last_message?.content.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }, [conversations, searchQuery]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -115,7 +115,7 @@ export function ConversationList({
         </div>
 
         <TabsContent value="all" className="flex-1 min-h-0 mt-0">
-          <ScrollArea className="h-full">
+          <div className="h-full overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
             <div className="px-2 pb-4 space-y-0.5">
               {filteredConversations.map((conv) => (
                 <ConversationItem
@@ -134,7 +134,7 @@ export function ConversationList({
                 </p>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </TabsContent>
 
         <TabsContent value="strangers" className="flex-1 min-h-0 mt-0 overflow-y-auto">
