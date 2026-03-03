@@ -154,6 +154,97 @@ components:
           type: string
           enum: [manual, apple_health, google_fit, garmin, fitbit]
 
+    # ── Chat schemas ────────────────────────────────────────────────────────
+    ParticipantDTO:
+      type: object
+      properties:
+        user_id:    { type: string, format: uuid }
+        display_name: { type: string }
+        avatar_url: { type: string, nullable: true }
+        email:      { type: string, format: email }
+        is_online:  { type: boolean }
+        last_seen:  { type: string, format: date-time, nullable: true }
+
+    MessageReactionGroupDTO:
+      type: object
+      properties:
+        emoji:    { type: string }
+        user_ids:
+          type: array
+          items: { type: string, format: uuid }
+
+    MessageDTO:
+      type: object
+      properties:
+        id:              { type: string, format: uuid }
+        conversation_id: { type: string, format: uuid }
+        sender_id:       { type: string, format: uuid, nullable: true }
+        sender:
+          $ref: "#/components/schemas/ParticipantDTO"
+          nullable: true
+        content:         { type: string }
+        content_type:
+          type: string
+          enum: [text, image, file, audio, system]
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              url:       { type: string, format: uri }
+              mime_type: { type: string }
+              size:      { type: integer }
+              filename:  { type: string }
+        reply_to_id: { type: string, format: uuid, nullable: true }
+        reply_to:
+          type: object
+          nullable: true
+          properties:
+            id:        { type: string, format: uuid }
+            content:   { type: string }
+            sender_id: { type: string, format: uuid }
+        reactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageReactionGroupDTO"
+        is_recalled: { type: boolean }
+        is_edited:   { type: boolean }
+        created_at:  { type: string, format: date-time }
+        edited_at:   { type: string, format: date-time, nullable: true }
+
+    LastMessageSummaryDTO:
+      type: object
+      nullable: true
+      properties:
+        content:    { type: string }
+        sender_id:  { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        type:       { type: string }
+        is_recalled: { type: boolean }
+
+    ConversationDTO:
+      type: object
+      properties:
+        id:   { type: string, format: uuid }
+        type:
+          type: string
+          enum: [direct, group, ai]
+        name: { type: string, nullable: true, description: "Group name; null for direct / AI" }
+        avatar_url: { type: string, nullable: true }
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParticipantDTO"
+        last_message:
+          $ref: "#/components/schemas/LastMessageSummaryDTO"
+        unread_count:    { type: integer }
+        is_accepted:     { type: boolean, description: "False for pending stranger requests" }
+        is_muted:        { type: boolean }
+        is_pinned:       { type: boolean }
+        theme_id:        { type: string, nullable: true }
+        updated_at:      { type: string, format: date-time }
+        created_at:      { type: string, format: date-time }
+
 paths:
   /health:
     get:
@@ -541,3 +632,569 @@ paths:
                       $ref: "#/components/schemas/HealthMetric"
                   meta:
                     $ref: "#/components/schemas/PaginationMeta"
+
+  # ── Chat ──────────────────────────────────────────────────────────────────
+  /v1/conversations:
+    get:
+      tags: [Chat]
+      summary: List conversations for the current user
+      description: Returns accepted conversations sorted by most recent activity. AI conversation is always first.
+      responses:
+        "200":
+          description: Conversation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConversationDTO"
+    post:
+      tags: [Chat]
+      summary: Create a group conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, member_ids]
+              properties:
+                title:
+                  type: string
+                  maxLength: 255
+                member_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                  minItems: 2
+                avatar_url:
+                  type: string
+                  format: uri
+      responses:
+        "201":
+          description: Group conversation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ConversationDTO"
+
+  /v1/conversations/direct:
+    post:
+      tags: [Chat]
+      summary: Create or return an existing direct conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_user_id]
+              properties:
+                target_user_id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Existing conversation returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ConversationDTO"
+        "201":
+          description: New conversation created (stranger request sent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ConversationDTO"
+
+  /v1/conversations/pending:
+    get:
+      tags: [Chat]
+      summary: List pending (stranger) conversation requests
+      description: Returns conversations where the current user has not yet accepted.
+      responses:
+        "200":
+          description: Pending conversation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConversationDTO"
+
+  /v1/conversations/{conversation_id}:
+    get:
+      tags: [Chat]
+      summary: Get a single conversation
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Conversation detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ConversationDTO"
+        "403":
+          description: Forbidden — caller is not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags: [Chat]
+      summary: Update group conversation (title / avatar)
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 255 }
+                avatar_url: { type: string, format: uri }
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ConversationDTO"
+
+  /v1/conversations/{conversation_id}/accept:
+    post:
+      tags: [Chat]
+      summary: Accept a stranger conversation request
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ConversationDTO"
+
+  /v1/conversations/{conversation_id}/reject:
+    post:
+      tags: [Chat]
+      summary: Reject a stranger conversation request
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delete_history:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Request rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok: { type: boolean }
+
+  /v1/conversations/{conversation_id}/messages:
+    get:
+      tags: [Chat]
+      summary: List messages (cursor pagination — newest first)
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: before
+          in: query
+          description: Return messages before this ISO datetime (exclusive)
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 100 }
+      responses:
+        "200":
+          description: Message list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MessageDTO"
+                  has_more:
+                    type: boolean
+    post:
+      tags: [Chat]
+      summary: Send a message (REST fallback — prefer WebSocket)
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+                content_type:
+                  type: string
+                  enum: [text, image, file, audio, system]
+                  default: text
+                reply_to_id: { type: string, format: uuid }
+                client_message_id: { type: string, maxLength: 128 }
+                attachments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      url: { type: string, format: uri }
+                      mime_type: { type: string }
+                      size: { type: integer }
+                      filename: { type: string }
+      responses:
+        "201":
+          description: Message created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/MessageDTO"
+
+  /v1/conversations/{conversation_id}/messages/{message_id}:
+    patch:
+      tags: [Chat]
+      summary: Edit message content (sender only, within 15 min)
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+      responses:
+        "200":
+          description: Edited message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/MessageDTO"
+        "403":
+          description: Not the sender or edit window expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Chat]
+      summary: Recall (soft-delete) a message
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Message recalled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/MessageDTO"
+
+  /v1/conversations/{conversation_id}/messages/{message_id}/reactions:
+    post:
+      tags: [Chat]
+      summary: Toggle emoji reaction on a message
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emoji]
+              properties:
+                emoji: { type: string, description: "Unicode emoji e.g. 👍" }
+      responses:
+        "200":
+          description: Reaction toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/MessageDTO"
+
+  /v1/conversations/{conversation_id}/read:
+    post:
+      tags: [Chat]
+      summary: Mark current user's last read position in a conversation
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                last_message_id:
+                  type: string
+                  format: uuid
+                  description: Optional — if omitted, marks all current messages as read
+      responses:
+        "200":
+          description: Read receipt updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok: { type: boolean }
+
+  /v1/conversations/{conversation_id}/pinned:
+    get:
+      tags: [Chat]
+      summary: List pinned messages in a conversation
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Pinned messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MessageDTO"
+
+  /v1/conversations/{conversation_id}/pinned/{message_id}:
+    post:
+      tags: [Chat]
+      summary: Pin a message
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Message pinned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok: { type: boolean }
+    delete:
+      tags: [Chat]
+      summary: Unpin a message
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Message unpinned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok: { type: boolean }
+
+  /v1/users/lookup:
+    get:
+      tags: [Chat]
+      summary: Search users by display name or email (for starting new conversations)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+      responses:
+        "200":
+          description: Matching users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ParticipantDTO"
+
+  # ── WebSocket ─────────────────────────────────────────────────────────────
+  /ws:
+    get:
+      tags: [WebSocket]
+      summary: Open a persistent WebSocket connection
+      description: |
+        Connect with a valid JWT token obtained from GET /v1/auth/ws-token (BFF).
+
+        **Query parameters:**
+        - `token` (required): Short-lived JWT (same as access_token)
+
+        **Close codes:**
+        - `4001` — JWT invalid or expired (re-fetch token and reconnect)
+        - `4403` — Not authorised
+
+        **Client → Server events** (JSON `{"event": "...", "payload": {...}}`):
+
+        | event | description |
+        |-------|-------------|
+        | `client:hello` | Handshake, sent immediately after open |
+        | `pong` | Reply to server `ping` |
+        | `conv:join` | Subscribe to room events for a conversation |
+        | `msg:send` | Send a message |
+        | `msg:edit` | Edit own message |
+        | `msg:delete` | Recall own message |
+        | `msg:react` | Toggle emoji reaction |
+        | `msg:pin` | Pin a message |
+        | `msg:unpin` | Unpin a message |
+        | `msg:read` | Mark conversation as read |
+        | `typing` | Broadcast typing indicator |
+        | `conv:sync` | Request full conversation list refresh |
+
+        **Server → Client events:**
+
+        | event | description |
+        |-------|-------------|
+        | `ping` | Heartbeat (reply with `pong`) |
+        | `presence` | Online/offline status update |
+        | `msg:new` | New message in a subscribed room |
+        | `msg:edited` | Message was edited |
+        | `msg:recalled` | Message was recalled |
+        | `msg:reacted` | Reaction added or removed |
+        | `msg:pinned` | Message was pinned |
+        | `msg:unpinned` | Message was unpinned |
+        | `typing` | User is/stopped typing |
+        | `conv:accepted` | Stranger request accepted |
+        | `conv:rejected` | Stranger request rejected |
+        | `error` | Event processing error |
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "101":
+          description: Switching Protocols — WebSocket connection established
+        "401":
+          description: Missing or invalid token
+

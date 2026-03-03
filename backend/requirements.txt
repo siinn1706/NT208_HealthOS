@@ -23,5 +23,6 @@ passlib[bcrypt]
 # ─── HTTP client (call AI worker etc.) ───────────────────────────
 httpx
 
-# ─── Dev / migrations (uncomment when ready) ─────────────────────
-# alembic
+# ─── Dev / migrations ────────────────────────────────────────────
+alembic
+psycopg2-binary

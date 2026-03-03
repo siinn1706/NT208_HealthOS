@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "chat.message.sent",
+  "description": "Emitted by Core Backend when a chat message is successfully persisted. Broadcast via WebSocket and optionally queued for push notifications.",
+  "type": "object",
+  "required": ["event", "version", "payload", "metadata"],
+  "properties": {
+    "event": { "type": "string", "const": "chat.message.sent" },
+    "version": { "type": "string", "const": "1.0" },
+    "payload": {
+      "type": "object",
+      "required": ["message_id", "conversation_id", "sender_id", "content", "content_type", "created_at"],
+      "properties": {
+        "message_id":        { "type": "string", "format": "uuid" },
+        "client_message_id": { "type": "string", "description": "Client-generated idempotency key" },
+        "conversation_id":   { "type": "string", "format": "uuid" },
+        "sender_id":         { "type": "string", "format": "uuid" },
+        "content":           { "type": "string" },
+        "content_type":      { "type": "string", "enum": ["text", "image", "file", "audio", "video", "sticker", "ai_response"] },
+        "attachments":       {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url":       { "type": "string", "format": "uri" },
+              "mime_type": { "type": "string" },
+              "size":      { "type": "integer" },
+              "filename":  { "type": "string" }
+            }
+          }
+        },
+        "reply_to_id": { "type": "string", "format": "uuid", "description": "ID of the message being replied to" },
+        "created_at":  { "type": "string", "format": "date-time" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id":       { "type": "string", "format": "uuid" },
+        "timestamp":      { "type": "string", "format": "date-time" },
+        "user_id":        { "type": "string", "format": "uuid", "description": "Same as sender_id" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

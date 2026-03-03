@@ -314,3 +314,319 @@ paths:
       responses:
         "200":
           description: Notifications list
+
+  # ── Chat ──────────────────────────────────────────────────────────────────
+  /conversations:
+    get:
+      tags: [Chat]
+      summary: List accepted conversations (proxy → Core BE)
+      responses:
+        "200":
+          description: Conversation list (same shape as Core BE)
+    post:
+      tags: [Chat]
+      summary: Create group conversation (proxy → Core BE POST /v1/conversations)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, member_ids]
+              properties:
+                title:       { type: string }
+                member_ids:  { type: array, items: { type: string, format: uuid } }
+                avatar_url:  { type: string, format: uri }
+      responses:
+        "201":
+          description: Group conversation created
+
+  /conversations/direct:
+    post:
+      tags: [Chat]
+      summary: Create or return existing direct conversation (proxy → Core BE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_user_id]
+              properties:
+                target_user_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Existing conversation
+        "201":
+          description: New stranger request sent
+
+  /conversations/pending:
+    get:
+      tags: [Chat]
+      summary: List pending stranger requests (proxy → Core BE)
+      responses:
+        "200":
+          description: Pending list
+
+  /conversations/{id}:
+    get:
+      tags: [Chat]
+      summary: Get single conversation (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Conversation detail
+    patch:
+      tags: [Chat]
+      summary: Update group metadata (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:      { type: string }
+                avatar_url: { type: string }
+      responses:
+        "200":
+          description: Updated
+
+  /conversations/{id}/accept:
+    post:
+      tags: [Chat]
+      summary: Accept a stranger request (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Accepted
+
+  /conversations/{id}/reject:
+    post:
+      tags: [Chat]
+      summary: Reject a stranger request (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Rejected
+
+  /conversations/{id}/messages:
+    get:
+      tags: [Chat]
+      summary: List messages with cursor pagination (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: before
+          in: query
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          description: Messages
+    post:
+      tags: [Chat]
+      summary: Send message via REST (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:          { type: string }
+                content_type:     { type: string, default: text }
+                reply_to_id:      { type: string, format: uuid }
+                client_message_id: { type: string }
+      responses:
+        "201":
+          description: Message sent
+
+  /conversations/{id}/messages/{messageId}:
+    patch:
+      tags: [Chat]
+      summary: Edit message (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+      responses:
+        "200":
+          description: Edited
+    delete:
+      tags: [Chat]
+      summary: Recall message (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Recalled
+
+  /conversations/{id}/messages/{messageId}/reactions:
+    post:
+      tags: [Chat]
+      summary: Toggle reaction (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emoji]
+              properties:
+                emoji: { type: string }
+      responses:
+        "200":
+          description: Toggled
+
+  /conversations/{id}/read:
+    post:
+      tags: [Chat]
+      summary: Mark conversation as read (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Read receipt updated
+
+  /conversations/{id}/pinned:
+    get:
+      tags: [Chat]
+      summary: List pinned messages (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Pinned messages
+
+  /conversations/{id}/pinned/{messageId}:
+    post:
+      tags: [Chat]
+      summary: Pin a message (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Pinned
+    delete:
+      tags: [Chat]
+      summary: Unpin a message (proxy → Core BE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Unpinned
+
+  /auth/ws-token:
+    get:
+      tags: [Auth]
+      summary: Return the current access token for WebSocket authentication
+      description: |
+        Reads the httpOnly `core_access_token` cookie (set by the BFF) and
+        returns it in the response body. The browser can then pass it as a
+        query parameter when opening the WebSocket connection to the Core BE.
+
+        **Important:** This endpoint itself requires a valid session cookie.
+      responses:
+        "200":
+          description: Token returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        "401":
+          description: Not authenticated
+
+  /users/search:
+    get:
+      tags: [Users]
+      summary: Search users by name or email (proxy → Core BE /v1/users/lookup)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+      responses:
+        "200":
+          description: Matching users
+
