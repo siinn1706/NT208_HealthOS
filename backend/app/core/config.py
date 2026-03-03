@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
+    auth_issuer: str = "healthos-core"
+    auth_audience: str = "healthos-clients"
 
     # CORS
     allowed_origins: list[str] = ["http://localhost:3000"]
