@@ -1,54 +1,45 @@
-"""Alembic environment — async-aware setup for SQLAlchemy 2.x + asyncpg.
+"""Alembic environment — fully async via asyncpg (same driver as the app).
 
-The migration runner uses a *synchronous* psycopg2 connection to apply DDL,
-while the application uses asyncpg at runtime.  The DATABASE_URL env var (or
-default from settings) is converted automatically.
+Uses SQLAlchemy async engine so migrations run with the exact same credentials
+and driver as the production code.  No psycopg2 required.
 """
 
+import asyncio
 import os
-import re
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
 # ── Import all models so autogenerate can see them ──────────────────────────
-# Keep this block in sync with any new model files.
 from app.core.config import settings
 from app.models.core import Base  # noqa: F401 — registers all ORM metadata
 
 # ── Alembic Config object ────────────────────────────────────────────────────
 config = context.config
 
-# Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Target metadata for autogenerate
 target_metadata = Base.metadata
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-def _sync_url(url: str) -> str:
-    """Replace asyncpg driver with psycopg2 for Alembic's sync engine."""
-    return re.sub(r"postgresql\+asyncpg", "postgresql+psycopg2", url)
-
-
 def _get_url() -> str:
-    # Allow override via env var for CI / Docker
-    return _sync_url(
-        os.environ.get("ALEMBIC_DATABASE_URL", settings.database_url)
-    )
+    """Return the asyncpg DATABASE_URL; ALEMBIC_DATABASE_URL overrides."""
+    url = os.environ.get("ALEMBIC_DATABASE_URL", settings.database_url)
+    # ensure we always use the asyncpg driver
+    if url.startswith("postgresql://") or url.startswith("postgresql+psycopg2://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+    return url
 
 
-# ── Offline mode (no live DB connection) ─────────────────────────────────────
+# ── Offline mode ──────────────────────────────────────────────────────────────
 
 def run_migrations_offline() -> None:
-    """Run migrations without a DB connection — outputs SQL to stdout."""
-    url = _get_url()
+    """Emit raw SQL without a live connection."""
     context.configure(
-        url=url,
+        url=_get_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -57,30 +48,26 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-# ── Online mode ───────────────────────────────────────────────────────────────
+# ── Online mode (async) ───────────────────────────────────────────────────────
 
-def run_migrations_online() -> None:
-    """Run migrations with a live DB connection."""
-    configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = _get_url()
-
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+def do_run_migrations(connection):
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
     )
+    with context.begin_transaction():
+        context.run_migrations()
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-        )
-        with context.begin_transaction():
-            context.run_migrations()
+
+async def run_migrations_online() -> None:
+    engine = create_async_engine(_get_url(), echo=False)
+    async with engine.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+    await engine.dispose()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    asyncio.run(run_migrations_online())
