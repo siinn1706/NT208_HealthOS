@@ -18,222 +18,120 @@ And two PostgreSQL enum types:
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "001"
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = "000"  # depends on baseline auth tables
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # ── Enum types ─────────────────────────────────────────────────────────
-    conversation_type = postgresql.ENUM(
-        "direct", "group", "ai",
-        name="conversation_type_enum",
-        create_type=False,
-    )
-    conversation_type.create(op.get_bind(), checkfirst=True)
-
-    message_content_type = postgresql.ENUM(
-        "text", "image", "file", "audio", "system",
-        name="message_content_type_enum",
-        create_type=False,
-    )
-    message_content_type.create(op.get_bind(), checkfirst=True)
+    # ── Enum types (idempotent) ────────────────────────────────────────────
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE conversation_type_enum AS ENUM ('direct', 'group', 'ai');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE message_content_type_enum AS ENUM ('text', 'image', 'file', 'audio', 'system');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
 
     # ── conversations ──────────────────────────────────────────────────────
-    op.create_table(
-        "conversations",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "type",
-            sa.Enum("direct", "group", "ai", name="conversation_type_enum"),
-            nullable=False,
-            server_default="direct",
-        ),
-        sa.Column("title", sa.String(255), nullable=True),
-        sa.Column("avatar_url", sa.String(512), nullable=True),
-        sa.Column(
-            "created_by",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="SET NULL"),
-            nullable=True,
-        ),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-    )
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            id          UUID PRIMARY KEY,
+            type        conversation_type_enum NOT NULL DEFAULT 'direct',
+            title       VARCHAR(255),
+            avatar_url  VARCHAR(512),
+            created_by  UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+    """)
 
     # ── conversation_members ───────────────────────────────────────────────
-    op.create_table(
-        "conversation_members",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "conversation_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("conversations.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "user_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("role", sa.String(32), nullable=False, server_default="member"),
-        sa.Column("is_accepted", sa.Boolean, nullable=False, server_default=sa.text("true")),
-        sa.Column("is_muted", sa.Boolean, nullable=False, server_default=sa.text("false")),
-        sa.Column(
-            "joined_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column("last_read_at", sa.DateTime(timezone=True), nullable=True),
-        sa.UniqueConstraint("conversation_id", "user_id", name="uq_conv_member"),
-    )
-    op.create_index("ix_conv_members_conversation_id", "conversation_members", ["conversation_id"])
-    op.create_index("ix_conv_members_user_id", "conversation_members", ["user_id"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS conversation_members (
+            id              UUID PRIMARY KEY,
+            conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            role            VARCHAR(32) NOT NULL DEFAULT 'member',
+            is_accepted     BOOLEAN NOT NULL DEFAULT true,
+            is_muted        BOOLEAN NOT NULL DEFAULT false,
+            joined_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+            last_read_at    TIMESTAMPTZ,
+            CONSTRAINT uq_conv_member UNIQUE (conversation_id, user_id)
+        );
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_conv_members_conversation_id ON conversation_members (conversation_id);")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_conv_members_user_id ON conversation_members (user_id);")
 
     # ── messages ───────────────────────────────────────────────────────────
-    op.create_table(
-        "messages",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "conversation_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("conversations.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "sender_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="SET NULL"),
-            nullable=True,
-        ),
-        sa.Column("client_message_id", sa.String(128), nullable=True),
-        sa.Column("content", sa.Text, nullable=False, server_default=""),
-        sa.Column(
-            "content_type",
-            sa.Enum("text", "image", "file", "audio", "system", name="message_content_type_enum"),
-            nullable=False,
-            server_default="text",
-        ),
-        sa.Column("attachments", postgresql.JSONB, nullable=True),
-        sa.Column(
-            "reply_to_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("messages.id", ondelete="SET NULL"),
-            nullable=True,
-        ),
-        sa.Column("is_recalled", sa.Boolean, nullable=False, server_default=sa.text("false")),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column("edited_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.create_index("ix_messages_conversation_id", "messages", ["conversation_id"])
-    op.create_index("ix_messages_sender_id", "messages", ["sender_id"])
-    op.create_index("ix_messages_created_at", "messages", ["created_at"])
-    op.create_index("ix_messages_client_message_id", "messages", ["client_message_id"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id                UUID PRIMARY KEY,
+            conversation_id   UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            sender_id         UUID REFERENCES users(id) ON DELETE SET NULL,
+            client_message_id VARCHAR(128),
+            content           TEXT NOT NULL DEFAULT '',
+            content_type      message_content_type_enum NOT NULL DEFAULT 'text',
+            attachments       JSONB,
+            reply_to_id       UUID REFERENCES messages(id) ON DELETE SET NULL,
+            is_recalled       BOOLEAN NOT NULL DEFAULT false,
+            created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+            edited_at         TIMESTAMPTZ,
+            deleted_at        TIMESTAMPTZ
+        );
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_messages_conversation_id ON messages (conversation_id);")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_messages_sender_id ON messages (sender_id);")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_messages_created_at ON messages (created_at);")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_messages_client_message_id ON messages (client_message_id);")
 
     # ── message_receipts ───────────────────────────────────────────────────
-    op.create_table(
-        "message_receipts",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "message_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("messages.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "user_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("delivered_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
-        sa.UniqueConstraint("message_id", "user_id", name="uq_message_receipt"),
-    )
-    op.create_index("ix_message_receipts_message_id", "message_receipts", ["message_id"])
-    op.create_index("ix_message_receipts_user_id", "message_receipts", ["user_id"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS message_receipts (
+            id           UUID PRIMARY KEY,
+            message_id   UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+            user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            delivered_at TIMESTAMPTZ,
+            read_at      TIMESTAMPTZ,
+            CONSTRAINT uq_message_receipt UNIQUE (message_id, user_id)
+        );
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_message_receipts_message_id ON message_receipts (message_id);")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_message_receipts_user_id ON message_receipts (user_id);")
 
     # ── message_reactions ──────────────────────────────────────────────────
-    op.create_table(
-        "message_reactions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "message_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("messages.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "user_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("emoji", sa.String(64), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.UniqueConstraint("message_id", "user_id", "emoji", name="uq_message_reaction"),
-    )
-    op.create_index("ix_message_reactions_message_id", "message_reactions", ["message_id"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS message_reactions (
+            id         UUID PRIMARY KEY,
+            message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+            user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            emoji      VARCHAR(64) NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT uq_message_reaction UNIQUE (message_id, user_id, emoji)
+        );
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_message_reactions_message_id ON message_reactions (message_id);")
 
     # ── pinned_messages ────────────────────────────────────────────────────
-    op.create_table(
-        "pinned_messages",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "conversation_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("conversations.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "message_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("messages.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "pinned_by",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "pinned_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.UniqueConstraint("conversation_id", "message_id", name="uq_pinned_message"),
-    )
-    op.create_index("ix_pinned_messages_conversation_id", "pinned_messages", ["conversation_id"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS pinned_messages (
+            id              UUID PRIMARY KEY,
+            conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            message_id      UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+            pinned_by       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            pinned_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT uq_pinned_message UNIQUE (conversation_id, message_id)
+        );
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pinned_messages_conversation_id ON pinned_messages (conversation_id);")
 
 
 def downgrade() -> None:
