@@ -5,7 +5,7 @@ import uuid
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, Float, ForeignKey, String, func, text
+from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -269,3 +269,302 @@ class Notification(Base):
 
     user: Mapped[User] = relationship(back_populates="notifications")
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHAT MODELS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ConversationTypeEnum(str, Enum):
+    DIRECT = "direct"
+    GROUP = "group"
+    AI = "ai"
+
+
+class MessageContentTypeEnum(str, Enum):
+    TEXT = "text"
+    IMAGE = "image"
+    FILE = "file"
+    AUDIO = "audio"
+    SYSTEM = "system"
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    type: Mapped[ConversationTypeEnum] = mapped_column(
+        SAEnum(ConversationTypeEnum, name="conversation_type_enum"),
+        nullable=False,
+        default=ConversationTypeEnum.DIRECT,
+    )
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    members: Mapped[list[ConversationMember]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+    )
+    messages: Mapped[list[Message]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+    )
+    pinned_messages: Mapped[list[PinnedMessage]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+    )
+
+
+class ConversationMember(Base):
+    __tablename__ = "conversation_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Role: "owner", "admin", "member"
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="member")
+    # For stranger/pending requests: receiver has is_accepted=False until they accept
+    is_accepted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
+    is_muted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    joined_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    last_read_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("conversation_id", "user_id", name="uq_conv_member"),
+    )
+
+    conversation: Mapped[Conversation] = relationship(back_populates="members")
+    user: Mapped[User] = relationship()
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sender_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Client-supplied idempotency key to prevent duplicate sends on retry
+    client_message_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    content_type: Mapped[MessageContentTypeEnum] = mapped_column(
+        SAEnum(MessageContentTypeEnum, name="message_content_type_enum"),
+        nullable=False,
+        default=MessageContentTypeEnum.TEXT,
+    )
+    # Attachments: [{url, name, size, mime_type}]
+    attachments: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
+    # Reply-to: stores the replied message id
+    reply_to_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("messages.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    is_recalled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
+    edited_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    conversation: Mapped[Conversation] = relationship(back_populates="messages")
+    sender: Mapped[User | None] = relationship()
+    reply_to: Mapped[Message | None] = relationship(remote_side="Message.id", foreign_keys=[reply_to_id])
+    reactions: Mapped[list[MessageReaction]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+    )
+    receipts: Mapped[list[MessageReceipt]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+    )
+
+
+class MessageReceipt(Base):
+    """Tracks delivery and read status per user per message."""
+
+    __tablename__ = "message_receipts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    delivered_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    read_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "user_id", name="uq_message_receipt"),
+    )
+
+    message: Mapped[Message] = relationship(back_populates="receipts")
+    user: Mapped[User] = relationship()
+
+
+class MessageReaction(Base):
+    """Emoji reactions on a message. One emoji per user per message."""
+
+    __tablename__ = "message_reactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    emoji: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "user_id", "emoji", name="uq_message_reaction"),
+    )
+
+    message: Mapped[Message] = relationship(back_populates="reactions")
+    user: Mapped[User] = relationship()
+
+
+class PinnedMessage(Base):
+    """Tracks which messages are pinned in a conversation."""
+
+    __tablename__ = "pinned_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    pinned_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    pinned_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("conversation_id", "message_id", name="uq_pinned_message"),
+    )
+
+    conversation: Mapped[Conversation] = relationship(back_populates="pinned_messages")
+    message: Mapped[Message] = relationship()
+    pinner: Mapped[User] = relationship(foreign_keys=[pinned_by])
