@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Camera, Plus, Pill, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { QuickMealSheet } from "@/components/dashboard/meals/QuickMealSheet";
 
 interface QuickAction {
   key: "logMeal" | "scanMeal" | "addVital" | "logMedicine";
@@ -40,40 +42,53 @@ const ACTIONS: QuickAction[] = [
 
 export function QuickActionsWidget() {
   const t = useTranslations("dashboard.quickActions");
+  const [mealSheetOpen, setMealSheetOpen] = useState(false);
+
+  function handleAction(key: QuickAction["key"]) {
+    if (key === "logMeal") {
+      setMealSheetOpen(true);
+    }
+    // TODO: handlers for other actions
+  }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <p className="text-sm font-semibold text-foreground mb-4">{t("title")}</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {ACTIONS.map(({ key, icon: Icon, color, bg }) => (
-          <button
-            key={key}
-            className={cn(
-              "flex flex-col items-center gap-2.5 rounded-lg p-4",
-              "border border-border transition-colors duration-200 cursor-pointer",
-              bg
-            )}
-            aria-label={t(key)}
-          >
-            <div
+    <>
+      <div className="rounded-xl border border-border bg-card p-5">
+        <p className="text-sm font-semibold text-foreground mb-4">{t("title")}</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {ACTIONS.map(({ key, icon: Icon, color, bg }) => (
+            <button
+              key={key}
+              onClick={() => handleAction(key)}
               className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center",
-                bg.split(" ")[0]
+                "flex flex-col items-center gap-2.5 rounded-lg p-4",
+                "border border-border transition-colors duration-200 cursor-pointer",
+                bg
               )}
+              aria-label={t(key)}
             >
-              <Icon className={cn("w-5 h-5", color)} />
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-semibold text-foreground leading-tight">
-                {t(key)}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {t(`${key}Desc` as Parameters<typeof t>[0])}
-              </p>
-            </div>
-          </button>
-        ))}
+              <div
+                className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  bg.split(" ")[0]
+                )}
+              >
+                <Icon className={cn("w-5 h-5", color)} />
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-semibold text-foreground leading-tight">
+                  {t(key)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {t(`${key}Desc` as Parameters<typeof t>[0])}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+
+      <QuickMealSheet open={mealSheetOpen} onOpenChange={setMealSheetOpen} />
+    </>
   );
 }
