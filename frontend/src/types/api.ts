@@ -343,3 +343,121 @@ export interface EditMessagePayload {
 export interface ReactMessagePayload {
   emoji: string;
 }
+
+// ─── Reports ─────────────────────────────────────────────────────────
+
+export type ReportPeriod = "7d" | "30d" | "90d";
+export type HealthStatus = "normal" | "warning" | "critical";
+export type ReportCategory =
+  | "vitals"
+  | "nutrition"
+  | "activity"
+  | "sleep"
+  | "bmi"
+  | "medication";
+export type TrendDirection = "improving" | "stable" | "declining";
+
+export interface TimeseriesPoint {
+  date: string; // ISO date yyyy-MM-dd
+  value: number;
+  value2?: number; // for dual-series (e.g. systolic/diastolic)
+  value3?: number;
+  label?: string;
+}
+
+export interface SectionStats {
+  average: number;
+  min: number;
+  max: number;
+  trend: TrendDirection;
+  change_percent: number; // positive = up, negative = down
+  unit: string;
+}
+
+export interface ReportAlert {
+  id: string;
+  severity: "critical" | "warning";
+  metric: string;
+  message: string;
+  value: number;
+  threshold: number;
+  unit: string;
+  timestamp: string;
+}
+
+export interface ReportSection {
+  category: ReportCategory;
+  title: string;
+  summary: string;
+  status: HealthStatus;
+  data: TimeseriesPoint[];
+  stats: SectionStats;
+  alerts: ReportAlert[];
+}
+
+export interface HealthReport {
+  id: string;
+  user_id: string;
+  period: ReportPeriod;
+  generated_at: string;
+  status: HealthStatus; // overall worst status across sections
+  sections: ReportSection[];
+  alerts: ReportAlert[]; // all alerts flattened
+}
+
+export interface AnomalyPoint {
+  date: string;
+  value: number;
+  deviation_percent: number;
+  severity: "critical" | "warning";
+}
+
+export interface TrendAnalysis {
+  metric: string;
+  metric_label: string;
+  unit: string;
+  period: ReportPeriod;
+  data_points: TimeseriesPoint[];
+  trend_line: number[]; // one value per data point (linear regression)
+  prediction: number[]; // next 7 days predicted values
+  anomalies: AnomalyPoint[];
+  trend: TrendDirection;
+  change_percent: number;
+  ai_summary: string;
+}
+
+// ─── Share / Notifications ────────────────────────────────────────────────
+
+export interface ShareRecipient {
+  name: string;
+  email: string;
+  relationship?: string;
+  user_id?: string;
+}
+
+export type ShareChannel = "email" | "in_app";
+
+export interface ShareRequest {
+  report_id: string;
+  recipients: ShareRecipient[];
+  channels: ShareChannel[];
+  message?: string;
+  include_pdf: boolean;
+}
+
+export type ShareStatus = "sent" | "failed" | "pending";
+
+export interface ShareResult {
+  recipient: ShareRecipient;
+  channel: ShareChannel;
+  status: ShareStatus;
+  error_message?: string;
+}
+
+export interface AutoShareSettings {
+  enabled: boolean;
+  severity_threshold: "critical" | "warning_and_critical";
+  default_recipients: ShareRecipient[];
+  default_channels: ShareChannel[];
+  countdown_seconds: number; // delay before auto-sending
+}

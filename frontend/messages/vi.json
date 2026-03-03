@@ -240,7 +240,9 @@
       "addVital": "Thêm chỉ số",
       "addVitalDesc": "Nhập số liệu mới nhất",
       "logMedicine": "Ghi uống thuốc",
-      "logMedicineDesc": "Xác nhận đã uống"
+      "logMedicineDesc": "Xác nhận đã uống",
+      "viewReports": "Xem báo cáo",
+      "viewReportsDesc": "Phân tích sức khỏe"
     },
     "kpi": {
       "caloriesBurned": "Calo tiêu thụ",
@@ -516,5 +518,138 @@
     "attachFile": "Đính kèm tệp",
     "attachImage": "Đính kèm ảnh",
     "uploadComingSoon": "Tính năng upload sắp ra mắt"
+  },
+  "reports": {
+    "title": "Báo cáo sức khỏe",
+    "subtitle": "Tổng hợp và phân tích dữ liệu sức khỏe của bạn",
+    "period": "Kỳ báo cáo",
+    "period7d": "7 ngày",
+    "period30d": "30 ngày",
+    "period90d": "90 ngày",
+    "generatedAt": "Tạo lúc",
+    "overallStatus": "Tình trạng tổng thể",
+    "statusNormal": "Bình thường",
+    "statusWarning": "Cần chú ý",
+    "statusCritical": "Cần can thiệp",
+    "alertCount": "{count} cảnh báo",
+    "noAlerts": "Không có cảnh báo",
+    "viewDetail": "Xem chi tiết",
+    "exportPdf": "Xuất PDF",
+    "exportPdfLoading": "Đang tạo PDF...",
+    "exportPdfSuccess": "Đã tải xuống báo cáo PDF",
+    "share": "Chia sẻ",
+    "shareReport": "Chia sẻ báo cáo",
+    "analyzeTrends": "Phân tích xu hướng",
+    "recentReports": "Lịch sử báo cáo",
+    "noRecentReports": "Chưa có báo cáo nào",
+    "categories": {
+      "vitals": "Chỉ số sinh tồn",
+      "nutrition": "Dinh dưỡng",
+      "activity": "Hoạt động thể chất",
+      "sleep": "Giấc ngủ",
+      "bmi": "BMI & Cân nặng",
+      "medication": "Tuân thủ dùng thuốc"
+    },
+    "stats": {
+      "average": "Trung bình",
+      "min": "Thấp nhất",
+      "max": "Cao nhất",
+      "trend": "Xu hướng",
+      "change": "Thay đổi"
+    },
+    "trend": {
+      "improving": "Cải thiện",
+      "stable": "Ổn định",
+      "declining": "Giảm sút"
+    },
+    "detail": {
+      "title": "Báo cáo chi tiết",
+      "backToReports": "Quay lại báo cáo",
+      "dataTable": "Dữ liệu chi tiết",
+      "date": "Ngày",
+      "value": "Giá trị",
+      "status": "Trạng thái",
+      "alerts": "Cảnh báo trong kỳ",
+      "noAlerts": "Không có cảnh báo nào trong kỳ này",
+      "alertsSection": "Cảnh báo trong kỳ",
+      "alertValue": "Giá trị",
+      "alertThreshold": "Ngưỡng",
+      "severity": {
+        "critical": "Nghiêm trọng",
+        "warning": "Cảnh báo",
+        "info": "Thông tin"
+      }
+    }
+  },
+  "trends": {
+    "title": "Phân tích xu hướng",
+    "subtitle": "Phân tích và dự báo chỉ số sức khỏe theo thời gian",
+    "selectMetric": "Chọn chỉ số",
+    "compareMetric": "So sánh với",
+    "metrics": {
+      "heart_rate": "Nhịp tim",
+      "blood_pressure": "Huyết áp",
+      "calories": "Lượng calo",
+      "steps": "Số bước",
+      "sleep": "Giấc ngủ",
+      "bmi": "BMI",
+      "weight": "Cân nặng"
+    },
+    "chart": {
+      "actual": "Thực tế",
+      "trendLine": "Đường xu hướng",
+      "prediction": "Dự báo",
+      "anomaly": "Điểm bất thường"
+    },
+    "anomalies": "Điểm bất thường",
+    "noAnomalies": "Không phát hiện điểm bất thường",
+    "aiSummary": "Nhận xét AI",
+    "compare": "So sánh chỉ số",
+    "export": "Xuất phân tích"
+  },
+  "share": {
+    "title": "Chia sẻ báo cáo",
+    "subtitle": "Gửi báo cáo sức khỏe đến người thân",
+    "recipients": "Người nhận",
+    "addRecipient": "Thêm người nhận",
+    "name": "Họ và tên",
+    "email": "Email",
+    "relationship": "Mối quan hệ",
+    "channels": "Kênh gửi",
+    "channelEmail": "Email (đính kèm PDF)",
+    "channelInApp": "Thông báo trong app",
+    "message": "Lời nhắn (tuỳ chọn)",
+    "messagePlaceholder": "Thêm ghi chú cho người nhận...",
+    "send": "Gửi ngay",
+    "sending": "Đang gửi...",
+    "cancel": "Hủy",
+    "sent": "Đã gửi",
+    "failed": "Thất bại",
+    "pending": "Đang chờ",
+    "retry": "Thử lại",
+    "autoShare": {
+      "title": "Phát hiện chỉ số bất thường!",
+      "subtitle": "Báo cáo sẽ tự động gửi đến người thân trong",
+      "seconds": "giây",
+      "sendNow": "Gửi ngay",
+      "cancel": "Hủy gửi tự động",
+      "customize": "Tùy chỉnh người nhận",
+      "normalTitle": "Kết quả sức khỏe bình thường",
+      "normalSubtitle": "Bạn có muốn chia sẻ báo cáo này với người thân không?",
+      "shareOptional": "Chia sẻ (tuỳ chọn)"
+    },
+    "settings": {
+      "title": "Cài đặt chia sẻ tự động",
+      "enable": "Bật chia sẻ tự động",
+      "threshold": "Ngưỡng cảnh báo",
+      "thresholdCritical": "Chỉ khi nghiêm trọng",
+      "thresholdWarning": "Cảnh báo và nghiêm trọng",
+      "defaultContacts": "Người nhận mặc định",
+      "countdown": "Thời gian đếm ngược (giây)",
+      "save": "Lưu cài đặt",
+      "saved": "Đã lưu!"
+    },
+    "noEmergencyContacts": "Chưa có người liên hệ khẩn cấp. Thêm trong phần hồ sơ.",
+    "goToProfile": "Đến hồ sơ"
   }
 }
