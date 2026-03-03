@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -81,6 +82,7 @@ export function ChatSearchUsers({
             <UserPlus className="w-5 h-5 text-primary" />
             {t("searchUsers")}
           </DialogTitle>
+          <DialogDescription className="sr-only">{t("searchUsers")}</DialogDescription>
         </DialogHeader>
 
         <div className="relative">

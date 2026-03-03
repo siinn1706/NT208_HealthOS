@@ -4,9 +4,10 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,7 @@ export function ForwardMessageDialog({
             <Share2 className="w-4 h-4 text-muted-foreground" />
             <DialogTitle>{t("forwardMessage")}</DialogTitle>
           </div>
+          <DialogDescription className="sr-only">{t("forwardMessage")}</DialogDescription>
         </DialogHeader>
 
         {/* Preview of message being forwarded */}
