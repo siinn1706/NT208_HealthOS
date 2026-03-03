@@ -19,6 +19,7 @@ boto3
 # ─── Auth / Security ──────────────────────────────────────────────
 python-jose[cryptography]
 passlib[bcrypt]
+bcrypt==4.0.1
 
 # ─── HTTP client (call AI worker etc.) ───────────────────────────
 httpx
