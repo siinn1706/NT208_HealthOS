@@ -412,7 +412,7 @@
     "backToLogin": "Back to sign in",
     "passwordMismatch": "Passwords do not match.",
     "otpDescription": "Enter the 6-digit code sent to {email}",
-    "otpExpiry": "The OTP is valid for 10 minutes.",
+    "otpExpiry": "The OTP is valid for 5 minutes.",
     "registrationSuccess": "Registration successful! Please check your email for the OTP.",
     "verificationSuccess": "Verification successful! You may now sign in.",
     "forgotPasswordTitle": "Reset Password",
@@ -426,7 +426,13 @@
     "resetPasswordTitle": "Set New Password",
     "resetPasswordSubtitle": "Create a strong password for your account.",
     "resetPasswordButton": "Reset Password",
-    "resetPasswordSuccess": "Password reset successful! Redirecting to sign in..."
+    "resetPasswordSuccess": "Password reset successful! Redirecting to sign in...",
+    "emailNotFound": "This email is not registered. Please create a new account.",
+    "registrationFailed": "Failed to send OTP. Please try again.",
+    "otpInvalid": "Invalid or expired OTP code.",
+    "resendFailed": "Could not resend code. Please try again.",
+    "sendCodeFailed": "Could not send verification code. Please try again.",
+    "resetPasswordFailed": "Failed to reset password. Please try again."
   },
   "chat": {
     "title": "Messages",

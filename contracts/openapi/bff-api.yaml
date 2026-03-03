@@ -74,6 +74,122 @@ paths:
                     type: string
                     enum: [reachable, unreachable]
 
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /auth/request-otp:
+    post:
+      tags: [Auth]
+      summary: Request email OTP (proxy → Core BE)
+      description: |
+        Proxies to Core BE POST /v1/auth/request-otp.
+        Returns 404 EMAIL_NOT_FOUND for reset_password when email is not registered.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                purpose:
+                  type: string
+                  enum: [signup, reset_password]
+                  default: signup
+                name:
+                  type: string
+      responses:
+        "200":
+          description: OTP sent (see Core API for full schema)
+        "404":
+          description: Email not registered (reset_password only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: EMAIL_NOT_FOUND
+                  message: No account found with that email address.
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify email OTP (proxy → Core BE)
+      description: |
+        Proxies to Core BE POST /v1/auth/verify-otp.
+        - signup: returns JWT.
+        - reset_password: returns `{ email, next_step: "reset_password" }`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email:
+                  type: string
+                  format: email
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                purpose:
+                  type: string
+                  enum: [signup, reset_password]
+                  default: signup
+      responses:
+        "200":
+          description: Verification result (see Core API for shapes)
+        "400":
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Complete password reset (proxy → Core BE)
+      description: |
+        Proxies to Core BE POST /v1/auth/reset-password.
+        Requires a prior verify-otp call with purpose=reset_password.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, new_password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                new_password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Password reset, JWT issued
+        "400":
+          description: OTP not verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /auth/session:
     get:
       tags: [Auth]

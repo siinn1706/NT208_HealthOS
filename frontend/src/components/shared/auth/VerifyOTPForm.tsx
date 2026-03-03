@@ -23,9 +23,14 @@ import { REGEXP_ONLY_DIGITS } from "input-otp";
 interface VerifyOTPFormProps {
   /** Email address shown to the user for context. Passed from the page. */
   email?: string;
+  /**
+   * OTP purpose — determines which flow to verify against.
+   * Defaults to "signup" for the post-registration verification flow.
+   */
+  purpose?: "signup" | "reset_password";
 }
 
-export function VerifyOTPForm({ email }: VerifyOTPFormProps) {
+export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps) {
   const t = useTranslations("auth");
   const router = useRouter();
 
@@ -42,29 +47,20 @@ export function VerifyOTPForm({ email }: VerifyOTPFormProps) {
     setIsLoading(true);
 
     try {
-      /**
-       * TODO: Implement OTP verification via BFF Route Handler
-       *
-       * EXAMPLE:
-       * const res = await fetch("/api/v1/auth/verify", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({ email, otp }),
-       * });
-       *
-       * if (!res.ok) {
-       *   const data = await res.json();
-       *   setError(data.message || "Invalid OTP.");
-       *   return;
-       * }
-       *
-       * // On success, redirect to login
-       * setSuccess(t("verificationSuccess"));
-       * setTimeout(() => router.push("/login"), 1500);
-       */
-
-      // --- MOCK: simulate successful verification ---
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/v1/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: otp, purpose }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error?.message || t("otpInvalid"));
+        return;
+      }
+      // For signup: BE returns an access token — persist it.
+      if (data?.data?.access_token) {
+        localStorage.setItem("healthos_token", data.data.access_token);
+      }
       setSuccess(t("verificationSuccess"));
       setTimeout(() => router.push("/login"), 1500);
     } catch {
@@ -80,24 +76,16 @@ export function VerifyOTPForm({ email }: VerifyOTPFormProps) {
     setIsResending(true);
 
     try {
-      /**
-       * TODO: Implement OTP resend via BFF Route Handler
-       *
-       * EXAMPLE:
-       * const res = await fetch("/api/v1/auth/resend-otp", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({ email }),
-       * });
-       *
-       * if (!res.ok) {
-       *   const data = await res.json();
-       *   setError(data.message || "Failed to resend OTP.");
-       * }
-       */
-
-      // --- MOCK ---
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const res = await fetch("/api/v1/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error?.message || t("resendFailed"));
+        return;
+      }
       setOtp("");
     } catch {
       setError("Không thể gửi lại mã. Vui lòng thử lại.");

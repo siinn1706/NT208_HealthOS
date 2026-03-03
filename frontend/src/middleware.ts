@@ -8,7 +8,7 @@ export const config = {
     // Match root and locale-prefixed routes
     "/",
     "/(vi|en)/:path*",
-    // Skip Next.js internals and static files
-    "/((?!_next|_vercel|.*\\..*).*)",
+    // Skip Next.js internals, static files, and API routes
+    "/((?!_next|_vercel|api|.*\\..*).*)",
   ],
 };

@@ -1,12 +1,15 @@
 """Security helpers — JWT encode/decode, password hashing, auth dependencies."""
 from datetime import datetime, timedelta, timezone
 from typing import Any
+import uuid
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.adapters.database import get_db
 from app.core.config import settings
@@ -64,7 +67,19 @@ async def get_current_user(
             detail={"code": "AUTH_INVALID_TOKEN", "message": "Token subject is missing."},
         )
 
-    user = await db.get(User, subject)
+    try:
+        user_id = uuid.UUID(subject)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "AUTH_INVALID_TOKEN", "message": "Token subject is invalid."},
+        )
+
+    result = await db.execute(
+        select(User).options(selectinload(User.profile)).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

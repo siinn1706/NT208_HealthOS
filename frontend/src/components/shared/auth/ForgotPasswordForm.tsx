@@ -90,22 +90,22 @@ export function ForgotPasswordForm() {
     setIsLoading(true);
 
     try {
-      /**
-       * TODO: Implement via BFF Route Handler
-       *
-       * const res = await fetch("/api/v1/auth/forgot-password", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({ email }),
-       * });
-       *
-       * if (!res.ok) {
-       *   const data = await res.json();
-       *   setError(data.message || "Failed to send code.");
-       *   return;
-       * }
-       */
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/v1/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose: "reset_password" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const errorCode = data?.error?.code;
+        if (errorCode === "EMAIL_NOT_FOUND") {
+          // Email not registered — redirect to signup
+          router.push("/register");
+          return;
+        }
+        setError(data?.error?.message || t("sendCodeFailed"));
+        return;
+      }
       setStep("otp");
     } catch {
       setError("Có lỗi xảy ra. Vui lòng thử lại.");
@@ -121,22 +121,16 @@ export function ForgotPasswordForm() {
     setIsLoading(true);
 
     try {
-      /**
-       * TODO: Implement via BFF Route Handler
-       *
-       * const res = await fetch("/api/v1/auth/verify-reset-otp", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({ email, otp }),
-       * });
-       *
-       * if (!res.ok) {
-       *   const data = await res.json();
-       *   setError(data.message || "Invalid code.");
-       *   return;
-       * }
-       */
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/v1/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: otp, purpose: "reset_password" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error?.message || t("otpInvalid"));
+        return;
+      }
       setStep("reset");
     } catch {
       setError("Mã xác minh không hợp lệ. Vui lòng thử lại.");
@@ -150,7 +144,16 @@ export function ForgotPasswordForm() {
     setError(null);
     setIsResending(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const res = await fetch("/api/v1/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose: "reset_password" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error?.message || t("resendFailed"));
+        return;
+      }
       setOtp("");
     } catch {
       setError("Không thể gửi lại mã. Vui lòng thử lại.");
@@ -170,22 +173,19 @@ export function ForgotPasswordForm() {
     setIsLoading(true);
 
     try {
-      /**
-       * TODO: Implement via BFF Route Handler
-       *
-       * const res = await fetch("/api/v1/auth/reset-password", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({ email, otp, newPassword }),
-       * });
-       *
-       * if (!res.ok) {
-       *   const data = await res.json();
-       *   setError(data.message || "Failed to reset password.");
-       *   return;
-       * }
-       */
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/v1/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, new_password: newPassword }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error?.message || t("resetPasswordFailed"));
+        return;
+      }
+      if (data?.data?.access_token) {
+        localStorage.setItem("healthos_token", data.data.access_token);
+      }
       setSuccess(t("resetPasswordSuccess"));
       setTimeout(() => router.push("/login"), 2000);
     } catch {

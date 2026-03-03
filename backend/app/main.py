@@ -1,7 +1,8 @@
 """HealthOS Core BE — FastAPI application factory."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as v1_router
@@ -26,6 +27,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ─── Global fallback: return JSON for ALL unhandled exceptions ────────
+# Prevents Starlette from returning text/plain 500 (which breaks BFF JSON parsing).
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    import logging
+    logging.getLogger("healthos").exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "An unexpected error occurred. Please try again later.",
+                "details": {"reason": str(exc)} if settings.debug else {},
+            }
+        },
+    )
+
+
 # ─── CORS ────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +56,12 @@ app.add_middleware(
 
 # ─── Routers ──────────────────────────────────────────────────────────
 app.include_router(v1_router)
+
+
+# ─── Health ───────────────────────────────────────────────────────────
+@app.get("/health")
+async def health() -> dict:
+    return {"status": "ok"}
 
 
 # ─── WebSocket ────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
 """Core configuration — reads from .env via pydantic-settings."""
 from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # App
@@ -24,6 +25,17 @@ class Settings(BaseSettings):
     storage_bucket_docs: str = "medical-docs"
     storage_use_ssl: bool = False
 
+    # Email (SMTP) for OTP and notifications
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_use_tls: bool = True
+    # Backwards-compatible aliases (e.g. other repos / old .env keys)
+    smtp_pass: str | None = None  # SMTP_PASS
+    from_email: str | None = None  # FROM_EMAIL
+
     # Security / JWT
     secret_key: str = "dev-secret-key-change-in-production"
     algorithm: str = "HS256"
@@ -40,6 +52,13 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/2"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    def model_post_init(self, __context: Any) -> None:
+        # Accept common legacy env keys.
+        if self.smtp_password is None and self.smtp_pass is not None:
+            self.smtp_password = self.smtp_pass
+        if self.smtp_from is None and self.from_email is not None:
+            self.smtp_from = self.from_email
 
 
 @lru_cache

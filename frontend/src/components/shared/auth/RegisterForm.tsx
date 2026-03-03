@@ -44,34 +44,17 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
-      /**
-       * TODO: Implement registration via BFF Route Handler
-       *
-       * EXAMPLE:
-       * const res = await fetch("/api/v1/auth/register", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({
-       *     full_name: fullName,
-       *     date_of_birth: dateOfBirth,
-       *     email,
-       *     password,
-       *   }),
-       * });
-       *
-       * if (!res.ok) {
-       *   const data = await res.json();
-       *   setError(data.message || "Registration failed.");
-       *   return;
-       * }
-       *
-       * // On success, redirect to OTP verification page
-       * // Pass email via URL search param (or store in session storage)
-       * router.push(`/verify?email=${encodeURIComponent(email)}`);
-       */
-
-      // --- MOCK: simulate successful registration ---
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/v1/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name: fullName, purpose: "signup" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error?.message || t("registrationFailed"));
+        return;
+      }
+      // Redirect to OTP verification page
       router.push(`/verify?email=${encodeURIComponent(email)}`);
     } catch {
       setError("Có lỗi xảy ra. Vui lòng thử lại.");

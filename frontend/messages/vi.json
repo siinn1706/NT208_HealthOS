@@ -412,7 +412,7 @@
     "backToLogin": "Quay lại đăng nhập",
     "passwordMismatch": "Mật khẩu xác nhận không khớp.",
     "otpDescription": "Nhập mã 6 số được gửi đến {email}",
-    "otpExpiry": "Mã OTP có hiệu lực trong 10 phút.",
+    "otpExpiry": "Mã OTP có hiệu lực trong 5 phút.",
     "registrationSuccess": "Đăng ký thành công! Vui lòng kiểm tra email để nhận mã OTP.",
     "verificationSuccess": "Xác minh thành công! Bạn có thể đăng nhập ngay.",
     "forgotPasswordTitle": "Đặt lại mật khẩu",
@@ -426,7 +426,13 @@
     "resetPasswordTitle": "Đặt mật khẩu mới",
     "resetPasswordSubtitle": "Tạo mật khẩu mạnh cho tài khoản của bạn.",
     "resetPasswordButton": "Đặt lại mật khẩu",
-    "resetPasswordSuccess": "Đặt lại mật khẩu thành công! Đang chuyển hướng đến trang đăng nhập..."
+    "resetPasswordSuccess": "Đặt lại mật khẩu thành công! Đang chuyển hướng đến trang đăng nhập...",
+    "emailNotFound": "Email này chưa được đăng ký. Vui lòng tạo tài khoản mới.",
+    "registrationFailed": "Gửi mã OTP thất bại. Vui lòng thử lại.",
+    "otpInvalid": "Mã OTP không hợp lệ hoặc đã hết hạn.",
+    "resendFailed": "Không thể gửi lại mã. Vui lòng thử lại.",
+    "sendCodeFailed": "Không thể gửi mã xác minh. Vui lòng thử lại.",
+    "resetPasswordFailed": "Đặt lại mật khẩu thất bại. Vui lòng thử lại."
   },
   "chat": {
     "title": "Tin nhắn",

@@ -168,6 +168,235 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthCheck"
 
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /v1/auth/request-otp:
+    post:
+      tags: [Auth]
+      summary: Request email OTP
+      description: |
+        Generate a 6-digit OTP and send it to the supplied email address.
+        - `signup`: always succeeds (creates account on verify).
+        - `reset_password`: email must belong to an existing account;
+          returns **404 EMAIL_NOT_FOUND** otherwise so FE can redirect to signup.
+        Rate-limited to 1 OTP per email+purpose per 60 seconds.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                purpose:
+                  type: string
+                  enum: [signup, reset_password]
+                  default: signup
+                name:
+                  type: string
+                  description: Display name (used for signup; ignored for reset_password)
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      delivery:
+                        type: string
+                        example: email
+                      expires_in_seconds:
+                        type: integer
+                        example: 300
+                      otp:
+                        type: string
+                        nullable: true
+                        description: "Only present when DEBUG=true"
+        "404":
+          description: Email not registered (reset_password only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: EMAIL_NOT_FOUND
+                  message: No account found with that email address.
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: RATE_LIMITED
+                  message: Please wait before requesting another OTP.
+
+  /v1/auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify email OTP
+      description: |
+        - `signup`: verifies OTP, creates/retrieves user, returns JWT.
+        - `reset_password`: verifies OTP, stores a short-lived verified marker
+          (5 min TTL) in Redis, returns `{ email, next_step: "reset_password" }`.
+          Caller must follow up with POST /v1/auth/reset-password.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email:
+                  type: string
+                  format: email
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  example: "482193"
+                purpose:
+                  type: string
+                  enum: [signup, reset_password]
+                  default: signup
+      responses:
+        "200":
+          description: |
+            For **signup**: JWT token response.
+            For **reset_password**: verified marker response.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    description: signup — JWT issued
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          access_token:
+                            type: string
+                          token_type:
+                            type: string
+                            example: bearer
+                          user_id:
+                            type: string
+                            format: uuid
+                          email:
+                            type: string
+                            format: email
+                          display_name:
+                            type: string
+                          avatar_url:
+                            type: string
+                            nullable: true
+                  - type: object
+                    description: reset_password — OTP verified, proceed to reset
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          email:
+                            type: string
+                            format: email
+                          next_step:
+                            type: string
+                            example: reset_password
+        "400":
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: AUTH_INVALID_OTP
+                  message: Invalid or expired OTP code.
+        "404":
+          description: User not found (reset_password only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Complete password reset
+      description: |
+        Requires a prior successful POST /v1/auth/verify-otp with
+        `purpose=reset_password` (which stores a 5-minute verified marker).
+        Updates the user\'s password and returns a JWT access token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, new_password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                new_password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Password updated, JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      token_type:
+                        type: string
+                        example: bearer
+                      user_id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                        format: email
+                      display_name:
+                        type: string
+                      avatar_url:
+                        type: string
+                        nullable: true
+        "400":
+          description: OTP not verified or verification expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error:
+                  code: RESET_NOT_VERIFIED
+                  message: OTP verification required before resetting password.
+        "404":
+          description: Email not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /v1/users/me:
     get:
       tags: [Users]

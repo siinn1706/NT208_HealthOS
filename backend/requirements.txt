@@ -4,6 +4,7 @@ uvicorn[standard]
 
 # ─── Settings & validation ────────────────────────────────────────
 pydantic-settings
+email-validator
 
 # ─── Database ─────────────────────────────────────────────────────
 sqlalchemy[asyncio]

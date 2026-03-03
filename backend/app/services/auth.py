@@ -4,6 +4,7 @@ from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.security import create_access_token, hash_password
 from app.models.core import User, UserProfile
@@ -15,7 +16,11 @@ async def get_or_create_user_from_oauth(
     db: AsyncSession,
 ) -> User:
     """Find existing user by email or create a new one from OAuth profile."""
-    result = await db.execute(select(User).where(User.email == profile.email))
+    result = await db.execute(
+        select(User)
+            .options(selectinload(User.profile))
+            .where(User.email == profile.email)
+    )
     user: Optional[User] = result.scalar_one_or_none()
 
     if user is None:
@@ -35,6 +40,8 @@ async def get_or_create_user_from_oauth(
             avatar_url=profile.avatar_url,
         )
         db.add(user_profile)
+        # Keep relationship in-memory to avoid lazy load later
+        user.profile = user_profile
     else:
         # Optionally keep basic info in sync
         user.display_name = profile.name
