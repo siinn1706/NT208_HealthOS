@@ -17,6 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   HeartPulse,
+  Trophy,
+  Medal,
 } from "lucide-react";
 import { useState } from "react";
 import { MOCK_CONVERSATIONS, MOCK_STRANGER_REQUESTS } from "@/data/chat";
@@ -28,6 +30,8 @@ const NAV_ITEMS = [
   { key: "vitalsDevices", icon: Activity, href: "/dashboard/health" },
   { key: "reminders", icon: Bell, href: "/dashboard/reminders" },
   { key: "goals", icon: Target, href: "/dashboard/progress" },
+  { key: "achievements", icon: Trophy, href: "/dashboard/achievements" },
+  { key: "leaderboard", icon: Medal, href: "/dashboard/leaderboard" },
   { key: "chat", icon: MessageCircle, href: "/dashboard/chat" },
   { key: "reports", icon: FileBarChart2, href: "/dashboard/reports" },
   { key: "settings", icon: Settings, href: "/dashboard/settings" },

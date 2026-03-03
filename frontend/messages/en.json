@@ -240,7 +240,9 @@
       "addVital": "Add Vital",
       "addVitalDesc": "Enter latest readings",
       "logMedicine": "Log Medicine",
-      "logMedicineDesc": "Record dose taken"
+      "logMedicineDesc": "Record dose taken",
+      "viewReports": "View Reports",
+      "viewReportsDesc": "Health analysis"
     },
     "kpi": {
       "caloriesBurned": "Calories Burned",
@@ -291,6 +293,8 @@
       "vitalsDevices": "Vitals & Devices",
       "reminders": "Reminders",
       "goals": "Goals",
+      "achievements": "Achievements",
+      "leaderboard": "Leaderboard",
       "chat": "Messages",
       "reports": "Reports",
       "settings": "Settings"
@@ -520,5 +524,138 @@
     "attachFile": "Attach file",
     "attachImage": "Attach image",
     "uploadComingSoon": "Upload feature coming soon"
+  },
+  "reports": {
+    "title": "Health Report",
+    "subtitle": "Summary and analysis of your health data",
+    "period": "Report Period",
+    "period7d": "7 Days",
+    "period30d": "30 Days",
+    "period90d": "90 Days",
+    "generatedAt": "Generated",
+    "overallStatus": "Overall Status",
+    "statusNormal": "Normal",
+    "statusWarning": "Attention Needed",
+    "statusCritical": "Intervention Required",
+    "alertCount": "{count} alert(s)",
+    "noAlerts": "No alerts",
+    "viewDetail": "View Detail",
+    "exportPdf": "Export PDF",
+    "exportPdfLoading": "Generating PDF...",
+    "exportPdfSuccess": "Report PDF downloaded",
+    "share": "Share",
+    "shareReport": "Share Report",
+    "analyzeTrends": "Analyze Trends",
+    "recentReports": "Report History",
+    "noRecentReports": "No reports yet",
+    "categories": {
+      "vitals": "Vital Signs",
+      "nutrition": "Nutrition",
+      "activity": "Physical Activity",
+      "sleep": "Sleep",
+      "bmi": "BMI & Weight",
+      "medication": "Medication Compliance"
+    },
+    "stats": {
+      "average": "Average",
+      "min": "Minimum",
+      "max": "Maximum",
+      "trend": "Trend",
+      "change": "Change"
+    },
+    "trend": {
+      "improving": "Improving",
+      "stable": "Stable",
+      "declining": "Declining"
+    },
+    "detail": {
+      "title": "Detailed Report",
+      "backToReports": "Back to Reports",
+      "dataTable": "Data Details",
+      "date": "Date",
+      "value": "Value",
+      "status": "Status",
+      "alerts": "Period Alerts",
+      "noAlerts": "No alerts in this period",
+      "alertsSection": "Alerts this period",
+      "alertValue": "Value",
+      "alertThreshold": "Threshold",
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "Info"
+      }
+    }
+  },
+  "trends": {
+    "title": "Trend Analysis",
+    "subtitle": "Analyze and forecast health indicators over time",
+    "selectMetric": "Select Metric",
+    "compareMetric": "Compare With",
+    "metrics": {
+      "heart_rate": "Heart Rate",
+      "blood_pressure": "Blood Pressure",
+      "calories": "Calorie Intake",
+      "steps": "Step Count",
+      "sleep": "Sleep Duration",
+      "bmi": "BMI",
+      "weight": "Weight"
+    },
+    "chart": {
+      "actual": "Actual",
+      "trendLine": "Trend Line",
+      "prediction": "Prediction",
+      "anomaly": "Anomaly"
+    },
+    "anomalies": "Anomaly Points",
+    "noAnomalies": "No anomalies detected",
+    "aiSummary": "AI Summary",
+    "compare": "Compare Metrics",
+    "export": "Export Analysis"
+  },
+  "share": {
+    "title": "Share Report",
+    "subtitle": "Send your health report to family members",
+    "recipients": "Recipients",
+    "addRecipient": "Add Recipient",
+    "name": "Full Name",
+    "email": "Email",
+    "relationship": "Relationship",
+    "channels": "Channels",
+    "channelEmail": "Email (with PDF)",
+    "channelInApp": "In-App Notification",
+    "message": "Personal message (optional)",
+    "messagePlaceholder": "Add a note for the recipient...",
+    "send": "Send Now",
+    "sending": "Sending...",
+    "cancel": "Cancel",
+    "sent": "Sent",
+    "failed": "Failed",
+    "pending": "Pending",
+    "retry": "Retry",
+    "autoShare": {
+      "title": "Abnormal indicators detected!",
+      "subtitle": "Report will be auto-sent to family in",
+      "seconds": "seconds",
+      "sendNow": "Send Now",
+      "cancel": "Cancel Auto-Send",
+      "customize": "Customize Recipients",
+      "normalTitle": "Health results are normal",
+      "normalSubtitle": "Would you like to share this report with your family?",
+      "shareOptional": "Share (Optional)"
+    },
+    "settings": {
+      "title": "Auto-Share Settings",
+      "enable": "Enable Auto-Share",
+      "threshold": "Alert Threshold",
+      "thresholdCritical": "Critical Only",
+      "thresholdWarning": "Warning + Critical",
+      "defaultContacts": "Default Recipients",
+      "countdown": "Countdown (seconds)",
+      "save": "Save Settings",
+      "saved": "Saved!"
+    },
+    "noEmergencyContacts": "No emergency contacts added. Add them in your Profile.",
+    "goToProfile": "Go to Profile"
   }
 }

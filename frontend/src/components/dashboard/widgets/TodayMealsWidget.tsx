@@ -1,0 +1,246 @@
+"use client";
+
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ChevronDown,
+  ChevronUp,
+  UtensilsCrossed,
+  CirclePlus,
+  Sunrise,
+  Sun,
+  Moon,
+  Cookie,
+} from "lucide-react";
+import Link from "next/link";
+import { useLocale } from "next-intl";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import type { Meal } from "@/types/api";
+
+const MEAL_TYPE_CONFIG: Record<
+  string,
+  { icon: React.ComponentType<{ className?: string }>; label: string; color: string }
+> = {
+  breakfast: { icon: Sunrise, label: "Sáng",  color: "text-orange-400" },
+  lunch:     { icon: Sun,     label: "Trưa",  color: "text-yellow-400" },
+  dinner:    { icon: Moon,    label: "Tối",   color: "text-indigo-400" },
+  snack:     { icon: Cookie,  label: "Phụ",   color: "text-emerald-400" },
+};
+
+const MEAL_TYPE_ORDER: Record<string, number> = {
+  breakfast: 0,
+  lunch: 1,
+  snack: 2,
+  dinner: 3,
+};
+
+interface TodayMealsWidgetProps {
+  meals: Meal[];
+}
+
+function MealCard({ meal }: { meal: Meal }) {
+  const [expanded, setExpanded] = useState(false);
+  const hr = new Date(meal.logged_at).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const nr = meal.nutrition_result;
+
+  return (
+    <div className="rounded-lg border border-border bg-background hover:border-primary/30 transition-colors">
+      {/* Header row */}
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+      >
+        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+          <UtensilsCrossed className="size-4 text-primary" />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground truncate">{meal.name}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-muted-foreground">{hr}</span>
+            {meal.meal_type && (() => {
+              const cfg = MEAL_TYPE_CONFIG[meal.meal_type!];
+              const Icon = cfg?.icon;
+              return (
+                <Badge variant="secondary" className="inline-flex items-center gap-1 text-[10px] h-4 px-1.5">
+                  {Icon && <Icon className={`size-2.5 ${cfg.color}`} />}
+                  {cfg?.label ?? meal.meal_type}
+                </Badge>
+              );
+            })()}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {nr && (
+            <span className="text-sm font-bold tabular-nums text-foreground">
+              {Math.round(nr.calories)}{" "}
+              <span className="text-xs font-normal text-muted-foreground">kcal</span>
+            </span>
+          )}
+          {expanded ? (
+            <ChevronUp className="size-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="size-4 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+
+      {/* Expanded details */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+              {/* Macros row */}
+              {nr && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-md bg-[#41BCE6]/10 px-2 py-1.5 text-center">
+                    <p className="text-[10px] text-muted-foreground">Protein</p>
+                    <p className="text-xs font-bold text-[#41BCE6] tabular-nums">
+                      {nr.protein_g}g
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-[#E7DEA7]/20 px-2 py-1.5 text-center">
+                    <p className="text-[10px] text-muted-foreground">Carbs</p>
+                    <p className="text-xs font-bold text-[#b5a97a] dark:text-[#E7DEA7] tabular-nums">
+                      {nr.carbs_g}g
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-[#E3B79A]/20 px-2 py-1.5 text-center">
+                    <p className="text-[10px] text-muted-foreground">Chất béo</p>
+                    <p className="text-xs font-bold text-[#c4825a] dark:text-[#E3B79A] tabular-nums">
+                      {nr.fat_g}g
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Ingredients */}
+              {meal.ingredients.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    Thành phần
+                  </p>
+                  <ul className="space-y-1">
+                    {meal.ingredients.map((ing, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <span className="text-foreground/80 truncate">
+                          {ing.ingredient_name}
+                        </span>
+                        <span className="text-muted-foreground tabular-nums flex-shrink-0 ml-2">
+                          {ing.grams}g
+                          {ing.calories > 0 && (
+                            <span className="ml-1 text-primary/80">
+                              ({Math.round(ing.calories)} kcal)
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
+  const locale = useLocale();
+  const sorted = [...meals].sort(
+    (a, b) =>
+      (MEAL_TYPE_ORDER[a.meal_type ?? "snack"] ?? 2) -
+      (MEAL_TYPE_ORDER[b.meal_type ?? "snack"] ?? 2)
+  );
+
+  const totalCalories = meals.reduce(
+    (sum, m) => sum + (m.nutrition_result?.calories ?? 0),
+    0
+  );
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Hôm nay</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {meals.length > 0
+              ? `${meals.length} bữa · ${Math.round(totalCalories)} kcal`
+              : "Chưa ghi bữa nào"}
+          </p>
+        </div>
+        <Link
+          href={`/${locale}/dashboard/meals/add`}
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-medium",
+            "text-primary hover:text-primary/80 transition-colors"
+          )}
+        >
+          <CirclePlus className="size-4" />
+          Thêm bữa
+        </Link>
+      </div>
+
+      {/* Meal list */}
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+            <UtensilsCrossed className="size-6 text-muted-foreground" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground">
+              Chưa có bữa ăn nào hôm nay
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ghi nhật ký để theo dõi dinh dưỡng của bạn
+            </p>
+          </div>
+          <Link
+            href={`/${locale}/dashboard/meals/add`}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg",
+              "text-xs font-medium bg-primary text-primary-foreground",
+              "hover:bg-primary/90 transition-colors"
+            )}
+          >
+            <CirclePlus className="size-3.5" />
+            Thêm bữa đầu tiên
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <AnimatePresence initial={false}>
+            {sorted.map((meal, i) => (
+              <motion.div
+                key={meal.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05, duration: 0.2 }}
+              >
+                <MealCard meal={meal} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </div>
+  );
+}
