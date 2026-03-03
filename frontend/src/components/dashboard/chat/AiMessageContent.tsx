@@ -6,7 +6,8 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
 // Stable plugin array — avoids ReactMarkdown re-parsing on every parent render
-const REMARK_PLUGINS = [remarkGfm] as const;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const REMARK_PLUGINS: any[] = [remarkGfm];
 
 interface AiMessageContentProps {
   content: string;

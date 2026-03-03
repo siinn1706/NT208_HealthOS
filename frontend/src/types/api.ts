@@ -81,13 +81,84 @@ export interface NutritionResult {
   confidence: number;
 }
 
+/** A single ingredient entry within a meal */
+export interface MealIngredient {
+  ingredient_name: string;
+  grams: number;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  is_custom: boolean; // true when user typed manually without matching DB
+}
+
 export interface Meal {
   id: string;
   name: string;
   status: MealStatus;
+  meal_type?: "breakfast" | "lunch" | "dinner" | "snack";
+  ingredients: MealIngredient[];
   nutrition_result?: NutritionResult;
   logged_at: string;
   created_at: string;
+}
+
+// ─── Ingredients ────────────────────────────────────────────────────
+
+export type IngredientCategory =
+  | "grain"
+  | "meat"
+  | "seafood"
+  | "vegetable"
+  | "fruit"
+  | "dairy"
+  | "oil_sauce"
+  | "other";
+
+export interface IngredientItem {
+  id: string;
+  name_vi: string;
+  name_en: string;
+  category: IngredientCategory;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  unit_hint: string; // e.g. "gram", "ml", "thìa canh"
+}
+
+// ─── Nutrition ──────────────────────────────────────────────────────
+
+export type NutritionSuggestionType = "warning" | "tip" | "goal" | "success";
+
+export interface NutritionSuggestion {
+  id: string;
+  type: NutritionSuggestionType;
+  icon: string; // lucide icon name
+  title: string;
+  message: string;
+  priority: number; // lower = higher priority
+  cta?: { label: string; href: string };
+}
+
+export interface DailyNutritionSummary {
+  date: string; // ISO date yyyy-MM-dd
+  total_calories: number;
+  total_protein_g: number;
+  total_carbs_g: number;
+  total_fat_g: number;
+  calorie_target: number;
+  meals: Meal[];
+}
+
+export interface WeeklyCaloriePoint {
+  date: string; // MM-DD formatted
+  full_date: string; // yyyy-MM-dd
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  target: number;
 }
 
 // ─── Health Metrics ─────────────────────────────────────────────────
