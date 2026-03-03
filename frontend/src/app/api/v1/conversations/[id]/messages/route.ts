@@ -1,24 +1,23 @@
-import { NextResponse } from "next/server";
-import { MOCK_MESSAGES } from "@/data/chat";
+/**
+ * BFF Messages — /api/v1/conversations/:id/messages
+ * GET  → paginated message history (?before=<ISO>&limit=<n>)
+ * POST → send a message (REST fallback; prefer WebSocket)
+ */
+import { NextRequest } from "next/server";
+import { coreProxy } from "@/lib/core-api-proxy";
 
 export async function GET(
-  _request: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const messages = MOCK_MESSAGES[id] ?? [];
-  return NextResponse.json({ data: messages });
+  return coreProxy(req, `/v1/conversations/${id}/messages`);
 }
 
 export async function POST(
-  request: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
-  // TODO: persist when BE is ready
-  return NextResponse.json(
-    { data: { id: `msg-${Date.now()}`, conversation_id: id, ...body } },
-    { status: 201 }
-  );
+  return coreProxy(req, `/v1/conversations/${id}/messages`, { method: "POST" });
 }
