@@ -1,15 +1,23 @@
-"""Users endpoints — placeholder."""
-from fastapi import APIRouter, Depends, HTTPException
+"""Users endpoints."""
+from fastapi import APIRouter, Depends
+
+from app.core.security import get_current_user
+from app.models.core import User
+from app.schemas.auth import CurrentUser, CurrentUserResponse
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/me")
-async def get_current_user() -> dict:
-    """
-    TODO:
-      1. Extract JWT from Authorization header (Depends(get_current_user_dep))
-      2. Load user from DB via UserService
-      3. Return UserResponse schema
-    """
-    raise HTTPException(status_code=401, detail={"code": "AUTH_REQUIRED", "message": "Not implemented yet."})
+@router.get("/me", response_model=CurrentUserResponse)
+async def get_current_user_profile(current_user: User = Depends(get_current_user)) -> CurrentUserResponse:
+    """Return current user profile using the shared auth dependency."""
+    return CurrentUserResponse(
+        data=CurrentUser(
+            id=str(current_user.id),
+            email=current_user.email,
+            display_name=current_user.display_name,
+            avatar_url=current_user.profile.avatar_url
+            if current_user.profile is not None
+            else None,
+        )
+    )
