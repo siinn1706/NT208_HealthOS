@@ -265,13 +265,93 @@
     },
     "reminders": {
       "title": "Today's Schedule",
+      "pageTitle": "Reminders & Schedule",
+      "pageSubtitle": "Manage medication schedules, check-ups, and workouts",
+      "addReminder": "Add Reminder",
       "empty": "No reminders for today",
       "ack": "Mark Done",
+      "pending": "Pending",
+      "done": "Done",
+      "total": "Total",
+      "repeatLabels": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "once": "Once"
+      },
+      "filterAll": "All",
       "types": {
         "medicine": "Medicine",
         "appointment": "Appointment",
         "exercise": "Exercise"
       }
+    },
+    "health": {
+      "subtitle": "Track your vitals and connected devices",
+      "addVital": "Add Vital",
+      "connectedDevices": "Connected Devices",
+      "deviceConnected": "Connected",
+      "deviceDisconnected": "Disconnected",
+      "addDevice": "+ Add Device",
+      "manualEntry": "Manual Entry",
+      "manualEntryDesc": "Want to log vitals without a device? Use the \"Add Vital\" button above to manually enter heart rate, blood pressure, SpO\u2082, and temperature.",
+      "vitalLabels": {
+        "heartRate": "Heart Rate",
+        "systolic": "Systolic BP",
+        "diastolic": "Diastolic BP",
+        "temperature": "Body Temperature",
+        "spo2": "SpO\u2082"
+      },
+      "trendVsYesterday": "vs yesterday"
+    },
+    "settingsPage": {
+      "pageTitle": "Settings",
+      "pageSubtitle": "Customise the app, notifications and account security",
+      "sections": {
+        "account": "Account",
+        "appearance": "Appearance",
+        "notifications": "Notifications",
+        "privacy": "Privacy & Security",
+        "session": "Session"
+      },
+      "account": {
+        "profile": "My Profile",
+        "profileDesc": "Update your name, photo, and health information",
+        "security": "Password & Security",
+        "securityDesc": "Change password and manage 2-factor authentication",
+        "devices": "Connected Devices",
+        "devicesDesc": "Manage wearables and health monitors"
+      },
+      "appearance": {
+        "language": "Display Language",
+        "languageDesc": "Choose the app interface language",
+        "theme": "Theme",
+        "themeDesc": "Choose how HealthOS looks",
+        "themeSystem": "System",
+        "themeLight": "Light",
+        "themeDark": "Dark"
+      },
+      "notifications": {
+        "healthAlerts": "Health Alerts",
+        "healthAlertsDesc": "Abnormal vitals notifications",
+        "reminders": "Reminders",
+        "remindersDesc": "Medication, appointments and workouts",
+        "weeklyReports": "Weekly Reports",
+        "weeklyReportsDesc": "Health summary every Monday",
+        "chatMessages": "Chat Messages",
+        "chatMessagesDesc": "Messages from doctors and friends",
+        "promotions": "Promotions",
+        "promotionsDesc": "Offers and new feature announcements"
+      },
+      "privacy": {
+        "policy": "Privacy Policy",
+        "policyDesc": "Learn how we handle your data",
+        "download": "Download My Data",
+        "downloadDesc": "Export your health records as a file",
+        "delete": "Delete Account",
+        "deleteDesc": "Permanently remove your account and all data"
+      },
+      "logout": "Sign Out",
+      "logoutDesc": "Sign out of your account on this device"
     },
     "goals": {
       "title": "Goal Progress",

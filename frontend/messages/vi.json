@@ -265,13 +265,93 @@
     },
     "reminders": {
       "title": "Lịch trình hôm nay",
+      "pageTitle": "Nhắc nhở & Lịch trình",
+      "pageSubtitle": "Quản lý lịch uống thuốc, khám định kỳ và tập luyện",
+      "addReminder": "Thêm nhắc nhở",
       "empty": "Không có nhắc nhở nào hôm nay",
       "ack": "Đánh dấu hoàn thành",
+      "pending": "Đang chờ",
+      "done": "Đã xong",
+      "total": "Tổng cộng",
+      "repeatLabels": {
+        "daily": "Hàng ngày",
+        "weekly": "Hàng tuần",
+        "once": "Một lần"
+      },
+      "filterAll": "Tất cả",
       "types": {
         "medicine": "Thuốc",
         "appointment": "Lịch khám",
         "exercise": "Vận động"
       }
+    },
+    "health": {
+      "subtitle": "Theo dõi chỉ số sinh lý và thiết bị kết nối",
+      "addVital": "Thêm chỉ số",
+      "connectedDevices": "Thiết bị kết nối",
+      "deviceConnected": "Đã kết nối",
+      "deviceDisconnected": "Ngắt kết nối",
+      "addDevice": "+ Thêm thiết bị",
+      "manualEntry": "Nhập thủ công",
+      "manualEntryDesc": "Bạn muốn ghi chỉ số không từ thiết bị? Sử dụng nút \"Thêm chỉ số\" ở trên để nhập thủ công nhịp tim, huyết áp, SpO\u2082, và nhiệt độ.",
+      "vitalLabels": {
+        "heartRate": "Nhịp tim",
+        "systolic": "Huyết áp tâm thu",
+        "diastolic": "Huyết áp tâm trương",
+        "temperature": "Nhiệt độ cơ thể",
+        "spo2": "SpO\u2082"
+      },
+      "trendVsYesterday": "so với hôm qua"
+    },
+    "settingsPage": {
+      "pageTitle": "Cài đặt",
+      "pageSubtitle": "Tùy chỉnh ứng dụng, thông báo và bảo mật tài khoản",
+      "sections": {
+        "account": "Tài khoản",
+        "appearance": "Giao diện",
+        "notifications": "Thông báo",
+        "privacy": "Quyền riêng tư & Bảo mật",
+        "session": "Phiên đăng nhập"
+      },
+      "account": {
+        "profile": "Hồ sơ cá nhân",
+        "profileDesc": "Cập nhật tên, ảnh đại diện và thông tin sức khỏe",
+        "security": "Mật khẩu & Bảo mật",
+        "securityDesc": "Đổi mật khẩu và quản lý xác thực 2 yếu tố",
+        "devices": "Thiết bị kết nối",
+        "devicesDesc": "Quản lý thiết bị đeo thông minh và thiết bị y tế"
+      },
+      "appearance": {
+        "language": "Ngôn ngữ hiển thị",
+        "languageDesc": "Chọn ngôn ngữ giao diện ứng dụng",
+        "theme": "Giao diện màu sắc",
+        "themeDesc": "Chọn chủ đề màu cho HealthOS",
+        "themeSystem": "Theo hệ thống",
+        "themeLight": "Sáng",
+        "themeDark": "Tối"
+      },
+      "notifications": {
+        "healthAlerts": "Cảnh báo sức khỏe",
+        "healthAlertsDesc": "Thông báo khi chỉ số bất thường",
+        "reminders": "Nhắc nhở",
+        "remindersDesc": "Thuốc, lịch khám và tập luyện",
+        "weeklyReports": "Báo cáo tuần",
+        "weeklyReportsDesc": "Tổng kết sức khỏe mỗi thứ Hai",
+        "chatMessages": "Tin nhắn",
+        "chatMessagesDesc": "Tin nhắn từ bác sĩ và bạn bè",
+        "promotions": "Khuyến mãi",
+        "promotionsDesc": "Ưu đãi và thông báo tính năng mới"
+      },
+      "privacy": {
+        "policy": "Chính sách quyền riêng tư",
+        "policyDesc": "Tìm hiểu cách chúng tôi xử lý dữ liệu của bạn",
+        "download": "Tải dữ liệu của tôi",
+        "downloadDesc": "Xuất hồ sơ sức khỏe của bạn thành tệp",
+        "delete": "Xoá tài khoản",
+        "deleteDesc": "Xoá vĩnh viễn tài khoản và toàn bộ dữ liệu"
+      },
+      "logout": "Đăng xuất",
+      "logoutDesc": "Đăng xuất khỏi tài khoản trên thiết bị này"
     },
     "goals": {
       "title": "Tiến độ mục tiêu",
