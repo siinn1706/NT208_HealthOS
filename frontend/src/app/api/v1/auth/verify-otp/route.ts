@@ -3,10 +3,14 @@
  * POST /api/v1/auth/verify-otp
  *
  * Proxies to Core BE: POST /v1/auth/verify-otp
+ * For signup/login purposes: sets core_access_token as httpOnly cookie.
+ * For reset_password purpose: just proxies the response (no cookie).
  */
 import { NextRequest, NextResponse } from "next/server";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+const COOKIE_NAME = "core_access_token";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -42,6 +46,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // For signup/login: Core BE returns access_token — store in httpOnly cookie.
+  const accessToken: string | undefined = data?.data?.access_token;
+  if (res.ok && accessToken && body.purpose !== "reset_password") {
+    const response = NextResponse.json(
+      {
+        data: {
+          user_id: data.data.user_id,
+          email: data.data.email,
+          display_name: data.data.display_name,
+          avatar_url: data.data.avatar_url ?? null,
+        },
+      },
+      { status: res.status }
+    );
+
+    response.cookies.set(COOKIE_NAME, accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: COOKIE_MAX_AGE,
+      path: "/",
+    });
+
+    return response;
+  }
+
+  // reset_password or error — proxy as-is
   return NextResponse.json(data, { status: res.status });
 }
-

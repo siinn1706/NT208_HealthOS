@@ -172,14 +172,20 @@ export function TopNav({
                 {t("profile")}
               </Link>
               <div className="border-t border-border" />
-              <Link
-                href={`/${locale}/login`}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-muted transition-colors duration-200"
-                onClick={() => setProfileOpen(false)}
+              <button
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-muted transition-colors duration-200 cursor-pointer"
+                onClick={async () => {
+                  setProfileOpen(false);
+                  try {
+                    await fetch("/api/v1/auth/session", { method: "DELETE" });
+                  } finally {
+                    router.push(`/${locale}/login`);
+                  }
+                }}
               >
                 <LogOut className="w-4 h-4" />
                 {t("signOut")}
-              </Link>
+              </button>
             </div>
           )}
         </div>
