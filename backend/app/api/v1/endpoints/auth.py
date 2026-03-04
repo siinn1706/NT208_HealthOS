@@ -12,7 +12,7 @@ from redis.asyncio import Redis
 from app.adapters.database import get_db
 from app.adapters.email_client import send_otp_email
 from app.adapters.redis_client import get_redis
-from app.core.security import get_current_user
+from app.core.security import create_ws_ticket, get_current_user
 from app.core.config import settings
 from app.models.core import User
 from app.schemas.auth import (
@@ -29,6 +29,8 @@ from app.schemas.auth import (
     RequestOtpBody,
     ResetPasswordBody,
     VerifyOtpBody,
+    WsTicket,
+    WsTicketResponse,
 )
 from app.schemas.common import ErrorDetail, ErrorResponse
 from app.services.otp import (
@@ -46,6 +48,25 @@ from sqlalchemy import select
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
+
+WS_TICKET_EXPIRES_SECONDS = 120
+
+
+@router.get(
+    "/ws-ticket",
+    response_model=WsTicketResponse,
+    responses={401: {"model": ErrorResponse}},
+)
+async def issue_ws_ticket(
+    current_user: User = Depends(get_current_user),
+) -> WsTicketResponse:
+    ticket = create_ws_ticket(str(current_user.id), expires_seconds=WS_TICKET_EXPIRES_SECONDS)
+    return WsTicketResponse(
+        data=WsTicket(
+            ws_ticket=ticket,
+            expires_in_seconds=WS_TICKET_EXPIRES_SECONDS,
+        )
+    )
 
 
 @router.post(

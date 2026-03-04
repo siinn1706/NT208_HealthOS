@@ -85,6 +85,15 @@ class AuthTokenResponse(DataResponse[AuthToken]):
     ...
 
 
+class WsTicket(BaseModel):
+    ws_ticket: str
+    expires_in_seconds: int
+
+
+class WsTicketResponse(DataResponse[WsTicket]):
+    ...
+
+
 class CurrentUser(BaseModel):
     id: str
     email: EmailStr
