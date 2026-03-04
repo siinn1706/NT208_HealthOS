@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   // TODO: auth check
   const res = await fetch(`${CORE_API_URL}/v1/devices`, { next: { revalidate: 0 } });
   const data = await res.json();

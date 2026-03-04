@@ -4,11 +4,11 @@
  *
  * Rule: Always validate session before forwarding to Core BE.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   // TODO: Replace with real session check
   // const session = await getServerSession();
   // if (!session) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
