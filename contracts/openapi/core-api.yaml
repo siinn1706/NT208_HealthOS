@@ -1192,14 +1192,14 @@ paths:
         | `client:hello` | Handshake, sent immediately after open |
         | `pong` | Reply to server `ping` |
         | `conv:join` | Subscribe to room events for a conversation |
-        | `msg:send` | Send a message |
-        | `msg:edit` | Edit own message |
-        | `msg:delete` | Recall own message |
-        | `msg:react` | Toggle emoji reaction |
+        | `msg:send` / `chat.message.send` | Send a message |
+        | `msg:edit` / `chat.message.edit` | Edit own message |
+        | `msg:delete` / `chat.message.recall` | Recall own message |
+        | `msg:react` / `chat.message.react` | Toggle emoji reaction |
         | `msg:pin` | Pin a message |
         | `msg:unpin` | Unpin a message |
-        | `msg:read` | Mark conversation as read |
-        | `typing` | Broadcast typing indicator |
+        | `msg:read` / `chat.message.read` | Mark conversation as read |
+        | `typing` / `chat.typing` | Broadcast typing indicator |
         | `conv:sync` | Request full conversation list refresh |
 
         **Server → Client events:**
@@ -1207,16 +1207,14 @@ paths:
         | event | description |
         |-------|-------------|
         | `ping` | Heartbeat (reply with `pong`) |
-        | `presence` | Online/offline status update |
-        | `msg:new` | New message in a subscribed room |
-        | `msg:edited` | Message was edited |
-        | `msg:recalled` | Message was recalled |
-        | `msg:reacted` | Reaction added or removed |
-        | `msg:pinned` | Message was pinned |
-        | `msg:unpinned` | Message was unpinned |
-        | `typing` | User is/stopped typing |
-        | `conv:accepted` | Stranger request accepted |
-        | `conv:rejected` | Stranger request rejected |
+        | `user.status` | Online/offline status update |
+        | `msg:new` + `chat.message.sent` | New message in a subscribed room |
+        | `msg:edit` + `chat.message.edited` | Message was edited |
+        | `msg:delete` + `chat.message.recalled` | Message was recalled |
+        | `msg:react` + `chat.message.reacted` | Reaction added or removed |
+        | `msg:pinned` + `chat.message.pinned` | Message was pinned |
+        | `msg:unpinned` + `chat.message.unpinned` | Message was unpinned |
+        | `typing` + `chat.typing` | User is/stopped typing |
         | `error` | Event processing error |
       parameters:
         - name: token
