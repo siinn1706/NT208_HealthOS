@@ -27,7 +27,7 @@ export function PlanCard({ plan }: PlanCardProps) {
 
   return (
     <Card
-      className={`relative flex flex-col border transition-all duration-300 hover:-translate-y-1 ${
+      className={`relative flex flex-col border transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-1 ${
         plan.popular
           ? "border-night-400/60 bg-gradient-to-b from-night-700/5 to-night-400/5 shadow-lg shadow-night-400/10"
           : "border-border/50 bg-card shadow-sm hover:shadow-xl hover:shadow-night-400/10 hover:border-night-400/20"
@@ -76,7 +76,7 @@ export function PlanCard({ plan }: PlanCardProps) {
 
         {/* CTA */}
         <Button
-          className={`w-full rounded-full font-semibold transition-all ${
+          className={`w-full rounded-full font-semibold transition-[background-color,color,border-color,filter,box-shadow] duration-150 ease-out ${
             plan.popular
               ? "bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-md shadow-night-400/20 hover:brightness-110 hover:shadow-night-400/40"
               : "border border-night-600/50 bg-transparent text-night-700 dark:text-night-300 hover:bg-gradient-to-r hover:from-night-700 hover:to-night-400 hover:text-white hover:border-transparent"

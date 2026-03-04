@@ -15,7 +15,7 @@ export function TestimonialCard({ testimonial }: TestimonialCardProps) {
   const quote = pickLocale(testimonial.quote, locale);
 
   return (
-    <Card className="min-w-[320px] max-w-md border border-border/50 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-night-400/10 hover:border-night-400/20">
+    <Card className="min-w-[320px] max-w-md border border-border/50 bg-card shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-1 hover:shadow-lg hover:shadow-night-400/10 hover:border-night-400/20">
       <CardContent className="p-6">
         <div className="mb-4 text-3xl bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent">&ldquo;&ldquo;</div>
         <p className="mb-6 text-sm leading-relaxed text-muted-foreground line-clamp-5">

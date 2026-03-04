@@ -51,7 +51,7 @@ export function Footer() {
                 <a
                   key={i}
                   href="#"
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-all hover:bg-gradient-to-br hover:from-night-700 hover:to-night-400 hover:text-white hover:border-transparent hover:shadow-md hover:shadow-night-400/20"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-[color,border-color,box-shadow,opacity] duration-150 ease-out hover:bg-gradient-to-br hover:from-night-700 hover:to-night-400 hover:text-white hover:border-transparent hover:shadow-md hover:shadow-night-400/20"
                 >
                   <Icon className="h-4 w-4" />
                 </a>
@@ -127,7 +127,7 @@ export function Footer() {
               <p className="text-sm font-medium text-foreground">{t("forDoctors")}</p>
               <Button
                 variant="outline"
-                className="mt-2 rounded-full border-night-600/50 text-night-700 dark:text-night-300 transition-all hover:bg-gradient-to-r hover:from-night-700 hover:to-night-400 hover:text-white hover:border-transparent"
+                className="mt-2 rounded-full border-night-600/50 text-night-700 dark:text-night-300 transition-[color,border-color,background-color] duration-150 ease-out hover:bg-gradient-to-r hover:from-night-700 hover:to-night-400 hover:text-white hover:border-transparent"
               >
                 {t("joinAsDoctor")} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>

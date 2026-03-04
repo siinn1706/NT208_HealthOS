@@ -21,7 +21,33 @@ import {
 import type { ChatGradient, ChatPattern } from "@/types/api";
 import { cn } from "@/lib/utils";
 import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+// ── Thumbnail helpers ───────────────────────────────────────────────────────
+/**
+ * Returns the small WebP thumbnail URL for a pattern filename.
+ * e.g. "Theme_Cats.svg" → "/resources/chat/patterns/thumbs/Theme_Cats.webp"
+ * Falls back to the full light SVG if no thumb exists (captured by onError).
+ */
+function thumbUrl(filename: string): string {
+  if (!filename) return "";
+  const name = filename.replace(/\.svg$/i, "");
+  return `/resources/chat/patterns/thumbs/${encodeURIComponent(name)}.webp`;
+}
+
+// Module-level cache so we never preload the same URL twice across re-renders
+const preloadedUrls = new Set<string>();
+
+/**
+ * Preloads a full SVG into browser cache using a hidden Image element.
+ * Silently ignores failures (optional resource).
+ */
+function preloadUrl(url: string): void {
+  if (!url || preloadedUrls.has(url)) return;
+  preloadedUrls.add(url);
+  const img = new Image();
+  img.src = url;
+}
 
 interface ChatThemePickerProps {
   open: boolean;
@@ -47,8 +73,14 @@ export function ChatThemePicker({
 
   // Sync opacity each time the dialog is freshly opened
   /* eslint-disable react-hooks/set-state-in-effect */
+  // Also eagerly preload the active pattern so the preview strip loads fast
   useEffect(() => {
-    if (open) setOpacity(parseThemeId(currentThemeId).opacity);
+    if (open) {
+      setOpacity(parseThemeId(currentThemeId).opacity);
+      if (previewPat?.filename) {
+        preloadUrl(resolvePatternUrl(previewPat, currentGradType));
+      }
+    }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -238,7 +270,7 @@ function GradientSwatch({
       title={grad.name}
       className={cn(
         "relative w-11 h-11 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
-        "transition-all duration-150 cursor-pointer hover:scale-110 hover:shadow-md",
+        "transition-[transform,box-shadow] duration-150 ease-out cursor-pointer motion-safe:hover:scale-110 hover:shadow-md",
         isSelected
           ? "border-primary shadow-sm shadow-primary/40 scale-105"
           : "border-border bg-background hover:border-primary/40"
@@ -270,17 +302,54 @@ function PatternCard({
   onLeave: () => void;
   onSelect: () => void;
 }) {
-  const isNone     = pat.id === "none";
-  const patternUrl = pat.filename ? resolvePatternUrl(pat, baseGradType) : "";
+  const isNone      = pat.id === "none";
+  const thumb       = pat.filename ? thumbUrl(pat.filename) : "";
+  const fullUrl     = pat.filename ? resolvePatternUrl(pat, baseGradType) : "";
+
+  // true once the full SVG has been preloaded into browser cache
+  const [fullReady, setFullReady] = useState(() => preloadedUrls.has(fullUrl));
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // When selected, immediately preload (if not done already)
+  useEffect(() => {
+    if (isSelected && fullUrl && !preloadedUrls.has(fullUrl)) {
+      preloadedUrls.add(fullUrl);
+      const img = new Image();
+      img.onload = () => setFullReady(true);
+      img.src = fullUrl;
+    }
+  }, [isSelected, fullUrl]);
+
+  const handleMouseEnter = useCallback(() => {
+    onHover();
+    if (!fullUrl || fullReady) return;
+    hoverTimerRef.current = setTimeout(() => {
+      preloadedUrls.add(fullUrl);
+      const img = new Image();
+      img.onload = () => setFullReady(true);
+      img.src = fullUrl;
+    }, 200);
+  }, [onHover, fullUrl, fullReady]);
+
+  const handleMouseLeave = useCallback(() => {
+    onLeave();
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  }, [onLeave]);
+
+  // Use full SVG once it's cached, otherwise the thumb
+  const bgUrl = fullReady ? fullUrl : thumb;
 
   return (
     <button
       onClick={onSelect}
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
-        "relative rounded-xl overflow-hidden border-2 transition-all duration-150 cursor-pointer group",
-        "aspect-[4/3] hover:scale-[1.06] hover:shadow-lg",
+        "relative rounded-xl overflow-hidden border-2 transition-[transform,box-shadow,border-color] duration-150 ease-out cursor-pointer group",
+        "aspect-[4/3] motion-safe:hover:scale-[1.06] hover:shadow-lg",
         isSelected
           ? "border-primary shadow-md shadow-primary/30 scale-[1.03]"
           : "border-border hover:border-primary/40"
@@ -293,11 +362,11 @@ function PatternCard({
         <div className="absolute inset-0 flex items-center justify-center">
           <X className={cn("w-5 h-5", isSelected ? "text-primary" : "text-muted-foreground/70")} />
         </div>
-      ) : patternUrl ? (
+      ) : bgUrl ? (
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `url(${patternUrl})`,
+            backgroundImage: `url(${bgUrl})`,
             backgroundRepeat: "repeat",
             backgroundSize: "120px auto",
             opacity: 0.45,

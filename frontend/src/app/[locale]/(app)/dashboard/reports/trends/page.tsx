@@ -16,12 +16,13 @@ import type { ReportPeriod } from "@/types/api";
 const COMPARE_METRICS = ["heart_rate", "steps", "sleep", "bmi", "calories", "weight", "blood_pressure"];
 
 interface TrendsPageProps {
-  params: { locale: string };
-  searchParams: { metric?: string; period?: string };
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ metric?: string; period?: string }>;
 }
 
-export default async function TrendsPage({ searchParams }: TrendsPageProps) {
-  const { metric: rawMetric, period: rawPeriod } = await searchParams;
+export default async function TrendsPage(props: TrendsPageProps) {
+  const searchParams = await props.searchParams;
+  const { metric: rawMetric, period: rawPeriod } = searchParams;
 
   const metric = rawMetric ?? "heart_rate";
   const period: ReportPeriod =

@@ -19,7 +19,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
   const cta = pickLocale(service.cta, locale);
 
   return (
-    <Card className="group relative overflow-hidden border border-border/50 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-night-400/10 hover:border-night-400/20">
+    <Card className="group relative overflow-hidden border border-border/50 bg-card shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-1 hover:shadow-xl hover:shadow-night-400/10 hover:border-night-400/20">
       <CardContent className="flex flex-col items-center p-6 text-center">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-tr from-night-100 to-white shadow-inner border border-night-200 dark:from-night-800 dark:to-night-700 dark:border-night-600/50 text-night-700 transition-transform group-hover:scale-110">
           <Image
@@ -36,7 +36,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
         </p>
         <Link
           href={service.ctaLink}
-          className="inline-flex items-center text-sm font-semibold bg-gradient-to-r from-night-700 to-night-400 bg-clip-text text-transparent transition-all hover:from-night-600 hover:to-night-300"
+          className="inline-flex items-center text-sm font-semibold bg-gradient-to-r from-night-700 to-night-400 bg-clip-text text-transparent transition-opacity duration-150 ease-out hover:opacity-80"
         >
           {cta}
           <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
