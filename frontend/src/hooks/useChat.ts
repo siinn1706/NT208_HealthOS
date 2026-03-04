@@ -601,7 +601,7 @@ export function useStrangerRequests() {
     let cancelled = false;
     bffFetch<{ data: unknown[] }>("/api/v1/conversations/pending")
       .then(({ data }) => {
-        if (!cancelled && data.length > 0) {
+        if (!cancelled) {
           // Adapt to StrangerRequest shape from conversation DTOs
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const adapted: StrangerRequest[] = data.map((c: any) => {
