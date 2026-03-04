@@ -21,9 +21,13 @@ import type {
 
 // Keep mock data as dev fallback only
 import {
+  MOCK_CONVERSATIONS,
+  MOCK_MESSAGES,
   MOCK_STRANGER_REQUESTS,
   CURRENT_USER_ID,
 } from "@/data/chat";
+
+const AI_CONVERSATION = MOCK_CONVERSATIONS.find((conversation) => conversation.type === "ai")!;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // API response → frontend type adapters
@@ -85,7 +89,7 @@ function adaptMessage(m: any): Message {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptConversation(c: any): Conversation {
   const participants: ChatParticipant[] = (c.participants ?? []).map(adaptParticipant);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const lastMsg = c.last_message ? adaptMessage(c.last_message) : undefined;
 
   return {
@@ -116,26 +120,30 @@ function adaptConversation(c: any): Conversation {
 // useConversations
 // ──────────────────────────────────────────────────────────────────────────────
 export function useConversations() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([AI_CONVERSATION]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Initial load
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     bffFetch<{ data: unknown[] }>("/api/v1/conversations")
       .then(({ data }) => {
         if (!cancelled) {
-          setConversations(data.map(adaptConversation));
+          const apiConversations = data
+            .map(adaptConversation)
+            .filter((conversation) => conversation.type !== "ai");
+          setConversations([AI_CONVERSATION, ...apiConversations]);
         }
       })
       .catch(() => {
-        // API unavailable — start empty (do NOT load mock to avoid confusion)
-        if (!cancelled) setConversations([]);
+        if (!cancelled) setConversations([AI_CONVERSATION]);
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const sortedConversations = useMemo(() => [...conversations].sort((a, b) => {
     if (a.type === "ai") return -1;
@@ -256,11 +264,23 @@ export function useMessages(conversationId: string | null) {
   const lastCursorRef = useRef<string | null>(null);
 
   // Load messages when conversationId changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
+      setHasMore(false);
+      setIsLoading(false);
       return;
     }
+
+    if (conversationId === "conv-ai") {
+      setMessages(MOCK_MESSAGES["conv-ai"] ?? []);
+      setHasMore(false);
+      lastCursorRef.current = null;
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setIsLoading(true);
     lastCursorRef.current = null;
@@ -283,6 +303,7 @@ export function useMessages(conversationId: string | null) {
 
     return () => { cancelled = true; };
   }, [conversationId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   /** Load older messages (scroll-up pagination). */
   const loadMore = useCallback(async () => {

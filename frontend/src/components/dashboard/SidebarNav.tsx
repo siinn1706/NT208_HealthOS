@@ -20,8 +20,7 @@ import {
   Trophy,
   Medal,
 } from "lucide-react";
-import { useState } from "react";
-import { MOCK_CONVERSATIONS, MOCK_STRANGER_REQUESTS } from "@/data/chat";
+import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
   { key: "overview", icon: LayoutDashboard, href: "/dashboard" },
@@ -47,14 +46,32 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
   const locale = useLocale();
   const pathname = usePathname();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const [totalUnread, setTotalUnread] = useState(0);
 
   // Support both controlled (from DashboardShell) and uncontrolled modes
   const collapsed = collapsedProp !== undefined ? collapsedProp : internalCollapsed;
   const handleToggle = onToggle ?? (() => setInternalCollapsed((c) => !c));
 
-  const totalUnread =
-    MOCK_CONVERSATIONS.reduce((sum, c) => sum + c.unread_count, 0) +
-    MOCK_STRANGER_REQUESTS.filter((r) => r.status === "pending").length;
+  // Fetch real unread count from BFF
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/v1/conversations", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          const convos: Array<{ unread_count?: number }> = json?.data ?? [];
+          const sum = convos.reduce((acc, c) => acc + (c.unread_count ?? 0), 0);
+          setTotalUnread(sum);
+        }
+      } catch {
+        // ignore — badge stays 0 if offline
+      }
+    };
+    fetchUnread();
+    // Poll every 30 s while the sidebar is mounted
+    const id = setInterval(fetchUnread, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <aside

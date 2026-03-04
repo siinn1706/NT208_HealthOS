@@ -55,6 +55,8 @@ export function useChatWs({
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intentionalCloseRef = useRef(false);
   const onEventRef = useRef(onEvent);
+  // Ref to hold latest connect function — avoids circular useCallback dependency
+  const connectRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   // Keep onEvent ref in sync so we don't need it as a dependency
   useEffect(() => {
@@ -145,10 +147,13 @@ export function useChatWs({
           RECONNECT_MAX_MS
         );
         reconnectAttemptsRef.current += 1;
-        reconnectTimerRef.current = setTimeout(connect, delay);
+        reconnectTimerRef.current = setTimeout(() => connectRef.current?.(), delay);
       }
     };
-  }, [enabled, fetchToken, connect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, fetchToken]);  
+
+  // Keep connectRef in sync with the latest connect function
+  useEffect(() => { connectRef.current = connect; }, [connect]);
 
   const sendEvent = useCallback(
     (event: string, payload: Record<string, unknown> = {}) => {
@@ -167,6 +172,7 @@ export function useChatWs({
     setStatus("disconnected");
   }, [clearReconnectTimer]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (enabled) {
       connect();
@@ -178,6 +184,7 @@ export function useChatWs({
       wsRef.current = null;
     };
   }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return {
     status,

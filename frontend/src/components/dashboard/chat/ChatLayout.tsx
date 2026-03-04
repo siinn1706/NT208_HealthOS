@@ -31,7 +31,7 @@ export function ChatLayout() {
     setTheme,
     markAsRead,
     updateLastMessage,
-    createConversation,
+    upsertConversation,
   } = useConversations();
 
   const { requests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
@@ -55,10 +55,10 @@ export function ChatLayout() {
 
   const handleCreateConversation = useCallback(
     (conv: Conversation) => {
-      createConversation(conv);
+      upsertConversation(conv);
       handleSelectConversation(conv.id);
     },
-    [createConversation, handleSelectConversation]
+    [upsertConversation, handleSelectConversation]
   );
 
   const handleDeleteConversation = useCallback(

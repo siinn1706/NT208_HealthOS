@@ -46,9 +46,11 @@ export function ChatThemePicker({
   const [opacity, setOpacity]         = useState(initialOpacity);
 
   // Sync opacity each time the dialog is freshly opened
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (open) setOpacity(parseThemeId(currentThemeId).opacity);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const displayGradId = hoverGradId !== undefined ? hoverGradId : currentGradId;
   const displayPatId  = hoverPatId  !== undefined ? hoverPatId  : currentPatId;
