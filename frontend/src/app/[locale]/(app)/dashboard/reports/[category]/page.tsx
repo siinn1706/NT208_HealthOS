@@ -25,8 +25,8 @@ const VALID_CATEGORIES: ReportCategory[] = [
 ];
 
 interface DetailPageProps {
-  params: { locale: string; category: string };
-  searchParams: { period?: string };
+  params: Promise<{ locale: string; category: string }>;
+  searchParams: Promise<{ period?: string }>;
 }
 
 function DetailSkeleton() {

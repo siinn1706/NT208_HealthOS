@@ -158,7 +158,7 @@ export function MessageInput({
             className={cn(
               "resize-none min-h-[40px] max-h-[120px] rounded-2xl bg-secondary border-secondary",
               "focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background",
-              "text-sm pr-4 py-2.5 transition-all",
+              "text-sm pr-4 py-2.5 transition-[background-color,border-color,box-shadow] duration-150 ease-out",
               editingMessage && "border-primary/50 bg-primary/5"
             )}
             aria-label={t("typeMessage")}
@@ -197,7 +197,7 @@ export function MessageInput({
           disabled={!value.trim() || disabled}
           aria-label={t("send")}
           className={cn(
-            "flex-shrink-0 w-9 h-9 rounded-full transition-all",
+            "flex-shrink-0 w-9 h-9 rounded-full transition-[background-color,color,opacity] duration-150 ease-out",
             editingMessage && "bg-amber-500 hover:bg-amber-600"
           )}
         >

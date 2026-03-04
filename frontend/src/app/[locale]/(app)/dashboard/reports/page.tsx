@@ -12,8 +12,8 @@ import type { ReportPeriod } from "@/types/api";
 import { getProfileData } from "@/lib/profile-data";
 
 interface ReportsPageProps {
-  params: { locale: string };
-  searchParams: { period?: string };
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ period?: string }>;
 }
 
 function GridSkeleton() {
@@ -45,10 +45,10 @@ function ListSkeleton() {
   );
 }
 
-export default async function ReportsPage({
-  params: { locale },
-  searchParams,
-}: ReportsPageProps) {
+export default async function ReportsPage(props: ReportsPageProps) {
+  const params = await props.params;
+  const searchParams = await props.searchParams;
+
   const t = await getTranslations("reports");
 
   const period: ReportPeriod = (["7d", "30d", "90d"].includes(searchParams.period ?? "")

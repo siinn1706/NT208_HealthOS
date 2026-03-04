@@ -54,7 +54,7 @@ export function ContactForm() {
       />
       <Button
         type="submit"
-        className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 px-8 text-white shadow-md shadow-night-400/20 transition-all hover:brightness-110 hover:shadow-night-400/40"
+        className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 px-8 text-white shadow-md shadow-night-400/20 transition-[filter,box-shadow] duration-150 ease-out hover:brightness-110 hover:shadow-night-400/40"
       >
         {t("submit")} <ChevronRight className="ml-1 h-4 w-4" />
       </Button>
