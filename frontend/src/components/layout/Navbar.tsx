@@ -34,7 +34,7 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-50 transition-[background-color,backdrop-filter,box-shadow,border-color] duration-300 ease-out",
         scrolled
           ? "bg-night-900/95 backdrop-blur-md shadow-lg border-b border-night-400/20"
           : "bg-gradient-to-r from-night-900 via-night-900 to-night-800"
@@ -91,7 +91,7 @@ export function Navbar() {
               </Button>
             </Link>
             <Link href="/register">
-              <Button className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-md shadow-night-400/20 transition-all hover:brightness-110 hover:shadow-night-400/40">
+              <Button className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter,box-shadow] duration-150 ease-out hover:brightness-110 hover:shadow-night-400/40">
                 {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </Link>
@@ -138,7 +138,7 @@ export function Navbar() {
                   </Button>
                 </Link>
                 <Link href="/register" onClick={() => setMobileOpen(false)}>
-                  <Button className="w-full rounded-full bg-gradient-to-r from-night-700 to-night-400 text-white shadow-md shadow-night-400/20 transition-all hover:brightness-110">
+                  <Button className="w-full rounded-full bg-gradient-to-r from-night-700 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter] duration-150 ease-out hover:brightness-110">
                     {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 </Link>
