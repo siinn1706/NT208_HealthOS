@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useWatch, useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Beef, Wheat, Droplets } from "lucide-react";
+import { Beef, Wheat, Droplets } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { findIngredient, calcNutrition } from "@/data/ingredients";
 import type { AddMealFormValues } from "@/lib/validators/meal-schema";
