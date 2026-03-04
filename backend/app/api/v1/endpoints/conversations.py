@@ -97,6 +97,31 @@ async def list_pending_conversations(
     return ConversationListResponse(data=convs, total=len(convs))
 
 
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationDTO,
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Get a single conversation",
+)
+async def get_conversation(
+    conversation_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationDTO:
+    conv = await chat_svc.get_conversation_by_id(db, conversation_id, current_user.id)
+    if conv is None:
+        raise _http_error(404, "CHAT_NOT_FOUND", "Conversation not found.")
+
+    # Require accepted membership for detail access
+    try:
+        await chat_svc.assert_member(db, conversation_id, current_user.id)
+    except ValueError as exc:
+        raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+
+    presence_map = ws_manager.get_presence_map()
+    return await chat_svc._build_conversation_dto(db, conv, current_user.id, presence_map)
+
+
 @router.post(
     "/conversations/direct",
     response_model=ConversationDTO,

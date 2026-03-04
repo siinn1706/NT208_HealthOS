@@ -131,10 +131,17 @@ export function useConversations() {
     bffFetch<{ data: unknown[] }>("/api/v1/conversations")
       .then(({ data }) => {
         if (!cancelled) {
-          const apiConversations = data
-            .map(adaptConversation)
-            .filter((conversation) => conversation.type !== "ai");
-          setConversations([AI_CONVERSATION, ...apiConversations]);
+          const apiConversations = data.map(adaptConversation);
+          const apiAiConversation = apiConversations.find(
+            (conversation) => conversation.type === "ai"
+          );
+          const nonAiConversations = apiConversations.filter(
+            (conversation) => conversation.type !== "ai"
+          );
+          setConversations([
+            apiAiConversation ?? AI_CONVERSATION,
+            ...nonAiConversations,
+          ]);
         }
       })
       .catch(() => {
