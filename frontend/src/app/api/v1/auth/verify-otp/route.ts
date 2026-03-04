@@ -3,14 +3,13 @@
  * POST /api/v1/auth/verify-otp
  *
  * Proxies to Core BE: POST /v1/auth/verify-otp
- * For signup/login purposes: sets core_access_token as httpOnly cookie.
+ * For signup/login purposes: sets session token as httpOnly cookie.
  * For reset_password purpose: just proxies the response (no cookie).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE_MAX_AGE, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
-const COOKIE_NAME = "core_access_token";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -61,11 +60,11 @@ export async function POST(req: NextRequest) {
       { status: res.status }
     );
 
-    response.cookies.set(COOKIE_NAME, accessToken, {
+    response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: COOKIE_MAX_AGE,
+      maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     });
 

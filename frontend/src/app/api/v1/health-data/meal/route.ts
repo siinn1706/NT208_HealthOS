@@ -13,38 +13,14 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
-function unauthorized() {
-  return NextResponse.json(
-    { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
-    { status: 401 }
-  );
-}
-
-export async function GET(req: NextRequest) {
-  const token = await getAccessToken();
-  if (!token) return unauthorized();
-
-  const coreUrl = new URL("/v1/meals", CORE_API_URL);
-  req.nextUrl.searchParams.forEach((value, key) => coreUrl.searchParams.set(key, value));
-
-  try {
-    const res = await fetch(coreUrl.toString(), {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json(
-      { error: { code: "UPSTREAM_UNAVAILABLE", message: "Core service is temporarily unavailable." } },
-      { status: 503 }
-    );
-  }
-}
-
 export async function POST(req: NextRequest) {
   const token = await getAccessToken();
-  if (!token) return unauthorized();
+  if (!token) {
+    return NextResponse.json(
+      { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
+      { status: 401 }
+    );
+  }
 
   const contentType = req.headers.get("content-type") ?? "";
 
@@ -67,7 +43,6 @@ export async function POST(req: NextRequest) {
       body,
       cache: "no-store",
     });
-
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   } catch {

@@ -7,15 +7,14 @@
  */
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE_MAX_AGE, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
-const COOKIE_NAME = "core_access_token";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 // ── GET /api/v1/auth/session → Return current user ──────────────────────────
 export async function GET() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
     return NextResponse.json(
@@ -37,7 +36,7 @@ export async function GET() {
         data ?? { error: { code: "AUTH_REQUIRED", message: "Session expired." } },
         { status: 401 }
       );
-      response.cookies.delete(COOKIE_NAME);
+      response.cookies.delete(SESSION_COOKIE_NAME);
       return response;
     }
 
@@ -96,11 +95,11 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
 
-    response.cookies.set(COOKIE_NAME, accessToken, {
+    response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: COOKIE_MAX_AGE,
+      maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     });
 
@@ -116,6 +115,6 @@ export async function POST(req: NextRequest) {
 // ── DELETE /api/v1/auth/session → Logout, clear cookie ──────────────────────
 export async function DELETE() {
   const response = NextResponse.json({ data: { success: true } }, { status: 200 });
-  response.cookies.delete(COOKIE_NAME);
+  response.cookies.delete(SESSION_COOKIE_NAME);
   return response;
 }

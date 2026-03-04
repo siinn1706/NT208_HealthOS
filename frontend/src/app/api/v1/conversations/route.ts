@@ -11,5 +11,5 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  return coreProxy(req, "/v1/conversations/group", { method: "POST" });
+  return coreProxy(req, "/v1/conversations", { method: "POST" });
 }

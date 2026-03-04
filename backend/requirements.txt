@@ -1,6 +1,7 @@
 # ─── Web framework ────────────────────────────────────────────────
 fastapi
 uvicorn[standard]
+python-multipart
 
 # ─── Settings & validation ────────────────────────────────────────
 pydantic-settings
