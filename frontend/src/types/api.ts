@@ -315,13 +315,14 @@ export interface ChatPattern {
 }
 
 export type ChatWsEventType =
-  | "message.new"
-  | "message.edited"
-  | "message.recalled"
-  | "message.reacted"
-  | "message.pinned"
-  | "typing.start"
-  | "typing.stop"
+  | "chat.message.sent"
+  | "chat.message.edited"
+  | "chat.message.recalled"
+  | "chat.message.reacted"
+  | "chat.message.pinned"
+  | "chat.message.unpinned"
+  | "chat.message.read"
+  | "chat.typing"
   | "conversation.updated"
   | "user.status";
 

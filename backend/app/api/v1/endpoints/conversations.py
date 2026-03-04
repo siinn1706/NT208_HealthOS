@@ -240,7 +240,7 @@ async def send_message(
     # Broadcast to all members in the conversation room
     await _notify_conversation(
         conversation_id,
-        "message.new",
+        "chat.message.sent",
         msg.model_dump(mode="json"),
     )
     return msg
@@ -266,7 +266,7 @@ async def edit_message(
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
 
-    await _notify_conversation(conversation_id, "message.edited", msg.model_dump(mode="json"))
+    await _notify_conversation(conversation_id, "chat.message.edited", msg.model_dump(mode="json"))
     return msg
 
 
@@ -292,11 +292,11 @@ async def recall_message(
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
 
-    await _notify_conversation(conversation_id, "message.recalled", msg.model_dump(mode="json"))
+    await _notify_conversation(conversation_id, "chat.message.recalled", msg.model_dump(mode="json"))
     return msg
 
 
-# ─── Reaction endpoints ────────────────────────────────────────────────────────
+# ─── Reaction endpoints ───────────────────────────────────────────────────────
 
 @router.post(
     "/conversations/{conversation_id}/messages/{message_id}/reactions",
@@ -318,7 +318,7 @@ async def react_to_message(
     except ValueError as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
 
-    await _notify_conversation(conversation_id, "message.reacted", msg.model_dump(mode="json"))
+    await _notify_conversation(conversation_id, "chat.message.reacted", msg.model_dump(mode="json"))
     return msg
 
 
@@ -359,7 +359,7 @@ async def pin_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     await _notify_conversation(
         conversation_id,
-        "message.pinned",
+        "chat.message.pinned",
         {"message_id": str(message_id), "conversation_id": str(conversation_id)},
     )
 
@@ -382,7 +382,7 @@ async def unpin_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     await _notify_conversation(
         conversation_id,
-        "message.unpinned",
+        "chat.message.unpinned",
         {"message_id": str(message_id), "conversation_id": str(conversation_id)},
     )
 
@@ -407,7 +407,7 @@ async def mark_read(
     # Notify room so senders see double-tick
     await _notify_conversation(
         conversation_id,
-        "message.read",
+        "chat.message.read",
         {
             "user_id": str(current_user.id),
             "last_read_message_id": str(body.last_read_message_id),
