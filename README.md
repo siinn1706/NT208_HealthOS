@@ -96,6 +96,8 @@ bash infra/scripts/setup.sh        # Unix/WSL
 docker compose -f infra/docker/docker-compose.dev.yml up
 ```
 
+> Dữ liệu PostgreSQL được lưu qua Docker volume `postgres_data`. Không dùng `docker compose down -v` nếu muốn giữ dữ liệu.
+
 Services sẽ chạy tại:
 | Service | URL |
 |---------|-----|
@@ -103,6 +105,45 @@ Services sẽ chạy tại:
 | Core BE API | http://localhost:8000/docs |
 | AI Worker | http://localhost:8001/docs |
 | MinIO Console | http://localhost:9001 |
+
+### Quản lý Database (Docker)
+
+```powershell
+# Trạng thái DB + volume
+.\infra\scripts\db.ps1 -Action status
+
+# Start/Stop postgres (không xoá dữ liệu)
+.\infra\scripts\db.ps1 -Action up
+.\infra\scripts\db.ps1 -Action stop
+
+# Vào psql và liệt kê bảng
+.\infra\scripts\db.ps1 -Action psql
+.\infra\scripts\db.ps1 -Action tables
+
+# Chạy migration
+.\infra\scripts\db.ps1 -Action migrate
+
+# Backup (tạo file .sql trong infra/backups)
+.\infra\scripts\db.ps1 -Action dump
+
+# Restore từ file backup
+.\infra\scripts\db.ps1 -Action restore -FilePath .\infra\backups\healthos_YYYYMMDD_HHMMSS.sql
+```
+
+Nếu bạn chạy PostgreSQL local service (không dùng Docker), thêm `-Mode local`:
+
+```powershell
+.\infra\scripts\db.ps1 -Action status -Mode local
+.\infra\scripts\db.ps1 -Action psql -Mode local
+.\infra\scripts\db.ps1 -Action dump -Mode local
+.\infra\scripts\db.ps1 -Action restore -Mode local -FilePath .\infra\backups\healthos_YYYYMMDD_HHMMSS.sql
+```
+
+Lệnh truy cập trực tiếp (không qua script):
+
+```powershell
+docker compose -f infra/docker/docker-compose.dev.yml exec postgres psql -U healthos -d healthos
+```
 
 ---
 
