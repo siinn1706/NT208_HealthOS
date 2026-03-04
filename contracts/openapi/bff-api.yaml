@@ -411,7 +411,7 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Accepted
 
   /conversations/{id}/reject:
@@ -424,7 +424,7 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Rejected
 
   /conversations/{id}/messages:
@@ -545,8 +545,19 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [last_read_message_id]
+              properties:
+                last_read_message_id:
+                  type: string
+                  format: uuid
       responses:
-        "200":
+        "204":
           description: Read receipt updated
 
   /conversations/{id}/pinned:
@@ -576,7 +587,7 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Pinned
     delete:
       tags: [Chat]

@@ -45,10 +45,11 @@ export function ChatLayout() {
 
   const handleSelectConversation = useCallback(
     (id: string) => {
+      const selected = conversations.find((conversation) => conversation.id === id);
       router.push(`${basePath}/${id}`);
-      markAsRead(id);
+      markAsRead(id, selected?.last_message?.id);
     },
-    [router, basePath, markAsRead]
+    [router, basePath, markAsRead, conversations]
   );
 
   const handleBack = useCallback(() => {

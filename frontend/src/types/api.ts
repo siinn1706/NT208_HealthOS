@@ -267,6 +267,7 @@ export interface Conversation {
   avatar_url?: string | null;
   participants: ChatParticipant[];
   last_message?: {
+    id?: string;
     content: string;
     sender_id: string;
     created_at: string;

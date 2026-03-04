@@ -835,15 +835,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Request accepted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ConversationDTO"
 
   /v1/conversations/{conversation_id}/reject:
     post:
@@ -854,27 +847,9 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                delete_history:
-                  type: boolean
-                  default: false
       responses:
-        "200":
+        "204":
           description: Request rejected
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
   /v1/conversations/{conversation_id}/messages:
     get:
@@ -1053,27 +1028,20 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [last_read_message_id]
               properties:
-                last_message_id:
+                last_read_message_id:
                   type: string
                   format: uuid
-                  description: Optional — if omitted, marks all current messages as read
+                  description: Last read message id in this conversation
       responses:
-        "200":
+        "204":
           description: Read receipt updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
   /v1/conversations/{conversation_id}/pinned:
     get:
@@ -1111,17 +1079,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Message pinned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
     delete:
       tags: [Chat]
       summary: Unpin a message
@@ -1135,17 +1094,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Message unpinned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
   /v1/users/lookup:
     get:

@@ -100,6 +100,7 @@ function adaptConversation(c: any): Conversation {
     participants,
     last_message: lastMsg
       ? {
+          id: lastMsg.id,
           content: lastMsg.content,
           sender_id: lastMsg.sender_id,
           created_at: lastMsg.created_at,
@@ -200,10 +201,19 @@ export function useConversations() {
     );
   }, []);
 
-  const markAsRead = useCallback(async (id: string) => {
+  const markAsRead = useCallback(async (id: string, lastReadMessageId?: string) => {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unread_count: 0 } : c))
     );
+    if (!lastReadMessageId) return;
+    try {
+      await bffFetch(`/api/v1/conversations/${id}/read`, {
+        method: "POST",
+        body: { last_read_message_id: lastReadMessageId },
+      });
+    } catch {
+      // keep optimistic local state
+    }
   }, []);
 
   const updateLastMessage = useCallback(
@@ -214,6 +224,7 @@ export function useConversations() {
             ? {
                 ...c,
                 last_message: {
+                  id: message.id,
                   content: message.content,
                   sender_id: message.sender_id,
                   created_at: message.created_at,
