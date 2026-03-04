@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { Download, Share2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

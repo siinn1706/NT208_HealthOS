@@ -41,6 +41,12 @@ export async function GET(req: NextRequest) {
         { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
       );
       if (coreRes.ok) return NextResponse.json(await coreRes.json());
+      if (coreRes.status === 401 || coreRes.status === 403) {
+        return NextResponse.json(
+          { error: { code: "AUTH_REQUIRED", message: "Session expired. Please log in again." } },
+          { status: coreRes.status }
+        );
+      }
     } catch {
       // Core BE offline — fall through to mock
     }

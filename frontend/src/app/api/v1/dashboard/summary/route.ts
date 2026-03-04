@@ -21,7 +21,15 @@ async function getToken(): Promise<string | null> {
 
 export async function GET() {
   const token = await getToken();
-  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+  if (!token) {
+    return NextResponse.json(
+      { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
+      { status: 401 }
+    );
+  }
+
+  const authHeader = { Authorization: `Bearer ${token}` };
 
   // Attempt fan-out to Core BE endpoints in parallel
   const [mealsRes, metricsRes] = await Promise.allSettled([
@@ -35,24 +43,32 @@ export async function GET() {
     }),
   ]);
 
+  // Propagate 401/403 from Core rather than returning mock data
+  for (const result of [mealsRes, metricsRes]) {
+    if (result.status === "fulfilled" && (result.value.status === 401 || result.value.status === 403)) {
+      return NextResponse.json(
+        { error: { code: "AUTH_REQUIRED", message: "Session expired. Please log in again." } },
+        { status: result.value.status }
+      );
+    }
+  }
+
   const mealsOk = mealsRes.status === "fulfilled" && mealsRes.value.ok;
   const metricsOk = metricsRes.status === "fulfilled" && metricsRes.value.ok;
 
   // Retrieve user name from session endpoint if available
   let userName = "Người dùng";
-  if (token) {
-    try {
-      const meRes = await fetch(`${CORE_API_URL}/v1/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      if (meRes.ok) {
-        const me = await meRes.json();
-        if (me?.data?.display_name) userName = me.data.display_name;
-      }
-    } catch {
-      // ignore
+  try {
+    const meRes = await fetch(`${CORE_API_URL}/v1/auth/me`, {
+      headers: authHeader,
+      cache: "no-store",
+    });
+    if (meRes.ok) {
+      const me = await meRes.json();
+      if (me?.data?.display_name) userName = me.data.display_name;
     }
+  } catch {
+    // ignore
   }
 
   const mealsData = mealsOk ? await mealsRes.value.json() : null;
@@ -78,7 +94,6 @@ export async function GET() {
   };
 
   const payload = {
-    status: "success",
     data: {
       user_name: userName,
       alerts,

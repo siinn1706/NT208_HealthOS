@@ -483,6 +483,7 @@
     "rememberMe": "Remember me",
     "forgotPassword": "Forgot password?",
     "loginButton": "Sign In",
+    "loginFailed": "Sign in failed. Please try again.",
     "registerButton": "Create Account",
     "verifyButton": "Verify",
     "resendOtp": "Resend code",

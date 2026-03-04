@@ -17,13 +17,13 @@ export default function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
 
   // Strip locale prefix for protection check (e.g. /vi/dashboard → /dashboard)
-  const pathnameWithoutLocale = pathname.replace(/^\/(vi|en)/, "") || "/";
+  const pathnameWithoutLocale = pathname.replace(/^\/(vi|en)(?=\/|$)/, "") || "/";
 
   if (isProtected(pathnameWithoutLocale)) {
     const token = req.cookies.get("core_access_token")?.value;
     if (!token) {
       // Redirect to the locale-prefixed login page
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? "vi";
+      const locale = pathname.match(/^\/(vi|en)(?=\/|$)/)?.[1] ?? "vi";
       const loginUrl = new URL(`/${locale}/login`, req.url);
       loginUrl.searchParams.set("from", req.nextUrl.pathname);
       return NextResponse.redirect(loginUrl);
