@@ -8,7 +8,7 @@ import { useConversations, useStrangerRequests } from "@/hooks/useChat";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
 import { ChatEmptyState } from "./ChatEmptyState";
-import type { Conversation, Message } from "@/types/api";
+import type { Message } from "@/types/api";
 import { cn } from "@/lib/utils";
 
 export function ChatLayout() {
@@ -54,11 +54,14 @@ export function ChatLayout() {
   }, [router, basePath]);
 
   const handleCreateConversation = useCallback(
-    (conv: Conversation) => {
-      upsertConversation(conv);
-      handleSelectConversation(conv.id);
+    async (targetUserId: string) => {
+      const created = await createConversation(targetUserId);
+      if (created) {
+        upsertConversation(created);
+      }
+      return created;
     },
-    [upsertConversation, handleSelectConversation]
+    [createConversation, upsertConversation]
   );
 
   const handleDeleteConversation = useCallback(

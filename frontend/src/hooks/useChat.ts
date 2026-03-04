@@ -229,9 +229,37 @@ export function useConversations() {
     []
   );
 
+  const applyIncomingMessage = useCallback(
+    (raw: unknown, activeConversationId: string | null) => {
+      const message = adaptMessage(raw);
+      setConversations((prev) =>
+        prev.map((conversation) => {
+          if (conversation.id !== message.conversation_id) return conversation;
+          const shouldIncreaseUnread = activeConversationId !== conversation.id;
+          return {
+            ...conversation,
+            last_message: {
+              id: message.id,
+              content: message.content,
+              sender_id: message.sender_id,
+              created_at: message.created_at,
+              type: message.type,
+              is_recalled: message.is_recalled,
+            },
+            updated_at: message.created_at,
+            unread_count: shouldIncreaseUnread
+              ? conversation.unread_count + 1
+              : conversation.unread_count,
+          };
+        })
+      );
+    },
+    []
+  );
+
   const createConversation = useCallback(async (targetUserId: string): Promise<Conversation | null> => {
     try {
-      const result = await bffFetch<{ data: unknown }>("/api/v1/conversations", {
+      const result = await bffFetch<{ data: unknown }>("/api/v1/conversations/direct", {
         method: "POST",
         body: { target_user_id: targetUserId },
       });

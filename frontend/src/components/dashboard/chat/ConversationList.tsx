@@ -31,7 +31,7 @@ interface ConversationListProps {
   onAcceptStranger: (id: string) => void;
   onRejectStranger: (id: string) => void;
   onBlockStranger: (id: string) => void;
-  onCreateConversation: (conv: Conversation) => void;
+  onCreateConversation: (targetUserId: string) => Promise<Conversation | null>;
 }
 
 export function ConversationList({
@@ -151,6 +151,7 @@ export function ConversationList({
       <ChatSearchUsers
         open={showSearch}
         onOpenChange={setShowSearch}
+        conversations={conversations}
         onSelectConversation={onSelectConversation}
         onCreateConversation={onCreateConversation}
       />
