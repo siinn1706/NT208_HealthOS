@@ -591,22 +591,23 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Unpinned
 
   /auth/ws-token:
     get:
       tags: [Auth]
-      summary: Return the current access token for WebSocket authentication
+      summary: Exchange session cookie for short-lived WebSocket ticket
       description: |
-        Reads the httpOnly `core_access_token` cookie (set by the BFF) and
-        returns it in the response body. The browser can then pass it as a
-        query parameter when opening the WebSocket connection to the Core BE.
+        Reads the httpOnly `core_access_token` cookie and calls Core BE
+        `GET /v1/auth/ws-ticket` to issue a short-lived WS ticket.
+
+        The browser passes this ticket via query string when opening `/ws`.
 
         **Important:** This endpoint itself requires a valid session cookie.
       responses:
         "200":
-          description: Token returned
+          description: WS ticket issued
           content:
             application/json:
               schema:
@@ -614,6 +615,8 @@ paths:
                 properties:
                   token:
                     type: string
+                  expires_in_seconds:
+                    type: integer
         "401":
           description: Not authenticated
 
