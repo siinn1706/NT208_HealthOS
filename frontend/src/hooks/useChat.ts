@@ -283,6 +283,7 @@ export function useConversations() {
     setTheme,
     markAsRead,
     updateLastMessage,
+    applyIncomingMessage,
     createConversation,
     upsertConversation,
   };

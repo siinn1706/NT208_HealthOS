@@ -31,7 +31,9 @@ export function ChatLayout() {
     setTheme,
     markAsRead,
     updateLastMessage,
+    applyIncomingMessage,
     upsertConversation,
+    createConversation,
   } = useConversations();
 
   const { requests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
@@ -150,6 +152,7 @@ export function ChatLayout() {
                 onDelete={handleDeleteActive}
                 onThemeChange={handleThemeChange}
                 onMessageSent={handleMessageSent}
+                onIncomingMessage={(raw) => applyIncomingMessage(raw, activeId)}
               />
             </motion.div>
           ) : (
