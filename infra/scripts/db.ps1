@@ -246,7 +246,8 @@ switch ($Action) {
             }
 
             $dbUrl = Get-DbUrlFromEnv
-            Write-Host "DATABASE_URL (psql-compatible): $dbUrl"
+            $redacted = $dbUrl -replace '(?<=://[^:]*:)[^@]+(?=@)', '***'
+            Write-Host "DATABASE_URL (psql-compatible): $redacted"
         }
     }
 

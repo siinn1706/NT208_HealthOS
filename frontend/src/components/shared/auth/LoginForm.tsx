@@ -96,11 +96,11 @@ export function LoginForm() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const msg = data?.error?.message ?? data?.detail?.message ?? t("loginButton");
+        const msg = data?.error?.message ?? data?.detail?.message ?? t("loginFailed");
         setError(
           res.status === 401 || res.status === 404
             ? "Email hoặc mật khẩu không đúng."
-            : msg ?? "Đăng nhập thất bại. Vui lòng thử lại."
+            : msg ?? t("loginFailed")
         );
         return;
       }

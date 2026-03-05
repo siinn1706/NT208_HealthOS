@@ -37,7 +37,7 @@ def create_access_token(
     )
     payload = {"sub": str(subject), "exp": expire}
     if additional_claims:
-                payload.update(additional_claims)
+        payload.update(additional_claims)
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 

@@ -483,6 +483,7 @@
     "rememberMe": "Nhớ mật khẩu",
     "forgotPassword": "Quên mật khẩu?",
     "loginButton": "Đăng nhập",
+    "loginFailed": "Đăng nhập thất bại. Vui lòng thử lại.",
     "registerButton": "Tạo tài khoản",
     "verifyButton": "Xác minh",
     "resendOtp": "Gửi lại mã",

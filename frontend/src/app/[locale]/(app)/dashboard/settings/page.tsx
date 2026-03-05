@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   User,
@@ -115,7 +115,7 @@ export default function SettingsPage() {
     try {
       await fetch("/api/v1/auth/session", { method: "DELETE" });
     } finally {
-      router.push(`/${locale}/login`);
+      router.push("/login");
     }
   };
 
@@ -137,19 +137,19 @@ export default function SettingsPage() {
           icon={User}
           label={t("settingsPage.account.profile")}
           description={t("settingsPage.account.profileDesc")}
-          onClick={() => router.push(`/${locale}/dashboard/profile`)}
+          onClick={() => router.push("/dashboard/profile")}
         />
         <SettingRow
           icon={Lock}
           label={t("settingsPage.account.security")}
           description={t("settingsPage.account.securityDesc")}
-          onClick={() => router.push(`/${locale}/forgot-password`)}
+          onClick={() => router.push("/forgot-password")}
         />
         <SettingRow
           icon={Smartphone}
           label={t("settingsPage.account.devices")}
           description={t("settingsPage.account.devicesDesc")}
-          onClick={() => router.push(`/${locale}/dashboard/health`)}
+          onClick={() => router.push("/dashboard/health")}
         />
       </SettingGroup>
 
@@ -160,8 +160,8 @@ export default function SettingsPage() {
             {(["vi", "en"] as const).map((l) => (
               <button
                 key={l}
-                onClick={() => router.push(`/${l}/dashboard/settings`)}
-                className={cn(
+                onClick={() => router.push("/dashboard/settings", { locale: l })}
+  className={cn(
                   "px-2.5 py-1 text-xs font-medium rounded-md border transition-colors cursor-pointer",
                   locale === l
                     ? "bg-primary text-primary-foreground border-primary"
