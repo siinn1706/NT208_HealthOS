@@ -13,6 +13,7 @@
 
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
 
@@ -20,7 +21,7 @@ const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
 async function getSessionToken(): Promise<string | null> {
   try {
     const cookieStore = await cookies();
-    return cookieStore.get("core_access_token")?.value ?? null;
+    return cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
   } catch {
     return null;
   }
@@ -37,6 +38,8 @@ type ProxyOptions = {
   extraHeaders?: Record<string, string>;
   /** If true, return an error response instead of falling back to mock on BE offline. */
   strictMode?: boolean;
+  /** If true (default), require an authenticated session token before forwarding. */
+  requireAuth?: boolean;
 };
 
 /**
@@ -52,7 +55,15 @@ export async function coreProxy(
   options: ProxyOptions = {}
 ): Promise<NextResponse> {
   const token = await getSessionToken();
+  const requireAuth = options.requireAuth ?? true;
   const method = options.method ?? req.method;
+
+  if (requireAuth && !token) {
+    return NextResponse.json(
+      { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
+      { status: 401 }
+    );
+  }
 
   // Build forwarded headers
   const headers: Record<string, string> = {
@@ -116,7 +127,8 @@ export async function coreProxy(
 export async function forwardToCore(
   req: NextRequest,
   corePath: string,
-  method?: string
+  method?: string,
+  requireAuth = true
 ): Promise<NextResponse> {
-  return coreProxy(req, corePath, { method });
+  return coreProxy(req, corePath, { method, requireAuth });
 }

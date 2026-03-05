@@ -1,10 +1,11 @@
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 const intlMiddleware = createMiddleware(routing);
 
-/** Routes that require an active session (core_access_token cookie). */
+/** Routes that require an active session cookie. */
 const PROTECTED_PREFIXES = ["/dashboard"];
 
 function isProtected(pathname: string): boolean {
@@ -20,7 +21,7 @@ export default function middleware(req: NextRequest): NextResponse {
   const pathnameWithoutLocale = pathname.replace(/^\/(vi|en)(?=\/|$)/, "") || "/";
 
   if (isProtected(pathnameWithoutLocale)) {
-    const token = req.cookies.get("core_access_token")?.value;
+    const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
     if (!token) {
       // Redirect to the locale-prefixed login page
       const locale = pathname.match(/^\/(vi|en)(?=\/|$)/)?.[1] ?? "vi";

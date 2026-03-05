@@ -155,7 +155,7 @@ async def create_direct_conversation(
 
 
 @router.post(
-    "/conversations/group",
+    "/conversations",
     response_model=ConversationDTO,
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},

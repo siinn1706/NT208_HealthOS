@@ -570,11 +570,29 @@ paths:
                       $ref: "#/components/schemas/MealResponse"
                   meta:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          description: Invalid query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       tags: [Meals]
       summary: Create a meal log (with optional image upload)
       requestBody:
         content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                notes:
+                  type: string
+                logged_at:
+                  type: string
+                  format: date-time
           multipart/form-data:
             schema:
               type: object
@@ -600,6 +618,12 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/MealResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/meals/{meal_id}:
     get:
@@ -632,6 +656,17 @@ paths:
       tags: [Health Metrics]
       summary: List health metrics
       parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
         - name: metric_type
           in: query
           schema:
@@ -662,6 +697,12 @@ paths:
                       $ref: "#/components/schemas/HealthMetric"
                   meta:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          description: Invalid query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ── Chat ──────────────────────────────────────────────────────────────────
   /v1/conversations:

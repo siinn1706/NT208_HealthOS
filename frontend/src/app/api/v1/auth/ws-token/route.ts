@@ -4,12 +4,13 @@
  */
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
 
 export async function GET() {
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get("core_access_token")?.value ?? null;
+  const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
 
   if (!accessToken) {
     return NextResponse.json(
