@@ -2,20 +2,17 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { usePathname } from "@/navigation";
 import { Download, Share2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ReportQuickActionsProps {
   locale: string;
-  reportId: string;
   onExportPdf?: () => void;
   onShare?: () => void;
 }
 
 export function ReportQuickActions({
   locale,
-  reportId,
   onExportPdf,
   onShare,
 }: ReportQuickActionsProps) {

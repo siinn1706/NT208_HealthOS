@@ -209,8 +209,6 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                 </Label>
                 <AnimatePresence initial={false}>
                   {fields.map((field, index) => {
-                    const isMatched =
-                      watchedIngredients?.[index]?.is_matched ?? false;
                     const name =
                       watchedIngredients?.[index]?.ingredient_name ?? "";
                     const grams = watchedIngredients?.[index]?.grams ?? 0;

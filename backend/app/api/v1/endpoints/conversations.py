@@ -97,6 +97,31 @@ async def list_pending_conversations(
     return ConversationListResponse(data=convs, total=len(convs))
 
 
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationDTO,
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Get a single conversation",
+)
+async def get_conversation(
+    conversation_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationDTO:
+    conv = await chat_svc.get_conversation_by_id(db, conversation_id, current_user.id)
+    if conv is None:
+        raise _http_error(404, "CHAT_NOT_FOUND", "Conversation not found.")
+
+    # Require accepted membership for detail access
+    try:
+        await chat_svc.assert_member(db, conversation_id, current_user.id)
+    except ValueError as exc:
+        raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+
+    presence_map = ws_manager.get_presence_map()
+    return await chat_svc._build_conversation_dto(db, conv, current_user.id, presence_map)
+
+
 @router.post(
     "/conversations/direct",
     response_model=ConversationDTO,
@@ -130,7 +155,7 @@ async def create_direct_conversation(
 
 
 @router.post(
-    "/conversations/group",
+    "/conversations",
     response_model=ConversationDTO,
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
@@ -240,7 +265,7 @@ async def send_message(
     # Broadcast to all members in the conversation room
     await _notify_conversation(
         conversation_id,
-        "message.new",
+        "chat.message.sent",
         msg.model_dump(mode="json"),
     )
     return msg
@@ -266,7 +291,7 @@ async def edit_message(
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
 
-    await _notify_conversation(conversation_id, "message.edited", msg.model_dump(mode="json"))
+    await _notify_conversation(conversation_id, "chat.message.edited", msg.model_dump(mode="json"))
     return msg
 
 
@@ -292,11 +317,11 @@ async def recall_message(
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
 
-    await _notify_conversation(conversation_id, "message.recalled", msg.model_dump(mode="json"))
+    await _notify_conversation(conversation_id, "chat.message.recalled", msg.model_dump(mode="json"))
     return msg
 
 
-# ─── Reaction endpoints ────────────────────────────────────────────────────────
+# ─── Reaction endpoints ───────────────────────────────────────────────────────
 
 @router.post(
     "/conversations/{conversation_id}/messages/{message_id}/reactions",
@@ -318,7 +343,7 @@ async def react_to_message(
     except ValueError as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
 
-    await _notify_conversation(conversation_id, "message.reacted", msg.model_dump(mode="json"))
+    await _notify_conversation(conversation_id, "chat.message.reacted", msg.model_dump(mode="json"))
     return msg
 
 
@@ -359,7 +384,7 @@ async def pin_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     await _notify_conversation(
         conversation_id,
-        "message.pinned",
+        "chat.message.pinned",
         {"message_id": str(message_id), "conversation_id": str(conversation_id)},
     )
 
@@ -382,7 +407,7 @@ async def unpin_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     await _notify_conversation(
         conversation_id,
-        "message.unpinned",
+        "chat.message.unpinned",
         {"message_id": str(message_id), "conversation_id": str(conversation_id)},
     )
 
@@ -407,7 +432,7 @@ async def mark_read(
     # Notify room so senders see double-tick
     await _notify_conversation(
         conversation_id,
-        "message.read",
+        "chat.message.read",
         {
             "user_id": str(current_user.id),
             "last_read_message_id": str(body.last_read_message_id),

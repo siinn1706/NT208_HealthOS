@@ -1,0 +1,35 @@
+from __future__ import annotations
+
+import datetime
+import uuid
+
+from pydantic import BaseModel, ConfigDict
+
+from app.schemas.common import DataResponse, PaginatedResponse
+
+
+class NutritionResult(BaseModel):
+    calories: float | None = None
+    protein_g: float | None = None
+    carbs_g: float | None = None
+    fat_g: float | None = None
+    confidence: float | None = None
+
+
+class MealResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    status: str
+    nutrition_result: NutritionResult | None = None
+    logged_at: datetime.datetime
+    created_at: datetime.datetime
+
+
+class MealDataResponse(DataResponse[MealResponse]):
+    ...
+
+
+class MealListResponse(PaginatedResponse[MealResponse]):
+    ...

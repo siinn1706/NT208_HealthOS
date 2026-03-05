@@ -65,6 +65,13 @@ class ResetPasswordBody(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+class LoginBody(BaseModel):
+    """Request body for email + password login."""
+
+    email: EmailStr
+    password: str = Field(min_length=1)
+
+
 class AuthToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -75,6 +82,15 @@ class AuthToken(BaseModel):
 
 
 class AuthTokenResponse(DataResponse[AuthToken]):
+    ...
+
+
+class WsTicket(BaseModel):
+    ws_ticket: str
+    expires_in_seconds: int
+
+
+class WsTicketResponse(DataResponse[WsTicket]):
     ...
 
 

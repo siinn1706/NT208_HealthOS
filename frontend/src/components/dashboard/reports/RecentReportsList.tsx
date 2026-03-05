@@ -3,10 +3,9 @@ import Link from "next/link";
 import { FileText, Download, Share2, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { listRecentReports } from "@/lib/reports-data";
-import { statusBadgeVariant, statusColor, formatReportDate, formatPeriodLabel } from "@/lib/report-utils";
-import type { HealthStatus, ReportPeriod } from "@/types/api";
+import { statusBadgeVariant, formatReportDate, formatPeriodLabel } from "@/lib/report-utils";
+import type { HealthStatus } from "@/types/api";
 
 interface RecentReportsListProps {
   locale: string;
@@ -30,7 +29,7 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
       <div className="px-5 py-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">{t("recentReports")}</h3>
       </div>
-      {reports.map((report, idx) => (
+      {reports.map((report) => (
         <div key={report.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors">
           {/* Icon */}
           <div className="shrink-0 rounded-lg border border-border bg-muted/50 p-2">

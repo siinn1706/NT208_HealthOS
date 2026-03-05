@@ -1,7 +1,8 @@
 /**
  * Dashboard server-side data helpers.
  * These functions are called ONLY in Server Components (no "use client").
- * They access mock data directly for MVP; in V1 they proxy to Core BE.
+ * They first attempt to call the BFF /api/v1/dashboard/summary endpoint;
+ * fall back to static mock data when unavailable.
  */
 
 export interface DashboardSummary {
@@ -39,40 +40,70 @@ export interface ReminderItem {
 }
 
 // ---------------------------------------------------------------------------
-// Mock data — replace with fetch() calls to Core BE in V1
+// Static mock fallback (used when BFF / Core BE is unavailable)
+// ---------------------------------------------------------------------------
+
+const MOCK_SUMMARY: DashboardSummary = {
+  userName: "Nguyễn Văn A",
+  alerts: [
+    {
+      id: "alert-1",
+      type: "warning",
+      message: "Nhịp tim của bạn cao hơn mức bình thường trong 10 phút vừa qua.",
+    },
+    {
+      id: "alert-2",
+      type: "info",
+      message: "Bạn chưa ghi nhật ký bữa trưa hôm nay.",
+    },
+  ],
+  kpis: {
+    caloriesBurned: { current: 1240, target: 2000 },
+    sleepScore: { current: 78, target: 100 },
+    heartRate: { current: 74, target: 100 },
+    steps: { current: 6800, target: 10000 },
+  },
+  goals: [
+    { id: "g-1", key: "water", current: 1500, target: 2000, unit: "ml" },
+    { id: "g-2", key: "steps", current: 6800, target: 10000, unit: "bước" },
+    { id: "g-3", key: "calories", current: 1240, target: 2000, unit: "kcal" },
+  ],
+  aiInsight: {
+    text: "Dựa trên nhịp tim và số bước hôm nay, bạn nên đi bộ thêm khoảng 20 phút để đạt mục tiêu. Uống thêm 500ml nước để cải thiện hiệu suất vận động.",
+    category: "activity",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Data access helpers
 // ---------------------------------------------------------------------------
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  return {
-    userName: "Nguyễn Văn A",
-    alerts: [
-      {
-        id: "alert-1",
-        type: "warning",
-        message: "Nhịp tim của bạn cao hơn mức bình thường trong 10 phút vừa qua.",
-      },
-      {
-        id: "alert-2",
-        type: "info",
-        message: "Bạn chưa ghi nhật ký bữa trưa hôm nay.",
-      },
-    ],
-    kpis: {
-      caloriesBurned: { current: 1240, target: 2000 },
-      sleepScore: { current: 78, target: 100 },
-      heartRate: { current: 74, target: 100 },
-      steps: { current: 6800, target: 10000 },
-    },
-    goals: [
-      { id: "g-1", key: "water", current: 1500, target: 2000, unit: "ml" },
-      { id: "g-2", key: "steps", current: 6800, target: 10000, unit: "bước" },
-      { id: "g-3", key: "calories", current: 1240, target: 2000, unit: "kcal" },
-    ],
-    aiInsight: {
-      text: "Dựa trên nhịp tim và số bước hôm nay, bạn nên đi bộ thêm khoảng 20 phút để đạt mục tiêu. Uống thêm 500ml nước để cải thiện hiệu suất vận động.",
-      category: "activity",
-    },
-  };
+  // Server Components run on Node.js — use absolute URL for the BFF
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  try {
+    const res = await fetch(`${appUrl}/api/v1/dashboard/summary`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const d = json?.data;
+      if (d) {
+        return {
+          userName: d.user_name ?? MOCK_SUMMARY.userName,
+          alerts: d.alerts ?? MOCK_SUMMARY.alerts,
+          kpis: d.kpis ?? MOCK_SUMMARY.kpis,
+          goals: d.goals ?? MOCK_SUMMARY.goals,
+          aiInsight: d.ai_insight
+            ? { text: d.ai_insight.text, category: d.ai_insight.category }
+            : MOCK_SUMMARY.aiInsight,
+        };
+      }
+    }
+  } catch {
+    // BFF unavailable (build-time / test) — use mock
+  }
+  return MOCK_SUMMARY;
 }
 
 export async function getVitalsTimeseries(): Promise<VitalPoint[]> {

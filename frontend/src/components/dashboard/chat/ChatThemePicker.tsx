@@ -72,6 +72,7 @@ export function ChatThemePicker({
   const [opacity, setOpacity]         = useState(initialOpacity);
 
   // Sync opacity each time the dialog is freshly opened
+  /* eslint-disable react-hooks/set-state-in-effect */
   // Also eagerly preload the active pattern so the preview strip loads fast
   useEffect(() => {
     if (open) {
@@ -81,6 +82,7 @@ export function ChatThemePicker({
       }
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const displayGradId = hoverGradId !== undefined ? hoverGradId : currentGradId;
   const displayPatId  = hoverPatId  !== undefined ? hoverPatId  : currentPatId;

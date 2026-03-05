@@ -456,6 +456,8 @@ export async function getTrendAnalysis(
   const trend: TrendDirection =
     Math.abs(changePercent) < 3 ? "stable" : changePercent > 0 ? "improving" : "declining";
 
+  const stats = { average: Math.round(yMean) };
+
   const aiSummaryMap: Record<string, string> = {
     heart_rate: `Nhịp tim của bạn có xu hướng ${changePercent > 0 ? "tăng" : "giảm"} ${Math.abs(changePercent)}% trong ${days} ngày qua. ${anomalies.length > 0 ? `Phát hiện ${anomalies.length} điểm bất thường cần chú ý.` : "Không có điểm bất thường đáng lo ngại."}`,
     steps: `Số bước đi bộ ${changePercent > 0 ? "đang tăng dần" : "có xu hướng giảm"} (${Math.abs(changePercent)}%). ${stats.average > 8000 ? "Tốt! Bạn đang duy trì mức hoạt động lành mạnh." : "Nên tăng cường đi bộ để đạt mục tiêu 10,000 bước/ngày."}`,
@@ -463,8 +465,6 @@ export async function getTrendAnalysis(
     calories: `Lượng calo nạp ${changePercent > 0 ? "tăng" : "giảm"} ${Math.abs(changePercent)}%. Hãy duy trì mức ${cfg.base} kcal/ngày theo kế hoạch dinh dưỡng của bạn.`,
     bmi: `BMI ${changePercent > 0 ? "có xu hướng tăng" : "đang cải thiện dần"}. ${yMean < 25 ? "Trong ngưỡng bình thường." : yMean < 30 ? "Cần theo dõi và kiểm soát cân nặng." : "Cần can thiệp chuyên sâu về dinh dưỡng và vận động."}`,
   };
-
-  const stats = { average: Math.round(yMean) };
 
   return {
     metric,

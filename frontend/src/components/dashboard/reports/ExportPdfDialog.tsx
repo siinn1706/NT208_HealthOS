@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { HealthReport, ReportSection } from "@/types/api";
+import type { HealthReport } from "@/types/api";
 import {
   Dialog,
   DialogContent,
@@ -16,12 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-
-interface ExportPdfButtonProps {
-  report?: HealthReport;
-  section?: ReportSection;
-  variant?: "button" | "icon";
-}
 
 // ─── PDF generation (client-side, no external lib needed for MVP) ────────────
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTranslations } from "next-intl";
 import { EChartWrapper } from "@/components/charts/EChartWrapper";
 import type { EChartsOption } from "echarts-for-react";
 import type { ReportSection } from "@/types/api";

@@ -102,6 +102,9 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
 
     try:
         payload = decode_access_token(token)
+        token_type = payload.get("typ")
+        if token_type != "ws_ticket":
+            raise JWTError("invalid token type for websocket")
         user_id_str = payload.get("sub", "")
         user_id = uuid.UUID(user_id_str)
     except (JWTError, ValueError, TypeError):

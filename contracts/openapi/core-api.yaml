@@ -488,6 +488,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /v1/auth/ws-ticket:
+    get:
+      tags: [Auth]
+      summary: Issue short-lived WebSocket ticket
+      description: |
+        Returns a short-lived JWT ticket with `typ=ws_ticket`.
+        This ticket is intended only for WebSocket `/ws` authentication.
+      responses:
+        "200":
+          description: WS ticket issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ws_ticket:
+                        type: string
+                      expires_in_seconds:
+                        type: integer
+                        example: 120
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /v1/users/me:
     get:
       tags: [Users]
@@ -540,11 +570,29 @@ paths:
                       $ref: "#/components/schemas/MealResponse"
                   meta:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          description: Invalid query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       tags: [Meals]
       summary: Create a meal log (with optional image upload)
       requestBody:
         content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                notes:
+                  type: string
+                logged_at:
+                  type: string
+                  format: date-time
           multipart/form-data:
             schema:
               type: object
@@ -570,6 +618,12 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/MealResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/meals/{meal_id}:
     get:
@@ -602,6 +656,17 @@ paths:
       tags: [Health Metrics]
       summary: List health metrics
       parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
         - name: metric_type
           in: query
           schema:
@@ -632,6 +697,12 @@ paths:
                       $ref: "#/components/schemas/HealthMetric"
                   meta:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          description: Invalid query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ── Chat ──────────────────────────────────────────────────────────────────
   /v1/conversations:
@@ -805,15 +876,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Request accepted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ConversationDTO"
 
   /v1/conversations/{conversation_id}/reject:
     post:
@@ -824,27 +888,9 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                delete_history:
-                  type: boolean
-                  default: false
       responses:
-        "200":
+        "204":
           description: Request rejected
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
   /v1/conversations/{conversation_id}/messages:
     get:
@@ -1023,27 +1069,20 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [last_read_message_id]
               properties:
-                last_message_id:
+                last_read_message_id:
                   type: string
                   format: uuid
-                  description: Optional — if omitted, marks all current messages as read
+                  description: Last read message id in this conversation
       responses:
-        "200":
+        "204":
           description: Read receipt updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
   /v1/conversations/{conversation_id}/pinned:
     get:
@@ -1081,17 +1120,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Message pinned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
     delete:
       tags: [Chat]
       summary: Unpin a message
@@ -1105,17 +1135,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Message unpinned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
   /v1/users/lookup:
     get:
@@ -1145,10 +1166,11 @@ paths:
       tags: [WebSocket]
       summary: Open a persistent WebSocket connection
       description: |
-        Connect with a valid JWT token obtained from GET /v1/auth/ws-token (BFF).
+        Connect with a valid short-lived WS ticket obtained via BFF `GET /api/v1/auth/ws-token`
+        (which exchanges session for Core `GET /v1/auth/ws-ticket`).
 
         **Query parameters:**
-        - `token` (required): Short-lived JWT (same as access_token)
+        - `token` (required): Short-lived JWT ticket (`typ=ws_ticket`)
 
         **Close codes:**
         - `4001` — JWT invalid or expired (re-fetch token and reconnect)
@@ -1161,14 +1183,14 @@ paths:
         | `client:hello` | Handshake, sent immediately after open |
         | `pong` | Reply to server `ping` |
         | `conv:join` | Subscribe to room events for a conversation |
-        | `msg:send` | Send a message |
-        | `msg:edit` | Edit own message |
-        | `msg:delete` | Recall own message |
-        | `msg:react` | Toggle emoji reaction |
+        | `msg:send` / `chat.message.send` | Send a message |
+        | `msg:edit` / `chat.message.edit` | Edit own message |
+        | `msg:delete` / `chat.message.recall` | Recall own message |
+        | `msg:react` / `chat.message.react` | Toggle emoji reaction |
         | `msg:pin` | Pin a message |
         | `msg:unpin` | Unpin a message |
-        | `msg:read` | Mark conversation as read |
-        | `typing` | Broadcast typing indicator |
+        | `msg:read` / `chat.message.read` | Mark conversation as read |
+        | `typing` / `chat.typing` | Broadcast typing indicator |
         | `conv:sync` | Request full conversation list refresh |
 
         **Server → Client events:**
@@ -1176,16 +1198,14 @@ paths:
         | event | description |
         |-------|-------------|
         | `ping` | Heartbeat (reply with `pong`) |
-        | `presence` | Online/offline status update |
-        | `msg:new` | New message in a subscribed room |
-        | `msg:edited` | Message was edited |
-        | `msg:recalled` | Message was recalled |
-        | `msg:reacted` | Reaction added or removed |
-        | `msg:pinned` | Message was pinned |
-        | `msg:unpinned` | Message was unpinned |
-        | `typing` | User is/stopped typing |
-        | `conv:accepted` | Stranger request accepted |
-        | `conv:rejected` | Stranger request rejected |
+        | `user.status` | Online/offline status update |
+        | `msg:new` + `chat.message.sent` | New message in a subscribed room |
+        | `msg:edit` + `chat.message.edited` | Message was edited |
+        | `msg:delete` + `chat.message.recalled` | Message was recalled |
+        | `msg:react` + `chat.message.reacted` | Reaction added or removed |
+        | `msg:pinned` + `chat.message.pinned` | Message was pinned |
+        | `msg:unpinned` + `chat.message.unpinned` | Message was unpinned |
+        | `typing` + `chat.typing` | User is/stopped typing |
         | `error` | Event processing error |
       parameters:
         - name: token

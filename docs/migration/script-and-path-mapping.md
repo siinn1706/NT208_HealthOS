@@ -13,6 +13,7 @@ Cấu trúc thư mục đã được chuẩn hoá theo kiến trúc hệ thống
 | `start_FE.bat` | `infra/scripts/start_fe.ps1` hoặc `cd frontend && npm run dev` | Port 3000, giữ nguyên |
 | `start_BE.bat` | `infra/scripts/start_be.ps1` hoặc `cd backend && uvicorn app.main:app --reload` | Port 8000, giữ nguyên |
 | `start_ALL.bat` | `docker compose -f infra/docker/docker-compose.dev.yml up` | Khởi động toàn bộ stack |
+| _(chưa có)_ | `infra/scripts/db.ps1` | Quản lý DB local: status, up/stop, psql, migrate, dump/restore |
 | `start_client_1.bat` | `cd frontend && PORT=3001 npm run dev` | Testing multi-client |
 | `start_client_2.bat` | `cd frontend && PORT=3002 npm run dev` | Testing multi-client |
 | _(chưa có)_ | `infra/scripts/start_ai_worker.ps1` | AI Worker port 8001 |

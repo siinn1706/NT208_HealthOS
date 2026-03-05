@@ -36,6 +36,8 @@ from app.schemas.chat import (
     UserLookupResult,
 )
 
+AI_CONVERSATION_TITLE = "HealthOS AI Assistant"
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Helper: build DTOs from ORM rows
@@ -192,6 +194,53 @@ async def _build_conversation_dto(
     )
 
 
+async def _ensure_ai_conversation(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> Conversation:
+    existing_result = await db.execute(
+        select(Conversation)
+        .join(
+            ConversationMember,
+            and_(
+                ConversationMember.conversation_id == Conversation.id,
+                ConversationMember.user_id == user_id,
+                ConversationMember.is_accepted.is_(True),
+            ),
+        )
+        .where(Conversation.type == ConversationTypeEnum.AI)
+        .options(
+            selectinload(Conversation.members)
+            .selectinload(ConversationMember.user)
+            .selectinload(User.profile),
+        )
+        .limit(1)
+    )
+    existing = existing_result.scalar_one_or_none()
+    if existing:
+        return existing
+
+    conv = Conversation(
+        type=ConversationTypeEnum.AI,
+        title=AI_CONVERSATION_TITLE,
+        created_by=user_id,
+    )
+    db.add(conv)
+    await db.flush()
+
+    db.add(
+        ConversationMember(
+            conversation_id=conv.id,
+            user_id=user_id,
+            role="owner",
+            is_accepted=True,
+        )
+    )
+    await db.flush()
+
+    return await _reload_conversation(db, conv.id)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Conversation operations
 # ──────────────────────────────────────────────────────────────────────────────
@@ -202,6 +251,8 @@ async def get_conversations(
     presence_map: dict[str, bool] | None = None,
 ) -> list[ConversationDTO]:
     """Return accepted conversations for a user, sorted by latest message."""
+    await _ensure_ai_conversation(db, user_id)
+
     result = await db.execute(
         select(Conversation)
         .join(

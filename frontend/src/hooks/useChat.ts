@@ -21,9 +21,13 @@ import type {
 
 // Keep mock data as dev fallback only
 import {
+  MOCK_CONVERSATIONS,
+  MOCK_MESSAGES,
   MOCK_STRANGER_REQUESTS,
   CURRENT_USER_ID,
 } from "@/data/chat";
+
+const AI_CONVERSATION = MOCK_CONVERSATIONS.find((conversation) => conversation.type === "ai")!;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // API response → frontend type adapters
@@ -85,7 +89,7 @@ function adaptMessage(m: any): Message {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptConversation(c: any): Conversation {
   const participants: ChatParticipant[] = (c.participants ?? []).map(adaptParticipant);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const lastMsg = c.last_message ? adaptMessage(c.last_message) : undefined;
 
   return {
@@ -96,6 +100,7 @@ function adaptConversation(c: any): Conversation {
     participants,
     last_message: lastMsg
       ? {
+          id: lastMsg.id,
           content: lastMsg.content,
           sender_id: lastMsg.sender_id,
           created_at: lastMsg.created_at,
@@ -116,26 +121,37 @@ function adaptConversation(c: any): Conversation {
 // useConversations
 // ──────────────────────────────────────────────────────────────────────────────
 export function useConversations() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([AI_CONVERSATION]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Initial load
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     bffFetch<{ data: unknown[] }>("/api/v1/conversations")
       .then(({ data }) => {
         if (!cancelled) {
-          setConversations(data.map(adaptConversation));
+          const apiConversations = data.map(adaptConversation);
+          const apiAiConversation = apiConversations.find(
+            (conversation) => conversation.type === "ai"
+          );
+          const nonAiConversations = apiConversations.filter(
+            (conversation) => conversation.type !== "ai"
+          );
+          setConversations([
+            apiAiConversation ?? AI_CONVERSATION,
+            ...nonAiConversations,
+          ]);
         }
       })
       .catch(() => {
-        // API unavailable — start empty (do NOT load mock to avoid confusion)
-        if (!cancelled) setConversations([]);
+        if (!cancelled) setConversations([AI_CONVERSATION]);
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const sortedConversations = useMemo(() => [...conversations].sort((a, b) => {
     if (a.type === "ai") return -1;
@@ -185,10 +201,19 @@ export function useConversations() {
     );
   }, []);
 
-  const markAsRead = useCallback(async (id: string) => {
+  const markAsRead = useCallback(async (id: string, lastReadMessageId?: string) => {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unread_count: 0 } : c))
     );
+    if (!lastReadMessageId) return;
+    try {
+      await bffFetch(`/api/v1/conversations/${id}/read`, {
+        method: "POST",
+        body: { last_read_message_id: lastReadMessageId },
+      });
+    } catch {
+      // keep optimistic local state
+    }
   }, []);
 
   const updateLastMessage = useCallback(
@@ -199,6 +224,7 @@ export function useConversations() {
             ? {
                 ...c,
                 last_message: {
+                  id: message.id,
                   content: message.content,
                   sender_id: message.sender_id,
                   created_at: message.created_at,
@@ -214,9 +240,37 @@ export function useConversations() {
     []
   );
 
+  const applyIncomingMessage = useCallback(
+    (raw: unknown, activeConversationId: string | null) => {
+      const message = adaptMessage(raw);
+      setConversations((prev) =>
+        prev.map((conversation) => {
+          if (conversation.id !== message.conversation_id) return conversation;
+          const shouldIncreaseUnread = activeConversationId !== conversation.id;
+          return {
+            ...conversation,
+            last_message: {
+              id: message.id,
+              content: message.content,
+              sender_id: message.sender_id,
+              created_at: message.created_at,
+              type: message.type,
+              is_recalled: message.is_recalled,
+            },
+            updated_at: message.created_at,
+            unread_count: shouldIncreaseUnread
+              ? conversation.unread_count + 1
+              : conversation.unread_count,
+          };
+        })
+      );
+    },
+    []
+  );
+
   const createConversation = useCallback(async (targetUserId: string): Promise<Conversation | null> => {
     try {
-      const result = await bffFetch<{ data: unknown }>("/api/v1/conversations", {
+      const result = await bffFetch<{ data: unknown }>("/api/v1/conversations/direct", {
         method: "POST",
         body: { target_user_id: targetUserId },
       });
@@ -240,6 +294,7 @@ export function useConversations() {
     setTheme,
     markAsRead,
     updateLastMessage,
+    applyIncomingMessage,
     createConversation,
     upsertConversation,
   };
@@ -256,11 +311,23 @@ export function useMessages(conversationId: string | null) {
   const lastCursorRef = useRef<string | null>(null);
 
   // Load messages when conversationId changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
+      setHasMore(false);
+      setIsLoading(false);
       return;
     }
+
+    if (conversationId === "conv-ai") {
+      setMessages(MOCK_MESSAGES["conv-ai"] ?? []);
+      setHasMore(false);
+      lastCursorRef.current = null;
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setIsLoading(true);
     lastCursorRef.current = null;
@@ -283,6 +350,7 @@ export function useMessages(conversationId: string | null) {
 
     return () => { cancelled = true; };
   }, [conversationId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   /** Load older messages (scroll-up pagination). */
   const loadMore = useCallback(async () => {
@@ -533,7 +601,7 @@ export function useStrangerRequests() {
     let cancelled = false;
     bffFetch<{ data: unknown[] }>("/api/v1/conversations/pending")
       .then(({ data }) => {
-        if (!cancelled && data.length > 0) {
+        if (!cancelled) {
           // Adapt to StrangerRequest shape from conversation DTOs
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const adapted: StrangerRequest[] = data.map((c: any) => {

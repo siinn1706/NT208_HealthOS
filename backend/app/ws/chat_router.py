@@ -8,14 +8,14 @@ Protocol (client → server):
 Supported event types:
   client:hello   → server:hello (handshake)
   conv:join      → join a conversation room (membership verified)
-  msg:send       → persist + broadcast msg:new
-  msg:edit       → persist + broadcast msg:edit
-  msg:delete     → soft-delete + broadcast msg:delete
-  msg:react      → toggle reaction + broadcast msg:react
+    msg:send / chat.message.send      → persist + broadcast msg:new + chat.message.sent
+    msg:edit / chat.message.edit      → persist + broadcast msg:edit + chat.message.edited
+    msg:delete / chat.message.recall  → soft-delete + broadcast msg:delete + chat.message.recalled
+    msg:react / chat.message.react    → toggle reaction + broadcast msg:react + chat.message.reacted
   msg:pin        → pin + broadcast msg:pinned
   msg:unpin      → unpin + broadcast msg:unpinned
-  msg:read       → mark read + broadcast msg:read to sender
-  typing         → broadcast typing indicator (exclude sender)
+    msg:read / chat.message.read      → mark read + broadcast msg:read + chat.message.read
+    typing / chat.typing              → broadcast typing indicator (exclude sender)
   conv:sync      → delta sync messages since cursor
   pong           → heartbeat reply (no-op)
 """
@@ -50,6 +50,25 @@ async def handle_ws_event(
             "payload": {"code": code, "message": message},
             "timestamp": ts_now(),
         })
+
+    async def broadcast_dual(
+        room: str,
+        payload_data: dict[str, Any],
+        legacy_event: str,
+        contract_event: str,
+        *,
+        exclude: WebSocket | None = None,
+    ) -> None:
+        await manager.broadcast(
+            room,
+            {"event": legacy_event, "payload": payload_data, "timestamp": ts_now()},
+            exclude_ws=exclude,
+        )
+        await manager.broadcast(
+            room,
+            {"event": contract_event, "payload": payload_data, "timestamp": ts_now()},
+            exclude_ws=exclude,
+        )
 
     # ── Handshake ─────────────────────────────────────────────────────────────
     if event_type == "client:hello":
@@ -104,7 +123,7 @@ async def handle_ws_event(
         }, exclude_ws=ws)
 
     # ── Send message ───────────────────────────────────────────────────────────
-    elif event_type == "msg:send":
+    elif event_type in {"msg:send", "chat.message.send"}:
         if not manager.check_rate_limit(user_id_str):
             await ack_error("RATE_LIMITED", "You are sending messages too fast.")
             return
@@ -156,14 +175,10 @@ async def handle_ws_event(
 
         # Broadcast to room (excluding sender's socket — they already got ack)
         room = f"conv:{conv_id}"
-        await manager.broadcast(room, {
-            "event": "msg:new",
-            "payload": msg_data,
-            "timestamp": ts_now(),
-        }, exclude_ws=ws)
+        await broadcast_dual(room, msg_data, "msg:new", "chat.message.sent", exclude=ws)
 
     # ── Edit message ───────────────────────────────────────────────────────────
-    elif event_type == "msg:edit":
+    elif event_type in {"msg:edit", "chat.message.edit"}:
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         content = payload.get("content", "")
@@ -184,12 +199,13 @@ async def handle_ws_event(
             return
 
         await db.commit()
-        event_data = {"event": "msg:edit", "payload": msg_dto.model_dump(mode="json"), "timestamp": ts_now()}
+        payload_data = msg_dto.model_dump(mode="json")
+        event_data = {"event": "msg:edit", "payload": payload_data, "timestamp": ts_now()}
         await manager.send_to_ws(ws, {**event_data, "event": "msg:edit:ack"})
-        await manager.broadcast(f"conv:{conv_id}", event_data, exclude_ws=ws)
+        await broadcast_dual(f"conv:{conv_id}", payload_data, "msg:edit", "chat.message.edited", exclude=ws)
 
     # ── Delete / recall message ────────────────────────────────────────────────
-    elif event_type == "msg:delete":
+    elif event_type in {"msg:delete", "chat.message.recall"}:
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         delete_for_everyone = bool(payload.get("delete_for_everyone", True))
@@ -210,12 +226,13 @@ async def handle_ws_event(
             return
 
         await db.commit()
-        event_data = {"event": "msg:delete", "payload": msg_dto.model_dump(mode="json"), "timestamp": ts_now()}
+        payload_data = msg_dto.model_dump(mode="json")
+        event_data = {"event": "msg:delete", "payload": payload_data, "timestamp": ts_now()}
         await manager.send_to_ws(ws, {**event_data, "event": "msg:delete:ack"})
-        await manager.broadcast(f"conv:{conv_id}", event_data, exclude_ws=ws)
+        await broadcast_dual(f"conv:{conv_id}", payload_data, "msg:delete", "chat.message.recalled", exclude=ws)
 
     # ── React to message ───────────────────────────────────────────────────────
-    elif event_type == "msg:react":
+    elif event_type in {"msg:react", "chat.message.react"}:
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         emoji = payload.get("emoji", "")
@@ -236,9 +253,10 @@ async def handle_ws_event(
             return
 
         await db.commit()
-        event_data = {"event": "msg:react", "payload": msg_dto.model_dump(mode="json"), "timestamp": ts_now()}
+        payload_data = msg_dto.model_dump(mode="json")
+        event_data = {"event": "msg:react", "payload": payload_data, "timestamp": ts_now()}
         await manager.send_to_ws(ws, {**event_data, "event": "msg:react:ack"})
-        await manager.broadcast(f"conv:{conv_id}", event_data, exclude_ws=ws)
+        await broadcast_dual(f"conv:{conv_id}", payload_data, "msg:react", "chat.message.reacted", exclude=ws)
 
     # ── Pin message ────────────────────────────────────────────────────────────
     elif event_type == "msg:pin":
@@ -260,7 +278,7 @@ async def handle_ws_event(
         await db.commit()
         pin_payload = {"conversation_id": conv_id_str, "message_id": msg_id_str}
         await manager.send_to_ws(ws, {"event": "msg:pin:ack", "payload": pin_payload, "timestamp": ts_now()})
-        await manager.broadcast(f"conv:{conv_id}", {"event": "msg:pinned", "payload": pin_payload, "timestamp": ts_now()}, exclude_ws=ws)
+        await broadcast_dual(f"conv:{conv_id}", pin_payload, "msg:pinned", "chat.message.pinned", exclude=ws)
 
     # ── Unpin message ──────────────────────────────────────────────────────────
     elif event_type == "msg:unpin":
@@ -282,10 +300,10 @@ async def handle_ws_event(
         await db.commit()
         unpin_payload = {"conversation_id": conv_id_str, "message_id": msg_id_str}
         await manager.send_to_ws(ws, {"event": "msg:unpin:ack", "payload": unpin_payload, "timestamp": ts_now()})
-        await manager.broadcast(f"conv:{conv_id}", {"event": "msg:unpinned", "payload": unpin_payload, "timestamp": ts_now()}, exclude_ws=ws)
+        await broadcast_dual(f"conv:{conv_id}", unpin_payload, "msg:unpinned", "chat.message.unpinned", exclude=ws)
 
     # ── Mark as read ───────────────────────────────────────────────────────────
-    elif event_type == "msg:read":
+    elif event_type in {"msg:read", "chat.message.read"}:
         conv_id_str = payload.get("conversation_id", "")
         last_msg_id_str = payload.get("last_read_message_id", "")
         try:
@@ -304,14 +322,10 @@ async def handle_ws_event(
             "last_read_message_id": last_msg_id_str,
         }
         # Broadcast to the whole room so senders see read receipt
-        await manager.broadcast(f"conv:{conv_id}", {
-            "event": "msg:read",
-            "payload": read_payload,
-            "timestamp": ts_now(),
-        })
+        await broadcast_dual(f"conv:{conv_id}", read_payload, "msg:read", "chat.message.read")
 
     # ── Typing indicator ───────────────────────────────────────────────────────
-    elif event_type == "typing":
+    elif event_type in {"typing", "chat.typing"}:
         conv_id_str = payload.get("conversation_id", "")
         is_typing = bool(payload.get("is_typing", True))
         try:
@@ -320,15 +334,12 @@ async def handle_ws_event(
             return  # silently ignore malformed typing events
 
         # Broadcast to room but exclude sender
-        await manager.broadcast(f"conv:{conv_id}", {
-            "event": "typing",
-            "payload": {
-                "user_id": user_id_str,
-                "conversation_id": conv_id_str,
-                "is_typing": is_typing,
-            },
-            "timestamp": ts_now(),
-        }, exclude_ws=ws)
+        typing_payload = {
+            "user_id": user_id_str,
+            "conversation_id": conv_id_str,
+            "is_typing": is_typing,
+        }
+        await broadcast_dual(f"conv:{conv_id}", typing_payload, "typing", "chat.typing", exclude=ws)
 
     # ── Delta sync ─────────────────────────────────────────────────────────────
     elif event_type == "conv:sync":
