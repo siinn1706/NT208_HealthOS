@@ -25,6 +25,7 @@ export function ChatLayout() {
 
   const {
     conversations,
+    isLoading,
     pinConversation,
     muteConversation,
     deleteConversation,
@@ -114,6 +115,7 @@ export function ChatLayout() {
           conversations={conversations}
           activeId={activeId}
           strangerRequests={requests}
+          isLoading={isLoading}
           onSelectConversation={handleSelectConversation}
           onPinConversation={pinConversation}
           onMuteConversation={muteConversation}

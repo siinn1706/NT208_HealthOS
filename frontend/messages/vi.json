@@ -283,6 +283,14 @@
         "medicine": "Thuốc",
         "appointment": "Lịch khám",
         "exercise": "Vận động"
+      },
+      "form": {
+        "type": "Loại",
+        "reminderTitle": "Tên nhắc nhở",
+        "time": "Thời gian",
+        "repeat": "Lặp lại",
+        "note": "Ghi chú (tuỳ chọn)",
+        "cancel": "Hủy"
       }
     },
     "health": {

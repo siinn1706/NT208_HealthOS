@@ -1,7 +1,7 @@
 /**
  * Reports server-side data helpers.
  * Called ONLY in Server Components (no "use client").
- * Mock Phase 1 — V1 will proxy to Core BE /v1/reports.
+ * First attempts BFF call, falls back to computed mock data when unavailable.
  */
 
 import type {
@@ -17,6 +17,16 @@ import type {
   AnomalyPoint,
   TrendDirection,
 } from "@/types/api";
+
+// BFF TODO: GET /api/v1/reports?period=7d|30d|90d
+//   Trigger: Page load on /dashboard/reports
+//   Response: { data: HealthReport }
+//   Fallback: Computed from mock data
+
+// BFF TODO: GET /api/v1/reports/trends?metric=heart_rate&period=30d
+//   Trigger: Trend analysis widget
+//   Response: { data: TrendAnalysis }
+//   Fallback: Computed from mock data
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -346,6 +356,25 @@ function buildMedicationSection(dates: string[]): ReportSection {
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export async function getHealthReport(period: ReportPeriod = "7d"): Promise<HealthReport> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  // Try BFF first
+  try {
+    const res = await fetch(`${appUrl}/api/v1/reports?period=${period}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const data = json?.data;
+      if (data) {
+        return data as HealthReport;
+      }
+    }
+  } catch {
+    // BFF unavailable — fallback to computed mock
+  }
+
+  // Fallback: compute from mock algorithms
   const days = periodToDays(period);
   const dates = buildDates(days);
 
@@ -388,6 +417,25 @@ export async function getTrendAnalysis(
   metric: string,
   period: ReportPeriod = "30d"
 ): Promise<TrendAnalysis> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  // Try BFF first
+  try {
+    const res = await fetch(`${appUrl}/api/v1/reports/trends?metric=${metric}&period=${period}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const data = json?.data;
+      if (data) {
+        return data as TrendAnalysis;
+      }
+    }
+  } catch {
+    // BFF unavailable — fallback to computed mock
+  }
+
+  // Fallback: compute from mock algorithms
   const days = periodToDays(period);
   const dates = buildDates(days);
 

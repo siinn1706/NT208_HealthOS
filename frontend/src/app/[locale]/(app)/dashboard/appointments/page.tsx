@@ -1,6 +1,7 @@
 import { Stethoscope, Plus } from "lucide-react";
 import { MOCK_APPOINTMENTS } from "@/data/appointments";
 import { AppointmentHistoryTable } from "@/components/dashboard/appointments/AppointmentHistoryTable";
+import type { Appointment } from "@/data/appointments";
 
 // BFF TODO: GET /api/v1/appointments
 // Trigger: server-side page load
@@ -8,9 +9,27 @@ import { AppointmentHistoryTable } from "@/components/dashboard/appointments/App
 // Response: PaginatedResponse<Appointment>
 // Fallback: MOCK_APPOINTMENTS from @/data/appointments
 
+async function fetchAppointments(): Promise<Appointment[]> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  try {
+    const res = await fetch(`${appUrl}/api/v1/appointments?page=1&limit=50`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const data = json?.data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+    }
+  } catch {
+    // BFF unavailable — fallback to mock
+  }
+  return MOCK_APPOINTMENTS;
+}
+
 export default async function AppointmentsPage() {
-  // Server component — future: replace with real BFF fetch
-  const appointments = MOCK_APPOINTMENTS;
+  const appointments = await fetchAppointments();
 
   const totalCompleted = appointments.filter((a) => a.status === "completed").length;
   const totalUpcoming = appointments.filter((a) => a.status === "upcoming").length;

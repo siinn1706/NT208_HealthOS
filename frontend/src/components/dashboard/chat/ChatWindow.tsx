@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMessages, useTypingState } from "@/hooks/useChat";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
 import { PinnedMessages } from "./PinnedMessages";
 import { MessageList } from "./MessageList";
@@ -40,6 +41,7 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const {
     messages,
+    isLoading: isLoadingMessages,
     isTyping,
     sendMessage,
     editMessage,
@@ -213,17 +215,34 @@ export function ChatWindow({
           <PinnedMessages messages={pinnedMessages} onJump={handleJump} />
         )}
 
-        <MessageList
-          messages={messages}
-          isTyping={isTyping}
-          onReply={handleReply}
-          onEdit={handleEdit}
-          onRecall={handleRecall}
-          onDelete={handleDelete}
-          onReact={handleReact}
-          onPin={handlePin}
-          onForward={handleForward}
-        />
+        {isLoadingMessages ? (
+          <div className="flex-1 flex flex-col justify-end gap-2.5 px-4 pb-2 overflow-hidden">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className={`flex items-end gap-2 ${i % 3 === 0 ? "flex-row-reverse" : ""}`}
+              >
+                <Skeleton className="w-7 h-7 rounded-full flex-shrink-0" />
+                <Skeleton
+                  className="h-9 rounded-2xl"
+                  style={{ width: `${40 + (i * 13) % 35}%` }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <MessageList
+            messages={messages}
+            isTyping={isTyping}
+            onReply={handleReply}
+            onEdit={handleEdit}
+            onRecall={handleRecall}
+            onDelete={handleDelete}
+            onReact={handleReact}
+            onPin={handlePin}
+            onForward={handleForward}
+          />
+        )}
 
         {/* AI quick replies */}
         {conversation.type === "ai" && !replyTo && !editingMessage && (

@@ -106,14 +106,36 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   return MOCK_SUMMARY;
 }
 
+// BFF TODO: GET /api/v1/vitals/timeseries
+//   Trigger: Dashboard vitals chart
+//   Response: { data: VitalPoint[] }
+//   Fallback: Deterministic mock array (7 days)
+
 export async function getVitalsTimeseries(): Promise<VitalPoint[]> {
+  // Server Components run on Node.js — use absolute URL for the BFF
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  try {
+    const res = await fetch(`${appUrl}/api/v1/vitals/timeseries`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const data = json?.data;
+      if (data && Array.isArray(data)) {
+        return data;
+      }
+    }
+  } catch {
+    // BFF unavailable — fallback to mock
+  }
+
+  // Fallback: deterministic mock (7 days)
   const today = new Date();
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() - (6 - i));
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
-    // Deterministic values based on index (no Math.random for SSR stability)
     const offsets = [2, -1, 3, 0, 4, -2, 1];
     const bpOffsets = [0, 2, -1, 3, 0, 2, -2];
     return {
@@ -125,7 +147,28 @@ export async function getVitalsTimeseries(): Promise<VitalPoint[]> {
   });
 }
 
+// BFF TODO: GET /api/v1/reminders/upcoming
+//   Trigger: Dashboard upcoming reminders widget
+//   Response: { data: ReminderItem[] }
+//   Fallback: Hardcoded array
+
 export async function getUpcomingReminders(): Promise<ReminderItem[]> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  try {
+    const res = await fetch(`${appUrl}/api/v1/reminders/upcoming`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const data = json?.data;
+      if (data && Array.isArray(data)) {
+        return data;
+      }
+    }
+  } catch {
+    // BFF unavailable — fallback to mock
+  }
+
   return [
     { id: "r-1", type: "medicine", title: "Metformin 500mg", time: "08:00", done: false },
     { id: "r-2", type: "appointment", title: "Khám định kỳ - BS. Minh", time: "10:30", done: false },

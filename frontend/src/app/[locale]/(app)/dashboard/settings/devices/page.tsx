@@ -1,14 +1,29 @@
 import { Watch } from "lucide-react";
 import { DevicesPageClient } from "@/components/dashboard/settings/DevicesPageClient";
 
-// BFF TODO: GET /api/v1/devices/status
+// BFF TODO: GET /api/v1/devices
 // Trigger: server-side page load
-// Response: Device[]
+// Response: { data: Device[] }
 // Fallback: DevicesPageClient handles MOCK_DEVICES internally
 
+async function fetchDevices() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  try {
+    const res = await fetch(`${appUrl}/api/v1/devices`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json?.data ?? [];
+    }
+  } catch {
+    // BFF unavailable — DevicesPageClient will use mock
+  }
+  return undefined;
+}
+
 export default async function DevicesPage() {
-  // Future: const devices = await fetchBFF("/api/v1/devices/status");
-  // Pass as initialDevices prop to DevicesPageClient
+  const initialDevices = await fetchDevices();
 
   return (
     <div className="max-w-[960px] mx-auto space-y-5">
@@ -24,7 +39,7 @@ export default async function DevicesPage() {
       </div>
 
       {/* ── Client-driven device list ── */}
-      <DevicesPageClient />
+      <DevicesPageClient initialDevices={initialDevices} />
     </div>
   );
 }

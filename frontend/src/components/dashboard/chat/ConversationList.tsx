@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -24,6 +25,7 @@ interface ConversationListProps {
   conversations: Conversation[];
   activeId: string | null;
   strangerRequests: StrangerRequest[];
+  isLoading?: boolean;
   onSelectConversation: (id: string) => void;
   onPinConversation: (id: string) => void;
   onMuteConversation: (id: string) => void;
@@ -38,6 +40,7 @@ export function ConversationList({
   conversations,
   activeId,
   strangerRequests,
+  isLoading = false,
   onSelectConversation,
   onPinConversation,
   onMuteConversation,
@@ -117,21 +120,35 @@ export function ConversationList({
         <TabsContent value="all" className="flex-1 min-h-0 mt-0">
           <div className="h-full overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
             <div className="px-2 pb-4 space-y-0.5">
-              {filteredConversations.map((conv) => (
-                <ConversationItem
-                  key={conv.id}
-                  conversation={conv}
-                  isActive={activeId === conv.id}
-                  onClick={() => onSelectConversation(conv.id)}
-                  onPin={() => onPinConversation(conv.id)}
-                  onMute={() => onMuteConversation(conv.id)}
-                  onDelete={() => setDeleteConfirmId(conv.id)}
-                />
-              ))}
-              {filteredConversations.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground py-8">
-                  {t("noMessages")}
-                </p>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-xl">
+                    <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <Skeleton className="h-3.5 w-2/3 rounded" />
+                      <Skeleton className="h-3 w-4/5 rounded" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  {filteredConversations.map((conv) => (
+                    <ConversationItem
+                      key={conv.id}
+                      conversation={conv}
+                      isActive={activeId === conv.id}
+                      onClick={() => onSelectConversation(conv.id)}
+                      onPin={() => onPinConversation(conv.id)}
+                      onMute={() => onMuteConversation(conv.id)}
+                      onDelete={() => setDeleteConfirmId(conv.id)}
+                    />
+                  ))}
+                  {filteredConversations.length === 0 && (
+                    <p className="text-center text-sm text-muted-foreground py-8">
+                      {t("noMessages")}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>

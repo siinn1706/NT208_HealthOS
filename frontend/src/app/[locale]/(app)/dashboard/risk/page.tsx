@@ -1,12 +1,32 @@
 import { Brain, RefreshCw, ShieldCheck } from "lucide-react";
 import { MOCK_RISK_PREDICTIONS } from "@/data/risk";
 import { RiskGaugeRow } from "@/components/dashboard/risk/RiskGaugeRow";
+import type { RiskPredictionSummary } from "@/data/risk";
 
 // BFF TODO: GET /api/v1/health/risk-predictions
 // Trigger: server-side page load
 // Request: { timeframe: "current" }
-// Response: { risks: RiskItem[]; overallScore: number; generatedAt: string; disclaimer: string }
+// Response: { data: RiskPredictionSummary }
 // Fallback: MOCK_RISK_PREDICTIONS from @/data/risk
+
+async function fetchRiskPredictions(): Promise<RiskPredictionSummary> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  try {
+    const res = await fetch(`${appUrl}/api/v1/health/risk-predictions?timeframe=current`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const data = json?.data;
+      if (data) {
+        return data as RiskPredictionSummary;
+      }
+    }
+  } catch {
+    // BFF unavailable — fallback to mock
+  }
+  return MOCK_RISK_PREDICTIONS;
+}
 
 function HealthScoreRing({ score }: { score: number }) {
   // SVG ring — 120px, stroke-dashoffset based on score 0-100
@@ -61,8 +81,7 @@ function HealthScoreRing({ score }: { score: number }) {
 }
 
 export default async function RiskPage() {
-  // Server component — swap with real BFF fetch in V1
-  const data = MOCK_RISK_PREDICTIONS;
+  const data = await fetchRiskPredictions();
 
   const generated = new Date(data.generatedAt).toLocaleDateString("vi-VN", {
     day: "2-digit",

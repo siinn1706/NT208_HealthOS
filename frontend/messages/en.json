@@ -283,6 +283,14 @@
         "medicine": "Medicine",
         "appointment": "Appointment",
         "exercise": "Exercise"
+      },
+      "form": {
+        "type": "Type",
+        "reminderTitle": "Name",
+        "time": "Time",
+        "repeat": "Repeat",
+        "note": "Note (optional)",
+        "cancel": "Cancel"
       }
     },
     "health": {
