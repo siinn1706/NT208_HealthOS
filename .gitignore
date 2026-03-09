@@ -1,5 +1,8 @@
 # Scratch
 scratch/
+.claude/
+.github/
+CLAUDE.md
 
 # Node/Next.js
 node_modules/
