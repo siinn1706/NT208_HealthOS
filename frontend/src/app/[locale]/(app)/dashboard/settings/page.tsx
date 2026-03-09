@@ -149,7 +149,7 @@ export default function SettingsPage() {
           icon={Smartphone}
           label={t("settingsPage.account.devices")}
           description={t("settingsPage.account.devicesDesc")}
-          onClick={() => router.push(`/${locale}/dashboard/health`)}
+          onClick={() => router.push(`/${locale}/dashboard/settings/devices`)}
         />
       </SettingGroup>
 

@@ -19,6 +19,8 @@ import {
   HeartPulse,
   Trophy,
   Medal,
+  ClipboardList,
+  Brain,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -28,6 +30,8 @@ const NAV_ITEMS = [
   { key: "nutrition", icon: UtensilsCrossed, href: "/dashboard/meals" },
   { key: "vitalsDevices", icon: Activity, href: "/dashboard/health" },
   { key: "reminders", icon: Bell, href: "/dashboard/reminders" },
+  { key: "appointments", icon: ClipboardList, href: "/dashboard/appointments" },
+  { key: "risk", icon: Brain, href: "/dashboard/risk" },
   { key: "goals", icon: Target, href: "/dashboard/progress" },
   { key: "achievements", icon: Trophy, href: "/dashboard/achievements" },
   { key: "leaderboard", icon: Medal, href: "/dashboard/leaderboard" },
