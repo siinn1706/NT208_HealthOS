@@ -347,7 +347,7 @@ paths:
                   format: email
                 purpose:
                   type: string
-                  enum: [signup, reset_password]
+                  enum: [signup, reset_password, login]
                   default: signup
                 name:
                   type: string
@@ -412,9 +412,10 @@ paths:
                   minLength: 6
                   maxLength: 6
                   example: "482193"
+                  pattern: '^\d{6}$'
                 purpose:
                   type: string
-                  enum: [signup, reset_password]
+                  enum: [signup, reset_password, login]
                   default: signup
       responses:
         "200":
