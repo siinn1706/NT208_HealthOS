@@ -153,7 +153,7 @@ docker compose -f infra/docker/docker-compose.dev.yml exec postgres psql -U heal
 ```bash
 start_FE.bat             # Windows (legacy)
 # hoặc:
-cd frontend && npm install && npm run dev
+cd frontend && npm ci && npm run dev
 ```
 
 #### Backend (FastAPI)
@@ -164,8 +164,8 @@ cd backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1    # Windows
 # source .venv/bin/activate   # Unix
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 #### Chạy FE + BE cùng lúc
@@ -187,7 +187,7 @@ start_FE.bat
 ### Cách 2: Chạy thủ công
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -223,11 +223,20 @@ source .venv/bin/activate
 
 #### Cài dependencies và chạy server
 ```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 ## Chạy cả FE và BE cùng lúc
 ```bash
 start_ALL.bat
+```
+## Unified Start Command
+
+Use the orchestrator for consistent team startup:
+
+```bash
+.\start_ALL.bat
+# or
+.\infra\scripts\start_all.ps1 -Mode auto -Only all
 ```

@@ -1,23 +1,8 @@
-import { Medal, Star, Flame, Trophy, Info } from "lucide-react";
-import { getLeaderboard, getGamificationSummary } from "@/lib/gamification-data";
-import { GamificationSubNav } from "@/components/dashboard/gamification/GamificationSubNav";
-import { LeaderboardTable } from "@/components/dashboard/gamification/LeaderboardTable";
+import { ComingSoon } from "@/components/ui/ComingSoon";
 
-export default async function LeaderboardPage() {
-  const [entries, summary] = await Promise.all([
-    getLeaderboard(),
-    getGamificationSummary(),
-  ]);
-
-  const { currentUser, bmi } = summary;
-  const currentUserEntry = entries.find((e) => e.isCurrentUser);
-
-  return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Bảng xếp hạng</h1>
+export default function LeaderboardPage() {
+  return <ComingSoon />;
+}
           <p className="text-sm text-muted-foreground mt-0.5">
             So sánh điểm với cộng đồng — cập nhật theo tuần
           </p>

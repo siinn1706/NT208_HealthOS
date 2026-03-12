@@ -63,11 +63,15 @@ async def create_meal(
     user_id: uuid.UUID,
     name: str,
     logged_at: datetime.datetime | None,
+    image_url: str | None = None,
+    job_id: str | None = None,
 ) -> Meal:
     meal = Meal(
         user_id=user_id,
         name=name,
-        status=MealStatusEnum.PROCESSING,
+        image_url=image_url,
+        job_id=job_id,
+        status=MealStatusEnum.PROCESSING if job_id else MealStatusEnum.PENDING,
         nutrition_result=None,
         logged_at=logged_at or datetime.datetime.now(datetime.timezone.utc),
     )
@@ -83,3 +87,39 @@ async def get_meal_by_id(
 ) -> Meal | None:
     stmt = select(Meal).where(Meal.id == meal_id, Meal.user_id == user_id)
     return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def update_meal_result(
+    db: AsyncSession,
+    meal_id: uuid.UUID,
+    nutrition_result: dict,
+) -> Meal | None:
+    """Update meal with nutrition analysis result."""
+    stmt = (
+        select(Meal)
+        .where(Meal.id == meal_id)
+        .values(
+            status=MealStatusEnum.ANALYZED,
+            nutrition_result=nutrition_result,
+        )
+    )
+    await db.execute(stmt)
+    await db.flush()
+    return await get_meal_by_id(db, meal_id, meal_id)
+
+
+async def get_meal_analysis_status(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    meal_id: uuid.UUID,
+) -> dict | None:
+    """Get analysis status for a meal."""
+    meal = await get_meal_by_id(db, user_id, meal_id)
+    if not meal:
+        return None
+    return {
+        "meal_id": str(meal.id),
+        "job_id": meal.job_id,
+        "status": meal.status.value,
+        "nutrition_result": meal.nutrition_result,
+    }

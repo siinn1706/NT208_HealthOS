@@ -21,6 +21,8 @@ class MealResponse(BaseModel):
 
     id: uuid.UUID
     name: str
+    image_url: str | None = None
+    job_id: str | None = None
     status: str
     nutrition_result: NutritionResult | None = None
     logged_at: datetime.datetime

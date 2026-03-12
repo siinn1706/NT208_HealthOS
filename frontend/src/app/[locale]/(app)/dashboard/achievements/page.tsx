@@ -1,41 +1,8 @@
-import { Trophy, Lock, CheckCircle2 } from "lucide-react";
-import { getMilestonesGrouped, getGamificationSummary } from "@/lib/gamification-data";
-import { GamificationSubNav } from "@/components/dashboard/gamification/GamificationSubNav";
-import { BadgeCard } from "@/components/dashboard/gamification/BadgeCard";
-import { ACTIVITY_CONFIG, type ActivityType } from "@/data/gamification";
+import { ComingSoon } from "@/components/ui/ComingSoon";
 
-const ACTIVITY_ORDER: ActivityType[] = [
-  "running",
-  "steps",
-  "cycling",
-  "swimming",
-];
-
-export default async function AchievementsPage() {
-  const [grouped, summary] = await Promise.all([
-    getMilestonesGrouped(),
-    getGamificationSummary(),
-  ]);
-
-  const { currentUser } = summary;
-  const totalUnlocked = currentUser.unlockedAchievements;
-  const totalAll = currentUser.totalAchievements;
-  const inProgress = Object.values(grouped)
-    .flat()
-    .filter((m) => m.status === "in-progress").length;
-
-  return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Thành tựu & Huy hiệu</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Duy trì ≥ 5 ngày/tuần × 4 tuần để mở khóa từng huy hiệu
-          </p>
-        </div>
-        <GamificationSubNav />
-      </div>
+export default function AchievementsPage() {
+  return <ComingSoon />;
+}
 
       {/* ── Summary strip ── */}
       <div className="grid grid-cols-3 gap-3">

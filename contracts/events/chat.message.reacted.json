@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "title": "chat.message.reacted",
-  "description": "Runtime WS broadcast envelope after reaction toggle.",
+  "description": "Runtime WS broadcast envelope after reaction toggle (canonical format).",
   "type": "object",
-  "required": ["event", "payload", "timestamp"],
+  "required": ["event", "version", "payload", "metadata"],
   "properties": {
     "event": { "type": "string", "const": "chat.message.reacted" },
-    "timestamp": { "type": "string", "format": "date-time" },
+    "version": { "type": "string", "const": "1.0" },
     "payload": {
       "type": "object",
       "required": ["id", "conversation_id", "reactions"],
@@ -25,7 +25,16 @@
           }
         }
       }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_id": { "type": "string", "format": "uuid" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
     }
-  },
-  "additionalProperties": true
+  }
 }

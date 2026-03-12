@@ -326,14 +326,14 @@ switch ($Action) {
     }
 
     "migrate" {
-        Write-Host "[DB] Running alembic upgrade head in backend" -ForegroundColor Cyan
+        Write-Host "[DB] Running python -m alembic upgrade head in backend" -ForegroundColor Cyan
         Push-Location $BackendDir
         try {
-            if (-not (Test-Path ".venv\Scripts\Activate.ps1")) {
+            $pyExe = ".venv\Scripts\python.exe"
+            if (-not (Test-Path $pyExe)) {
                 throw "Backend virtual environment is missing. Create it first in backend/.venv"
             }
-            . .\.venv\Scripts\Activate.ps1
-            alembic upgrade head
+            & $pyExe -m alembic upgrade head
         }
         finally {
             Pop-Location

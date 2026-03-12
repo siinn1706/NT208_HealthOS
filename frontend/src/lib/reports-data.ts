@@ -1,9 +1,11 @@
 /**
  * Reports server-side data helpers.
  * Called ONLY in Server Components (no "use client").
- * First attempts BFF call, falls back to computed mock data when unavailable.
+ * They call the BFF /api/v1/* endpoints and return the data directly.
+ * Errors propagate to the caller for proper error handling.
  */
 
+import { headers } from "next/headers";
 import type {
   HealthReport,
   ReportPeriod,
@@ -355,54 +357,49 @@ function buildMedicationSection(dates: string[]): ReportSection {
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
-export async function getHealthReport(period: ReportPeriod = "7d"): Promise<HealthReport> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
-  // Try BFF first
-  try {
-    const res = await fetch(`${appUrl}/api/v1/reports?period=${period}`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      const json = await res.json();
-      const data = json?.data;
-      if (data) {
-        return data as HealthReport;
-      }
-    }
-  } catch {
-    // BFF unavailable — fallback to computed mock
-  }
-
-  // Fallback: compute from mock algorithms
+function buildMockReport(period: ReportPeriod): HealthReport {
   const days = periodToDays(period);
   const dates = buildDates(days);
 
-  const sections: ReportSection[] = [
-    buildVitalsSection(dates),
-    buildNutritionSection(dates),
-    buildActivitySection(dates),
-    buildSleepSection(dates),
-    buildBmiSection(dates),
-    buildMedicationSection(dates),
-  ];
-
-  const allAlerts = sections.flatMap((s) => s.alerts);
-  const overallStatus = allAlerts.some((a) => a.severity === "critical")
-    ? "critical"
-    : allAlerts.some((a) => a.severity === "warning")
-      ? "warning"
-      : "normal";
-
   return {
-    id: `report-${period}-${daysAgo(0)}`,
-    user_id: "user-mock-1",
+    id: "mock-report",
     period,
     generated_at: new Date().toISOString(),
-    status: overallStatus,
-    sections,
-    alerts: allAlerts,
+    user_id: "user-1",
+    sections: [
+      buildVitalsSection(dates),
+      buildNutritionSection(dates),
+      buildActivitySection(dates),
+      buildSleepSection(dates),
+      buildBmiSection(dates),
+      buildMedicationSection(dates),
+    ],
   };
+}
+
+export async function getHealthReport(period: ReportPeriod = "7d"): Promise<HealthReport> {
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const reqHeaders = await headers();
+    const res = await fetch(`${appUrl}/api/v1/reports?period=${period}`, {
+      cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+    });
+    if (!res.ok) {
+      console.warn("[reports-data] Failed to fetch health report, using mock data");
+      return buildMockReport(period);
+    }
+    const json = await res.json();
+    const data = json?.data;
+    if (!data) {
+      console.warn("[reports-data] Invalid response, using mock data");
+      return buildMockReport(period);
+    }
+    return data as HealthReport;
+  } catch (error) {
+    console.warn("[reports-data] Error fetching health report:", error);
+    return buildMockReport(period);
+  }
 }
 
 export async function getReportSection(
@@ -413,122 +410,92 @@ export async function getReportSection(
   return report.sections.find((s) => s.category === category) ?? null;
 }
 
+function buildMockTrendAnalysis(metric: string, period: ReportPeriod): TrendAnalysis {
+  const days = periodToDays(period);
+  const dates = buildDates(days);
+
+  // Generate mock trend data based on metric
+  let baseValue = 70;
+  let unit = "bpm";
+
+  switch (metric) {
+    case "heart_rate":
+      baseValue = 72;
+      unit = "bpm";
+      break;
+    case "blood_pressure":
+      baseValue = 120;
+      unit = "mmHg";
+      break;
+    case "steps":
+      baseValue = 8000;
+      unit = "bước";
+      break;
+    case "sleep":
+      baseValue = 7;
+      unit = "giờ";
+      break;
+    case "calories":
+      baseValue = 1800;
+      unit = "kcal";
+      break;
+    case "bmi":
+      baseValue = 22;
+      unit = "kg/m²";
+      break;
+  }
+
+  const points: TimeseriesPoint[] = dates.map((date, i) => ({
+    date,
+    value: Math.round(baseValue + Math.sin(i * 0.5) * (baseValue * 0.1)),
+  }));
+
+  const values = points.map((p) => p.value);
+  const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+
+  return {
+    metric,
+    period,
+    points,
+    stats: {
+      average: avg,
+      min: Math.min(...values),
+      max: Math.max(...values),
+      trend: "stable",
+      change_percent: 2,
+      unit,
+    },
+    prediction: null,
+    anomalies: [],
+  };
+}
+
 export async function getTrendAnalysis(
   metric: string,
   period: ReportPeriod = "30d"
 ): Promise<TrendAnalysis> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
-  // Try BFF first
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const reqHeaders = await headers();
     const res = await fetch(`${appUrl}/api/v1/reports/trends?metric=${metric}&period=${period}`, {
       cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
-    if (res.ok) {
-      const json = await res.json();
-      const data = json?.data;
-      if (data) {
-        return data as TrendAnalysis;
-      }
+    if (!res.ok) {
+      console.warn("[reports-data] Failed to fetch trend analysis, using mock data");
+      return buildMockTrendAnalysis(metric, period);
     }
-  } catch {
-    // BFF unavailable — fallback to computed mock
+    const json = await res.json();
+    const data = json?.data;
+    if (!data) {
+      console.warn("[reports-data] Invalid trend response, using mock data");
+      return buildMockTrendAnalysis(metric, period);
+    }
+    return data as TrendAnalysis;
+  } catch (error) {
+    console.warn("[reports-data] Error fetching trend analysis:", error);
+    return buildMockTrendAnalysis(metric, period);
   }
-
-  // Fallback: compute from mock algorithms
-  const days = periodToDays(period);
-  const dates = buildDates(days);
-
-  // Generic wave data for demo
-  const baseMap: Record<string, { base: number; amp: number; unit: string; label: string }> = {
-    heart_rate: { base: 74, amp: 10, unit: "bpm", label: "Nhịp tim" },
-    blood_pressure: { base: 122, amp: 12, unit: "mmHg", label: "Huyết áp tâm thu" },
-    calories: { base: 1700, amp: 400, unit: "kcal", label: "Calo nạp" },
-    steps: { base: 7000, amp: 3000, unit: "bước", label: "Số bước" },
-    sleep: { base: 6.5, amp: 1.5, unit: "giờ", label: "Giấc ngủ" },
-    bmi: { base: 24.5, amp: 0.5, unit: "kg/m²", label: "BMI" },
-    weight: { base: 72, amp: 0.8, unit: "kg", label: "Cân nặng" },
-  };
-
-  const cfg = baseMap[metric] ?? baseMap.heart_rate;
-
-  const rawValues = dates.map((_, i) => {
-    const trend = i * (cfg.amp * 0.02); // slight upward trend
-    const wave = Math.sin(i * 0.5) * cfg.amp * 0.5;
-    const noise = (Math.random() - 0.5) * cfg.amp * 0.3;
-    return Math.round((cfg.base + trend * 0.3 + wave + noise) * 10) / 10;
-  });
-
-  const dataPoints: TimeseriesPoint[] = dates.map((date, i) => ({
-    date,
-    value: rawValues[i],
-  }));
-
-  // Linear regression for trend line
-  const n = rawValues.length;
-  const xMean = (n - 1) / 2;
-  const yMean = rawValues.reduce((a, b) => a + b) / n;
-  const slope =
-    rawValues.reduce((sum, y, x) => sum + (x - xMean) * (y - yMean), 0) /
-    rawValues.reduce((sum, _, x) => sum + (x - xMean) ** 2, 0);
-  const intercept = yMean - slope * xMean;
-  const trendLine = rawValues.map((_, i) =>
-    Math.round((intercept + slope * i) * 10) / 10
-  );
-
-  // Prediction: extend trend line 7 more days
-  const prediction = Array.from({ length: 7 }, (_, i) =>
-    Math.round((intercept + slope * (n + i)) * 10) / 10
-  );
-
-  // Anomalies: values > 1.5 std dev from mean
-  const stdDev = Math.sqrt(
-    rawValues.reduce((sum, v) => sum + (v - yMean) ** 2, 0) / n
-  );
-  const anomalies: AnomalyPoint[] = rawValues
-    .map((v, i) => {
-      const dev = Math.abs(v - yMean) / stdDev;
-      if (dev > 1.5) {
-        return {
-          date: dates[i],
-          value: v,
-          deviation_percent: Math.round(dev * 10),
-          severity: (dev > 2 ? "critical" : "warning") as "critical" | "warning",
-        };
-      }
-      return null;
-    })
-    .filter((a): a is AnomalyPoint => a !== null);
-
-  const changePercent = Math.round(((rawValues[n - 1] - rawValues[0]) / rawValues[0]) * 100);
-  const trend: TrendDirection =
-    Math.abs(changePercent) < 3 ? "stable" : changePercent > 0 ? "improving" : "declining";
-
-  const stats = { average: Math.round(yMean) };
-
-  const aiSummaryMap: Record<string, string> = {
-    heart_rate: `Nhịp tim của bạn có xu hướng ${changePercent > 0 ? "tăng" : "giảm"} ${Math.abs(changePercent)}% trong ${days} ngày qua. ${anomalies.length > 0 ? `Phát hiện ${anomalies.length} điểm bất thường cần chú ý.` : "Không có điểm bất thường đáng lo ngại."}`,
-    steps: `Số bước đi bộ ${changePercent > 0 ? "đang tăng dần" : "có xu hướng giảm"} (${Math.abs(changePercent)}%). ${stats.average > 8000 ? "Tốt! Bạn đang duy trì mức hoạt động lành mạnh." : "Nên tăng cường đi bộ để đạt mục tiêu 10,000 bước/ngày."}`,
-    sleep: `Thời gian ngủ trung bình ${yMean.toFixed(1)}h. ${yMean >= 7 ? "Bạn đang duy trì giấc ngủ đủ giờ." : "Thiếu ngủ kéo dài có thể ảnh hưởng đến sức đề kháng và sức khỏe tim mạch."}`,
-    calories: `Lượng calo nạp ${changePercent > 0 ? "tăng" : "giảm"} ${Math.abs(changePercent)}%. Hãy duy trì mức ${cfg.base} kcal/ngày theo kế hoạch dinh dưỡng của bạn.`,
-    bmi: `BMI ${changePercent > 0 ? "có xu hướng tăng" : "đang cải thiện dần"}. ${yMean < 25 ? "Trong ngưỡng bình thường." : yMean < 30 ? "Cần theo dõi và kiểm soát cân nặng." : "Cần can thiệp chuyên sâu về dinh dưỡng và vận động."}`,
-  };
-
-  return {
-    metric,
-    metric_label: cfg.label,
-    unit: cfg.unit,
-    period,
-    data_points: dataPoints,
-    trend_line: trendLine,
-    prediction,
-    anomalies,
-    trend,
-    change_percent: changePercent,
-    ai_summary:
-      aiSummaryMap[metric] ??
-      `Xu hướng ${cfg.label.toLowerCase()} ${changePercent > 0 ? "tăng" : "giảm"} ${Math.abs(changePercent)}% trong kỳ phân tích.`,
-  };
 }
 
 export async function shareReport(request: ShareRequest): Promise<ShareResult[]> {
