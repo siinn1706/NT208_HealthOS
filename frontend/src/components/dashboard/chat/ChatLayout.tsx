@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
-import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useConversations, useStrangerRequests } from "@/hooks/useChat";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
@@ -100,8 +100,7 @@ export function ChatLayout() {
   );
 
   return (
-    <LazyMotion features={domAnimation}>
-      <div className="flex h-full min-h-0 overflow-hidden bg-background">
+    <div className="flex h-full min-h-0 overflow-hidden bg-background">
       {/* ── Conversation list panel ── */}
       <div
         className={cn(
@@ -139,7 +138,7 @@ export function ChatLayout() {
       >
         <AnimatePresence>
           {activeConversation ? (
-            <m.div
+            <motion.div
               key={activeConversation.id}
               className="flex flex-col h-full"
               initial={{ opacity: 0 }}
@@ -158,9 +157,9 @@ export function ChatLayout() {
                 onMessageSent={handleMessageSent}
                 onIncomingMessage={(raw) => applyIncomingMessage(raw, activeId)}
               />
-            </m.div>
+            </motion.div>
           ) : (
-            <m.div
+            <motion.div
               key="empty"
               className="flex-1 flex items-center justify-center"
               initial={{ opacity: 0 }}
@@ -169,11 +168,10 @@ export function ChatLayout() {
               transition={{ duration: 0.15 }}
             >
               <ChatEmptyState />
-            </m.div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
     </div>
-    </LazyMotion>
   );
 }

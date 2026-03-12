@@ -77,9 +77,7 @@ export default async function ReportsPage(props: ReportsPageProps) {
         </div>
 
         {/* Period selector */}
-        <Suspense fallback={<Skeleton className="h-9 w-48" />}>
-          <ReportPeriodSelector value={period} />
-        </Suspense>
+        <ReportPeriodSelector value={period} />
       </div>
 
       {/* ── Client wrapper: auto-share banner + quick actions + dialogs ── */}

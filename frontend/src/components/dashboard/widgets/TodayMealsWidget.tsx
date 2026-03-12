@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { m, AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
   ChevronUp,
@@ -94,7 +94,7 @@ function MealCard({ meal }: { meal: Meal }) {
       {/* Expanded details */}
       <AnimatePresence initial={false}>
         {expanded && (
-          <m.div
+          <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -155,7 +155,7 @@ function MealCard({ meal }: { meal: Meal }) {
                 </div>
               )}
             </div>
-          </m.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -176,8 +176,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
   );
 
   return (
-    <LazyMotion features={domAnimation}>
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -230,19 +229,18 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
         <div className="space-y-2">
           <AnimatePresence initial={false}>
             {sorted.map((meal, i) => (
-              <m.div
+              <motion.div
                 key={meal.id}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.2 }}
               >
                 <MealCard meal={meal} />
-              </m.div>
+              </motion.div>
             ))}
           </AnimatePresence>
         </div>
       )}
     </div>
-    </LazyMotion>
   );
 }
