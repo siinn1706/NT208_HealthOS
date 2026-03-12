@@ -1,11 +1,10 @@
 # Scratch
 scratch/
 .claude/
-.github/
 .cursor/
 .agent/
 CLAUDE.md
-
+.github/
 # Node/Next.js
 node_modules/
 .next/
