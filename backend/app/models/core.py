@@ -188,6 +188,8 @@ class Meal(Base):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[MealStatusEnum] = mapped_column(
         SAEnum(MealStatusEnum, name="meal_status_enum"),
         nullable=False,
@@ -406,6 +408,15 @@ class ConversationMember(Base):
         Boolean,
         nullable=False,
         server_default=text("false"),
+    )
+    is_pinned: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    theme_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
     )
     joined_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),

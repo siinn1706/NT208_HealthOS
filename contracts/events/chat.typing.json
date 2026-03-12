@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "title": "chat.typing",
-  "description": "Short-lived ephemeral event indicating that a user started or stopped typing. Not persisted to the database.",
+  "description": "Short-lived ephemeral event indicating that a user started or stopped typing. Not persisted to the database (canonical format).",
   "type": "object",
-  "required": ["event", "payload", "timestamp"],
+  "required": ["event", "version", "payload", "metadata"],
   "properties": {
     "event": { "type": "string", "const": "chat.typing" },
-    "timestamp": { "type": "string", "format": "date-time" },
+    "version": { "type": "string", "const": "1.0" },
     "payload": {
       "type": "object",
       "required": ["conversation_id", "user_id", "is_typing"],
@@ -15,7 +15,16 @@
         "user_id":         { "type": "string", "format": "uuid" },
         "is_typing":       { "type": "boolean" }
       }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_id": { "type": "string", "format": "uuid" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
     }
-  },
-  "additionalProperties": true
+  }
 }

@@ -18,6 +18,19 @@ Supported event types:
     typing / chat.typing              → broadcast typing indicator (exclude sender)
   conv:sync      → delta sync messages since cursor
   pong           → heartbeat reply (no-op)
+
+Event Envelope (canonical format):
+  {
+    "event": "event.type",
+    "version": "1.0",
+    "payload": {...},
+    "metadata": {
+      "event_id": "uuid",
+      "timestamp": "ISO8601",
+      "user_id": "uuid",
+      "correlation_id": "uuid"
+    }
+  }
 """
 from __future__ import annotations
 
@@ -29,7 +42,10 @@ from fastapi import WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services import chat as chat_svc
+from app.services.events import EventEmitter
 from app.ws.handlers import ConnectionManager
+
+event_emitter = EventEmitter()
 
 
 async def handle_ws_event(
@@ -59,16 +75,10 @@ async def handle_ws_event(
         *,
         exclude: WebSocket | None = None,
     ) -> None:
-        await manager.broadcast(
-            room,
-            {"event": legacy_event, "payload": payload_data, "timestamp": ts_now()},
-            exclude_ws=exclude,
-        )
-        await manager.broadcast(
-            room,
-            {"event": contract_event, "payload": payload_data, "timestamp": ts_now()},
-            exclude_ws=exclude,
-        )
+        legacy_msg = {"event": legacy_event, "payload": payload_data, "timestamp": ts_now()}
+        await manager.broadcast(room, legacy_msg, exclude_ws=exclude)
+        canonical_msg = event_emitter.emit_to_ws(contract_event, payload_data, user_id)
+        await manager.broadcast(room, canonical_msg, exclude_ws=exclude)
 
     # ── Handshake ─────────────────────────────────────────────────────────────
     if event_type == "client:hello":

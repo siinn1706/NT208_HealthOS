@@ -188,7 +188,8 @@ async def _build_conversation_dto(
         last_message=last_message,
         unread_count=unread,
         is_muted=current_member.is_muted if current_member else False,
-        is_pinned=False,  # TODO: add per-user pinned-conversation flag if needed
+        is_pinned=current_member.is_pinned if current_member else False,
+        theme_id=current_member.theme_id if current_member else None,
         created_at=conv.created_at,
         updated_at=conv.updated_at,
     )
@@ -464,6 +465,15 @@ async def reject_conversation(
         await db.execute(
             delete(Message).where(Message.conversation_id == conversation_id)
         )
+
+    member_count_result = await db.execute(
+        select(func.count(ConversationMember.user_id)).where(
+            ConversationMember.conversation_id == conversation_id
+        )
+    )
+    member_count = member_count_result.scalar_one()
+
+    if member_count <= 2:
         await db.execute(
             delete(ConversationMember).where(
                 ConversationMember.conversation_id == conversation_id
@@ -474,7 +484,41 @@ async def reject_conversation(
         )
     else:
         await db.delete(member)
+
     await db.flush()
+
+
+async def update_conversation_settings(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+    *,
+    is_muted: bool | None = None,
+    is_pinned: bool | None = None,
+    theme_id: str | None = None,
+) -> ConversationMember:
+    """Update per-user conversation settings (mute, pin, theme)."""
+    result = await db.execute(
+        select(ConversationMember).where(
+            and_(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == user_id,
+            )
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise ValueError("Conversation membership not found.")
+
+    if is_muted is not None:
+        member.is_muted = is_muted
+    if is_pinned is not None:
+        member.is_pinned = is_pinned
+    if theme_id is not None:
+        member.theme_id = theme_id
+
+    await db.flush()
+    return member
 
 
 async def _reload_conversation(db: AsyncSession, conv_id: uuid.UUID) -> Conversation:

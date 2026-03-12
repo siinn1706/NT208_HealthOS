@@ -747,5 +747,10 @@
     },
     "noEmergencyContacts": "Chưa có người liên hệ khẩn cấp. Thêm trong phần hồ sơ.",
     "goToProfile": "Đến hồ sơ"
+  },
+  "comingSoon": {
+    "title": "Tính năng đang được phát triển",
+    "description": "Chúng tôi đang nỗ lực xây dựng tính năng này. Cảm ơn bạn đã kiên nhẫn!",
+    "estimatedTime": "Dự kiến hoàn thành: Tháng 4/2026"
   }
 }

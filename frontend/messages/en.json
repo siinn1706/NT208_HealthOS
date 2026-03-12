@@ -747,5 +747,10 @@
     },
     "noEmergencyContacts": "No emergency contacts added. Add them in your Profile.",
     "goToProfile": "Go to Profile"
+  },
+  "comingSoon": {
+    "title": "Feature Under Development",
+    "description": "We are working hard to bring you this feature. Thank you for your patience!",
+    "estimatedTime": "Estimated completion: April 2026"
   }
 }

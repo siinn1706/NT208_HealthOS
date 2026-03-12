@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "title": "chat.message.edited",
-  "description": "Runtime WS broadcast envelope for an edited message.",
+  "description": "Runtime WS broadcast envelope for an edited message (canonical format).",
   "type": "object",
-  "required": ["event", "payload", "timestamp"],
+  "required": ["event", "version", "payload", "metadata"],
   "properties": {
     "event": { "type": "string", "const": "chat.message.edited" },
-    "timestamp": { "type": "string", "format": "date-time" },
+    "version": { "type": "string", "const": "1.0" },
     "payload": {
       "type": "object",
       "required": ["id", "conversation_id", "content", "edited_at"],
@@ -16,7 +16,16 @@
         "content":         { "type": "string" },
         "edited_at":       { "type": ["string", "null"], "format": "date-time" }
       }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_id": { "type": "string", "format": "uuid" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
     }
-  },
-  "additionalProperties": true
+  }
 }

@@ -178,17 +178,41 @@ export function useConversations() {
   }, []);
 
   const pinConversation = useCallback((id: string) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, is_pinned: !c.is_pinned } : c))
-    );
-    // TODO: persist pin preference when backend endpoint is added
+    setConversations((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, is_pinned: !c.is_pinned } : c));
+      const conv = updated.find((c) => c.id === id);
+      if (conv) {
+        bffFetch(`/api/v1/conversations/${id}/settings`, {
+          method: "PATCH",
+          body: { is_pinned: conv.is_pinned },
+        }).catch(() => {
+          // rollback on failure
+          setConversations((prev) =>
+            prev.map((c) => (c.id === id ? { ...c, is_pinned: !c.is_pinned } : c))
+          );
+        });
+      }
+      return updated;
+    });
   }, []);
 
   const muteConversation = useCallback((id: string) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, is_muted: !c.is_muted } : c))
-    );
-    // TODO: persist mute preference when backend endpoint is added
+    setConversations((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, is_muted: !c.is_muted } : c));
+      const conv = updated.find((c) => c.id === id);
+      if (conv) {
+        bffFetch(`/api/v1/conversations/${id}/settings`, {
+          method: "PATCH",
+          body: { is_muted: conv.is_muted },
+        }).catch(() => {
+          // rollback on failure
+          setConversations((prev) =>
+            prev.map((c) => (c.id === id ? { ...c, is_muted: !c.is_muted } : c))
+          );
+        });
+      }
+      return updated;
+    });
   }, []);
 
   const deleteConversation = useCallback((id: string) => {
@@ -196,9 +220,19 @@ export function useConversations() {
   }, []);
 
   const setTheme = useCallback((id: string, themeId: string | null) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, theme_id: themeId } : c))
-    );
+    setConversations((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, theme_id: themeId } : c));
+      bffFetch(`/api/v1/conversations/${id}/settings`, {
+        method: "PATCH",
+        body: { theme_id: themeId },
+      }).catch(() => {
+        // rollback on failure
+        setConversations((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, theme_id: c.theme_id } : c))
+        );
+      });
+      return updated;
+    });
   }, []);
 
   const markAsRead = useCallback(async (id: string, lastReadMessageId?: string) => {

@@ -1,145 +1,167 @@
 /**
  * Meals server-side data helpers.
  * Called ONLY in Server Components (no "use client").
- * First attempts BFF call, falls back to mock data when unavailable.
+ * They call the BFF /api/v1/* endpoints first, then fall back to mock data on error.
  */
 
+import { headers } from "next/headers";
 import type { Meal, DailyNutritionSummary, NutritionSuggestion, WeeklyCaloriePoint } from "@/types/api";
-import { MOCK_MEALS, MOCK_NUTRITION_SUGGESTIONS, getMockWeeklyCalorieData } from "@/data/meals";
 
 const CALORIE_TARGET = 2000;
 
-// BFF TODO: GET /api/v1/meals
-//   Trigger: Page load on /dashboard/meals
-//   Request: { date?: string } — filter by date (YYYY-MM-DD)
-//   Response: { data: Meal[] }
-//   Fallback: MOCK_MEALS filtered by date
+// ---------------------------------------------------------------------------
+// Mock data for fallback
+// ---------------------------------------------------------------------------
+
+const MOCK_MEALS_TODAY: Meal[] = [
+  {
+    id: "1",
+    user_id: "user-1",
+    logged_at: new Date().toISOString().replace("T", "T07:00:00"),
+    meal_type: "breakfast",
+    image_url: null,
+    nutrition_result: { calories: 450, protein_g: 25, carbs_g: 50, fat_g: 15 },
+    description: "Bánh mì sandwich + sữa",
+  },
+  {
+    id: "2",
+    user_id: "user-1",
+    logged_at: new Date().toISOString().replace("T", "T12:00:00"),
+    meal_type: "lunch",
+    image_url: null,
+    nutrition_result: { calories: 650, protein_g: 35, carbs_g: 70, fat_g: 20 },
+    description: "Cơm + thịt gà + rau",
+  },
+  {
+    id: "3",
+    user_id: "user-1",
+    logged_at: new Date().toISOString().replace("T", "T18:30:00"),
+    meal_type: "dinner",
+    image_url: null,
+    nutrition_result: { calories: 520, protein_g: 30, carbs_g: 55, fat_g: 18 },
+    description: "Cơm + cá + canh",
+  },
+];
+
+const MOCK_MEALS_HISTORY: DailyNutritionSummary[] = [
+  { date: "2026-03-06", meals: 3, total_calories: 1650, avg_calories: 1650 },
+  { date: "2026-03-07", meals: 3, total_calories: 1800, avg_calories: 1800 },
+  { date: "2026-03-08", meals: 3, total_calories: 1700, avg_calories: 1700 },
+  { date: "2026-03-09", meals: 2, total_calories: 1100, avg_calories: 1100 },
+  { date: "2026-03-10", meals: 3, total_calories: 1900, avg_calories: 1900 },
+  { date: "2026-03-11", meals: 3, total_calories: 1750, avg_calories: 1750 },
+  { date: "2026-03-12", meals: 3, total_calories: 1620, avg_calories: 1620 },
+];
+
+const MOCK_NUTRITION_SUGGESTIONS: NutritionSuggestion[] = [
+  {
+    id: "1",
+    type: "warning",
+    title: "Cần bổ sung thêm protein",
+    message: "Hôm nay bạn mới chỉ tiêu thụ 90g protein. Nên thêm 20g nữa.",
+    action_label: "Xem gợi ý",
+  },
+  {
+    id: "2",
+    type: "tip",
+    title: "Uống đủ nước",
+    message: "Bạn đã uống 1.5L nước hôm nay. Hãy uống thêm 500ml nữa!",
+    action_label: null,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Data access helpers
+// ---------------------------------------------------------------------------
 
 /** Return today's meals sorted by logged_at ASC */
 export async function getMealsToday(): Promise<Meal[]> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const today = new Date().toISOString().split("T")[0];
-
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const today = new Date().toISOString().split("T")[0];
+    const reqHeaders = await headers();
     const res = await fetch(`${appUrl}/api/v1/meals?date=${today}`, {
       cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
-    if (res.ok) {
-      const json = await res.json();
-      const data = json?.data;
-      if (Array.isArray(data)) {
-        return data.sort(
-          (a: Meal, b: Meal) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime()
-        );
-      }
+    if (!res.ok) {
+      console.warn("[meals-data] Failed to fetch meals today, using mock data");
+      return MOCK_MEALS_TODAY;
     }
-  } catch {
-    // BFF unavailable — fallback to mock
+    const json = await res.json();
+    const data = json?.data;
+    if (!Array.isArray(data)) {
+      console.warn("[meals-data] Invalid response, using mock data");
+      return MOCK_MEALS_TODAY;
+    }
+    return data.sort(
+      (a: Meal, b: Meal) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime()
+    );
+  } catch (error) {
+    console.warn("[meals-data] Error fetching meals today:", error);
+    return MOCK_MEALS_TODAY;
   }
-
-  // Fallback: filter mock by today
-  return MOCK_MEALS.filter(
-    (m) => new Date(m.logged_at).toDateString() === new Date().toDateString()
-  ).sort(
-    (a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime()
-  );
 }
-
-// BFF TODO: GET /api/v1/meals?days=7
-//   Trigger: Meals history page
-//   Request: { days?: number }
-//   Response: { data: DailyNutritionSummary[] }
-//   Fallback: Computed from MOCK_MEALS
 
 /** Return all meals for the last N days, grouped by date */
 export async function getMealsHistory(days = 7): Promise<DailyNutritionSummary[]> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const reqHeaders = await headers();
     const res = await fetch(`${appUrl}/api/v1/meals?days=${days}`, {
       cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
-    if (res.ok) {
-      const json = await res.json();
-      const data = json?.data;
-      if (Array.isArray(data)) {
-        return data;
-      }
+    if (!res.ok) {
+      console.warn("[meals-data] Failed to fetch meals history, using mock data");
+      return MOCK_MEALS_HISTORY;
     }
-  } catch {
-    // BFF unavailable — fallback to mock
+    const json = await res.json();
+    const data = json?.data;
+    if (!Array.isArray(data)) {
+      console.warn("[meals-data] Invalid history response, using mock data");
+      return MOCK_MEALS_HISTORY;
+    }
+    return data;
+  } catch (error) {
+    console.warn("[meals-data] Error fetching meals history:", error);
+    return MOCK_MEALS_HISTORY;
   }
-
-  // Fallback: compute from mock
-  const result: DailyNutritionSummary[] = [];
-  const today = new Date();
-
-  for (let i = 0; i < days; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
-
-    const dayMeals = MOCK_MEALS.filter(
-      (m) => m.logged_at.startsWith(dateStr)
-    );
-
-    const totals = dayMeals.reduce(
-      (acc, m) => {
-        const nr = m.nutrition_result;
-        if (nr) {
-          acc.calories += nr.calories;
-          acc.protein += nr.protein_g;
-          acc.carbs += nr.carbs_g;
-          acc.fat += nr.fat_g;
-        }
-        return acc;
-      },
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
-    );
-
-    result.push({
-      date: dateStr,
-      total_calories: Math.round(totals.calories),
-      total_protein_g: Math.round(totals.protein * 10) / 10,
-      total_carbs_g: Math.round(totals.carbs * 10) / 10,
-      total_fat_g: Math.round(totals.fat * 10) / 10,
-      calorie_target: CALORIE_TARGET,
-      meals: dayMeals,
-    });
-  }
-
-  return result;
 }
 
 /** Return calorie data for the past 7 days (for bar chart) */
 export async function getWeeklyCalorieChart(): Promise<WeeklyCaloriePoint[]> {
-  // TODO V1: bffFetch("/api/v1/health-data/nutrition?range=7d")
-  return getMockWeeklyCalorieData();
+  // Return mock data for now
+  return MOCK_MEALS_HISTORY.map((d) => ({
+    date: d.date,
+    calories: d.total_calories,
+  }));
 }
 
 /** Return nutrition suggestions based on today's intake */
-// BFF TODO: GET /api/v1/nutrition/suggestions
-//   Trigger: Page load on /dashboard/meals
-//   Response: { data: NutritionSuggestion[] }
-//   Fallback: MOCK_NUTRITION_SUGGESTIONS
-
 export async function getNutritionSuggestions(): Promise<NutritionSuggestion[]> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const reqHeaders = await headers();
     const res = await fetch(`${appUrl}/api/v1/nutrition/suggestions`, {
       cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
-    if (res.ok) {
-      const json = await res.json();
-      const data = json?.data;
-      if (Array.isArray(data)) {
-        return data;
-      }
+    if (!res.ok) {
+      console.warn("[meals-data] Failed to fetch nutrition suggestions, using mock data");
+      return MOCK_NUTRITION_SUGGESTIONS;
     }
-  } catch {
-    // BFF unavailable — fallback to mock
+    const json = await res.json();
+    const data = json?.data;
+    if (!Array.isArray(data)) {
+      console.warn("[meals-data] Invalid suggestions response, using mock data");
+      return MOCK_NUTRITION_SUGGESTIONS;
+    }
+    return data;
+  } catch (error) {
+    console.warn("[meals-data] Error fetching nutrition suggestions:", error);
+    return MOCK_NUTRITION_SUGGESTIONS;
   }
-  return MOCK_NUTRITION_SUGGESTIONS;
 }
 
 /** Summarise today's total nutrition (for form confirmation preview) */

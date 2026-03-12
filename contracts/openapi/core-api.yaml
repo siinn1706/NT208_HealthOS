@@ -72,9 +72,9 @@ components:
           format: email
         display_name:
           type: string
-        created_at:
+        avatar_url:
           type: string
-          format: date-time
+          nullable: true
 
     MealCreate:
       type: object

@@ -22,6 +22,7 @@ from app.models.core import User
 from app.schemas.chat import (
     ConversationDTO,
     ConversationListResponse,
+    ConversationSettingsBody,
     CreateDirectConversationBody,
     CreateGroupConversationBody,
     EditMessageBody,
@@ -207,6 +208,37 @@ async def reject_conversation(
         await chat_svc.reject_conversation(db, conversation_id, current_user.id)
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
+
+
+@router.patch(
+    "/conversations/{conversation_id}/settings",
+    response_model=ConversationDTO,
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Update conversation settings (mute, pin, theme)",
+)
+async def update_conversation_settings(
+    conversation_id: uuid.UUID,
+    body: ConversationSettingsBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationDTO:
+    try:
+        await chat_svc.update_conversation_settings(
+            db,
+            conversation_id,
+            current_user.id,
+            is_muted=body.is_muted,
+            is_pinned=body.is_pinned,
+            theme_id=body.theme_id,
+        )
+    except ValueError as exc:
+        raise _http_error(400, "CHAT_ERROR", str(exc))
+    await db.commit()
+    conv = await chat_svc.get_conversation_by_id(db, conversation_id, current_user.id)
+    if conv is None:
+        raise _http_error(404, "CHAT_NOT_FOUND", "Conversation not found.")
+    presence_map = ws_manager.get_presence_map()
+    return await chat_svc._build_conversation_dto(db, conv, current_user.id, presence_map)
 
 
 # ─── Message endpoints ─────────────────────────────────────────────────────────
