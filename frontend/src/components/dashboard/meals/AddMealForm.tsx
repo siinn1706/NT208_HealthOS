@@ -18,7 +18,7 @@ import {
   Cookie,
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { m, LazyMotion, domAnimation } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,7 +141,8 @@ export function AddMealForm() {
   }
 
   return (
-    <FormProvider {...methods}>
+    <LazyMotion features={domAnimation}>
+      <FormProvider {...methods}>
       <div className="max-w-[1100px] mx-auto">
         {/* Page header */}
         <div className="mb-6 flex items-center gap-3">
@@ -169,7 +170,7 @@ export function AddMealForm() {
             {/* Left column: form sections */}
             <div className="space-y-6">
               {/* ── Section 1: Thông tin chung ── */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0 }}
@@ -248,10 +249,10 @@ export function AddMealForm() {
                     </div>
                   </div>
                 </SectionCard>
-              </motion.div>
+              </m.div>
 
               {/* ── Section 2: Thành phần ── */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.08 }}
@@ -263,10 +264,10 @@ export function AddMealForm() {
                 >
                   <IngredientListEditor />
                 </SectionCard>
-              </motion.div>
+              </m.div>
 
               {/* ── Section 3: Ghi chú ── */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.16 }}
@@ -288,10 +289,10 @@ export function AddMealForm() {
                     </p>
                   )}
                 </SectionCard>
-              </motion.div>
+              </m.div>
 
               {/* Submit area (mobile) */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.24 }}
@@ -320,21 +321,21 @@ export function AddMealForm() {
                     {isSubmitting ? "Đang lưu..." : "Ghi vào nhật ký"}
                   </Button>
                 </div>
-              </motion.div>
+              </m.div>
             </div>
 
             {/* Right column: sticky nutrition summary */}
             <div className="space-y-4">
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 }}
               >
                 <NutritionSummaryCard />
-              </motion.div>
+              </m.div>
 
               {/* Submit area (desktop) */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: 0.2 }}
@@ -357,11 +358,12 @@ export function AddMealForm() {
                 >
                   Hủy
                 </Button>
-              </motion.div>
+              </m.div>
             </div>
           </div>
         </form>
       </div>
     </FormProvider>
+    </LazyMotion>
   );
 }
