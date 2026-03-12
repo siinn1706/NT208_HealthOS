@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import { Trash2, Plus, Search, CheckCircle2, HelpCircle } from "lucide-react";
-import { m, AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -110,8 +110,7 @@ export function IngredientListEditor({
   const ingErrors = errors?.ingredients;
 
   return (
-    <LazyMotion features={domAnimation}>
-      <div className="space-y-3">
+    <div className="space-y-3">
       {/* Header row */}
       <div className="hidden sm:grid grid-cols-[1fr_100px_100px_36px] gap-2 px-1">
         <span className="text-xs font-medium text-muted-foreground">Tên thành phần</span>
@@ -130,7 +129,7 @@ export function IngredientListEditor({
             : undefined;
 
           return (
-            <m.div
+            <motion.div
               key={field.id}
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -168,7 +167,7 @@ export function IngredientListEditor({
                   {/* Autocomplete dropdown */}
                   <AnimatePresence>
                     {focusedRow === index && suggestions.length > 0 && (
-                      <m.div
+                      <motion.div
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
@@ -217,7 +216,7 @@ export function IngredientListEditor({
                             Không tìm thấy? Gõ tên tự do + nhập calo thủ công bên dưới.
                           </p>
                         </div>
-                      </m.div>
+                      </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
@@ -275,7 +274,7 @@ export function IngredientListEditor({
 
               {/* Manual calories input (shown when no DB match) */}
               {!isMatched && currentName.length > 0 && (
-                <m.div
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
@@ -300,7 +299,7 @@ export function IngredientListEditor({
                       kcal
                     </span>
                   </div>
-                </m.div>
+                </motion.div>
               )}
 
               {/* Row-level errors */}
@@ -318,7 +317,7 @@ export function IngredientListEditor({
                   )}
                 </div>
               )}
-            </m.div>
+            </motion.div>
           );
         })}
       </AnimatePresence>
@@ -340,6 +339,5 @@ export function IngredientListEditor({
         Thêm thành phần
       </Button>
     </div>
-    </LazyMotion>
   );
 }

@@ -63,9 +63,7 @@ export default async function TrendsPage(props: TrendsPageProps) {
       </div>
 
       {/* Metric + Period selector */}
-      <Suspense fallback={<Skeleton className="h-10 rounded-lg" />}>
-        <TrendMetricSelector metric={metric} period={period} />
-      </Suspense>
+      <TrendMetricSelector metric={metric} period={period} />
 
       {/* AI Summary */}
       <Suspense fallback={<Skeleton className="h-28 rounded-xl" />}>

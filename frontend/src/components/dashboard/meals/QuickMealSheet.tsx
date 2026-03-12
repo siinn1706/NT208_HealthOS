@@ -5,7 +5,7 @@ import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, ArrowRight, CheckCircle2, Sunrise, Sun, Moon, Cookie } from "lucide-react";
-import { m, AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import {
   Sheet,
@@ -132,8 +132,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
   }
 
   return (
-    <LazyMotion features={domAnimation}>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-[420px] overflow-y-auto flex flex-col p-0"
@@ -223,7 +222,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                       : undefined;
 
                     return (
-                      <m.div
+                      <motion.div
                         key={field.id}
                         initial={{ opacity: 0, y: -6 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -250,7 +249,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                             <AnimatePresence>
                               {activeDropdown === index &&
                                 dropdownItems.length > 0 && (
-                                  <m.ul
+                                  <motion.ul
                                     initial={{ opacity: 0, y: -4 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0 }}
@@ -276,7 +275,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                                         </button>
                                       </li>
                                     ))}
-                                  </m.ul>
+                                  </motion.ul>
                                 )}
                             </AnimatePresence>
                           </div>
@@ -316,7 +315,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
 
                         {/* Inline calo badge */}
                         {kcal !== undefined && (
-                          <m.div
+                          <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             className="flex items-center gap-1.5 pl-1"
@@ -325,9 +324,9 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                             <span className="text-xs text-muted-foreground">
                               ≈{Math.round(kcal)} kcal
                             </span>
-                          </m.div>
+                          </motion.div>
                         )}
-                      </m.div>
+                      </motion.div>
                     );
                   })}
                 </AnimatePresence>
@@ -401,6 +400,5 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
         </FormProvider>
       </SheetContent>
     </Sheet>
-    </LazyMotion>
   );
 }
