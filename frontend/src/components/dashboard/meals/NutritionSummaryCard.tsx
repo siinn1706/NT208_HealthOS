@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useWatch, useFormContext } from "react-hook-form";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
 import { Beef, Wheat, Droplets } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { findIngredient, calcNutrition } from "@/data/ingredients";
@@ -37,7 +37,7 @@ function MacroBar({ label, value, target, unit, colorClass, icon }: MacroBarProp
         </div>
         <div className="flex items-center gap-0.5">
           <AnimatePresence mode="popLayout">
-            <motion.span
+            <m.span
               key={Math.round(value)}
               initial={{ y: -6, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -49,7 +49,7 @@ function MacroBar({ label, value, target, unit, colorClass, icon }: MacroBarProp
               )}
             >
               {Math.round(value)}
-            </motion.span>
+            </m.span>
           </AnimatePresence>
           <span className="text-xs text-muted-foreground">
             / {target} {unit}
@@ -57,7 +57,7 @@ function MacroBar({ label, value, target, unit, colorClass, icon }: MacroBarProp
         </div>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-        <motion.div
+        <m.div
           className={cn("h-full rounded-full", colorClass, over && "opacity-70")}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
@@ -115,7 +115,8 @@ export function NutritionSummaryCard() {
   );
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-5 sticky top-6">
+    <LazyMotion features={domAnimation}>
+      <div className="rounded-xl border border-border bg-card p-5 space-y-5 sticky top-6">
       {/* Header */}
       <div>
         <h3 className="text-sm font-semibold text-foreground">Tổng dinh dưỡng</h3>
@@ -137,7 +138,7 @@ export function NutritionSummaryCard() {
               strokeWidth="8"
               className="text-muted"
             />
-            <motion.circle
+            <m.circle
               cx="50"
               cy="50"
               r="42"
@@ -157,7 +158,7 @@ export function NutritionSummaryCard() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <AnimatePresence mode="popLayout">
-              <motion.span
+              <m.span
                 key={Math.round(roundedTotals.calories)}
                 initial={{ y: -8, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -166,7 +167,7 @@ export function NutritionSummaryCard() {
                 className="text-2xl font-bold tabular-nums text-foreground leading-none"
               >
                 {Math.round(roundedTotals.calories)}
-              </motion.span>
+              </m.span>
             </AnimatePresence>
             <span className="text-xs text-muted-foreground mt-0.5">kcal</span>
             <span className="text-[10px] text-muted-foreground">
@@ -218,21 +219,21 @@ export function NutritionSummaryCard() {
           <div className="flex gap-1 h-2 rounded-full overflow-hidden">
             {roundedTotals.calories > 0 && (
               <>
-                <motion.div
+                <m.div
                   className="bg-[#41BCE6] h-full"
                   animate={{
                     width: `${Math.min(((roundedTotals.protein_g * 4) / roundedTotals.calories) * 100, 100)}%`,
                   }}
                   transition={{ duration: 0.3 }}
                 />
-                <motion.div
+                <m.div
                   className="bg-[#E7DEA7] h-full"
                   animate={{
                     width: `${Math.min(((roundedTotals.carbs_g * 4) / roundedTotals.calories) * 100, 100)}%`,
                   }}
                   transition={{ duration: 0.3 }}
                 />
-                <motion.div
+                <m.div
                   className="bg-[#E3B79A] h-full flex-1"
                   transition={{ duration: 0.3 }}
                 />
@@ -256,5 +257,6 @@ export function NutritionSummaryCard() {
         </div>
       )}
     </div>
+    </LazyMotion>
   );
 }

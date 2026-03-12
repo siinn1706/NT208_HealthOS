@@ -32,6 +32,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useReportShare } from "@/hooks/useReportShare";
 import type { HealthReport, EmergencyContact, ShareRecipient, ShareChannel } from "@/types/api";
 
+const EMPTY_ARRAY: EmergencyContact[] = [];
+
 interface ShareReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -52,7 +54,7 @@ export function ShareReportDialog({
   open,
   onOpenChange,
   report,
-  emergencyContacts = [],
+  emergencyContacts = EMPTY_ARRAY,
   locale,
 }: ShareReportDialogProps) {
   const t = useTranslations("share");

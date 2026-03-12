@@ -9,6 +9,8 @@ import { ExportPdfInlineButton } from "@/components/dashboard/reports/ExportPdfD
 import { ShareReportDialog } from "@/components/dashboard/reports/ShareReportDialog";
 import type { HealthReport, EmergencyContact } from "@/types/api";
 
+const EMPTY_ARRAY: EmergencyContact[] = [];
+
 interface ReportActionsProps {
   report: HealthReport;
   category: string;
@@ -19,7 +21,7 @@ interface ReportActionsProps {
 export function ReportActions({
   report,
   category,
-  emergencyContacts = [],
+  emergencyContacts = EMPTY_ARRAY,
   locale,
 }: ReportActionsProps) {
   const t = useTranslations("reports");
