@@ -13,6 +13,8 @@ import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
 import type { Conversation, Message } from "@/types/api";
 
+const EMPTY_CONVERSATIONS: Conversation[] = [];
+
 interface ChatWindowProps {
   conversation: Conversation;
   conversations?: Conversation[];
@@ -26,7 +28,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({
   conversation,
-  conversations = [],
+  conversations = EMPTY_CONVERSATIONS,
   onBack,
   onPin,
   onMute,
