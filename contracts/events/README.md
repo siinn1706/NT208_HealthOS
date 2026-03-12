@@ -24,9 +24,12 @@ Examples:
 
 | Event | Producer | Consumer | File schema |
 |-------|----------|----------|-------------|
+| `chat.message.sent` | Core BE | FE (WS subscribers) | [chat.message.sent.json](./chat.message.sent.json) |
+| `chat.message.edited` | Core BE | FE (WS subscribers) | [chat.message.edited.json](./chat.message.edited.json) |
+| `chat.message.recalled` | Core BE | FE (WS subscribers) | [chat.message.recalled.json](./chat.message.recalled.json) |
+| `chat.message.reacted` | Core BE | FE (WS subscribers) | [chat.message.reacted.json](./chat.message.reacted.json) |
+| `chat.typing` | Core BE | FE (WS subscribers) | [chat.typing.json](./chat.typing.json) |
 | `meal.analyzed` | AI Worker | Core BE, FE (via WS) | [meal-analyzed.json](./meal-analyzed.json) |
-| `health.synced` | Queue Worker | Core BE | [health-synced.json](./health-synced.json) |
-| `alert.triggered` | Core BE | Queue Worker (notify) | [alert-triggered.json](./alert-triggered.json) |
 | `notification.requested` | Core BE | Notification Worker | [notification-requested.json](./notification-requested.json) |
 
 ## Envelope chuẩn cho mọi event

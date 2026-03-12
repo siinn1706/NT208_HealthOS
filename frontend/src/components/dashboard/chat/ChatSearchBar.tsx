@@ -66,7 +66,13 @@ export function ChatSearchBar({ messages, onClose, onJumpToMessage }: ChatSearch
           placeholder={t("searchInChatPlaceholder")}
           className="h-8 text-sm pr-24"
           onKeyDown={(e) => {
-            if (e.key === "Enter") e.shiftKey ? handlePrev() : handleNext();
+            if (e.key === "Enter") {
+              if (e.shiftKey) {
+                handlePrev();
+              } else {
+                handleNext();
+              }
+            }
             if (e.key === "Escape") onClose();
           }}
         />

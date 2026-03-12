@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Test & contract tooling
+pytest==8.4.2
+pytest-asyncio==1.2.0
+schemathesis==4.5.1

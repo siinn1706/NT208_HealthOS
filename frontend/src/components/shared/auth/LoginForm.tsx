@@ -87,54 +87,25 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      /**
-       * TODO: Implement authentication via BFF
-       *
-       * EXAMPLE — call the Next.js Route Handler (BFF), which in turn:
-       *   1. Validates credentials against Core BE (POST /api/auth/login)
-       *   2. Receives access_token + refresh_token from Core BE
-       *   3. Stores them in an httpOnly cookie (never exposed to client JS)
-       *
-       * import { signIn } from "next-auth/react"; // if using Auth.js
-       *
-       * const result = await signIn("credentials", {
-       *   email,
-       *   password,
-       *   remember: rememberMe,
-       *   redirect: false,
-       * });
-       *
-       * if (result?.error) {
-       *   setError("Invalid email or password.");
-       *   return;
-       * }
-       *
-       * router.push("/dashboard");
-       *
-       * ── OR ── call BFF Route Handler directly:
-       *
-       * const res = await fetch("/api/v1/auth/session", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({ email, password }),
-       * });
-       * if (!res.ok) {
-       *   const data = await res.json();
-       *   setError(data.message || "Login failed.");
-       *   return;
-       * }
-       * router.push("/dashboard");
-       */
+      const res = await fetch("/api/v1/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-      // --- DEV BYPASS: admin/admin shortcut for local testing ---
-      if (email.trim() === "admin" && password === "admin") {
-        router.push("/dashboard");
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const msg = data?.error?.message ?? data?.detail?.message ?? t("loginButton");
+        setError(
+          res.status === 401 || res.status === 404
+            ? "Email hoặc mật khẩu không đúng."
+            : msg ?? "Đăng nhập thất bại. Vui lòng thử lại."
+        );
         return;
       }
 
-      // --- MOCK: simulate successful login ---
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push("/");
+      router.push("/dashboard");
     } catch {
       setError("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {

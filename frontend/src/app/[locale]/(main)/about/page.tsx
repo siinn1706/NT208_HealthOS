@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { AnimatedIllustration } from "@/components/shared/AnimatedIllustration";

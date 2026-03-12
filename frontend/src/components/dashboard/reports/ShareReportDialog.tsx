@@ -58,7 +58,6 @@ export function ShareReportDialog({
   locale,
 }: ShareReportDialogProps) {
   const t = useTranslations("share");
-  const tReports = useTranslations("reports");
   const router = useRouter();
 
   // Build initial recipients from emergency contacts
@@ -77,7 +76,7 @@ export function ShareReportDialog({
   const [message, setMessage] = useState("");
   const statusLabel = { normal: "Bình thường", warning: "Cần chú ý", critical: "Cần can thiệp" }[report.status];
 
-  const { sharing, shareResults, shareToContacts } = useReportShare();
+  const { sharing, shareToContacts } = useReportShare();
 
   function toggleChannel(ch: ShareChannel) {
     setChannels((prev) =>

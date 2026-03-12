@@ -96,6 +96,46 @@ class User(Base):
     )
 
 
+class EmailOtp(Base):
+    __tablename__ = "email_otps"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    purpose: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    expires_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+    attempts_left: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=5,
+        server_default=text("5"),
+    )
+    consumed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
 class UserProfile(Base):
     __tablename__ = "user_profiles"
 
@@ -148,6 +188,8 @@ class Meal(Base):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[MealStatusEnum] = mapped_column(
         SAEnum(MealStatusEnum, name="meal_status_enum"),
         nullable=False,
@@ -366,6 +408,15 @@ class ConversationMember(Base):
         Boolean,
         nullable=False,
         server_default=text("false"),
+    )
+    is_pinned: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    theme_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
     )
     joined_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),

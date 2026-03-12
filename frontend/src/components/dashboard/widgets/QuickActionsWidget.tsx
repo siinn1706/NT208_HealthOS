@@ -55,10 +55,14 @@ export function QuickActionsWidget() {
   function handleAction(key: QuickAction["key"]) {
     if (key === "logMeal") {
       setMealSheetOpen(true);
+    } else if (key === "scanMeal") {
+      router.push("/dashboard/meals/snap");
     } else if (key === "viewReports") {
       router.push("/dashboard/reports");
+    } else if (key === "logMedicine") {
+      router.push("/dashboard/reminders");
     }
-    // TODO: handlers for addVital, scanMeal, logMedicine
+    // TODO: handler for addVital
   }
 
   return (

@@ -27,12 +27,26 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(subject: str | Any, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    subject: str | Any,
+    expires_delta: timedelta | None = None,
+    additional_claims: dict[str, Any] | None = None,
+) -> str:
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
     payload = {"sub": str(subject), "exp": expire}
+    if additional_claims:
+                payload.update(additional_claims)
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
+
+def create_ws_ticket(subject: str | Any, expires_seconds: int = 120) -> str:
+    return create_access_token(
+        subject,
+        expires_delta=timedelta(seconds=expires_seconds),
+        additional_claims={"typ": "ws_ticket"},
+    )
 
 
 def decode_access_token(token: str) -> dict:

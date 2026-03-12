@@ -29,23 +29,8 @@ interface DetailPageProps {
   searchParams: Promise<{ period?: string }>;
 }
 
-function DetailSkeleton() {
-  return (
-    <div className="space-y-5">
-      <Skeleton className="h-9 w-64 rounded-lg" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-xl" />
-        ))}
-      </div>
-      <Skeleton className="h-80 rounded-xl" />
-      <Skeleton className="h-64 rounded-xl" />
-    </div>
-  );
-}
-
 export default async function CategoryDetailPage({ params, searchParams }: DetailPageProps) {
-  const { locale, category } = await params;
+  const { category } = await params;
   const { period: rawPeriod } = await searchParams;
 
   // Validate category

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "title": "chat.message.edited",
-  "description": "Emitted when a message content is changed by its sender.",
+  "description": "Runtime WS broadcast envelope for an edited message (canonical format).",
   "type": "object",
   "required": ["event", "version", "payload", "metadata"],
   "properties": {
@@ -9,21 +9,21 @@
     "version": { "type": "string", "const": "1.0" },
     "payload": {
       "type": "object",
-      "required": ["message_id", "conversation_id", "new_content", "edited_at"],
+      "required": ["id", "conversation_id", "content", "edited_at"],
       "properties": {
-        "message_id":      { "type": "string", "format": "uuid" },
+        "id":              { "type": "string", "format": "uuid" },
         "conversation_id": { "type": "string", "format": "uuid" },
-        "new_content":     { "type": "string" },
-        "edited_at":       { "type": "string", "format": "date-time" }
+        "content":         { "type": "string" },
+        "edited_at":       { "type": ["string", "null"], "format": "date-time" }
       }
     },
     "metadata": {
       "type": "object",
       "required": ["event_id", "timestamp", "user_id"],
       "properties": {
-        "event_id":       { "type": "string", "format": "uuid" },
-        "timestamp":      { "type": "string", "format": "date-time" },
-        "user_id":        { "type": "string", "format": "uuid" },
+        "event_id": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_id": { "type": "string", "format": "uuid" },
         "correlation_id": { "type": "string", "format": "uuid" }
       }
     }

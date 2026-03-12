@@ -72,9 +72,9 @@ components:
           format: email
         display_name:
           type: string
-        created_at:
+        avatar_url:
           type: string
-          format: date-time
+          nullable: true
 
     MealCreate:
       type: object
@@ -260,6 +260,69 @@ paths:
                 $ref: "#/components/schemas/HealthCheck"
 
   # ── Auth ──────────────────────────────────────────────────────────────────
+  /v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      token_type:
+                        type: string
+                        example: bearer
+        "400":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/token:
+    post:
+      tags: [Auth]
+      summary: Exchange OAuth profile for access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, access_token]
+              properties:
+                provider:
+                  type: string
+                  example: google
+                access_token:
+                  type: string
+      responses:
+        "200":
+          description: OAuth login successful
+
   /v1/auth/request-otp:
     post:
       tags: [Auth]
@@ -284,7 +347,7 @@ paths:
                   format: email
                 purpose:
                   type: string
-                  enum: [signup, reset_password]
+                  enum: [signup, reset_password, login]
                   default: signup
                 name:
                   type: string
@@ -316,20 +379,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error:
-                  code: EMAIL_NOT_FOUND
-                  message: No account found with that email address.
         "429":
           description: Rate limited
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  message: Please wait before requesting another OTP.
 
   /v1/auth/verify-otp:
     post:
@@ -339,7 +394,7 @@ paths:
         - `signup`: verifies OTP, creates/retrieves user, returns JWT.
         - `reset_password`: verifies OTP, stores a short-lived verified marker
           (5 min TTL) in Redis, returns `{ email, next_step: "reset_password" }`.
-          Caller must follow up with POST /v1/auth/reset-password.
+        Caller must follow up with POST /v1/auth/reset-password.
       security: []
       requestBody:
         required: true
@@ -357,9 +412,10 @@ paths:
                   minLength: 6
                   maxLength: 6
                   example: "482193"
+                  pattern: '^\d{6}$'
                 purpose:
                   type: string
-                  enum: [signup, reset_password]
+                  enum: [signup, reset_password, login]
                   default: signup
       responses:
         "200":
@@ -410,10 +466,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error:
-                  code: AUTH_INVALID_OTP
-                  message: Invalid or expired OTP code.
         "404":
           description: User not found (reset_password only)
           content:
@@ -477,10 +529,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error:
-                  code: RESET_NOT_VERIFIED
-                  message: OTP verification required before resetting password.
         "404":
           description: Email not found
           content:
@@ -488,9 +536,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /v1/users/me:
+  /v1/auth/ws-ticket:
     get:
-      tags: [Users]
+      tags: [Auth]
+      summary: Issue short-lived WebSocket ticket
+      description: |
+        Returns a short-lived JWT ticket with `typ=ws_ticket`.
+        This ticket is intended only for WebSocket `/ws` authentication.
+      responses:
+        "200":
+          description: WS ticket issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ws_ticket:
+                        type: string
+                      expires_in_seconds:
+                        type: integer
+                        example: 120
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/me:
+    get:
+      tags: [Auth]
       summary: Get current user profile
       responses:
         "200":
@@ -508,8 +586,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-  /v1/meals:
+/v1/meals:
     get:
       tags: [Meals]
       summary: List meal logs
@@ -540,11 +617,29 @@ paths:
                       $ref: "#/components/schemas/MealResponse"
                   meta:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          description: Invalid query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       tags: [Meals]
       summary: Create a meal log (with optional image upload)
       requestBody:
         content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                notes:
+                  type: string
+                logged_at:
+                  type: string
+                  format: date-time
           multipart/form-data:
             schema:
               type: object
@@ -570,8 +665,14 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/MealResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
-  /v1/meals/{meal_id}:
+/v1/meals/{meal_id}:
     get:
       tags: [Meals]
       summary: Get single meal with nutrition result
@@ -597,11 +698,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /v1/health-metrics:
+/v1/health-metrics:
     get:
       tags: [Health Metrics]
       summary: List health metrics
       parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
         - name: metric_type
           in: query
           schema:
@@ -632,9 +744,15 @@ paths:
                       $ref: "#/components/schemas/HealthMetric"
                   meta:
                     $ref: "#/components/schemas/PaginationMeta"
+        "400":
+          description: Invalid query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ── Chat ──────────────────────────────────────────────────────────────────
-  /v1/conversations:
+/v1/conversations:
     get:
       tags: [Chat]
       summary: List conversations for the current user
@@ -683,7 +801,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/ConversationDTO"
 
-  /v1/conversations/direct:
+/v1/conversations/direct:
     post:
       tags: [Chat]
       summary: Create or return an existing direct conversation
@@ -718,7 +836,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/ConversationDTO"
 
-  /v1/conversations/pending:
+/v1/conversations/pending:
     get:
       tags: [Chat]
       summary: List pending (stranger) conversation requests
@@ -736,7 +854,7 @@ paths:
                     items:
                       $ref: "#/components/schemas/ConversationDTO"
 
-  /v1/conversations/{conversation_id}:
+/v1/conversations/{conversation_id}:
     get:
       tags: [Chat]
       summary: Get a single conversation
@@ -795,7 +913,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/ConversationDTO"
 
-  /v1/conversations/{conversation_id}/accept:
+/v1/conversations/{conversation_id}/accept:
     post:
       tags: [Chat]
       summary: Accept a stranger conversation request
@@ -805,17 +923,10 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Request accepted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ConversationDTO"
 
-  /v1/conversations/{conversation_id}/reject:
+/v1/conversations/{conversation_id}/reject:
     post:
       tags: [Chat]
       summary: Reject a stranger conversation request
@@ -824,29 +935,11 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                delete_history:
-                  type: boolean
-                  default: false
       responses:
-        "200":
+        "204":
           description: Request rejected
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
-  /v1/conversations/{conversation_id}/messages:
+/v1/conversations/{conversation_id}/messages:
     get:
       tags: [Chat]
       summary: List messages (cursor pagination — newest first)
@@ -919,7 +1012,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/MessageDTO"
 
-  /v1/conversations/{conversation_id}/messages/{message_id}:
+/v1/conversations/{conversation_id}/messages/{message_id}:
     patch:
       tags: [Chat]
       summary: Edit message content (sender only, within 15 min)
@@ -980,7 +1073,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/MessageDTO"
 
-  /v1/conversations/{conversation_id}/messages/{message_id}/reactions:
+/v1/conversations/{conversation_id}/messages/{message_id}/reactions:
     post:
       tags: [Chat]
       summary: Toggle emoji reaction on a message
@@ -1013,7 +1106,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/MessageDTO"
 
-  /v1/conversations/{conversation_id}/read:
+/v1/conversations/{conversation_id}/read:
     post:
       tags: [Chat]
       summary: Mark current user's last read position in a conversation
@@ -1023,29 +1116,22 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [last_read_message_id]
               properties:
-                last_message_id:
+                last_read_message_id:
                   type: string
                   format: uuid
-                  description: Optional — if omitted, marks all current messages as read
+                  description: Last read message id in this conversation
       responses:
-        "200":
+        "204":
           description: Read receipt updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
-  /v1/conversations/{conversation_id}/pinned:
+/v1/conversations/{conversation_id}/pinned:
     get:
       tags: [Chat]
       summary: List pinned messages in a conversation
@@ -1067,7 +1153,7 @@ paths:
                     items:
                       $ref: "#/components/schemas/MessageDTO"
 
-  /v1/conversations/{conversation_id}/pinned/{message_id}:
+/v1/conversations/{conversation_id}/pinned/{message_id}:
     post:
       tags: [Chat]
       summary: Pin a message
@@ -1081,17 +1167,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Message pinned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
     delete:
       tags: [Chat]
       summary: Unpin a message
@@ -1105,19 +1182,10 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        "204":
           description: Message unpinned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ok: { type: boolean }
 
-  /v1/users/lookup:
+/v1/users/lookup:
     get:
       tags: [Chat]
       summary: Search users by display name or email (for starting new conversations)
@@ -1140,15 +1208,16 @@ paths:
                       $ref: "#/components/schemas/ParticipantDTO"
 
   # ── WebSocket ─────────────────────────────────────────────────────────────
-  /ws:
+/ws:
     get:
       tags: [WebSocket]
       summary: Open a persistent WebSocket connection
       description: |
-        Connect with a valid JWT token obtained from GET /v1/auth/ws-token (BFF).
+        Connect with a valid short-lived WS ticket obtained via BFF `GET /api/v1/auth/ws-token`
+        (which exchanges session for Core `GET /v1/auth/ws-ticket`).
 
         **Query parameters:**
-        - `token` (required): Short-lived JWT (same as access_token)
+        - `token` (required): Short-lived JWT ticket (`typ=ws_ticket`)
 
         **Close codes:**
         - `4001` — JWT invalid or expired (re-fetch token and reconnect)
@@ -1161,14 +1230,14 @@ paths:
         | `client:hello` | Handshake, sent immediately after open |
         | `pong` | Reply to server `ping` |
         | `conv:join` | Subscribe to room events for a conversation |
-        | `msg:send` | Send a message |
-        | `msg:edit` | Edit own message |
-        | `msg:delete` | Recall own message |
-        | `msg:react` | Toggle emoji reaction |
+        | `msg:send` / `chat.message.send` | Send a message |
+        | `msg:edit` / `chat.message.edit` | Edit own message |
+        | `msg:delete` / `chat.message.recall` | Recall own message |
+        | `msg:react` / `chat.message.react` | Toggle emoji reaction |
         | `msg:pin` | Pin a message |
         | `msg:unpin` | Unpin a message |
-        | `msg:read` | Mark conversation as read |
-        | `typing` | Broadcast typing indicator |
+        | `msg:read` / `chat.message.read` | Mark conversation as read |
+        | `typing` / `chat.typing` | Broadcast typing indicator |
         | `conv:sync` | Request full conversation list refresh |
 
         **Server → Client events:**
@@ -1176,16 +1245,14 @@ paths:
         | event | description |
         |-------|-------------|
         | `ping` | Heartbeat (reply with `pong`) |
-        | `presence` | Online/offline status update |
-        | `msg:new` | New message in a subscribed room |
-        | `msg:edited` | Message was edited |
-        | `msg:recalled` | Message was recalled |
-        | `msg:reacted` | Reaction added or removed |
-        | `msg:pinned` | Message was pinned |
-        | `msg:unpinned` | Message was unpinned |
-        | `typing` | User is/stopped typing |
-        | `conv:accepted` | Stranger request accepted |
-        | `conv:rejected` | Stranger request rejected |
+        | `user.status` | Online/offline status update |
+        | `msg:new` + `chat.message.sent` | New message in a subscribed room |
+        | `msg:edit` + `chat.message.edited` | Message was edited |
+        | `msg:delete` + `chat.message.recalled` | Message was recalled |
+        | `msg:react` + `chat.message.reacted` | Reaction added or removed |
+        | `msg:pinned` + `chat.message.pinned` | Message was pinned |
+        | `msg:unpinned` + `chat.message.unpinned` | Message was unpinned |
+        | `typing` + `chat.typing` | User is/stopped typing |
         | `error` | Event processing error |
       parameters:
         - name: token

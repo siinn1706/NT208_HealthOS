@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.schemas.common import DataResponse
 
@@ -31,6 +31,17 @@ class VerifyOtpBody(BaseModel):
     email: EmailStr
     purpose: Literal["signup", "reset_password", "login"] = "signup"
     code: str = Field(min_length=4, max_length=12)
+    @field_validator('code')
+    @classmethod
+    def validate_strict_otp_length(cls, value: str) -> str:
+        # Ép chuẩn: Phải là số và đúng 6 ký tự để khớp với OpenAPI
+        if not re.match(r'^\d{6}$', value):
+            raise ValueError("OTP code must be exactly 6 digits")
+        return value     
+    @field_validator('purpose', mode='before')
+    @classmethod
+    def sync_purpose_format(cls, value: str) -> str:
+        return value.lower()
 
 
 class OtpRequested(BaseModel):
@@ -65,6 +76,13 @@ class ResetPasswordBody(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+class LoginBody(BaseModel):
+    """Request body for email + password login."""
+
+    email: EmailStr
+    password: str = Field(min_length=1)
+
+
 class AuthToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -75,6 +93,15 @@ class AuthToken(BaseModel):
 
 
 class AuthTokenResponse(DataResponse[AuthToken]):
+    ...
+
+
+class WsTicket(BaseModel):
+    ws_ticket: str
+    expires_in_seconds: int
+
+
+class WsTicketResponse(DataResponse[WsTicket]):
     ...
 
 

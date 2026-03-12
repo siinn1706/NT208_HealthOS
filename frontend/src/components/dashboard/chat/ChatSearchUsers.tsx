@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslations } from "next-intl";
-import { MOCK_USERS, MOCK_CONVERSATIONS, CURRENT_USER } from "@/data/chat";
+import { bffFetch } from "@/lib/api-client";
 import { getInitials } from "@/lib/chat-utils";
 import type { ChatParticipant, Conversation } from "@/types/api";
 import { Search, UserPlus } from "lucide-react";
@@ -20,62 +20,88 @@ import { Search, UserPlus } from "lucide-react";
 interface ChatSearchUsersProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  conversations: Conversation[];
   onSelectConversation: (conversationId: string) => void;
-  onCreateConversation: (conversation: Conversation) => void;
+  onCreateConversation: (targetUserId: string) => Promise<Conversation | null>;
 }
 
 export function ChatSearchUsers({
   open,
   onOpenChange,
+  conversations,
   onSelectConversation,
   onCreateConversation,
 }: ChatSearchUsersProps) {
   const t = useTranslations("chat");
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<ChatParticipant[]>([]);
 
-  const results: ChatParticipant[] =
-    query.length >= 2
-      ? MOCK_USERS.filter(
-          (u) =>
-            u.email.toLowerCase().includes(query.toLowerCase()) ||
-            u.display_name.toLowerCase().includes(query.toLowerCase())
-        )
-      : [];
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      setQuery("");
+      setResults([]);
+    }
+    onOpenChange(nextOpen);
+  }, [onOpenChange]);
 
-  const handleSelect = useCallback((user: ChatParticipant) => {
-    // Check if conversation already exists
-    const existing = MOCK_CONVERSATIONS.find(
-      (c) =>
-        c.type === "direct" &&
-        c.participants.some((p) => p.user_id === user.user_id)
+  useEffect(() => {
+    if (!open || query.trim().length < 2) {
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      bffFetch<{ data: Array<{ id: string; display_name: string; email: string; avatar_url: string | null }> }>(
+        `/api/v1/users/search?q=${encodeURIComponent(query.trim())}`
+      )
+        .then(({ data }) => {
+          if (cancelled) return;
+          setResults(
+            data.map((user) => ({
+              user_id: String(user.id),
+              display_name: user.display_name,
+              avatar_url: user.avatar_url,
+              email: user.email,
+              is_online: false,
+              last_seen: null,
+            }))
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setResults([]);
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, open]);
+
+  const handleSelect = useCallback(async (user: ChatParticipant) => {
+    const existing = conversations.find(
+      (conversation) =>
+        conversation.type === "direct" &&
+        conversation.participants.some((participant) => participant.user_id === user.user_id)
     );
 
     if (existing) {
       onSelectConversation(existing.id);
-    } else {
-      // Create new conversation
-      const now = Date.now();
-      const newConv: Conversation = {
-        id: `conv-new-${now}`,
-        type: "direct",
-        participants: [CURRENT_USER, user],
-        is_pinned: false,
-        is_muted: false,
-        unread_count: 0,
-        theme_id: null,
-        created_at: new Date(now).toISOString(),
-        updated_at: new Date(now).toISOString(),
-      };
-      onCreateConversation(newConv);
-      onSelectConversation(newConv.id);
+      setQuery("");
+      onOpenChange(false);
+      return;
     }
 
-    setQuery("");
-    onOpenChange(false);
-  }, [onSelectConversation, onCreateConversation, onOpenChange]);
+    const created = await onCreateConversation(user.user_id);
+    if (created) {
+      onSelectConversation(created.id);
+      setQuery("");
+      onOpenChange(false);
+    }
+  }, [conversations, onSelectConversation, onCreateConversation, onOpenChange]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

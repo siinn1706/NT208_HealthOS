@@ -53,6 +53,11 @@ export const MessageBubble = memo(function MessageBubble({
   const senderName = isAi ? "HealthOS AI" : sender?.display_name ?? "Unknown";
   const timeStr = formatChatTime(message.created_at, locale);
 
+  // Must be declared before any early returns (React Hooks rules)
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(message.content).catch(() => {});
+  }, [message.content]);
+
   if (message.type === "system") {
     return (
       <div className="flex justify-center my-2">
@@ -62,10 +67,6 @@ export const MessageBubble = memo(function MessageBubble({
       </div>
     );
   }
-
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(message.content).catch(() => {});
-  }, [message.content]);
 
   return (
     <>

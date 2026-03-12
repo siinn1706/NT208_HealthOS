@@ -8,14 +8,12 @@ import { statusBgColor } from "@/lib/report-utils";
 interface ReportAlertSummaryProps {
   alerts: ReportAlert[];
   status: HealthStatus;
-  reportId: string;
   locale: string;
 }
 
 export async function ReportAlertSummary({
   alerts,
   status,
-  reportId,
   locale,
 }: ReportAlertSummaryProps) {
   const t = await getTranslations("reports");

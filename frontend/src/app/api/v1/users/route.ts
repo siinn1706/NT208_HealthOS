@@ -1,23 +1,23 @@
 /**
  * BFF Users — proxy to Core BE /v1/users/me.
- * GET /api/v1/users/me
+ * GET /api/v1/users — fetch current user profile
+ * PATCH /api/v1/users — update current user profile
  *
  * Rule: Always validate session before forwarding to Core BE.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { coreProxy } from "@/lib/core-api-proxy";
 
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+export async function GET(req: NextRequest) {
+  return coreProxy(req, "/v1/users/me");
+}
 
-export async function GET(_req: NextRequest) {
-  // TODO: Replace with real session check
-  // const session = await getServerSession();
-  // if (!session) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
+// BFF TODO: PATCH /api/v1/users
+//   Trigger: User submits profile form save
+//   Request: { fullName?: string; dateOfBirth?: string; gender?: string; phone?: string; address?: string; avatarUrl?: string }
+//   Response: User object
+//   Fallback: setTimeout mock (profile-data.ts)
 
-  const res = await fetch(`${CORE_API_URL}/v1/users/me`, {
-    // headers: { Authorization: `Bearer ${session.accessToken}` },
-    next: { revalidate: 0 },
-  });
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+export async function PATCH(req: NextRequest) {
+  return coreProxy(req, "/v1/users/me", { method: "PATCH" });
 }

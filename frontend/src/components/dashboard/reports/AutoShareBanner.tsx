@@ -19,7 +19,6 @@ export function AutoShareBanner({
   onOpenSettings,
 }: AutoShareBannerProps) {
   const t = useTranslations("share.autoShare");
-  const tShare = useTranslations("share");
 
   const {
     countdown,
