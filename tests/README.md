@@ -1,37 +1,39 @@
-# HealthOS — Tests
+# HealthOS - Tests
 
-## Cấu trúc
+## Structure
 
-```
+```text
 tests/
-├── integration/      # Pytest tests gọi HTTP endpoint thật
-├── contract/         # Validate response vs OpenAPI spec (schemathesis)
-└── e2e/              # Playwright browser tests
+|- integration/    # Pytest tests against API behavior
+|- contract/       # OpenAPI contract checks (schemathesis)
+`- e2e/            # Playwright browser tests
 ```
 
-## Cài dependencies test
+## Install Test Dependencies
 
 ```bash
-pip install pytest pytest-asyncio httpx schemathesis
+cd backend
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+cd ..
 npm install --save-dev @playwright/test
 ```
 
-## Chạy tests
+## Run Tests
 
 ```bash
 # Integration
-pytest tests/integration/ -v
+.\backend\.venv\Scripts\python.exe -m pytest tests/integration/ -v
 
-# Contract  
-schemathesis run contracts/openapi/core-api.yaml --base-url=http://localhost:8000
+# Contract
+.\backend\.venv\Scripts\python.exe -m schemathesis run contracts/openapi/core-api.yaml --base-url=http://localhost:8000
 
 # E2E
 npx playwright test tests/e2e/
 ```
 
-## Quy tắc
+## Rules
 
-- Mỗi endpoint mới **phải** có ít nhất 1 integration test.
-- Contract tests chạy tự động trong CI mỗi khi `contracts/openapi/*.yaml` thay đổi.
-- E2E test cover happy path của các user story chính.
-- Không test implementation detail — test hành vi từ ngoài vào.
+- Every new endpoint must include at least one integration test.
+- Contract tests should run when `contracts/openapi/*.yaml` changes.
+- E2E tests should cover happy paths of main user stories.
+- Prefer behavior-driven tests over implementation-detail tests.

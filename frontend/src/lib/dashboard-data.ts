@@ -1,8 +1,9 @@
 /**
  * Dashboard server-side data helpers.
  * These functions are called ONLY in Server Components (no "use client").
- * They access mock data directly for MVP; in V1 they proxy to Core BE.
+ * They call the BFF /api/v1/* endpoints first, then fall back to mock data on error.
  */
+import { headers } from "next/headers";
 
 export interface DashboardSummary {
   userName: string;
@@ -39,66 +40,126 @@ export interface ReminderItem {
 }
 
 // ---------------------------------------------------------------------------
-// Mock data — replace with fetch() calls to Core BE in V1
+// Mock data for fallback
+// ---------------------------------------------------------------------------
+
+const MOCK_DASHBOARD_SUMMARY: DashboardSummary = {
+  userName: "Nguyễn Văn A",
+  alerts: [],
+  kpis: {
+    caloriesBurned: { current: 1850, target: 2000 },
+    sleepScore: { current: 78, target: 100 },
+    heartRate: { current: 72, target: 100 },
+    steps: { current: 8420, target: 10000 },
+  },
+  goals: [
+    { id: "1", key: "water", current: 1500, target: 2000, unit: "ml" },
+    { id: "2", key: "steps", current: 8420, target: 10000, unit: "bước" },
+    { id: "3", key: "calories", current: 1850, target: 2000, unit: "kcal" },
+  ],
+  aiInsight: {
+    text: "Hôm nay bạn đã đạt 92% mục tiêu nước uống. Hãy tiếp tục duy trì nhé!",
+    category: "nutrition",
+  },
+};
+
+const MOCK_VITALS_TIMESERIES: VitalPoint[] = [
+  { date: "2026-03-06", heartRate: 68, systolic: 118, diastolic: 75 },
+  { date: "2026-03-07", heartRate: 72, systolic: 120, diastolic: 78 },
+  { date: "2026-03-08", heartRate: 70, systolic: 116, diastolic: 74 },
+  { date: "2026-03-09", heartRate: 75, systolic: 122, diastolic: 80 },
+  { date: "2026-03-10", heartRate: 71, systolic: 119, diastolic: 76 },
+  { date: "2026-03-11", heartRate: 69, systolic: 117, diastolic: 75 },
+  { date: "2026-03-12", heartRate: 72, systolic: 120, diastolic: 78 },
+];
+
+const MOCK_UPCOMING_REMINDERS: ReminderItem[] = [
+  { id: "1", type: "medicine", title: "Uống thuốc bổ vitamin D", time: "08:00", done: true },
+  { id: "2", type: "exercise", title: "Tập thể dục buổi sáng", time: "06:30", done: false },
+  { id: "3", type: "appointment", title: "Khám sức khỏe định kỳ", time: "14:00", done: false },
+];
+
+// ---------------------------------------------------------------------------
+// Data access helpers
 // ---------------------------------------------------------------------------
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  return {
-    userName: "Nguyễn Văn A",
-    alerts: [
-      {
-        id: "alert-1",
-        type: "warning",
-        message: "Nhịp tim của bạn cao hơn mức bình thường trong 10 phút vừa qua.",
-      },
-      {
-        id: "alert-2",
-        type: "info",
-        message: "Bạn chưa ghi nhật ký bữa trưa hôm nay.",
-      },
-    ],
-    kpis: {
-      caloriesBurned: { current: 1240, target: 2000 },
-      sleepScore: { current: 78, target: 100 },
-      heartRate: { current: 74, target: 100 },
-      steps: { current: 6800, target: 10000 },
-    },
-    goals: [
-      { id: "g-1", key: "water", current: 1500, target: 2000, unit: "ml" },
-      { id: "g-2", key: "steps", current: 6800, target: 10000, unit: "bước" },
-      { id: "g-3", key: "calories", current: 1240, target: 2000, unit: "kcal" },
-    ],
-    aiInsight: {
-      text: "Dựa trên nhịp tim và số bước hôm nay, bạn nên đi bộ thêm khoảng 20 phút để đạt mục tiêu. Uống thêm 500ml nước để cải thiện hiệu suất vận động.",
-      category: "activity",
-    },
-  };
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const reqHeaders = await headers();
+    const res = await fetch(`${appUrl}/api/v1/dashboard/summary`, {
+      cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+    });
+    if (!res.ok) {
+      console.warn("[dashboard-data] Failed to fetch dashboard summary, using mock data");
+      return MOCK_DASHBOARD_SUMMARY;
+    }
+    const json = await res.json();
+    const d = json?.data;
+    if (!d) {
+      console.warn("[dashboard-data] Invalid response, using mock data");
+      return MOCK_DASHBOARD_SUMMARY;
+    }
+    return {
+      userName: d.user_name ?? "User",
+      alerts: d.alerts ?? [],
+      kpis: d.kpis ?? MOCK_DASHBOARD_SUMMARY.kpis,
+      goals: d.goals ?? MOCK_DASHBOARD_SUMMARY.goals,
+      aiInsight: d.ai_insight ? { text: d.ai_insight.text, category: d.ai_insight.category } : null,
+    };
+  } catch (error) {
+    console.warn("[dashboard-data] Error fetching dashboard summary:", error);
+    return MOCK_DASHBOARD_SUMMARY;
+  }
 }
 
 export async function getVitalsTimeseries(): Promise<VitalPoint[]> {
-  const today = new Date();
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (6 - i));
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    // Deterministic values based on index (no Math.random for SSR stability)
-    const offsets = [2, -1, 3, 0, 4, -2, 1];
-    const bpOffsets = [0, 2, -1, 3, 0, 2, -2];
-    return {
-      date: `${mm}-${dd}`,
-      heartRate: 72 + offsets[i],
-      systolic: 118 + bpOffsets[i],
-      diastolic: 76 + offsets[i] * 0.5,
-    };
-  });
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const reqHeaders = await headers();
+    const res = await fetch(`${appUrl}/api/v1/vitals/timeseries`, {
+      cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+    });
+    if (!res.ok) {
+      console.warn("[dashboard-data] Failed to fetch vitals timeseries, using mock data");
+      return MOCK_VITALS_TIMESERIES;
+    }
+    const json = await res.json();
+    const data = json?.data;
+    if (!data || !Array.isArray(data)) {
+      console.warn("[dashboard-data] Invalid vitals response, using mock data");
+      return MOCK_VITALS_TIMESERIES;
+    }
+    return data;
+  } catch (error) {
+    console.warn("[dashboard-data] Error fetching vitals timeseries:", error);
+    return MOCK_VITALS_TIMESERIES;
+  }
 }
 
 export async function getUpcomingReminders(): Promise<ReminderItem[]> {
-  return [
-    { id: "r-1", type: "medicine", title: "Metformin 500mg", time: "08:00", done: false },
-    { id: "r-2", type: "appointment", title: "Khám định kỳ - BS. Minh", time: "10:30", done: false },
-    { id: "r-3", type: "exercise", title: "Bài tập cardio 30 phút", time: "17:00", done: false },
-    { id: "r-4", type: "medicine", title: "Vitamin D3 1000IU", time: "20:00", done: false },
-  ];
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const reqHeaders = await headers();
+    const res = await fetch(`${appUrl}/api/v1/reminders/upcoming`, {
+      cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+    });
+    if (!res.ok) {
+      console.warn("[dashboard-data] Failed to fetch upcoming reminders, using mock data");
+      return MOCK_UPCOMING_REMINDERS;
+    }
+    const json = await res.json();
+    const data = json?.data;
+    if (!data || !Array.isArray(data)) {
+      console.warn("[dashboard-data] Invalid reminders response, using mock data");
+      return MOCK_UPCOMING_REMINDERS;
+    }
+    return data;
+  } catch (error) {
+    console.warn("[dashboard-data] Error fetching upcoming reminders:", error);
+    return MOCK_UPCOMING_REMINDERS;
+  }
 }

@@ -84,13 +84,12 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
     setSaveStatus("idle");
 
     try {
-      // TODO: Replace with real BFF call:
-      // await bffFetch("/api/v1/users/me", { method: "PATCH", body: values });
-      console.log("[ProfileFormProvider] Saving profile:", values);
-      void bffFetch; // keep import used
-
-      // Simulate API latency
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // BFF: PATCH /api/v1/users
+      const res = await bffFetch("/api/v1/users", {
+        method: "PATCH",
+        body: JSON.stringify(values),
+      });
+      void res; // BFF returns updated user, can be used to sync local state
 
       form.reset(values); // set new defaults to prevent stale "dirty" state
       setIsEditing(false);

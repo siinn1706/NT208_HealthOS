@@ -11,15 +11,18 @@ Or with pytest:
 import pytest
 import schemathesis
 
-schema = schemathesis.from_file(
-    "contracts/openapi/core-api.yaml",
-    base_url="http://localhost:8000",
-)
+if hasattr(schemathesis, "from_file"):
+    schema = schemathesis.from_file(
+        "contracts/openapi/core-api.yaml",
+        base_url="http://localhost:8000",
+    )
+else:
+    schema = schemathesis.openapi.from_file("contracts/openapi/core-api.yaml")
 
 
 @schema.parametrize()
 def test_api_matches_spec(case):
     """Each operation in OpenAPI spec must return a valid response."""
     # Skip endpoints requiring auth for now
-    response = case.call()
+    response = case.call(base_url="http://localhost:8000")
     case.validate_response(response)

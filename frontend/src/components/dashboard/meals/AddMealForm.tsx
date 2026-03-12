@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@/navigation";
-import { useLocale } from "next-intl";
 import {
   ChefHat,
   Clock,
@@ -87,7 +86,6 @@ function SectionCard({
 
 export function AddMealForm() {
   const router = useRouter();
-  const locale = useLocale();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const methods = useForm<AddMealFormValues>({

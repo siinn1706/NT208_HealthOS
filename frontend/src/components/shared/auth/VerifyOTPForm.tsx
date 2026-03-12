@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { MailCheck, Loader2 } from "lucide-react";
-import { useRouter, usePathname } from "@/navigation";
+import { useRouter } from "@/navigation";
 import {
   Card,
   CardContent,
@@ -57,12 +57,17 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
         setError(data?.error?.message || t("otpInvalid"));
         return;
       }
-      // For signup: BE returns an access token — persist it.
-      if (data?.data?.access_token) {
-        localStorage.setItem("healthos_token", data.data.access_token);
-      }
+      // BFF now sets the httpOnly cookie — do NOT store token in localStorage.
       setSuccess(t("verificationSuccess"));
-      setTimeout(() => router.push("/login"), 1500);
+      if (purpose === "signup") {
+        // Signup complete: go directly to dashboard
+        setTimeout(() => router.push("/dashboard"), 1200);
+      } else if (purpose === "reset_password") {
+        // Need to proceed with password reset
+        setTimeout(() => router.push("/forgot-password?step=reset&email=" + encodeURIComponent(email ?? "")), 1200);
+      } else {
+        setTimeout(() => router.push("/dashboard"), 1200);
+      }
     } catch {
       setError("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {

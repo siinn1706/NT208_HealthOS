@@ -1,23 +1,8 @@
-import { Target, Flame, Trophy, Star, TrendingUp } from "lucide-react";
-import { getGamificationSummary } from "@/lib/gamification-data";
-import { GamificationSubNav } from "@/components/dashboard/gamification/GamificationSubNav";
-import { BmiScoreCard } from "@/components/dashboard/gamification/BmiScoreCard";
-import { DailyProgressRings } from "@/components/dashboard/goals/DailyProgressRings";
-import { StreakCalendar } from "@/components/dashboard/goals/StreakCalendar";
-import { BadgeCard } from "@/components/dashboard/gamification/BadgeCard";
-import { AddGoalButton } from "@/components/dashboard/goals/AddGoalButton";
-import { cn } from "@/lib/utils";
+import { ComingSoon } from "@/components/ui/ComingSoon";
 
-export default async function ProgressPage() {
-  const summary = await getGamificationSummary();
-  const { currentUser, bmi, activeGoals, streakHistory, recentUnlocked } = summary;
-
-  return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Mục tiêu & Tiến độ</h1>
+export default function ProgressPage() {
+  return <ComingSoon />;
+}
           <p className="text-sm text-muted-foreground mt-0.5">
             Theo dõi hành trình luyện tập và nhận huy hiệu thành tựu
           </p>

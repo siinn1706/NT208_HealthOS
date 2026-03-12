@@ -1,3 +1,5 @@
-celery[redis]
-httpx
-pydantic-settings
+# Runtime dependencies (pinned)
+celery==5.6.2
+redis==7.2.1
+httpx==0.28.1
+pydantic-settings==2.13.1

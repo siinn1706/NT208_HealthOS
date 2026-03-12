@@ -96,6 +96,8 @@ bash infra/scripts/setup.sh        # Unix/WSL
 docker compose -f infra/docker/docker-compose.dev.yml up
 ```
 
+> Dữ liệu PostgreSQL được lưu qua Docker volume `postgres_data`. Không dùng `docker compose down -v` nếu muốn giữ dữ liệu.
+
 Services sẽ chạy tại:
 | Service | URL |
 |---------|-----|
@@ -103,6 +105,45 @@ Services sẽ chạy tại:
 | Core BE API | http://localhost:8000/docs |
 | AI Worker | http://localhost:8001/docs |
 | MinIO Console | http://localhost:9001 |
+
+### Quản lý Database (Docker)
+
+```powershell
+# Trạng thái DB + volume
+.\infra\scripts\db.ps1 -Action status
+
+# Start/Stop postgres (không xoá dữ liệu)
+.\infra\scripts\db.ps1 -Action up
+.\infra\scripts\db.ps1 -Action stop
+
+# Vào psql và liệt kê bảng
+.\infra\scripts\db.ps1 -Action psql
+.\infra\scripts\db.ps1 -Action tables
+
+# Chạy migration
+.\infra\scripts\db.ps1 -Action migrate
+
+# Backup (tạo file .sql trong infra/backups)
+.\infra\scripts\db.ps1 -Action dump
+
+# Restore từ file backup
+.\infra\scripts\db.ps1 -Action restore -FilePath .\infra\backups\healthos_YYYYMMDD_HHMMSS.sql
+```
+
+Nếu bạn chạy PostgreSQL local service (không dùng Docker), thêm `-Mode local`:
+
+```powershell
+.\infra\scripts\db.ps1 -Action status -Mode local
+.\infra\scripts\db.ps1 -Action psql -Mode local
+.\infra\scripts\db.ps1 -Action dump -Mode local
+.\infra\scripts\db.ps1 -Action restore -Mode local -FilePath .\infra\backups\healthos_YYYYMMDD_HHMMSS.sql
+```
+
+Lệnh truy cập trực tiếp (không qua script):
+
+```powershell
+docker compose -f infra/docker/docker-compose.dev.yml exec postgres psql -U healthos -d healthos
+```
 
 ---
 
@@ -112,7 +153,7 @@ Services sẽ chạy tại:
 ```bash
 start_FE.bat             # Windows (legacy)
 # hoặc:
-cd frontend && npm install && npm run dev
+cd frontend && npm ci && npm run dev
 ```
 
 #### Backend (FastAPI)
@@ -123,8 +164,8 @@ cd backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1    # Windows
 # source .venv/bin/activate   # Unix
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 #### Chạy FE + BE cùng lúc
@@ -146,7 +187,7 @@ start_FE.bat
 ### Cách 2: Chạy thủ công
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -182,11 +223,20 @@ source .venv/bin/activate
 
 #### Cài dependencies và chạy server
 ```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 ## Chạy cả FE và BE cùng lúc
 ```bash
 start_ALL.bat
+```
+## Unified Start Command
+
+Use the orchestrator for consistent team startup:
+
+```bash
+.\start_ALL.bat
+# or
+.\infra\scripts\start_all.ps1 -Mode auto -Only all
 ```

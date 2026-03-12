@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
-import { FileDown, Share2, TrendingUp } from "lucide-react";
+import { Share2, TrendingUp } from "lucide-react";
 import { ExportPdfInlineButton } from "@/components/dashboard/reports/ExportPdfDialog";
 import { ShareReportDialog } from "@/components/dashboard/reports/ShareReportDialog";
 import type { HealthReport, EmergencyContact } from "@/types/api";

@@ -17,8 +17,6 @@ const METRICS = [
   "weight",
 ] as const;
 
-type Metric = (typeof METRICS)[number];
-
 interface TrendMetricSelectorProps {
   metric: string;
   period: ReportPeriod;

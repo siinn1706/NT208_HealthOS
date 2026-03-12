@@ -8,7 +8,7 @@ import { useConversations, useStrangerRequests } from "@/hooks/useChat";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
 import { ChatEmptyState } from "./ChatEmptyState";
-import type { Conversation, Message } from "@/types/api";
+import type { Message } from "@/types/api";
 import { cn } from "@/lib/utils";
 
 export function ChatLayout() {
@@ -25,12 +25,15 @@ export function ChatLayout() {
 
   const {
     conversations,
+    isLoading,
     pinConversation,
     muteConversation,
     deleteConversation,
     setTheme,
     markAsRead,
     updateLastMessage,
+    applyIncomingMessage,
+    upsertConversation,
     createConversation,
   } = useConversations();
 
@@ -43,10 +46,11 @@ export function ChatLayout() {
 
   const handleSelectConversation = useCallback(
     (id: string) => {
+      const selected = conversations.find((conversation) => conversation.id === id);
       router.push(`${basePath}/${id}`);
-      markAsRead(id);
+      markAsRead(id, selected?.last_message?.id);
     },
-    [router, basePath, markAsRead]
+    [router, basePath, markAsRead, conversations]
   );
 
   const handleBack = useCallback(() => {
@@ -54,11 +58,14 @@ export function ChatLayout() {
   }, [router, basePath]);
 
   const handleCreateConversation = useCallback(
-    (conv: Conversation) => {
-      createConversation(conv);
-      handleSelectConversation(conv.id);
+    async (targetUserId: string) => {
+      const created = await createConversation(targetUserId);
+      if (created) {
+        upsertConversation(created);
+      }
+      return created;
     },
-    [createConversation, handleSelectConversation]
+    [createConversation, upsertConversation]
   );
 
   const handleDeleteConversation = useCallback(
@@ -108,6 +115,7 @@ export function ChatLayout() {
           conversations={conversations}
           activeId={activeId}
           strangerRequests={requests}
+          isLoading={isLoading}
           onSelectConversation={handleSelectConversation}
           onPinConversation={pinConversation}
           onMuteConversation={muteConversation}
@@ -147,6 +155,7 @@ export function ChatLayout() {
                 onDelete={handleDeleteActive}
                 onThemeChange={handleThemeChange}
                 onMessageSent={handleMessageSent}
+                onIncomingMessage={(raw) => applyIncomingMessage(raw, activeId)}
               />
             </motion.div>
           ) : (

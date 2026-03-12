@@ -146,6 +146,12 @@ class MarkReadBody(BaseModel):
     last_read_message_id: uuid.UUID
 
 
+class ConversationSettingsBody(BaseModel):
+    is_muted: bool | None = None
+    is_pinned: bool | None = None
+    theme_id: str | None = None
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # User lookup
 # ──────────────────────────────────────────────────────────────────────────────

@@ -1,92 +1,79 @@
-# HealthOS — Migration Guide: Script & Path
+# HealthOS - Migration Guide: Script and Path Mapping
 
-## Tổng quan
+## Overview
 
-Cấu trúc thư mục đã được chuẩn hoá theo kiến trúc hệ thống. Dưới đây là bản mapping giữa workflow cũ và mới để bạn không bị broken khi cập nhật local.
-
----
-
-## Mapping script chạy local
-
-| Script cũ | Script mới | Ghi chú |
-|-----------|-----------|---------|
-| `start_FE.bat` | `infra/scripts/start_fe.ps1` hoặc `cd frontend && npm run dev` | Port 3000, giữ nguyên |
-| `start_BE.bat` | `infra/scripts/start_be.ps1` hoặc `cd backend && uvicorn app.main:app --reload` | Port 8000, giữ nguyên |
-| `start_ALL.bat` | `docker compose -f infra/docker/docker-compose.dev.yml up` | Khởi động toàn bộ stack |
-| `start_client_1.bat` | `cd frontend && PORT=3001 npm run dev` | Testing multi-client |
-| `start_client_2.bat` | `cd frontend && PORT=3002 npm run dev` | Testing multi-client |
-| _(chưa có)_ | `infra/scripts/start_ai_worker.ps1` | AI Worker port 8001 |
-| _(chưa có)_ | `infra/scripts/start_queue_worker.ps1` | Celery worker |
-
-> **Ghi chú:** Script `.bat` cũ vẫn còn hoạt động trong phase 1. Sẽ deprecated ở phase 2.
+This guide maps old startup workflows to the current standardized scripts.
+`start_ALL.bat` now calls `infra/scripts/start_all.ps1` (Docker-first with local fallback).
 
 ---
 
-## Mapping đường dẫn thư mục
+## Runtime Script Mapping
 
-| Trước | Sau | Ghi chú |
-|-------|-----|---------|
-| _(không có)_ | `services/ai-worker/` | Service mới |
-| _(không có)_ | `services/queue-worker/` | Service mới |
-| _(không có)_ | `services/notification/` | Service mới |
-| _(không có)_ | `contracts/openapi/` | API contracts |
-| _(không có)_ | `infra/docker/` | Docker compose |
-| _(không có)_ | `infra/env/` | Env examples |
-| _(không có)_ | `tests/` | Test suites |
-| _(không có)_ | `docs/` | Tài liệu chuẩn |
-| `backend/app/main.py` (monolith) | `backend/app/api/v1/endpoints/` | Đã tách thành layers |
-| _(không có)_ | `frontend/src/app/api/v1/` | BFF Route Handlers |
-| `frontend/src/data/*.ts` | Dần dần → server components + BFF | Xoá khi có API thật |
+| Legacy entrypoint | Current entrypoint | Notes |
+|---|---|---|
+| `start_FE.bat` | `infra/scripts/start_fe.ps1` | Starts Next.js on port 3000 |
+| `start_BE.bat` | `infra/scripts/start_be.ps1` | Runs `python -m alembic upgrade head` then FastAPI on port 8000 |
+| `start_ai_worker.bat` | `infra/scripts/start_ai_worker.ps1` | Starts AI worker on port 8001 |
+| `start_queue_worker.bat` | `infra/scripts/start_queue_worker.ps1` | Starts Celery worker |
+| `start_notification.bat` | `infra/scripts/start_notification.ps1` | Starts notification service on port 8002 |
+| `start_infra.bat` | `infra/scripts/start_infra.ps1` | Starts infra (Postgres, Redis, MinIO) |
+| `start_ALL.bat` | `infra/scripts/start_all.ps1` | Orchestrates full stack: infra + BE + FE + AI + queue + notification |
+| _(n/a)_ | `infra/scripts/db.ps1` | DB utilities: status, up/stop, psql, migrate, dump/restore |
+
+### `start_all.ps1` public interface
+
+```powershell
+.\infra\scripts\start_all.ps1 -Mode auto|docker|local -Only infra|be|fe|ai|queue|notification|all -SkipInstall -CheckOnly
+```
+
+- `-Mode auto`: Prefer Docker, fallback to local.
+- `-SkipInstall`: Skip dependency installation.
+- `-Only`: Start/check a subset of components.
+- `-CheckOnly`: Run dependency/service checks only.
 
 ---
 
-## Checklist upgrade local cho developer hiện tại
+## Current Folder Mapping
+
+| Before | After | Notes |
+|---|---|---|
+| _(none)_ | `services/ai-worker/` | AI service |
+| _(none)_ | `services/queue-worker/` | Async/Celery service |
+| _(none)_ | `services/notification/` | Notification service |
+| _(none)_ | `contracts/openapi/` | API contracts |
+| _(none)_ | `infra/docker/` | Docker compose |
+| _(none)_ | `infra/env/` | Env templates |
+| _(none)_ | `tests/` | Integration/contract/e2e tests |
+| _(none)_ | `docs/` | Standards and architecture docs |
+
+---
+
+## Local Upgrade Checklist
 
 ```bash
-# 1. Pull code mới
+# 1. Pull latest code
 git pull origin develop
 
-# 2. Cập nhật env (nếu có biến mới)
+# 2. Refresh env files (if new vars were added)
 cp infra/env/backend.env.example backend/.env
 cp infra/env/frontend.env.example frontend/.env.local
+cp infra/env/worker.env.example services/ai-worker/.env
+cp infra/env/worker.env.example services/queue-worker/.env
+cp infra/env/worker.env.example services/notification/.env
 
-# 3. Cài dependencies (nếu requirements.txt thay đổi)
-cd backend && pip install -r requirements.txt
+# 3. Deterministic dependency setup
+cd frontend && npm ci
+cd ../backend && .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
 
-# 4. Chạy lại như bình thường (script cũ vẫn hoạt động)
-start_FE.bat
-start_BE.bat
+# 4. Start full stack
+cd .. && start_ALL.bat
 ```
 
 ---
 
-## Lộ trình Phase 2 — Monorepo
-
-Khi workload tăng và team mở rộng, sẽ migration:
-
-```
-Phase 2 target:
-apps/
-  web/        ← từ frontend/
-  api-core/   ← từ backend/
-  ai-worker/  ← từ services/ai-worker/
-  queue/      ← từ services/queue-worker/
-packages/
-  contracts/  ← từ contracts/
-  shared-types/
-  config/
-infra/        ← giữ nguyên
-docs/         ← giữ nguyên
-tests/        ← giữ nguyên
-```
-
-Migration guide chi tiết sẽ viết khi bắt đầu Phase 2.
-
----
-
-## Deprecation timeline
+## Deprecation Timeline
 
 | Item | Deprecated | Removed |
-|------|-----------|---------|
-| `start_*.bat` (root) | Phase 2 start | Phase 2 end |
-| `frontend/src/data/*.ts` mock | Khi endpoint tương ứng live | Sprint sau khi endpoint live |
+|---|---|---|
+| Root `start_*.bat` logic | Phase 2 start (wrapper-only) | Phase 2 end |
+| Legacy fallback mocks in frontend runtime data | When API endpoints are stable | Next sprint after endpoint stabilization |

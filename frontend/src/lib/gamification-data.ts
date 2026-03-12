@@ -1,7 +1,17 @@
 /**
  * Gamification server-side data helpers.
  * Called ONLY in Server Components (no "use client").
- * In V1 → replace mock returns with fetch() calls to Core BE via BFF route handlers.
+ * First attempts BFF call, falls back to mock data when unavailable.
+ *
+ * BFF TODO (stubs needed):
+ * - GET /api/v1/goals → getActiveGoals()
+ * - GET /api/v1/milestones → getAllMilestones()
+ * - GET /api/v1/milestones/:activity → getMilestonesByActivity()
+ * - GET /api/v1/streaks → getUserStreakHistory()
+ * - GET /api/v1/bmi-progress → getUserBmiData()
+ * - GET /api/v1/leaderboard → getLeaderboard()
+ * - GET /api/v1/gamification-summary → getGamificationSummary()
+ * - GET /api/v1/milestones/grouped → getMilestonesGrouped()
  */
 
 import {

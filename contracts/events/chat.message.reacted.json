@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
   "title": "chat.message.reacted",
-  "description": "Emitted when a user adds or removes an emoji reaction. `action` distinguishes add vs. remove (toggle behaviour).",
+  "description": "Runtime WS broadcast envelope after reaction toggle (canonical format).",
   "type": "object",
   "required": ["event", "version", "payload", "metadata"],
   "properties": {
@@ -9,22 +9,30 @@
     "version": { "type": "string", "const": "1.0" },
     "payload": {
       "type": "object",
-      "required": ["message_id", "conversation_id", "user_id", "emoji", "action"],
+      "required": ["id", "conversation_id", "reactions"],
       "properties": {
-        "message_id":      { "type": "string", "format": "uuid" },
+        "id":              { "type": "string", "format": "uuid" },
         "conversation_id": { "type": "string", "format": "uuid" },
-        "user_id":         { "type": "string", "format": "uuid" },
-        "emoji":           { "type": "string", "description": "Unicode emoji character, e.g. 👍" },
-        "action":          { "type": "string", "enum": ["added", "removed"] }
+        "reactions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "emoji": { "type": "string" },
+              "user_id": { "type": "string", "format": "uuid" },
+              "user_display_name": { "type": "string" }
+            }
+          }
+        }
       }
     },
     "metadata": {
       "type": "object",
       "required": ["event_id", "timestamp", "user_id"],
       "properties": {
-        "event_id":       { "type": "string", "format": "uuid" },
-        "timestamp":      { "type": "string", "format": "date-time" },
-        "user_id":        { "type": "string", "format": "uuid" },
+        "event_id": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_id": { "type": "string", "format": "uuid" },
         "correlation_id": { "type": "string", "format": "uuid" }
       }
     }

@@ -24,7 +24,7 @@ export function ReportHubWrapper({
 }: ReportHubWrapperProps) {
   const [shareOpen, setShareOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [, setSettingsOpen] = useState(false);
 
   return (
     <>
@@ -38,7 +38,6 @@ export function ReportHubWrapper({
       {/* Quick action buttons */}
       <ReportQuickActions
         locale={locale}
-        reportId={report.id}
         onExportPdf={() => setExportOpen(true)}
         onShare={() => setShareOpen(true)}
       />

@@ -8,7 +8,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 echo "=== HealthOS Setup ==="
 echo "Root: $ROOT_DIR"
 
-# ─── Copy .env files ──────────────────────────────────────────────
 copy_env() {
     local src="$1" dest="$2"
     if [ ! -f "$dest" ]; then
@@ -25,30 +24,36 @@ copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/ai-worke
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/queue-worker/.env"
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/notification/.env"
 
-# ─── Docker mode ──────────────────────────────────────────────────
 if [[ "${1:-}" == "--docker" ]]; then
     echo "[DOCKER] Starting full stack..."
     cd "$ROOT_DIR"
     docker compose -f infra/docker/docker-compose.dev.yml up -d
-    echo "[DOCKER] Stack running. Ports: FE=3000 BE=8000 AI=8001 PG=5432 Redis=6379 MinIO=9000"
+    echo "[DOCKER] Stack running. Ports: FE=3000 BE=8000 AI=8001 Notification=8002 PG=5432 Redis=6379 MinIO=9000"
     exit 0
 fi
 
-# ─── Frontend ─────────────────────────────────────────────────────
-echo "[FE] Installing npm packages..."
-cd "$ROOT_DIR/frontend" && npm install
+echo "[FE] Installing npm packages (deterministic)..."
+cd "$ROOT_DIR/frontend"
+if [ -f package-lock.json ]; then
+    npm ci
+else
+    npm install
+fi
 echo "[FE] Done."
 
-# ─── Backend ──────────────────────────────────────────────────────
 echo "[BE] Setting up Python venv..."
 cd "$ROOT_DIR/backend"
 if [ ! -d ".venv" ]; then
     python3 -m venv .venv
 fi
 source .venv/bin/activate
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
+if [ -f requirements-dev.txt ]; then
+    pip install -r requirements-dev.txt
+fi
 echo "[BE] Done."
 
 echo ""
 echo "=== Setup complete ==="
-echo "Run: bash infra/scripts/start_all.sh to start all services"
+echo "Run: docker compose -f infra/docker/docker-compose.dev.yml up -d"
