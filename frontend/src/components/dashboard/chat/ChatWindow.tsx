@@ -16,6 +16,8 @@ import { ChatBackground } from "./ChatBackground";
 import { CURRENT_USER_ID } from "@/data/chat";
 import type { Conversation, Message } from "@/types/api";
 
+const EMPTY_CONVERSATIONS: Conversation[] = [];
+
 interface ChatWindowProps {
   conversation: Conversation;
   conversations?: Conversation[];
@@ -30,7 +32,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({
   conversation,
-  conversations = [],
+  conversations = EMPTY_CONVERSATIONS,
   onBack,
   onPin,
   onMute,
