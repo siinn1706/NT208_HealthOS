@@ -4,16 +4,87 @@ param(
     [switch]$SkipInstall,
     [ValidateSet("infra", "be", "fe", "ai", "queue", "notification", "all")]
     [string]$Only = "all",
-    [switch]$CheckOnly
+    [switch]$CheckOnly,
+    [ValidateSet("prompt", "auto", "never")]
+    [string]$InstallPolicy = "prompt",
+    [string]$LogFile
 )
+
+$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).
+    IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $IsAdmin) {
+    $HostExe = if ($PSVersionTable.PSEdition -eq "Core") { "pwsh.exe" } else { "powershell.exe" }
+
+    $RelaunchArgs = @(
+        "-ExecutionPolicy", "Bypass",
+        "-File", "`"$PSCommandPath`""
+    )
+
+    if ($Mode) { $RelaunchArgs += @("-Mode", $Mode) }
+    if ($SkipInstall) { $RelaunchArgs += "-SkipInstall" }
+    if ($Only) { $RelaunchArgs += @("-Only", $Only) }
+    if ($CheckOnly) { $RelaunchArgs += "-CheckOnly" }
+    if ($InstallPolicy) { $RelaunchArgs += @("-InstallPolicy", $InstallPolicy) }
+    if ($LogFile) { $RelaunchArgs += @("-LogFile", "`"$LogFile`"") }
+
+    Start-Process -FilePath $HostExe -ArgumentList $RelaunchArgs -Verb RunAs
+    exit
+}
 
 $ErrorActionPreference = "Stop"
 
-$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
+$PowerShellExe = Join-Path $PSHOME "powershell.exe"
+if (-not (Test-Path $PowerShellExe)) {
+    $PowerShellExe = "powershell"
+}
 $StatusRows = New-Object System.Collections.Generic.List[object]
 $ConflictRows = New-Object System.Collections.Generic.List[object]
 $HasFailure = $false
+
+function Resolve-LogFilePath {
+    param(
+        [string]$DefaultName,
+        [string]$RequestedPath
+    )
+
+    $logsDir = Join-Path $RepoRoot "infra\logs"
+    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+
+    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
+        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
+        return Join-Path $logsDir ("{0}_{1}.log" -f $DefaultName, $timestamp)
+    }
+
+    $resolved = if ([System.IO.Path]::IsPathRooted($RequestedPath)) {
+        $RequestedPath
+    }
+    else {
+        Join-Path $RepoRoot $RequestedPath
+    }
+
+    $parent = Split-Path -Parent $resolved
+    if ($parent -and -not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    return $resolved
+}
+
+function New-ComponentLogFile {
+    param([string]$Component)
+    return Resolve-LogFilePath -DefaultName $Component -RequestedPath $null
+}
+
+$ScriptLogFile = Resolve-LogFilePath -DefaultName "start_all" -RequestedPath $LogFile
+try {
+    Start-Transcript -Path $ScriptLogFile -Append -Force | Out-Null
+}
+catch {
+    Write-Warning "[ALL] Unable to start transcript at '$ScriptLogFile': $($_.Exception.Message)"
+}
 
 function Add-Status {
     param(
@@ -47,20 +118,61 @@ function Test-CommandAvailable {
     return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
 }
 
+function Test-DockerComposeAvailable {
+    if (-not (Test-CommandAvailable "docker")) {
+        return $false
+    }
+
+    try {
+        docker compose version | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-DockerDaemonReachable {
+    if (-not (Test-CommandAvailable "docker")) {
+        return $false
+    }
+
+    try {
+        docker info | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
+}
+
 function Resolve-EffectiveMode {
-    if ($Mode -ne "auto") {
-        return $Mode
+    if ($Mode -eq "docker") {
+        if (-not (Test-CommandAvailable "docker")) {
+            throw "[ALL] Docker CLI not found. Install Docker Desktop or rerun with -Mode local."
+        }
+        if (-not (Test-DockerComposeAvailable)) {
+            throw "[ALL] docker compose is unavailable. Check Docker Desktop installation."
+        }
+        if (-not (Test-DockerDaemonReachable)) {
+            throw "[ALL] Docker daemon is not reachable. Start Docker Desktop or rerun with -Mode local."
+        }
+        return "docker"
+    }
+
+    if ($Mode -eq "local") {
+        return "local"
     }
 
     if (Test-CommandAvailable "docker") {
-        try {
-            docker compose version | Out-Null
-            if ($LASTEXITCODE -eq 0) {
+        if (Test-DockerComposeAvailable) {
+            if (Test-DockerDaemonReachable) {
                 return "docker"
             }
+            Write-Host "[ALL] Docker CLI detected but daemon is unavailable. Falling back to local mode." -ForegroundColor Yellow
         }
-        catch {
-            # Fall back to local mode.
+        else {
+            Write-Host "[ALL] Docker CLI detected but docker compose is unavailable. Falling back to local mode." -ForegroundColor Yellow
         }
     }
 
@@ -86,6 +198,8 @@ function Invoke-LocalScript {
         throw "Script missing: $scriptPath"
     }
 
+    $componentLog = New-ComponentLogFile -Component $Component
+
     if ($CheckOnly) {
         $params = @{}
         foreach ($key in $ExtraParams.Keys) {
@@ -93,11 +207,12 @@ function Invoke-LocalScript {
         }
         if ($SkipInstall) { $params.SkipInstall = $true }
         $params.CheckOnly = $true
+        $params.LogFile = $componentLog
         & $scriptPath @params
         if ($LASTEXITCODE -ne 0) {
-            throw "Check failed for $Component"
+            throw "Check failed for $Component. See log: $componentLog"
         }
-        Add-Status -Component $Component -Status "ok" -Detail "Check passed"
+        Add-Status -Component $Component -Status "ok" -Detail "Check passed | log: $componentLog"
         return
     }
 
@@ -116,8 +231,11 @@ function Invoke-LocalScript {
         $args += "-SkipInstall"
     }
 
-    Start-Process -FilePath "powershell" -ArgumentList $args -WorkingDirectory $RepoRoot | Out-Null
-    Add-Status -Component $Component -Status "started" -Detail "Opened in separate terminal"
+    $args += "-LogFile"
+    $args += $componentLog
+
+    Start-Process -FilePath $PowerShellExe -ArgumentList $args -WorkingDirectory $RepoRoot | Out-Null
+    Add-Status -Component $Component -Status "started" -Detail "Opened in separate terminal | log: $componentLog"
 }
 
 function Invoke-DockerComponents {
@@ -155,7 +273,7 @@ function Invoke-DockerComponents {
         if ($LASTEXITCODE -ne 0) {
             throw "docker compose ps failed."
         }
-        Add-Status -Component "docker" -Status "ok" -Detail "Compose check passed"
+        Add-Status -Component "docker" -Status "ok" -Detail "Compose check passed | log: $ScriptLogFile"
         return
     }
 
@@ -262,14 +380,21 @@ function Print-Reports {
     Write-Host "  AI Worker    : http://localhost:8001/docs"
     Write-Host "  Notification : http://localhost:8002/docs"
     Write-Host "  MinIO        : http://localhost:9001"
+
+    Write-Host ""
+    Write-Host "Logs:" -ForegroundColor Cyan
+    Write-Host "  Orchestrator : $ScriptLogFile"
+    Write-Host "  Components   : $RepoRoot\infra\logs\*.log"
 }
 
-$effectiveMode = Resolve-EffectiveMode
 $selected = Get-SelectedComponents
 
+Write-Host "[ALL] Log file: $ScriptLogFile" -ForegroundColor DarkCyan
+$effectiveMode = Resolve-EffectiveMode
 Write-Host "[ALL] Mode requested: $Mode" -ForegroundColor DarkCyan
 Write-Host "[ALL] Mode effective: $effectiveMode" -ForegroundColor DarkCyan
 Write-Host "[ALL] Selected components: $($selected -join ', ')" -ForegroundColor DarkCyan
+Write-Host "[ALL] Install policy: $InstallPolicy" -ForegroundColor DarkCyan
 
 try {
     if ($effectiveMode -eq "docker") {
@@ -279,7 +404,7 @@ try {
         foreach ($component in $selected) {
             try {
                 switch ($component) {
-                    "infra" { Invoke-LocalScript -Component "infra" -ScriptName "start_infra.ps1" -ExtraParams @{ Mode = "local" } }
+                    "infra" { Invoke-LocalScript -Component "infra" -ScriptName "start_infra.ps1" -ExtraParams @{ Mode = "local"; InstallPolicy = $InstallPolicy } }
                     "be" { Invoke-LocalScript -Component "be" -ScriptName "start_be.ps1" }
                     "fe" { Invoke-LocalScript -Component "fe" -ScriptName "start_fe.ps1" }
                     "ai" { Invoke-LocalScript -Component "ai" -ScriptName "start_ai_worker.ps1" }

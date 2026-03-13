@@ -238,5 +238,24 @@ Use the orchestrator for consistent team startup:
 ```bash
 .\start_ALL.bat
 # or
-.\infra\scripts\start_all.ps1 -Mode auto -Only all
+.\infra\scripts\start_all.ps1 -Mode auto -Only all -InstallPolicy prompt
 ```
+
+Useful flags:
+
+```powershell
+# Force local mode and never auto-install infra dependencies
+.\infra\scripts\start_all.ps1 -Mode local -InstallPolicy never
+
+# Check-only health checks (no npm/pip install side effects)
+.\infra\scripts\start_all.ps1 -CheckOnly
+```
+
+### Startup troubleshooting (Windows)
+
+- `start_*.bat` now writes logs to `infra\logs\`.
+- On failure from double-click, wrappers keep the terminal open (`pause`) unless `CI=true` or `CI=1`.
+- `-Mode auto` uses Docker only when both `docker compose` and Docker daemon are reachable.
+- If Docker CLI exists but daemon is down, startup falls back to local mode and prints a warning.
+- `-InstallPolicy prompt|auto|never` controls dependency auto-install behavior for local infra startup.
+- You can set explicit log path with `-LogFile` when running `infra/scripts/start_*.ps1` directly.

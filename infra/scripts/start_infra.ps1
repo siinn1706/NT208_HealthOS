@@ -2,17 +2,77 @@ param(
     [ValidateSet("auto", "docker", "local")]
     [string]$Mode = "auto",
     [switch]$SkipInstall,
-    [switch]$CheckOnly
+    [switch]$CheckOnly,
+    [ValidateSet("prompt", "auto", "never")]
+    [string]$InstallPolicy = "prompt",
+    [string]$LogFile
 )
 
 $ErrorActionPreference = "Stop"
 
-$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
+
+function Resolve-LogFilePath {
+    param(
+        [string]$DefaultName,
+        [string]$RequestedPath
+    )
+
+    $logsDir = Join-Path $RepoRoot "infra\logs"
+    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+
+    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
+        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
+        return Join-Path $logsDir ("{0}_{1}.log" -f $DefaultName, $timestamp)
+    }
+
+    $resolved = if ([System.IO.Path]::IsPathRooted($RequestedPath)) {
+        $RequestedPath
+    }
+    else {
+        Join-Path $RepoRoot $RequestedPath
+    }
+
+    $parent = Split-Path -Parent $resolved
+    if ($parent -and -not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    return $resolved
+}
 
 function Test-CommandAvailable {
     param([string]$CommandName)
     return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
+}
+
+function Test-DockerComposeAvailable {
+    if (-not (Test-CommandAvailable "docker")) {
+        return $false
+    }
+
+    try {
+        docker compose version | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-DockerDaemonReachable {
+    if (-not (Test-CommandAvailable "docker")) {
+        return $false
+    }
+
+    try {
+        docker info | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
 }
 
 function Test-IsAdmin {
@@ -21,20 +81,42 @@ function Test-IsAdmin {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Test-IsCiContext {
+    if (-not $env:CI) {
+        return $false
+    }
+
+    $normalized = "$($env:CI)".Trim().ToLowerInvariant()
+    return ($normalized -eq "true" -or $normalized -eq "1")
+}
+
 function Resolve-EffectiveMode {
-    if ($Mode -ne "auto") {
-        return $Mode
+    if ($Mode -eq "docker") {
+        if (-not (Test-CommandAvailable "docker")) {
+            throw "[Infra] Docker CLI not found. Install Docker Desktop or rerun with -Mode local."
+        }
+        if (-not (Test-DockerComposeAvailable)) {
+            throw "[Infra] docker compose is unavailable. Check Docker Desktop installation."
+        }
+        if (-not (Test-DockerDaemonReachable)) {
+            throw "[Infra] Docker daemon is not reachable. Start Docker Desktop or rerun with -Mode local."
+        }
+        return "docker"
+    }
+
+    if ($Mode -eq "local") {
+        return "local"
     }
 
     if (Test-CommandAvailable "docker") {
-        try {
-            docker compose version | Out-Null
-            if ($LASTEXITCODE -eq 0) {
+        if (Test-DockerComposeAvailable) {
+            if (Test-DockerDaemonReachable) {
                 return "docker"
             }
+            Write-Host "[Infra] Docker CLI detected but daemon is unavailable. Falling back to local mode." -ForegroundColor Yellow
         }
-        catch {
-            # Fall through to local mode.
+        else {
+            Write-Host "[Infra] Docker CLI detected but docker compose is unavailable. Falling back to local mode." -ForegroundColor Yellow
         }
     }
 
@@ -161,9 +243,34 @@ function Resolve-MinioPath {
     return $null
 }
 
+function Request-InstallApproval {
+    param(
+        [string]$Name,
+        [string]$PackageId,
+        [string]$ManualInstallHint
+    )
+
+    switch ($InstallPolicy) {
+        "auto" { return $true }
+        "never" {
+            throw "[$Name] Not installed. Install manually: $ManualInstallHint (or rerun with -InstallPolicy auto)."
+        }
+        "prompt" {
+            if (Test-IsCiContext) {
+                throw "[$Name] InstallPolicy=prompt requires an interactive shell. Use -InstallPolicy auto or never in CI."
+            }
+            $answer = Read-Host "[$Name] Not installed. Install now via winget ($PackageId)? [Y/N]"
+            if ($answer -match "^(y|yes)$") {
+                return $true
+            }
+            throw "[$Name] Installation skipped. Install manually: $ManualInstallHint"
+        }
+    }
+}
+
 function Ensure-InstalledWithWinget {
     param(
-        [string]$PackageId,
+        [string[]]$PackageIds,
         [string]$Name
     )
 
@@ -175,11 +282,60 @@ function Ensure-InstalledWithWinget {
         throw "[$Name] winget is required but not found."
     }
 
-    Write-Host "[$Name] Installing via winget ($PackageId)..." -ForegroundColor Yellow
-    winget install --id $PackageId --silent --accept-package-agreements --accept-source-agreements
-    if ($LASTEXITCODE -ne 0) {
-        throw "[$Name] Winget install failed for $PackageId"
+    $candidateIds = @($PackageIds | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($candidateIds.Count -eq 0) {
+        throw "[$Name] No winget package ids configured."
     }
+
+    $resultLog = New-Object System.Collections.Generic.List[string]
+    $attemptCount = 0
+
+    for ($round = 1; $round -le 2; $round++) {
+        foreach ($packageId in $candidateIds) {
+            $attemptCount++
+            Write-Host "[$Name] Installing via winget ($packageId)..." -ForegroundColor Yellow
+            $output = winget install --id $packageId --exact --source winget --silent --accept-package-agreements --accept-source-agreements 2>&1
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -eq 0) {
+                Write-Host "[$Name] Installed via winget ($packageId)." -ForegroundColor Green
+                return
+            }
+
+            $outputText = ($output -join "`n").Trim()
+            if ([string]::IsNullOrWhiteSpace($outputText)) {
+                $outputText = "No output from winget."
+            }
+            $resultLog.Add(("{0}: {1}" -f $packageId, $outputText))
+            Write-Host "[$Name] winget install failed for $packageId" -ForegroundColor Yellow
+        }
+
+        if ($round -eq 1) {
+            Write-Host "[$Name] Refreshing winget sources and retrying..." -ForegroundColor Yellow
+            winget source update winget | Out-Null
+        }
+    }
+
+    $errorSummary = ($resultLog | Select-Object -Last ([Math]::Min(4, $resultLog.Count))) -join " | "
+    throw "[$Name] Winget install failed after $attemptCount attempts. Tried ids: $($candidateIds -join ', '). Details: $errorSummary"
+}
+
+function Get-InstallPromptText {
+    param([string[]]$Ids)
+    $clean = @($Ids | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($clean.Count -le 1) {
+        return $clean[0]
+    }
+
+    return "$($clean[0]) (fallback: $($clean[1..($clean.Count - 1)] -join ', '))"
+}
+
+function Get-PrimaryPackageId {
+    param([string[]]$Ids)
+    $clean = @($Ids | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($clean.Count -eq 0) {
+        return ""
+    }
+    return $clean[0]
 }
 
 function Invoke-Psql {
@@ -220,17 +376,21 @@ function Invoke-Psql {
 }
 
 function Ensure-RedisLocal {
+    $manualHint = "Install Redis for Windows and ensure redis-cli/redis-server are available on PATH."
+    $wingetIds = @("Redis.Redis")
     $redis = Resolve-RedisPaths
     if (-not $redis.Cli -or -not $redis.Server) {
         if ($CheckOnly) {
-            throw "[Redis] Not installed."
+            throw "[Redis] Not installed. $manualHint"
         }
-        Ensure-InstalledWithWinget -PackageId "Redis.Redis" -Name "Redis"
-        $redis = Resolve-RedisPaths
+        if (Request-InstallApproval -Name "Redis" -PackageId (Get-InstallPromptText -Ids $wingetIds) -ManualInstallHint $manualHint) {
+            Ensure-InstalledWithWinget -PackageIds $wingetIds -Name "Redis"
+            $redis = Resolve-RedisPaths
+        }
     }
 
     if (-not $redis.Cli -or -not $redis.Server) {
-        throw "[Redis] Unable to locate redis-cli.exe or redis-server.exe after installation."
+        throw "[Redis] Unable to locate redis-cli.exe or redis-server.exe after installation. $manualHint"
     }
 
     & $redis.Cli ping > $null 2>&1
@@ -261,17 +421,21 @@ function Ensure-RedisLocal {
 }
 
 function Ensure-PostgresLocal {
+    $manualHint = "Install PostgreSQL 15+ with service enabled and ensure psql.exe is available on PATH."
+    $wingetIds = @("PostgreSQL.PostgreSQL.17", "PostgreSQL.PostgreSQL.18")
     $serviceName = Resolve-PostgresService
     if (-not $serviceName) {
         if ($CheckOnly) {
-            throw "[PostgreSQL] Service not installed."
+            throw "[PostgreSQL] Service not installed. $manualHint"
         }
-        Ensure-InstalledWithWinget -PackageId "PostgreSQL.PostgreSQL.17" -Name "PostgreSQL"
-        $serviceName = Resolve-PostgresService
+        if (Request-InstallApproval -Name "PostgreSQL" -PackageId (Get-InstallPromptText -Ids $wingetIds) -ManualInstallHint $manualHint) {
+            Ensure-InstalledWithWinget -PackageIds $wingetIds -Name "PostgreSQL"
+            $serviceName = Resolve-PostgresService
+        }
     }
 
     if (-not $serviceName) {
-        throw "[PostgreSQL] Service still not found after installation."
+        throw "[PostgreSQL] Service still not found after installation. $manualHint"
     }
 
     sc.exe query $serviceName | Select-String "RUNNING" > $null 2>&1
@@ -288,7 +452,7 @@ function Ensure-PostgresLocal {
 
     $psqlPath = Resolve-PsqlPath
     if (-not $psqlPath) {
-        throw "[PostgreSQL] psql.exe not found."
+        throw "[PostgreSQL] psql.exe not found. $manualHint"
     }
 
     $appUser = if ($env:POSTGRES_APP_USER) { $env:POSTGRES_APP_USER } else { "healthos" }
@@ -374,17 +538,21 @@ function Ensure-PostgresLocal {
 }
 
 function Ensure-MinioLocal {
+    $manualHint = "Install MinIO and ensure minio.exe is available on PATH."
+    $wingetIds = @("MinIO.Server", "MinIO.MinIO")
     $minioPath = Resolve-MinioPath
     if (-not $minioPath) {
         if ($CheckOnly) {
-            throw "[MinIO] Not installed."
+            throw "[MinIO] Not installed. $manualHint"
         }
-        Ensure-InstalledWithWinget -PackageId "MinIO.MinIO" -Name "MinIO"
-        $minioPath = Resolve-MinioPath
+        if (Request-InstallApproval -Name "MinIO" -PackageId (Get-InstallPromptText -Ids $wingetIds) -ManualInstallHint $manualHint) {
+            Ensure-InstalledWithWinget -PackageIds $wingetIds -Name "MinIO"
+            $minioPath = Resolve-MinioPath
+        }
     }
 
     if (-not $minioPath) {
-        throw "[MinIO] minio executable not found after installation."
+        throw "[MinIO] minio executable not found after installation. $manualHint"
     }
 
     if (Test-TcpPort -Port 9000) {
@@ -419,8 +587,18 @@ function Ensure-MinioLocal {
     Write-Host "[MinIO] Started (api=http://localhost:9000, console=http://localhost:9001)" -ForegroundColor Green
 }
 
+$ScriptLogFile = Resolve-LogFilePath -DefaultName "infra" -RequestedPath $LogFile
+try {
+    Start-Transcript -Path $ScriptLogFile -Append -Force | Out-Null
+}
+catch {
+    Write-Warning "[Infra] Unable to start transcript at '$ScriptLogFile': $($_.Exception.Message)"
+}
+
+Write-Host "[Infra] Log file: $ScriptLogFile" -ForegroundColor Cyan
 $effectiveMode = Resolve-EffectiveMode
 Write-Host "[Infra] Effective mode: $effectiveMode" -ForegroundColor Cyan
+Write-Host "[Infra] Install policy: $InstallPolicy" -ForegroundColor Cyan
 
 if ($effectiveMode -eq "docker") {
     if (-not (Test-Path $ComposeFile)) {
@@ -452,4 +630,5 @@ Write-Host " Infrastructure ready (local mode)" -ForegroundColor Green
 Write-Host "   Redis    : localhost:6379"
 Write-Host "   Postgres : localhost:5432  db=healthos user=healthos"
 Write-Host "   MinIO    : localhost:9000  console=localhost:9001"
+Write-Host "   Log file : $ScriptLogFile"
 Write-Host "=======================================================" -ForegroundColor DarkGray
