@@ -3,7 +3,7 @@
 ## Overview
 
 This guide maps old startup workflows to the current standardized scripts.
-`start_ALL.bat` now calls `infra/scripts/start_all.ps1` (Docker-first with local fallback).
+`start_ALL.bat` now calls `infra/scripts/start_all.ps1` (Docker-first with local fallback only when daemon is reachable).
 
 ---
 
@@ -23,13 +23,16 @@ This guide maps old startup workflows to the current standardized scripts.
 ### `start_all.ps1` public interface
 
 ```powershell
-.\infra\scripts\start_all.ps1 -Mode auto|docker|local -Only infra|be|fe|ai|queue|notification|all -SkipInstall -CheckOnly
+.\infra\scripts\start_all.ps1 -Mode auto|docker|local -Only infra|be|fe|ai|queue|notification|all -InstallPolicy prompt|auto|never -SkipInstall -CheckOnly [-LogFile <path>]
 ```
 
-- `-Mode auto`: Prefer Docker, fallback to local.
+- `-Mode auto`: Prefer Docker only if both `docker compose` and daemon are available; otherwise fallback to local.
+- `-Mode docker`: Strict Docker mode; fail with actionable error when daemon is down.
+- `-InstallPolicy`: Infra dependency install policy in local mode (`prompt` default, `auto`, `never`).
 - `-SkipInstall`: Skip dependency installation.
 - `-Only`: Start/check a subset of components.
-- `-CheckOnly`: Run dependency/service checks only.
+- `-CheckOnly`: Run dependency/service checks only (no npm/pip install side effects).
+- `-LogFile`: Optional explicit log path. Default logs go to `infra/logs/<component>_<timestamp>.log`.
 
 ---
 
