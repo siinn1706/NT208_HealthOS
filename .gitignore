@@ -39,3 +39,6 @@ infra/env/frontend.env
 infra/env/worker.env
 *.loginfra/logs/
 *.log
+
+# Ignore local infrastructure data
+.data/
