@@ -101,8 +101,15 @@ export async function coreProxy(
       cache: "no-store",
     });
 
-    const responseData = await upstream.json().catch(() => null);
+    if (
+      upstream.status === 204 ||
+      upstream.status === 205 ||
+      upstream.status === 304
+    ) {
+      return new NextResponse(null, { status: upstream.status });
+    }
 
+    const responseData = await upstream.json().catch(() => null);
     return NextResponse.json(responseData ?? {}, { status: upstream.status });
   } catch {
     // Core BE offline

@@ -99,7 +99,7 @@ if (-not $SkipInstall) {
 Write-Host "[BE] Running migrations via python -m alembic..." -ForegroundColor Cyan
 & $PythonExe -m alembic upgrade head
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[BE] WARNING: Migration failed. Server will still start, but chat settings may break." -ForegroundColor Yellow
+    throw "[BE] Migration failed. Aborting startup to prevent schema/runtime mismatches."
 }
 
 Write-Host "[BE] Starting FastAPI on http://localhost:8000 ..." -ForegroundColor Green

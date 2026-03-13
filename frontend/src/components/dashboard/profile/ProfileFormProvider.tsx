@@ -87,7 +87,7 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
       // BFF: PATCH /api/v1/users
       const res = await bffFetch("/api/v1/users", {
         method: "PATCH",
-        body: JSON.stringify(values),
+        body: values,
       });
       void res; // BFF returns updated user, can be used to sync local state
 

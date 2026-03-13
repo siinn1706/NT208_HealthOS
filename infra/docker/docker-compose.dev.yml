@@ -112,7 +112,7 @@ services:
         condition: service_started
     volumes:
       - ../../services/queue-worker:/app
-    command: celery -A app.celery_app worker --loglevel=info
+    command: celery -A app.celery_app worker --pool=solo --loglevel=info
 
   notification:
     build:

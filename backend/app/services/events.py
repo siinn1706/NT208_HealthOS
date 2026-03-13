@@ -1,7 +1,7 @@
 """Event emitter service for publishing events with standardized envelope."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable
 from uuid import UUID, uuid4
 
@@ -35,7 +35,7 @@ class EventEmitter:
         """Create an event envelope with standard format."""
         metadata = EventMetadata(
             event_id=uuid4(),
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             user_id=user_id,
             correlation_id=correlation_id,
         )

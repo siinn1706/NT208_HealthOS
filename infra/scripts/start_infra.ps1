@@ -126,12 +126,12 @@ function Resolve-EffectiveMode {
 function Test-TcpPort {
     param(
         [int]$Port,
-        [string]$Host = "127.0.0.1"
+        [string]$Address = "127.0.0.1"
     )
 
     $client = New-Object System.Net.Sockets.TcpClient
     try {
-        $iar = $client.BeginConnect($Host, $Port, $null, $null)
+        $iar = $client.BeginConnect($Address, $Port, $null, $null)
         $connected = $iar.AsyncWaitHandle.WaitOne(800)
         if (-not $connected) {
             return $false
@@ -268,7 +268,7 @@ function Request-InstallApproval {
     }
 }
 
-function Ensure-InstalledWithWinget {
+function Install-WithWinget {
     param(
         [string[]]$PackageIds,
         [string]$Name
@@ -345,13 +345,13 @@ function Invoke-Psql {
         [string]$Username = "postgres",
         [string]$Database = "postgres",
         [string]$PgHost = "127.0.0.1",
-        [string]$Password = ""
+        [string]$PgSecret = ""
     )
 
     $previousPassword = $env:PGPASSWORD
     try {
-        if ($Password) {
-            $env:PGPASSWORD = $Password
+        if ($PgSecret) {
+            $env:PGPASSWORD = $PgSecret
         }
         else {
             Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
@@ -375,7 +375,7 @@ function Invoke-Psql {
     }
 }
 
-function Ensure-RedisLocal {
+function Start-RedisLocal {
     $manualHint = "Install Redis for Windows and ensure redis-cli/redis-server are available on PATH."
     $wingetIds = @("Redis.Redis")
     $redis = Resolve-RedisPaths
@@ -384,7 +384,7 @@ function Ensure-RedisLocal {
             throw "[Redis] Not installed. $manualHint"
         }
         if (Request-InstallApproval -Name "Redis" -PackageId (Get-InstallPromptText -Ids $wingetIds) -ManualInstallHint $manualHint) {
-            Ensure-InstalledWithWinget -PackageIds $wingetIds -Name "Redis"
+            Install-WithWinget -PackageIds $wingetIds -Name "Redis"
             $redis = Resolve-RedisPaths
         }
     }
@@ -420,7 +420,7 @@ function Ensure-RedisLocal {
     Write-Host "[Redis] Started on localhost:6379" -ForegroundColor Green
 }
 
-function Ensure-PostgresLocal {
+function Start-PostgresLocal {
     $manualHint = "Install PostgreSQL 15+ with service enabled and ensure psql.exe is available on PATH."
     $wingetIds = @("PostgreSQL.PostgreSQL.17", "PostgreSQL.PostgreSQL.18")
     $serviceName = Resolve-PostgresService
@@ -429,7 +429,7 @@ function Ensure-PostgresLocal {
             throw "[PostgreSQL] Service not installed. $manualHint"
         }
         if (Request-InstallApproval -Name "PostgreSQL" -PackageId (Get-InstallPromptText -Ids $wingetIds) -ManualInstallHint $manualHint) {
-            Ensure-InstalledWithWinget -PackageIds $wingetIds -Name "PostgreSQL"
+            Install-WithWinget -PackageIds $wingetIds -Name "PostgreSQL"
             $serviceName = Resolve-PostgresService
         }
     }
@@ -465,7 +465,7 @@ function Ensure-PostgresLocal {
         -PsqlPath $psqlPath `
         -Username $appUser `
         -Database $appDb `
-        -Password $appPassword `
+        -PgSecret $appPassword `
         -Sql "SELECT current_database();"
     if ($verifyApp.ExitCode -eq 0 -and $verifyApp.Output -eq $appDb) {
         Write-Host "[PostgreSQL] Ready on localhost:5432 (db=$appDb user=$appUser)" -ForegroundColor Green
@@ -484,7 +484,7 @@ function Ensure-PostgresLocal {
         -PsqlPath $psqlPath `
         -Username $superUser `
         -Database "postgres" `
-        -Password $superPassword `
+        -PgSecret $superPassword `
         -Sql "SELECT 1 FROM pg_roles WHERE rolname='$escapedAppUser';"
     if ($roleCheck.ExitCode -ne 0) {
         throw "[PostgreSQL] Cannot query roles using postgres superuser '$superUser'. $($roleCheck.Output)"
@@ -495,7 +495,7 @@ function Ensure-PostgresLocal {
             -PsqlPath $psqlPath `
             -Username $superUser `
             -Database "postgres" `
-            -Password $superPassword `
+            -PgSecret $superPassword `
             -Sql "CREATE USER $appUser WITH PASSWORD '$escapedAppPassword';"
         if ($createRole.ExitCode -ne 0) {
             throw "[PostgreSQL] Failed to create role '$appUser'. $($createRole.Output)"
@@ -506,7 +506,7 @@ function Ensure-PostgresLocal {
         -PsqlPath $psqlPath `
         -Username $superUser `
         -Database "postgres" `
-        -Password $superPassword `
+        -PgSecret $superPassword `
         -Sql "SELECT 1 FROM pg_database WHERE datname='$escapedAppDb';"
     if ($dbCheck.ExitCode -ne 0) {
         throw "[PostgreSQL] Cannot query databases. $($dbCheck.Output)"
@@ -517,7 +517,7 @@ function Ensure-PostgresLocal {
             -PsqlPath $psqlPath `
             -Username $superUser `
             -Database "postgres" `
-            -Password $superPassword `
+            -PgSecret $superPassword `
             -Sql "CREATE DATABASE $appDb OWNER $appUser;"
         if ($createDb.ExitCode -ne 0) {
             throw "[PostgreSQL] Failed to create database '$appDb'. $($createDb.Output)"
@@ -528,7 +528,7 @@ function Ensure-PostgresLocal {
         -PsqlPath $psqlPath `
         -Username $appUser `
         -Database $appDb `
-        -Password $appPassword `
+        -PgSecret $appPassword `
         -Sql "SELECT current_database();"
     if ($verify.ExitCode -ne 0) {
         throw "[PostgreSQL] Verification query failed. $($verify.Output)"
@@ -537,7 +537,7 @@ function Ensure-PostgresLocal {
     Write-Host "[PostgreSQL] Ready on localhost:5432 (db=$appDb user=$appUser)" -ForegroundColor Green
 }
 
-function Ensure-MinioLocal {
+function Start-MinioLocal {
     $manualHint = "Install MinIO and ensure minio.exe is available on PATH."
     $wingetIds = @("MinIO.Server", "MinIO.MinIO")
     $minioPath = Resolve-MinioPath
@@ -546,7 +546,7 @@ function Ensure-MinioLocal {
             throw "[MinIO] Not installed. $manualHint"
         }
         if (Request-InstallApproval -Name "MinIO" -PackageId (Get-InstallPromptText -Ids $wingetIds) -ManualInstallHint $manualHint) {
-            Ensure-InstalledWithWinget -PackageIds $wingetIds -Name "MinIO"
+            Install-WithWinget -PackageIds $wingetIds -Name "MinIO"
             $minioPath = Resolve-MinioPath
         }
     }
@@ -620,9 +620,9 @@ if ($effectiveMode -eq "docker") {
     exit 0
 }
 
-Ensure-RedisLocal
-Ensure-PostgresLocal
-Ensure-MinioLocal
+Start-RedisLocal
+Start-PostgresLocal
+Start-MinioLocal
 
 Write-Host ""
 Write-Host "=======================================================" -ForegroundColor DarkGray

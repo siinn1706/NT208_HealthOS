@@ -1,4 +1,5 @@
 """Core configuration — reads from .env via pydantic-settings."""
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -65,7 +66,63 @@ class Settings(BaseSettings):
     ai_worker_url: str = "http://localhost:8001"
     celery_broker_url: str = "redis://localhost:6379/2"
 
-    model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE),
+        env_file_encoding="utf-8",
+        enable_decoding=False,
+    )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: Any) -> str:
+        """Normalize DATABASE_URL to asyncpg format and fail fast on invalid values."""
+        if v is None:
+            raise ValueError(
+                "DATABASE_URL is required. Expected format: "
+                "postgresql+asyncpg://user:password@host:5432/dbname"
+            )
+
+        url = str(v).strip().strip('"').strip("'")
+        if not url:
+            raise ValueError(
+                "DATABASE_URL is empty. Expected format: "
+                "postgresql+asyncpg://user:password@host:5432/dbname"
+            )
+
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql+psycopg2://"):
+            url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+
+        if not url.startswith("postgresql+asyncpg://"):
+            raise ValueError(
+                "DATABASE_URL must use async driver. "
+                "Use: postgresql+asyncpg://user:password@host:5432/dbname"
+            )
+
+        return url
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v: Any) -> list[str]:
+        """Accept JSON array or comma-separated ALLOWED_ORIGINS values."""
+        if v is None:
+            return ["http://localhost:3000"]
+
+        if isinstance(v, list):
+            return [str(item).strip() for item in v if str(item).strip()]
+
+        raw = str(v).strip()
+        if not raw:
+            return ["http://localhost:3000"]
+
+        if raw.startswith("["):
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+            raise ValueError("ALLOWED_ORIGINS JSON must be a list")
+
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
     def model_post_init(self, __context: Any) -> None:
         # Accept common legacy env keys.

@@ -35,9 +35,16 @@ cp ../../infra/env/worker.env.example .env
 python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Run worker
-celery -A app.celery_app worker --loglevel=info
+# Run worker (Windows-safe)
+celery -A app.celery_app worker --pool=solo --loglevel=info
+
+# Optional (I/O heavy workloads on Windows)
+celery -A app.celery_app worker --pool=threads --concurrency=4 --loglevel=info
 
 # Run beat scheduler (cần chạy riêng)
 celery -A app.celery_app beat --loglevel=info
 ```
+
+Luu y Windows:
+- Khong dung pool mac dinh tren Windows vi co the gay PermissionError [WinError 5] tu billiard.
+- Mac dinh khuyen nghi cho local la --pool=solo de on dinh.

@@ -34,8 +34,22 @@ export async function bffFetch<T = unknown>(
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: { code: "UNKNOWN", message: res.statusText } }));
-    throw new BffError(res.status, error?.error?.code ?? "UNKNOWN", error?.error?.message ?? res.statusText);
+    const rawError = await res
+      .json()
+      .catch(() => ({ error: { code: "UNKNOWN", message: res.statusText } }));
+    const code =
+      typeof rawError?.error?.code === "string" && rawError.error.code.trim().length > 0
+        ? rawError.error.code
+        : "UNKNOWN";
+    const message =
+      typeof rawError?.error?.message === "string" && rawError.error.message.trim().length > 0
+        ? rawError.error.message
+        : res.statusText;
+    throw new BffError(res.status, code, message);
+  }
+
+  if (res.status === 204 || res.status === 205 || res.status === 304) {
+    return undefined as T;
   }
 
   return res.json() as Promise<T>;

@@ -36,12 +36,12 @@ function Test-DockerComposeAvailable {
 
 function Get-DbUrlFromEnv {
     if (-not (Test-Path $BackendEnv)) {
-        return "postgresql://healthos:healthos_dev_pass@localhost:5432/healthos"
+        return "postgresql+asyncpg://healthos:healthos_dev_pass@localhost:5432/healthos"
     }
 
     $line = Get-Content $BackendEnv | Where-Object { $_ -match '^DATABASE_URL\s*=' } | Select-Object -First 1
     if (-not $line) {
-        return "postgresql://healthos:healthos_dev_pass@localhost:5432/healthos"
+        return "postgresql+asyncpg://healthos:healthos_dev_pass@localhost:5432/healthos"
     }
 
     $raw = ($line -split "=", 2)[1].Trim().Trim('"').Trim("'")

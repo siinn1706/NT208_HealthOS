@@ -216,25 +216,25 @@ function Invoke-LocalScript {
         return
     }
 
-    $args = @(
+    $processArgs = @(
         "-NoExit",
         "-ExecutionPolicy", "Bypass",
         "-File", $scriptPath
     )
 
     foreach ($key in $ExtraParams.Keys) {
-        $args += "-$key"
-        $args += "$($ExtraParams[$key])"
+        $processArgs += "-$key"
+        $processArgs += "$($ExtraParams[$key])"
     }
 
     if ($SkipInstall) {
-        $args += "-SkipInstall"
+        $processArgs += "-SkipInstall"
     }
 
-    $args += "-LogFile"
-    $args += $componentLog
+    $processArgs += "-LogFile"
+    $processArgs += $componentLog
 
-    Start-Process -FilePath $PowerShellExe -ArgumentList $args -WorkingDirectory $RepoRoot | Out-Null
+    Start-Process -FilePath $PowerShellExe -ArgumentList $processArgs -WorkingDirectory $RepoRoot | Out-Null
     Add-Status -Component $Component -Status "started" -Detail "Opened in separate terminal | log: $componentLog"
 }
 
@@ -288,7 +288,7 @@ function Invoke-DockerComponents {
     }
 }
 
-function Collect-ConflictReport {
+function Get-ConflictReport {
     $rootLock = Join-Path $RepoRoot "package-lock.json"
     $rootPkg = Join-Path $RepoRoot "package.json"
     if ((Test-Path $rootLock) -and -not (Test-Path $rootPkg)) {
@@ -354,7 +354,7 @@ function Collect-ConflictReport {
     }
 }
 
-function Print-Reports {
+function Write-Reports {
     Write-Host ""
     Write-Host "=== Start ALL Report ===" -ForegroundColor Cyan
     if ($StatusRows.Count -eq 0) {
@@ -424,8 +424,8 @@ catch {
     Add-Status -Component "start_all" -Status "failed" -Detail $_.Exception.Message
 }
 
-Collect-ConflictReport
-Print-Reports
+Get-ConflictReport
+Write-Reports
 
 if ($HasFailure) {
     exit 1

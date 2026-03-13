@@ -15,7 +15,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const CORE_WS_URL = process.env.NEXT_PUBLIC_CORE_WS_URL ?? "ws://localhost:8000";
+const CORE_WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ??
+  process.env.NEXT_PUBLIC_CORE_WS_URL ??
+  "ws://localhost:8000";
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 10;

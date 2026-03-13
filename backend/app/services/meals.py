@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import Meal, MealStatusEnum
@@ -91,21 +91,18 @@ async def get_meal_by_id(
 
 async def update_meal_result(
     db: AsyncSession,
+    user_id: uuid.UUID,
     meal_id: uuid.UUID,
     nutrition_result: dict,
 ) -> Meal | None:
     """Update meal with nutrition analysis result."""
-    stmt = (
-        select(Meal)
-        .where(Meal.id == meal_id)
-        .values(
-            status=MealStatusEnum.ANALYZED,
-            nutrition_result=nutrition_result,
-        )
+    stmt = update(Meal).where(Meal.id == meal_id).values(
+        status=MealStatusEnum.ANALYZED,
+        nutrition_result=nutrition_result,
     )
     await db.execute(stmt)
     await db.flush()
-    return await get_meal_by_id(db, meal_id, meal_id)
+    return await get_meal_by_id(db, user_id, meal_id)
 
 
 async def get_meal_analysis_status(

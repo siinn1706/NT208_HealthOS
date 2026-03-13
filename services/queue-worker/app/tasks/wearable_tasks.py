@@ -1,5 +1,9 @@
 """Wearable sync Celery tasks."""
+import logging
+
 from app.celery_app import celery_app
+
+logger = logging.getLogger("healthos.queue_worker")
 
 
 @celery_app.task(name="app.tasks.wearable_tasks.sync_wearable_data")
@@ -14,11 +18,25 @@ def sync_wearable_data(user_id: str, provider: str) -> dict:
       4. POST/PATCH Core BE /v1/health-metrics (batch upsert)
       5. Evaluate alert rules → if triggered: enqueue notification task
     """
-    raise NotImplementedError("sync_wearable_data not yet implemented")
+    logger.warning(
+      "sync_wearable_data is not implemented yet",
+      extra={"user_id": user_id, "provider": provider},
+    )
+    return {
+      "status": "not_implemented",
+      "user_id": user_id,
+      "provider": provider,
+      "message": "Wearable sync is not implemented yet.",
+    }
 
 
 @celery_app.task(name="app.tasks.wearable_tasks.sync_all_users_wearable")
 def sync_all_users_wearable() -> None:
     """Scheduled task: fan-out sync_wearable_data for all connected users."""
     # TODO: GET Core BE /v1/devices?connected=true, then fan-out
-    raise NotImplementedError("sync_all_users_wearable not yet implemented")
+    logger.warning("sync_all_users_wearable is not implemented yet")
+    return {
+      "status": "not_implemented",
+      "message": "Scheduled wearable fan-out sync is not implemented yet.",
+      "users_processed": 0,
+    }

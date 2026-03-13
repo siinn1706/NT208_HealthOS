@@ -1,17 +1,17 @@
 """Event envelope schemas for standardized event contracts."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
 
 class EventMetadata(BaseModel):
     """Common metadata for all events."""
-    event_id: UUID = Field(default_factory=UUID)
-    timestamp: datetime = Field(default_factory=datetime.now)
+    event_id: UUID = Field(default_factory=uuid4)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     user_id: UUID | None = None
     correlation_id: UUID | None = None
 
