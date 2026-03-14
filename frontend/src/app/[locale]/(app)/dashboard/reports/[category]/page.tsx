@@ -30,7 +30,7 @@ interface DetailPageProps {
 }
 
 export default async function CategoryDetailPage({ params, searchParams }: DetailPageProps) {
-  const { category } = await params;
+  const { category, locale } = await params;
   const { period: rawPeriod } = await searchParams;
 
   // Validate category

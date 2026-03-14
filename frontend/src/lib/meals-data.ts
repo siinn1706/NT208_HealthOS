@@ -16,57 +16,74 @@ const CALORIE_TARGET = 2000;
 const MOCK_MEALS_TODAY: Meal[] = [
   {
     id: "1",
-    user_id: "user-1",
+    name: "Bánh mì sandwich + sữa",
+    status: "analyzed",
     logged_at: new Date().toISOString().replace("T", "T07:00:00"),
+    created_at: new Date().toISOString().replace("T", "T07:00:00"),
     meal_type: "breakfast",
-    image_url: null,
-    nutrition_result: { calories: 450, protein_g: 25, carbs_g: 50, fat_g: 15 },
-    description: "Bánh mì sandwich + sữa",
+    ingredients: [
+      { is_custom: false, ingredient_name: "Bánh mì sandwich", grams: 80, calories: 200, protein_g: 6, carbs_g: 30, fat_g: 5 },
+      { is_custom: false, ingredient_name: "Sữa", grams: 200, calories: 100, protein_g: 8, carbs_g: 12, fat_g: 3 },
+    ],
+    nutrition_result: { calories: 450, protein_g: 25, carbs_g: 50, fat_g: 15, confidence: 0.85 },
   },
   {
     id: "2",
-    user_id: "user-1",
+    name: "Cơm + thịt gà + rau",
+    status: "analyzed",
     logged_at: new Date().toISOString().replace("T", "T12:00:00"),
+    created_at: new Date().toISOString().replace("T", "T12:00:00"),
     meal_type: "lunch",
-    image_url: null,
-    nutrition_result: { calories: 650, protein_g: 35, carbs_g: 70, fat_g: 20 },
-    description: "Cơm + thịt gà + rau",
+    ingredients: [
+      { is_custom: false, ingredient_name: "Cơm", grams: 200, calories: 260, protein_g: 4, carbs_g: 56, fat_g: 0.5 },
+      { is_custom: false, ingredient_name: "Thịt gà", grams: 100, calories: 165, protein_g: 31, carbs_g: 0, fat_g: 3.6 },
+      { is_custom: false, ingredient_name: "Rau", grams: 100, calories: 25, protein_g: 2, carbs_g: 5, fat_g: 0.2 },
+    ],
+    nutrition_result: { calories: 650, protein_g: 35, carbs_g: 70, fat_g: 20, confidence: 0.9 },
   },
   {
     id: "3",
-    user_id: "user-1",
+    name: "Cơm + cá + canh",
+    status: "analyzed",
     logged_at: new Date().toISOString().replace("T", "T18:30:00"),
+    created_at: new Date().toISOString().replace("T", "T18:30:00"),
     meal_type: "dinner",
-    image_url: null,
-    nutrition_result: { calories: 520, protein_g: 30, carbs_g: 55, fat_g: 18 },
-    description: "Cơm + cá + canh",
+    ingredients: [
+      { is_custom: false, ingredient_name: "Cơm", grams: 200, calories: 260, protein_g: 4, carbs_g: 56, fat_g: 0.5 },
+      { is_custom: false, ingredient_name: "Cá", grams: 100, calories: 136, protein_g: 20, carbs_g: 0, fat_g: 5 },
+      { is_custom: false, ingredient_name: "Canh", grams: 200, calories: 30, protein_g: 2, carbs_g: 4, fat_g: 1 },
+    ],
+    nutrition_result: { calories: 520, protein_g: 30, carbs_g: 55, fat_g: 18, confidence: 0.88 },
   },
 ];
 
 const MOCK_MEALS_HISTORY: DailyNutritionSummary[] = [
-  { date: "2026-03-06", meals: 3, total_calories: 1650, avg_calories: 1650 },
-  { date: "2026-03-07", meals: 3, total_calories: 1800, avg_calories: 1800 },
-  { date: "2026-03-08", meals: 3, total_calories: 1700, avg_calories: 1700 },
-  { date: "2026-03-09", meals: 2, total_calories: 1100, avg_calories: 1100 },
-  { date: "2026-03-10", meals: 3, total_calories: 1900, avg_calories: 1900 },
-  { date: "2026-03-11", meals: 3, total_calories: 1750, avg_calories: 1750 },
-  { date: "2026-03-12", meals: 3, total_calories: 1620, avg_calories: 1620 },
+  { date: "2026-03-06", total_calories: 1650, total_protein_g: 65, total_carbs_g: 220, total_fat_g: 55, calorie_target: 2000, meals: MOCK_MEALS_TODAY },
+  { date: "2026-03-07", total_calories: 1800, total_protein_g: 70, total_carbs_g: 240, total_fat_g: 60, calorie_target: 2000, meals: MOCK_MEALS_TODAY },
+  { date: "2026-03-08", total_calories: 1700, total_protein_g: 68, total_carbs_g: 230, total_fat_g: 52, calorie_target: 2000, meals: MOCK_MEALS_TODAY },
+  { date: "2026-03-09", total_calories: 1100, total_protein_g: 45, total_carbs_g: 150, total_fat_g: 35, calorie_target: 2000, meals: MOCK_MEALS_TODAY },
+  { date: "2026-03-10", total_calories: 1900, total_protein_g: 75, total_carbs_g: 250, total_fat_g: 65, calorie_target: 2000, meals: MOCK_MEALS_TODAY },
+  { date: "2026-03-11", total_calories: 1750, total_protein_g: 70, total_carbs_g: 235, total_fat_g: 58, calorie_target: 2000, meals: MOCK_MEALS_TODAY },
+  { date: "2026-03-12", total_calories: 1620, total_protein_g: 62, total_carbs_g: 215, total_fat_g: 50, calorie_target: 2000, meals: MOCK_MEALS_TODAY },
 ];
 
 const MOCK_NUTRITION_SUGGESTIONS: NutritionSuggestion[] = [
   {
     id: "1",
     type: "warning",
+    icon: "AlertCircle",
     title: "Cần bổ sung thêm protein",
     message: "Hôm nay bạn mới chỉ tiêu thụ 90g protein. Nên thêm 20g nữa.",
-    action_label: "Xem gợi ý",
+    priority: 1,
+    cta: { label: "Xem gợi ý", href: "/vi/dashboard/meals" },
   },
   {
     id: "2",
     type: "tip",
+    icon: "Droplet",
     title: "Uống đủ nước",
     message: "Bạn đã uống 1.5L nước hôm nay. Hãy uống thêm 500ml nữa!",
-    action_label: null,
+    priority: 2,
   },
 ];
 
@@ -133,8 +150,13 @@ export async function getMealsHistory(days = 7): Promise<DailyNutritionSummary[]
 export async function getWeeklyCalorieChart(): Promise<WeeklyCaloriePoint[]> {
   // Return mock data for now
   return MOCK_MEALS_HISTORY.map((d) => ({
-    date: d.date,
+    date: d.date.slice(5), // MM-DD
+    full_date: d.date,
     calories: d.total_calories,
+    protein_g: d.total_protein_g,
+    carbs_g: d.total_carbs_g,
+    fat_g: d.total_fat_g,
+    target: d.calorie_target,
   }));
 }
 

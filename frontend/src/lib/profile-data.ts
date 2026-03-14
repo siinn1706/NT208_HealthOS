@@ -14,33 +14,30 @@ import type { UserProfile, UserProfileUpdate } from "@/types/api";
 const MOCK_USER_PROFILE: UserProfile = {
   id: "user-1",
   email: "admin@healthos.com",
+  display_name: "Nguyễn Văn A",
   full_name: "Nguyễn Văn A",
   phone: "+84 123 456 789",
   date_of_birth: "1995-06-15",
   gender: "male",
+  blood_type: "A",
+  height_cm: 172,
+  weight_kg: 72,
   avatar_url: null,
-  address: {
-    street: "123 Đường Nguyễn Trãi",
-    ward: "Phường 5",
-    district: "Quận 1",
-    city: "TP. Hồ Chí Minh",
-  },
+  address: "123 Đường Nguyễn Trãi, Phường 5, Quận 1, TP. Hồ Chí Minh",
   emergency_contacts: [
     {
       name: "Nguyễn Thị B",
-      relationship: "vợ",
+      relationship: "spouse",
       phone: "+84 987 654 321",
     },
   ],
   medical_info: {
-    blood_type: "A",
-    height_cm: 172,
-    weight_kg: 72,
-    allergies: ["Penicillin"],
-    chronic_conditions: [],
+    allergies: "Penicillin",
+    chronic_conditions: null,
+    current_medications: null,
+    notes: null,
   },
   created_at: "2025-01-01T00:00:00Z",
-  updated_at: "2026-03-01T00:00:00Z",
 };
 
 // ---------------------------------------------------------------------------
