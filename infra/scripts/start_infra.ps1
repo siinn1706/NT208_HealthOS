@@ -126,12 +126,12 @@ function Resolve-EffectiveMode {
 function Test-TcpPort {
     param(
         [int]$Port,
-        [string]$Host = "127.0.0.1"
+        [string]$TargetHost = "127.0.0.1"
     )
 
     $client = New-Object System.Net.Sockets.TcpClient
     try {
-        $iar = $client.BeginConnect($Host, $Port, $null, $null)
+        $iar = $client.BeginConnect($TargetHost, $Port, $null, $null)
         $connected = $iar.AsyncWaitHandle.WaitOne(800)
         if (-not $connected) {
             return $false

@@ -92,4 +92,4 @@ if (-not $SkipInstall) {
 }
 
 Write-Host "[Queue] Starting Celery worker..." -ForegroundColor Green
-& $PythonExe -m celery -A app.celery_app worker --loglevel=info
+& $PythonExe -m celery -A app.celery_app worker --loglevel=info --pool=solo
