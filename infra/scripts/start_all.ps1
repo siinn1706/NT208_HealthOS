@@ -36,6 +36,7 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
+$ComposeEnvFile = Join-Path $RepoRoot "infra\docker\.env.dev"
 $PowerShellExe = Join-Path $PSHOME "powershell.exe"
 if (-not (Test-Path $PowerShellExe)) {
     $PowerShellExe = "powershell"
@@ -143,6 +144,36 @@ function Test-DockerDaemonReachable {
     }
     catch {
         return $false
+    }
+}
+
+function Get-ComposeArgs {
+    $args = @("-f", $ComposeFile)
+    if (Test-Path $ComposeEnvFile) {
+        $args += @("--env-file", $ComposeEnvFile)
+    }
+    return $args
+}
+
+function Invoke-DockerReadinessValidation {
+    param(
+        [ValidateSet("all", "infra")]
+        [string]$Scope = "all"
+    )
+
+    $validatorPath = Join-Path $PSScriptRoot "validate_docker_ready.ps1"
+    if (-not (Test-Path $validatorPath)) {
+        throw "[ALL] Docker readiness validator is missing: $validatorPath"
+    }
+
+    $validatorArgs = @("-Scope", $Scope)
+    if ($CheckOnly) {
+        $validatorArgs += "-CheckOnly"
+    }
+
+    & $validatorPath @validatorArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "[ALL] Docker readiness validation failed. Resolve the reported issues and rerun startup."
     }
 }
 
@@ -268,8 +299,10 @@ function Invoke-DockerComponents {
         return
     }
 
+    $composeArgs = Get-ComposeArgs
+
     if ($CheckOnly) {
-        docker compose -f $ComposeFile ps $serviceList
+        docker compose @composeArgs ps $serviceList
         if ($LASTEXITCODE -ne 0) {
             throw "docker compose ps failed."
         }
@@ -278,7 +311,7 @@ function Invoke-DockerComponents {
     }
 
     Write-Host "[ALL] Starting docker services: $($serviceList -join ', ')" -ForegroundColor Cyan
-    docker compose -f $ComposeFile up -d $serviceList
+    docker compose @composeArgs up -d $serviceList
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose up failed."
     }
@@ -398,6 +431,7 @@ Write-Host "[ALL] Install policy: $InstallPolicy" -ForegroundColor DarkCyan
 
 try {
     if ($effectiveMode -eq "docker") {
+        Invoke-DockerReadinessValidation -Scope "all"
         Invoke-DockerComponents -Components $selected
     }
     else {

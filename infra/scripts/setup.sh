@@ -23,6 +23,7 @@ copy_env "$ROOT_DIR/infra/env/backend.env.example"  "$ROOT_DIR/backend/.env"
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/ai-worker/.env"
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/queue-worker/.env"
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/notification/.env"
+copy_env "$ROOT_DIR/infra/docker/.env.dev.example"  "$ROOT_DIR/infra/docker/.env.dev"
 
 if [[ "${1:-}" == "--docker" ]]; then
     echo "[DOCKER] Starting full stack..."

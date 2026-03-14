@@ -33,6 +33,7 @@ Copy-EnvFile "$Root\infra\env\backend.env.example" "$Root\backend\.env"
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\ai-worker\.env"
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\queue-worker\.env"
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\notification\.env"
+Copy-EnvFile "$Root\infra\docker\.env.dev.example" "$Root\infra\docker\.env.dev"
 
 if ($docker) {
     Write-Host "[DOCKER] Starting full stack..." -ForegroundColor Cyan
