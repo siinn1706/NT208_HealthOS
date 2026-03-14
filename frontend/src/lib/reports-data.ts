@@ -361,19 +361,34 @@ function buildMockReport(period: ReportPeriod): HealthReport {
   const days = periodToDays(period);
   const dates = buildDates(days);
 
+  const sections = [
+    buildVitalsSection(dates),
+    buildNutritionSection(dates),
+    buildActivitySection(dates),
+    buildSleepSection(dates),
+    buildBmiSection(dates),
+    buildMedicationSection(dates),
+  ];
+
+  // Determine overall status (worst status across sections)
+  const statusOrder = ["normal", "warning", "critical"] as const;
+  const overallStatus = sections.reduce<"normal" | "warning" | "critical">((worst, section) => {
+    const sectionIdx = statusOrder.indexOf(section.status);
+    const worstIdx = statusOrder.indexOf(worst);
+    return sectionIdx > worstIdx ? section.status : worst;
+  }, "normal");
+
+  // Flatten alerts from all sections
+  const alerts = sections.flatMap((s) => s.alerts);
+
   return {
     id: "mock-report",
     period,
     generated_at: new Date().toISOString(),
     user_id: "user-1",
-    sections: [
-      buildVitalsSection(dates),
-      buildNutritionSection(dates),
-      buildActivitySection(dates),
-      buildSleepSection(dates),
-      buildBmiSection(dates),
-      buildMedicationSection(dates),
-    ],
+    status: overallStatus,
+    sections,
+    alerts,
   };
 }
 
@@ -417,56 +432,70 @@ function buildMockTrendAnalysis(metric: string, period: ReportPeriod): TrendAnal
   // Generate mock trend data based on metric
   let baseValue = 70;
   let unit = "bpm";
+  let metricLabel = "Nhịp tim";
 
   switch (metric) {
     case "heart_rate":
       baseValue = 72;
       unit = "bpm";
+      metricLabel = "Nhịp tim";
       break;
     case "blood_pressure":
       baseValue = 120;
       unit = "mmHg";
+      metricLabel = "Huyết áp";
       break;
     case "steps":
       baseValue = 8000;
       unit = "bước";
+      metricLabel = "Số bước";
       break;
     case "sleep":
       baseValue = 7;
       unit = "giờ";
+      metricLabel = "Giấc ngủ";
       break;
     case "calories":
       baseValue = 1800;
       unit = "kcal";
+      metricLabel = "Calo";
       break;
     case "bmi":
       baseValue = 22;
       unit = "kg/m²";
+      metricLabel = "BMI";
       break;
   }
 
-  const points: TimeseriesPoint[] = dates.map((date, i) => ({
+  const data_points: TimeseriesPoint[] = dates.map((date, i) => ({
     date,
     value: Math.round(baseValue + Math.sin(i * 0.5) * (baseValue * 0.1)),
   }));
 
-  const values = points.map((p) => p.value);
+  const values = data_points.map((p) => p.value);
   const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+
+  // Simple linear regression for trend line
+  const n = values.length;
+  const trend_line = values.map((_, i) => avg + (i - n / 2) * 0.5);
+
+  // Prediction (next 7 days)
+  const prediction = Array.from({ length: 7 }, (_, i) =>
+    Math.round(avg + Math.sin((n + i) * 0.5) * (baseValue * 0.1))
+  );
 
   return {
     metric,
+    metric_label: metricLabel,
+    unit,
     period,
-    points,
-    stats: {
-      average: avg,
-      min: Math.min(...values),
-      max: Math.max(...values),
-      trend: "stable",
-      change_percent: 2,
-      unit,
-    },
-    prediction: null,
+    data_points,
+    trend_line,
+    prediction,
     anomalies: [],
+    trend: "stable",
+    change_percent: 2,
+    ai_summary: `Xu hướng ổn định trong ${days} ngày qua.`,
   };
 }
 
