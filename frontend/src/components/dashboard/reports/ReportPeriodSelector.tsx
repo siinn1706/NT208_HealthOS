@@ -29,7 +29,7 @@ export function ReportPeriodSelector({ value }: ReportPeriodSelectorProps) {
       <TabsList className="h-9">
         {PERIODS.map((p) => (
           <TabsTrigger key={p} value={p} className="text-xs px-3">
-            {t(`period${p.replace("d", "D")}` as Parameters<typeof t>[0])}
+            {t(`period${p}` as Parameters<typeof t>[0])}
           </TabsTrigger>
         ))}
       </TabsList>
