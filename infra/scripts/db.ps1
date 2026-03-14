@@ -12,16 +12,26 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
+$ComposeEnvFile = Join-Path $RepoRoot "infra\docker\.env.dev"
 $BackendDir = Join-Path $RepoRoot "backend"
 $BackendEnv = Join-Path $BackendDir ".env"
 $BackupDir = Join-Path $RepoRoot "infra\backups"
+
+function Get-ComposeBaseArgs {
+    $args = @("-f", $ComposeFile)
+    if (Test-Path $ComposeEnvFile) {
+        $args += @("--env-file", $ComposeEnvFile)
+    }
+    return $args
+}
 
 function Invoke-Compose {
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
         [string[]]$Args
     )
-    & docker compose -f $ComposeFile @Args
+    $composeBaseArgs = Get-ComposeBaseArgs
+    & docker compose @composeBaseArgs @Args
 }
 
 function Test-DockerComposeAvailable {

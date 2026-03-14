@@ -92,8 +92,11 @@ git push -u origin feature/<ten-branch>
 .\infra\scripts\setup.ps1          # Windows
 bash infra/scripts/setup.sh        # Unix/WSL
 
-# 2. Khởi động toàn bộ stack
-docker compose -f infra/docker/docker-compose.dev.yml up
+# 2. Kiểm tra Docker readiness (khuyến nghị trước khi start)
+.\infra\scripts\validate_docker_ready.ps1
+
+# 3. Khởi động toàn bộ stack
+docker compose -f infra/docker/docker-compose.dev.yml up -d
 ```
 
 > Dữ liệu PostgreSQL được lưu qua Docker volume `postgres_data`. Không dùng `docker compose down -v` nếu muốn giữ dữ liệu.
@@ -249,13 +252,22 @@ Useful flags:
 
 # Check-only health checks (no npm/pip install side effects)
 .\infra\scripts\start_all.ps1 -CheckOnly
+
+# Docker preflight only (file + docker daemon + compose render checks)
+.\infra\scripts\validate_docker_ready.ps1 -CheckOnly
+
+# Infra-only preflight
+.\infra\scripts\validate_docker_ready.ps1 -Scope infra
 ```
+
+> `start_all.ps1` và `start_infra.ps1` ở Docker mode sẽ tự chạy preflight validator trước khi gọi `docker compose up`.
 
 ### Startup troubleshooting (Windows)
 
 - `start_*.bat` now writes logs to `infra\logs\`.
 - On failure from double-click, wrappers keep the terminal open (`pause`) unless `CI=true` or `CI=1`.
 - `-Mode auto` uses Docker only when both `docker compose` and Docker daemon are reachable.
+- Docker mode now runs `infra/scripts/validate_docker_ready.ps1` first and fails fast with a readiness table if required files/daemon/config checks fail.
 - If Docker CLI exists but daemon is down, startup falls back to local mode and prints a warning.
 - `-InstallPolicy prompt|auto|never` controls dependency auto-install behavior for local infra startup.
 - You can set explicit log path with `-LogFile` when running `infra/scripts/start_*.ps1` directly.

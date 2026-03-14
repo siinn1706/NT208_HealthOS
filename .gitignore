@@ -27,6 +27,8 @@ venv/
 # Env files
 .env
 .env.*
+!infra/docker/.env.dev.example
+!infra/docker/.env.prod.example
 backend/.env
 
 # OS / Editor
