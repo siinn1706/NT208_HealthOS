@@ -230,3 +230,16 @@ class WsConvSync(BaseModel):
     conversation_id: uuid.UUID
     after_message_id: uuid.UUID | None = None
     limit: int = Field(default=50, ge=1, le=100)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Standardized API Responses
+# ──────────────────────────────────────────────────────────────────────────────
+
+class ConversationResponse(BaseModel):
+    data: ConversationDTO
+
+class MessageResponse(BaseModel):
+    data: MessageDTO
+
+class PinnedMessageListResponse(BaseModel):
+    data: list[MessageDTO]
