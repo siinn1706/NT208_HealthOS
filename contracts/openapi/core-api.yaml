@@ -920,33 +920,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-    patch:
-      tags: [Chat]
-      summary: Update group conversation (title / avatar)
-      parameters:
-        - name: conversation_id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title: { type: string, maxLength: 255 }
-                avatar_url: { type: string, format: uri }
-      responses:
-        "200":
-          description: Updated conversation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ConversationDTO"
 
 /v1/conversations/{conversation_id}/accept:
     post:
