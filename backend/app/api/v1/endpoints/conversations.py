@@ -31,6 +31,9 @@ from app.schemas.chat import (
     MessageListResponse,
     ReactMessageBody,
     SendMessageBody,
+    ConversationResponse, 
+    MessageResponse, 
+    PinnedMessageListResponse,
     UserLookupResponse,
 )
 from app.schemas.common import ErrorResponse
@@ -45,9 +48,8 @@ router = APIRouter(tags=["Chat"])
 def _http_error(status_code: int, code: str, message: str) -> HTTPException:
     return HTTPException(
         status_code=status_code,
-        detail={"code": code, "message": message},
+        detail={"error": {"code": code, "message": message}},
     )
-
 
 async def _notify_conversation(
     conversation_id: uuid.UUID,
@@ -100,7 +102,7 @@ async def list_pending_conversations(
 
 @router.get(
     "/conversations/{conversation_id}",
-    response_model=ConversationDTO,
+    response_model=ConversationResponse,
     responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
     summary="Get a single conversation",
 )
@@ -108,7 +110,7 @@ async def get_conversation(
     conversation_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> ConversationDTO:
+) -> ConversationResponse:
     conv = await chat_svc.get_conversation_by_id(db, conversation_id, current_user.id)
     if conv is None:
         raise _http_error(404, "CHAT_NOT_FOUND", "Conversation not found.")
@@ -120,12 +122,12 @@ async def get_conversation(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
 
     presence_map = ws_manager.get_presence_map()
-    return await chat_svc._build_conversation_dto(db, conv, current_user.id, presence_map)
+    return ConversationResponse(data=await chat_svc._build_conversation_dto(db, conv, current_user.id, presence_map))
 
 
 @router.post(
     "/conversations/direct",
-    response_model=ConversationDTO,
+    response_model=ConversationResponse,
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
     summary="Create or get a direct conversation",
@@ -134,7 +136,7 @@ async def create_direct_conversation(
     body: CreateDirectConversationBody,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> ConversationDTO:
+) -> ConversationResponse:
     if body.target_user_id == current_user.id:
         raise _http_error(400, "CHAT_INVALID_TARGET", "Cannot start a conversation with yourself.")
     try:
@@ -152,12 +154,12 @@ async def create_direct_conversation(
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         },
     )
-    return dto
+    return ConversationResponse(data=dto)
 
 
 @router.post(
     "/conversations",
-    response_model=ConversationDTO,
+    response_model=ConversationResponse,
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
     summary="Create a group conversation",
@@ -166,14 +168,14 @@ async def create_group_conversation(
     body: CreateGroupConversationBody,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> ConversationDTO:
+) -> ConversationResponse:
     try:
         conv = await chat_svc.create_group_conversation(
             db, current_user.id, body.title, body.member_ids, body.avatar_url
         )
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
-    return await chat_svc._build_conversation_dto(db, conv, current_user.id)
+    return ConversationResponse(data=await chat_svc._build_conversation_dto(db, conv, current_user.id))
 
 
 @router.post(
@@ -212,7 +214,7 @@ async def reject_conversation(
 
 @router.patch(
     "/conversations/{conversation_id}/settings",
-    response_model=ConversationDTO,
+    response_model=ConversationResponse,
     responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
     summary="Update conversation settings (mute, pin, theme)",
 )
@@ -221,7 +223,7 @@ async def update_conversation_settings(
     body: ConversationSettingsBody,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> ConversationDTO:
+) -> ConversationResponse:
     try:
         await chat_svc.update_conversation_settings(
             db,
@@ -238,7 +240,7 @@ async def update_conversation_settings(
     if conv is None:
         raise _http_error(404, "CHAT_NOT_FOUND", "Conversation not found.")
     presence_map = ws_manager.get_presence_map()
-    return await chat_svc._build_conversation_dto(db, conv, current_user.id, presence_map)
+    return ConversationResponse(data=await chat_svc._build_conversation_dto(db, conv, current_user.id, presence_map))
 
 
 # ─── Message endpoints ─────────────────────────────────────────────────────────
@@ -269,7 +271,7 @@ async def get_messages(
 
 @router.post(
     "/conversations/{conversation_id}/messages",
-    response_model=MessageDTO,
+    response_model=MessageResponse,
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
     summary="Send a message (REST fallback; prefer WebSocket for real-time)",
@@ -279,7 +281,7 @@ async def send_message(
     body: SendMessageBody,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> MessageDTO:
+) -> MessageResponse:
     try:
         msg = await chat_svc.send_message(
             db,
@@ -300,12 +302,12 @@ async def send_message(
         "chat.message.sent",
         msg.model_dump(mode="json"),
     )
-    return msg
+    return MessageResponse(data=msg)
 
 
 @router.patch(
     "/conversations/{conversation_id}/messages/{message_id}",
-    response_model=MessageDTO,
+    response_model=MessageResponse,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
     summary="Edit a message",
 )
@@ -315,7 +317,7 @@ async def edit_message(
     body: EditMessageBody,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> MessageDTO:
+) -> MessageResponse:
     try:
         msg = await chat_svc.edit_message(db, message_id, conversation_id, current_user.id, body.content)
     except PermissionError as exc:
@@ -324,12 +326,12 @@ async def edit_message(
         raise _http_error(400, "CHAT_ERROR", str(exc))
 
     await _notify_conversation(conversation_id, "chat.message.edited", msg.model_dump(mode="json"))
-    return msg
+    return MessageResponse(data=msg)
 
 
 @router.delete(
     "/conversations/{conversation_id}/messages/{message_id}",
-    response_model=MessageDTO,
+    response_model=MessageResponse,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
     summary="Recall (soft-delete) a message",
 )
@@ -339,7 +341,7 @@ async def recall_message(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     for_everyone: Annotated[bool, Query()] = True,
-) -> MessageDTO:
+) -> MessageResponse:
     try:
         msg = await chat_svc.recall_message(
             db, message_id, conversation_id, current_user.id, for_everyone
@@ -350,14 +352,14 @@ async def recall_message(
         raise _http_error(400, "CHAT_ERROR", str(exc))
 
     await _notify_conversation(conversation_id, "chat.message.recalled", msg.model_dump(mode="json"))
-    return msg
+    return MessageResponse(data=msg)
 
 
 # ─── Reaction endpoints ───────────────────────────────────────────────────────
 
 @router.post(
     "/conversations/{conversation_id}/messages/{message_id}/reactions",
-    response_model=MessageDTO,
+    response_model=MessageResponse,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
     summary="Toggle an emoji reaction on a message",
 )
@@ -367,7 +369,7 @@ async def react_to_message(
     body: ReactMessageBody,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> MessageDTO:
+) -> MessageResponse:
     try:
         msg = await chat_svc.react_to_message(
             db, message_id, conversation_id, current_user.id, body.emoji
@@ -376,14 +378,14 @@ async def react_to_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
 
     await _notify_conversation(conversation_id, "chat.message.reacted", msg.model_dump(mode="json"))
-    return msg
+    return MessageResponse(data=msg)
 
 
 # ─── Pinned messages ───────────────────────────────────────────────────────────
 
 @router.get(
     "/conversations/{conversation_id}/pinned",
-    response_model=list[MessageDTO],
+    response_model=PinnedMessageListResponse,
     responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
     summary="List pinned messages in a conversation",
 )
@@ -391,9 +393,10 @@ async def get_pinned_messages(
     conversation_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[MessageDTO]:
+) -> PinnedMessageListResponse:
     try:
-        return await chat_svc.get_pinned_messages(db, conversation_id, current_user.id)
+        messages = await chat_svc.get_pinned_messages(db, conversation_id, current_user.id)
+        return PinnedMessageListResponse(data=messages)
     except ValueError as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
 
