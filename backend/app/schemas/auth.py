@@ -38,6 +38,8 @@ class VerifyOtpBody(BaseModel):
         json_schema_extra={"example": "482193"}
     )
     
+    password: str | None = Field(default=None, description="Password when Signing up")
+
     @field_validator('purpose', mode='before')
     @classmethod
     def sync_purpose_format(cls, value: str) -> str:
