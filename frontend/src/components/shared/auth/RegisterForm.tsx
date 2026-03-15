@@ -55,6 +55,7 @@ export function RegisterForm() {
         return;
       }
       // Redirect to OTP verification page
+      sessionStorage.setItem("temp_signup_password", password);
       router.push(`/verify?email=${encodeURIComponent(email)}`);
     } catch {
       setError("Có lỗi xảy ra. Vui lòng thử lại.");

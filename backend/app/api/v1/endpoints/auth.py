@@ -3,10 +3,12 @@ import asyncio
 import logging
 import random
 from datetime import datetime, timezone
+from unittest import result
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from redis.asyncio import Redis
 
 from app.adapters.database import get_db
@@ -90,7 +92,11 @@ async def login_with_password(
     """
     from app.core.security import verify_password
 
-    result = await db.execute(select(User).where(User.email == body.email))
+    result = await db.execute(
+    select(User)
+    .options(selectinload(User.profile)) 
+    .where(User.email == body.email)
+)
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(
@@ -352,7 +358,11 @@ async def verify_email_otp(
 
     # ── login: verify OTP for existing user, return JWT ─────────────────────
     if body.purpose == "login":
-        result = await db.execute(select(User).where(User.email == body.email))
+        result = await db.execute(
+    select(User)
+    .options(selectinload(User.profile)) 
+    .where(User.email == body.email)
+)
         user = result.scalar_one_or_none()
         if user is None:
             raise HTTPException(
@@ -388,7 +398,12 @@ async def verify_email_otp(
         # Rollback and fetch the now-existing user.
         await db.rollback()
         from sqlalchemy import select as _select
-        result = await db.execute(_select(User).where(User.email == body.email))
+        result = await db.execute(
+            _select(User)
+            .options(selectinload(User.profile)) 
+            .where(User.email == body.email)
+        )
+        
         user = result.scalar_one()
     except Exception as exc:
         raise HTTPException(
@@ -399,6 +414,12 @@ async def verify_email_otp(
                 details={},
             ).model_dump(),
         ) from exc
+    
+    if getattr(body, "password", None):
+        from app.core.security import hash_password
+        user.hashed_password = hash_password(body.password)
+        await db.commit()
+
     access_token = create_user_access_token(user)
 
     token = AuthToken(
@@ -446,7 +467,9 @@ async def reset_password(
     from app.core.security import hash_password
 
     result = await db.execute(
-        select(User).where(User.email == body.email)
+        select(User)
+        .options(selectinload(User.profile)) 
+        .where(User.email == body.email)
     )
     user = result.scalar_one_or_none()
     if user is None:

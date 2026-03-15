@@ -165,10 +165,17 @@ export function ForgotPasswordForm() {
   // ─── Step 3: Reset password ──────────────────────────────────────────────────
   async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (newPassword !== confirmNewPassword) {
-      setError(t("passwordMismatch"));
+
+    if (newPassword.length < 8) {
+      setError("Mật khẩu phải có ít nhất 8 ký tự"); 
       return;
     }
+
+    if (newPassword !== confirmNewPassword) {
+      setError(t("passwordMismatch")); 
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
 
@@ -444,6 +451,9 @@ export function ForgotPasswordForm() {
                     )}
                   </button>
                 </div>
+                {newPassword && newPassword.length < 8 && (
+                  <p className="text-xs text-destructive mt-1">Password must be at least 8 characters</p>
+                )}
               </div>
 
               {/* Confirm new password */}
@@ -488,6 +498,7 @@ export function ForgotPasswordForm() {
                   isLoading ||
                   !!success ||
                   !newPassword ||
+                  newPassword.length < 8 ||
                   newPassword !== confirmNewPassword
                 }
               >

@@ -30,14 +30,16 @@ class VerifyOtpBody(BaseModel):
 
     email: EmailStr
     purpose: Literal["signup", "reset_password", "login"] = "signup"
-    code: str = Field(min_length=4, max_length=12)
-    @field_validator('code')
-    @classmethod
-    def validate_strict_otp_length(cls, value: str) -> str:
-        # Ép chuẩn: Phải là số và đúng 6 ký tự để khớp với OpenAPI
-        if not re.match(r'^\d{6}$', value):
-            raise ValueError("OTP code must be exactly 6 digits")
-        return value     
+    code: str = Field(
+        min_length=6, 
+        max_length=6, 
+        pattern=r'^\d{6}$',
+        description="6-digit OTP code",
+        json_schema_extra={"example": "482193"}
+    )
+    
+    password: str | None = Field(default=None, description="Password when Signing up")
+
     @field_validator('purpose', mode='before')
     @classmethod
     def sync_purpose_format(cls, value: str) -> str:
