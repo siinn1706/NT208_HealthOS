@@ -359,6 +359,33 @@ async def get_conversations(
         )
     return dtos
 
+
+async def get_conversation_by_id(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> Conversation | None:
+    """Return one accepted conversation for a user, or None if inaccessible."""
+    result = await db.execute(
+        select(Conversation)
+        .join(
+            ConversationMember,
+            and_(
+                ConversationMember.conversation_id == Conversation.id,
+                ConversationMember.user_id == user_id,
+                ConversationMember.is_accepted.is_(True),
+            ),
+        )
+        .where(Conversation.id == conversation_id)
+        .options(
+            selectinload(Conversation.members)
+            .selectinload(ConversationMember.user)
+            .selectinload(User.profile),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_pending_conversations(
     db: AsyncSession,
     user_id: uuid.UUID,

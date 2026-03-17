@@ -3,15 +3,21 @@
 import { useState } from "react";
 import { Pin, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { MOCK_USERS, CURRENT_USER_ID } from "@/data/chat";
 import type { Message } from "@/types/api";
 
 interface PinnedMessagesProps {
   messages: Message[];
+  currentUserId: string | null;
+  participantNameById: Record<string, string>;
   onJump?: (messageId: string) => void;
 }
 
-export function PinnedMessages({ messages, onJump }: PinnedMessagesProps) {
+export function PinnedMessages({
+  messages,
+  currentUserId,
+  participantNameById,
+  onJump,
+}: PinnedMessagesProps) {
   const t = useTranslations("chat");
   const [expanded, setExpanded] = useState(false);
 
@@ -28,11 +34,13 @@ export function PinnedMessages({ messages, onJump }: PinnedMessagesProps) {
         <div className="flex-1 min-w-0">
           {displayed.map((msg) => {
             const senderName =
-              msg.sender_id === CURRENT_USER_ID
+              msg.sender_id === currentUserId
                 ? t("you")
                 : msg.sender_id === "ai"
                 ? t("aiAssistant")
-                : MOCK_USERS.find((u) => u.user_id === msg.sender_id)?.display_name ?? "Unknown";
+                : msg.sender_display_name ??
+                  participantNameById[msg.sender_id] ??
+                  "Chưa có thông tin";
 
             return (
               <button

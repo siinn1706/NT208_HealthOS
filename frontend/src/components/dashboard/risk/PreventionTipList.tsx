@@ -8,7 +8,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PreventionTip } from "@/data/risk";
+import type { PreventionTip } from "@/types/api";
 
 const CATEGORY_CONFIG: Record<
   PreventionTip["category"],

@@ -13,14 +13,12 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Appointment, AppointmentStatus } from "@/data/appointments";
-import { MOCK_PRESCRIPTIONS } from "@/data/appointments";
+import type { Appointment, AppointmentStatus, Prescription } from "@/types/api";
 import { PrescriptionViewerDialog } from "./PrescriptionViewerDialog";
 
 // BFF TODO: GET /api/v1/appointments
 // Trigger: page load; Request: { page: number; limit: number }
 // Response: { data: Appointment[]; meta: { total; page; per_page } }
-// Fallback: use MOCK_APPOINTMENTS from @/data/appointments
 
 interface AppointmentHistoryTableProps {
   appointments: Appointment[];
@@ -57,7 +55,7 @@ const ALL_FILTERS: { key: "all" | AppointmentStatus; label: string }[] = [
 export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTableProps) {
   const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
   const [search, setSearch] = useState("");
-  const [openPrescriptionId, setOpenPrescriptionId] = useState<string | null>(null);
+  const [openPrescription, setOpenPrescription] = useState<Prescription | null>(null);
 
   // Filter + Search
   const filtered = appointments.filter((a) => {
@@ -71,10 +69,6 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
       a.diagnosis.toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
-
-  const prescription = openPrescriptionId
-    ? MOCK_PRESCRIPTIONS[openPrescriptionId] ?? null
-    : null;
 
   return (
     <>
@@ -135,15 +129,20 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
               const cfg = STATUS_CONFIG[appt.status];
               const StatusIcon = cfg.icon;
               const date = new Date(appt.date);
-              const dateStr = date.toLocaleDateString("vi-VN", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              });
-              const timeStr = date.toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+              const isValidDate = !Number.isNaN(date.getTime());
+              const dateStr = isValidDate
+                ? date.toLocaleDateString("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })
+                : "--";
+              const timeStr = isValidDate
+                ? date.toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+                : "--";
 
               return (
                 <li
@@ -154,14 +153,16 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                   )}
                 >
                   {/* Date column */}
-                  <div className="flex-shrink-0 w-12 text-center hidden sm:block">
-                    <p className="text-lg font-bold text-foreground leading-none">
-                      {date.getDate().toString().padStart(2, "0")}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
-                      {date.toLocaleString("vi-VN", { month: "short" })} {date.getFullYear()}
-                    </p>
-                  </div>
+                    <div className="flex-shrink-0 w-12 text-center hidden sm:block">
+                      <p className="text-lg font-bold text-foreground leading-none">
+                        {isValidDate ? date.getDate().toString().padStart(2, "0") : "--"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
+                        {isValidDate
+                          ? `${date.toLocaleString("vi-VN", { month: "short" })} ${date.getFullYear()}`
+                          : "N/A"}
+                      </p>
+                    </div>
 
                   {/* Vertical divider */}
                   <div className="hidden sm:block w-px self-stretch bg-border" />
@@ -205,9 +206,9 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                           {appt.notes}
                         </span>
                       )}
-                      {appt.hasPrescription && appt.prescriptionId && (
+                      {appt.hasPrescription && appt.prescription && (
                         <button
-                          onClick={() => setOpenPrescriptionId(appt.prescriptionId!)}
+                          onClick={() => setOpenPrescription(appt.prescription ?? null)}
                           className={cn(
                             "ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5",
                             "text-[11px] font-medium text-[#41BCE6] bg-[#41BCE6]/10",
@@ -230,10 +231,10 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
       </div>
 
       {/* Prescription dialog */}
-      {openPrescriptionId && (
+      {openPrescription && (
         <PrescriptionViewerDialog
-          prescription={prescription}
-          onClose={() => setOpenPrescriptionId(null)}
+          prescription={openPrescription}
+          onClose={() => setOpenPrescription(null)}
         />
       )}
     </>

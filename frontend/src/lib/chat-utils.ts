@@ -1,18 +1,21 @@
 import { type Conversation, type ChatParticipant } from "@/types/api";
-import { CURRENT_USER_ID } from "@/data/chat";
 
 /** Get the "other" participant in a direct conversation */
-export function getOtherParticipant(conversation: Conversation): ChatParticipant | null {
+export function getOtherParticipant(
+  conversation: Conversation,
+  currentUserId?: string | null
+): ChatParticipant | null {
   if (conversation.type === "ai") return null;
-  return conversation.participants.find((p) => p.user_id !== CURRENT_USER_ID) ?? null;
+  if (!currentUserId) return conversation.participants[1] ?? conversation.participants[0] ?? null;
+  return conversation.participants.find((p) => p.user_id !== currentUserId) ?? null;
 }
 
 /** Get display name for a conversation */
-export function getConversationName(conversation: Conversation): string {
+export function getConversationName(conversation: Conversation, currentUserId?: string | null): string {
   if (conversation.type === "ai") return "HealthOS AI";
   if (conversation.type === "group") return conversation.name ?? "Group Chat";
-  const other = getOtherParticipant(conversation);
-  return other?.display_name ?? "Unknown";
+  const other = getOtherParticipant(conversation, currentUserId);
+  return other?.display_name ?? "Chưa có thông tin";
 }
 
 /** Get initials for an avatar */

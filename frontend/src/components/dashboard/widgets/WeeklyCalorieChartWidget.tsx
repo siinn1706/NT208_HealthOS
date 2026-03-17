@@ -17,6 +17,22 @@ interface WeeklyCalorieChartWidgetProps {
 }
 
 export function WeeklyCalorieChartWidget({ data }: WeeklyCalorieChartWidgetProps) {
+  if (data.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">7 ngày qua</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Lượng dinh dưỡng theo ngày</p>
+          </div>
+        </div>
+        <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+          Chưa có thông tin
+        </div>
+      </div>
+    );
+  }
+
   const days = data.map((d) => {
     const date = new Date(d.date);
     return date.toLocaleDateString("vi-VN", { weekday: "short", day: "numeric" });

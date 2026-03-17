@@ -23,17 +23,21 @@ import {
 // Trigger: polling after photo submission (every 2s up to 30s)
 // Response: { job_id: string, status: string }
 
-// Mock result returned when BFF isn't available
-const MOCK_ANALYSIS_RESULT = {
-  name: "Cơm gà xối mỡ",
-  meal_type: "lunch" as const,
-  ingredients: [
-    { ingredient_name: "Cơm trắng (đã nấu)", grams: 250, calories: 325, protein_g: 6.8, carbs_g: 71.5, fat_g: 0.8 },
-    { ingredient_name: "Thịt gà (đùi, da, chiên)", grams: 180, calories: 432, protein_g: 36.2, carbs_g: 2.4, fat_g: 29.9 },
-    { ingredient_name: "Dưa leo", grams: 60, calories: 8, protein_g: 0.5, carbs_g: 1.5, fat_g: 0.1 },
-    { ingredient_name: "Cà chua bi", grams: 50, calories: 9, protein_g: 0.4, carbs_g: 1.6, fat_g: 0.1 },
-  ],
-};
+interface AnalysisIngredient {
+  ingredient_name: string;
+  grams: number;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+interface AnalysisResult {
+  name: string;
+  meal_type: "breakfast" | "lunch" | "dinner" | "snack";
+  ingredients: AnalysisIngredient[];
+  estimatedCalories: number | null;
+}
 
 type AnalysisStep =
   | "idle"          // No image yet
@@ -60,7 +64,7 @@ export function CameraCapture() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [streamActive, setStreamActive] = useState(false);
   const [processingMsg, setProcessingMsg] = useState(STEP_MESSAGES[0]);
-  const [analysisResult, setAnalysisResult] = useState<typeof MOCK_ANALYSIS_RESULT | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
   // ── Upload flow ──────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +127,26 @@ export function CameraCapture() {
     return new File([byteArray], fileName, { type: mime });
   };
 
+  const fetchAnalyzedMealByJob = useCallback(async (jobId: string): Promise<AnalysisResult | null> => {
+    const res = await fetch("/api/v1/meals?page=1&per_page=100", { cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => null);
+    const list = Array.isArray(json?.data) ? json.data : [];
+    const meal = list.find((item: Record<string, unknown>) => item?.job_id === jobId);
+    if (!meal) return null;
+
+    const nutrition = (meal.nutrition_result ?? null) as
+      | { calories?: number | null }
+      | null;
+
+    return {
+      name: typeof meal.name === "string" ? meal.name : "Chưa có thông tin",
+      meal_type: "lunch",
+      ingredients: [],
+      estimatedCalories: typeof nutrition?.calories === "number" ? nutrition.calories : null,
+    };
+  }, []);
+
   // ── Analysis ─────────────────────────────────────────────────────
   const startAnalysis = async () => {
     if (!imageDataUrl) return;
@@ -150,36 +174,40 @@ export function CameraCapture() {
         throw new Error("Failed to start analysis");
       }
 
-      const { job_id, status } = await res.json();
+      const startData = await res.json().catch(() => null);
+      const job_id = typeof startData?.job_id === "string" ? startData.job_id : "";
+      let jobStatus = typeof startData?.status === "string" ? startData.status : "processing";
+      if (!job_id) throw new Error("Invalid analysis job");
 
       // Poll for job completion
       const maxRetries = 15; // 30 seconds total
       let retries = 0;
-      let jobStatus = status;
 
       while (retries < maxRetries && jobStatus === "processing") {
         await new Promise((r) => setTimeout(r, 2000));
         const pollRes = await fetch(`/api/v1/meals/analyze-photo/${job_id}`);
         if (pollRes.ok) {
-          const pollData = await pollRes.json();
-          jobStatus = pollData.status;
+          const pollData = await pollRes.json().catch(() => null);
+          if (typeof pollData?.status === "string") {
+            jobStatus = pollData.status;
+          }
         }
         retries++;
       }
 
       if (jobStatus === "analyzed" || jobStatus === "done") {
-        // Get the meal with nutrition data - for now use mock
-        // In production, fetch the meal details
-        setAnalysisResult(MOCK_ANALYSIS_RESULT);
+        const analyzed = await fetchAnalyzedMealByJob(job_id);
+        if (analyzed) {
+          setAnalysisResult(analyzed);
+          setStep("result");
+        } else {
+          setStep("error");
+        }
       } else {
-        // Fallback to mock for demo
-        setAnalysisResult(MOCK_ANALYSIS_RESULT);
+        setStep("error");
       }
-      setStep("result");
     } catch {
-      // Fallback to mock for demo
-      setAnalysisResult(MOCK_ANALYSIS_RESULT);
-      setStep("result");
+      setStep("error");
     } finally {
       clearInterval(interval);
     }
@@ -206,7 +234,9 @@ export function CameraCapture() {
   };
 
   const totalCalories =
-    analysisResult?.ingredients.reduce((sum, i) => sum + i.calories, 0) ?? 0;
+    analysisResult?.ingredients.reduce((sum, i) => sum + i.calories, 0) ??
+    analysisResult?.estimatedCalories ??
+    0;
 
   return (
     <div className="max-w-lg mx-auto space-y-5">
@@ -385,23 +415,27 @@ export function CameraCapture() {
                 Thành phần nhận diện ({analysisResult.ingredients.length})
               </p>
             </div>
-            <ul className="divide-y divide-border">
-              {analysisResult.ingredients.map((ing, i) => (
-                <li key={i} className="flex items-center justify-between px-4 py-3 gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">
-                      {ing.ingredient_name}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {ing.grams}g · P {ing.protein_g}g · C {ing.carbs_g}g · F {ing.fat_g}g
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground flex-shrink-0">
-                    {ing.calories} kcal
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {analysisResult.ingredients.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-muted-foreground">Chưa có thông tin</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {analysisResult.ingredients.map((ing, i) => (
+                  <li key={i} className="flex items-center justify-between px-4 py-3 gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">
+                        {ing.ingredient_name}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {ing.grams}g · P {ing.protein_g}g · C {ing.carbs_g}g · F {ing.fat_g}g
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground flex-shrink-0">
+                      {ing.calories} kcal
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Accuracy notice */}

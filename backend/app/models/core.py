@@ -51,6 +51,25 @@ class WearableProviderEnum(str, Enum):
     FITBIT = "fitbit"
 
 
+class AppointmentStatusEnum(str, Enum):
+    COMPLETED = "completed"
+    UPCOMING = "upcoming"
+    CANCELLED = "cancelled"
+
+
+class ReminderTypeEnum(str, Enum):
+    MEDICINE = "medicine"
+    APPOINTMENT = "appointment"
+    EXERCISE = "exercise"
+
+
+class ReminderRepeatEnum(str, Enum):
+    ONCE = "once"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+
+
 class OnboardingStatusEnum(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
@@ -116,6 +135,14 @@ class User(Base):
         cascade="all, delete-orphan",
     )
     notifications: Mapped[list[Notification]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    appointments: Mapped[list[Appointment]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    reminders: Mapped[list[Reminder]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -335,6 +362,109 @@ class Notification(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="notifications")
+
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    appointment_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    doctor_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    specialty: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    clinic: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    diagnosis: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[AppointmentStatusEnum] = mapped_column(
+        SAEnum(
+            AppointmentStatusEnum,
+            name="appointment_status_enum",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        default=AppointmentStatusEnum.UPCOMING,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prescription: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="appointments")
+
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    type: Mapped[ReminderTypeEnum] = mapped_column(
+        SAEnum(
+            ReminderTypeEnum,
+            name="reminder_type_enum",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    remind_time: Mapped[str] = mapped_column(String(16), nullable=False)
+    repeat: Mapped[ReminderRepeatEnum] = mapped_column(
+        SAEnum(
+            ReminderRepeatEnum,
+            name="reminder_repeat_enum",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        default=ReminderRepeatEnum.ONCE,
+    )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    done: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="reminders")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

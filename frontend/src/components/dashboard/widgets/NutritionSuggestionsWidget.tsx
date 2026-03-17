@@ -74,9 +74,9 @@ export function NutritionSuggestionsWidget({
       {/* List */}
       {suggestions.length === 0 ? (
         <div className="flex flex-col items-center py-8 gap-2">
-          <CheckCircle2 className="size-8 text-emerald-500" />
+          <CheckCircle2 className="size-8 text-muted-foreground" />
           <p className="text-sm text-center text-muted-foreground">
-            Bạn đang ăn rất tốt hôm nay!
+            Chưa có thông tin
           </p>
         </div>
       ) : (

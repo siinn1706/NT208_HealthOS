@@ -19,15 +19,19 @@ import type {
   ChatParticipant,
 } from "@/types/api";
 
-// Keep mock data as dev fallback only
-import {
-  MOCK_CONVERSATIONS,
-  MOCK_MESSAGES,
-  MOCK_STRANGER_REQUESTS,
-  CURRENT_USER_ID,
-} from "@/data/chat";
-
-const AI_CONVERSATION = MOCK_CONVERSATIONS.find((conversation) => conversation.type === "ai")!;
+const FALLBACK_AI_CONVERSATION: Conversation = {
+  id: "ai-assistant",
+  type: "ai",
+  name: "HealthOS AI",
+  avatar_url: null,
+  participants: [],
+  is_pinned: false,
+  is_muted: false,
+  unread_count: 0,
+  theme_id: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // API response → frontend type adapters
@@ -50,22 +54,39 @@ function adaptParticipant(p: any): ChatParticipant {
 function adaptReactions(reactions: any[]): MessageReaction[] {
   if (!reactions?.length) return [];
   // Backend: [{emoji, user_id, user_display_name}]
-  // Frontend: [{emoji, user_ids: string[]}]
-  const map = new Map<string, string[]>();
+  // Frontend: [{emoji, user_ids: string[], user_names?: Record<string,string>}]
+  const map = new Map<string, { user_ids: string[]; user_names: Record<string, string> }>();
   for (const r of reactions) {
     const uid = String(r.user_id ?? "");
-    if (!map.has(r.emoji)) map.set(r.emoji, []);
-    map.get(r.emoji)!.push(uid);
+    if (!map.has(r.emoji)) map.set(r.emoji, { user_ids: [], user_names: {} });
+    const entry = map.get(r.emoji)!;
+    entry.user_ids.push(uid);
+    if (r.user_display_name) {
+      entry.user_names[uid] = String(r.user_display_name);
+    }
   }
-  return Array.from(map.entries()).map(([emoji, user_ids]) => ({ emoji, user_ids }));
+  return Array.from(map.entries()).map(([emoji, value]) => ({
+    emoji,
+    user_ids: value.user_ids,
+    user_names: Object.keys(value.user_names).length > 0 ? value.user_names : undefined,
+  }));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptMessage(m: any): Message {
+  const senderId =
+    m.sender_id != null
+      ? String(m.sender_id)
+      : typeof m.sender_display_name === "string" &&
+        m.sender_display_name.toLowerCase().includes("ai")
+      ? "ai"
+      : "";
   return {
     id: String(m.id),
     conversation_id: String(m.conversation_id),
-    sender_id: String(m.sender_id ?? ""),
+    sender_id: senderId,
+    sender_display_name:
+      typeof m.sender_display_name === "string" ? m.sender_display_name : undefined,
     content: m.content ?? "",
     type: (m.content_type ?? m.type ?? "text") as Message["type"],
     status: (m.status ?? "read") as Message["status"],
@@ -74,6 +95,10 @@ function adaptMessage(m: any): Message {
           id: String(m.reply_to.id),
           content: m.reply_to.content ?? "",
           sender_id: String(m.reply_to.sender_id ?? ""),
+          sender_display_name:
+            typeof m.reply_to.sender_display_name === "string"
+              ? m.reply_to.sender_display_name
+              : undefined,
           type: (m.reply_to.content_type ?? m.reply_to.type ?? "text") as Message["type"],
         }
       : undefined,
@@ -121,7 +146,7 @@ function adaptConversation(c: any): Conversation {
 // useConversations
 // ──────────────────────────────────────────────────────────────────────────────
 export function useConversations() {
-  const [conversations, setConversations] = useState<Conversation[]>([AI_CONVERSATION]);
+  const [conversations, setConversations] = useState<Conversation[]>([FALLBACK_AI_CONVERSATION]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Initial load
@@ -140,13 +165,13 @@ export function useConversations() {
             (conversation) => conversation.type !== "ai"
           );
           setConversations([
-            apiAiConversation ?? AI_CONVERSATION,
+            apiAiConversation ?? FALLBACK_AI_CONVERSATION,
             ...nonAiConversations,
           ]);
         }
       })
       .catch(() => {
-        if (!cancelled) setConversations([AI_CONVERSATION]);
+        if (!cancelled) setConversations([FALLBACK_AI_CONVERSATION]);
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
@@ -337,7 +362,7 @@ export function useConversations() {
 // ──────────────────────────────────────────────────────────────────────────────
 // useMessages
 // ──────────────────────────────────────────────────────────────────────────────
-export function useMessages(conversationId: string | null) {
+export function useMessages(conversationId: string | null, currentUserId: string | null = null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -354,8 +379,8 @@ export function useMessages(conversationId: string | null) {
       return;
     }
 
-    if (conversationId === "conv-ai") {
-      setMessages(MOCK_MESSAGES["conv-ai"] ?? []);
+    if (conversationId === FALLBACK_AI_CONVERSATION.id) {
+      setMessages([]);
       setHasMore(false);
       lastCursorRef.current = null;
       setIsLoading(false);
@@ -435,7 +460,8 @@ export function useMessages(conversationId: string | null) {
       const optimistic: Message = {
         id: optimisticId,
         conversation_id: convId,
-        sender_id: CURRENT_USER_ID,
+        sender_id: currentUserId ?? "",
+        sender_display_name: undefined,
         content,
         type: "text",
         status: "sending",
@@ -475,7 +501,7 @@ export function useMessages(conversationId: string | null) {
         return optimistic;
       }
     },
-    []
+    [currentUserId]
   );
 
   const editMessage = useCallback(async (convId: string, messageId: string, content: string) => {
@@ -543,26 +569,51 @@ export function useMessages(conversationId: string | null) {
 
   const reactToMessage = useCallback(
     async (convId: string, messageId: string, emoji: string) => {
+      const selfUserId = currentUserId ?? "";
+      const selfDisplayName = "Bạn";
       // Optimistic toggle
       setMessages((prev) =>
         prev.map((m) => {
           if (m.id !== messageId) return m;
+          if (!selfUserId) return m;
           const existing = m.reactions.find((r) => r.emoji === emoji);
           let newReactions: MessageReaction[];
           if (existing) {
-            const hasReacted = existing.user_ids.includes(CURRENT_USER_ID);
+            const hasReacted = existing.user_ids.includes(selfUserId);
             if (hasReacted) {
-              const filtered = existing.user_ids.filter((id) => id !== CURRENT_USER_ID);
+              const filtered = existing.user_ids.filter((id) => id !== selfUserId);
+              const userNames = { ...(existing.user_names ?? {}) };
+              delete userNames[selfUserId];
               newReactions = filtered.length === 0
                 ? m.reactions.filter((r) => r.emoji !== emoji)
-                : m.reactions.map((r) => r.emoji === emoji ? { ...r, user_ids: filtered } : r);
+                : m.reactions.map((r) =>
+                    r.emoji === emoji
+                      ? {
+                          ...r,
+                          user_ids: filtered,
+                          user_names: Object.keys(userNames).length > 0 ? userNames : undefined,
+                        }
+                      : r
+                  );
             } else {
               newReactions = m.reactions.map((r) =>
-                r.emoji === emoji ? { ...r, user_ids: [...r.user_ids, CURRENT_USER_ID] } : r
+                r.emoji === emoji
+                  ? {
+                      ...r,
+                      user_ids: [...r.user_ids, selfUserId],
+                      user_names: {
+                        ...(r.user_names ?? {}),
+                        [selfUserId]: selfDisplayName,
+                      },
+                    }
+                  : r
               );
             }
           } else {
-            newReactions = [...m.reactions, { emoji, user_ids: [CURRENT_USER_ID] }];
+            newReactions = [
+              ...m.reactions,
+              { emoji, user_ids: [selfUserId], user_names: { [selfUserId]: selfDisplayName } },
+            ];
           }
           return { ...m, reactions: newReactions };
         })
@@ -576,7 +627,7 @@ export function useMessages(conversationId: string | null) {
         // optimistic stays
       }
     },
-    []
+    [currentUserId]
   );
 
   // Simulate AI typing + canned response (fallback when AI worker is not yet connected)
@@ -628,7 +679,7 @@ export function useMessages(conversationId: string | null) {
 // useStrangerRequests
 // ──────────────────────────────────────────────────────────────────────────────
 export function useStrangerRequests() {
-  const [requests, setRequests] = useState<StrangerRequest[]>(MOCK_STRANGER_REQUESTS);
+  const [requests, setRequests] = useState<StrangerRequest[]>([]);
 
   // Load pending conversations from API
   useEffect(() => {
@@ -651,9 +702,7 @@ export function useStrangerRequests() {
           setRequests(adapted);
         }
       })
-      .catch(() => {
-        // Keep mock data as fallback
-      });
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -694,7 +743,10 @@ export function useStrangerRequests() {
 // ──────────────────────────────────────────────────────────────────────────────
 // useChatSearch — searches conversations in local state + real user lookup
 // ──────────────────────────────────────────────────────────────────────────────
-export function useChatSearch(conversations: Conversation[] = []) {
+export function useChatSearch(
+  conversations: Conversation[] = [],
+  currentUserId: string | null = null
+) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -706,11 +758,12 @@ export function useChatSearch(conversations: Conversation[] = []) {
           ? "healthos ai assistant"
           : c.type === "group"
           ? (c.name ?? "").toLowerCase()
-          : (c.participants.find((p) => p.user_id !== CURRENT_USER_ID)?.display_name ?? "").toLowerCase();
+          : (c.participants.find((p) => p.user_id !== currentUserId)?.display_name ?? "")
+              .toLowerCase();
       const lastMsg = c.last_message?.content.toLowerCase() ?? "";
       return name.includes(q) || lastMsg.includes(q);
     });
-  }, [query, conversations]);
+  }, [query, conversations, currentUserId]);
 
   return { query, setQuery, filtered };
 }

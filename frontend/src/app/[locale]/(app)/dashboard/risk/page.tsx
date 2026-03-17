@@ -1,19 +1,15 @@
 import { Brain, RefreshCw, ShieldCheck } from "lucide-react";
-import { MOCK_RISK_PREDICTIONS } from "@/data/risk";
+import { headers } from "next/headers";
 import { RiskGaugeRow } from "@/components/dashboard/risk/RiskGaugeRow";
-import type { RiskPredictionSummary } from "@/data/risk";
-
-// BFF TODO: GET /api/v1/health/risk-predictions
-// Trigger: server-side page load
-// Request: { timeframe: "current" }
-// Response: { data: RiskPredictionSummary }
-// Fallback: MOCK_RISK_PREDICTIONS from @/data/risk
+import type { RiskPredictionSummary } from "@/types/api";
 
 async function fetchRiskPredictions(): Promise<RiskPredictionSummary> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
+    const reqHeaders = await headers();
     const res = await fetch(`${appUrl}/api/v1/health/risk-predictions?timeframe=current`, {
       cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
     if (res.ok) {
       const json = await res.json();
@@ -22,10 +18,13 @@ async function fetchRiskPredictions(): Promise<RiskPredictionSummary> {
         return data as RiskPredictionSummary;
       }
     }
-  } catch {
-    // BFF unavailable — fallback to mock
-  }
-  return MOCK_RISK_PREDICTIONS;
+  } catch {}
+  return {
+    generatedAt: "",
+    overallScore: 0,
+    risks: [],
+    disclaimer: "Chưa có thông tin",
+  };
 }
 
 function HealthScoreRing({ score }: { score: number }) {
@@ -83,13 +82,15 @@ function HealthScoreRing({ score }: { score: number }) {
 export default async function RiskPage() {
   const data = await fetchRiskPredictions();
 
-  const generated = new Date(data.generatedAt).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const generated = data.generatedAt
+    ? new Date(data.generatedAt).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Chưa có thông tin";
 
   const highCount = data.risks.filter((r) => r.level === "high" || r.level === "critical").length;
   const moderateCount = data.risks.filter((r) => r.level === "moderate").length;
@@ -112,6 +113,7 @@ export default async function RiskPage() {
         <button
           className="flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer self-start"
           aria-label="Cập nhật dự đoán mới"
+          disabled
         >
           <RefreshCw className="w-4 h-4" />
           Cập nhật
@@ -151,17 +153,21 @@ export default async function RiskPage() {
       {/* ── Risk rows ── */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Các rủi ro được theo dõi</h2>
-        {data.risks
-          .sort((a, b) => b.probability - a.probability)
-          .map((risk, i) => (
-            <RiskGaugeRow key={risk.id} risk={risk} defaultExpanded={i === 0} />
-          ))}
+        {data.risks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Chưa có thông tin</p>
+        ) : (
+          data.risks
+            .sort((a, b) => b.probability - a.probability)
+            .map((risk, i) => (
+              <RiskGaugeRow key={risk.id} risk={risk} defaultExpanded={i === 0} />
+            ))
+        )}
       </div>
 
       {/* ── Medical disclaimer ── */}
       <div className="rounded-xl border border-border bg-muted/20 px-5 py-4 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" aria-hidden />
-        <p className="text-xs text-muted-foreground leading-relaxed">{data.disclaimer}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{data.disclaimer || "Chưa có thông tin"}</p>
       </div>
     </div>
   );
