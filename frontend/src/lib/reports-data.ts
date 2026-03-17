@@ -16,7 +16,6 @@ import type {
   TrendAnalysis,
   ShareRequest,
   ShareResult,
-  AnomalyPoint,
   TrendDirection,
 } from "@/types/api";
 

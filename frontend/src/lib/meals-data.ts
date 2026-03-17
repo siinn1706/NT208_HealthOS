@@ -7,8 +7,6 @@
 import { headers } from "next/headers";
 import type { Meal, DailyNutritionSummary, NutritionSuggestion, WeeklyCaloriePoint } from "@/types/api";
 
-const CALORIE_TARGET = 2000;
-
 // ---------------------------------------------------------------------------
 // Mock data for fallback
 // ---------------------------------------------------------------------------

@@ -53,8 +53,10 @@ export async function POST(req: NextRequest) {
         data: {
           user_id: data.data.user_id,
           email: data.data.email,
+          username: data.data.username ?? null,
           display_name: data.data.display_name,
           avatar_url: data.data.avatar_url ?? null,
+          onboarding_status: data.data.onboarding_status ?? "pending",
         },
       },
       { status: res.status }

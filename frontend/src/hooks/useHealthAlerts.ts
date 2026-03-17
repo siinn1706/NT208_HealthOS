@@ -14,7 +14,7 @@
  *   - Receive real-time notifications for abnormal vitals
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useChatWs, type WsFrame, type WsStatus } from "./useChatWs";
 
 export interface HealthAlert {

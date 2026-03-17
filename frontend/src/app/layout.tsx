@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { getLocale } from "next-intl/server";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -32,6 +33,7 @@ export default async function RootLayout({
     <html lang={locale} className={beVietnamPro.variable}>
       <body className="overflow-x-hidden font-[family-name:var(--font-be-vietnam-pro)]">
         {children}
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );

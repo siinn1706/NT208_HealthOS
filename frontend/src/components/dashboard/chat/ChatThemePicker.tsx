@@ -71,19 +71,6 @@ export function ChatThemePicker({
   const [hoverPatId,  setHoverPatId]  = useState<string | undefined>(undefined);
   const [opacity, setOpacity]         = useState(initialOpacity);
 
-  // Sync opacity each time the dialog is freshly opened
-  /* eslint-disable react-hooks/set-state-in-effect */
-  // Also eagerly preload the active pattern so the preview strip loads fast
-  useEffect(() => {
-    if (open) {
-      setOpacity(parseThemeId(currentThemeId).opacity);
-      if (previewPat?.filename) {
-        preloadUrl(resolvePatternUrl(previewPat, currentGradType));
-      }
-    }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  /* eslint-enable react-hooks/set-state-in-effect */
-
   const displayGradId = hoverGradId !== undefined ? hoverGradId : currentGradId;
   const displayPatId  = hoverPatId  !== undefined ? hoverPatId  : currentPatId;
 
@@ -96,6 +83,18 @@ export function ChatThemePicker({
   const previewPatUrl   = previewPat?.filename
     ? resolvePatternUrl(previewPat, previewGradType)
     : "";
+
+  // Sync opacity each time the dialog is freshly opened
+  // Also eagerly preload the active pattern so the preview strip loads fast
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpacity(parseThemeId(currentThemeId).opacity);
+      if (previewPat?.filename) {
+        preloadUrl(resolvePatternUrl(previewPat, currentGradType));
+      }
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Base gradient css for pattern thumbnail cards
   const thumbGradCss =

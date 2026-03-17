@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import re
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,6 +11,118 @@ from sqlalchemy.orm import selectinload
 from app.core.security import create_access_token, hash_password
 from app.models.core import User, UserProfile
 from app.schemas.auth import OAuthProfile
+
+
+# Reserved usernames that cannot be used
+RESERVED_USERNAMES = {
+    "admin", "root", "system", "api", "healthos", "support", "help",
+    "test", "testing", "user", "guest", "moderator", "superuser",
+    "administrator", "root", "null", "undefined", "none", "webmaster"
+}
+
+# Username validation regex: 3-30 chars, alphanumeric + underscore, must start with letter
+USERNAME_REGEX = re.compile(r"^[a-z][a-z0-9_]{2,29}$")
+
+
+async def get_user_by_identifier(db: AsyncSession, identifier: str) -> Optional[User]:
+    """Find a user by email or username.
+
+    Args:
+        db: Database session
+        identifier: Email address or username
+
+    Returns:
+        User if found, None otherwise
+    """
+    normalized_identifier = identifier.lower().strip()
+
+    if "@" in normalized_identifier:
+        # Treat as email
+        result = await db.execute(
+            select(User)
+            .options(selectinload(User.profile))
+            .where(User.email == normalized_identifier)
+        )
+    else:
+        # Treat as username
+        result = await db.execute(
+            select(User)
+            .options(selectinload(User.profile))
+            .where(User.username == normalized_identifier)
+        )
+    return result.scalar_one_or_none()
+
+
+def validate_username(username: str) -> tuple[bool, str]:
+    """Validate username format and availability.
+
+    Args:
+        username: Username to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not username:
+        return False, "Username is required"
+
+    normalized = username.lower().strip()
+
+    if len(normalized) < 3:
+        return False, "Username must be at least 3 characters"
+
+    if len(normalized) > 30:
+        return False, "Username must be at most 30 characters"
+
+    if not USERNAME_REGEX.match(normalized):
+        return False, "Username can only contain letters, numbers, and underscores, and must start with a letter"
+
+    if normalized in RESERVED_USERNAMES:
+        return False, "This username is reserved"
+
+    return True, ""
+
+
+async def check_username_availability(db: AsyncSession, username: str) -> bool:
+    """Check if a username is available.
+
+    Args:
+        db: Database session
+        username: Username to check
+
+    Returns:
+        True if available, False if taken
+    """
+    normalized = username.lower().strip()
+
+    # Validate format first
+    is_valid, _ = validate_username(normalized)
+    if not is_valid:
+        return False
+
+    result = await db.execute(
+        select(User).where(User.username == normalized)
+    )
+    return result.scalar_one_or_none() is None
+
+
+async def check_email_availability(db: AsyncSession, email: str) -> bool:
+    """Check if an email is available.
+
+    Args:
+        db: Database session
+        email: Email to check
+
+    Returns:
+        True if available, False if taken
+    """
+    normalized = email.lower().strip()
+    if not normalized:
+        return False
+
+    result = await db.execute(
+        select(User.id).where(func.lower(User.email) == normalized)
+    )
+    return result.scalar_one_or_none() is None
 
 
 async def get_or_create_user_from_oauth(

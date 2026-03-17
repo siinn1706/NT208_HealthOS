@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Loader2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 // POST /api/v1/meals/analyze-photo
 // Trigger: user submits a captured/uploaded image

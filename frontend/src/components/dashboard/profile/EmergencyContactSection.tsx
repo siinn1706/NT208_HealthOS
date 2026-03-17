@@ -33,6 +33,32 @@ const RELATIONSHIPS = [
   "other",
 ] as const;
 
+const RELATIONSHIP_LABEL_MAP: Record<string, (typeof RELATIONSHIPS)[number]> = {
+  // canonical keys
+  parent: "parent",
+  spouse: "spouse",
+  sibling: "sibling",
+  child: "child",
+  friend: "friend",
+  other: "other",
+
+  // localized legacy values (vi)
+  "cha/mẹ": "parent",
+  "vợ/chồng": "spouse",
+  "anh/chị/em": "sibling",
+  con: "child",
+  "bạn bè": "friend",
+  khác: "other",
+};
+
+function normalizeRelationship(
+  relationship: string | null | undefined
+): (typeof RELATIONSHIPS)[number] | null {
+  if (!relationship) return null;
+  const key = relationship.trim().toLowerCase();
+  return RELATIONSHIP_LABEL_MAP[key] ?? null;
+}
+
 const MAX_CONTACTS = 5;
 
 interface EmergencyContactSectionProps {
@@ -79,10 +105,11 @@ export function EmergencyContactSection({
       <ProfileSection icon={AlertCircle} title={t("sections.emergency")}>
         <div className="space-y-5">
           {contacts.map((contact, index) => {
-            const rel = contact.relationship;
-            const relLabel = rel
-              ? t(`relationships.${rel}` as Parameters<typeof t>[0])
-              : null;
+            const rel = contact.relationship?.trim() ?? null;
+            const relKey = normalizeRelationship(rel);
+            const relLabel = relKey
+              ? t(`relationships.${relKey}` as Parameters<typeof t>[0])
+              : rel;
             return (
               <div key={contact.id ?? index}>
                 {index > 0 && <Separator className="mb-5" />}

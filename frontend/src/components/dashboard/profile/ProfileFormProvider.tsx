@@ -22,26 +22,36 @@ interface ProfileFormProviderProps {
 }
 
 function profileToFormValues(profile: UserProfile): ProfileFormValues {
+  const emergencyContacts = Array.isArray(profile.emergency_contacts)
+    ? profile.emergency_contacts
+    : [];
+  const medicalInfo = profile.medical_info ?? {
+    allergies: null,
+    chronic_conditions: null,
+    current_medications: null,
+    notes: null,
+  };
+
   return {
-    full_name: profile.full_name,
-    date_of_birth: profile.date_of_birth,
-    gender: profile.gender,
-    blood_type: profile.blood_type,
-    height_cm: profile.height_cm,
-    weight_kg: profile.weight_kg,
-    phone: profile.phone,
-    address: profile.address,
-    emergency_contacts: profile.emergency_contacts.map((ec) => ({
+    full_name: profile.full_name ?? profile.display_name ?? "",
+    date_of_birth: profile.date_of_birth ?? null,
+    gender: profile.gender ?? null,
+    blood_type: profile.blood_type ?? null,
+    height_cm: profile.height_cm ?? null,
+    weight_kg: profile.weight_kg ?? null,
+    phone: profile.phone ?? null,
+    address: profile.address ?? null,
+    emergency_contacts: emergencyContacts.map((ec) => ({
       id: ec.id,
-      name: ec.name,
-      relationship: ec.relationship,
-      phone: ec.phone,
+      name: ec.name ?? null,
+      relationship: ec.relationship ?? null,
+      phone: ec.phone ?? null,
     })),
     medical_info: {
-      allergies: profile.medical_info.allergies,
-      chronic_conditions: profile.medical_info.chronic_conditions,
-      current_medications: profile.medical_info.current_medications,
-      notes: profile.medical_info.notes,
+      allergies: medicalInfo.allergies ?? null,
+      chronic_conditions: medicalInfo.chronic_conditions ?? null,
+      current_medications: medicalInfo.current_medications ?? null,
+      notes: medicalInfo.notes ?? null,
     },
   };
 }
@@ -84,10 +94,10 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
     setSaveStatus("idle");
 
     try {
-      // BFF: PATCH /api/v1/users
-      const res = await bffFetch("/api/v1/users", {
+      // BFF: PATCH /api/v1/users/me
+      const res = await bffFetch("/api/v1/users/me", {
         method: "PATCH",
-        body: JSON.stringify(values),
+        body: values,
       });
       void res; // BFF returns updated user, can be used to sync local state
 

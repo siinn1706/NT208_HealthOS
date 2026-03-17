@@ -45,25 +45,23 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
     if (otp.length !== 6) return;
     setError(null);
     setIsLoading(true);
-    const savedPassword = sessionStorage.getItem("temp_signup_password");
 
     try {
       const res = await fetch("/api/v1/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: otp, purpose, password: savedPassword }),
+        body: JSON.stringify({ email, code: otp, purpose }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setError(data?.error?.message || t("otpInvalid"));
         return;
       }
-      sessionStorage.removeItem("temp_signup_password");
       // BFF now sets the httpOnly cookie — do NOT store token in localStorage.
       setSuccess(t("verificationSuccess"));
       if (purpose === "signup") {
-        // Signup complete: go directly to dashboard
-        setTimeout(() => router.push("/dashboard"), 1200);
+        // Signup complete: go to onboarding to complete profile
+        setTimeout(() => router.push("/onboarding"), 1200);
       } else if (purpose === "reset_password") {
         // Need to proceed with password reset
         setTimeout(() => router.push("/forgot-password?step=reset&email=" + encodeURIComponent(email ?? "")), 1200);

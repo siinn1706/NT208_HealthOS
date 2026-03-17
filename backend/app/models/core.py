@@ -51,6 +51,17 @@ class WearableProviderEnum(str, Enum):
     FITBIT = "fitbit"
 
 
+class OnboardingStatusEnum(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    """Persist Enum `.value` to PostgreSQL enum columns (not Enum member names)."""
+    return [member.value for member in enum_cls]
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -60,8 +71,22 @@ class User(Base):
         default=uuid.uuid4,
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    onboarding_status: Mapped[str] = mapped_column(
+        String(20),
+        default=OnboardingStatusEnum.PENDING.value,
+        nullable=False,
+    )
+    onboarding_completed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    email_verified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -153,7 +178,7 @@ class UserProfile(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     date_of_birth: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[GenderEnum | None] = mapped_column(
-        SAEnum(GenderEnum, name="gender_enum"),
+        SAEnum(GenderEnum, name="gender_enum", values_callable=_enum_values),
         nullable=True,
     )
     blood_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -191,7 +216,7 @@ class Meal(Base):
     image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[MealStatusEnum] = mapped_column(
-        SAEnum(MealStatusEnum, name="meal_status_enum"),
+        SAEnum(MealStatusEnum, name="meal_status_enum", values_callable=_enum_values),
         nullable=False,
     )
     nutrition_result: Mapped[dict[str, Any] | None] = mapped_column(
@@ -231,7 +256,7 @@ class HealthMetric(Base):
         nullable=False,
     )
     metric_type: Mapped[MetricTypeEnum] = mapped_column(
-        SAEnum(MetricTypeEnum, name="metric_type_enum"),
+        SAEnum(MetricTypeEnum, name="metric_type_enum", values_callable=_enum_values),
         nullable=False,
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
@@ -241,7 +266,7 @@ class HealthMetric(Base):
         nullable=False,
     )
     source: Mapped[WearableSourceEnum] = mapped_column(
-        SAEnum(WearableSourceEnum, name="wearable_source_enum"),
+        SAEnum(WearableSourceEnum, name="wearable_source_enum", values_callable=_enum_values),
         nullable=False,
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
@@ -267,7 +292,7 @@ class ConnectedDevice(Base):
         nullable=False,
     )
     provider: Mapped[WearableProviderEnum] = mapped_column(
-        SAEnum(WearableProviderEnum, name="wearable_provider_enum"),
+        SAEnum(WearableProviderEnum, name="wearable_provider_enum", values_callable=_enum_values),
         nullable=False,
     )
     connected_at: Mapped[datetime.datetime] = mapped_column(
@@ -339,7 +364,7 @@ class Conversation(Base):
         default=uuid.uuid4,
     )
     type: Mapped[ConversationTypeEnum] = mapped_column(
-        SAEnum(ConversationTypeEnum, name="conversation_type_enum"),
+        SAEnum(ConversationTypeEnum, name="conversation_type_enum", values_callable=_enum_values),
         nullable=False,
         default=ConversationTypeEnum.DIRECT,
     )
@@ -460,7 +485,11 @@ class Message(Base):
     client_message_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     content_type: Mapped[MessageContentTypeEnum] = mapped_column(
-        SAEnum(MessageContentTypeEnum, name="message_content_type_enum"),
+        SAEnum(
+            MessageContentTypeEnum,
+            name="message_content_type_enum",
+            values_callable=_enum_values,
+        ),
         nullable=False,
         default=MessageContentTypeEnum.TEXT,
     )
