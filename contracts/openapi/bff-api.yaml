@@ -124,6 +124,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/check-email:
+    get:
+      tags: [Auth]
+      summary: Check email availability (proxy → Core BE)
+      description: |
+        Proxies to Core BE GET /v1/auth/check-email.
+        Returns whether an email can be used for signup.
+      security: []
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Availability result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [available]
+                properties:
+                  available:
+                    type: boolean
+                    example: true
+        "400":
+          description: Missing/invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Upstream Core API unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /auth/verify-otp:
     post:
       tags: [Auth]

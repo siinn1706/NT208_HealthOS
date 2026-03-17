@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { DeviceConnectionCard, type Device } from "./DeviceConnectionCard";
 
@@ -150,9 +151,9 @@ export function DevicesPageClient({ initialDevices = MOCK_DEVICES }: DevicesPage
       <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
         Dữ liệu từ thiết bị đeo được mã hóa và chỉ dùng để cải thiện trải nghiệm sức khỏe của bạn.
         Bạn có thể ngắt kết nối bất cứ lúc nào. Xem{" "}
-        <a href="/vi/about" className="underline underline-offset-2 hover:text-foreground transition-colors">
+        <Link href="/vi/about" className="underline underline-offset-2 hover:text-foreground transition-colors">
           chính sách bảo mật
-        </a>
+        </Link>
         .
       </p>
     </div>

@@ -21,12 +21,13 @@ const LOCALES = [
 
 export function TopNav({
   sidebarCollapsed = false,
-  userName = "Nguyễn Văn A",
+  userName,
   alertCount = 0,
 }: TopNavProps) {
   const t = useTranslations("dashboard.topnav");
   const locale = useLocale();
   const router = useRouter();
+  const displayName = userName?.trim() || t("profile");
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -157,7 +158,7 @@ export function TopNav({
               <User className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
             <span className="text-sm font-medium text-foreground hidden sm:block max-w-[120px] truncate">
-              {userName}
+              {displayName}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
           </button>

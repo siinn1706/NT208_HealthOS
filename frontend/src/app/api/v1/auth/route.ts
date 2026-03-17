@@ -61,8 +61,10 @@ export async function GET() {
       data: {
         user_id: "00000000-0000-0000-0000-000000000001",
         email: devUser.email,
+        username: devUser.email.split("@")[0],
         display_name: devUser.display_name,
         avatar_url: null,
+        onboarding_status: "completed",
       },
     });
   }
@@ -96,9 +98,9 @@ export async function GET() {
 // ── POST /api/v1/auth/session → Login, set cookie ───────────────────────────
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
-  if (!body?.email || !body?.password) {
+  if (!body?.identifier || !body?.password) {
     return NextResponse.json(
-      { error: { code: "VALIDATION_ERROR", message: "email and password are required." } },
+      { error: { code: "VALIDATION_ERROR", message: "identifier and password are required." } },
       { status: 400 }
     );
   }
@@ -106,15 +108,17 @@ export async function POST(req: NextRequest) {
   // Dev bypass — short-circuit backend when credentials match
   if (process.env.NODE_ENV !== "production") {
     const devMap = getDevBypassMap();
-    const key = `${body.email}::${body.password}`;
+    const key = `${body.identifier}::${body.password}`;
     const devUser = devMap.get(key);
     if (devUser) {
       const response = NextResponse.json({
         data: {
           user_id: "00000000-0000-0000-0000-000000000001",
           email: devUser.email,
+          username: devUser.email.split("@")[0],
           display_name: devUser.display_name,
           avatar_url: null,
+          onboarding_status: "completed",
         },
       });
       response.cookies.set(SESSION_COOKIE_NAME, makeDevToken(devUser.email), {
@@ -132,7 +136,7 @@ export async function POST(req: NextRequest) {
     const coreRes = await fetch(`${CORE_API_URL}/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: body.email, password: body.password }),
+      body: JSON.stringify({ identifier: body.identifier, password: body.password }),
       cache: "no-store",
     });
 
@@ -157,8 +161,10 @@ export async function POST(req: NextRequest) {
         data: {
           user_id: data.data.user_id,
           email: data.data.email,
+          username: data.data.username ?? null,
           display_name: data.data.display_name,
           avatar_url: data.data.avatar_url ?? null,
+          onboarding_status: data.data.onboarding_status ?? "pending",
         },
       },
       { status: 200 }

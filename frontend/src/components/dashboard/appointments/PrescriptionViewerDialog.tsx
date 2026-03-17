@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { X, Pill, Stethoscope, CalendarDays, Building2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Prescription } from "@/data/appointments";

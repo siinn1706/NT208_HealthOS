@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { useNotification, ValidationMessages } from "@/hooks/use-notification";
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -72,56 +73,108 @@ function FacebookIcon() {
 export function LoginForm() {
   const t = useTranslations("auth");
   const router = useRouter();
+  const { handleApiError, success, handleError } = useNotification();
+  const identifierRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Client-side validation
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!identifier.trim()) {
+      errors.identifier = ValidationMessages.required("Email/Username");
+      identifierRef.current?.focus();
+    }
+
+    if (!password) {
+      errors.password = ValidationMessages.required("Mật khẩu");
+      if (!errors.identifier) {
+        passwordRef.current?.focus();
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return false;
+    }
+
+    setFieldErrors({});
+    return true;
+  };
 
   // ─── Submit ─────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
+
+    // Client-side validation
+    if (!validate()) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const res = await fetch("/api/v1/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
       });
 
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const msg = data?.error?.message ?? data?.detail?.message ?? t("loginButton");
-        setError(
-          res.status === 401 || res.status === 404
-            ? "Email hoặc mật khẩu không đúng."
-            : msg ?? "Đăng nhập thất bại. Vui lòng thử lại."
-        );
+        const errors = handleApiError(data, "Đăng nhập thất bại");
+        // Map field errors
+        if (errors.identifier || errors.password) {
+          setFieldErrors(errors);
+        }
         return;
       }
 
-      router.push("/dashboard");
-    } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      // Success - show toast and redirect
+      success("Đăng nhập thành công!");
+
+      // Check onboarding status and redirect accordingly
+      const onboardingStatus = data?.data?.onboarding_status;
+      if (onboardingStatus === "completed") {
+        router.push("/dashboard");
+      } else {
+        router.push("/onboarding");
+      }
+    } catch (err) {
+      const errors = handleError(err, "Có lỗi xảy ra. Vui lòng thử lại.");
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+      }
     } finally {
       setIsLoading(false);
     }
   }
 
+  // Clear field error on change
+  function handleIdentifierChange(value: string) {
+    setIdentifier(value);
+    if (fieldErrors.identifier) {
+      setFieldErrors((prev) => ({ ...prev, identifier: "" }));
+    }
+  }
+
+  function handlePasswordChange(value: string) {
+    setPassword(value);
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => ({ ...prev, password: "" }));
+    }
+  }
+
   // ─── OAuth ──────────────────────────────────────────────────────────────────
   async function handleOAuth(provider: "google" | "facebook") {
-    /**
-     * TODO: Implement OAuth via Auth.js
-     *
-     * EXAMPLE:
-     * import { signIn } from "next-auth/react";
-     * await signIn(provider, { callbackUrl: "/" });
-     */
     console.log(`OAuth with ${provider} — not implemented yet`);
   }
 
@@ -130,7 +183,6 @@ export function LoginForm() {
       {/* Header */}
       <CardHeader className="space-y-1 pb-4">
         <div className="flex items-center gap-2 mb-2">
-          {/* Logo / Brand mark */}
           <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">H</span>
           </div>
@@ -147,29 +199,26 @@ export function LoginForm() {
       {/* Form */}
       <CardContent>
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {/* Error banner */}
-          {error && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {error}
-            </div>
-          )}
-
           {/* Username or Email */}
           <div className="space-y-1.5">
-            <Label htmlFor="login-email">{t("loginIdentifier")}</Label>
+            <Label htmlFor="login-identifier">{t("loginIdentifier")}</Label>
             <Input
-              id="login-email"
+              ref={identifierRef}
+              id="login-identifier"
               type="text"
               placeholder={t("loginIdentifierPlaceholder")}
               autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={identifier}
+              onChange={(e) => handleIdentifierChange(e.target.value)}
               required
               disabled={isLoading}
+              aria-invalid={!!fieldErrors.identifier}
             />
+            {fieldErrors.identifier && (
+              <p className="text-xs text-destructive" role="alert">
+                {fieldErrors.identifier}
+              </p>
+            )}
           </div>
 
           {/* Password */}
@@ -185,14 +234,16 @@ export function LoginForm() {
             </div>
             <div className="relative">
               <Input
+                ref={passwordRef}
                 id="login-password"
                 type={showPassword ? "text" : "password"}
                 placeholder={t("passwordPlaceholder")}
                 autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handlePasswordChange(e.target.value)}
                 required
                 disabled={isLoading}
+                aria-invalid={!!fieldErrors.password}
                 className="pr-10"
               />
               <button
@@ -208,6 +259,11 @@ export function LoginForm() {
                 )}
               </button>
             </div>
+            {fieldErrors.password && (
+              <p className="text-xs text-destructive" role="alert">
+                {fieldErrors.password}
+              </p>
+            )}
           </div>
 
           {/* Remember me */}
