@@ -201,8 +201,8 @@ class TestMessagesEndpoint:
 
         assert response.status_code == 201
         payload = response.json()
-        assert payload["conversation_id"] == str(conv_id)
-        assert payload["content"] == "Test message"
+        assert payload["data"]["conversation_id"] == str(conv_id)
+        assert payload["data"]["content"] == "Test message"
 
 
 class TestConversationSettingsEndpoint:
@@ -258,9 +258,9 @@ class TestConversationSettingsEndpoint:
 
         assert response.status_code == 200
         payload = response.json()
-        assert payload["id"] == str(conv_id)
-        assert payload["is_muted"] is True
-        assert payload["is_pinned"] is True
+        assert payload["data"]["id"] == str(conv_id)
+        assert payload["data"]["is_muted"] is True
+        assert payload["data"]["is_pinned"] is True
 
 
 class TestTypingIndicator:

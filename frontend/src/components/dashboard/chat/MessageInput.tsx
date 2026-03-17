@@ -21,7 +21,8 @@ const EmojiPicker = dynamic(
 // @emoji-mart/data is imported asynchronously inside the picker itself
 
 interface MessageInputProps {
-  replyTo?: Pick<Message, "id" | "content" | "sender_id" | "type"> | null;
+  replyTo?: Pick<Message, "id" | "content" | "sender_id" | "sender_display_name" | "type"> | null;
+  currentUserId: string | null;
   editingMessage?: Message | null;
   onSend: (content: string) => void;
   onCancelReply: () => void;
@@ -32,6 +33,7 @@ interface MessageInputProps {
 
 export function MessageInput({
   replyTo,
+  currentUserId,
   editingMessage,
   onSend,
   onCancelReply,
@@ -98,7 +100,11 @@ export function MessageInput({
       {/* Reply / Edit indicator */}
       {replyTo && (
         <div className="px-4 pt-2">
-          <MessageReplyPreview replyTo={replyTo} onCancel={onCancelReply} />
+          <MessageReplyPreview
+            replyTo={replyTo}
+            currentUserId={currentUserId}
+            onCancel={onCancelReply}
+          />
         </div>
       )}
       {editingMessage && (

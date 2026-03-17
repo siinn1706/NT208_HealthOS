@@ -10,13 +10,14 @@ import { MessageReactions } from "./MessageReactions";
 import { AiChatBadge } from "./AiChatBadge";
 import { AiMessageContent } from "./AiMessageContent";
 import { getInitials, formatChatTime } from "@/lib/chat-utils";
-import { MOCK_USERS_MAP, CURRENT_USER_ID } from "@/data/chat";
 import type { Message } from "@/types/api";
 
 interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
   isAi: boolean;
+  currentUserId: string | null;
+  participantNameById: Record<string, string>;
   showAvatar: boolean;
   showDateSeparator?: string;
   onReply: () => void;
@@ -32,6 +33,8 @@ export const MessageBubble = memo(function MessageBubble({
   message,
   isOwn,
   isAi,
+  currentUserId,
+  participantNameById,
   showAvatar,
   showDateSeparator,
   onReply,
@@ -45,12 +48,12 @@ export const MessageBubble = memo(function MessageBubble({
   const t = useTranslations("chat");
   const locale = useLocale();
 
-  const sender = isOwn
-    ? null
-    : isAi
-    ? null
-    : MOCK_USERS_MAP.get(message.sender_id) ?? null;
-  const senderName = isAi ? "HealthOS AI" : sender?.display_name ?? "Unknown";
+  const senderName =
+    isAi
+      ? "HealthOS AI"
+      : message.sender_display_name ??
+        participantNameById[message.sender_id] ??
+        "Chưa có thông tin";
   const timeStr = formatChatTime(message.created_at, locale);
 
   // Must be declared before any early returns (React Hooks rules)
@@ -113,13 +116,15 @@ export const MessageBubble = memo(function MessageBubble({
               "mb-1 px-2 py-1 rounded-lg border-l-2 border-primary/60 bg-secondary/60 max-w-full",
               "text-xs text-muted-foreground truncate"
             )}>
-              <span className="font-medium text-primary">
-                {message.reply_to.sender_id === CURRENT_USER_ID
+                <span className="font-medium text-primary">
+                {message.reply_to.sender_id === currentUserId
                   ? t("you")
                   : message.reply_to.sender_id === "ai"
                   ? t("aiAssistant")
-                  : MOCK_USERS_MAP.get(message.reply_to!.sender_id)?.display_name ?? "Unknown"}
-              </span>
+                  : message.reply_to.sender_display_name ??
+                    participantNameById[message.reply_to.sender_id] ??
+                    "Chưa có thông tin"}
+                </span>
               {" · "}
               <span className="truncate">
                 {message.reply_to.content.length > 60
@@ -200,6 +205,7 @@ export const MessageBubble = memo(function MessageBubble({
             reactions={message.reactions}
             onReact={onReact}
             align={isOwn ? "right" : "left"}
+            currentUserId={currentUserId}
           />
         </div>
       </div>

@@ -12,38 +12,21 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// BFF TODO: GET /api/v1/devices/status
-// Trigger: component mount
-// Request: none
-// Response: { id; provider; name; connected: boolean; lastSync: string | null; batteryPct: number | null }[]
-// Fallback: MOCK_DEVICES from @/data/devices or local state
-
-// BFF TODO: POST /api/v1/devices/:id/sync
-// Trigger: user clicks "Sync now"
-// Request: { deviceId: string }
-// Response: { success: boolean; syncedAt: string }
-
-// BFF TODO: DELETE /api/v1/devices/:id
-// Trigger: user clicks "Disconnect"
-// Request: none body
-// Response: { success: boolean }
-
 type SyncStatus = "idle" | "syncing" | "success" | "error";
+
+export type DeviceProvider = "apple_health" | "garmin" | "fitbit" | "google_fit";
 
 export interface Device {
   id: string;
-  provider: "apple_health" | "garmin" | "fitbit" | "google_fit" | "oura" | "withings";
+  provider: DeviceProvider;
   name: string;
-  model?: string;
+  model?: string | null;
   connected: boolean;
   lastSync: string | null;
   batteryPct: number | null;
 }
 
-const PROVIDER_META: Record<
-  Device["provider"],
-  { label: string; color: string; bg: string; logoPath: string }
-> = {
+const PROVIDER_META: Record<DeviceProvider, { label: string; color: string; bg: string; logoPath: string }> = {
   apple_health: {
     label: "Apple Health",
     color: "#FF2D55",
@@ -68,18 +51,6 @@ const PROVIDER_META: Record<
     bg: "bg-[#4285F4]/10",
     logoPath: "",
   },
-  oura: {
-    label: "Oura Ring",
-    color: "#6C63FF",
-    bg: "bg-[#6C63FF]/10",
-    logoPath: "",
-  },
-  withings: {
-    label: "Withings",
-    color: "#00BFB3",
-    bg: "bg-[#00BFB3]/10",
-    logoPath: "",
-  },
 };
 
 interface DeviceConnectionCardProps {
@@ -89,7 +60,7 @@ interface DeviceConnectionCardProps {
 }
 
 function formatSyncTime(iso: string | null): string {
-  if (!iso) return "Chưa đồng bộ";
+  if (!iso) return "Chưa có thông tin";
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
@@ -158,9 +129,7 @@ export function DeviceConnectionCard({
               </span>
             )}
           </div>
-          {device.model && (
-            <p className="text-xs text-muted-foreground mt-0.5">{device.model}</p>
-          )}
+          <p className="text-xs text-muted-foreground mt-0.5">{device.model ?? "--"}</p>
         </div>
 
         {/* Battery */}

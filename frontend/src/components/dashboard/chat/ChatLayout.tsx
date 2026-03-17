@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
@@ -15,6 +15,24 @@ export function ChatLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/v1/auth/session", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled) return;
+        const userId = json?.data?.user_id;
+        setCurrentUserId(typeof userId === "string" ? userId : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentUserId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /* Derive activeId from URL: /{locale}/dashboard/chat/{conversationId} */
   const basePath = `/${locale}/dashboard/chat`;
@@ -113,6 +131,7 @@ export function ChatLayout() {
       >
         <ConversationList
           conversations={conversations}
+          currentUserId={currentUserId}
           activeId={activeId}
           strangerRequests={requests}
           isLoading={isLoading}
@@ -148,6 +167,7 @@ export function ChatLayout() {
             >
               <ChatWindow
                 conversation={activeConversation}
+                currentUserId={currentUserId}
                 conversations={conversations}
                 onBack={handleBack}
                 onPin={handlePinActive}

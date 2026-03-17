@@ -16,7 +16,8 @@ export function KpiDonutChart({
   color,
   size = 90,
 }: KpiDonutChartProps) {
-  const pct = Math.min(Math.round((value / target) * 100), 100);
+  const safeTarget = target > 0 ? target : 100;
+  const pct = Math.min(Math.round((value / safeTarget) * 100), 100);
 
   const option: EChartsOption = {
     backgroundColor: "transparent",

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export interface Reminder {
   id: string;
@@ -70,10 +71,6 @@ export function AddReminderDialog({
     if (!title.trim() || !time) return;
     setSaving(true);
 
-    // BFF TODO: POST /api/v1/reminders
-    //   Request: { type, title, time, repeat, note }
-    //   Response: Reminder with server-assigned id
-    //   Fallback: optimistic local id
     try {
       const res = await fetch("/api/v1/reminders", {
         method: "POST",
@@ -87,25 +84,20 @@ export function AddReminderDialog({
         }),
       });
       if (res.ok) {
-        const data = await res.json();
-        onAdd({ done: false, ...data });
-        handleOpenChange(false);
-        return;
+        const json = await res.json().catch(() => null);
+        const data = json?.data;
+        if (data) {
+          onAdd(data as Reminder);
+          handleOpenChange(false);
+          return;
+        }
       }
+      toast.error("Không thể tạo nhắc nhở");
     } catch {
-      // BFF unavailable — optimistic fallback
+      toast.error("Không thể tạo nhắc nhở");
+    } finally {
+      setSaving(false);
     }
-
-    onAdd({
-      id: `r-${Date.now()}`,
-      type,
-      title: title.trim(),
-      time,
-      repeat,
-      done: false,
-      note: note.trim() || undefined,
-    });
-    handleOpenChange(false);
   }
 
   return (

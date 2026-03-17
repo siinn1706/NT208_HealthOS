@@ -24,11 +24,11 @@ import {
 } from "@/lib/chat-utils";
 import { AiChatBadge } from "./AiChatBadge";
 import { OnlineStatus } from "./OnlineStatus";
-import { CURRENT_USER_ID } from "@/data/chat";
 import type { Conversation } from "@/types/api";
 
 interface ConversationItemProps {
   conversation: Conversation;
+  currentUserId: string | null;
   isActive: boolean;
   onClick: () => void;
   onPin: () => void;
@@ -38,6 +38,7 @@ interface ConversationItemProps {
 
 export const ConversationItem = memo(function ConversationItem({
   conversation,
+  currentUserId,
   isActive,
   onClick,
   onPin,
@@ -47,9 +48,9 @@ export const ConversationItem = memo(function ConversationItem({
   const t = useTranslations("chat");
   const locale = useLocale();
 
-  const name = getConversationName(conversation);
-  const other = getOtherParticipant(conversation);
-  const preview = getMessagePreview(conversation, CURRENT_USER_ID);
+  const name = getConversationName(conversation, currentUserId);
+  const other = getOtherParticipant(conversation, currentUserId);
+  const preview = getMessagePreview(conversation, currentUserId ?? "");
   const timeStr = conversation.last_message
     ? formatChatTime(conversation.last_message.created_at, locale)
     : "";

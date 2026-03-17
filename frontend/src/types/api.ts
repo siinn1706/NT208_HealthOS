@@ -194,6 +194,79 @@ export interface ConnectedDevice {
   last_synced_at?: string;
 }
 
+// ─── Appointments ────────────────────────────────────────────────────
+
+export type AppointmentStatus = "completed" | "upcoming" | "cancelled";
+
+export interface PrescriptionMedicine {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  notes?: string;
+}
+
+export interface Prescription {
+  id: string;
+  issuedAt: string;
+  doctor: string;
+  clinic: string;
+  diagnosis: string;
+  medicines: PrescriptionMedicine[];
+  notes: string | null;
+}
+
+export interface Appointment {
+  id: string;
+  date: string;
+  doctorName: string;
+  specialty: string;
+  clinic: string;
+  diagnosis: string;
+  status: AppointmentStatus;
+  hasPrescription: boolean;
+  prescription?: Prescription | null;
+  notes?: string;
+}
+
+// ─── Risk Predictions ────────────────────────────────────────────────
+
+export type RiskLevel = "low" | "moderate" | "high" | "critical";
+export type RiskTrend = "improving" | "stable" | "worsening";
+
+export interface RiskFactor {
+  label: string;
+  impact: "positive" | "negative" | "neutral";
+  detail: string;
+}
+
+export interface PreventionTip {
+  id: string;
+  category: "diet" | "exercise" | "medication" | "monitoring" | "lifestyle";
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "low";
+}
+
+export interface RiskItem {
+  id: string;
+  condition: string;
+  conditionVi: string;
+  probability: number;
+  level: RiskLevel;
+  trend: RiskTrend;
+  factors: RiskFactor[];
+  tips: PreventionTip[];
+  icdCode?: string;
+}
+
+export interface RiskPredictionSummary {
+  generatedAt: string;
+  overallScore: number;
+  risks: RiskItem[];
+  disclaimer: string;
+}
+
 // ─── Notifications ──────────────────────────────────────────────────
 
 export interface Notification {
@@ -242,16 +315,18 @@ export interface ChatParticipant {
 export interface MessageReaction {
   emoji: string;
   user_ids: string[];
+  user_names?: Record<string, string>;
 }
 
 export interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
+  sender_display_name?: string;
   content: string;
   type: MessageType;
   status: MessageStatus;
-  reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type">;
+  reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type" | "sender_display_name">;
   reactions: MessageReaction[];
   is_edited: boolean;
   is_recalled: boolean;

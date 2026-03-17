@@ -4,13 +4,14 @@ import { useCallback, useRef } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
-import { CURRENT_USER_ID } from "@/data/chat";
 import { formatDateSeparator, shouldGroup } from "@/lib/chat-utils";
 import { useLocale } from "next-intl";
 import type { Message } from "@/types/api";
 
 interface MessageListProps {
   messages: Message[];
+  currentUserId: string | null;
+  participantNameById: Record<string, string>;
   isTyping: boolean;
   backgroundUrl?: string | null;
   onReply: (msg: Message) => void;
@@ -24,6 +25,8 @@ interface MessageListProps {
 
 export function MessageList({
   messages,
+  currentUserId,
+  participantNameById,
   isTyping,
   backgroundUrl,
   onReply,
@@ -40,8 +43,10 @@ export function MessageList({
   const itemContent = useCallback(
     (index: number) => {
       const msg = messages[index];
-      const isOwn = msg.sender_id === CURRENT_USER_ID;
-      const isAi  = msg.sender_id === "ai";
+      const isOwn = !!currentUserId && msg.sender_id === currentUserId;
+      const isAi =
+        msg.sender_id === "ai" ||
+        (msg.sender_display_name?.toLowerCase().includes("ai") ?? false);
       const prev  = messages[index - 1];
 
       const grouped    = prev ? shouldGroup(prev, msg) : false;
@@ -68,6 +73,8 @@ export function MessageList({
             message={msg}
             isOwn={isOwn}
             isAi={isAi}
+            currentUserId={currentUserId}
+            participantNameById={participantNameById}
             showAvatar={showAvatar}
             showDateSeparator={dateSep}
             onReply={() => onReply(msg)}
@@ -81,7 +88,19 @@ export function MessageList({
         </div>
       );
     },
-    [messages, locale, onReply, onEdit, onRecall, onDelete, onPin, onReact, onForward]
+    [
+      messages,
+      locale,
+      onReply,
+      onEdit,
+      onRecall,
+      onDelete,
+      onPin,
+      onReact,
+      onForward,
+      currentUserId,
+      participantNameById,
+    ]
   );
 
   const Footer = useCallback(

@@ -2,13 +2,11 @@
 //   Trigger: Page load on /dashboard/appointments
 //   Request: { page?: number; limit?: number }
 //   Response: PaginatedResponse<Appointment>
-//   Fallback: MOCK_APPOINTMENTS
 
 // BFF TODO: POST /api/v1/appointments
 //   Trigger: User submits Add Appointment form
 //   Request: { appointment_date: string; doctor_name: string; specialty?: string; reason?: string }
 //   Response: Appointment
-//   Fallback: Optimistic add
 
 import { NextRequest } from "next/server";
 import { coreProxy } from "@/lib/core-api-proxy";

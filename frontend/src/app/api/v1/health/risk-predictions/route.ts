@@ -2,12 +2,10 @@
 //   Trigger: Page load on /dashboard/risk
 //   Request: { timeframe?: "current" }
 //   Response: { data: RiskPredictionSummary }
-//   Fallback: MOCK_RISK_PREDICTIONS
 
 // BFF TODO: POST /api/v1/health/risk-predictions/refresh
 //   Trigger: User clicks refresh button
 //   Response: { data: RiskPredictionSummary }
-//   Fallback: MOCK_RISK_PREDICTIONS
 
 import { NextRequest } from "next/server";
 import { coreProxy } from "@/lib/core-api-proxy";

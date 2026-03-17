@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, TrendingUp, TrendingDown, Minus, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RiskItem, RiskLevel, RiskTrend } from "@/data/risk";
+import type { RiskItem, RiskLevel, RiskTrend } from "@/types/api";
 import { PreventionTipList } from "@/components/dashboard/risk/PreventionTipList";
 
 const LEVEL_CONFIG: Record<RiskLevel, { label: string; color: string; trackColor: string; bg: string }> = {
