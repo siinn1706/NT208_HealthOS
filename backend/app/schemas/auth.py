@@ -6,6 +6,7 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.schemas.common import DataResponse
+from app.services.password_validator import validate_password
 
 
 class OAuthProfile(BaseModel):
@@ -25,13 +26,15 @@ class RequestOtpBody(BaseModel):
     purpose: Literal["signup", "reset_password", "login"] = "signup"
     name: Optional[str] = None
     username: Optional[str] = Field(None, description="Username for signup")
-    password: Optional[str] = Field(None, description="Password for signup (min 8 characters)")
+    password: Optional[str] = Field(None, description="Password for signup")
 
     @field_validator('password', mode='before')
     @classmethod
     def validate_password(cls, v):
-        if v is not None and len(v) < 8:
-            raise ValueError('Password must be at least 8 characters')
+        if v is not None:
+            is_valid, errors = validate_password(v)
+            if not is_valid:
+                raise ValueError('; '.join(errors))
         return v
 
 
@@ -41,14 +44,23 @@ class VerifyOtpBody(BaseModel):
     email: EmailStr
     purpose: Literal["signup", "reset_password", "login"] = "signup"
     code: str = Field(
-        min_length=6, 
-        max_length=6, 
+        min_length=6,
+        max_length=6,
         pattern=r'^\d{6}$',
         description="6-digit OTP code",
         json_schema_extra={"example": "482193"}
     )
-    
+
     password: str | None = Field(default=None, description="Password when Signing up")
+
+    @field_validator('password', mode='before')
+    @classmethod
+    def validate_password(cls, v):
+        if v is not None:
+            is_valid, errors = validate_password(v)
+            if not is_valid:
+                raise ValueError('; '.join(errors))
+        return v
 
     @field_validator('purpose', mode='before')
     @classmethod
@@ -85,7 +97,16 @@ class ResetPasswordBody(BaseModel):
     """Request body to complete password reset after OTP is verified."""
 
     email: EmailStr
-    new_password: str = Field(min_length=8)
+    new_password: str = Field(description="New password")
+
+    @field_validator('new_password', mode='before')
+    @classmethod
+    def validate_password(cls, v):
+        if v is not None:
+            is_valid, errors = validate_password(v)
+            if not is_valid:
+                raise ValueError('; '.join(errors))
+        return v
 
 
 class LoginBody(BaseModel):

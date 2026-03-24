@@ -1,11 +1,18 @@
 # Scratch
 scratch/
 .claude/
+.claude-archived/
 .cursor/
 .agent/
+.agents/
 CLAUDE.md
+GEMINI.md
 .github/
-# Node/Next.js
+docs/
+plans/
+
+
+Node/Next.js
 node_modules/
 .next/
 frontend/.next/

@@ -18,6 +18,11 @@ python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 
+# MFA / TOTP
+pyotp==2.9.0
+qrcode[pil]==7.4.2
+Pillow==10.4.0
+
 httpx==0.28.1
 
 alembic==1.18.4

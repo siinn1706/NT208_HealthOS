@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useNotification, ValidationMessages } from "@/hooks/use-notification";
+import { PasswordStrengthMeter } from "./password-strength-meter";
 
 export function RegisterForm() {
   const t = useTranslations("auth");
@@ -74,11 +75,21 @@ export function RegisterForm() {
       if (!errors.username && !errors.email) emailRef.current?.focus();
     }
 
-    // Password validation
+    // Password validation - client-side check (backend also validates)
     if (!password) {
       errors.password = ValidationMessages.required("Mật khẩu");
-    } else if (password.length < 8) {
-      errors.password = ValidationMessages.minLength("Mật khẩu", 8);
+    } else {
+      // Check complexity requirements
+      const issues: string[] = [];
+      if (password.length < 8) issues.push("ít nhất 8 ký tự");
+      if (!/[A-Z]/.test(password)) issues.push("1 chữ hoa");
+      if (!/[a-z]/.test(password)) issues.push("1 chữ thường");
+      if (!/\d/.test(password)) issues.push("1 số");
+      if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) issues.push("1 ký tự đặc biệt");
+
+      if (issues.length > 0) {
+        errors.password = `Mật khẩu cần: ${issues.join(", ")}`;
+      }
     }
 
     // Confirm password validation
@@ -456,6 +467,7 @@ export function RegisterForm() {
                 )}
               </button>
             </div>
+            <PasswordStrengthMeter password={password} />
             {fieldErrors.password && (
               <p className="text-xs text-destructive" role="alert">
                 {fieldErrors.password}
