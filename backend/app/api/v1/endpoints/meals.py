@@ -15,7 +15,7 @@ from app.adapters.storage import upload_file
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.core import Meal, MealStatusEnum, User
-from app.schemas.common import ErrorResponse, PaginationMeta
+from app.schemas.common import DataResponse, ErrorResponse, PaginationMeta
 from app.schemas.meals import MealDataResponse, MealListResponse, MealResponse
 from app.services import meals as meal_svc
 from app.tasks.meal_analysis import analyze_meal_image
@@ -271,3 +271,53 @@ async def get_meal_analysis_status(
             detail={"code": "NOT_FOUND", "message": "Meal not found."},
         )
     return status_info
+
+
+class CalorieSummaryPoint(BaseModel):
+    date: str
+    total_calories: float
+
+
+@router.get(
+    "/calories-summary",
+    response_model=DataResponse[list[CalorieSummaryPoint]],
+    responses={401: {"model": ErrorResponse}},
+    summary="Get daily calorie totals for a date range",
+)
+async def get_calories_summary(
+    date_from: datetime.date,
+    date_to: datetime.date,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DataResponse[list[CalorieSummaryPoint]]:
+    """Returns daily calorie totals for a date range."""
+    from sqlalchemy import and_
+
+    start_dt = datetime.datetime.combine(date_from, datetime.time.min, tzinfo=datetime.timezone.utc)
+    end_dt = datetime.datetime.combine(date_to, datetime.time.max, tzinfo=datetime.timezone.utc)
+
+    stmt = (
+        select(
+            func.date(Meal.logged_at).label("d"),
+            func.coalesce(func.sum(Meal.nutrition_result["calories"]), 0).label("total_calories"),
+        )
+        .where(
+            and_(
+                Meal.user_id == current_user.id,
+                Meal.logged_at >= start_dt,
+                Meal.logged_at <= end_dt,
+            )
+        )
+        .group_by(func.date(Meal.logged_at))
+        .order_by("d")
+    )
+    rows = (await db.execute(stmt)).mappings().all()
+    return DataResponse(
+        data=[
+            CalorieSummaryPoint(
+                date=r.d.isoformat() if hasattr(r.d, "isoformat") else str(r.d),
+                total_calories=float(r.total_calories),
+            )
+            for r in rows
+        ]
+    )

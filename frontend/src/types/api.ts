@@ -183,6 +183,60 @@ export interface HealthMetric {
   source: WearableSource;
 }
 
+// ─── Analytics ─────────────────────────────────────────────────────
+
+export type AggregationPeriod = "daily" | "weekly" | "monthly";
+
+export interface AggregationPoint {
+  date: string;
+  avg_value: number;
+  min_value: number;
+  max_value: number;
+  count: number;
+}
+
+export interface AggregationResponse {
+  data: AggregationPoint[];
+}
+
+export interface ComparisonPoint {
+  date: string;
+  values: Record<string, number | null>;
+}
+
+export interface ComparisonResponse {
+  data: ComparisonPoint[];
+}
+
+export interface GoalProgressPoint {
+  date: string;
+  value: number;
+  target: number;
+  progress_percent: number;
+}
+
+export interface GoalProgressResponse {
+  data: GoalProgressPoint[];
+}
+
+export interface PeriodStats {
+  period: "current" | "previous";
+  avg_value: number;
+  min_value: number;
+  max_value: number;
+  total_value: number;
+  count: number;
+  trend: "improving" | "declining" | "stable";
+}
+
+export interface PeriodComparisonResponse {
+  data: {
+    current: PeriodStats;
+    previous: PeriodStats;
+    change_percent: number;
+  };
+}
+
 // ─── Devices ────────────────────────────────────────────────────────
 
 export type WearableProvider = "apple_health" | "google_fit" | "garmin" | "fitbit";
