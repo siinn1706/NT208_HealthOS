@@ -1,107 +1,56 @@
-# NT208_HealthOS
+# NT208_HealthOS — Virtual Personal Doctor
 
-## Giới thiệu
-HealthOS là hệ thống “bác sĩ cá nhân ảo” giúp bảo vệ sức khỏe: quản lý hồ sơ y tế, nhật ký dinh dưỡng, phân tích ảnh bữa ăn, kết nối wearable và cảnh báo realtime.
+Health management platform: health records, nutrition tracking, wearable sync, real-time chat, health alerts.
 
-### Thành viên (Nhóm 3)
-- 24521750 — Nguyễn Đỗ Ngọc Huyền Thương
-- 24521829 — Hoàng Xuân Minh Trí
-- 24521120 — Nguyễn Văn Nam
-- 24520229 — Trà Chí Chung
+## Tech Stack
 
-## Cấu trúc repo
+| Layer | Stack | Key Details |
+|-------|-------|-------------|
+| FE + BFF | Next.js 16 + React 19 | shadcn/ui, Tailwind CSS 4, i18n (next-intl) |
+| BFF | Route Handlers `/api/v1/**` | Session/auth, proxy to Core BE |
+| Core BE | FastAPI + SQLAlchemy 2 async | REST + WebSocket |
+| Database | PostgreSQL 16 + asyncpg | 15+ ORM models |
+| Cache/Queue | Redis 7 + Celery | pub/sub, rate-limit, async tasks |
+| Storage | MinIO (local) / S3 | Binary blobs |
+| Workers | AI, Queue, Notification | Ports 8001, 8002 |
+
+## Architecture
+
+**CRITICAL**: Frontend NEVER calls Core BE directly. All requests via `/api/v1/**` BFF routes.
 
 ```
-NT208_HealthOS/
-├── frontend/          # FE + BFF  (Next.js App Router + Route Handlers /api/v1/**)
-├── backend/           # Core BE   (FastAPI — layered architecture)
-├── services/
-│   ├── ai-worker/     # AI Service (food recognition, nutrition estimation)
-│   ├── queue-worker/  # Celery workers (async jobs, wearable sync, notifications)
-│   └── notification/  # Notification dispatcher (email, push, SMS)
-├── contracts/
-│   ├── openapi/       # OpenAPI 3.1 specs (core-api.yaml, bff-api.yaml)
-│   └── events/        # JSON Schema cho async events
-├── infra/
-│   ├── docker/        # docker-compose.dev.yml
-│   ├── env/           # .env.example files cho từng service
-│   └── scripts/       # setup.ps1, setup.sh
-├── tests/
-│   ├── integration/   # pytest — test HTTP endpoints thật
-│   ├── contract/      # schemathesis — validate vs OpenAPI spec
-│   └── e2e/           # playwright
-├── docs/
-│   ├── architecture/  # System context, container diagram, data flow
-│   ├── standards/     # Folder convention, code style, API conventions, git workflow
-│   └── migration/     # Script & path migration guide
-└── scratch/           # Tooling/prompts nội bộ (non-runtime)
+Browser → Next.js BFF (/api/v1/**) → Core BE (/v1/**) → PostgreSQL
 ```
-
-**Tài liệu chuẩn bắt buộc đọc trước khi code:**
-- [Folder Convention](docs/standards/folder-convention.md)
-- [Code Style](docs/standards/code-style.md)
-- [API Conventions](docs/standards/api-conventions.md)
-- [Git Workflow](docs/standards/git-workflow.md)
-
-## Hướng dẫn sử dụng GitHub
-
-### Clone repository
-```bash
-git clone <repo_url>
-cd NT208_HealthOS
-```
-
-### Tạo branch mới và chuyển branch
-```bash
-git checkout -b feature/<ten-branch>
-```
-
-### Chuyển branch
-```bash
-git checkout main
-```
-
-### Commit và đẩy lên remote
-```bash
-git add .
-git commit -m "<noi_dung_commit>"
-git push -u origin feature/<ten-branch>
-```
-
-## Công nghệ sử dụng
-
-| Lớp | Stack | Ghi chú |
-|-----|-------|---------|
-| FE | Next.js 16 App Router + React 19 | UI, i18n (next-intl), SSR/SSG |
-| BFF | Next.js Route Handlers `/api/v1/**` | Bắt buộc — proxy auth, aggregate payload |
-| Core BE | FastAPI + SQLAlchemy async | REST + WebSocket, layered architecture |
-| AI Worker | FastAPI + background tasks | Food recognition, nutrition estimation |
-| Queue | Celery + Redis broker | Async jobs: ảnh, sync wearable, notify |
-| Database | PostgreSQL 16 + asyncpg | ORM: SQLAlchemy 2 |
-| Cache | Redis 7 | Cache, pub/sub, rate-limit |
-| Storage | MinIO (local) / S3 (prod) | Ảnh bữa ăn, tài liệu y tế |
-| Auth | NextAuth (Auth.js) planned | OAuth/OIDC — TODO |
-| Infra | Docker Compose | Local dev stack |
 
 ## Quick Start
 
-### Option A — Full stack với Docker (khuyến nghị)
+### Docker (Recommended)
 
 ```bash
-# 1. Setup env files
+# Setup env files
 .\infra\scripts\setup.ps1          # Windows
 bash infra/scripts/setup.sh        # Unix/WSL
 
-# 2. Kiểm tra Docker readiness (khuyến nghị trước khi start)
-.\infra\scripts\validate_docker_ready.ps1
-
-# 3. Khởi động toàn bộ stack
+# Start stack
 docker compose -f infra/docker/docker-compose.dev.yml up -d
 ```
 
-> Dữ liệu PostgreSQL được lưu qua Docker volume `postgres_data`. Không dùng `docker compose down -v` nếu muốn giữ dữ liệu.
+### Manual
 
-Services sẽ chạy tại:
+```bash
+# Frontend
+cd frontend && npm ci && npm run dev
+
+# Backend
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+## Services
+
 | Service | URL |
 |---------|-----|
 | Frontend + BFF | http://localhost:3000 |
@@ -109,165 +58,97 @@ Services sẽ chạy tại:
 | AI Worker | http://localhost:8001/docs |
 | MinIO Console | http://localhost:9001 |
 
-### Quản lý Database (Docker)
+## Features
+
+| Module | Status | BFF Routes |
+|--------|--------|------------|
+| Authentication + OTP | ✅ | `/api/v1/auth/*` |
+| Profile + Onboarding | ✅ | `/api/v1/users/*` |
+| Dashboard + Vitals | ✅ | `/api/v1/dashboard/*`, `/api/v1/vitals/*` |
+| Meals Diary | ✅ | `/api/v1/meals/*` |
+| Appointments | ✅ | `/api/v1/appointments` |
+| Reminders | ✅ | `/api/v1/reminders/*` |
+| Health Reports | ✅ | `/api/v1/reports/*` |
+| Real-time Chat | ✅ | `/api/v1/conversations/*` |
+| Risk Predictions | ✅ | `/api/v1/health/risk-predictions` |
+| Devices (Wearable) | ✅ | `/api/v1/devices` |
+| Gamification | 🔧 Partial | Stubs ready |
+
+**TODO**: AI food recognition ML, Notification dispatch, Wearable real APIs, PDF export
+
+## Database Operations
 
 ```powershell
-# Trạng thái DB + volume
-.\infra\scripts\db.ps1 -Action status
-
-# Start/Stop postgres (không xoá dữ liệu)
-.\infra\scripts\db.ps1 -Action up
-.\infra\scripts\db.ps1 -Action stop
-
-# Vào psql và liệt kê bảng
-.\infra\scripts\db.ps1 -Action psql
-.\infra\scripts\db.ps1 -Action tables
-
-# Chạy migration
+# Docker mode
 .\infra\scripts\db.ps1 -Action migrate
+.\infra\scripts\db.ps1 -Action psql
 
-# Backup (tạo file .sql trong infra/backups)
-.\infra\scripts\db.ps1 -Action dump
-
-# Restore từ file backup
-.\infra\scripts\db.ps1 -Action restore -FilePath .\infra\backups\healthos_YYYYMMDD_HHMMSS.sql
-```
-
-Nếu bạn chạy PostgreSQL local service (không dùng Docker), thêm `-Mode local`:
-
-```powershell
-.\infra\scripts\db.ps1 -Action status -Mode local
+# Local mode
+.\infra\scripts\db.ps1 -Action migrate -Mode local
 .\infra\scripts\db.ps1 -Action psql -Mode local
-.\infra\scripts\db.ps1 -Action dump -Mode local
-.\infra\scripts\db.ps1 -Action restore -Mode local -FilePath .\infra\backups\healthos_YYYYMMDD_HHMMSS.sql
 ```
 
-Lệnh truy cập trực tiếp (không qua script):
+## Key Files
 
-```powershell
-docker compose -f infra/docker/docker-compose.dev.yml exec postgres psql -U healthos -d healthos
-```
+| Purpose | Path |
+|---------|------|
+| BFF routes | `frontend/src/app/api/v1/**/route.ts` |
+| BFF client | `frontend/src/lib/api-client.ts` |
+| Core API | `backend/app/api/v1/**` |
+| Models | `backend/app/models/*.py` |
+| Services | `backend/app/services/*.py` |
 
----
-
-### Option B — Chạy thủ công từng service (như cũ)
-
-#### Frontend (Next.js)
-```bash
-start_FE.bat             # Windows (legacy)
-# hoặc:
-cd frontend && npm ci && npm run dev
-```
-
-#### Backend (FastAPI)
-```bash
-start_BE.bat             # Windows (legacy)
-# hoặc:
-cd backend
-python -m venv .venv
-.venv\Scripts\Activate.ps1    # Windows
-# source .venv/bin/activate   # Unix
-.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
-```
-
-#### Chạy FE + BE cùng lúc
-```bash
-start_ALL.bat
-```
-
-> **Migration note:** Script `.bat` cũ vẫn hoạt động. Xem [migration guide](docs/migration/script-and-path-mapping.md) để biết lộ trình chuyển sang scripts mới.
-
----
-
-## Chạy Frontend (Next.js)
-
-### Cách 1: Sử dụng file .bat (Windows)
-```bash
-start_FE.bat
-```
-
-### Cách 2: Chạy thủ công
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-### Chạy nhiều client (testing)
-```bash
-start_client_1.bat  # Chạy trên port 3001
-start_client_2.bat  # Chạy trên port 3002
-```
-
-## Chạy Backend (FastAPI)
-
-### Cách 1: Sử dụng file .bat (Windows)
-```bash
-start_BE.bat
-```
-
-### Cách 2: Chạy thủ công
-```bash
-cd backend
-python -m venv .venv
-```
-
-#### Kích hoạt môi trường ảo
-Windows (PowerShell):
-```bash
-.venv\Scripts\Activate.ps1
-```
-
-macOS/Linux:
-```bash
-source .venv/bin/activate
-```
-
-#### Cài dependencies và chạy server
-```bash
-.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
-```
-
-## Chạy cả FE và BE cùng lúc
-```bash
-start_ALL.bat
-```
-## Unified Start Command
-
-Use the orchestrator for consistent team startup:
+## Code Quality
 
 ```bash
-.\start_ALL.bat
-# or
-.\infra\scripts\start_all.ps1 -Mode auto -Only all -InstallPolicy prompt
+# Frontend
+npm run lint
+
+# Backend
+ruff format . && ruff check . && mypy app
 ```
 
-Useful flags:
+## Git Workflow
 
-```powershell
-# Force local mode and never auto-install infra dependencies
-.\infra\scripts\start_all.ps1 -Mode local -InstallPolicy never
+```bash
+# Create branch
+git checkout -b feature/<scope>/<name>
 
-# Check-only health checks (no npm/pip install side effects)
-.\infra\scripts\start_all.ps1 -CheckOnly
+# Commit (Conventional Commits)
+git commit -m "feat(be): add /v1/meals endpoint"
 
-# Docker preflight only (file + docker daemon + compose render checks)
-.\infra\scripts\validate_docker_ready.ps1 -CheckOnly
-
-# Infra-only preflight
-.\infra\scripts\validate_docker_ready.ps1 -Scope infra
+# Push
+git push -u origin feature/<scope>/<name>
 ```
 
-> `start_all.ps1` và `start_infra.ps1` ở Docker mode sẽ tự chạy preflight validator trước khi gọi `docker compose up`.
+**PR Requirements**: Title follows Conventional Commits, 1 reviewer approval, CI passes.
 
-### Startup troubleshooting (Windows)
+## Team Members
 
-- `start_*.bat` now writes logs to `infra\logs\`.
-- On failure from double-click, wrappers keep the terminal open (`pause`) unless `CI=true` or `CI=1`.
-- `-Mode auto` uses Docker only when both `docker compose` and Docker daemon are reachable.
-- Docker mode now runs `infra/scripts/validate_docker_ready.ps1` first and fails fast with a readiness table if required files/daemon/config checks fail.
-- If Docker CLI exists but daemon is down, startup falls back to local mode and prints a warning.
-- `-InstallPolicy prompt|auto|never` controls dependency auto-install behavior for local infra startup.
-- You can set explicit log path with `-LogFile` when running `infra/scripts/start_*.ps1` directly.
+- 24521750 — Nguyen Do Ngoc Huyen Thuong
+- 24521829 — Hoang Xuan Minh Tri
+- 24521120 — Nguyen Van Nam
+- 24520229 — Tra Chi Chung
+
+## Documentation
+
+- [Project Overview + PDR](./docs/project-overview-pdr.md)
+- [Codebase Summary](./docs/codebase-summary.md)
+- [Code Standards](./docs/code-standards.md)
+- [System Architecture](./docs/system-architecture.md)
+- [Project Roadmap](./docs/project-roadmap.md)
+- [Folder Convention](./docs/standards/folder-convention.md)
+- [API Conventions](./docs/standards/api-conventions.md)
+
+## Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Python modules | snake_case | `health_metrics.py` |
+| Python classes | PascalCase | `HealthMetric` |
+| React components | PascalCase | `ProfileForm.tsx` |
+| React hooks | use prefix | `useHealthData.ts` |
+| API paths | kebab-case | `/api/v1/health-data` |
+| DB tables | snake_case plural | `health_metrics` |
+| Env vars | UPPER_SNAKE | `DATABASE_URL` |
+| Event names | `<domain>.<action>` | `meal.analyzed` |

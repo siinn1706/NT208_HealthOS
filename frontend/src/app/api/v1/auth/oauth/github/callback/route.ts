@@ -1,0 +1,109 @@
+/**
+ * GitHub OAuth callback handler
+ * Validates state, exchanges code for token, gets user info, creates session
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { exchangeGitHubCodeForToken, getGitHubUserInfo, getGitHubEmails } from "@/lib/oauth/github";
+
+const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const error = url.searchParams.get("error");
+  const errorDescription = url.searchParams.get("error_description");
+
+  // ─── Handle OAuth Errors ────────────────────────────────────────────────────
+  if (error) {
+    console.error("GitHub OAuth error:", error, errorDescription);
+    return NextResponse.redirect(
+      new URL(`/login?oauth_error=${encodeURIComponent(errorDescription || error)}`, request.url).toString()
+    );
+  }
+
+  // ─── Validate Required Parameters ───────────────────────────────────────────
+  if (!code) {
+    return NextResponse.redirect(
+      new URL("/login?oauth_error=missing_code", request.url).toString()
+    );
+  }
+
+  // ─── Validate State (CSRF Protection) ──────────────────────────────────────
+  const storedState = request.cookies.get("oauth_state_github")?.value;
+  if (!storedState || state !== storedState) {
+    console.error("Invalid OAuth state");
+    return NextResponse.redirect(
+      new URL("/login?oauth_error=invalid_state", request.url).toString()
+    );
+  }
+
+  // ─── Exchange Code for Token ────────────────────────────────────────────────
+  try {
+    const redirectUri = process.env.OAUTH_GITHUB_CALLBACK_URL!;
+    const tokenResponse = await exchangeGitHubCodeForToken({
+      code,
+      redirectUri,
+    });
+
+    // ─── Get User Info ─────────────────────────────────────────────────────────
+    const githubUser = await getGitHubUserInfo(tokenResponse.access_token);
+
+    // GitHub may not return email, try to get from emails endpoint
+    let email = githubUser.email;
+    if (!email) {
+      const emails = await getGitHubEmails(tokenResponse.access_token);
+      const primaryEmail = emails.find((e) => e.primary);
+      email = primaryEmail?.email ?? emails[0]?.email;
+    }
+
+    if (!email) {
+      throw new Error("GitHub email not available");
+    }
+
+    // ─── Call Core BE to Create/Retrieve User ────────────────────────────────
+    const coreRes = await fetch(`${CORE_API_URL}/v1/auth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "github",
+        provider_account_id: String(githubUser.id),
+        email,
+        name: githubUser.name ?? githubUser.login,
+        avatar_url: githubUser.avatar_url ?? null,
+      }),
+    });
+
+    if (!coreRes.ok) {
+      const coreError = await coreRes.json().catch(() => ({}));
+      console.error("Core BE token exchange failed:", coreError);
+      throw new Error("Core BE authentication failed");
+    }
+
+    const coreData = await coreRes.json();
+    const accessToken = coreData.data.access_token;
+
+    // ─── Create Session and Redirect ─────────────────────────────────────────
+    const redirectTo = new URL("/dashboard", request.url);
+    const response = NextResponse.redirect(redirectTo.toString());
+
+    // Set session cookie
+    response.cookies.set("healthos.session", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+
+    // Clear temporary OAuth cookies
+    response.cookies.delete("oauth_state_github");
+
+    return response;
+  } catch (err) {
+    console.error("GitHub OAuth callback error:", err);
+    return NextResponse.redirect(
+      new URL("/login?oauth_error=server_error", request.url).toString()
+    );
+  }
+}

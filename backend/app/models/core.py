@@ -118,6 +118,32 @@ class User(Base):
         nullable=False,
     )
 
+    # Account lockout fields
+    failed_login_attempts: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+    locked_until: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # MFA fields
+    mfa_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    mfa_secret: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    mfa_recovery_codes: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
     profile: Mapped[UserProfile | None] = relationship(
         back_populates="user",
         uselist=False,

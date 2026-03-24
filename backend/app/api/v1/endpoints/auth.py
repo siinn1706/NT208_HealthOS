@@ -2,9 +2,10 @@
 import asyncio
 import logging
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +62,9 @@ from app.services.auth import (
     get_user_by_identifier,
     validate_username,
 )
+from app.services.security_logging import log_security_event
+from app.models.audit import AuditEventTypeEnum
+from app.services.hibp import check_password_breach
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
@@ -96,6 +100,7 @@ async def issue_ws_ticket(
 )
 async def login_with_password(
     body: LoginBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> AuthTokenResponse:
     """
@@ -104,8 +109,14 @@ async def login_with_password(
     The identifier can be an email address or username.
     The password must have been set via the reset-password flow.
     Returns 401 if the password is wrong, 404 if the account doesn't exist.
+    Implements account lockout after 5 failed attempts.
     """
     from app.core.security import verify_password
+    from app.services.auth import (
+        check_account_lockout,
+        record_failed_login,
+        reset_failed_login_attempts,
+    )
 
     user = await get_user_by_identifier(db, body.identifier)
     if user is None:
@@ -121,11 +132,43 @@ async def login_with_password(
                 message="Không tìm thấy tài khoản với username này",
             )
 
+    # Check lockout BEFORE verifying password (prevents timing attacks)
+    if await check_account_lockout(user):
+        locked_minutes = int((user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
+        await log_security_event(
+            db,
+            AuditEventTypeEnum.ACCOUNT_LOCKED,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            details={"locked_minutes": locked_minutes},
+        )
+        raise UnauthorizedException(
+            code="ACCOUNT_LOCKED",
+            message=f"Tài khoản đã bị khóa tạm thời. Vui lòng thử lại sau {locked_minutes} phút.",
+        )
+
     if not user.hashed_password or not verify_password(body.password, user.hashed_password):
+        await record_failed_login(db, user)
+        await log_security_event(
+            db,
+            AuditEventTypeEnum.LOGIN_FAILED,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            details={"reason": "invalid_password"},
+        )
         raise UnauthorizedException(
             message="Tên đăng nhập hoặc mật khẩu không đúng",
             code="INVALID_CREDENTIALS",
         )
+
+    # Success - reset failed attempts
+    await reset_failed_login_attempts(db, user)
+    await log_security_event(
+        db,
+        AuditEventTypeEnum.LOGIN_SUCCESS,
+        user_id=user.id,
+        ip_address=request.client.host if request.client else None,
+    )
 
     access_token = create_user_access_token(user)
     token = AuthToken(
@@ -461,6 +504,24 @@ async def verify_email_otp(
     password = signup_data.get("password")
     name = signup_data.get("name", body.email)
 
+    # HIBP breach check before creating user
+    if password:
+        from app.services.hibp import check_password_breach
+
+        is_breached, breach_count = await check_password_breach(password)
+        if is_breached:
+            await log_security_event(
+                db,
+                AuditEventTypeEnum.PASSWORD_BREACHED,
+                ip_address=None,
+                details={"breach_count": breach_count},
+            )
+            raise ApiException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                code="PASSWORD_BREACHED",
+                message="Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu trước đó. Vui lòng chọn mật khẩu khác.",
+            )
+
     synthetic_profile = OAuthProfile(
         provider="otp",
         provider_account_id=body.email,
@@ -574,6 +635,27 @@ async def reset_password(
         avatar_url=user.profile.avatar_url if user.profile is not None else None,
     )
     return AuthTokenResponse(data=token)
+
+
+@router.post(
+    "/check-password-breach",
+    responses={200: {"model": dict}, 400: {"model": ErrorResponse}},
+)
+async def check_password_breach_endpoint(
+    body: dict,
+) -> dict:
+    """
+    Check if a password appears in known data breaches via HaveIBeenPwned API.
+
+    Uses k-anonymity so the full password is never sent.
+    Returns { breached: true, count: N } if found, { breached: false } otherwise.
+    """
+    password = body.get("password", "")
+    if not password:
+        return {"breached": False}
+
+    is_breached, count = await check_password_breach(password)
+    return {"breached": is_breached, "count": count}
 
 
 @router.get(
