@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { getMealCaloriesByDay, type GoalProgressPoint } from "@/lib/meals-chart-utils";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -124,10 +125,10 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   }
 }
 
-export async function getVitalsTimeseries(): Promise<VitalPoint[]> {
+export async function getVitalsTimeseries(days: number = 7): Promise<VitalPoint[]> {
   try {
     const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/vitals/timeseries`, {
+    const res = await fetch(`${APP_URL}/api/v1/vitals/timeseries?days=${days}`, {
       cache: "no-store",
       headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
@@ -147,6 +148,12 @@ export async function getVitalsTimeseries(): Promise<VitalPoint[]> {
   } catch {
     return [];
   }
+}
+
+export async function getCalorieProgress(days: number = 7): Promise<GoalProgressPoint[]> {
+  const to = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+  return getMealCaloriesByDay(from, to, 2000);
 }
 
 export async function getUpcomingReminders(): Promise<ReminderItem[]> {

@@ -27,3 +27,8 @@ export async function cacheSet(key: string, value: string, ttlSeconds = 300): Pr
 export function cacheKey(userId: string, prefix: string, params: Record<string, string | number>): string {
   return `analytics:${userId}:${prefix}:${JSON.stringify(params)}`;
 }
+
+export async function cacheDel(key: string): Promise<void> {
+  const client = await getRedisClient();
+  if (client) await (client as unknown as { del: (k: string) => Promise<number> }).del(key);
+}

@@ -39,13 +39,7 @@ export async function GET(req: NextRequest) {
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
     if (beRes.ok) return NextResponse.json(await beRes.json());
-    if (beRes.status === 404) { /* fall through to client-side */ }
-    else if (beRes.status >= 500) {
-      return NextResponse.json(
-        { error: { code: "UPSTREAM_ERROR", message: "Core BE unavailable." } },
-        { status: 503 }
-      );
-    }
+    // Fall through to client-side fallback for any non-ok response (404, 5xx, etc.)
   } catch { /* fall through to client-side */ }
 
   // Fallback: fetch each metric and align by date

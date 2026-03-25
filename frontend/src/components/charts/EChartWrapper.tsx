@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import { useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import dynamic from "next/dynamic";
 import type { EChartsOption, EChartsReactProps } from "echarts-for-react";
 import * as echarts from "echarts";
@@ -29,43 +29,23 @@ export interface EChartWrapperProps extends Omit<EChartsReactProps, "option"> {
 
 export const EChartWrapper = forwardRef<EChartWrapperRef, EChartWrapperProps>(
   function EChartWrapper({ option, height = 280, className, ...rest }, ref) {
-    const containerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<echarts.ECharts | null>(null);
+
+    const onChartReady = useCallback((chart: echarts.ECharts) => {
+      chartRef.current = chart;
+    }, []);
 
     useImperativeHandle(ref, () => ({
       getInstance: () => chartRef.current ?? undefined,
       resize: () => chartRef.current?.resize(),
     }));
 
-    useEffect(() => {
-      if (!containerRef.current) return;
-      const chart = echarts.init(containerRef.current, undefined, { renderer: "canvas" });
-      chartRef.current = chart;
-      chart.setOption(option);
-
-      const resizeObserver = new ResizeObserver(() => chart.resize());
-      resizeObserver.observe(containerRef.current);
-
-      return () => {
-        resizeObserver.disconnect();
-        chart.dispose();
-        chartRef.current = null;
-      };
-    }, []); // mount only
-
-    useEffect(() => {
-      chartRef.current?.setOption(option);
-    }, [option]);
-
     return (
-      <div
-        ref={containerRef}
-        className={className}
-        style={{ height }}
-      >
+      <div className={className} style={{ height }}>
         <ReactECharts
           option={option}
           style={{ height: "100%", width: "100%" }}
+          onChartReady={onChartReady}
           notMerge
           lazyUpdate
           opts={{ renderer: "canvas" }}

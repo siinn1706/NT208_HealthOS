@@ -71,19 +71,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data);
     }
 
-    // Fallback: aggregate client-side only when BE endpoint genuinely doesn't exist (404)
-    if (beRes.status === 404) {
+    // Fallback: aggregate client-side when BE endpoint doesn't exist (404) or returns an error (5xx).
+    // This makes the BFF resilient to BE-side data issues (e.g. empty user data for this metric).
+    if (beRes.status === 404 || beRes.status >= 500) {
       const result = await aggregateClientSide(token, metricType, period, dateFrom, dateTo);
       await cacheSet(ck, JSON.stringify(result), 300);
       return NextResponse.json(result);
-    }
-
-    // For server errors: do NOT fall back, return error
-    if (beRes.status >= 500) {
-      return NextResponse.json(
-        { error: { code: "UPSTREAM_ERROR", message: "Core BE unavailable." } },
-        { status: 503 }
-      );
     }
 
     return NextResponse.json(

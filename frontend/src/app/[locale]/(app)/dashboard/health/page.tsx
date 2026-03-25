@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Heart, Activity, Thermometer, Droplets, Wind, Plus } from "lucide-react";
 import { Link } from "@/navigation";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
@@ -139,14 +139,14 @@ export default function HealthPage() {
     });
   };
 
-  // Initial load
-  useState(() => {
+  // Initial load — must be useEffect, NOT useState, to avoid calling startTransition during render
+  useEffect(() => {
     loadData("7d");
     fetchDevices().then((d) => {
       setDevices(d);
       setDevicesLoaded(true);
     });
-  });
+  }, []);
 
   const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
     if (newPeriod === "custom") return;

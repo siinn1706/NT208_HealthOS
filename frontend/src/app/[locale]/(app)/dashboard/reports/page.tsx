@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { FileBarChart2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
@@ -101,10 +101,10 @@ export default function ReportsPage() {
     });
   };
 
-  // Initial load
-  useState(() => {
+  // Initial load — must be useEffect, NOT useState, to avoid calling startTransition during render
+  useEffect(() => {
     loadKpis("7d");
-  });
+  }, []);
 
   const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
     if (newPeriod === "custom") return;

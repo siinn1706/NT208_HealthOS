@@ -10,27 +10,27 @@ param(
     [string]$LogFile
 )
 
-$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).
-    IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+# $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).
+#     IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-if (-not $IsAdmin) {
-    $HostExe = if ($PSVersionTable.PSEdition -eq "Core") { "pwsh.exe" } else { "powershell.exe" }
+# if (-not $IsAdmin) {
+#     $HostExe = if ($PSVersionTable.PSEdition -eq "Core") { "pwsh.exe" } else { "powershell.exe" }
 
-    $RelaunchArgs = @(
-        "-ExecutionPolicy", "Bypass",
-        "-File", "`"$PSCommandPath`""
-    )
+#     $RelaunchArgs = @(
+#         "-ExecutionPolicy", "Bypass",
+#         "-File", "`"$PSCommandPath`""
+#     )
 
-    if ($Mode) { $RelaunchArgs += @("-Mode", $Mode) }
-    if ($SkipInstall) { $RelaunchArgs += "-SkipInstall" }
-    if ($Only) { $RelaunchArgs += @("-Only", $Only) }
-    if ($CheckOnly) { $RelaunchArgs += "-CheckOnly" }
-    if ($InstallPolicy) { $RelaunchArgs += @("-InstallPolicy", $InstallPolicy) }
-    if ($LogFile) { $RelaunchArgs += @("-LogFile", "`"$LogFile`"") }
+#     if ($Mode) { $RelaunchArgs += @("-Mode", $Mode) }
+#     if ($SkipInstall) { $RelaunchArgs += "-SkipInstall" }
+#     if ($Only) { $RelaunchArgs += @("-Only", $Only) }
+#     if ($CheckOnly) { $RelaunchArgs += "-CheckOnly" }
+#     if ($InstallPolicy) { $RelaunchArgs += @("-InstallPolicy", $InstallPolicy) }
+#     if ($LogFile) { $RelaunchArgs += @("-LogFile", "`"$LogFile`"") }
 
-    Start-Process -FilePath $HostExe -ArgumentList $RelaunchArgs -Verb RunAs
-    exit
-}
+#     Start-Process -FilePath $HostExe -ArgumentList $RelaunchArgs -Verb RunAs
+#     exit
+# }
 
 $ErrorActionPreference = "Stop"
 

@@ -11,6 +11,8 @@ const mockBmiData: UserBmiData = {
   bmiScore: 85,
   targetBmi: 22.0,
   targetWeightKg: 68,
+  deadline: null,
+  goalId: null,
 };
 
 describe('BmiProgressChart', () => {

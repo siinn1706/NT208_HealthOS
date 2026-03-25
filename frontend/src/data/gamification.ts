@@ -79,6 +79,10 @@ export interface UserBmiData {
   bmiScore: number;
   targetBmi: number;
   targetWeightKg: number;
+  /** ISO date string, null if no deadline set */
+  deadline: string | null;
+  /** null if no goal saved yet */
+  goalId: string | null;
 }
 
 /** Top-level summary for the Goals hub page. */
@@ -446,6 +450,8 @@ export const MOCK_BMI_DATA: UserBmiData = {
   bmiScore: 72, // contributes 72 pts to ranking score
   targetBmi: 22.0,
   targetWeightKg: 63.6,
+  deadline: null,
+  goalId: null,
 };
 
 // ── Leaderboard ───────────────────────────────────────────────
