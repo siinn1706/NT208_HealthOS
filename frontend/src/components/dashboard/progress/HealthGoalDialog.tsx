@@ -84,8 +84,11 @@ export function HealthGoalDialog({
       : null;
 
   // Recommendations based on BMI=22 (midpoint of "normal" range)
-  const recWeight = recommendWeight(targetHeight);
-  const recHeight = recommendHeight(targetWeight);
+  // Show ONLY ONE recommendation: the field the user has NOT filled yet.
+  const heightFilled = targetHeight > 0;
+  const weightFilled = targetWeight > 0;
+  const recWeight = !weightFilled ? recommendWeight(targetHeight) : null;
+  const recHeight = !heightFilled ? recommendHeight(targetWeight) : null;
 
   async function handleSave() {
     setSaving(true);
