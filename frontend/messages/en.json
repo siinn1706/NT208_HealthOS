@@ -301,13 +301,13 @@
       "deviceDisconnected": "Disconnected",
       "addDevice": "+ Add Device",
       "manualEntry": "Manual Entry",
-      "manualEntryDesc": "Want to log vitals without a device? Use the \"Add Vital\" button above to manually enter heart rate, blood pressure, SpO\u2082, and temperature.",
+      "manualEntryDesc": "Want to log vitals without a device? Use the \"Add Vital\" button above to manually enter heart rate, blood pressure, SpO₂, and temperature.",
       "vitalLabels": {
         "heartRate": "Heart Rate",
         "systolic": "Systolic BP",
         "diastolic": "Diastolic BP",
         "temperature": "Body Temperature",
-        "spo2": "SpO\u2082"
+        "spo2": "SpO₂"
       },
       "trendVsYesterday": "vs yesterday"
     },
@@ -747,6 +747,30 @@
     },
     "noEmergencyContacts": "No emergency contacts added. Add them in your Profile.",
     "goToProfile": "Go to Profile"
+  },
+  "progress": {
+    "setGoal": "Set BMI Goal",
+    "editGoal": "Edit Goal",
+    "deadline": "Deadline",
+    "daysRemaining": "X days left",
+    "overdue": "Overdue",
+    "height": "Height",
+    "targetHeight": "Target Height",
+    "currentWeight": "Current Weight",
+    "targetWeight": "Target Weight",
+    "targetBmi": "Target BMI",
+    "bmi": "BMI",
+    "bmiAutoHint": "BMI is auto-calculated from target weight and height",
+    "save": "Save",
+    "cancel": "Cancel",
+    "currentBmi": "Current BMI",
+    "bmiScore": "BMI Score",
+    "recWeight": "Suggested weight: {weight} kg (BMI=22)",
+    "recHeight": "Suggested height: {height} cm (BMI=22)",
+    "legendCurrent": "Current",
+    "legendTarget": "Target",
+    "cardWeight": "Weight",
+    "cardHeight": "Height"
   },
   "comingSoon": {
     "title": "Feature Under Development",

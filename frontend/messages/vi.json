@@ -301,13 +301,13 @@
       "deviceDisconnected": "Ngắt kết nối",
       "addDevice": "+ Thêm thiết bị",
       "manualEntry": "Nhập thủ công",
-      "manualEntryDesc": "Bạn muốn ghi chỉ số không từ thiết bị? Sử dụng nút \"Thêm chỉ số\" ở trên để nhập thủ công nhịp tim, huyết áp, SpO\u2082, và nhiệt độ.",
+      "manualEntryDesc": "Bạn muốn ghi chỉ số không từ thiết bị? Sử dụng nút \"Thêm chỉ số\" ở trên để nhập thủ công nhịp tim, huyết áp, SpO₂, và nhiệt độ.",
       "vitalLabels": {
         "heartRate": "Nhịp tim",
         "systolic": "Huyết áp tâm thu",
         "diastolic": "Huyết áp tâm trương",
         "temperature": "Nhiệt độ cơ thể",
-        "spo2": "SpO\u2082"
+        "spo2": "SpO₂"
       },
       "trendVsYesterday": "so với hôm qua"
     },
@@ -747,6 +747,30 @@
     },
     "noEmergencyContacts": "Chưa có người liên hệ khẩn cấp. Thêm trong phần hồ sơ.",
     "goToProfile": "Đến hồ sơ"
+  },
+  "progress": {
+    "setGoal": "Đặt mục tiêu BMI",
+    "editGoal": "Chỉnh sửa mục tiêu",
+    "deadline": "Ngày mục tiêu",
+    "daysRemaining": "Còn X ngày",
+    "overdue": "Đã quá hạn",
+    "height": "Chiều cao",
+    "targetHeight": "Chiều cao mục tiêu",
+    "currentWeight": "Cân nặng hiện tại",
+    "targetWeight": "Cân nặng mục tiêu",
+    "targetBmi": "BMI mục tiêu",
+    "bmi": "BMI",
+    "bmiAutoHint": "BMI tự động tính từ cân nặng và chiều cao mục tiêu",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "currentBmi": "BMI hiện tại",
+    "bmiScore": "Điểm BMI",
+    "recWeight": "Cân nặng gợi ý: {weight} kg (BMI=22)",
+    "recHeight": "Chiều cao gợi ý: {height} cm (BMI=22)",
+    "legendCurrent": "Hiện tại",
+    "legendTarget": "Mục tiêu",
+    "cardWeight": "Cân nặng",
+    "cardHeight": "Chiều cao"
   },
   "comingSoon": {
     "title": "Tính năng đang được phát triển",

@@ -3,11 +3,14 @@ from __future__ import annotations
 import datetime
 import uuid
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+if TYPE_CHECKING:
+    from app.models.health_goal import HealthGoal  # noqa: F401
 
 
 class Base(DeclarativeBase):
@@ -171,6 +174,11 @@ class User(Base):
     reminders: Mapped[list[Reminder]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
+    )
+    health_goal: Mapped["HealthGoal | None"] = relationship(
+        "HealthGoal",
+        back_populates="user",
+        uselist=False,
     )
 
 

@@ -1,0 +1,69 @@
+from __future__ import annotations
+
+import datetime
+import uuid
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.schemas.common import DataResponse
+
+
+class HealthGoalBase(BaseModel):
+    # BMI is always derived: bmi = target_weight_kg / (current_height_cm/100)²
+    # At least one of target_weight_kg or current_height_cm must be set
+    target_weight_kg: float | None = Field(None, ge=30.0, le=200.0)
+    current_height_cm: float | None = Field(None, ge=100.0, le=220.0)
+    deadline: date | None = None
+
+    @model_validator(mode="after")
+    def require_at_least_one_target(self) -> "HealthGoalBase":
+        if self.target_weight_kg is None and self.current_height_cm is None:
+            raise ValueError(
+                "At least one of target_weight_kg or current_height_cm must be set"
+            )
+        if self.deadline is not None and self.deadline < date.today():
+            raise ValueError("Deadline must be today or in the future")
+        return self
+
+
+class HealthGoalCreate(HealthGoalBase): ...
+
+
+class HealthGoalUpdate(BaseModel):
+    target_weight_kg: float | None = Field(None, ge=30.0, le=200.0)
+    current_height_cm: float | None = Field(None, ge=100.0, le=220.0)
+    deadline: date | None = None
+
+    @model_validator(mode="after")
+    def require_at_least_one_target(self) -> "HealthGoalUpdate":
+        has_any = (
+            self.target_weight_kg is not None
+            or self.current_height_cm is not None
+            or self.deadline is not None
+        )
+        if not has_any:
+            return self
+        if self.target_weight_kg is None and self.current_height_cm is None:
+            raise ValueError(
+                "At least one of target_weight_kg or current_height_cm must be set when updating"
+            )
+        if self.deadline is not None and self.deadline < date.today():
+            raise ValueError("Deadline must be today or in the future")
+        return self
+
+
+class HealthGoalResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    # target_bmi is NOT stored — always computed from target_weight_kg / (current_height_cm/100)²
+    target_weight_kg: float | None = None
+    current_height_cm: float | None = None
+    deadline: date | None = None
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+
+class HealthGoalDataResponse(DataResponse[HealthGoalResponse]): ...
