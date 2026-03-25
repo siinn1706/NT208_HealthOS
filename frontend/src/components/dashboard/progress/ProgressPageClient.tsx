@@ -60,10 +60,11 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
             <TrendingUp className="w-5 h-5 text-blue-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 flex-wrap">
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {bmiData.bmi.toFixed(1)}
               </span>
+              <span className="text-2xl font-bold text-muted-foreground">/</span>
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {bmiData.targetBmi.toFixed(1)}
               </span>
@@ -83,10 +84,11 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
             <Scale className="w-5 h-5 text-purple-500" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 flex-wrap">
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {bmiData.weightKg.toFixed(1)}
               </span>
+              <span className="text-2xl font-bold text-muted-foreground">/</span>
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {bmiData.targetWeightKg.toFixed(1)}
               </span>
@@ -102,10 +104,11 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
             <Ruler className="w-5 h-5 text-orange-500" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 flex-wrap">
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {bmiData.heightCm}
               </span>
+              <span className="text-2xl font-bold text-muted-foreground">/</span>
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {bmiData.heightCm}
               </span>
