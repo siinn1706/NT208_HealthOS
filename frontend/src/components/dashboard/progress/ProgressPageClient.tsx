@@ -22,7 +22,7 @@ function getDaysRemaining(deadline: string | null): number | null {
 }
 
 export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClientProps) {
-  const t = useTranslations("dashboard.progress");
+  const t = useTranslations("progress");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const heightM = bmiData.heightCm / 100;

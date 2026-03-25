@@ -52,7 +52,7 @@ export function HealthGoalDialog({
   initialGoal,
   onSaved,
 }: HealthGoalDialogProps) {
-  const t = useTranslations("dashboard.progress");
+  const t = useTranslations("progress");
   const [saving, setSaving] = useState(false);
 
   const form = useForm<HealthGoalFormData>({
