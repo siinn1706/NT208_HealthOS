@@ -11,8 +11,8 @@
 #### User-Configurable BMI/Weight Goals (end-to-end)
 
 - **BE Layer** (`backend/app/`)
-  - `models/health_goal.py` — SQLAlchemy model for `user_bmi_goals` table (separate from activity `user_health_goals`)
-  - `schemas/health_goal.py` — Pydantic schemas with validators (BMI 15-35, deadline ≥ today, at least one target required)
+  - `models/health_goal.py` — SQLAlchemy model for `user_bmi_goals` table (separate from activity `user_health_goals`); stores only `target_weight_kg` + `current_height_cm` (BMI always derived)
+  - `schemas/health_goal.py` — Pydantic schemas requiring at least one of `target_weight_kg`/`current_height_cm`; deadline ≥ today
   - `services/health_goal.py` — CRUD service with ownership checks
   - `api/v1/endpoints/health_goals.py` — CRUD endpoints: GET/POST/PATCH/DELETE at `/v1/health-goals`
   - Migration `011_add_bmi_weight_goals.py` — creates `user_bmi_goals` table
@@ -23,14 +23,14 @@
 
 - **FE Data Layer** (`frontend/src/`)
   - `lib/api-client.ts` — client-safe `bffFetchClient()` for `"use client"` components
-  - `lib/gamification-data.ts` — `getUserBmiData()` now fetches `/api/v1/health-goals` + `/api/v1/analytics/gamification-summary` in parallel, merges user-set targets with current weight/height
+  - `lib/gamification-data.ts` — `getUserBmiData()` fetches `/api/v1/health-goals` + `/api/v1/analytics/gamification-summary` in parallel; `targetBmi` always derived from `target_weight_kg / (height_cm/100)²`
 
 - **FE UI Layer** (`frontend/src/`)
-  - `components/dashboard/progress/HealthGoalDialog.tsx` — react-hook-form dialog with auto BMI/weight derivation via `useEffect`
+  - `components/dashboard/progress/HealthGoalDialog.tsx` — react-hook-form dialog with only target height + target weight inputs; BMI auto-calculated (read-only) + healthy-weight recommendation hint under each input (BMI=22 ideal)
   - `components/dashboard/progress/ProgressPageClient.tsx` — client component wrapping stat cards + chart + dialog
   - `app/[locale]/(app)/dashboard/progress/page.tsx` — hybrid Server Component fetches `bmiData` + `weightHistory` in parallel, passes to `ProgressPageClient`
 
-- **i18n**: All progress dialog labels added to `vi.json` and `en.json`
+- **i18n**: All progress dialog labels (`setGoal`, `editGoal`, `deadline`, `targetHeight`, `targetWeight`, `bmi`, `bmiAutoHint`, `recWeight`, `recHeight`, etc.) added to `vi.json` and `en.json`
 
 ---
 
