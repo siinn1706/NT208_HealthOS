@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, Scale, Ruler, Award } from "lucide-react";
+import { TrendingUp, Scale, Ruler } from "lucide-react";
 import { BmiProgressChart } from "@/components/charts/BmiProgressChart";
 import type { UserBmiData } from "@/data/gamification";
 import { HealthGoalDialog } from "./HealthGoalDialog";
@@ -52,56 +52,80 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
         </Button>
       </div>
 
-      {/* Current BMI stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Metric cards: BMI, Weight, Height — current + target */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* BMI Card */}
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
             <TrendingUp className="w-5 h-5 text-blue-500" />
           </div>
-          <div>
-            <p className="text-2xl font-bold text-foreground">{bmiData.bmi.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground">{t("currentBmi")}</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <Award className="w-5 h-5 text-green-500" />
-          </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-2xl font-bold text-foreground">{bmiData.targetBmi.toFixed(1)}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {bmiData.bmi.toFixed(1)}
+              </span>
+              <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {bmiData.targetBmi.toFixed(1)}
+              </span>
               {daysRemaining !== null && (
                 <Badge variant={isOverdue ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0.5 shrink-0">
-                  {isOverdue
-                    ? t("overdue")
-                    : t("daysRemaining").replace("X", String(daysRemaining))}
+                  {isOverdue ? t("overdue") : t("daysRemaining").replace("X", String(daysRemaining))}
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">{t("targetBmi")}</p>
+            <p className="text-xs text-muted-foreground">{t("bmi")}</p>
           </div>
         </div>
 
+        {/* Weight Card */}
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
             <Scale className="w-5 h-5 text-purple-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{bmiData.weightKg.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground">{t("currentWeight")} (kg)</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {bmiData.weightKg.toFixed(1)}
+              </span>
+              <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {bmiData.targetWeightKg.toFixed(1)}
+              </span>
+              <span className="text-sm text-muted-foreground">kg</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("cardWeight")}</p>
           </div>
         </div>
 
+        {/* Height Card */}
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
             <Ruler className="w-5 h-5 text-orange-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{bmiData.heightCm}</p>
-            <p className="text-xs text-muted-foreground">{t("height")} (cm)</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {bmiData.heightCm}
+              </span>
+              <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {bmiData.heightCm}
+              </span>
+              <span className="text-sm text-muted-foreground">cm</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("cardHeight")}</p>
           </div>
         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 shrink-0" />
+          {t("legendCurrent")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 shrink-0" />
+          {t("legendTarget")}
+        </span>
       </div>
 
       {/* BMI progress chart */}

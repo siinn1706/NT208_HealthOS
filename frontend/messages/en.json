@@ -765,8 +765,12 @@
     "cancel": "Cancel",
     "currentBmi": "Current BMI",
     "bmiScore": "BMI Score",
-    "recWeight": "Suggested weight: {{weight}} kg (BMI=22)",
-    "recHeight": "Suggested height: {{height}} cm (BMI=22)"
+    "recWeight": "Suggested weight: {weight} kg (BMI=22)",
+    "recHeight": "Suggested height: {height} cm (BMI=22)",
+    "legendCurrent": "Current",
+    "legendTarget": "Target",
+    "cardWeight": "Weight",
+    "cardHeight": "Height"
   },
   "comingSoon": {
     "title": "Feature Under Development",

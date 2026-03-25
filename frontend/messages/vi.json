@@ -765,8 +765,12 @@
     "cancel": "Hủy",
     "currentBmi": "BMI hiện tại",
     "bmiScore": "Điểm BMI",
-    "recWeight": "Cân nặng gợi ý: {{weight}} kg (BMI=22)",
-    "recHeight": "Chiều cao gợi ý: {{height}} cm (BMI=22)"
+    "recWeight": "Cân nặng gợi ý: {weight} kg (BMI=22)",
+    "recHeight": "Chiều cao gợi ý: {height} cm (BMI=22)",
+    "legendCurrent": "Hiện tại",
+    "legendTarget": "Mục tiêu",
+    "cardWeight": "Cân nặng",
+    "cardHeight": "Chiều cao"
   },
   "comingSoon": {
     "title": "Tính năng đang được phát triển",
