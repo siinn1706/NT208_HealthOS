@@ -301,13 +301,13 @@
       "deviceDisconnected": "Disconnected",
       "addDevice": "+ Add Device",
       "manualEntry": "Manual Entry",
-      "manualEntryDesc": "Want to log vitals without a device? Use the \"Add Vital\" button above to manually enter heart rate, blood pressure, SpO\u2082, and temperature.",
+      "manualEntryDesc": "Want to log vitals without a device? Use the \"Add Vital\" button above to manually enter heart rate, blood pressure, SpO₂, and temperature.",
       "vitalLabels": {
         "heartRate": "Heart Rate",
         "systolic": "Systolic BP",
         "diastolic": "Diastolic BP",
         "temperature": "Body Temperature",
-        "spo2": "SpO\u2082"
+        "spo2": "SpO₂"
       },
       "trendVsYesterday": "vs yesterday"
     },
@@ -764,7 +764,9 @@
     "save": "Save",
     "cancel": "Cancel",
     "currentBmi": "Current BMI",
-    "bmiScore": "BMI Score"
+    "bmiScore": "BMI Score",
+    "recWeight": "Suggested weight: {{weight}} kg (BMI=22)",
+    "recHeight": "Suggested height: {{height}} cm (BMI=22)"
   },
   "comingSoon": {
     "title": "Feature Under Development",

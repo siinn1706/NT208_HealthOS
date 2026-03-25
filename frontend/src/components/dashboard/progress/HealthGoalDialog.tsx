@@ -32,6 +32,20 @@ interface HealthGoalFormData {
   deadline: string;
 }
 
+// Ideal BMI midpoint of the "normal" range (18.5–24.9)
+const IDEAL_BMI = 22;
+
+function recommendWeight(heightCm: number): number | null {
+  if (heightCm <= 0) return null;
+  const heightM = heightCm / 100;
+  return parseFloat((IDEAL_BMI * heightM * heightM).toFixed(1));
+}
+
+function recommendHeight(weightKg: number): number | null {
+  if (weightKg <= 0) return null;
+  return parseFloat((Math.sqrt(weightKg / IDEAL_BMI) * 100).toFixed(1));
+}
+
 export function HealthGoalDialog({
   open,
   onOpenChange,
@@ -60,13 +74,18 @@ export function HealthGoalDialog({
     }
   }, [open, initialGoal]);
 
-  // Auto-calculate BMI from target height + target weight (read-only display)
   const targetHeight = Number(form.watch("targetHeightCm"));
   const targetWeight = Number(form.watch("targetWeightKg"));
+
+  // BMI = weight / height²
   const computedBmi =
     targetHeight > 0 && targetWeight > 0
       ? parseFloat((targetWeight / (targetHeight / 100) ** 2).toFixed(1))
       : null;
+
+  // Recommendations based on BMI=22 (midpoint of "normal" range)
+  const recWeight = recommendWeight(targetHeight);
+  const recHeight = recommendHeight(targetWeight);
 
   async function handleSave() {
     setSaving(true);
@@ -134,6 +153,11 @@ export function HealthGoalDialog({
               {...form.register("targetHeightCm")}
               className="h-9"
             />
+            {recWeight != null && (
+              <p className="text-xs text-muted-foreground">
+                {t("recWeight", { weight: recWeight })}
+              </p>
+            )}
           </div>
 
           {/* Target Weight */}
@@ -149,6 +173,11 @@ export function HealthGoalDialog({
               {...form.register("targetWeightKg")}
               className="h-9"
             />
+            {recHeight != null && (
+              <p className="text-xs text-muted-foreground">
+                {t("recHeight", { height: recHeight })}
+              </p>
+            )}
           </div>
 
           {/* BMI — auto-calculated, read-only */}
