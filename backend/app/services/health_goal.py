@@ -37,7 +37,6 @@ class HealthGoalService:
         try:
             goal = HealthGoal(
                 user_id=user_id,
-                target_bmi=data.target_bmi,
                 target_weight_kg=data.target_weight_kg,
                 current_height_cm=data.current_height_cm,
                 deadline=data.deadline,
@@ -76,8 +75,6 @@ class HealthGoalService:
             )
 
         try:
-            if data.target_bmi is not None:
-                goal.target_bmi = data.target_bmi
             if data.target_weight_kg is not None:
                 goal.target_weight_kg = data.target_weight_kg
             if data.current_height_cm is not None:

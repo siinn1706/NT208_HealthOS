@@ -29,7 +29,8 @@ class HealthGoal(Base):
         unique=True,
         nullable=False,
     )
-    target_bmi: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # target_bmi is NOT stored — always computed client-side:
+    #   bmi = target_weight_kg / (current_height_cm/100)²
     target_weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     current_height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     deadline: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)

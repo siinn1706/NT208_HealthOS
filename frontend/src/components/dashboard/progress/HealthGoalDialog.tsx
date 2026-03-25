@@ -27,10 +27,8 @@ interface HealthGoalDialogProps {
 }
 
 interface HealthGoalFormData {
-  currentHeightCm: number;
-  currentWeightKg: number;
+  targetHeightCm: string;
   targetWeightKg: string;
-  targetBmi: string;
   deadline: string;
 }
 
@@ -45,60 +43,38 @@ export function HealthGoalDialog({
 
   const form = useForm<HealthGoalFormData>({
     defaultValues: {
-      currentHeightCm: initialGoal?.heightCm ?? 170,
-      currentWeightKg: initialGoal?.weightKg ?? 70,
+      targetHeightCm: initialGoal?.heightCm?.toString() ?? "170",
       targetWeightKg: initialGoal?.targetWeightKg?.toString() ?? "",
-      targetBmi: initialGoal?.targetBmi?.toString() ?? "",
       deadline: initialGoal?.deadline ?? "",
     },
   });
 
-  // Reset form when initialGoal changes (dialog opens with new data)
+  // Reset form when dialog opens with new initialGoal
   useEffect(() => {
     if (open) {
       form.reset({
-        currentHeightCm: initialGoal?.heightCm ?? 170,
-        currentWeightKg: initialGoal?.weightKg ?? 70,
+        targetHeightCm: initialGoal?.heightCm?.toString() ?? "170",
         targetWeightKg: initialGoal?.targetWeightKg?.toString() ?? "",
-        targetBmi: initialGoal?.targetBmi?.toString() ?? "",
         deadline: initialGoal?.deadline ?? "",
       });
     }
   }, [open, initialGoal]);
 
-  const height = form.watch("currentHeightCm") ?? 170;
-  const targetWeight = form.watch("targetWeightKg");
-  const targetBmiWatch = form.watch("targetBmi");
-
-  // Auto-derive target BMI when target weight changes
-  useEffect(() => {
-    const h = Number(height);
-    const w = Number(targetWeight);
-    if (h > 0 && w > 0 && targetWeight && !targetBmiWatch) {
-      const bmi = parseFloat((w / (h / 100) ** 2).toFixed(1));
-      form.setValue("targetBmi", bmi as unknown as string, { shouldValidate: false });
-    }
-  }, [targetWeight, height, targetBmiWatch, form]);
-
-  // Auto-derive target weight when BMI changes
-  useEffect(() => {
-    const h = Number(height);
-    const b = Number(targetBmiWatch);
-    if (h > 0 && b > 0 && targetBmiWatch && !targetWeight) {
-      const w = parseFloat((b * (h / 100) ** 2).toFixed(1));
-      form.setValue("targetWeightKg", w as unknown as string, { shouldValidate: false });
-    }
-  }, [targetBmiWatch, height, targetWeight, form]);
+  // Auto-calculate BMI from target height + target weight (read-only display)
+  const targetHeight = Number(form.watch("targetHeightCm"));
+  const targetWeight = Number(form.watch("targetWeightKg"));
+  const computedBmi =
+    targetHeight > 0 && targetWeight > 0
+      ? parseFloat((targetWeight / (targetHeight / 100) ** 2).toFixed(1))
+      : null;
 
   async function handleSave() {
     setSaving(true);
     try {
       const formData = form.getValues();
       const payload = {
-        currentHeightCm: Number(formData.currentHeightCm),
-        currentWeightKg: Number(formData.currentWeightKg),
-        targetWeightKg: formData.targetWeightKg ? Number(formData.targetWeightKg) : null,
-        targetBmi: formData.targetBmi ? Number(formData.targetBmi) : null,
+        target_weight_kg: formData.targetWeightKg ? Number(formData.targetWeightKg) : null,
+        current_height_cm: formData.targetHeightCm ? Number(formData.targetHeightCm) : null,
         deadline: formData.deadline || null,
       };
 
@@ -139,63 +115,72 @@ export function HealthGoalDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
-          {/* Height */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-4"
+        >
+          {/* Target Height */}
           <div className="space-y-1.5">
-            <Label htmlFor="goal-height">{t("height")} (cm)</Label>
+            <Label htmlFor="goal-height">{t("targetHeight")} (cm)</Label>
             <Input
               id="goal-height"
               type="number"
-              min={50}
-              max={250}
+              min={100}
+              max={220}
               step={0.1}
-              {...form.register("currentHeightCm", { valueAsNumber: true })}
-              className="h-9"
-            />
-          </div>
-
-          {/* Current Weight */}
-          <div className="space-y-1.5">
-            <Label htmlFor="goal-current-weight">{t("currentWeight")} (kg)</Label>
-            <Input
-              id="goal-current-weight"
-              type="number"
-              min={20}
-              max={300}
-              step={0.1}
-              {...form.register("currentWeightKg", { valueAsNumber: true })}
+              {...form.register("targetHeightCm")}
               className="h-9"
             />
           </div>
 
           {/* Target Weight */}
           <div className="space-y-1.5">
-            <Label htmlFor="goal-target-weight">{t("targetWeight")} (kg)</Label>
+            <Label htmlFor="goal-weight">{t("targetWeight")} (kg)</Label>
             <Input
-              id="goal-target-weight"
+              id="goal-weight"
               type="number"
-              min={20}
-              max={300}
+              min={30}
+              max={200}
               step={0.1}
-              placeholder="63.5"
+              placeholder="65.0"
               {...form.register("targetWeightKg")}
               className="h-9"
             />
           </div>
 
-          {/* Target BMI */}
+          {/* BMI — auto-calculated, read-only */}
           <div className="space-y-1.5">
-            <Label htmlFor="goal-target-bmi">{t("targetBmi")}</Label>
-            <Input
-              id="goal-target-bmi"
-              type="number"
-              min={10}
-              max={50}
-              step={0.1}
-              placeholder="22.0"
-              {...form.register("targetBmi")}
-              className="h-9"
-            />
+            <Label htmlFor="goal-bmi">{t("bmi")}</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="goal-bmi"
+                type="number"
+                step={0.1}
+                value={computedBmi ?? ""}
+                readOnly
+                disabled
+                className="h-9 bg-muted cursor-not-allowed"
+              />
+              <span className="text-sm text-muted-foreground shrink-0">
+                {computedBmi != null ? (
+                  computedBmi < 18.5
+                    ? "Gầy"
+                    : computedBmi < 25
+                    ? "Bình thường"
+                    : computedBmi < 30
+                    ? "Thừa cân"
+                    : "Béo phì"
+                ) : (
+                  "—"
+                )}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("bmiAutoHint")}
+            </p>
           </div>
 
           {/* Deadline */}

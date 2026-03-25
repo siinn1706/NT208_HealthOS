@@ -105,32 +105,21 @@ export async function getUserBmiData(): Promise<UserBmiData> {
     if (!goal) return fallback;
 
     // Merge: user-set target + current weight/height from gamification-summary
-    const heightM = (goal.current_height_cm ?? fallback.heightCm) / 100;
-    const currentBmi =
-      fallback.weightKg > 0 && heightM > 0
-        ? parseFloat((fallback.weightKg / heightM ** 2).toFixed(1))
-        : fallback.bmi;
+    const goalHeightCm = goal.current_height_cm ?? fallback.heightCm;
+    const heightM = goalHeightCm / 100;
 
-    // Derive target BMI: use goal's explicit target_bmi, or compute from target_weight_kg
+    // Target BMI is always derived: bmi = weight / height²
     const derivedTargetBmi =
-      goal.target_bmi ??
-      (goal.target_weight_kg
-        ? parseFloat(
-            (
-              goal.target_weight_kg /
-              (goal.current_height_cm
-                ? (goal.current_height_cm / 100) ** 2
-                : heightM ** 2)
-            ).toFixed(1)
-          )
-        : fallback.targetBmi);
+      goal.target_weight_kg && goalHeightCm > 0
+        ? parseFloat((goal.target_weight_kg / heightM ** 2).toFixed(1))
+        : fallback.targetBmi;
 
     return {
       ...fallback,
       targetBmi: derivedTargetBmi,
       targetWeightKg: goal.target_weight_kg ?? fallback.targetWeightKg,
-      heightCm: goal.current_height_cm ?? fallback.heightCm,
-      bmi: currentBmi,
+      heightCm: goalHeightCm,
+      bmi: fallback.bmi,
       deadline: goal.deadline ?? null,
       goalId: goal.id,
     };
@@ -143,7 +132,6 @@ export async function getUserBmiData(): Promise<UserBmiData> {
 interface HealthGoalBEData {
   id: string;
   user_id: string;
-  target_bmi: number | null;
   target_weight_kg: number | null;
   current_height_cm: number | null;
   deadline: string | null;

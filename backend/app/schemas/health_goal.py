@@ -10,16 +10,17 @@ from app.schemas.common import DataResponse
 
 
 class HealthGoalBase(BaseModel):
-    target_bmi: float | None = Field(None, ge=15.0, le=35.0)
+    # BMI is always derived: bmi = target_weight_kg / (current_height_cm/100)²
+    # At least one of target_weight_kg or current_height_cm must be set
     target_weight_kg: float | None = Field(None, ge=30.0, le=200.0)
     current_height_cm: float | None = Field(None, ge=100.0, le=220.0)
     deadline: date | None = None
 
     @model_validator(mode="after")
     def require_at_least_one_target(self) -> "HealthGoalBase":
-        if self.target_bmi is None and self.target_weight_kg is None:
+        if self.target_weight_kg is None and self.current_height_cm is None:
             raise ValueError(
-                "At least one of target_bmi or target_weight_kg must be set"
+                "At least one of target_weight_kg or current_height_cm must be set"
             )
         if self.deadline is not None and self.deadline < date.today():
             raise ValueError("Deadline must be today or in the future")
@@ -30,7 +31,6 @@ class HealthGoalCreate(HealthGoalBase): ...
 
 
 class HealthGoalUpdate(BaseModel):
-    target_bmi: float | None = Field(None, ge=15.0, le=35.0)
     target_weight_kg: float | None = Field(None, ge=30.0, le=200.0)
     current_height_cm: float | None = Field(None, ge=100.0, le=220.0)
     deadline: date | None = None
@@ -38,16 +38,15 @@ class HealthGoalUpdate(BaseModel):
     @model_validator(mode="after")
     def require_at_least_one_target(self) -> "HealthGoalUpdate":
         has_any = (
-            self.target_bmi is not None
-            or self.target_weight_kg is not None
+            self.target_weight_kg is not None
             or self.current_height_cm is not None
             or self.deadline is not None
         )
         if not has_any:
             return self
-        if self.target_bmi is None and self.target_weight_kg is None:
+        if self.target_weight_kg is None and self.current_height_cm is None:
             raise ValueError(
-                "At least one of target_bmi or target_weight_kg must be set when updating"
+                "At least one of target_weight_kg or current_height_cm must be set when updating"
             )
         if self.deadline is not None and self.deadline < date.today():
             raise ValueError("Deadline must be today or in the future")
@@ -59,7 +58,7 @@ class HealthGoalResponse(BaseModel):
 
     id: uuid.UUID
     user_id: uuid.UUID
-    target_bmi: float | None = None
+    # target_bmi is NOT stored — always computed from target_weight_kg / (current_height_cm/100)²
     target_weight_kg: float | None = None
     current_height_cm: float | None = None
     deadline: date | None = None
