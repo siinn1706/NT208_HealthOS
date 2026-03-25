@@ -51,3 +51,28 @@ export class BffError extends Error {
     this.name = "BffError";
   }
 }
+
+/**
+ * Client-safe BFF fetch utility for "use client" components.
+ * Uses credentials: "include" to send session cookies.
+ * Returns { data, error } instead of throwing.
+ */
+export async function bffFetchClient(
+  path: string,
+  options: RequestInit = {}
+): Promise<{ data?: unknown; error?: unknown }> {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return { error: err };
+  }
+  return { data: await res.json() };
+}

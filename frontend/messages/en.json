@@ -748,6 +748,21 @@
     "noEmergencyContacts": "No emergency contacts added. Add them in your Profile.",
     "goToProfile": "Go to Profile"
   },
+  "progress": {
+    "setGoal": "Set BMI Goal",
+    "editGoal": "Edit Goal",
+    "deadline": "Deadline",
+    "daysRemaining": "X days left",
+    "overdue": "Overdue",
+    "height": "Height",
+    "currentWeight": "Current Weight",
+    "targetWeight": "Target Weight",
+    "targetBmi": "Target BMI",
+    "save": "Save",
+    "cancel": "Cancel",
+    "currentBmi": "Current BMI",
+    "bmiScore": "BMI Score"
+  },
   "comingSoon": {
     "title": "Feature Under Development",
     "description": "We are working hard to bring you this feature. Thank you for your patience!",

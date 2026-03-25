@@ -748,6 +748,21 @@
     "noEmergencyContacts": "Chưa có người liên hệ khẩn cấp. Thêm trong phần hồ sơ.",
     "goToProfile": "Đến hồ sơ"
   },
+  "progress": {
+    "setGoal": "Đặt mục tiêu BMI",
+    "editGoal": "Chỉnh sửa mục tiêu",
+    "deadline": "Ngày mục tiêu",
+    "daysRemaining": "Còn X ngày",
+    "overdue": "Đã quá hạn",
+    "height": "Chiều cao",
+    "currentWeight": "Cân nặng hiện tại",
+    "targetWeight": "Cân nặng mục tiêu",
+    "targetBmi": "BMI mục tiêu",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "currentBmi": "BMI hiện tại",
+    "bmiScore": "Điểm BMI"
+  },
   "comingSoon": {
     "title": "Tính năng đang được phát triển",
     "description": "Chúng tôi đang nỗ lực xây dựng tính năng này. Cảm ơn bạn đã kiên nhẫn!",
