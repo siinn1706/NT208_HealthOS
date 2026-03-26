@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Heart, Activity, Thermometer, Droplets, Wind, Plus } from "lucide-react";
 import { Link } from "@/navigation";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
@@ -15,7 +16,7 @@ interface DeviceItem {
   last_sync: string | null;
 }
 
-async function fetchDevices(): Promise<DeviceItem[]> {
+async function fetchDevices(noDeviceInfoLabel: string): Promise<DeviceItem[]> {
   const res = await fetch("/api/v1/devices", { credentials: "include" });
   if (!res.ok) return [];
   const json = await res.json().catch(() => null);
@@ -25,7 +26,7 @@ async function fetchDevices(): Promise<DeviceItem[]> {
     (item: any): DeviceItem => ({
       id: typeof item?.id === "string" ? item.id : "",
       provider: typeof item?.provider === "string" ? item.provider : "--",
-      name: typeof item?.name === "string" && item.name.trim() ? item.name : "Chưa có thông tin",
+      name: typeof item?.name === "string" && item.name.trim() ? item.name : noDeviceInfoLabel,
       connected: Boolean(item?.connected),
       last_sync: typeof item?.last_sync === "string" ? item.last_sync : null,
     })
@@ -50,10 +51,10 @@ async function fetchComparison(period: ReportPeriod) {
   return json?.data ?? [];
 }
 
-function formatLastSync(iso: string | null): string {
-  if (!iso) return "Chưa có thông tin";
+function formatLastSync(iso: string | null, noInfo: string): string {
+  if (!iso) return noInfo;
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Chưa có thông tin";
+  if (Number.isNaN(date.getTime())) return noInfo;
   return date.toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -70,6 +71,7 @@ function VitalCard({
   unit,
   trend,
   color,
+  trendVsYesterday,
 }: {
   icon: React.ElementType;
   label: string;
@@ -77,6 +79,7 @@ function VitalCard({
   unit: string;
   trend?: "up" | "down" | "stable";
   color: string;
+  trendVsYesterday?: string;
 }) {
   const trendColor =
     trend === "up" ? "text-red-500" : trend === "down" ? "text-blue-500" : "text-green-500";
@@ -99,7 +102,7 @@ function VitalCard({
         </p>
         {trend && hasValue && (
           <p className={`text-xs mt-1 ${trendColor}`}>
-            {trendLabel} so với hôm qua
+            {trendLabel} {trendVsYesterday}
           </p>
         )}
       </div>
@@ -108,6 +111,7 @@ function VitalCard({
 }
 
 export default function HealthPage() {
+  const t = useTranslations("dashboard.health");
   const [period, setPeriod] = useState<ReportPeriod>("7d");
   const [comparisonData, setComparisonData] = useState<Array<{ date: string; values: Record<string, number | null> }>>([]);
   const [latestVital, setLatestVital] = useState<{ heartRate?: number; systolic?: number; diastolic?: number } | null>(null);
@@ -121,7 +125,7 @@ export default function HealthPage() {
         fetchVitals(p),
         fetchComparison(p),
         devicesLoaded ? Promise.resolve(devices) : (async () => {
-          const d = await fetchDevices();
+          const d = await fetchDevices(t("noDeviceInfo"));
           setDevices(d);
           setDevicesLoaded(true);
           return d;
@@ -142,7 +146,7 @@ export default function HealthPage() {
   // Initial load — must be useEffect, NOT useState, to avoid calling startTransition during render
   useEffect(() => {
     loadData("7d");
-    fetchDevices().then((d) => {
+    fetchDevices(t("noDeviceInfo")).then((d) => {
       setDevices(d);
       setDevicesLoaded(true);
     });
@@ -165,19 +169,17 @@ export default function HealthPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Vitals & Thiết bị</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Theo dõi các chỉ số sức khỏe của bạn
-          </p>
+          <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-3">
           <TimeRangeSelector value={period} onChange={handlePeriodChange} />
           <button
             className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            aria-label="Thêm chỉ số"
+            aria-label={t("addMetricAria")}
           >
             <Plus className="w-4 h-4" />
-            Thêm chỉ số
+            {t("addMetric")}
           </button>
         </div>
       </div>
@@ -186,35 +188,39 @@ export default function HealthPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <VitalCard
           icon={Heart}
-          label="Nhịp tim"
+          label={t("heartRate")}
           value={latest?.heartRate ?? "--"}
           unit="bpm"
           trend={latest?.heartRate != null ? "stable" : undefined}
           color="#EF4444"
+          trendVsYesterday={t("trendVsYesterday")}
         />
         <VitalCard
           icon={Activity}
-          label="Huyết áp tâm thu"
+          label={t("systolic")}
           value={latest?.systolic ?? "--"}
           unit="mmHg"
           trend={latest?.systolic != null ? "stable" : undefined}
           color="#41BCE6"
+          trendVsYesterday={t("trendVsYesterday")}
         />
         <VitalCard
           icon={Activity}
-          label="Huyết áp tâm trương"
+          label={t("diastolic")}
           value={latest?.diastolic ?? "--"}
           unit="mmHg"
           trend={latest?.diastolic != null ? "stable" : undefined}
           color="#6DE7F7"
+          trendVsYesterday={t("trendVsYesterday")}
         />
         <VitalCard
           icon={Thermometer}
-          label="Nhiệt độ"
+          label={t("temperature")}
           value="--"
           unit="°C"
           trend={undefined}
           color="#F97316"
+          trendVsYesterday={t("trendVsYesterday")}
         />
         <VitalCard
           icon={Wind}
@@ -223,6 +229,7 @@ export default function HealthPage() {
           unit="%"
           trend={undefined}
           color="#A78BFA"
+          trendVsYesterday={t("trendVsYesterday")}
         />
       </div>
 
@@ -231,16 +238,16 @@ export default function HealthPage() {
         {/* Comparison chart */}
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-foreground">So sánh theo kỳ</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Nhịp tim & Huyết áp theo thời gian</p>
+            <h2 className="text-sm font-semibold text-foreground">{t("compareTitle")}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("compareChartTitle")}</p>
           </div>
           {isPending ? (
             <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">
-              Đang tải...
+              {t("loading")}
             </div>
           ) : comparisonData.length === 0 ? (
             <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">
-              Chưa có dữ liệu
+              {t("noData")}
             </div>
           ) : (
             <PeriodComparisonChart
@@ -257,13 +264,13 @@ export default function HealthPage() {
         {/* Connected devices */}
         <div className="rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Thiết bị đã kết nối</p>
+            <p className="text-sm font-semibold text-foreground">{t("connectedDevices")}</p>
             <Droplets className="w-4 h-4 text-muted-foreground" />
           </div>
           <ul className="divide-y divide-border">
             {devices.length === 0 ? (
               <li className="px-5 py-8 text-sm text-muted-foreground text-center">
-                Chưa có thông tin
+                {t("noDeviceInfo")}
               </li>
             ) : (
               devices.map((device) => (
@@ -278,10 +285,10 @@ export default function HealthPage() {
                         device.connected ? "text-green-500" : "text-muted-foreground"
                       }`}
                     >
-                      {device.connected ? "Đã kết nối" : "Chưa kết nối"}
+                      {device.connected ? t("connected") : t("notConnected")}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                      {formatLastSync(device.last_sync)}
+                      {formatLastSync(device.last_sync, t("noDeviceInfo"))}
                     </span>
                   </div>
                 </li>
@@ -293,7 +300,7 @@ export default function HealthPage() {
               href="/dashboard/settings/devices"
               className="w-full text-xs text-primary hover:underline cursor-pointer block text-center"
             >
-              Thêm thiết bị
+              {t("addDevice")}
             </Link>
           </div>
         </div>
@@ -303,10 +310,8 @@ export default function HealthPage() {
       <div className="rounded-xl border border-border bg-card/50 px-5 py-4 flex items-start gap-3">
         <Activity className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
         <div>
-          <p className="text-sm font-medium text-foreground">Nhập liệu thủ công</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Bạn có thể nhập các chỉ số sức khỏe thủ công nếu không có thiết bị wearable.
-          </p>
+          <p className="text-sm font-medium text-foreground">{t("manualEntry")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("manualEntryHint")}</p>
         </div>
       </div>
     </div>

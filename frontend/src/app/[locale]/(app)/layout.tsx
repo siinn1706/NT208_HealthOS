@@ -6,10 +6,11 @@ interface SessionResponse {
     email?: string | null;
     username?: string | null;
     display_name?: string | null;
+    avatar_url?: string | null;
   };
 }
 
-async function getTopNavUserName(): Promise<string | undefined> {
+async function getTopNavUser(): Promise<{ name: string | undefined; avatarUrl: string | null | undefined }> {
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const reqHeaders = await headers();
@@ -19,20 +20,22 @@ async function getTopNavUserName(): Promise<string | undefined> {
       headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
 
-    if (!res.ok) return undefined;
+    if (!res.ok) return { name: undefined, avatarUrl: undefined };
 
     const json = (await res.json().catch(() => null)) as SessionResponse | null;
     const session = json?.data;
-    if (!session) return undefined;
+    if (!session) return { name: undefined, avatarUrl: undefined };
 
-    return (
-      session.display_name?.trim() ||
-      session.username?.trim() ||
-      session.email?.split("@")[0]?.trim() ||
-      undefined
-    );
+    return {
+      name:
+        session.display_name?.trim() ||
+        session.username?.trim() ||
+        session.email?.split("@")[0]?.trim() ||
+        undefined,
+      avatarUrl: session.avatar_url ?? null,
+    };
   } catch {
-    return undefined;
+    return { name: undefined, avatarUrl: undefined };
   }
 }
 
@@ -41,10 +44,10 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const userName = await getTopNavUserName();
+  const user = await getTopNavUser();
 
   return (
-    <DashboardShell userName={userName}>
+    <DashboardShell userName={user.name} userAvatar={user.avatarUrl ?? undefined}>
       {children}
     </DashboardShell>
   );

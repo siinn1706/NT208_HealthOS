@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Send, Smile, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react";
 import { MessageReplyPreview } from "./MessageReplyPreview";
 import { Separator } from "@/components/ui/separator";
@@ -42,6 +42,7 @@ export function MessageInput({
   disabled,
 }: MessageInputProps) {
   const t = useTranslations("chat");
+  const locale = useLocale();
   const [value, setValue] = useState(editingMessage?.content ?? "");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -190,7 +191,7 @@ export function MessageInput({
                 theme="auto"
                 previewPosition="none"
                 skinTonePosition="none"
-                locale="vi"
+                locale={locale}
               />
             )}
           </PopoverContent>

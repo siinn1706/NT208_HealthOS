@@ -67,7 +67,7 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
     const authenticated = await isAuthenticated(req);
     if (!authenticated) {
       // Not logged in → redirect to login
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? "vi";
+      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
       const loginUrl = new URL(`/${locale}/login`, req.url);
       loginUrl.searchParams.set("from", req.nextUrl.pathname);
       return NextResponse.redirect(loginUrl);
@@ -76,7 +76,7 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
     // Logged in but onboarding already completed → redirect to dashboard
     const onboardingComplete = await checkOnboardingStatus(req);
     if (onboardingComplete) {
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? "vi";
+      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
       const dashboardUrl = new URL(`/${locale}/dashboard`, req.url);
       return NextResponse.redirect(dashboardUrl);
     }
@@ -86,7 +86,7 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
     const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
     if (!token) {
       // Redirect to the locale-prefixed login page
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? "vi";
+      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
       const loginUrl = new URL(`/${locale}/login`, req.url);
       loginUrl.searchParams.set("from", req.nextUrl.pathname);
       return NextResponse.redirect(loginUrl);
@@ -95,7 +95,7 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
     // Check onboarding status
     const onboardingComplete = await checkOnboardingStatus(req);
     if (!onboardingComplete) {
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? "vi";
+      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
       const onboardingUrl = new URL(`/${locale}/onboarding`, req.url);
       return NextResponse.redirect(onboardingUrl);
     }

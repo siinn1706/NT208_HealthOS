@@ -9,6 +9,7 @@ import { ContactForm } from "@/components/shared/ContactForm";
 import { coreFeatures, aiFeatures, realtimeFeatures, gamificationFeatures } from "@/data/services";
 import { LeftDecoration, RightDecoration } from "@/components/shared/Decorations";
 import { AnimatedIllustration } from "@/components/shared/AnimatedIllustration";
+import { Button } from "@/components/ui/button";
 
 export default function ServicesPage() {
   const t = useTranslations("services");
@@ -104,8 +105,8 @@ export default function ServicesPage() {
       <section className="bg-night-900 py-20 text-white">
         <div className="mx-auto max-w-lg px-4 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
-            <h2 className="mb-3 text-3xl font-extrabold">Bắt đầu hành trình sức khỏe</h2>
-            <p className="text-night-100/70">Điền thông tin bên dưới để được tư vấn miễn phí.</p>
+            <h2 className="mb-3 text-3xl font-extrabold">{t("pageTitle")}</h2>
+            <p className="text-night-100/70">Fill in your information below to receive free consultation.</p>
           </div>
           <ContactForm />
         </div>

@@ -9,6 +9,8 @@ function Skeleton() {
 }
 
 async function GamificationGoalsContent() {
+  const t = await getTranslations("dashboard.achievements");
+  const tg = await getTranslations("dashboard.goals");
   const summary = await getGamificationSummary();
   const { currentUser, activeGoals, streakHistory, recentUnlocked } = summary;
 
@@ -16,10 +18,8 @@ async function GamificationGoalsContent() {
     <div className="max-w-[1400px] mx-auto space-y-5">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-bold text-foreground">Mục tiêu & Thành tích</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Theo dõi tiến độ và streak của bạn
-        </p>
+        <h1 className="text-xl font-bold text-foreground">{t("pageTitle")}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{t("pageSubtitle")}</p>
       </div>
 
       {/* Stats overview */}
@@ -30,7 +30,7 @@ async function GamificationGoalsContent() {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{currentUser.currentStreak}</p>
-            <p className="text-xs text-muted-foreground">Streak hiện tại</p>
+            <p className="text-xs text-muted-foreground">{t("currentStreak")}</p>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
@@ -39,7 +39,7 @@ async function GamificationGoalsContent() {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{currentUser.longestStreak}</p>
-            <p className="text-xs text-muted-foreground">Streak dài nhất</p>
+            <p className="text-xs text-muted-foreground">{t("longestStreak")}</p>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
@@ -48,7 +48,7 @@ async function GamificationGoalsContent() {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{currentUser.unlockedAchievements}</p>
-            <p className="text-xs text-muted-foreground">Thành tựu đã mở</p>
+            <p className="text-xs text-muted-foreground">{t("activeGoalsCount", { n: currentUser.unlockedAchievements })}</p>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
@@ -57,7 +57,7 @@ async function GamificationGoalsContent() {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{currentUser.totalScore}</p>
-            <p className="text-xs text-muted-foreground">Tổng điểm</p>
+            <p className="text-xs text-muted-foreground">{t("totalScore")}</p>
           </div>
         </div>
       </div>
@@ -65,14 +65,14 @@ async function GamificationGoalsContent() {
       {/* Streak heatmap */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-4">
-          <h2 className="text-sm font-semibold text-foreground">Lịch sử Streak</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">8 tuần gần nhất</p>
+          <h2 className="text-sm font-semibold text-foreground">{t("streakHistory")}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("last8Weeks")}</p>
         </div>
         {streakHistory.length > 0 ? (
           <StreakHeatmap entries={streakHistory} height={140} />
         ) : (
           <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">
-            Chưa có dữ liệu streak
+            {t("noStreakData")}
           </div>
         )}
       </div>
@@ -80,14 +80,14 @@ async function GamificationGoalsContent() {
       {/* Active goals */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-4">
-          <h2 className="text-sm font-semibold text-foreground">Mục tiêu đang theo dõi</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("activeGoals")}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {activeGoals.length} mục tiêu đang hoạt động
+            {t("activeGoalsCount", { n: activeGoals.length })}
           </p>
         </div>
         {activeGoals.length === 0 ? (
           <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">
-            Chưa có mục tiêu nào
+            {t("noGoals")}
           </div>
         ) : (
           <div className="space-y-3">
@@ -103,7 +103,9 @@ async function GamificationGoalsContent() {
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: goal.color }}
                       />
-                      <span className="text-sm font-medium text-foreground">{goal.label}</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {(tg as (key: string) => string)(`milestoneLabels.${goal.labelKey}`)}
+                      </span>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {goal.todayProgress.toLocaleString()} / {goal.dailyTarget.toLocaleString()} {goal.unit}
@@ -126,8 +128,8 @@ async function GamificationGoalsContent() {
       {recentUnlocked.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-foreground">Thành tựu gần đây</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Đã mở khóa</p>
+            <h2 className="text-sm font-semibold text-foreground">{t("recentAchievements")}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("unlocked")}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {recentUnlocked.map((milestone) => (
@@ -139,9 +141,11 @@ async function GamificationGoalsContent() {
                   <Award className="w-4 h-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{milestone.label}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {(tg as (key: string) => string)(`milestoneLabels.${milestone.labelKey}`)}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {milestone.unlockedAt ? new Date(milestone.unlockedAt).toLocaleDateString("vi-VN") : ""}
+                    {milestone.unlockedAt ? new Date(milestone.unlockedAt).toLocaleDateString() : ""}
                   </p>
                 </div>
               </div>

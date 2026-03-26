@@ -68,6 +68,7 @@ function GitHubIcon() {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function LoginForm() {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
   const { handleApiError, success, handleError } = useNotification();
   const identifierRef = useRef<HTMLInputElement>(null);
@@ -126,7 +127,7 @@ export function LoginForm() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const errors = handleApiError(data, "Đăng nhập thất bại");
+        const errors = handleApiError(data, tErrors("loginFailed"));
         // Map field errors
         if (errors.identifier || errors.password) {
           setFieldErrors(errors);
@@ -135,7 +136,7 @@ export function LoginForm() {
       }
 
       // Success - show toast and redirect
-      success("Đăng nhập thành công!");
+      success(tErrors("loginSuccess"));
 
       // Check onboarding status and redirect accordingly
       const onboardingStatus = data?.data?.onboarding_status;
@@ -145,7 +146,7 @@ export function LoginForm() {
         router.push("/onboarding");
       }
     } catch (err) {
-      const errors = handleError(err, "Có lỗi xảy ra. Vui lòng thử lại.");
+      const errors = handleError(err, tErrors("genericTryAgain"));
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
       }

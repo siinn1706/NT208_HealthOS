@@ -2,6 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { Bell, Search, ChevronDown, LogOut, User, Globe } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ const LOCALES = [
 export function TopNav({
   sidebarCollapsed = false,
   userName,
+  userAvatar,
   alertCount = 0,
 }: TopNavProps) {
   const t = useTranslations("dashboard.topnav");
@@ -154,9 +156,12 @@ export function TopNav({
               "transition-colors duration-200 cursor-pointer"
             )}
           >
-            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <User className="w-3.5 h-3.5 text-primary-foreground" />
-            </div>
+            <Avatar className="w-6 h-6 flex-shrink-0">
+              {userAvatar ? <AvatarImage src={userAvatar} alt={displayName} /> : null}
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                <User className="w-3.5 h-3.5" />
+              </AvatarFallback>
+            </Avatar>
             <span className="text-sm font-medium text-foreground hidden sm:block max-w-[120px] truncate">
               {displayName}
             </span>

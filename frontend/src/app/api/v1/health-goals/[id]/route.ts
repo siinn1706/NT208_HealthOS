@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
-import { cacheKey, cacheDel } from "@/lib/redis-cache";
 
 const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
 
@@ -20,10 +19,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!userId) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
 
   const { id } = await params;
-  const ck = cacheKey(userId, "health-goals", {});
-  const gamCk = cacheKey(userId, "gamification-summary", {});
-  await Promise.all([cacheDel(ck), cacheDel(gamCk)]);
-
   const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
   const body = await req.text();
   const beRes = await fetch(`${CORE_API_URL}/v1/health-goals/${id}`, {
@@ -42,10 +37,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!userId) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
 
   const { id } = await params;
-  const ck = cacheKey(userId, "health-goals", {});
-  const gamCk = cacheKey(userId, "gamification-summary", {});
-  await Promise.all([cacheDel(ck), cacheDel(gamCk)]);
-
   const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
   const beRes = await fetch(`${CORE_API_URL}/v1/health-goals/${id}`, {
     method: "DELETE",

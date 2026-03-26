@@ -3,6 +3,7 @@
 import { X, Pill, Stethoscope, CalendarDays, Building2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Prescription } from "@/types/api";
+import { useTranslations, useLocale } from "next-intl";
 
 interface PrescriptionViewerDialogProps {
   prescription: Prescription | null;
@@ -19,10 +20,13 @@ export function PrescriptionViewerDialog({
   prescription,
   onClose,
 }: PrescriptionViewerDialogProps) {
+  const t = useTranslations("dashboard.appointments");
+  const locale = useLocale();
+
   if (!prescription) return null;
 
   const issued = new Date(prescription.issuedAt);
-  const dateStr = issued.toLocaleDateString("vi-VN", {
+  const dateStr = issued.toLocaleDateString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -34,7 +38,7 @@ export function PrescriptionViewerDialog({
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Xem toa thuốc"
+      aria-label={t("prescriptionAria", { name: prescription.doctor })}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -61,7 +65,7 @@ export function PrescriptionViewerDialog({
           </div>
           <button
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label={t("close")}
             className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors cursor-pointer"
           >
             <X className="w-4 h-4 text-muted-foreground" />
@@ -73,11 +77,11 @@ export function PrescriptionViewerDialog({
           {/* Meta info strip */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { icon: Stethoscope, label: "Bác sĩ", value: prescription.doctor },
-              { icon: Building2, label: "Cơ sở", value: prescription.clinic },
+              { icon: Stethoscope, label: t("doctor"), value: prescription.doctor },
+              { icon: Building2, label: t("facility"), value: prescription.clinic },
               {
                 icon: CalendarDays,
-                label: "Ngày kê đơn",
+                label: t("prescriptionDate"),
                 value: dateStr,
               },
             ].map(({ icon: Icon, label, value }) => (

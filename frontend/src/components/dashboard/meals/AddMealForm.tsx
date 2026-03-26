@@ -33,6 +33,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "@/navigation";
+import { useTranslations } from "next-intl";
 
 import { IngredientListEditor } from "./IngredientListEditor";
 import { NutritionSummaryCard } from "./NutritionSummaryCard";
@@ -40,13 +41,6 @@ import { NutritionSummaryCard } from "./NutritionSummaryCard";
 import { addMealSchema, type AddMealFormValues } from "@/lib/validators/meal-schema";
 import { bffFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-
-const MEAL_TYPES = [
-  { value: "breakfast", icon: Sunrise, label: "Bữa sáng", color: "text-orange-400" },
-  { value: "lunch",     icon: Sun,     label: "Bữa trưa", color: "text-yellow-400" },
-  { value: "dinner",   icon: Moon,    label: "Bữa tối",  color: "text-indigo-400" },
-  { value: "snack",    icon: Cookie,  label: "Bữa phụ",  color: "text-emerald-400" },
-] as const;
 
 function nowLocalDatetime(): string {
   const now = new Date();
@@ -87,6 +81,15 @@ function SectionCard({
 export function AddMealForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const t = useTranslations("dashboard.meals");
+  const ta = useTranslations("addMeal");
+
+  const MEAL_TYPES = [
+    { value: "breakfast", icon: Sunrise, label: t("mealTypes.breakfast"), color: "text-orange-400" },
+    { value: "lunch",     icon: Sun,     label: t("mealTypes.lunch"), color: "text-yellow-400" },
+    { value: "dinner",   icon: Moon,    label: t("mealTypes.dinner"),  color: "text-indigo-400" },
+    { value: "snack",    icon: Cookie,  label: t("mealTypes.snack"),  color: "text-emerald-400" },
+  ] as const;
 
   const methods = useForm<AddMealFormValues>({
     resolver: zodResolver(addMealSchema),
@@ -124,17 +127,17 @@ export function AddMealForm() {
         body: payload,
       });
 
-      toast.success("Đã ghi món ăn thành công!", {
-        description: `${data.name} — đã cập nhật nhật ký dinh dưỡng.`,
+      toast.success(t("saveSuccess"), {
+        description: `${data.name}`,
         action: {
-          label: "Xem nhật ký",
+          label: t("viewDiary"),
           onClick: () => router.push("/dashboard/meals"),
         },
       });
 
       router.push("/dashboard/meals");
     } catch {
-      toast.error("Lưu thất bại. Vui lòng thử lại.");
+      toast.error(t("saveFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -150,17 +153,17 @@ export function AddMealForm() {
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="size-4" />
-            Nhật ký dinh dưỡng
+            {t("diary")}
           </Link>
         </div>
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2.5">
             <ChefHat className="size-6 text-primary" />
-            Thêm món ăn thủ công
+            {ta("title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Nhập tên món, thêm thành phần và gram — hệ thống tự tính calo, protein, carbs, chất béo.
+            {ta("subtitle")}
           </p>
         </div>
 
@@ -176,19 +179,19 @@ export function AddMealForm() {
               >
                 <SectionCard
                   icon={<ChefHat className="size-4" />}
-                  title="Thông tin món ăn"
-                  description="Đặt tên và chọn loại bữa ăn"
+                  title={ta("dishNameTitle")}
+                  description={ta("dishNameSubtitle")}
                 >
                   <div className="space-y-4">
                     {/* Meal name */}
                     <div className="space-y-1.5">
                       <Label htmlFor="meal-name">
-                        Tên món ăn <span className="text-destructive">*</span>
+                        {ta("dishName")} <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="meal-name"
                         {...register("name")}
-                        placeholder="VD: Phở bò tái, Cơm sườn, Bún riêu..."
+                        placeholder={ta("dishNamePlaceholder")}
                         className={cn(errors.name && "border-destructive")}
                         autoFocus
                       />
@@ -201,7 +204,7 @@ export function AddMealForm() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Meal type */}
                       <div className="space-y-1.5">
-                        <Label htmlFor="meal-type">Loại bữa ăn</Label>
+                        <Label htmlFor="meal-type">{ta("mealType")}</Label>
                         <Select
                           value={mealType}
                           onValueChange={(v) =>
@@ -258,8 +261,8 @@ export function AddMealForm() {
               >
                 <SectionCard
                   icon={<Sparkles className="size-4" />}
-                  title="Thành phần"
-                  description="Thêm từng nguyên liệu và số gram — calo tự tính từ database dinh dưỡng"
+                  title={ta("sectionGeneral")}
+                  description={ta("dishNameSubtitle")}
                 >
                   <IngredientListEditor />
                 </SectionCard>
@@ -274,7 +277,7 @@ export function AddMealForm() {
                 <SectionCard
                   icon={<FileText className="size-4" />}
                   title="Ghi chú (tuỳ chọn)"
-                  description="Ghi lại cảm nhận, nguồn gốc món ăn, hoặc thông tin thêm"
+                  description={ta("notesLabel")}
                 >
                   <Textarea
                     {...register("notes")}
@@ -317,7 +320,7 @@ export function AddMealForm() {
                     ) : (
                       <CheckCircle2 className="size-4" />
                     )}
-                    {isSubmitting ? "Đang lưu..." : "Ghi vào nhật ký"}
+                    {isSubmitting ? ta("saving") : ta("submit")}
                   </Button>
                 </div>
               </motion.div>
@@ -346,7 +349,7 @@ export function AddMealForm() {
                   ) : (
                     <CheckCircle2 className="size-4" />
                   )}
-                  {isSubmitting ? "Đang lưu..." : "Ghi vào nhật ký"}
+                  {isSubmitting ? ta("saving") : ta("submit")}
                 </Button>
                 <Button
                   type="button"

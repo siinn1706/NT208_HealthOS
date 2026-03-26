@@ -38,7 +38,6 @@ class HealthGoalService:
             goal = HealthGoal(
                 user_id=user_id,
                 target_weight_kg=data.target_weight_kg,
-                current_height_cm=data.current_height_cm,
                 deadline=data.deadline,
             )
             db.add(goal)
@@ -77,8 +76,6 @@ class HealthGoalService:
         try:
             if data.target_weight_kg is not None:
                 goal.target_weight_kg = data.target_weight_kg
-            if data.current_height_cm is not None:
-                goal.current_height_cm = data.current_height_cm
             if data.deadline is not None:
                 goal.deadline = data.deadline
 

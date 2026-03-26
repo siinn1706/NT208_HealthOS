@@ -11,15 +11,7 @@ const beVietnamPro = Be_Vietnam_Pro({
   display: "swap",
 });
 
-// Default metadata — overridden per locale in [locale]/layout
-export const metadata: Metadata = {
-  title: {
-    default: "HealthOS | Bác sĩ cá nhân ảo của bạn",
-    template: "%s | HealthOS",
-  },
-  description:
-    "HealthOS — hệ thống bác sĩ cá nhân ảo: quản lý hồ sơ y tế, nhật ký dinh dưỡng, phân tích bữa ăn AI, kết nối wearable và cảnh báo realtime.",
-};
+// Default metadata — removed; locale-aware metadata defined in [locale]/layout.tsx
 
 export default async function RootLayout({
   children,

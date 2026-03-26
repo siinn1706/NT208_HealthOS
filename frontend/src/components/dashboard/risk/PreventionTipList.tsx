@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Salad,
   Dumbbell,
@@ -10,60 +11,62 @@ import {
 import { cn } from "@/lib/utils";
 import type { PreventionTip } from "@/types/api";
 
-const CATEGORY_CONFIG: Record<
-  PreventionTip["category"],
-  { icon: React.ElementType; label: string; color: string; bg: string }
-> = {
-  diet: {
-    icon: Salad,
-    label: "Chế độ ăn",
-    color: "#4ADE80",
-    bg: "bg-green-400/10",
-  },
-  exercise: {
-    icon: Dumbbell,
-    label: "Vận động",
-    color: "#41BCE6",
-    bg: "bg-[#41BCE6]/10",
-  },
-  medication: {
-    icon: Pill,
-    label: "Thuốc",
-    color: "#E7DEA7",
-    bg: "bg-[#E7DEA7]/10",
-  },
-  monitoring: {
-    icon: Activity,
-    label: "Theo dõi",
-    color: "#A78BFA",
-    bg: "bg-violet-400/10",
-  },
-  lifestyle: {
-    icon: Lightbulb,
-    label: "Lối sống",
-    color: "#F97316",
-    bg: "bg-orange-500/10",
-  },
-};
-
-const PRIORITY_CONFIG = {
-  high: { label: "Ưu tiên cao", dot: "bg-red-400" },
-  medium: { label: "Trung bình", dot: "bg-amber-400" },
-  low: { label: "Thấp", dot: "bg-muted-foreground" },
-};
-
 interface PreventionTipListProps {
   tips: PreventionTip[];
 }
 
 export function PreventionTipList({ tips }: PreventionTipListProps) {
+  const t = useTranslations("dashboard.risk");
+
+  const CATEGORY_CONFIG: Record<
+    PreventionTip["category"],
+    { icon: React.ElementType; labelKey: string; color: string; bg: string }
+  > = {
+    diet: {
+      icon: Salad,
+      labelKey: "category.diet",
+      color: "#4ADE80",
+      bg: "bg-green-400/10",
+    },
+    exercise: {
+      icon: Dumbbell,
+      labelKey: "category.exercise",
+      color: "#41BCE6",
+      bg: "bg-[#41BCE6]/10",
+    },
+    medication: {
+      icon: Pill,
+      labelKey: "category.medication",
+      color: "#E7DEA7",
+      bg: "bg-[#E7DEA7]/10",
+    },
+    monitoring: {
+      icon: Activity,
+      labelKey: "category.monitoring",
+      color: "#A78BFA",
+      bg: "bg-violet-400/10",
+    },
+    lifestyle: {
+      icon: Lightbulb,
+      labelKey: "category.lifestyle",
+      color: "#F97316",
+      bg: "bg-orange-500/10",
+    },
+  };
+
+  const PRIORITY_CONFIG = {
+    high: { labelKey: "priority.high", dot: "bg-red-400" },
+    medium: { labelKey: "priority.medium", dot: "bg-amber-400" },
+    low: { labelKey: "priority.low", dot: "bg-muted-foreground" },
+  };
+
   if (tips.length === 0) return null;
 
   return (
     <div>
       <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-2">
         <Lightbulb className="w-3.5 h-3.5 text-muted-foreground" />
-        Gợi ý phòng ngừa ({tips.length})
+        {t("tips", { n: tips.length })}
       </p>
       <ul className="space-y-2.5">
         {tips.map((tip) => {
@@ -95,7 +98,7 @@ export function PreventionTipList({ tips }: PreventionTipListProps) {
                   {/* Priority badge */}
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground flex-shrink-0">
                     <span className={cn("w-1.5 h-1.5 rounded-full", pri.dot)} />
-                    {pri.label}
+                    {t(pri.labelKey)}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -110,7 +113,7 @@ export function PreventionTipList({ tips }: PreventionTipListProps) {
                   style={{ color: cfg.color }}
                 >
                   <Icon className="w-2.5 h-2.5" aria-hidden />
-                  {cfg.label}
+                  {t(cfg.labelKey)}
                 </span>
               </div>
             </li>

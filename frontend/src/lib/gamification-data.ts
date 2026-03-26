@@ -8,7 +8,6 @@ import { headers } from "next/headers";
 import {
   MOCK_ALL_MILESTONES,
   MOCK_LEADERBOARD,
-  MOCK_BMI_DATA,
   MOCK_STREAK_HISTORY,
   MOCK_ACTIVE_GOALS,
   type ActivityMilestone,
@@ -62,6 +61,30 @@ function computeLongestStreak(history: UserStreakEntry[]): number {
   return max;
 }
 
+/** Derive BMI status label from BMI value. */
+function getBmiStatus(bmi: number): "underweight" | "normal" | "overweight" | "obese" {
+  if (bmi < 18.5) return "underweight";
+  if (bmi < 25) return "normal";
+  if (bmi < 30) return "overweight";
+  return "obese";
+}
+
+/** Fetch display name from session — used for fallbacks. */
+async function getSessionDisplayName(): Promise<string> {
+  const sessionJson = await bffFetch("/api/v1/auth/session");
+  if (sessionJson && typeof sessionJson === "object" && "data" in sessionJson) {
+    const data = sessionJson as { data?: { display_name?: unknown; username?: unknown; email?: unknown } };
+    const session = data?.data;
+    if (session && typeof session === "object") {
+      const name = typeof session.display_name === "string" ? session.display_name.trim() : "";
+      const user = typeof session.username === "string" ? session.username.trim() : "";
+      const email = typeof session.email === "string" ? session.email.split("@")[0].trim() : "";
+      return name || user || email || "User";
+    }
+  }
+  return "User";
+}
+
 // ─── Public API ───────────────────────────────────────────────
 
 export async function getActiveGoals(): Promise<UserGoal[]> {
@@ -89,43 +112,72 @@ export async function getUserStreakHistory(): Promise<UserStreakEntry[]> {
 }
 
 export async function getUserBmiData(): Promise<UserBmiData> {
-  // Fetch health goal (user-set target) and gamification summary (weight/height) in parallel
-  const [goalJson, summaryJson] = await Promise.all([
+  // Always fetch from /api/v1/users/me (uncached) for height/weight — guarantees
+  // profile and progress pages always show the same values.
+  // Gamification-summary provides goal/streak/achievement data but its BMI fields
+  // are Redis-cached and may lag behind a profile update.
+  const [profileJson, goalJson] = await Promise.all([
+    bffFetch("/api/v1/users/me"),
     bffFetch("/api/v1/health-goals"),
-    bffFetch("/api/v1/analytics/gamification-summary"),
   ]);
 
-  // Fall back to gamification-summary BMI if no goal saved
-  if (summaryJson) {
-    const summary = summaryJson as { bmi?: UserBmiData };
-    const fallback = summary.bmi ?? MOCK_BMI_DATA;
-    if (!goalJson) return fallback;
+  const profile = (profileJson as { data?: { height_cm?: number; weight_kg?: number } } | null)?.data ?? null;
 
-    const goal = (goalJson as { data?: HealthGoalBEData }).data;
-    if (!goal) return fallback;
+  // Derive BMI from profile height/weight (always fresh, never cached)
+  let bmi: number | null = null;
+  let status: UserBmiData["status"] = "normal";
+  if (profile?.height_cm && profile?.weight_kg && profile.height_cm > 0) {
+    const hm = profile.height_cm / 100;
+    bmi = parseFloat((profile.weight_kg / (hm * hm)).toFixed(1));
+    status = getBmiStatus(bmi);
+  }
 
-    // Merge: user-set target + current weight/height from gamification-summary
-    const goalHeightCm = goal.current_height_cm ?? fallback.heightCm;
-    const heightM = goalHeightCm / 100;
+  // Merge goal targets on top of profile current values
+  const goal = goalJson && typeof goalJson === "object" && "data" in goalJson
+    ? (goalJson as { data?: HealthGoalBEData }).data
+    : null;
 
-    // Target BMI is always derived: bmi = weight / height²
-    const derivedTargetBmi =
-      goal.target_weight_kg && goalHeightCm > 0
-        ? parseFloat((goal.target_weight_kg / heightM ** 2).toFixed(1))
-        : fallback.targetBmi;
+  let targetBmi: number | null = null;
+  let targetWeightKg: number | null = null;
+  let deadline: string | null = null;
+  let goalId: string | null = null;
 
+  if (goal?.target_weight_kg && profile?.height_cm && profile.height_cm > 0) {
+    const hm = profile.height_cm / 100;
+    targetBmi = parseFloat((goal.target_weight_kg / (hm * hm)).toFixed(1));
+    targetWeightKg = goal.target_weight_kg;
+    deadline = goal.deadline ?? null;
+    goalId = goal.id;
+  }
+
+  if (bmi !== null) {
     return {
-      ...fallback,
-      targetBmi: derivedTargetBmi,
-      targetWeightKg: goal.target_weight_kg ?? fallback.targetWeightKg,
-      heightCm: goalHeightCm,
-      bmi: fallback.bmi,
-      deadline: goal.deadline ?? null,
-      goalId: goal.id,
+      heightCm: profile!.height_cm as number,
+      weightKg: profile!.weight_kg as number,
+      bmi,
+      status,
+      bmiScore: profile!.weight_kg as number,
+      targetBmi,
+      targetWeightKg,
+      deadline,
+      goalId,
     };
   }
 
-  return MOCK_BMI_DATA;
+  // Return null-structures — same null/empty pattern as getProfileData() so
+  // /dashboard/profile and /dashboard/progress always show identical "no data"
+  // states instead of hardcoded MOCK_BMI_DATA values.
+  return {
+    heightCm: null,
+    weightKg: null,
+    bmi: null,
+    status: "normal" as const,
+    bmiScore: null,
+    targetBmi: null,
+    targetWeightKg: null,
+    deadline: null,
+    goalId: null,
+  };
 }
 
 // Backend health-goal response shape
@@ -133,7 +185,6 @@ interface HealthGoalBEData {
   id: string;
   user_id: string;
   target_weight_kg: number | null;
-  current_height_cm: number | null;
   deadline: string | null;
 }
 
@@ -158,10 +209,11 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
     const totalScore =
       unlocked.reduce((sum, m) => sum + m.pointValue, 0) +
       currentStreak * 10 +
-      bmi.bmiScore;
+      (bmi.bmiScore ?? 0);
+    const displayName = await getSessionDisplayName();
     return {
       currentUser: {
-        displayName: "Nguyễn Văn A",
+        displayName,
         totalScore,
         globalRank: 4,
         currentStreak,
@@ -192,7 +244,7 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
 
   return {
     currentUser: data.currentUser ?? {
-      displayName: "Nguyễn Văn A",
+      displayName: await getSessionDisplayName(),
       totalScore: 1000,
       globalRank: 1,
       currentStreak: 0,
@@ -200,7 +252,17 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
       unlockedAchievements: 0,
       totalAchievements: 20,
     },
-    bmi: data.bmi ?? MOCK_BMI_DATA,
+    bmi: data.bmi ?? {
+      heightCm: null,
+      weightKg: null,
+      bmi: null,
+      status: "normal" as const,
+      bmiScore: null,
+      targetBmi: null,
+      targetWeightKg: null,
+      deadline: null,
+      goalId: null,
+    },
     activeGoals: data.activeGoals ?? MOCK_ACTIVE_GOALS,
     streakHistory: data.streakHistory ?? MOCK_STREAK_HISTORY,
     recentUnlocked: data.recentUnlocked ?? [],

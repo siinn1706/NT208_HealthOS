@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import type { EChartsOption } from "echarts";
 import type { WeeklyCaloriePoint } from "@/types/api";
@@ -48,9 +49,12 @@ export function WeeklyCalorieChartWidget({
   initialData = [],
   initialPeriod = "7d",
 }: WeeklyCalorieChartWidgetProps) {
+  const t = useTranslations("dashboard.calorieChart");
   const [period, setPeriod] = useState<ReportPeriod>(initialPeriod);
   const [chartData, setChartData] = useState<WeeklyCaloriePoint[]>(staticData ?? initialData);
   const [isPending, startTransition] = useTransition();
+
+  const periodDays = period === "7d" ? 7 : period === "30d" ? 30 : 90;
 
   const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
     if (newPeriod === "custom") return;
@@ -77,20 +81,20 @@ export function WeeklyCalorieChartWidget({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (params: any) => {
         const p = params as Array<{ value: number; seriesName: string; name: string }>;
-        const calories = p.find((x) => x.seriesName === "Calories")?.value ?? 0;
+        const calories = p.find((x) => x.seriesName === t("legend"))?.value ?? 0;
         return `
           <div style="padding:4px 6px">
             <div style="font-weight:600;margin-bottom:4px">${p[0]?.name ?? ""}</div>
-            <div>Calories: <b>${calories} kcal</b></div>
+            <div>${t("tooltipCalories")} <b>${calories} kcal</b></div>
             <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px">
-              Mục tiêu: <b>${DAILY_CALORIE_TARGET} kcal</b>
+              ${t("tooltipTarget")} <b>${DAILY_CALORIE_TARGET} kcal</b>
             </div>
           </div>
         `;
       },
     },
     legend: {
-      data: ["Calories"],
+      data: [t("legend")],
       bottom: 0,
       textStyle: { color: "#94a3b8", fontSize: 11 },
       itemWidth: 10,
@@ -120,7 +124,7 @@ export function WeeklyCalorieChartWidget({
     },
     series: [
       {
-        name: "Calories",
+        name: t("legend"),
         type: "bar",
         barMaxWidth: 32,
         itemStyle: {
@@ -131,7 +135,7 @@ export function WeeklyCalorieChartWidget({
         emphasis: { focus: "series" },
       },
       {
-        name: "Mục tiêu",
+        name: t("tooltipTarget").replace(":", "").trim(),
         type: "line",
         data: displayData.map(() => DAILY_CALORIE_TARGET),
         symbol: "none",
@@ -147,8 +151,8 @@ export function WeeklyCalorieChartWidget({
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">7 ngày qua</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Lượng calories theo ngày</p>
+          <h2 className="text-sm font-semibold text-foreground">{t("title")}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("subtitle", { n: periodDays })}</p>
         </div>
         <div className="flex items-center gap-3">
           {staticData === undefined && (
@@ -156,17 +160,17 @@ export function WeeklyCalorieChartWidget({
           )}
           <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
             <span className="inline-block w-5 border-t-2 border-dashed border-amber-500" />
-            Mục tiêu {DAILY_CALORIE_TARGET} kcal
+            {t("target", { n: DAILY_CALORIE_TARGET })}
           </div>
         </div>
       </div>
       {isPending ? (
         <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
-          Đang tải...
+          {t("loading")}
         </div>
       ) : !hasData ? (
         <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
-          Chưa có thông tin
+          {t("noData")}
         </div>
       ) : (
         <EChartWrapper option={option} style={{ height: "220px" }} />

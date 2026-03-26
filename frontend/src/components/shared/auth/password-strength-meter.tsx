@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { useLocale } from "next-intl";
 
 interface PasswordStrengthMeterProps {
   password: string;
-  locale?: string; // Currently only Vietnamese supported
 }
 
 interface StrengthResult {
@@ -15,8 +15,9 @@ interface StrengthResult {
 
 export function PasswordStrengthMeter({
   password,
-  locale = "vi",
 }: PasswordStrengthMeterProps) {
+  const locale = useLocale();
+
   const strength = useMemo((): StrengthResult => {
     if (!password) {
       return { score: 0, label: "", color: "" };
@@ -41,21 +42,33 @@ export function PasswordStrengthMeter({
 
     score = Math.max(0, Math.min(5, score));
 
-    const levels: Record<number, { label: string; color: string }> = {
-      0: { label: "Yếu", color: "bg-red-500" },
-      1: { label: "Yếu", color: "bg-red-500" },
-      2: { label: "Trung bình", color: "bg-yellow-500" },
-      3: { label: "Khá", color: "bg-yellow-500" },
-      4: { label: "Mạnh", color: "bg-green-500" },
-      5: { label: "Rất mạnh", color: "bg-green-600" },
+    const levels: Record<string, Record<number, { label: string; color: string }>> = {
+      vi: {
+        0: { label: "Yếu", color: "bg-red-500" },
+        1: { label: "Yếu", color: "bg-red-500" },
+        2: { label: "Trung bình", color: "bg-yellow-500" },
+        3: { label: "Khá", color: "bg-yellow-500" },
+        4: { label: "Mạnh", color: "bg-green-500" },
+        5: { label: "Rất mạnh", color: "bg-green-600" },
+      },
+      en: {
+        0: { label: "Weak", color: "bg-red-500" },
+        1: { label: "Weak", color: "bg-red-500" },
+        2: { label: "Medium", color: "bg-yellow-500" },
+        3: { label: "Fair", color: "bg-yellow-500" },
+        4: { label: "Strong", color: "bg-green-500" },
+        5: { label: "Very Strong", color: "bg-green-600" },
+      },
     };
+
+    const labels = levels[locale] || levels.en;
 
     return {
       score,
-      label: levels[score]?.label || "Yếu",
-      color: levels[score]?.color || "bg-red-500",
+      label: labels[score]?.label || labels[0].label,
+      color: labels[score]?.color || labels[0].color,
     };
-  }, [password]);
+  }, [password, locale]);
 
   if (!password) {
     return null;

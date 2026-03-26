@@ -20,6 +20,7 @@ import { PasswordStrengthMeter } from "./password-strength-meter";
 
 export function RegisterForm() {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
   const { handleApiError, success, handleError } = useNotification();
   const usernameRef = useRef<HTMLInputElement>(null);
@@ -59,7 +60,7 @@ export function RegisterForm() {
       errors.username = ValidationMessages.minLength("Username", 3);
       if (!errors.username) usernameRef.current?.focus();
     } else if (!usernameAvailable) {
-      errors.username = "Username đã được sử dụng. Vui lòng chọn username khác.";
+      errors.username = tErrors("emailTaken");
       if (!errors.username) usernameRef.current?.focus();
     }
 
@@ -71,7 +72,7 @@ export function RegisterForm() {
       errors.email = ValidationMessages.email;
       if (!errors.username && !errors.email) emailRef.current?.focus();
     } else if (emailAvailable === false) {
-      errors.email = "Email đã được sử dụng. Vui lòng dùng email khác.";
+      errors.email = tErrors("emailTaken");
       if (!errors.username && !errors.email) emailRef.current?.focus();
     }
 
@@ -180,7 +181,7 @@ export function RegisterForm() {
       if (!available) {
         setFieldErrors((prev) => ({
           ...prev,
-          username: "Username đã được sử dụng. Vui lòng chọn username khác.",
+          username: tErrors("emailTaken"),
         }));
       } else if (fieldErrors.username) {
         setFieldErrors((prev) => ({ ...prev, username: "" }));
@@ -222,7 +223,7 @@ export function RegisterForm() {
       if (!available) {
         setFieldErrors((prev) => ({
           ...prev,
-          email: "Email đã được sử dụng. Vui lòng dùng email khác.",
+          email: tErrors("emailTaken"),
         }));
       } else if (fieldErrors.email) {
         setFieldErrors((prev) => ({ ...prev, email: "" }));
@@ -292,7 +293,7 @@ export function RegisterForm() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const errors = handleApiError(data, "Đăng ký thất bại");
+        const errors = handleApiError(data, tErrors("loginFailed"));
         // Map field errors
         if (errors.email) {
           setFieldErrors((prev) => ({ ...prev, email: errors.email }));
@@ -310,10 +311,10 @@ export function RegisterForm() {
       }
 
       // Success - show toast and redirect
-      success("Mã OTP đã được gửi đến email của bạn!");
+      success(t("registrationSuccess"));
       router.push(`/verify?email=${encodeURIComponent(email)}`);
     } catch (err) {
-      const errors = handleError(err, "Có lỗi xảy ra. Vui lòng thử lại.");
+      const errors = handleError(err, tErrors("genericTryAgain"));
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
       }

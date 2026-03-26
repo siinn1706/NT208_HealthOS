@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,17 +36,19 @@ interface OnboardingStep3Props {
 }
 
 export function OnboardingStep3({ data, updateData, fieldErrors = {}, clearFieldError }: OnboardingStep3Props) {
+  const t = useTranslations("onboarding");
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Thông tin liên hệ</h2>
-        <p className="text-muted-foreground">Chúng tôi cần thông tin này để liên lạc với bạn</p>
+        <h2 className="text-2xl font-bold text-foreground">{t("step3.title")}</h2>
+        <p className="text-muted-foreground">{t("step3.subtitle")}</p>
       </div>
 
       {/* Phone */}
       <div className="space-y-2">
         <Label htmlFor="phone">
-          Số điện thoại <span className="text-destructive">*</span>
+          {t("step3.phone")} <span className="text-destructive">*</span>
         </Label>
         <Input
           id="phone"
@@ -68,7 +71,7 @@ export function OnboardingStep3({ data, updateData, fieldErrors = {}, clearField
 
       {/* Address */}
       <div className="space-y-2">
-        <Label htmlFor="address">Địa chỉ</Label>
+        <Label htmlFor="address">{t("step3.address")}</Label>
         <Textarea
           id="address"
           placeholder="123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh"
