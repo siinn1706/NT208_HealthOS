@@ -65,7 +65,7 @@ export default function HomePage() {
                 </Link>
                 <Link href="/services">
                   <Button size="lg" variant="outline" className="rounded-full border-night-500/30 bg-white/5 text-white backdrop-blur-md transition-all hover:bg-white/10 hover:border-warm-peach/50 hover:text-warm-peach">
-                    Khám phá tính năng
+                    {t("exploreMore")}
                   </Button>
                 </Link>
               </div>

@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { useRouter } from "@/navigation";
+import { useTranslations } from "next-intl";
 import {
   Camera,
   Upload,
@@ -55,6 +56,7 @@ const STEP_MESSAGES = [
 
 export function CameraCapture() {
   const router = useRouter();
+  const t = useTranslations("camera");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,7 +65,7 @@ export function CameraCapture() {
   const [captureMode, setCaptureMode] = useState<"upload" | "camera" | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [streamActive, setStreamActive] = useState(false);
-  const [processingMsg, setProcessingMsg] = useState(STEP_MESSAGES[0]);
+  const [processingMsg, setProcessingMsg] = useState(t("analyzing"));
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
   // ── Upload flow ──────────────────────────────────────────────────
@@ -259,27 +261,27 @@ export function CameraCapture() {
             <Camera className="w-8 h-8 text-primary" aria-hidden />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-foreground">Chụp hoặc tải ảnh bữa ăn</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("title")}</h2>
             <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-              AI sẽ nhận diện thành phần và ước lượng dinh dưỡng tự động
+              {t("aiSubtitle")}
             </p>
           </div>
           <div className="flex items-center gap-3 w-full max-w-xs">
             <button
               onClick={startCamera}
               className="flex-1 flex flex-col items-center gap-2 rounded-xl border border-border bg-background hover:bg-muted p-4 transition-colors cursor-pointer"
-              aria-label="Mở camera"
+              aria-label={t("openCamera")}
             >
               <Camera className="w-6 h-6 text-primary" />
-              <span className="text-xs font-medium text-foreground">Chụp ảnh</span>
+              <span className="text-xs font-medium text-foreground">{t("capture")}</span>
             </button>
             <button
               onClick={() => { setCaptureMode("upload"); fileInputRef.current?.click(); }}
               className="flex-1 flex flex-col items-center gap-2 rounded-xl border border-border bg-background hover:bg-muted p-4 transition-colors cursor-pointer"
-              aria-label="Tải ảnh lên"
+              aria-label={t("upload")}
             >
               <Upload className="w-6 h-6 text-primary" />
-              <span className="text-xs font-medium text-foreground">Tải ảnh</span>
+              <span className="text-xs font-medium text-foreground">{t("upload")}</span>
             </button>
           </div>
         </div>
@@ -300,12 +302,12 @@ export function CameraCapture() {
             <button
               onClick={captureFromCamera}
               className="w-14 h-14 rounded-full bg-white border-4 border-white/50 shadow-lg hover:scale-105 transition-transform cursor-pointer active:scale-95"
-              aria-label="Chụp ảnh"
+              aria-label={t("capturePhoto")}
             />
             <button
               onClick={reset}
               className="absolute right-4 top-0 translate-y-0 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center cursor-pointer"
-              aria-label="Hủy camera"
+              aria-label={t("cancelCamera")}
             >
               <X className="w-4 h-4 text-white" />
             </button>
@@ -320,13 +322,13 @@ export function CameraCapture() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageDataUrl}
-              alt="Ảnh bữa ăn đã chụp"
+              alt={t("takenAlt")}
               className="w-full h-full object-cover"
             />
             <button
               onClick={reset}
               className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
-              aria-label="Xóa ảnh"
+              aria-label={t("deletePhoto")}
             >
               <X className="w-4 h-4 text-white" />
             </button>
@@ -336,15 +338,15 @@ export function CameraCapture() {
               onClick={reset}
               className="flex-1 h-10 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
-              Chụp lại
+              {t("retake")}
             </button>
             <button
               onClick={startAnalysis}
               className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              aria-label="Phân tích bữa ăn bằng AI"
+              aria-label={t("analyzeAria")}
             >
               <Sparkles className="w-4 h-4" />
-              Phân tích AI
+              {t("analyze")}
             </button>
           </div>
         </div>
@@ -364,12 +366,12 @@ export function CameraCapture() {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageDataUrl}
-              alt="Đang phân tích"
+              alt={t("analyzingAlt")}
               className="w-24 h-24 rounded-xl object-cover border border-border opacity-60"
             />
           )}
           <div>
-            <p className="text-sm font-semibold text-foreground">Đang phân tích ảnh...</p>
+            <p className="text-sm font-semibold text-foreground">{t("analyzing")}</p>
             <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1.5">
               <Loader2 className="w-3 h-3 animate-spin" />
               {processingMsg}
@@ -384,7 +386,7 @@ export function CameraCapture() {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-green-500" />
             <p className="text-sm font-semibold text-foreground">
-              Phân tích xong! Kiểm tra và xác nhận kết quả.
+              {t("analyzeComplete")}
             </p>
           </div>
 
@@ -394,12 +396,12 @@ export function CameraCapture() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageDataUrl}
-                alt="Ảnh bữa ăn"
+                alt={t("mealPhotoAlt")}
                 className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
               />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">{analysisResult.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">AI nhận diện tự động</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("aiIdentified")}</p>
               </div>
               <div className="ml-auto text-right flex-shrink-0">
                 <p className="text-base font-bold text-foreground">{totalCalories}</p>
@@ -412,11 +414,11 @@ export function CameraCapture() {
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border bg-muted/30">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Thành phần nhận diện ({analysisResult.ingredients.length})
+                {t("ingredientsFound", { n: analysisResult.ingredients.length })}
               </p>
             </div>
             {analysisResult.ingredients.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-muted-foreground">Chưa có thông tin</p>
+              <p className="px-4 py-4 text-sm text-muted-foreground">{t("noInfo")}</p>
             ) : (
               <ul className="divide-y divide-border">
                 {analysisResult.ingredients.map((ing, i) => (
@@ -440,7 +442,7 @@ export function CameraCapture() {
 
           {/* Accuracy notice */}
           <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-xl px-4 py-3">
-            AI có thể không chính xác 100%. Bạn có thể chỉnh sửa thành phần trong bước tiếp theo.
+            {t("aiDisclaimer")}
           </p>
 
           {/* Actions */}
@@ -450,14 +452,14 @@ export function CameraCapture() {
               className="flex items-center gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
-              Chụp lại
+              {t("retake")}
             </button>
             <button
               onClick={proceedToForm}
               className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              aria-label="Tiếp tục chỉnh sửa trong form thêm bữa ăn"
+              aria-label={t("confirmEdit")}
             >
-              Xác nhận & chỉnh sửa
+              {t("confirmEdit")}
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -471,9 +473,9 @@ export function CameraCapture() {
             <AlertCircle className="w-7 h-7 text-destructive" aria-hidden />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Phân tích thất bại</p>
+            <p className="text-sm font-semibold text-foreground">{t("retry")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Không thể phân tích ảnh. Vui lòng thử lại hoặc nhập thủ công.
+              {t("analyzeError")}
             </p>
           </div>
           <div className="flex items-center gap-3 w-full max-w-xs">
@@ -481,13 +483,13 @@ export function CameraCapture() {
               onClick={reset}
               className="flex-1 h-9 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
             >
-              Thử lại
+              {t("retry")}
             </button>
             <button
               onClick={() => router.push("/dashboard/meals/add")}
               className="flex-1 h-9 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
             >
-              Nhập thủ công
+              {t("manualEntry")}
             </button>
           </div>
         </div>

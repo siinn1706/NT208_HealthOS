@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { bffFetchClient } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -18,16 +17,17 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import type { UserBmiData } from "@/data/gamification";
+import { saveHealthGoalAction, type SavedGoal } from "./save-health-goal-action";
 
 interface HealthGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialGoal: UserBmiData | null;
-  onSaved: () => void;
+  /** Called with the saved goal on success so parent can update state directly */
+  onSaved?: (goal: SavedGoal) => void;
 }
 
 interface HealthGoalFormData {
-  targetHeightCm: string;
   targetWeightKg: string;
   deadline: string;
 }
@@ -41,11 +41,6 @@ function recommendWeight(heightCm: number): number | null {
   return parseFloat((IDEAL_BMI * heightM * heightM).toFixed(1));
 }
 
-function recommendHeight(weightKg: number): number | null {
-  if (weightKg <= 0) return null;
-  return parseFloat((Math.sqrt(weightKg / IDEAL_BMI) * 100).toFixed(1));
-}
-
 export function HealthGoalDialog({
   open,
   onOpenChange,
@@ -53,11 +48,11 @@ export function HealthGoalDialog({
   onSaved,
 }: HealthGoalDialogProps) {
   const t = useTranslations("progress");
+  const tg = useTranslations("goalDialog");
   const [saving, setSaving] = useState(false);
 
   const form = useForm<HealthGoalFormData>({
     defaultValues: {
-      targetHeightCm: initialGoal?.heightCm?.toString() ?? "170",
       targetWeightKg: initialGoal?.targetWeightKg?.toString() ?? "",
       deadline: initialGoal?.deadline ?? "",
     },
@@ -67,59 +62,53 @@ export function HealthGoalDialog({
   useEffect(() => {
     if (open) {
       form.reset({
-        targetHeightCm: initialGoal?.heightCm?.toString() ?? "170",
         targetWeightKg: initialGoal?.targetWeightKg?.toString() ?? "",
         deadline: initialGoal?.deadline ?? "",
       });
     }
   }, [open, initialGoal]);
 
-  const targetHeight = Number(form.watch("targetHeightCm"));
+  const profileHeight = initialGoal?.heightCm ?? 0;
   const targetWeight = Number(form.watch("targetWeightKg"));
 
-  // BMI = weight / height²
+  // BMI = weight / height² — use profile height (single source of truth)
   const computedBmi =
-    targetHeight > 0 && targetWeight > 0
-      ? parseFloat((targetWeight / (targetHeight / 100) ** 2).toFixed(1))
+    profileHeight > 0 && targetWeight > 0
+      ? parseFloat((targetWeight / (profileHeight / 100) ** 2).toFixed(1))
       : null;
 
-  // Recommendations based on BMI=22 (midpoint of "normal" range)
-  // Show ONLY ONE recommendation: the field the user has NOT filled yet.
-  const heightFilled = targetHeight > 0;
+  // Recommend target weight based on profile height (BMI=22)
   const weightFilled = targetWeight > 0;
-  const recWeight = !weightFilled ? recommendWeight(targetHeight) : null;
-  const recHeight = !heightFilled ? recommendHeight(targetWeight) : null;
+  const recWeight = !weightFilled && profileHeight > 0 ? recommendWeight(profileHeight) : null;
+
+  function getBmiCategoryLabel(bmi: number | null): string {
+    if (bmi == null) return "—";
+    if (bmi < 18.5) return t("bmiCategory.underweight");
+    if (bmi < 25) return t("bmiCategory.normal");
+    if (bmi < 30) return t("bmiCategory.overweight");
+    return t("bmiCategory.obese");
+  }
 
   async function handleSave() {
     setSaving(true);
     try {
       const formData = form.getValues();
-      const payload = {
+      const result = await saveHealthGoalAction(initialGoal?.goalId ?? null, {
         target_weight_kg: formData.targetWeightKg ? Number(formData.targetWeightKg) : null,
-        current_height_cm: formData.targetHeightCm ? Number(formData.targetHeightCm) : null,
         deadline: formData.deadline || null,
-      };
-
-      const endpoint = initialGoal?.goalId
-        ? `/api/v1/health-goals/${initialGoal.goalId}`
-        : "/api/v1/health-goals";
-      const method = initialGoal?.goalId ? "PATCH" : "POST";
-
-      const { error } = await bffFetchClient(endpoint, {
-        method,
-        body: JSON.stringify(payload),
       });
 
-      if (error) {
-        toast.error("Không thể lưu mục tiêu sức khỏe");
+      if (!result.ok) {
+        toast.error(result.message);
         return;
       }
 
-      toast.success(initialGoal?.goalId ? "Đã cập nhật mục tiêu" : "Đã lưu mục tiêu");
-      onSaved?.();
+      toast.success(initialGoal?.goalId ? tg("saveSuccess") : tg("saveNewSuccess"));
       onOpenChange(false);
+      // Pass saved goal back to parent — parent applies it to local state directly
+      onSaved?.(result.goal);
     } catch {
-      toast.error("Không thể lưu mục tiêu sức khỏe");
+      toast.error(tg("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -144,25 +133,6 @@ export function HealthGoalDialog({
           }}
           className="space-y-4"
         >
-          {/* Target Height */}
-          <div className="space-y-1.5">
-            <Label htmlFor="goal-height">{t("targetHeight")} (cm)</Label>
-            <Input
-              id="goal-height"
-              type="number"
-              min={100}
-              max={220}
-              step={0.1}
-              {...form.register("targetHeightCm")}
-              className="h-9"
-            />
-            {recWeight != null && (
-              <p className="text-xs text-muted-foreground">
-                {t("recWeight", { weight: recWeight })}
-              </p>
-            )}
-          </div>
-
           {/* Target Weight */}
           <div className="space-y-1.5">
             <Label htmlFor="goal-weight">{t("targetWeight")} (kg)</Label>
@@ -176,9 +146,9 @@ export function HealthGoalDialog({
               {...form.register("targetWeightKg")}
               className="h-9"
             />
-            {recHeight != null && (
+            {recWeight != null && (
               <p className="text-xs text-muted-foreground">
-                {t("recHeight", { height: recHeight })}
+                {t("recWeight", { weight: recWeight })}
               </p>
             )}
           </div>
@@ -197,17 +167,7 @@ export function HealthGoalDialog({
                 className="h-9 bg-muted cursor-not-allowed"
               />
               <span className="text-sm text-muted-foreground shrink-0">
-                {computedBmi != null ? (
-                  computedBmi < 18.5
-                    ? "Gầy"
-                    : computedBmi < 25
-                    ? "Bình thường"
-                    : computedBmi < 30
-                    ? "Thừa cân"
-                    : "Béo phì"
-                ) : (
-                  "—"
-                )}
+                {getBmiCategoryLabel(computedBmi)}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">

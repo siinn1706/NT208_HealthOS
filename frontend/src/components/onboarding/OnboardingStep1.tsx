@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -43,21 +44,23 @@ interface OnboardingStep1Props {
 }
 
 export function OnboardingStep1({ data, updateData, fieldErrors = {}, clearFieldError }: OnboardingStep1Props) {
+  const t = useTranslations("onboarding");
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Thông tin cơ bản</h2>
-        <p className="text-muted-foreground">Hãy cho chúng tôi biết một chút về bạn</p>
+        <h2 className="text-2xl font-bold text-foreground">{t("step1.title")}</h2>
+        <p className="text-muted-foreground">{t("step1.subtitle")}</p>
       </div>
 
       {/* Full Name */}
       <div className="space-y-2">
         <Label htmlFor="fullName">
-          Họ và tên <span className="text-destructive">*</span>
+          {t("step1.fullName")} <span className="text-destructive">*</span>
         </Label>
         <Input
           id="fullName"
-          placeholder="Nguyễn Văn A"
+          placeholder={t("step1.fullName")}
           value={data.fullName || ""}
           onChange={(e) => {
             updateData({ fullName: e.target.value });
@@ -76,7 +79,7 @@ export function OnboardingStep1({ data, updateData, fieldErrors = {}, clearField
       {/* Date of Birth */}
       <div className="space-y-2">
         <Label htmlFor="dateOfBirth">
-          Ngày sinh <span className="text-destructive">*</span>
+          {t("step1.dateOfBirth")} <span className="text-destructive">*</span>
         </Label>
         <Input
           id="dateOfBirth"
@@ -101,7 +104,7 @@ export function OnboardingStep1({ data, updateData, fieldErrors = {}, clearField
         {/* Gender */}
         <div className="space-y-2">
           <Label htmlFor="gender">
-            Giới tính <span className="text-destructive">*</span>
+            {t("step1.gender")} <span className="text-destructive">*</span>
           </Label>
           <Select
             value={data.gender || ""}
@@ -111,12 +114,12 @@ export function OnboardingStep1({ data, updateData, fieldErrors = {}, clearField
             }}
           >
             <SelectTrigger id="gender" aria-invalid={!!fieldErrors.gender}>
-              <SelectValue placeholder="Chọn giới tính" />
+              <SelectValue placeholder={t("step1.selectGender")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="male">Nam</SelectItem>
-              <SelectItem value="female">Nữ</SelectItem>
-              <SelectItem value="other">Khác</SelectItem>
+              <SelectItem value="male">{t("step1.male")}</SelectItem>
+              <SelectItem value="female">{t("step1.female")}</SelectItem>
+              <SelectItem value="other">{t("step1.other")}</SelectItem>
             </SelectContent>
           </Select>
           {fieldErrors.gender && (
@@ -128,13 +131,13 @@ export function OnboardingStep1({ data, updateData, fieldErrors = {}, clearField
 
         {/* Blood Type */}
         <div className="space-y-2">
-          <Label htmlFor="bloodType">Nhóm máu</Label>
+          <Label htmlFor="bloodType">{t("step1.bloodType")}</Label>
           <Select
             value={data.bloodType || ""}
             onValueChange={(value: string) => updateData({ bloodType: value })}
           >
             <SelectTrigger id="bloodType">
-              <SelectValue placeholder="Chọn nhóm máu" />
+              <SelectValue placeholder={t("step1.selectBloodType")} />
             </SelectTrigger>
             <SelectContent>
               {BLOOD_TYPES.map((type) => (

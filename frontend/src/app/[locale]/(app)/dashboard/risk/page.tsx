@@ -1,10 +1,13 @@
+import { getTranslations, getLocale } from "next-intl/server";
 import { Brain, RefreshCw, ShieldCheck } from "lucide-react";
 import { headers } from "next/headers";
 import { RiskGaugeRow } from "@/components/dashboard/risk/RiskGaugeRow";
 import type { RiskPredictionSummary } from "@/types/api";
 
 async function fetchRiskPredictions(): Promise<RiskPredictionSummary> {
+  const t = await getTranslations("dashboard.risk");
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const noInfo = t("noInfo");
   try {
     const reqHeaders = await headers();
     const res = await fetch(`${appUrl}/api/v1/health/risk-predictions?timeframe=current`, {
@@ -23,17 +26,22 @@ async function fetchRiskPredictions(): Promise<RiskPredictionSummary> {
     generatedAt: "",
     overallScore: 0,
     risks: [],
-    disclaimer: "Chưa có thông tin",
+    disclaimer: noInfo,
   };
 }
 
-function HealthScoreRing({ score }: { score: number }) {
+function HealthScoreRing({ score, scoreGood, scoreAverage, scoreNeedsWork }: {
+  score: number;
+  scoreGood: string;
+  scoreAverage: string;
+  scoreNeedsWork: string;
+}) {
   // SVG ring — 120px, stroke-dashoffset based on score 0-100
   const r = 42;
   const circumference = 2 * Math.PI * r;
   const filled = (score / 100) * circumference;
   const color = score >= 70 ? "#4ADE80" : score >= 50 ? "#FBBF24" : "#F97316";
-  const label = score >= 70 ? "Tốt" : score >= 50 ? "Trung bình" : "Cần cải thiện";
+  const label = score >= 70 ? scoreGood : score >= 50 ? scoreAverage : scoreNeedsWork;
 
   return (
     <div className="flex flex-col items-center">
@@ -80,17 +88,19 @@ function HealthScoreRing({ score }: { score: number }) {
 }
 
 export default async function RiskPage() {
+  const t = await getTranslations("dashboard.risk");
+  const locale = await getLocale();
   const data = await fetchRiskPredictions();
 
   const generated = data.generatedAt
-    ? new Date(data.generatedAt).toLocaleDateString("vi-VN", {
+    ? new Date(data.generatedAt).toLocaleDateString(locale, {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "Chưa có thông tin";
+    : t("noInfo");
 
   const highCount = data.risks.filter((r) => r.level === "high" || r.level === "critical").length;
   const moderateCount = data.risks.filter((r) => r.level === "moderate").length;
@@ -102,21 +112,21 @@ export default async function RiskPage() {
         <div>
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" aria-hidden />
-            <h1 className="text-xl font-bold text-foreground">Dự đoán rủi ro sức khỏe</h1>
+            <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Phân tích AI dựa trên dữ liệu sinh trắc học và hành vi của bạn
+            {t("subtitle")}
           </p>
         </div>
 
         {/* Refresh – BFF TODO: POST /api/v1/health/risk-predictions/refresh */}
         <button
           className="flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer self-start"
-          aria-label="Cập nhật dự đoán mới"
+          aria-label={t("updateAria")}
           disabled
         >
           <RefreshCw className="w-4 h-4" />
-          Cập nhật
+          {t("update")}
         </button>
       </div>
 
@@ -124,27 +134,32 @@ export default async function RiskPage() {
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex flex-col sm:flex-row items-center gap-6">
           {/* Ring */}
-          <HealthScoreRing score={data.overallScore} />
+          <HealthScoreRing
+            score={data.overallScore}
+            scoreGood={t("scoreGood")}
+            scoreAverage={t("scoreAverage")}
+            scoreNeedsWork={t("scoreNeedsWork")}
+          />
 
           {/* Stats */}
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-4 text-center sm:text-left">
             <div>
               <p className="text-2xl font-bold text-foreground">{data.risks.length}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Điều kiện theo dõi</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("monitoredConditions")}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-orange-500">{highCount}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Mức độ cao</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("highLevel")}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-amber-400">{moderateCount}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Trung bình</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("moderateLevel")}</p>
             </div>
           </div>
 
           {/* Generated time */}
           <div className="text-center sm:text-right flex-shrink-0">
-            <p className="text-[11px] text-muted-foreground">Cập nhật lần cuối</p>
+            <p className="text-[11px] text-muted-foreground">{t("lastUpdated")}</p>
             <p className="text-xs font-medium text-foreground mt-0.5">{generated}</p>
           </div>
         </div>
@@ -152,9 +167,9 @@ export default async function RiskPage() {
 
       {/* ── Risk rows ── */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Các rủi ro được theo dõi</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t("monitoredRisks")}</h2>
         {data.risks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Chưa có thông tin</p>
+          <p className="text-sm text-muted-foreground">{t("noInfo")}</p>
         ) : (
           data.risks
             .sort((a, b) => b.probability - a.probability)
@@ -167,7 +182,7 @@ export default async function RiskPage() {
       {/* ── Medical disclaimer ── */}
       <div className="rounded-xl border border-border bg-muted/20 px-5 py-4 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" aria-hidden />
-        <p className="text-xs text-muted-foreground leading-relaxed">{data.disclaimer || "Chưa có thông tin"}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{data.disclaimer || t("noInfo")}</p>
       </div>
     </div>
   );

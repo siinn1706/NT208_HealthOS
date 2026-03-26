@@ -32,6 +32,7 @@ interface VerifyOTPFormProps {
 
 export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps) {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
 
   const [otp, setOtp] = useState("");
@@ -69,7 +70,7 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
         setTimeout(() => router.push("/dashboard"), 1200);
       }
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +94,7 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
       }
       setOtp("");
     } catch {
-      setError("Không thể gửi lại mã. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsResending(false);
     }

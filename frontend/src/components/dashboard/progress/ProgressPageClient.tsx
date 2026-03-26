@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
 import type { AggregationPoint } from "@/types/api";
+import type { SavedGoal } from "./save-health-goal-action";
 
 interface ProgressPageClientProps {
   bmiData: UserBmiData;
@@ -21,27 +22,54 @@ function getDaysRemaining(deadline: string | null): number | null {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClientProps) {
+/** Derive targetBMI from goal data + current height */
+function deriveTargetBmi(goal: SavedGoal, heightCm: number | null): number | null {
+  if (goal.target_weight_kg && heightCm && heightCm > 0) {
+    const hm = heightCm / 100;
+    return parseFloat((goal.target_weight_kg / (hm * hm)).toFixed(1));
+  }
+  return null;
+}
+
+export function ProgressPageClient({ bmiData: initialData, weightHistory }: ProgressPageClientProps) {
   const t = useTranslations("progress");
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Lift into client state so we can apply saved goals directly
+  const [bmiData, setBmiData] = useState<UserBmiData>(initialData);
 
-  const heightM = bmiData.heightCm / 100;
+  const heightM = (bmiData.heightCm ?? 0) / 100;
+  const hasHeight = bmiData.heightCm != null && bmiData.heightCm > 0;
   const bmiHistory = weightHistory.map((w: AggregationPoint) => ({
     date: w.date,
-    bmi: parseFloat((w.avg_value / (heightM * heightM)).toFixed(1)),
+    bmi: hasHeight
+      ? parseFloat((w.avg_value / (heightM * heightM)).toFixed(1))
+      : 0,
   }));
 
   const daysRemaining = getDaysRemaining(bmiData.deadline);
   const isOverdue = daysRemaining !== null && daysRemaining < 0;
+
+  function handleGoalSaved(goal: SavedGoal) {
+    setBmiData((prev) => {
+      // Height stays as-is — comes from user profile, not health goal
+      return {
+        ...prev,
+        goalId: goal.id,
+        targetWeightKg: goal.target_weight_kg,
+        targetBmi: deriveTargetBmi(goal, prev.heightCm),
+        deadline: goal.deadline,
+      };
+    });
+  }
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-5">
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Tiến độ BMI</h1>
+          <h1 className="text-xl font-bold text-foreground">{t("pageTitle")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Theo dõi chỉ số BMI và cân nặng của bạn
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button
@@ -62,11 +90,11 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 flex-wrap">
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {bmiData.bmi.toFixed(1)}
+                {bmiData.bmi != null ? bmiData.bmi.toFixed(1) : "--"}
               </span>
               <span className="text-2xl font-bold text-muted-foreground">/</span>
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {bmiData.targetBmi.toFixed(1)}
+                {bmiData.targetBmi != null ? bmiData.targetBmi.toFixed(1) : "--"}
               </span>
               {daysRemaining !== null && (
                 <Badge variant={isOverdue ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0.5 shrink-0">
@@ -86,11 +114,11 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
           <div>
             <div className="flex items-center gap-1 flex-wrap">
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {bmiData.weightKg.toFixed(1)}
+                {bmiData.weightKg != null ? bmiData.weightKg.toFixed(1) : "--"}
               </span>
               <span className="text-2xl font-bold text-muted-foreground">/</span>
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {bmiData.targetWeightKg.toFixed(1)}
+                {bmiData.targetWeightKg != null ? bmiData.targetWeightKg.toFixed(1) : "--"}
               </span>
               <span className="text-sm text-muted-foreground">kg</span>
             </div>
@@ -106,11 +134,7 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
           <div>
             <div className="flex items-center gap-1 flex-wrap">
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {bmiData.heightCm}
-              </span>
-              <span className="text-2xl font-bold text-muted-foreground">/</span>
-              <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {bmiData.heightCm}
+                {bmiData.heightCm != null ? bmiData.heightCm : "--"}
               </span>
               <span className="text-sm text-muted-foreground">cm</span>
             </div>
@@ -134,35 +158,39 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
       {/* BMI progress chart */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-4">
-          <h2 className="text-sm font-semibold text-foreground">Biểu đồ BMI</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("bmiChart")}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Lịch sử BMI theo thời gian
+            {t("chartSubtitle")}
           </p>
         </div>
         {bmiHistory.length > 0 ? (
           <BmiProgressChart bmiData={bmiData} historyData={bmiHistory} height={280} />
         ) : (
           <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
-            Chưa có dữ liệu BMI
+            {t("chartNoData")}
           </div>
         )}
       </div>
 
       {/* BMI status info */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-sm font-semibold text-foreground mb-3">Thông tin BMI</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-3">{t("bmiInfo")}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
           <div className="space-y-1">
-            <p className="text-muted-foreground">Phân loại</p>
-            <p className="font-medium text-foreground capitalize">{bmiData.status}</p>
+            <p className="text-muted-foreground">{t("classification")}</p>
+            <p className="font-medium text-foreground">{(t as (key: string) => string)(`bmiCategory.${bmiData.status}`)}</p>
           </div>
           <div className="space-y-1">
             <p className="text-muted-foreground">{t("targetWeight")}</p>
-            <p className="font-medium text-foreground">{bmiData.targetWeightKg.toFixed(1)} kg</p>
+            <p className="font-medium text-foreground">
+              {bmiData.targetWeightKg != null ? `${bmiData.targetWeightKg.toFixed(1)} kg` : "--"}
+            </p>
           </div>
           <div className="space-y-1">
             <p className="text-muted-foreground">{t("bmiScore")}</p>
-            <p className="font-medium text-foreground">{bmiData.bmiScore} / 100</p>
+            <p className="font-medium text-foreground">
+              {bmiData.bmiScore != null ? `${bmiData.bmiScore} / 100` : "--"}
+            </p>
           </div>
         </div>
       </div>
@@ -172,10 +200,7 @@ export function ProgressPageClient({ bmiData, weightHistory }: ProgressPageClien
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initialGoal={bmiData}
-        onSaved={() => {
-          // Force re-fetch by reloading the page
-          window.location.reload();
-        }}
+        onSaved={handleGoalSaved}
       />
     </div>
   );

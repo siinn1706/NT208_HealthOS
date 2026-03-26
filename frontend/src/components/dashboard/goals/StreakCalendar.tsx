@@ -1,7 +1,10 @@
 "use client";
 
+"use client";
+
 import { cn } from "@/lib/utils";
 import type { UserStreakEntry } from "@/data/gamification";
+import { useTranslations } from "next-intl";
 
 interface StreakCalendarProps {
   history: UserStreakEntry[];
@@ -10,6 +13,15 @@ interface StreakCalendarProps {
 }
 
 const DAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+// Generate locale-aware short day labels
+function getDayLabels(locale: string): string[] {
+  // Monday = 1, Sunday = 0 (ISO week)
+  const monday = new Date(2024, 0, 1); // Jan 1, 2024 is Monday
+  return Array.from({ length: 7 }, (_, i) =>
+    new Date(monday.getTime() + i * 86400000).toLocaleDateString(locale, { weekday: "short" })
+  );
+}
 
 function getCellColor(entry: UserStreakEntry | undefined): string {
   if (!entry) return "bg-muted/30";
@@ -26,6 +38,9 @@ export function StreakCalendar({
   currentStreak,
   longestStreak,
 }: StreakCalendarProps) {
+  const t = useTranslations("dashboard.progress");
+  const locale = useLocale();
+
   // Build 8×7 grid (56 cells, oldest first)
   const cells: (UserStreakEntry | undefined)[] = Array.from(
     { length: 56 },
@@ -41,15 +56,15 @@ export function StreakCalendar({
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-sm font-semibold text-foreground">Chuỗi ngày luyện tập</p>
+        <p className="text-sm font-semibold text-foreground">{t("streakCalendar.title")}</p>
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#41BCE6]" />
-            <span className="text-muted-foreground">Hoạt động</span>
+            <span className="text-muted-foreground">{t("streakCalendar.active")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-muted/50" />
-            <span className="text-muted-foreground">Nghỉ</span>
+            <span className="text-muted-foreground">{t("streakCalendar.rest")}</span>
           </div>
         </div>
       </div>
@@ -57,22 +72,22 @@ export function StreakCalendar({
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Streak hiện tại", value: `${currentStreak} ngày`, color: "#41BCE6" },
-          { label: "Streak dài nhất", value: `${longestStreak} ngày`, color: "#6DE7F7" },
+          { labelKey: "currentStreak" as const, value: `${currentStreak} ${t("streakCalendar.days")}`, color: "#41BCE6" },
+          { labelKey: "longestStreak" as const, value: `${longestStreak} ${t("streakCalendar.days")}`, color: "#6DE7F7" },
           {
-            label: "8 tuần qua",
-            value: `${history.filter((e) => e.completed).length} ngày`,
+            labelKey: "pastWeeks" as const,
+            value: `${history.filter((e) => e.completed).length} ${t("streakCalendar.days")}`,
             color: "#A78BFA",
           },
-        ].map(({ label, value, color }) => (
+        ].map(({ labelKey, value, color }) => (
           <div
-            key={label}
+            key={labelKey}
             className="rounded-lg bg-muted/40 px-3 py-2.5 text-center"
           >
             <p className="text-sm font-bold" style={{ color }}>
               {value}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{t(`streakCalendar.${labelKey}`)}</p>
           </div>
         ))}
       </div>
@@ -82,7 +97,7 @@ export function StreakCalendar({
         <div className="min-w-[320px]">
           {/* Day labels */}
           <div className="grid grid-cols-7 gap-1 mb-1">
-            {DAY_LABELS.map((d) => (
+            {getDayLabels(locale).map((d) => (
               <div
                 key={d}
                 className="text-center text-[10px] text-muted-foreground font-medium"
@@ -100,7 +115,7 @@ export function StreakCalendar({
                     key={di}
                     title={
                       entry
-                        ? `${entry.date}: ${entry.completed ? `${entry.activitiesCount} hoạt động` : "Nghỉ"}`
+                        ? `${entry.date}: ${entry.completed ? t("streakCalendar.activitiesCount", { n: entry.activitiesCount }) : t("streakCalendar.rest")}`
                         : ""
                     }
                     className={cn(

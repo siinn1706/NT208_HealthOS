@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Link } from "@/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { bffFetch } from "@/lib/api-client";
 import { findIngredient, calcNutrition, searchIngredients } from "@/data/ingredients";
@@ -33,13 +34,6 @@ import {
   quickMealSchema,
   type QuickMealFormValues,
 } from "@/lib/validators/meal-schema";
-
-const MEAL_TYPES = [
-  { value: "breakfast", icon: Sunrise, label: "Bữa sáng", color: "text-orange-400" },
-  { value: "lunch",     icon: Sun,     label: "Bữa trưa", color: "text-yellow-400" },
-  { value: "dinner",   icon: Moon,    label: "Bữa tối",  color: "text-indigo-400" },
-  { value: "snack",    icon: Cookie,  label: "Bữa phụ",  color: "text-emerald-400" },
-] as const;
 
 interface QuickMealSheetProps {
   open: boolean;
@@ -52,6 +46,16 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
   const [dropdownItems, setDropdownItems] = useState<
     ReturnType<typeof searchIngredients>
   >([]);
+  const t = useTranslations("quickMeal");
+  const tm = useTranslations("dashboard.meals");
+  const ta = useTranslations("addMeal");
+
+  const MEAL_TYPES = [
+    { value: "breakfast", icon: Sunrise, label: tm("mealTypes.breakfast"), color: "text-orange-400" },
+    { value: "lunch",     icon: Sun,     label: tm("mealTypes.lunch"), color: "text-yellow-400" },
+    { value: "dinner",   icon: Moon,    label: tm("mealTypes.dinner"),  color: "text-indigo-400" },
+    { value: "snack",    icon: Cookie,  label: tm("mealTypes.snack"),  color: "text-emerald-400" },
+  ] as const;
 
   const methods = useForm<QuickMealFormValues>({
     resolver: zodResolver(quickMealSchema),
@@ -119,13 +123,13 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
         logged_at: new Date().toISOString(),
       };
       await bffFetch("/api/v1/meals", { method: "POST", body: payload });
-      toast.success(`Đã ghi "${data.name}"!`, {
-        description: `${Math.round(totalCalories)} kcal • Xem nhật ký để chi tiết.`,
+      toast.success(tm("saveSuccess"), {
+        description: `${Math.round(totalCalories)} kcal`,
       });
       reset();
       onOpenChange(false);
     } catch {
-      toast.error("Lưu thất bại. Vui lòng thử lại.");
+      toast.error(tm("saveFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -139,16 +143,15 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
       >
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-base">
-            🍽️ Ghi bữa ăn nhanh
+            {t("title")}
           </SheetTitle>
           <SheetDescription className="text-xs">
-            Nhập thông tin cơ bản. Cần chi tiết hơn?{" "}
             <Link
               href="/dashboard/meals/add"
               className="text-primary underline-offset-2 hover:underline"
               onClick={() => onOpenChange(false)}
             >
-              Nhập đầy đủ →
+              {t("title")}
             </Link>
           </SheetDescription>
         </SheetHeader>
@@ -163,12 +166,12 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
               {/* Meal name */}
               <div className="space-y-1.5">
                 <Label htmlFor="quick-meal-name">
-                  Tên món <span className="text-destructive">*</span>
+                  {ta("dishName")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="quick-meal-name"
                   {...register("name")}
-                  placeholder="VD: Phở bò, Cơm chiên..."
+                  placeholder={t("searchPlaceholder")}
                   className={cn(errors.name && "border-destructive")}
                   autoFocus
                 />
@@ -179,7 +182,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
 
               {/* Meal type */}
               <div className="space-y-1.5">
-                <Label>Loại bữa</Label>
+                <Label>{ta("mealType")}</Label>
                 <Select
                   value={watchedMealType}
                   onValueChange={(v) =>
@@ -235,7 +238,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                           <div className="flex-1 relative">
                             <Input
                               {...register(`ingredients.${index}.ingredient_name`)}
-                              placeholder="Tên nguyên liệu"
+                              placeholder={t("ingredientPlaceholder")}
                               className={cn(
                                 "text-sm",
                                 ingErr?.ingredient_name && "border-destructive"
@@ -378,7 +381,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                   ) : (
                     <CheckCircle2 className="size-4" />
                   )}
-                  {isSubmitting ? "Đang lưu..." : "Lưu nhanh"}
+                  {isSubmitting ? t("saving") : t("save")}
                 </Button>
                 <Button
                   type="button"

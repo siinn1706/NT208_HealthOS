@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { Watch } from "lucide-react";
 import { headers } from "next/headers";
 import { DevicesPageClient } from "@/components/dashboard/settings/DevicesPageClient";
@@ -51,6 +52,7 @@ async function fetchDevices(): Promise<Device[]> {
 }
 
 export default async function DevicesPage() {
+  const t = await getTranslations("dashboard.devices");
   const initialDevices = await fetchDevices();
 
   return (
@@ -59,10 +61,10 @@ export default async function DevicesPage() {
       <div>
         <div className="flex items-center gap-2">
           <Watch className="h-5 w-5 text-primary" aria-hidden />
-          <h1 className="text-xl font-bold text-foreground">Thiết bị kết nối</h1>
+          <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
         </div>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Quản lý wearable và thiết bị theo dõi sức khỏe của bạn
+          Manage wearables and health tracking devices
         </p>
       </div>
 

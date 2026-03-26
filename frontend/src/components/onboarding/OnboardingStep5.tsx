@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2 } from "lucide-react";
@@ -35,6 +36,8 @@ interface OnboardingStep5Props {
 }
 
 export function OnboardingStep5({ data, updateData }: OnboardingStep5Props) {
+  const t = useTranslations("onboarding");
+
   const updateMedicalInfo = (field: string, value: string) => {
     const current = data.medicalInfo || {};
     updateData({
@@ -48,18 +51,18 @@ export function OnboardingStep5({ data, updateData }: OnboardingStep5Props) {
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Thông tin y tế</h2>
+        <h2 className="text-2xl font-bold text-foreground">{t("step5.title")}</h2>
         <p className="text-muted-foreground">
-          Thông tin này giúp chúng tôi chăm sóc sức khỏe tốt hơn cho bạn
+          {t("step5.subtitle")}
         </p>
       </div>
 
       {/* Allergies */}
       <div className="space-y-2">
-        <Label htmlFor="allergies">Dị ứng</Label>
+        <Label htmlFor="allergies">{t("step5.allergies")}</Label>
         <Textarea
           id="allergies"
-          placeholder="Ví dụ: Hải sản, thuốc penicillin..."
+          placeholder={t("step5.allergiesPlaceholder")}
           value={data.medicalInfo?.allergies || ""}
           onChange={(e) => updateMedicalInfo("allergies", e.target.value)}
           rows={2}
@@ -68,10 +71,10 @@ export function OnboardingStep5({ data, updateData }: OnboardingStep5Props) {
 
       {/* Chronic Conditions */}
       <div className="space-y-2">
-        <Label htmlFor="chronicConditions">Bệnh mãn tính</Label>
+        <Label htmlFor="chronicConditions">{t("step5.chronicConditions")}</Label>
         <Textarea
           id="chronicConditions"
-          placeholder="Ví dụ: Tiểu đường, cao huyết áp..."
+          placeholder={t("step5.chronicConditionsPlaceholder")}
           value={data.medicalInfo?.chronicConditions || ""}
           onChange={(e) => updateMedicalInfo("chronicConditions", e.target.value)}
           rows={2}
@@ -80,10 +83,10 @@ export function OnboardingStep5({ data, updateData }: OnboardingStep5Props) {
 
       {/* Current Medications */}
       <div className="space-y-2">
-        <Label htmlFor="currentMedications">Thuốc đang sử dụng</Label>
+        <Label htmlFor="currentMedications">{t("step5.currentMedications")}</Label>
         <Textarea
           id="currentMedications"
-          placeholder="Ví dụ: Aspirin 100mg mỗi ngày..."
+          placeholder={t("step5.currentMedicationsPlaceholder")}
           value={data.medicalInfo?.currentMedications || ""}
           onChange={(e) => updateMedicalInfo("currentMedications", e.target.value)}
           rows={2}
@@ -92,7 +95,7 @@ export function OnboardingStep5({ data, updateData }: OnboardingStep5Props) {
 
       {/* Notes */}
       <div className="space-y-2">
-        <Label htmlFor="notes">Ghi chú thêm</Label>
+        <Label htmlFor="notes">{t("step5.notes")}</Label>
         <Textarea
           id="notes"
           placeholder="Bất kỳ thông tin y tế nào bạn muốn chia sẻ..."
@@ -108,10 +111,10 @@ export function OnboardingStep5({ data, updateData }: OnboardingStep5Props) {
           <CheckCircle2 className="size-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-green-800 dark:text-green-200">
-              Hoàn tất đăng ký
+              {t("step5.complete")}
             </p>
             <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-              Nhấn &quot;Hoàn thành&quot; để lưu thông tin và bắt đầu sử dụng HealthOS
+              {t("step5.completeHint")}
             </p>
           </div>
         </div>

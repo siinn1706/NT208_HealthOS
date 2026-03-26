@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GoalCreationWizard } from "@/components/dashboard/goals/GoalCreationWizard";
 
 export function AddGoalButton() {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("dashboard.goals");
 
   return (
     <>
@@ -16,8 +18,8 @@ export function AddGoalButton() {
         onClick={() => setOpen(true)}
       >
         <Plus className="w-4 h-4 mr-1.5" />
-        <span className="hidden sm:inline">Thêm mục tiêu</span>
-        <span className="sm:hidden">Thêm</span>
+        <span className="hidden sm:inline">{t("addGoal")}</span>
+        <span className="sm:hidden">{t("addGoal")}</span>
       </Button>
 
       <GoalCreationWizard

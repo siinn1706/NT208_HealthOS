@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Activity } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { VitalsLineChart } from "@/components/charts/VitalsLineChart";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import type { ReportPeriod } from "@/types/api";
@@ -37,6 +38,7 @@ export function VitalsChartWidget({
   initialData,
   initialPeriod = "7d",
 }: VitalsChartWidgetProps) {
+  const t = useTranslations("dashboard.vitals");
   const [period, setPeriod] = useState<ReportPeriod>(initialPeriod);
   const [data, setData] = useState<VitalsDataPoint[]>(initialData);
   const [isPending, startTransition] = useTransition();
@@ -54,8 +56,8 @@ export function VitalsChartWidget({
     <div className="rounded-xl border border-border bg-card h-full">
       <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
         <div>
-          <p className="text-sm font-semibold text-foreground">Nhịp tim & Huyết áp</p>
-          <p className="text-[11px] text-muted-foreground">Dữ liệu vitals theo thời gian</p>
+          <p className="text-sm font-semibold text-foreground">{t("title")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <TimeRangeSelector value={period} onChange={handlePeriodChange} />
@@ -65,19 +67,19 @@ export function VitalsChartWidget({
       <div className="p-4">
         {isPending ? (
           <div className="flex items-center justify-center h-[260px] text-sm text-muted-foreground">
-            Đang tải...
+            {t("loading")}
           </div>
         ) : data.length === 0 ? (
           <div className="flex items-center justify-center h-[260px] text-sm text-muted-foreground">
-            Chưa có dữ liệu
+            {t("noData")}
           </div>
         ) : (
           <VitalsLineChart
             data={data}
             labels={{
-              heartRate: "Nhịp tim",
-              systolic: "Huyết áp tâm thu",
-              diastolic: "Huyết áp tâm trương",
+              heartRate: t("heartRate"),
+              systolic: t("bloodPressureSys"),
+              diastolic: t("bloodPressureDia"),
             }}
             height={260}
           />

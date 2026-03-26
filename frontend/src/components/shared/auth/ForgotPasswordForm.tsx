@@ -61,6 +61,7 @@ function StepIndicator({ current }: { current: Step }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function ForgotPasswordForm() {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("email");
@@ -108,7 +109,7 @@ export function ForgotPasswordForm() {
       }
       setStep("otp");
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +134,7 @@ export function ForgotPasswordForm() {
       }
       setStep("reset");
     } catch {
-      setError("Mã xác minh không hợp lệ. Vui lòng thử lại.");
+      setError(tErrors("otpInvalid"));
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +157,7 @@ export function ForgotPasswordForm() {
       }
       setOtp("");
     } catch {
-      setError("Không thể gửi lại mã. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsResending(false);
     }
@@ -196,7 +197,7 @@ export function ForgotPasswordForm() {
       setSuccess(t("resetPasswordSuccess"));
       setTimeout(() => router.push("/login"), 2000);
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }

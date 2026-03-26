@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     coreFetch("/v1/users/me", token),
   ]);
 
-  const profile = profileRes as { display_name?: string; name?: string } | null;
+  const profile = profileRes as { display_name?: string; name?: string; height_cm?: number; weight_kg?: number } | null;
   const streakHistory = (streakRes as { history?: Array<{ date: string; completed: boolean; activitiesCount?: number }> } | null)?.history ?? [];
   const bmiData = bmiRes as { currentBmi?: number; targetBmi?: number; targetDate?: string; heightCm?: number; weightKg?: number; bmiScore?: number } | null;
   const activeGoals = (goalsRes as { goals?: unknown[] } | null)?.goals ?? [];
@@ -88,13 +88,24 @@ export async function GET(req: NextRequest) {
       totalAchievements: 20,
     },
     bmi: {
-      heightCm: bmiData?.heightCm ?? 170,
-      weightKg: bmiData?.weightKg ?? 70,
-      bmi: bmiData?.currentBmi ?? 22.0,
-      status: "normal",
-      bmiScore: bmiData?.bmiScore ?? 50,
-      targetBmi: bmiData?.targetBmi ?? 22.0,
-      targetWeightKg: 0,
+      heightCm: bmiData?.heightCm ?? profile?.height_cm ?? null,
+      weightKg: bmiData?.weightKg ?? profile?.weight_kg ?? null,
+      bmi: bmiData?.currentBmi ?? (profile?.height_cm && profile?.weight_kg
+        ? parseFloat((profile.weight_kg / (profile.height_cm / 100) ** 2).toFixed(1))
+        : null),
+      status: (() => {
+        const bmi = bmiData?.currentBmi ?? (profile?.height_cm && profile?.weight_kg
+          ? parseFloat((profile.weight_kg / (profile.height_cm / 100) ** 2).toFixed(1))
+          : null);
+        if (bmi === null) return "normal";
+        if (bmi < 18.5) return "underweight";
+        if (bmi < 25) return "normal";
+        if (bmi < 30) return "overweight";
+        return "obese";
+      })(),
+      bmiScore: bmiData?.bmiScore ?? profile?.weight_kg ?? null,
+      targetBmi: bmiData?.targetBmi ?? null,
+      targetWeightKg: null,
     },
     activeGoals: activeGoals.length > 0 ? activeGoals : [
       { id: "default-steps", activityType: "steps", label: "Số bước mỗi ngày", dailyTarget: 10000, unit: "bước", todayProgress: 0, isActive: true, color: "#41BCE6", createdAt: new Date().toISOString() },

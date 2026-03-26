@@ -1,8 +1,10 @@
+import { getTranslations } from "next-intl/server";
 import { Camera } from "lucide-react";
 import { Link } from "@/navigation";
 import { CameraCapture } from "@/components/dashboard/meals/CameraCapture";
 
-export default function MealSnapPage() {
+export default async function MealSnapPage() {
+  const t = await getTranslations("camera");
   return (
     <div className="max-w-[1400px] mx-auto space-y-5">
       {/* Page header */}
@@ -10,17 +12,15 @@ export default function MealSnapPage() {
         <div>
           <div className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" aria-hidden />
-            <h1 className="text-xl font-bold text-foreground">Chụp ảnh bữa ăn</h1>
+            <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            AI tự động nhận diện thành phần và tính toán dinh dưỡng
-          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("aiSubtitle")}</p>
         </div>
         <Link
           href="/dashboard/meals/add"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
         >
-          Nhập thủ công thay thế
+          {t("manualEntry")}
         </Link>
       </div>
 

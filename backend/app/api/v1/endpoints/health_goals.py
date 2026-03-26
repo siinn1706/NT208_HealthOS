@@ -27,7 +27,6 @@ def _to_response(goal: "HealthGoal") -> HealthGoalResponse:
         id=goal.id,
         user_id=goal.user_id,
         target_weight_kg=goal.target_weight_kg,
-        current_height_cm=goal.current_height_cm,
         deadline=goal.deadline,
         created_at=goal.created_at,
         updated_at=goal.updated_at,
