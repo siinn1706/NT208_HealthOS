@@ -9,6 +9,7 @@ CLAUDE.md
 GEMINI.md
 .github/
 docs/
+!docs/sync-env-secrets.ps1
 plans/
 guide/
 AGENTS.md
@@ -40,6 +41,9 @@ venv/
 !infra/docker/.env.dev.example
 !infra/docker/.env.prod.example
 backend/.env
+
+# Internal env backup (docs/sync-env-secrets.ps1)
+docs/secret/
 
 # OS / Editor
 .DS_Store
