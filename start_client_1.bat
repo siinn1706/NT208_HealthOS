@@ -1,7 +1,11 @@
 @echo off
 setlocal
+echo [WARN] This script runs the frontend on port 3001.
+echo [WARN] Backend ALLOWED_ORIGINS must include http://localhost:3001 for CORS to work.
 cd /d "%~dp0frontend"
-if not exist node_modules (
-  npm install
+if exist package-lock.json (
+    npm ci
+) else (
+    npm install
 )
 npm run dev -- --port 3001

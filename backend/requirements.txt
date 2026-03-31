@@ -28,7 +28,3 @@ httpx==0.28.1
 alembic==1.18.4
 psycopg2-binary==2.9.11
 
-# Backend testing
-pytest==8.4.2
-pytest-asyncio==1.2.0
-schemathesis==4.5.1

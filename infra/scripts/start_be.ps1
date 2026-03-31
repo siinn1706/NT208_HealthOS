@@ -87,6 +87,11 @@ if (-not (Test-Path $PythonExe)) {
     throw "[BE] Python executable not found at $PythonExe"
 }
 
+$pyVer = & python --version 2>&1
+if ($pyVer -notmatch "3\.12") {
+    Write-Warning "[BE] Expected Python 3.12 (see .python-version). Got: $pyVer"
+}
+
 if (-not $SkipInstall) {
     Write-Host "[BE] Installing dependencies (deterministic mode)..." -ForegroundColor Cyan
     & $PythonExe -m pip install --upgrade pip setuptools wheel

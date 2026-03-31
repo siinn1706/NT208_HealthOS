@@ -60,6 +60,11 @@ if (-not (Test-CommandAvailable "npm")) {
     throw "[FE] npm is not installed or not on PATH."
 }
 
+$nodeVer = & node --version 2>&1
+if ($nodeVer -notmatch "^v20\.") {
+    Write-Warning "[FE] Expected Node 20 (see .nvmrc). Got: $nodeVer"
+}
+
 if ($CheckOnly) {
     if (-not (Test-Path "node_modules")) {
         throw "[FE] node_modules missing. Run without -CheckOnly (or run npm ci manually) before checking."
