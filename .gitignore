@@ -54,3 +54,4 @@ infra/env/worker.env
 
 # Ignore local infrastructure data
 .data/
+.husky/commit-msg
