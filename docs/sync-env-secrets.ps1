@@ -2,11 +2,13 @@
 # Sync .env files between repo and docs/secret (internal use only)
 #
 # Usage:
-#   .\sync-env-secrets.ps1            # Backup: repo → docs/secret
+#   .\sync-env-secrets.ps1            # Interactive menu
+#   .\sync-env-secrets.ps1 -Backup    # Backup: repo → docs/secret
 #   .\sync-env-secrets.ps1 -Restore   # Restore: docs/secret → repo
 #   .\sync-env-secrets.ps1 -Status    # Show sync status
 
 param(
+    [switch]$Backup,
     [switch]$Restore,
     [switch]$Status
 )
@@ -131,8 +133,27 @@ function Show-Status {
 # --- Main ---
 if ($Status) {
     Show-Status
+} elseif ($Backup) {
+    Backup-EnvFiles
 } elseif ($Restore) {
     Restore-EnvFiles
 } else {
-    Backup-EnvFiles
+    # Interactive menu
+    Write-Host "`n  ENV SYNC TOOL" -ForegroundColor Cyan
+    Write-Host "  =============" -ForegroundColor DarkGray
+    Write-Host "  [1] Backup   repo → docs/secret" -ForegroundColor White
+    Write-Host "  [2] Restore  docs/secret → repo" -ForegroundColor White
+    Write-Host "  [3] Status   show diff" -ForegroundColor White
+    Write-Host "  [Q] Quit" -ForegroundColor DarkGray
+    Write-Host ""
+
+    $choice = Read-Host "  Chọn"
+
+    switch ($choice.Trim().ToUpper()) {
+        "1" { Backup-EnvFiles }
+        "2" { Restore-EnvFiles }
+        "3" { Show-Status }
+        "Q" { Write-Host "  Bye!" -ForegroundColor DarkGray }
+        default { Write-Host "  Lựa chọn không hợp lệ." -ForegroundColor Red }
+    }
 }
