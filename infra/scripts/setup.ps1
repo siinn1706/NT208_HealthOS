@@ -83,6 +83,12 @@ else {
             throw "[BE] pip install failed."
         }
 
+        Write-Host "[BE] Running database migrations..." -ForegroundColor Cyan
+        & $PyExe -m alembic upgrade head
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[BE] Migration failed. DB may need manual setup or Postgres may not be running."
+        }
+
         Write-Host "[BE] Done." -ForegroundColor Green
     }
 }

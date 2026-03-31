@@ -53,8 +53,8 @@ Thumbs.db
 infra/env/backend.env
 infra/env/frontend.env
 infra/env/worker.env
-*.loginfra/logs/
 *.log
+infra/logs/
 
 # Ignore local infrastructure data
 .data/

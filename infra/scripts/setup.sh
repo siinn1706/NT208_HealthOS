@@ -53,6 +53,8 @@ pip install -r requirements.txt
 if [ -f requirements-dev.txt ]; then
     pip install -r requirements-dev.txt
 fi
+echo "[BE] Running database migrations..."
+python -m alembic upgrade head || echo "[BE] WARNING: Migration failed. DB may not be running yet."
 echo "[BE] Done."
 
 echo ""
