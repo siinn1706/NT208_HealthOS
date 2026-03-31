@@ -53,8 +53,9 @@
   - `BmiProgressChart.tsx` — BMI trend with goal visualization
 
 - **Chart Export Utilities** (`frontend/src/lib/chart-export.ts`)
-  - `exportChartAsPng()` — Export chart as PNG blob
-  - `exportChartAsSvg()` — Export chart as SVG string
+  - `frontend/src/components/charts/chart-export-utils.ts`
+  - `downloadChart()` — Download an ECharts chart as PNG/SVG
+  - `downloadDashboardCharts()` — Export a dashboard grid to a PNG image
 
 - **Backend Aggregation Endpoints**
   - Weekly/monthly data aggregation with period comparison

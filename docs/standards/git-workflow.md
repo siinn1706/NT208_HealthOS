@@ -4,7 +4,6 @@
 
 ```
 main                        # production-ready, protected
-develop                     # integration branch, luôn deployable
 feature/<scope>/<short-name>
 fix/<scope>/<short-name>
 chore/<short-name>
@@ -21,15 +20,15 @@ docs/standards/add-api-conventions
 ## Flow tổng quát
 
 ```
-main ←── develop ←── feature/*
-                ←── fix/*
+main ←── feature/*
+     ←── fix/*
 ```
 
-1. Từ `develop`, tạo branch `feature/<scope>/<name>`.
+1. Từ `main`, tạo branch `feature/<scope>/<name>`.
 2. Commit theo Conventional Commits (xem [code-style.md](./code-style.md)).
-3. Khi xong: mở PR target vào `develop`, không phải `main`.
+3. Khi xong: mở PR target vào `main`.
 4. PR cần ít nhất **1 reviewer** approve.
-5. Sau khi merge vào `develop` và test OK → tạo PR từ `develop` → `main` (release).
+5. Sau khi merge, theo dõi CI và smoke test môi trường mục tiêu.
 
 ## Kích thước PR
 
@@ -63,4 +62,3 @@ git commit -m "fix(bff): forward auth header to core BE"
 | Branch | Rules |
 |--------|-------|
 | `main` | Require PR + 1 review + CI pass. No force push. |
-| `develop` | Require PR. CI pass. |

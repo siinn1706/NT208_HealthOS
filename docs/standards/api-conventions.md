@@ -38,7 +38,12 @@ POST /v1/meals
 
 ## Response Envelope
 
-Tất cả API (BFF và Core BE) trả response theo cấu trúc thống nhất:
+Mục tiêu là response nhất quán. Tuy nhiên hiện có endpoint chưa hoàn toàn đồng nhất.
+Vì vậy:
+- Với endpoint đã chuẩn hóa: dùng envelope bên dưới.
+- Với endpoint legacy: ghi TODO(validate) trước khi ép chuẩn trong docs/hợp đồng.
+
+Envelope mục tiêu:
 
 ```json
 // Success
@@ -61,7 +66,7 @@ Tất cả API (BFF và Core BE) trả response theo cấu trúc thống nhất:
 }
 ```
 
-**Quy tắc:** Không bao giờ trả status 200 kèm `error` trong body.
+**Quy tắc:** Không trả status 200 kèm `error` trong body.
 
 ## HTTP Status Codes
 
