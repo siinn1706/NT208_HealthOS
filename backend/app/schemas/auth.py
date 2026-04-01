@@ -157,9 +157,27 @@ class UserProfileUpdate(BaseModel):
     weight_kg: Optional[float] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    accent_color: Optional[str] = None
     emergency_contacts: Optional[list[EmergencyContact]] = None
     medical_info: Optional[MedicalInfo] = None
     onboarding_completed: Optional[bool] = False
+
+    @field_validator("accent_color", mode="before")
+    @classmethod
+    def normalize_accent_color(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("accent_color must be a hex color string like #rrggbb or null")
+        val = v.strip()
+        if not val:
+            return None
+        if not val.startswith("#") or len(val) != 7:
+            raise ValueError("accent_color must match #rrggbb")
+        hex_part = val[1:]
+        if any(c not in "0123456789abcdefABCDEF" for c in hex_part):
+            raise ValueError("accent_color must match #rrggbb")
+        return f"#{hex_part.lower()}"
 
     @model_validator(mode="before")
     @classmethod
@@ -216,6 +234,7 @@ class CurrentUser(BaseModel):
     weight_kg: Optional[float] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    accent_color: Optional[str] = None
     emergency_contacts: Optional[list[dict[str, Any]]] = None
     medical_info: Optional[dict[str, Any]] = None
 

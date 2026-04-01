@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@dayflow/blossom-color-picker/styles.css";
 /* @plugin "@tailwindcss/typography"; */
 
 @custom-variant dark (&:is(.dark *));

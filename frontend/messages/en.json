@@ -785,7 +785,15 @@
         "themeDesc": "Choose how HealthOS looks",
         "themeSystem": "System",
         "themeLight": "Light",
-        "themeDark": "Dark"
+        "themeDark": "Dark",
+        "accentColor": "Accent color",
+        "accentColorDesc": "Used for buttons and highlights",
+        "accentColorDefault": "Default",
+        "accentColorReset": "Reset",
+        "accentColorSave": "Save",
+        "accentColorSaving": "Saving...",
+        "accentColorLoadError": "Could not load accent color.",
+        "accentColorSaveError": "Could not save accent color."
       },
       "notifications": {
         "healthAlerts": "Health Alerts",

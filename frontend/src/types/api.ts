@@ -63,6 +63,7 @@ export interface UserProfile extends User {
   phone: string | null;
   address: string | null;
   avatar_url: string | null;
+  accent_color: string | null;
   emergency_contacts: EmergencyContact[];
   medical_info: MedicalInfo;
 }

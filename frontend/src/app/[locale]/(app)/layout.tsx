@@ -1,5 +1,7 @@
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { headers } from "next/headers";
+import { getProfileData } from "@/lib/profile-data";
+import { UserAccentColorApplier } from "@/components/theme/UserAccentColorApplier";
 
 interface SessionResponse {
   data?: {
@@ -44,10 +46,11 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getTopNavUser();
+  const [user, profile] = await Promise.all([getTopNavUser(), getProfileData()]);
 
   return (
     <DashboardShell userName={user.name} userAvatar={user.avatarUrl ?? undefined}>
+      <UserAccentColorApplier accentColor={profile.accent_color} />
       {children}
     </DashboardShell>
   );
