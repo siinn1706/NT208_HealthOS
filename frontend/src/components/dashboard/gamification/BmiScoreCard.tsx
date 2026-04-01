@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import type { UserBmiData } from "@/data/gamification";
-import { useTranslations } from "next-intl";
 
 interface BmiScoreCardProps {
   bmi: UserBmiData;
@@ -35,8 +34,14 @@ const BMI_STATUS_CONFIG = {
   },
 };
 
+const BMI_STATUS_LABELS: Record<UserBmiData["status"], string> = {
+  underweight: "Thiếu cân",
+  normal: "Bình thường",
+  overweight: "Thừa cân",
+  obese: "Béo phì",
+};
+
 export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
-  const t = useTranslations("dashboard.progress");
   const config = BMI_STATUS_CONFIG[bmi.status];
   const hasBmi = bmi.bmi != null;
   const bmiValue = bmi.bmi as number;
@@ -69,7 +74,7 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
           )}
           style={{ color: config.color }}
         >
-          {config.label}
+          {BMI_STATUS_LABELS[bmi.status]}
         </div>
       </div>
 

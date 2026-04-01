@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -19,6 +19,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BlossomColorPicker } from "@/components/blossom/BlossomColorPicker";
+import { applyAccentColorToRoot } from "@/components/theme/UserAccentColorApplier";
 
 type ThemeOption = "system" | "light" | "dark";
 
@@ -103,6 +105,11 @@ export default function SettingsPage() {
   const t = useTranslations("dashboard");
 
   const [theme, setTheme] = useState<ThemeOption>("system");
+  const [accentColor, setAccentColor] = useState<string | null>(null);
+  const [accentOriginal, setAccentOriginal] = useState<string | null>(null);
+  const [accentLoading, setAccentLoading] = useState<boolean>(true);
+  const [accentSaving, setAccentSaving] = useState<boolean>(false);
+  const [accentError, setAccentError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState({
     healthAlerts: true,
     reminders: true,
@@ -110,6 +117,64 @@ export default function SettingsPage() {
     promotions: false,
     chatMessages: true,
   });
+
+  const canSaveAccent = useMemo(
+    () => !accentLoading && !accentSaving && accentColor !== accentOriginal,
+    [accentLoading, accentSaving, accentColor, accentOriginal]
+  );
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setAccentLoading(true);
+        setAccentError(null);
+        const res = await fetch("/api/v1/users/me", { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as { data?: { accent_color?: string | null } } | null;
+        const serverColor = typeof json?.data?.accent_color === "string" ? json.data.accent_color : null;
+        if (!alive) return;
+        setAccentColor(serverColor);
+        setAccentOriginal(serverColor);
+        applyAccentColorToRoot(serverColor);
+      } catch {
+        if (!alive) return;
+        setAccentError(t("settingsPage.appearance.accentColorLoadError"));
+      } finally {
+        if (!alive) return;
+        setAccentLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [t]);
+
+  useEffect(() => {
+    // Immediate UI feedback while picking; persisted value is still Core-backed.
+    applyAccentColorToRoot(accentColor);
+  }, [accentColor]);
+
+  const saveAccentColor = async () => {
+    try {
+      setAccentSaving(true);
+      setAccentError(null);
+      const res = await fetch("/api/v1/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accent_color: accentColor }),
+      });
+      if (!res.ok) throw new Error("save_failed");
+      const json = (await res.json().catch(() => null)) as { data?: { accent_color?: string | null } } | null;
+      const serverColor = typeof json?.data?.accent_color === "string" ? json.data.accent_color : null;
+      setAccentColor(serverColor);
+      setAccentOriginal(serverColor);
+      applyAccentColorToRoot(serverColor);
+    } catch {
+      setAccentError(t("settingsPage.appearance.accentColorSaveError"));
+    } finally {
+      setAccentSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -197,6 +262,57 @@ export default function SettingsPage() {
                 </button>
               );
             })}
+          </div>
+        </SettingRow>
+        <SettingRow
+          icon={Sun}
+          label={t("settingsPage.appearance.accentColor")}
+          description={t("settingsPage.appearance.accentColorDesc")}
+        >
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            <div className={cn("flex items-center gap-3", accentLoading && "opacity-70 pointer-events-none")}>
+              <BlossomColorPicker
+                value={accentColor}
+                onChange={(hex) => setAccentColor(hex)}
+                disabled={accentLoading || accentSaving}
+                className="shrink-0"
+              />
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-6 h-6 rounded border border-border"
+                  style={{ backgroundColor: accentColor ?? "transparent" }}
+                  aria-label={accentColor ? `Accent ${accentColor}` : "Accent default"}
+                />
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {accentColor ?? t("settingsPage.appearance.accentColorDefault")}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAccentColor(null)}
+                disabled={accentLoading || accentSaving}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-medium rounded-md border transition-colors",
+                  "border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:hover:bg-transparent"
+                )}
+              >
+                {t("settingsPage.appearance.accentColorReset")}
+              </button>
+              <button
+                onClick={saveAccentColor}
+                disabled={!canSaveAccent}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-medium rounded-md border transition-colors",
+                  canSaveAccent
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground"
+                )}
+              >
+                {accentSaving ? t("settingsPage.appearance.accentColorSaving") : t("settingsPage.appearance.accentColorSave")}
+              </button>
+            </div>
+            {accentError && <p className="w-full text-xs text-destructive">{accentError}</p>}
           </div>
         </SettingRow>
       </SettingGroup>

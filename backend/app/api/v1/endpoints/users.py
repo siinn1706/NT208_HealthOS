@@ -54,6 +54,7 @@ def _to_current_user_response(current_user: User) -> CurrentUserResponse:
             weight_kg=profile.weight_kg if profile is not None else None,
             phone=profile.phone if profile is not None else None,
             address=profile.address if profile is not None else None,
+            accent_color=profile.accent_color if profile is not None else None,
             emergency_contacts=emergency_contacts,
             medical_info=medical_info,
         )
@@ -95,12 +96,21 @@ async def update_current_user_profile(
     update_data = body.model_dump(exclude_unset=True, exclude={"onboarding_completed"})
 
     for field, value in update_data.items():
-        if value is not None:
-            # Handle emergency_contacts and medical_info (convert to dict for JSONB)
-            if field in ("emergency_contacts", "medical_info"):
-                setattr(profile, field, [item.model_dump() if hasattr(item, "model_dump") else item for item in value] if isinstance(value, list) else value)
-            else:
-                setattr(profile, field, value)
+        # Allow explicit null only for selected preference fields (e.g. accent_color reset).
+        if value is None and field != "accent_color":
+            continue
+
+        # Handle emergency_contacts and medical_info (convert to dict for JSONB)
+        if field in ("emergency_contacts", "medical_info"):
+            setattr(
+                profile,
+                field,
+                [item.model_dump() if hasattr(item, "model_dump") else item for item in value]
+                if isinstance(value, list)
+                else value,
+            )
+        else:
+            setattr(profile, field, value)
 
     # Handle onboarding completion
     if body.onboarding_completed:

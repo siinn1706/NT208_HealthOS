@@ -16,6 +16,7 @@ function emptyProfile(): UserProfile {
     height_cm: null,
     weight_kg: null,
     avatar_url: null,
+    accent_color: null,
     address: null,
     emergency_contacts: [],
     medical_info: {
@@ -52,6 +53,7 @@ function normalizeProfile(data: any): UserProfile {
     height_cm: typeof data?.height_cm === "number" ? data.height_cm : null,
     weight_kg: typeof data?.weight_kg === "number" ? data.weight_kg : null,
     avatar_url: typeof data?.avatar_url === "string" ? data.avatar_url : null,
+    accent_color: typeof data?.accent_color === "string" ? data.accent_color : null,
     address: typeof data?.address === "string" ? data.address : null,
     emergency_contacts: Array.isArray(data?.emergency_contacts) ? data.emergency_contacts : [],
     medical_info:
