@@ -101,7 +101,7 @@ export function AccentColorSetting() {
       {/* Two-column: preview LEFT, BlossomColorPicker RIGHT */}
       <div className="flex gap-4 items-start">
         {/* LEFT: scoped preview — compact fixed width so it doesn't stretch across the row */}
-        <div className="flex-none w-52">
+        <div className="flex-none w-100">
           <AccentPreviewCard accentHex={displayHex} />
         </div>
 
