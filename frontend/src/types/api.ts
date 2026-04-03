@@ -592,3 +592,10 @@ export interface AutoShareSettings {
   default_channels: ShareChannel[];
   countdown_seconds: number; // delay before auto-sending
 }
+
+// ─── User Preferences ────────────────────────────────────────────────
+
+export interface UserPreference {
+  theme_mode: "system" | "light" | "dark";
+  accent_color: string | null;
+}

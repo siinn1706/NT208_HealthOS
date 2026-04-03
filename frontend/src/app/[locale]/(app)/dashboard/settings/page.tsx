@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import {
   User,
   Bell,
@@ -17,8 +19,17 @@ import {
   Smartphone,
   Download,
   Trash2,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const AccentColorSetting = dynamic(
+  () => import("@/components/settings/accent-color-setting"),
+  {
+    ssr: false,
+    loading: () => <div className="h-8 animate-pulse rounded-lg bg-muted/40" />,
+  }
+);
 
 type ThemeOption = "system" | "light" | "dark";
 
@@ -67,11 +78,11 @@ function SettingRow({ icon: Icon, label, description, children, onClick, danger 
 
 function SettingGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border bg-muted/30">
+    <div className="rounded-xl border border-border bg-card">
+      <div className="px-5 py-3 border-b border-border bg-muted/30 rounded-tl-xl rounded-tr-xl">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{title}</p>
       </div>
-      <div className="divide-y divide-border">{children}</div>
+      <div className="divide-y divide-border [&>*:last-child]:rounded-b-xl">{children}</div>
     </div>
   );
 }
@@ -102,7 +113,8 @@ export default function SettingsPage() {
   const locale = useLocale();
   const t = useTranslations("dashboard");
 
-  const [theme, setTheme] = useState<ThemeOption>("system");
+  const { theme: rawTheme, setTheme } = useTheme();
+  const theme = (rawTheme ?? "system") as ThemeOption;
   const [notifications, setNotifications] = useState({
     healthAlerts: true,
     reminders: true,
@@ -199,6 +211,19 @@ export default function SettingsPage() {
             })}
           </div>
         </SettingRow>
+        {/* Accent Color — full-width block so the two-column layout has room */}
+        <div className="px-5 py-4">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-muted">
+              <Palette className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{t("settingsPage.appearance.accentColor")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settingsPage.appearance.accentColorDesc")}</p>
+            </div>
+          </div>
+          <AccentColorSetting />
+        </div>
       </SettingGroup>
 
       {/* Notifications */}

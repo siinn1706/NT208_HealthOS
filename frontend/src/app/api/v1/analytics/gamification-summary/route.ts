@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     .map((e, i) => ({
       id: `milestone-${e.date}-${i}`,
       activityType: "steps",
-      label: "Hoàn thành mục tiêu hàng ngày",
+      labelKey: "daily-goal",
       targetValue: 1,
       unit: "ngày",
       pointValue: 10,
@@ -108,8 +108,8 @@ export async function GET(req: NextRequest) {
       targetWeightKg: null,
     },
     activeGoals: activeGoals.length > 0 ? activeGoals : [
-      { id: "default-steps", activityType: "steps", label: "Số bước mỗi ngày", dailyTarget: 10000, unit: "bước", todayProgress: 0, isActive: true, color: "#41BCE6", createdAt: new Date().toISOString() },
-      { id: "default-calories", activityType: "running", label: "Đốt cháy calories", dailyTarget: 2000, unit: "kcal", todayProgress: 0, isActive: true, color: "#E3B79A", createdAt: new Date().toISOString() },
+      { id: "default-steps", activityType: "steps", labelKey: "steps-10000", dailyTarget: 10000, unit: "bước", todayProgress: 0, isActive: true, color: "#41BCE6", createdAt: new Date().toISOString() },
+      { id: "default-running", activityType: "running", labelKey: "run-300", dailyTarget: 300, unit: "m", todayProgress: 0, isActive: true, color: "#E3B79A", createdAt: new Date().toISOString() },
     ],
     streakHistory: streakHistory.map((e) => ({
       date: e.date,

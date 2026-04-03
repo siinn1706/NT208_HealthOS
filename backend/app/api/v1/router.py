@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     meals,
     mfa,
     nutrition,
+    preferences,
     reminders,
     reports,
     security_logs,
@@ -42,3 +43,4 @@ router.include_router(health_goals.router)
 router.include_router(reports.router)
 router.include_router(mfa.router)
 router.include_router(security_logs.router)
+router.include_router(preferences.router)

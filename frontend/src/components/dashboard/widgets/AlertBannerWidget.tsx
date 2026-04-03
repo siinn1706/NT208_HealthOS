@@ -27,9 +27,9 @@ const ALERT_STYLES = {
     iconClass: "text-[#E3B79A]",
   },
   info: {
-    wrapper: "bg-primary/10 border-primary/30 text-primary",
+    wrapper: "bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-400",
     icon: Info,
-    iconClass: "text-primary",
+    iconClass: "text-sky-700 dark:text-sky-400",
   },
 };
 

@@ -87,6 +87,12 @@ if (-not (Test-Path $PythonExe)) {
     throw "[BE] Python executable not found at $PythonExe"
 }
 
+$ActivateScript = Join-Path $VenvDir "Scripts\Activate.ps1"
+if (Test-Path $ActivateScript) {
+    Write-Host "[BE] Activating virtual environment..." -ForegroundColor Cyan
+    & $ActivateScript
+}
+
 $pyVer = & python --version 2>&1
 if ($pyVer -notmatch "3\.12") {
     Write-Warning "[BE] Expected Python 3.12 (see .python-version). Got: $pyVer"

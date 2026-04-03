@@ -145,7 +145,7 @@ function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslati
                         <span className="text-muted-foreground tabular-nums flex-shrink-0 ml-2">
                           {ing.grams}g
                           {ing.calories > 0 && (
-                            <span className="ml-1 text-primary/80">
+                            <span className="ml-1 text-muted-foreground">
                               ({Math.round(ing.calories)} kcal)
                             </span>
                           )}

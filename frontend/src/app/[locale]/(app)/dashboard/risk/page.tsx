@@ -111,7 +111,7 @@ export default async function RiskPage() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" aria-hidden />
+            <Brain className="h-5 w-5 text-muted-foreground" aria-hidden />
             <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
