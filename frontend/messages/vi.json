@@ -789,15 +789,7 @@
         "themeDesc": "Chọn chủ đề màu cho HealthOS",
         "themeSystem": "Theo hệ thống",
         "themeLight": "Sáng",
-        "themeDark": "Tối",
-        "accentColor": "Màu nhấn",
-        "accentColorDesc": "Dùng cho nút bấm và điểm nhấn",
-        "accentColorDefault": "Mặc định",
-        "accentColorReset": "Đặt lại",
-        "accentColorSave": "Lưu",
-        "accentColorSaving": "Đang lưu...",
-        "accentColorLoadError": "Không thể tải màu nhấn.",
-        "accentColorSaveError": "Không thể lưu màu nhấn."
+        "themeDark": "Tối"
       },
       "notifications": {
         "healthAlerts": "Cảnh báo sức khỏe",
