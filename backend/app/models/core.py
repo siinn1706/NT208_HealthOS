@@ -248,8 +248,6 @@ class UserProfile(Base):
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     address: Mapped[str | None] = mapped_column(String(512), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    # UI preference: per-user accent color (hex "#rrggbb")
-    accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     emergency_contacts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB,
         nullable=True,

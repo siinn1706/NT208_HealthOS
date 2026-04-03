@@ -1,14 +1,18 @@
 "use client";
 
+"use client";
+
 import { cn } from "@/lib/utils";
 import type { UserStreakEntry } from "@/data/gamification";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 interface StreakCalendarProps {
   history: UserStreakEntry[];
   currentStreak: number;
   longestStreak: number;
 }
+
+const DAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 // Generate locale-aware short day labels
 function getDayLabels(locale: string): string[] {
