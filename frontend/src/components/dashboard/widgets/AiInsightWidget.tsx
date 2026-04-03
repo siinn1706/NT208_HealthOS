@@ -20,7 +20,7 @@ export async function AiInsightWidget({ insight }: AiInsightWidgetProps) {
     <div className="rounded-xl border border-border bg-card h-full">
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-3 border-b border-border">
         <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-primary" />
+          <Bot className="w-4 h-4 text-muted-foreground" />
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground leading-tight">

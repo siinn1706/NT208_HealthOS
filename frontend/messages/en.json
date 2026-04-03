@@ -632,6 +632,7 @@
         "perfect": "Perfect!"
       },
       "milestoneLabels": {
+        "daily-goal": "Daily Goal Completed",
         "run-100": "Run 100m daily",
         "run-200": "Run 200m daily",
         "run-300": "Run 300m daily",
@@ -730,6 +731,7 @@
         "steps": "Steps"
       },
       "milestoneLabels": {
+        "daily-goal": "Daily Goal Completed",
         "run-100": "Run 100m daily",
         "run-200": "Run 200m daily",
         "run-300": "Run 300m daily",
@@ -785,7 +787,13 @@
         "themeDesc": "Choose how HealthOS looks",
         "themeSystem": "System",
         "themeLight": "Light",
-        "themeDark": "Dark"
+        "themeDark": "Dark",
+        "accentColor": "Accent Color",
+        "accentColorDesc": "Personalise your app's look",
+        "saveAccent": "Save",
+        "accentSaved": "Accent color saved",
+        "accentSaveFailed": "Failed to save accent color",
+        "resetDefault": "Reset to Default"
       },
       "notifications": {
         "healthAlerts": "Health Alerts",

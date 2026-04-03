@@ -72,6 +72,7 @@
     --popover: #FFFFFF;
     --popover-foreground: #0F2743;
     --primary: #1965B3;
+    --primary-base: #1965B3;
     --primary-foreground: #FFFFFF;
     --secondary: #E8F8FD;
     --secondary-foreground: #1A4474;
@@ -106,6 +107,7 @@
     --popover: #1A4474;
     --popover-foreground: #E8F8FD;
     --primary: #41BCE6;
+    --primary-base: #41BCE6;
     --primary-foreground: #0F2743;
     --secondary: #1A4474;
     --secondary-foreground: #E8F8FD;
@@ -225,4 +227,16 @@ html {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
+}
+
+/* ── Accent surface lock ──
+   Tailwind maps --color-primary: var(--primary) for BOTH bg-primary and text-primary.
+   JS overrides --primary to the user's accent color (for surface tokens like buttons,
+   borders, rings). This unlayered rule re-locks text-primary to --primary-base, which
+   is defined only in CSS and is NEVER touched by JS accent overrides.
+   Unlayered rules always beat @layer utilities, so this takes precedence cleanly.
+   Result: bg-primary/border-primary/ring follow accent; text-primary/icons do NOT. */
+.text-primary,
+.hover\:text-primary:hover {
+  color: var(--primary-base);
 }

@@ -8,8 +8,8 @@ export function ChatEmptyState() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
-      <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
-        <MessageCircle className="w-10 h-10 text-muted-foreground" />
+      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+        <MessageCircle className="w-10 h-10 text-primary/40" />
       </div>
       <div>
         <p className="text-base font-medium text-foreground">{t("title")}</p>

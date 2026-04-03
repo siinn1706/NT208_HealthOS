@@ -104,7 +104,9 @@ async function GamificationGoalsContent() {
                         style={{ backgroundColor: goal.color }}
                       />
                       <span className="text-sm font-medium text-foreground">
-                        {(tg as (key: string) => string)(`milestoneLabels.${goal.labelKey}`)}
+                        {goal.labelKey
+                          ? (tg as (key: string) => string)(`milestoneLabels.${goal.labelKey}`)
+                          : goal.activityType}
                       </span>
                     </div>
                     <span className="text-xs text-muted-foreground">
@@ -142,7 +144,9 @@ async function GamificationGoalsContent() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {(tg as (key: string) => string)(`milestoneLabels.${milestone.labelKey}`)}
+                    {milestone.labelKey
+                      ? (tg as (key: string) => string)(`milestoneLabels.${milestone.labelKey}`)
+                      : milestone.activityType}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {milestone.unlockedAt ? new Date(milestone.unlockedAt).toLocaleDateString() : ""}

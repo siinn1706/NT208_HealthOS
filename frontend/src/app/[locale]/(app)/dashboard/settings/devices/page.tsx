@@ -60,7 +60,7 @@ export default async function DevicesPage() {
       {/* ── Page header ── */}
       <div>
         <div className="flex items-center gap-2">
-          <Watch className="h-5 w-5 text-primary" aria-hidden />
+          <Watch className="h-5 w-5 text-muted-foreground" aria-hidden />
           <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
         </div>
         <p className="text-sm text-muted-foreground mt-0.5">

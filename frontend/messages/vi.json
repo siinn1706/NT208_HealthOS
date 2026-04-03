@@ -636,6 +636,7 @@
         "perfect": "Hoàn hảo!"
       },
       "milestoneLabels": {
+        "daily-goal": "Hoàn thành mục tiêu hàng ngày",
         "run-100": "Chạy 100m mỗi ngày",
         "run-200": "Chạy 200m mỗi ngày",
         "run-300": "Chạy 300m mỗi ngày",
@@ -734,6 +735,7 @@
         "steps": "Bước chân"
       },
       "milestoneLabels": {
+        "daily-goal": "Hoàn thành mục tiêu hàng ngày",
         "run-100": "Chạy 100m mỗi ngày",
         "run-200": "Chạy 200m mỗi ngày",
         "run-300": "Chạy 300m mỗi ngày",
@@ -789,7 +791,13 @@
         "themeDesc": "Chọn chủ đề màu cho HealthOS",
         "themeSystem": "Theo hệ thống",
         "themeLight": "Sáng",
-        "themeDark": "Tối"
+        "themeDark": "Tối",
+        "accentColor": "Màu nhấn",
+        "accentColorDesc": "Tuỳ chỉnh giao diện ứng dụng",
+        "saveAccent": "Lưu",
+        "accentSaved": "Đã lưu màu nhấn",
+        "accentSaveFailed": "Không thể lưu màu nhấn",
+        "resetDefault": "Đặt lại mặc định"
       },
       "notifications": {
         "healthAlerts": "Cảnh báo sức khỏe",

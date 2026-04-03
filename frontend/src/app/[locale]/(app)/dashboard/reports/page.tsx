@@ -121,7 +121,7 @@ export default function ReportsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <FileBarChart2 className="h-5 w-5 text-primary" aria-hidden />
+            <FileBarChart2 className="h-5 w-5 text-muted-foreground" aria-hidden />
             <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
