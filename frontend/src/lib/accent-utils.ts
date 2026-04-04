@@ -38,7 +38,7 @@ export function getRelativeLuminance(hex: string): number {
 }
 
 export function getContrastColor(bgHex: string): string {
-  return getRelativeLuminance(bgHex) > 0.179 ? "#0F2743" : "#FFFFFF";
+  return getRelativeLuminance(bgHex) > 0.179 ? "#0B0F14" : "#FFFFFF";
 }
 
 export function deriveAccentTokens(accentHex: string, isDark: boolean): Record<string, string> {

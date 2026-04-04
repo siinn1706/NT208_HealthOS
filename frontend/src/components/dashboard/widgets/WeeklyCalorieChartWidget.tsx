@@ -74,10 +74,10 @@ export function WeeklyCalorieChartWidget({
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "shadow" },
-      backgroundColor: "rgba(15,39,67,0.9)",
-      borderColor: "rgba(65,188,230,0.3)",
+      backgroundColor: "var(--color-card)",
+      borderColor: "var(--color-border)",
       borderWidth: 1,
-      textStyle: { color: "#e2e8f0", fontSize: 12 },
+      textStyle: { color: "var(--color-foreground)", fontSize: 12 },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (params: any) => {
         const p = params as Array<{ value: number; seriesName: string; name: string }>;
@@ -96,7 +96,7 @@ export function WeeklyCalorieChartWidget({
     legend: {
       data: [t("legend")],
       bottom: 0,
-      textStyle: { color: "#94a3b8", fontSize: 11 },
+      textStyle: { color: "var(--color-muted-foreground)", fontSize: 11 },
       itemWidth: 10,
       itemHeight: 10,
       icon: "roundRect",
@@ -110,16 +110,16 @@ export function WeeklyCalorieChartWidget({
     xAxis: {
       type: "category",
       data: displayData.map((d) => d.date),
-      axisLine: { lineStyle: { color: "rgba(148,163,184,0.3)" } },
+      axisLine: { lineStyle: { color: "var(--color-border)" } },
       splitLine: { show: false },
-      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      axisLabel: { color: "var(--color-muted-foreground)", fontSize: 11 },
       axisTick: { show: false },
     },
     yAxis: {
       type: "value",
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "rgba(148,163,184,0.12)", type: "dashed" } },
-      axisLabel: { color: "#94a3b8", fontSize: 10 },
+      splitLine: { lineStyle: { color: "var(--color-border)", type: "dashed" } },
+      axisLabel: { color: "var(--color-muted-foreground)", fontSize: 10 },
       min: 0,
     },
     series: [
@@ -128,7 +128,7 @@ export function WeeklyCalorieChartWidget({
         type: "bar",
         barMaxWidth: 32,
         itemStyle: {
-          color: "#41BCE6",
+          color: "var(--color-primary)",
           borderRadius: [4, 4, 0, 0],
         },
         data: displayData.map((d) => d.calories),
