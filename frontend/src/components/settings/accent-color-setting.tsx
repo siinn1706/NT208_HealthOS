@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import BlossomColorPicker, { hexToHsl } from "@dayflow/blossom-color-picker-react";
 import type { BlossomColorPickerColor, BlossomColorPickerValue } from "@dayflow/blossom-color-picker-react";
-import "@dayflow/blossom-color-picker/styles.css";
 import { useTranslations } from "next-intl";
 import { RotateCcw, Save } from "lucide-react";
 import { useAccentColor } from "@/components/providers/accent-color-provider";

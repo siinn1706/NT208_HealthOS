@@ -26,6 +26,9 @@ export function StreakHeatmap({ entries, height = 120 }: StreakHeatmapProps) {
   const option: EChartsOption = {
     backgroundColor: "transparent",
     tooltip: {
+      backgroundColor: "var(--color-popover)",
+      borderColor: "var(--color-border)",
+      textStyle: { color: "var(--color-foreground)", fontSize: 12 },
       formatter: (p: unknown) => {
         const params = p as { data: [number, number, number] };
         const [wi, di] = params.data;
@@ -42,7 +45,7 @@ export function StreakHeatmap({ entries, height = 120 }: StreakHeatmapProps) {
       min: 0,
       max: 2,
       inRange: {
-        color: ["rgba(65,188,230,0.15)", "rgba(65,188,230,0.6)", "#41BCE6"],
+        color: ["var(--color-muted)", "var(--color-accent)", "var(--color-primary)"],
       },
     },
     series: [
