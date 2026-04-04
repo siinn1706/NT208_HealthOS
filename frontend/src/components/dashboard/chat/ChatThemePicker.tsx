@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import {
   CHAT_GRADIENTS,
   CHAT_PATTERNS,
@@ -63,6 +64,13 @@ export function ChatThemePicker({
   onSelect,
 }: ChatThemePickerProps) {
   const t = useTranslations("chat");
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  // Only show gradients that match the current theme mode (plus "none")
+  const filteredGradients = CHAT_GRADIENTS.filter(
+    (g) => g.id === "none" || g.type === (isDark ? "dark" : "light")
+  );
 
   const { gradId: currentGradId, patId: currentPatId, opacity: initialOpacity } =
     parseThemeId(currentThemeId);
@@ -199,9 +207,9 @@ export function ChatThemePicker({
 
             {/* ── Gradient swatches (wrap, not scroll) ── */}
             <div>
-              <SectionLabel label={t("themeGradients")} count={CHAT_GRADIENTS.length - 1} />
+              <SectionLabel label={t("themeGradients")} count={filteredGradients.length - 1} />
               <div className="flex flex-wrap gap-2.5">
-                {CHAT_GRADIENTS.map((grad) => (
+                {filteredGradients.map((grad) => (
                   <GradientSwatch
                     key={grad.id}
                     grad={grad}

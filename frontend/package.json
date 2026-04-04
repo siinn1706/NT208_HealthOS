@@ -19,6 +19,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-slider": "^1.3.6",
     "@tailwindcss/typography": "^0.5.19",
+    "@twallpaper/react": "^2.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

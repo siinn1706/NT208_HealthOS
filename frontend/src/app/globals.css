@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@dayflow/blossom-color-picker/styles.css";
+@import "@twallpaper/react/css";
 /* @plugin "@tailwindcss/typography"; */
 
 @custom-variant dark (&:is(.dark *));
@@ -240,4 +241,13 @@ html {
 .text-primary,
 .hover\:text-primary:hover {
   color: var(--primary-base);
+}
+
+/* ── TWallpaper containment fix ─────────────────────────────────────────────
+   The library default uses position:fixed which would span the full viewport.
+   We constrain it to the chat area by overriding position to absolute.
+   The parent ChatBackground div is already absolute inset-0 overflow-hidden. */
+.tw-wrap {
+  position: absolute;
+  z-index: 0;
 }
