@@ -12,7 +12,10 @@
     "optimize:thumbs": "node tools/optimize-assets.mjs --thumbs",
     "i18n:check": "node tools/check-i18n-parity.mjs",
     "i18n:scan:locale": "grep -rn \"vi-VN\\|en-US\" src/ --include=\"*.tsx\" --include=\"*.ts\" || true",
-    "i18n:scan:vi": "grep -rPn \"[\\x{1E00}-\\x{1EFF}\\x{00C0}-\\x{024F}]\" src/app/ src/components/ src/lib/ --include=\"*.tsx\" --include=\"*.ts\" || true"
+    "i18n:scan:vi": "grep -rPn \"[\\x{1E00}-\\x{1EFF}\\x{00C0}-\\x{024F}]\" src/app/ src/components/ src/lib/ --include=\"*.tsx\" --include=\"*.ts\" || true",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@dayflow/blossom-color-picker": "^2.2.0",

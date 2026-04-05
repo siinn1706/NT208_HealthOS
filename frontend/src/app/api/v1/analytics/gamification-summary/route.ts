@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/redis-cache";
 
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import { CORE_API_URL } from "@/lib/env";
 
 async function getToken(): Promise<string | null> {
   try {

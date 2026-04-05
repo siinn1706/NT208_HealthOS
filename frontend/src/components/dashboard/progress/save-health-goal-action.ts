@@ -2,8 +2,7 @@
 
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
-
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import { CORE_API_URL } from "@/lib/env";
 
 /** Shape of the goal object returned by Core BE (wrapped in { data: ... }) */
 export interface SavedGoal {

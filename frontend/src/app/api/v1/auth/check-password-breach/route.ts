@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import { CORE_API_URL } from "@/lib/env";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);

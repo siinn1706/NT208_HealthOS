@@ -14,8 +14,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
-
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import { CORE_API_URL } from "@/lib/env";
 
 /** Read the Core BE JWT from the session cookie (set by /api/v1/auth on login). */
 async function getSessionToken(): Promise<string | null> {
