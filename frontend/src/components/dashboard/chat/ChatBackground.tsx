@@ -29,6 +29,8 @@ interface ChatBackgroundProps {
 export function ChatBackground({ themeId }: ChatBackgroundProps) {
   const { gradId, patId, opacity } = parseThemeId(themeId);
   const prefersReduced = useReducedMotion();
+  const isTouchDevice =
+    typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
 
   const gradient = CHAT_GRADIENTS.find((g) => g.id === gradId);
   const pattern  = CHAT_PATTERNS.find((p)  => p.id === patId);
@@ -52,7 +54,7 @@ export function ChatBackground({ themeId }: ChatBackgroundProps) {
               key={gradId}
               options={{
                 colors: wpEntry.colors,
-                fps: prefersReduced ? 0 : 30,
+                fps: prefersReduced ? 0 : isTouchDevice ? 15 : 30,
                 tails: wpEntry.tails ?? 90,
                 animate: !prefersReduced,
                 scrollAnimate: false,

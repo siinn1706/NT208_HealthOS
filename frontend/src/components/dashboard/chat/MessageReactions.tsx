@@ -36,7 +36,7 @@ export function MessageReactions({
                 aria-label={`${r.emoji} ${r.user_ids.length}`}
                 className={cn(
                   "flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full border",
-                  "transition-all duration-150 cursor-pointer",
+                  "transition-colors duration-150 cursor-pointer",
                   hasReacted
                     ? "bg-primary/20 border-primary/40"
                     : "bg-background border-border hover:bg-secondary"

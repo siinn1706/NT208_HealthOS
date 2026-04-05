@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
@@ -23,7 +23,11 @@ interface MessageListProps {
   onForward?: (msg: Message) => void;
 }
 
-export function MessageList({
+export interface MessageListHandle {
+  jumpToMessage: (msgId: string) => void;
+}
+
+export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList({
   messages,
   currentUserId,
   participantNameById,
@@ -36,9 +40,18 @@ export function MessageList({
   onPin,
   onReact,
   onForward,
-}: MessageListProps) {
+}, ref) {
   const locale = useLocale();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+
+  useImperativeHandle(ref, () => ({
+    jumpToMessage(msgId: string) {
+      const index = messages.findIndex((m) => m.id === msgId);
+      if (index >= 0 && virtuosoRef.current) {
+        virtuosoRef.current.scrollToIndex({ index, align: "center", behavior: "smooth" });
+      }
+    },
+  }), [messages]);
 
   const itemContent = useCallback(
     (index: number) => {
@@ -142,4 +155,4 @@ export function MessageList({
       </div>
     </div>
   );
-}
+});
