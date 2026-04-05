@@ -213,7 +213,9 @@
     "fullNameRequired": "Full name is required.",
     "fullNameTooShort": "Full name must be at least 2 characters.",
     "fullNameTooLong": "Full name cannot exceed 100 characters.",
-    "addressTooLong": "Address cannot exceed 200 characters."
+    "addressTooLong": "Address cannot exceed 512 characters.",
+    "ecNameRequired": "Contact name is required.",
+    "ecRelationshipRequired": "Relationship is required."
   },
   "system": {
     "noServerData": "Server returned no data for goal",
@@ -1014,6 +1016,7 @@
       "notSpecified": "Not specified",
       "saveSuccess": "Profile updated successfully!",
       "saveError": "Save failed. Please try again.",
+      "loadError": "Could not load your profile. Please try again.",
       "addContact": "Add Contact",
       "removeContact": "Remove",
       "contactN": "Contact {n}",

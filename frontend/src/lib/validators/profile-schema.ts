@@ -47,16 +47,15 @@ export function getProfileSchema(t: TranslateFn) {
 
     address: z
       .string()
-      .max(200, { message: t("validation.addressTooLong") })
+      .max(512, { message: t("validation.addressTooLong") })
       .nullable()
       .optional(),
 
     emergency_contacts: z
       .array(
         z.object({
-          id: z.string().optional(),
-          name: nullableOptionalString,
-          relationship: nullableOptionalString,
+          name: z.string().min(1, { message: t("validation.ecNameRequired") }),
+          relationship: z.string().min(1, { message: t("validation.ecRelationshipRequired") }),
           phone: nullablePhone,
         })
       )

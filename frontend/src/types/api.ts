@@ -35,15 +35,19 @@ export interface PaginatedResponse<T> {
 export interface User {
   id: string;
   email: string;
+  username: string | null;
   display_name: string;
+  avatar_url: string | null;
+  onboarding_status: string;
+  onboarding_completed_at: string | null;
   created_at: string;
 }
 
 export interface EmergencyContact {
-  id?: string;
   name: string | null;
   relationship: string | null;
   phone: string | null;
+  email?: string | null;
 }
 
 export interface MedicalInfo {
@@ -62,12 +66,23 @@ export interface UserProfile extends User {
   weight_kg: number | null;
   phone: string | null;
   address: string | null;
-  avatar_url: string | null;
   emergency_contacts: EmergencyContact[];
   medical_info: MedicalInfo;
 }
 
-export type UserProfileUpdate = Omit<UserProfile, "id" | "email" | "created_at">;
+/** Fields accepted by PATCH /v1/users/me — must stay in sync with BE UserProfileUpdate schema. */
+export interface UserProfileUpdate {
+  full_name?: string | null;
+  date_of_birth?: string | null;
+  gender?: "male" | "female" | "other" | null;
+  blood_type?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  phone?: string | null;
+  address?: string | null;
+  emergency_contacts?: EmergencyContact[] | null;
+  medical_info?: MedicalInfo | null;
+}
 
 // ─── Meals ──────────────────────────────────────────────────────────
 

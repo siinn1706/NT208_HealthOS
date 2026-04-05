@@ -7,7 +7,12 @@ function emptyProfile(): UserProfile {
   return {
     id: "",
     email: "",
+    username: null,
     display_name: "",
+    avatar_url: null,
+    onboarding_status: "pending",
+    onboarding_completed_at: null,
+    created_at: "",
     full_name: "",
     phone: null,
     date_of_birth: null,
@@ -15,7 +20,6 @@ function emptyProfile(): UserProfile {
     blood_type: null,
     height_cm: null,
     weight_kg: null,
-    avatar_url: null,
     address: null,
     emergency_contacts: [],
     medical_info: {
@@ -24,7 +28,6 @@ function emptyProfile(): UserProfile {
       current_medications: null,
       notes: null,
     },
-    created_at: "",
   };
 }
 
@@ -35,10 +38,14 @@ function normalizeProfile(data: any): UserProfile {
     ...fallback,
     id: typeof data?.id === "string" ? data.id : fallback.id,
     email: typeof data?.email === "string" && data.email.trim() ? data.email : fallback.email,
+    username: typeof data?.username === "string" ? data.username : null,
     display_name:
       typeof data?.display_name === "string" && data.display_name.trim()
         ? data.display_name
         : fallback.display_name,
+    avatar_url: typeof data?.avatar_url === "string" ? data.avatar_url : null,
+    onboarding_status: typeof data?.onboarding_status === "string" ? data.onboarding_status : "pending",
+    onboarding_completed_at: typeof data?.onboarding_completed_at === "string" ? data.onboarding_completed_at : null,
     full_name:
       typeof data?.full_name === "string" && data.full_name.trim()
         ? data.full_name
@@ -51,9 +58,19 @@ function normalizeProfile(data: any): UserProfile {
     blood_type: typeof data?.blood_type === "string" ? data.blood_type : null,
     height_cm: typeof data?.height_cm === "number" ? data.height_cm : null,
     weight_kg: typeof data?.weight_kg === "number" ? data.weight_kg : null,
-    avatar_url: typeof data?.avatar_url === "string" ? data.avatar_url : null,
     address: typeof data?.address === "string" ? data.address : null,
-    emergency_contacts: Array.isArray(data?.emergency_contacts) ? data.emergency_contacts : [],
+    emergency_contacts: Array.isArray(data?.emergency_contacts)
+      ? data.emergency_contacts
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((ec: any) => ec && typeof ec === "object")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((ec: any) => ({
+            name: typeof ec.name === "string" ? ec.name : null,
+            relationship: typeof ec.relationship === "string" ? ec.relationship : null,
+            phone: typeof ec.phone === "string" ? ec.phone : null,
+            email: typeof ec.email === "string" ? ec.email : undefined,
+          }))
+      : [],
     medical_info:
       data?.medical_info && typeof data.medical_info === "object"
         ? {
@@ -90,24 +107,22 @@ export async function getProfileData(): Promise<UserProfile> {
 }
 
 export async function updateProfileData(update: UserProfileUpdate): Promise<UserProfile> {
-  try {
-    const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/users/me`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        cookie: reqHeaders.get("cookie") ?? "",
-      },
-      body: JSON.stringify(update),
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      return getProfileData();
-    }
-    const json = await res.json().catch(() => null);
-    return normalizeProfile(json?.data);
-  } catch {
-    return getProfileData();
+  const reqHeaders = await headers();
+  const res = await fetch(`${APP_URL}/api/v1/users/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      cookie: reqHeaders.get("cookie") ?? "",
+    },
+    body: JSON.stringify(update),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => null);
+    const message = errorJson?.error?.message ?? errorJson?.detail ?? `Save failed (${res.status})`;
+    throw new Error(message);
   }
+  const json = await res.json().catch(() => null);
+  return normalizeProfile(json?.data);
 }
 

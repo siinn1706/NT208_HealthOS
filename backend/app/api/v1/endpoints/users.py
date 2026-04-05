@@ -95,12 +95,11 @@ async def update_current_user_profile(
     update_data = body.model_dump(exclude_unset=True, exclude={"onboarding_completed"})
 
     for field, value in update_data.items():
-        if value is not None:
-            # Handle emergency_contacts and medical_info (convert to dict for JSONB)
-            if field in ("emergency_contacts", "medical_info"):
-                setattr(profile, field, [item.model_dump() if hasattr(item, "model_dump") else item for item in value] if isinstance(value, list) else value)
-            else:
-                setattr(profile, field, value)
+        # Handle emergency_contacts and medical_info (convert to dict for JSONB)
+        if field in ("emergency_contacts", "medical_info"):
+            setattr(profile, field, [item.model_dump() if hasattr(item, "model_dump") else item for item in value] if isinstance(value, list) else value)
+        else:
+            setattr(profile, field, value)
 
     # Handle onboarding completion
     if body.onboarding_completed:
