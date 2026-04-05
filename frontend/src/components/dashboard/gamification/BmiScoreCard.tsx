@@ -13,37 +13,17 @@ const BMI_SCALE_MAX = 35;
 const BMI_SCALE_MIN = 15;
 
 const BMI_STATUS_CONFIG = {
-  underweight: {
-    color: "#60A5FA",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/30",
-    label: "Thiếu cân",
-  },
-  normal: {
-    color: "#4ADE80",
-    bg: "bg-green-500/10",
-    border: "border-green-500/30",
-    label: "Bình thường",
-  },
-  overweight: {
-    color: "#FBBF24",
-    bg: "bg-yellow-500/10",
-    border: "border-yellow-500/30",
-    label: "Thừa cân",
-  },
-  obese: {
-    color: "#F87171",
-    bg: "bg-red-500/10",
-    border: "border-red-500/30",
-    label: "Béo phì",
-  },
+  underweight: { color: "#60A5FA", bg: "bg-blue-500/10", border: "border-blue-500/30" },
+  normal:      { color: "#4ADE80", bg: "bg-green-500/10", border: "border-green-500/30" },
+  overweight:  { color: "#FBBF24", bg: "bg-yellow-500/10", border: "border-yellow-500/30" },
+  obese:       { color: "#F87171", bg: "bg-red-500/10", border: "border-red-500/30" },
 };
 
 export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
   const t = useTranslations("dashboard.progress");
   const config = BMI_STATUS_CONFIG[bmi.status];
   const hasBmi = bmi.bmi != null;
-  const bmiValue = bmi.bmi as number;
+  const bmiValue = bmi.bmi ?? 0;
   const pct = hasBmi
     ? Math.min(Math.max(((bmiValue - BMI_SCALE_MIN) / (BMI_SCALE_MAX - BMI_SCALE_MIN)) * 100, 0), 100)
     : 0;
@@ -61,9 +41,9 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-semibold text-foreground">Chỉ số BMI</p>
+          <p className="text-sm font-semibold text-foreground">{t("bmiLabel")}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Đóng góp điểm xếp hạng
+            {t("bmiContribution")}
           </p>
         </div>
         <div
@@ -73,7 +53,7 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
           )}
           style={{ color: config.color }}
         >
-          {config.label}
+          {t(`bmiLabels.${bmi.status}`)}
         </div>
       </div>
 
@@ -91,7 +71,7 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
           <p className="text-2xl font-bold" style={{ color: config.color }}>
             {bmi.bmiScore != null ? `+${bmi.bmiScore}` : "--"}
           </p>
-          <p className="text-[11px] text-muted-foreground">điểm xếp hạng</p>
+          <p className="text-[11px] text-muted-foreground">{t("rankingPoints")}</p>
         </div>
       </div>
 
@@ -116,20 +96,20 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
       {bmi.status !== "normal" && bmi.targetBmi != null && (
         <div className="rounded-lg bg-background/40 border border-border px-3 py-2">
           <p className="text-xs text-muted-foreground">
-            Mục tiêu:{" "}
+            {t("targetLabel")}{" "}
             <span className="text-foreground font-medium">
               BMI {bmi.targetBmi.toFixed(1)} — {targetWeight.toFixed(1)}kg
             </span>
             {weightDiff > 0 && (
               <span className="text-yellow-400">
                 {" "}
-                (cần giảm {weightDiff.toFixed(1)}kg)
+                ({t("needToLose")} {weightDiff.toFixed(1)}kg)
               </span>
             )}
             {weightDiff < 0 && (
               <span className="text-blue-400">
                 {" "}
-                (cần tăng {Math.abs(weightDiff).toFixed(1)}kg)
+                ({t("needToGain")} {Math.abs(weightDiff).toFixed(1)}kg)
               </span>
             )}
           </p>

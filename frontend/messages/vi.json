@@ -723,7 +723,9 @@
         "change": "Thay đổi",
         "you": "Bạn",
         "yourRank": "Xếp hạng của bạn:"
-      }
+      },
+      "completed": "Hoàn thành",
+      "notCompleted": "Chưa hoàn thành"
     },
     "risk": {
       "title": "Dự đoán rủi ro sức khỏe",
@@ -853,6 +855,7 @@
       "calories": "Mục tiêu calo",
       "viewAll": "Xem tất cả mục tiêu",
       "addGoal": "Thêm mục tiêu",
+      "addGoalDisabled": "Tính năng mục tiêu hoạt động sắp ra mắt",
       "newGoal": "Đặt mục tiêu mới",
       "step1": "Chọn hoạt động",
       "step2": "Chọn mức mục tiêu",
@@ -1092,13 +1095,30 @@
         "longestStreak": "Streak dài nhất",
         "pastWeeks": "8 tuần qua",
         "days": "ngày",
-        "activitiesCount": "{n} hoạt động"
+        "activitiesCount": "{n} hoạt động",
+        "requirement": "Cần ≥ 5 ngày/tuần × 4 tuần để nhận huy hiệu"
       },
       "bmiLabels": {
         "underweight": "Thiếu cân",
         "normal": "Bình thường",
         "overweight": "Thừa cân",
         "obese": "Béo phì"
+      },
+      "bmiLabel": "Chỉ số BMI",
+      "bmiContribution": "Đóng góp điểm xếp hạng",
+      "rankingPoints": "điểm xếp hạng",
+      "targetLabel": "Mục tiêu:",
+      "needToLose": "cần giảm",
+      "needToGain": "cần tăng",
+      "chartHighest": "Cao nhất",
+      "chartLowest": "Thấp nhất",
+      "chartTarget": "Mục tiêu"
+    },
+    "gamification": {
+      "tabs": {
+        "goals": "Mục tiêu",
+        "achievements": "Thành tựu",
+        "leaderboard": "Xếp hạng"
       }
     }
   },

@@ -93,6 +93,9 @@ function GoalRing({
 export function DailyProgressRings({ goals }: DailyProgressRingsProps) {
   const t = useTranslations("dashboard.achievements");
   const tg = useTranslations("dashboard.goals");
+
+  if (!goals || goals.length === 0) return null;
+
   const completed = goals.filter(
     (g) => g.todayProgress >= g.dailyTarget
   ).length;

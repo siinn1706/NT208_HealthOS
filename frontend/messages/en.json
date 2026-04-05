@@ -723,7 +723,9 @@
         "change": "Change",
         "you": "You",
         "yourRank": "Your rank:"
-      }
+      },
+      "completed": "Completed",
+      "notCompleted": "Incomplete"
     },
     "risk": {
       "title": "Health Risk Prediction",
@@ -853,6 +855,7 @@
       "calories": "Calorie Goal",
       "viewAll": "View All Goals",
       "addGoal": "Add Goal",
+      "addGoalDisabled": "Activity goals coming soon",
       "newGoal": "Set New Goal",
       "step1": "Choose Activity",
       "step2": "Choose Target Level",
@@ -1092,13 +1095,30 @@
         "longestStreak": "Longest Streak",
         "pastWeeks": "Last 8 weeks",
         "days": "days",
-        "activitiesCount": "{n} activities"
+        "activitiesCount": "{n} activities",
+        "requirement": "Need ≥ 5 days/week × 4 weeks to earn badge"
       },
       "bmiLabels": {
         "underweight": "Underweight",
         "normal": "Normal",
         "overweight": "Overweight",
         "obese": "Obese"
+      },
+      "bmiLabel": "BMI Index",
+      "bmiContribution": "Ranking contribution",
+      "rankingPoints": "ranking points",
+      "targetLabel": "Target:",
+      "needToLose": "need to lose",
+      "needToGain": "need to gain",
+      "chartHighest": "Highest",
+      "chartLowest": "Lowest",
+      "chartTarget": "Target"
+    },
+    "gamification": {
+      "tabs": {
+        "goals": "Goals",
+        "achievements": "Achievements",
+        "leaderboard": "Leaderboard"
       }
     }
   },
