@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "chat.message.pinned",
+  "description": "WS broadcast when a message is pinned in a conversation (canonical format). Also emitted as legacy `msg:pinned`.",
+  "type": "object",
+  "required": ["event", "version", "payload", "metadata"],
+  "properties": {
+    "event": { "type": "string", "const": "chat.message.pinned" },
+    "version": { "type": "string", "const": "1.0" },
+    "payload": {
+      "type": "object",
+      "required": ["conversation_id", "message_id"],
+      "properties": {
+        "conversation_id": { "type": "string", "format": "uuid" },
+        "message_id":      { "type": "string", "format": "uuid" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id":       { "type": "string", "format": "uuid" },
+        "timestamp":      { "type": "string", "format": "date-time" },
+        "user_id":        { "type": "string", "format": "uuid" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

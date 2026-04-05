@@ -443,6 +443,13 @@ export function useMessages(conversationId: string | null, currentUserId: string
     });
   }, []);
 
+  /** Called by WS pin/unpin events — toggles is_pinned on a message already in state. */
+  const setPinnedState = useCallback((msgId: string, isPinned: boolean) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, is_pinned: isPinned } : m))
+    );
+  }, []);
+
   /** Called by WS typing event. */
   const setRemoteTyping = useCallback((typing: boolean) => {
     setIsTyping(typing);
@@ -664,6 +671,7 @@ export function useMessages(conversationId: string | null, currentUserId: string
     isTyping,
     loadMore,
     upsertMessage,
+    setPinnedState,
     setRemoteTyping,
     sendMessage,
     editMessage,

@@ -38,6 +38,8 @@ export async function bffFetch<T = unknown>(
     throw new BffError(res.status, error?.error?.code ?? "UNKNOWN", error?.error?.message ?? res.statusText);
   }
 
+  if (res.status === 204) return undefined as T;
+
   return res.json() as Promise<T>;
 }
 
