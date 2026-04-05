@@ -93,7 +93,9 @@ export function PreventionTipList({ tips }: PreventionTipListProps) {
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-start justify-between gap-2 flex-wrap">
                   <p className="text-xs font-semibold text-foreground leading-snug">
-                    {tip.title}
+                    {t.has(`tipTitles.${tip.id}` as never)
+                      ? t(`tipTitles.${tip.id}` as never)
+                      : tip.title}
                   </p>
                   {/* Priority badge */}
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground flex-shrink-0">
@@ -102,7 +104,9 @@ export function PreventionTipList({ tips }: PreventionTipListProps) {
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  {tip.description}
+                  {t.has(`tipDescriptions.${tip.id}` as never)
+                    ? t(`tipDescriptions.${tip.id}` as never)
+                    : tip.description}
                 </p>
                 {/* Category chip */}
                 <span

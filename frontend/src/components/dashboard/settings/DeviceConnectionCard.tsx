@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { formatDate } from "@/lib/format-utils";
 import {
   Wifi,
   WifiOff,
@@ -59,17 +61,24 @@ interface DeviceConnectionCardProps {
   onDisconnect: (id: string) => void;
 }
 
-function formatSyncTime(iso: string | null): string {
-  if (!iso) return "Chưa có thông tin";
+interface SyncLabels {
+  noSyncInfo: string;
+  justNow: string;
+  minutesAgo: (n: number) => string;
+  hoursAgo: (n: number) => string;
+}
+
+function formatSyncTime(iso: string | null, labels: SyncLabels, locale: string): string {
+  if (!iso) return labels.noSyncInfo;
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 1) return "Vừa xong";
-  if (diffMins < 60) return `${diffMins} phút trước`;
+  if (diffMins < 1) return labels.justNow;
+  if (diffMins < 60) return labels.minutesAgo(diffMins);
   const diffHrs = Math.floor(diffMins / 60);
-  if (diffHrs < 24) return `${diffHrs} giờ trước`;
-  return d.toLocaleDateString("vi-VN");
+  if (diffHrs < 24) return labels.hoursAgo(diffHrs);
+  return formatDate(d, locale);
 }
 
 export function DeviceConnectionCard({
@@ -78,7 +87,15 @@ export function DeviceConnectionCard({
   onDisconnect,
 }: DeviceConnectionCardProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const t = useTranslations("dashboard.devices");
+  const locale = useLocale();
   const meta = PROVIDER_META[device.provider];
+  const syncLabels: SyncLabels = {
+    noSyncInfo: t("noSyncInfo"),
+    justNow:    t("justNow"),
+    minutesAgo: (n) => t("minutesAgo", { n }),
+    hoursAgo:   (n) => t("hoursAgo",   { n }),
+  };
 
   const handleSync = async () => {
     setSyncStatus("syncing");
@@ -155,12 +172,12 @@ export function DeviceConnectionCard({
         {syncStatus === "idle" && <Clock className="w-3 h-3" />}
         <span>
           {syncStatus === "syncing"
-            ? "Đang đồng bộ..."
+            ? t("syncing")
             : syncStatus === "success"
-            ? "Đồng bộ thành công"
+            ? t("syncSuccess")
             : syncStatus === "error"
-            ? "Đồng bộ thất bại"
-            : `Lần cuối: ${formatSyncTime(device.lastSync)}`}
+            ? t("syncFailed")
+            : `${t("lastSync")} ${formatSyncTime(device.lastSync, syncLabels, locale)}`}
         </span>
       </div>
 

@@ -1,8 +1,9 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { Suspense } from "react";
 import { Target, Flame, Award, TrendingUp } from "lucide-react";
 import { StreakHeatmap } from "@/components/charts/StreakHeatmap";
 import { getGamificationSummary } from "@/lib/gamification-data";
+import { formatDate, formatNumber, getUnitLabel } from "@/lib/format-utils";
 
 function Skeleton() {
   return <div className="animate-pulse rounded-xl bg-muted h-32" />;
@@ -11,6 +12,7 @@ function Skeleton() {
 async function GamificationGoalsContent() {
   const t = await getTranslations("dashboard.achievements");
   const tg = await getTranslations("dashboard.goals");
+  const locale = await getLocale();
   const summary = await getGamificationSummary();
   const { currentUser, activeGoals, streakHistory, recentUnlocked } = summary;
 
@@ -110,7 +112,7 @@ async function GamificationGoalsContent() {
                       </span>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {goal.todayProgress.toLocaleString()} / {goal.dailyTarget.toLocaleString()} {goal.unit}
+                      {formatNumber(goal.todayProgress, locale)} / {formatNumber(goal.dailyTarget, locale)} {getUnitLabel(goal.unit, locale)}
                     </span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
@@ -149,7 +151,7 @@ async function GamificationGoalsContent() {
                       : milestone.activityType}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {milestone.unlockedAt ? new Date(milestone.unlockedAt).toLocaleDateString() : ""}
+                    {milestone.unlockedAt ? formatDate(new Date(milestone.unlockedAt), locale) : ""}
                   </p>
                 </div>
               </div>

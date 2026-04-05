@@ -9,7 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatTime } from "@/lib/format-utils";
 import {
   ArrowLeft,
   MoreVertical,
@@ -55,6 +56,7 @@ export function ChatWindowHeader({
   onInfoOpen,
 }: ChatWindowHeaderProps) {
   const t = useTranslations("chat");
+  const locale = useLocale();
   const [showThemePicker, setShowThemePicker] = useState(false);
 
   const name = getConversationName(conversation, currentUserId);
@@ -112,7 +114,7 @@ export function ChatWindowHeader({
                 {t("online")}
               </span>
             ) : other?.last_seen ? (
-              `${t("lastSeen")} ${new Date(other.last_seen).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+              `${t("lastSeen")} ${formatTime(other.last_seen, locale)}`
             ) : (
               t("offline")
             )}

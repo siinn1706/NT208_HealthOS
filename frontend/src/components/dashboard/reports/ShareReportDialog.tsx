@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useReportShare } from "@/hooks/useReportShare";
+import { formatDate } from "@/lib/format-utils";
 import type { HealthReport, EmergencyContact, ShareRecipient, ShareChannel } from "@/types/api";
 
 const EMPTY_EMERGENCY_CONTACTS: EmergencyContact[] = [];
@@ -136,7 +137,7 @@ export function ShareReportDialog({
                   Báo cáo sức khoẻ — {report.period === "7d" ? "7 ngày" : report.period === "30d" ? "30 ngày" : "90 ngày"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {report.alerts.length} cảnh báo • {new Date(report.generated_at).toLocaleDateString("vi-VN")}
+                  {report.alerts.length} {t("alertsWord")} • {formatDate(report.generated_at, locale)}
                 </p>
               </div>
               <Badge

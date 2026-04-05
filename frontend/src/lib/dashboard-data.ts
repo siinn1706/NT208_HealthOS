@@ -39,7 +39,7 @@ export interface ReminderItem {
 
 function emptySummary(): DashboardSummary {
   return {
-    userName: "Chưa có thông tin",
+    userName: "",
     alerts: [],
     kpis: {
       caloriesBurned: { current: null, target: null },
@@ -74,7 +74,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       userName:
         typeof d.user_name === "string" && d.user_name.trim()
           ? d.user_name
-          : "Chưa có thông tin",
+          : "",
       alerts: Array.isArray(d.alerts) ? d.alerts : [],
       kpis: {
         caloriesBurned: {
@@ -180,7 +180,7 @@ export async function getUpcomingReminders(): Promise<ReminderItem[]> {
             title:
               typeof row.title === "string" && row.title.trim()
                 ? row.title
-                : "Chưa có thông tin",
+                : "",
             time: typeof row.time === "string" ? row.time : "--",
             done: Boolean(row.done),
           };

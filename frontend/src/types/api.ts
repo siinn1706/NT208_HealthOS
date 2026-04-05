@@ -137,6 +137,7 @@ export interface NutritionSuggestion {
   icon: string; // lucide icon name
   title: string;
   message: string;
+  message_params?: Record<string, number>;
   priority: number; // lower = higher priority
   cta?: { label: string; href: string };
 }
@@ -306,6 +307,7 @@ export interface RiskItem {
   id: string;
   condition: string;
   conditionVi: string;
+  conditionCode: string;
   probability: number;
   level: RiskLevel;
   trend: RiskTrend;

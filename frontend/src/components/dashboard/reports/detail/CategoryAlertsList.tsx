@@ -1,5 +1,6 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { AlertTriangle, AlertCircle, Info, CheckCircle2 } from "lucide-react";
+import { getLocaleTag } from "@/lib/format-utils";
 import { Badge } from "@/components/ui/badge";
 import type { ReportAlert } from "@/types/api";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ function severityBg(severity: ReportAlert["severity"]) {
 
 export async function CategoryAlertsList({ alerts }: CategoryAlertsListProps) {
   const t = await getTranslations("reports");
+  const locale = await getLocale();
 
   if (alerts.length === 0) {
     return (
@@ -74,7 +76,7 @@ export async function CategoryAlertsList({ alerts }: CategoryAlertsListProps) {
                   </span>
                 )}
                 <time dateTime={alert.timestamp}>
-                  {new Date(alert.timestamp).toLocaleString("vi-VN", {
+                  {new Date(alert.timestamp).toLocaleString(getLocaleTag(locale), {
                     day: "2-digit",
                     month: "2-digit",
                     hour: "2-digit",

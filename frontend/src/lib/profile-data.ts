@@ -6,9 +6,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 function emptyProfile(): UserProfile {
   return {
     id: "",
-    email: "N/A",
-    display_name: "Chưa có thông tin",
-    full_name: "Chưa có thông tin",
+    email: "",
+    display_name: "",
+    full_name: "",
     phone: null,
     date_of_birth: null,
     gender: null,

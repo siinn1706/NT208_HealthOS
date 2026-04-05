@@ -1,7 +1,8 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { SectionStats } from "@/types/api";
 import { trendColor } from "@/lib/report-utils";
+import { getLocaleTag } from "@/lib/format-utils";
 
 interface KeyStatsRowProps {
   stats: SectionStats;
@@ -9,6 +10,7 @@ interface KeyStatsRowProps {
 
 export async function KeyStatsRow({ stats }: KeyStatsRowProps) {
   const t = await getTranslations("reports.stats");
+  const locale = await getLocale();
 
   const TrendIcon =
     stats.trend === "improving"
@@ -34,7 +36,7 @@ export async function KeyStatsRow({ stats }: KeyStatsRowProps) {
         >
           <p className="text-[11px] text-muted-foreground font-medium">{label}</p>
           <p className={`text-2xl font-bold tabular-nums mt-1 ${highlight ? "text-foreground" : "text-muted-foreground"}`}>
-            {value.toLocaleString()}
+            {value.toLocaleString(getLocaleTag(locale))}
             <span className="text-xs font-normal text-muted-foreground ml-1">{stats.unit}</span>
           </p>
         </div>

@@ -39,6 +39,15 @@
       "lunch": "Lunch",
       "dinner": "Dinner",
       "snack": "Snack"
+    },
+    "timeRange": {
+      "days7": "7 days",
+      "days30": "30 days",
+      "days90": "90 days",
+      "custom": "Custom",
+      "fromDate": "From date",
+      "toDate": "To date",
+      "apply": "Apply"
     }
   },
   "onboarding": {
@@ -114,7 +123,31 @@
     "loginSuccess": "Login successful!",
     "emailTaken": "Email already in use. Please use a different email.",
     "genericTryAgain": "An error occurred. Please try again.",
-    "sessionExpired": "Session expired"
+    "sessionExpired": "Session expired",
+    "accountNotFoundEmail": "No account found for this email address",
+    "accountNotFoundUsername": "No account found for this username",
+    "accountLocked": "Account locked. Please try again in {minutes} minutes.",
+    "invalidCredentials": "Incorrect username or password",
+    "otpLocked": "Too many invalid OTP attempts. Please wait before trying again.",
+    "otpInvalid": "Invalid OTP code",
+    "otpExpired": "OTP code has expired",
+    "passwordBreached": "This password has appeared in a data breach. Please choose a different password.",
+    "otpRequired": "OTP verification is required",
+    "otpSendFailed": "Failed to send OTP. Please try again.",
+    "accountCreateFailed": "Account creation failed. Please try again.",
+    "alerts": {
+      "heartRateHigh": "Heart rate {value} {unit} exceeds the safe threshold of {threshold} {unit}",
+      "bpSystolicHigh": "Systolic blood pressure {value} {unit} exceeds the safe threshold of {threshold} {unit}",
+      "bpDiastolicHigh": "Diastolic blood pressure {value} {unit} exceeds the safe threshold of {threshold} {unit}",
+      "calorieHigh": "Today's calorie intake {value} {unit} is above the recommended {threshold} {unit}",
+      "calorieLow": "Today's calorie intake {value} {unit} is below the recommended minimum",
+      "calorieNormal": "Calorie intake is within the healthy range",
+      "activityGood": "Great job! You've reached your activity goal today",
+      "stepsLow": "Only {value} {unit} today — try to reach {threshold} {unit}",
+      "sleepLow": "Sleep duration {value} {unit} is below the recommended {threshold} {unit}",
+      "bmiOverweight": "BMI {value} {unit} indicates overweight (threshold: {threshold} {unit})",
+      "medicationAdherenceLow": "Medication adherence {value} {unit} is below the target of {threshold} {unit}"
+    }
   },
   "camera": {
     "title": "Capture or Upload Meal Photo",
@@ -174,9 +207,13 @@
     "addIngredient": "Please add at least 1 ingredient.",
     "phoneInvalid": "Invalid phone number.",
     "heightInvalid": "Invalid height.",
+    "heightMin": "Height must be at least 50 cm.",
     "weightInvalid": "Invalid weight.",
+    "weightMin": "Weight must be at least 10 kg.",
     "fullNameRequired": "Full name is required.",
-    "fullNameTooShort": "Full name must be at least 2 characters."
+    "fullNameTooShort": "Full name must be at least 2 characters.",
+    "fullNameTooLong": "Full name cannot exceed 100 characters.",
+    "addressTooLong": "Address cannot exceed 200 characters."
   },
   "system": {
     "noServerData": "Server returned no data for goal",
@@ -270,7 +307,8 @@
     "contact": {
       "title": "Start Your Health Journey Today",
       "description": "Fill in your information below and we'll reach out to support you right away."
-    }
+    },
+    "exploreMore": "Learn More"
   },
   "about": {
     "meta": {
@@ -452,6 +490,28 @@
         "tip": "Tip",
         "goal": "Goal",
         "success": "Achieved"
+      },
+      "suggestions": {
+        "nutrition-no-data": {
+          "title": "No meal data",
+          "message": "No meal data logged today for analysis."
+        },
+        "nutrition-protein-low": {
+          "title": "Low protein intake",
+          "message": "Add more protein sources to balance your diet."
+        },
+        "nutrition-calories-high": {
+          "title": "Calorie intake exceeded",
+          "message": "Today's calorie count is higher than recommended."
+        },
+        "nutrition-calories-low": {
+          "title": "Low energy intake",
+          "message": "Total calories today are low, consider adding a snack."
+        },
+        "nutrition-balanced": {
+          "title": "Balanced nutrition",
+          "message": "Protein {protein}g, carbs {carbs}g, fat {fat}g."
+        }
       }
     },
     "reminders": {
@@ -546,6 +606,7 @@
       "close": "Close"
     },
     "meals": {
+      "subtitle": "Track your diet and nutrition goals",
       "today": "Today",
       "noMealsToday": "No meals logged today",
       "addMeal": "Add meal",
@@ -653,6 +714,13 @@
         "steps-8000": "8,000 steps daily",
         "steps-10000": "10,000 steps daily",
         "steps-15000": "15,000 steps daily"
+      },
+      "leaderboard": {
+        "user": "User",
+        "score": "Score",
+        "change": "Change",
+        "you": "You",
+        "yourRank": "Your rank:"
       }
     },
     "risk": {
@@ -697,6 +765,83 @@
       "conditionLabels": {
         "obesity": "Obesity",
         "fatty_liver": "Fatty Liver Disease"
+      },
+      "conditions": {
+        "DIABETES_T2": "Type 2 Diabetes",
+        "HYPERTENSION": "Hypertension",
+        "OVERWEIGHT": "Overweight",
+        "OBESITY": "Obesity",
+        "CARDIOVASCULAR": "Cardiovascular Disease",
+        "FATTY_LIVER": "Fatty Liver Disease"
+      },
+      "factorLabels": {
+        "STEPS": "Step Count",
+        "SYSTOLIC_BP": "Systolic Blood Pressure",
+        "DIASTOLIC_BP": "Diastolic Blood Pressure",
+        "PHYSICAL_ACTIVITY": "Physical Activity",
+        "BMI": "BMI",
+        "HEART_RATE": "Heart Rate",
+        "SLEEP": "Sleep",
+        "WEIGHT": "Weight",
+        "CALORIES": "Calories",
+        "NO_DATA": "No data"
+      },
+      "tipTitles": {
+        "tip-diabetes-activity": "Increase Physical Activity",
+        "tip-hypertension-diet": "Reduce Sodium Intake",
+        "tip-obesity-goal": "Maintain Caloric Deficit"
+      },
+      "tipDescriptions": {
+        "tip-diabetes-activity": "Aim for at least 150 minutes of moderate-intensity aerobic activity per week to improve insulin sensitivity.",
+        "tip-hypertension-diet": "Limit sodium intake to less than 2,300 mg per day. Choose low-sodium foods and avoid adding salt.",
+        "tip-obesity-goal": "Create a moderate caloric deficit of 300–500 kcal per day through diet and exercise for sustainable weight loss."
+      },
+      "disclaimer": "⚕️ Results are for reference only and do not replace medical advice. Please consult a healthcare professional for proper diagnosis and treatment.",
+      "alerts": {
+        "HEART_RATE_HIGH": "Heart rate is currently {value} bpm, exceeding the recommended threshold.",
+        "BP_SYSTOLIC_HIGH": "Systolic blood pressure {value} mmHg is at a high level.",
+        "BP_DIASTOLIC_HIGH": "Diastolic blood pressure {value} mmHg is at a high level.",
+        "CALORIE_HIGH": "Calorie intake today exceeds the recommended level.",
+        "STEPS_LOW": "Step count today is below the recommended {threshold} steps.",
+        "SLEEP_LOW": "Sleep duration today is below the recommended {threshold} hours.",
+        "BMI_OVERWEIGHT": "Current BMI is in the overweight range. Consider diet and exercise adjustments.",
+        "MEDICATION_ADHERENCE_LOW": "Medication adherence is low. Please follow your prescribed schedule."
+      },
+      "insights": {
+        "CALORIE_LOW": "You are eating below your daily energy needs.",
+        "CALORIE_HIGH": "Calorie intake today is above the recommended level.",
+        "CALORIE_NORMAL": "Energy intake today is close to your target.",
+        "ACTIVITY_GOOD": "You have activity data — keep it up to improve your health."
+      },
+      "sections": {
+        "VITALS": {
+          "title": "Vital Signs",
+          "summary": "Review of your key vital sign measurements over the period."
+        },
+        "NUTRITION": {
+          "title": "Nutrition",
+          "summary": "Overview of your nutritional intake and caloric balance."
+        },
+        "ACTIVITY": {
+          "title": "Physical Activity",
+          "summary": "Summary of your physical activity and exercise patterns."
+        },
+        "SLEEP": {
+          "title": "Sleep",
+          "summary": "Analysis of your sleep duration and quality."
+        },
+        "BMI": {
+          "title": "BMI & Weight",
+          "summary": "Body mass index and weight trend assessment."
+        },
+        "MEDICATION": {
+          "title": "Medication",
+          "summary": "Medication adherence and compliance overview."
+        }
+      },
+      "trendSummary": {
+        "TREND_SUMMARY": "{metric} over {period} is {trend}, changing {change}% from the start of the period.",
+        "TREND_NO_DATA": "Insufficient data to analyze trends."
       }
     },
     "goals": {
@@ -752,7 +897,8 @@
         "steps-8000": "8,000 steps daily",
         "steps-10000": "10,000 steps daily",
         "steps-15000": "15,000 steps daily"
-      }
+      },
+      "noInfo": "No information available"
     },
     "services": {
       "pageTitle": "Start Your Health Journey"
@@ -760,6 +906,13 @@
     "devices": {
       "title": "Manage wearables and health tracking devices",
       "syncSuccess": "Sync successful",
+      "syncing": "Syncing...",
+      "syncFailed": "Sync failed",
+      "lastSync": "Last sync:",
+      "noSyncInfo": "No sync info",
+      "justNow": "Just now",
+      "minutesAgo": "{n} min ago",
+      "hoursAgo": "{n} hr ago",
       "privacyNote": "Device data is encrypted and only used to improve your health experience."
     },
     "settingsPage": {
@@ -822,7 +975,8 @@
       "title": "AI Insight",
       "subtitle": "Based on your data today",
       "askAI": "Ask AI Assistant",
-      "loading": "Analyzing your health data..."
+      "loading": "Analyzing your health data...",
+      "noInfo": "No information available"
     },
     "nav": {
       "overview": "Overview",
@@ -1153,6 +1307,9 @@
         "warning": "Warning",
         "info": "Info"
       }
+    },
+    "export": {
+      "createdAt": "Created at:"
     }
   },
   "trends": {
@@ -1224,6 +1381,7 @@
       "saved": "Saved!"
     },
     "noEmergencyContacts": "No emergency contacts added. Add them in your Profile.",
+    "alertsWord": "alerts",
     "goToProfile": "Go to Profile"
   },
   "progress": {
@@ -1256,7 +1414,6 @@
     "bmiInfo": "BMI Information",
     "classification": "Classification",
     "achievedGoals": "{n} achieved",
-    "achievedGoalsVi": "{n} đã đạt",
     "pageTitle": "BMI Progress",
     "pageSubtitle": "Track your BMI and weight metrics",
     "bmiCategory": {

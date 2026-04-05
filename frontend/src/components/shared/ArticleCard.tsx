@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useLocale } from "next-intl";
+import { getLocaleTag } from "@/lib/format-utils";
 import { Badge } from "@/components/ui/badge";
 import { pickLocale } from "@/types";
 import type { Article, Locale } from "@/types";
@@ -19,7 +20,7 @@ export function ArticleCard({ article, variant = "list", categoryLabel = "" }: A
   const excerpt = pickLocale(article.excerpt, locale);
 
   // Format ISO date per locale
-  const formattedDate = new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", {
+  const formattedDate = new Intl.DateTimeFormat(getLocaleTag(locale), {
     year: "numeric",
     month: "short",
     day: "numeric",

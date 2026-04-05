@@ -125,11 +125,13 @@ async def login_with_password(
             raise NotFoundException(
                 resource="Email",
                 message="Không tìm thấy tài khoản với email này",
+                code="ACCOUNT_NOT_FOUND_EMAIL",
             )
         else:
             raise NotFoundException(
                 resource="Username",
                 message="Không tìm thấy tài khoản với username này",
+                code="ACCOUNT_NOT_FOUND_USERNAME",
             )
 
     # Check lockout BEFORE verifying password (prevents timing attacks)
@@ -300,6 +302,7 @@ async def request_email_otp(
                 raise NotFoundException(
                     resource="Email",
                     message="Không tìm thấy tài khoản với email này",
+                    code="ACCOUNT_NOT_FOUND_EMAIL",
                 )
 
             if body.purpose == "signup" and existing_user is not None:
@@ -446,6 +449,7 @@ async def verify_email_otp(
             raise NotFoundException(
                 resource="Email",
                 message="Không tìm thấy tài khoản với email này",
+                code="ACCOUNT_NOT_FOUND_EMAIL",
             )
         # Store a "verified" marker so reset-password can proceed (TTL 5 min)
         verified_key = f"auth:otp:reset_verified:{body.email}"
@@ -466,6 +470,7 @@ async def verify_email_otp(
             raise NotFoundException(
                 resource="Email",
                 message="Không tìm thấy tài khoản với email này",
+                code="ACCOUNT_NOT_FOUND_EMAIL",
             )
         access_token = create_user_access_token(user)
         token = AuthToken(
@@ -621,6 +626,7 @@ async def reset_password(
         raise NotFoundException(
             resource="Email",
             message="Không tìm thấy tài khoản với email này",
+            code="ACCOUNT_NOT_FOUND_EMAIL",
         )
 
     user.hashed_password = hash_password(body.new_password)
