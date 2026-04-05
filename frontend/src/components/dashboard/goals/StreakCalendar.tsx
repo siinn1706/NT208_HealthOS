@@ -4,7 +4,7 @@
 
 import { cn } from "@/lib/utils";
 import type { UserStreakEntry } from "@/data/gamification";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface StreakCalendarProps {
   history: UserStreakEntry[];

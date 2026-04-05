@@ -36,7 +36,7 @@ export async function KeyStatsRow({ stats }: KeyStatsRowProps) {
         >
           <p className="text-[11px] text-muted-foreground font-medium">{label}</p>
           <p className={`text-2xl font-bold tabular-nums mt-1 ${highlight ? "text-foreground" : "text-muted-foreground"}`}>
-            {value.toLocaleString(getLocaleTag(locale))}
+            {(typeof value === "number" ? value : 0).toLocaleString(getLocaleTag(locale))}
             <span className="text-xs font-normal text-muted-foreground ml-1">{stats.unit}</span>
           </p>
         </div>
@@ -48,8 +48,8 @@ export async function KeyStatsRow({ stats }: KeyStatsRowProps) {
         <div className={`flex items-center gap-1 mt-1 ${trendCls}`}>
           <TrendIcon className="h-5 w-5" aria-hidden />
           <span className="text-lg font-bold tabular-nums">
-            {stats.change_percent > 0 ? "+" : ""}
-            {stats.change_percent}%
+            {(stats.change_percent ?? 0) > 0 ? "+" : ""}
+            {stats.change_percent ?? 0}%
           </span>
         </div>
       </div>

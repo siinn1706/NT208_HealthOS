@@ -63,13 +63,17 @@ export async function GET(req: NextRequest) {
   }
 
   const mealsJson = await mealsRes.json();
-  const meals: Array<{ recorded_at?: string; calories?: number }> = mealsJson?.data ?? [];
+  const meals: Array<{
+    logged_at?: string;
+    nutrition_result?: { calories?: number };
+  }> = mealsJson?.data ?? [];
 
   const byDate = new Map<string, number>();
   for (const meal of meals) {
-    const day = meal.recorded_at?.split("T")[0];
+    const day = meal.logged_at?.split("T")[0];
     if (!day) continue;
-    byDate.set(day, (byDate.get(day) ?? 0) + (meal.calories ?? 0));
+    const cal = meal.nutrition_result?.calories ?? 0;
+    byDate.set(day, (byDate.get(day) ?? 0) + cal);
   }
 
   const result = Array.from(byDate.entries())

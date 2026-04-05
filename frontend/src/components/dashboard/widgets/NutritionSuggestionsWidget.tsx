@@ -126,7 +126,7 @@ function NutritionSuggestionsWidget({ suggestions }: NutritionSuggestionsWidgetP
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     {t.has(`suggestions.${s.id}.message` as never)
-                      ? t(`suggestions.${s.id}.message` as never, s.message_params ?? {})
+                      ? t(`suggestions.${s.id}.message` as never, (s.message_params ?? {}) as never)
                       : s.message}
                   </p>
 

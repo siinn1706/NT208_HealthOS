@@ -170,6 +170,10 @@ export async function getNutritionSuggestions(): Promise<NutritionSuggestion[]> 
             ? item.message
             : "",
         priority: typeof item?.priority === "number" ? item.priority : 99,
+        message_params:
+          item?.message_params && typeof item.message_params === "object" && !Array.isArray(item.message_params)
+            ? (item.message_params as Record<string, number>)
+            : undefined,
         cta:
           item?.cta && typeof item.cta === "object" && typeof item.cta.label === "string" && typeof item.cta.href === "string"
             ? { label: item.cta.label, href: item.cta.href }

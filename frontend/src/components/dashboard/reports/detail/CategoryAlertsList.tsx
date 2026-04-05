@@ -68,21 +68,26 @@ export async function CategoryAlertsList({ alerts }: CategoryAlertsListProps) {
               <p className="text-xs text-muted-foreground leading-relaxed">{alert.message}</p>
               <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground/70">
                 <span>
-                  {t("detail.alertValue")}: <strong className="text-foreground">{alert.value} {alert.unit}</strong>
+                  {t("detail.alertValue")}:{" "}
+                  <strong className="text-foreground">
+                    {typeof alert.value === "number" ? alert.value : "—"} {alert.unit}
+                  </strong>
                 </span>
-                {alert.threshold && (
+                {typeof alert.threshold === "number" && alert.threshold > 0 && (
                   <span>
                     {t("detail.alertThreshold")}: {alert.threshold} {alert.unit}
                   </span>
                 )}
-                <time dateTime={alert.timestamp}>
-                  {new Date(alert.timestamp).toLocaleString(getLocaleTag(locale), {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </time>
+                {alert.timestamp ? (
+                  <time dateTime={alert.timestamp}>
+                    {new Date(alert.timestamp).toLocaleString(getLocaleTag(locale), {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                ) : null}
               </div>
             </div>
           </li>
