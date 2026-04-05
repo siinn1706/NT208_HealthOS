@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useMessages, useTypingState } from "@/hooks/useChat";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
 import { PinnedMessages } from "./PinnedMessages";
-import { MessageList } from "./MessageList";
+import { MessageList, type MessageListHandle } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ConversationInfoPanel } from "./ConversationInfoPanel";
@@ -65,6 +65,7 @@ export function ChatWindow({
   const [showSearch, setShowSearch] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
+  const messageListRef = useRef<MessageListHandle>(null);
 
   const convId = conversation.id;
   const wsEnabled = conversation.type !== "ai";
@@ -202,8 +203,7 @@ export function ChatWindow({
   const handleReact = useCallback((msgId: string, emoji: string) => reactToMessage(convId, msgId, emoji), [convId, reactToMessage]);
 
   const handleJump = useCallback((msgId: string) => {
-    const el = document.getElementById(`msg-${msgId}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    messageListRef.current?.jumpToMessage(msgId);
   }, []);
 
   const handleForward = useCallback((msg: Message) => {
@@ -279,6 +279,7 @@ export function ChatWindow({
           </div>
         ) : (
           <MessageList
+            ref={messageListRef}
             messages={messages}
             currentUserId={currentUserId}
             participantNameById={participantNameById}
