@@ -8,12 +8,14 @@ import { VitalsChartWidget } from "@/components/dashboard/widgets/VitalsChartWid
 import { UpcomingRemindersWidget } from "@/components/dashboard/widgets/UpcomingRemindersWidget";
 import { GoalProgressWidget } from "@/components/dashboard/widgets/GoalProgressWidget";
 import { AiInsightWidget } from "@/components/dashboard/widgets/AiInsightWidget";
+import { WeeklyCalorieChartWidget } from "@/components/dashboard/widgets/WeeklyCalorieChartWidget";
 
 import {
   getDashboardSummary,
   getVitalsTimeseries,
   getUpcomingReminders,
 } from "@/lib/dashboard-data";
+import type { ReportPeriod } from "@/types/api";
 
 // Skeleton loading state for chart-heavy widget
 function ChartSkeleton() {
@@ -22,14 +24,24 @@ function ChartSkeleton() {
   );
 }
 
-// Server Component — data fetch happens here, not in widgets
-export default async function DashboardPage() {
+interface DashboardPageProps {
+  searchParams: Promise<{ period?: string }>;
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = await searchParams;
+  const period = (["7d", "30d", "90d"].includes(params.period ?? "")
+    ? params.period
+    : "7d") as ReportPeriod;
+
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+
   const t = await getTranslations("dashboard");
 
   // Parallel data fetch on the server
   const [summary, vitals, reminders] = await Promise.all([
     getDashboardSummary(),
-    getVitalsTimeseries(),
+    getVitalsTimeseries(days),
     getUpcomingReminders(),
   ]);
 
@@ -66,7 +78,7 @@ export default async function DashboardPage() {
         {/* Vitals chart — spans 2 of 3 columns */}
         <div className="lg:col-span-2">
           <Suspense fallback={<ChartSkeleton />}>
-            <VitalsChartWidget data={vitals} />
+            <VitalsChartWidget initialData={vitals} initialPeriod={period} />
           </Suspense>
         </div>
 
@@ -76,7 +88,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Row 4: Goal Progress + AI Insight ── */}
+      {/* ── Row 4: Weekly Calorie Chart ── */}
+      <WeeklyCalorieChartWidget initialPeriod={period} />
+
+      {/* ── Row 5: Goal Progress + AI Insight ── */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <GoalProgressWidget goals={summary.goals} />
         <AiInsightWidget insight={summary.aiInsight} />

@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { useRouter } from "@/navigation";
+import { useTranslations } from "next-intl";
 import {
   Camera,
   Upload,
@@ -13,7 +14,6 @@ import {
   ChevronRight,
   Loader2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 // POST /api/v1/meals/analyze-photo
 // Trigger: user submits a captured/uploaded image
@@ -24,17 +24,21 @@ import { cn } from "@/lib/utils";
 // Trigger: polling after photo submission (every 2s up to 30s)
 // Response: { job_id: string, status: string }
 
-// Mock result returned when BFF isn't available
-const MOCK_ANALYSIS_RESULT = {
-  name: "Cơm gà xối mỡ",
-  meal_type: "lunch" as const,
-  ingredients: [
-    { ingredient_name: "Cơm trắng (đã nấu)", grams: 250, calories: 325, protein_g: 6.8, carbs_g: 71.5, fat_g: 0.8 },
-    { ingredient_name: "Thịt gà (đùi, da, chiên)", grams: 180, calories: 432, protein_g: 36.2, carbs_g: 2.4, fat_g: 29.9 },
-    { ingredient_name: "Dưa leo", grams: 60, calories: 8, protein_g: 0.5, carbs_g: 1.5, fat_g: 0.1 },
-    { ingredient_name: "Cà chua bi", grams: 50, calories: 9, protein_g: 0.4, carbs_g: 1.6, fat_g: 0.1 },
-  ],
-};
+interface AnalysisIngredient {
+  ingredient_name: string;
+  grams: number;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+interface AnalysisResult {
+  name: string;
+  meal_type: "breakfast" | "lunch" | "dinner" | "snack";
+  ingredients: AnalysisIngredient[];
+  estimatedCalories: number | null;
+}
 
 type AnalysisStep =
   | "idle"          // No image yet
@@ -52,6 +56,7 @@ const STEP_MESSAGES = [
 
 export function CameraCapture() {
   const router = useRouter();
+  const t = useTranslations("camera");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -60,8 +65,8 @@ export function CameraCapture() {
   const [captureMode, setCaptureMode] = useState<"upload" | "camera" | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [streamActive, setStreamActive] = useState(false);
-  const [processingMsg, setProcessingMsg] = useState(STEP_MESSAGES[0]);
-  const [analysisResult, setAnalysisResult] = useState<typeof MOCK_ANALYSIS_RESULT | null>(null);
+  const [processingMsg, setProcessingMsg] = useState(t("analyzing"));
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
   // ── Upload flow ──────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,6 +129,26 @@ export function CameraCapture() {
     return new File([byteArray], fileName, { type: mime });
   };
 
+  const fetchAnalyzedMealByJob = useCallback(async (jobId: string): Promise<AnalysisResult | null> => {
+    const res = await fetch("/api/v1/meals?page=1&per_page=100", { cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => null);
+    const list = Array.isArray(json?.data) ? json.data : [];
+    const meal = list.find((item: Record<string, unknown>) => item?.job_id === jobId);
+    if (!meal) return null;
+
+    const nutrition = (meal.nutrition_result ?? null) as
+      | { calories?: number | null }
+      | null;
+
+    return {
+      name: typeof meal.name === "string" ? meal.name : "Chưa có thông tin",
+      meal_type: "lunch",
+      ingredients: [],
+      estimatedCalories: typeof nutrition?.calories === "number" ? nutrition.calories : null,
+    };
+  }, []);
+
   // ── Analysis ─────────────────────────────────────────────────────
   const startAnalysis = async () => {
     if (!imageDataUrl) return;
@@ -151,36 +176,40 @@ export function CameraCapture() {
         throw new Error("Failed to start analysis");
       }
 
-      const { job_id, status } = await res.json();
+      const startData = await res.json().catch(() => null);
+      const job_id = typeof startData?.job_id === "string" ? startData.job_id : "";
+      let jobStatus = typeof startData?.status === "string" ? startData.status : "processing";
+      if (!job_id) throw new Error("Invalid analysis job");
 
       // Poll for job completion
       const maxRetries = 15; // 30 seconds total
       let retries = 0;
-      let jobStatus = status;
 
       while (retries < maxRetries && jobStatus === "processing") {
         await new Promise((r) => setTimeout(r, 2000));
         const pollRes = await fetch(`/api/v1/meals/analyze-photo/${job_id}`);
         if (pollRes.ok) {
-          const pollData = await pollRes.json();
-          jobStatus = pollData.status;
+          const pollData = await pollRes.json().catch(() => null);
+          if (typeof pollData?.status === "string") {
+            jobStatus = pollData.status;
+          }
         }
         retries++;
       }
 
       if (jobStatus === "analyzed" || jobStatus === "done") {
-        // Get the meal with nutrition data - for now use mock
-        // In production, fetch the meal details
-        setAnalysisResult(MOCK_ANALYSIS_RESULT);
+        const analyzed = await fetchAnalyzedMealByJob(job_id);
+        if (analyzed) {
+          setAnalysisResult(analyzed);
+          setStep("result");
+        } else {
+          setStep("error");
+        }
       } else {
-        // Fallback to mock for demo
-        setAnalysisResult(MOCK_ANALYSIS_RESULT);
+        setStep("error");
       }
-      setStep("result");
     } catch {
-      // Fallback to mock for demo
-      setAnalysisResult(MOCK_ANALYSIS_RESULT);
-      setStep("result");
+      setStep("error");
     } finally {
       clearInterval(interval);
     }
@@ -207,7 +236,9 @@ export function CameraCapture() {
   };
 
   const totalCalories =
-    analysisResult?.ingredients.reduce((sum, i) => sum + i.calories, 0) ?? 0;
+    analysisResult?.ingredients.reduce((sum, i) => sum + i.calories, 0) ??
+    analysisResult?.estimatedCalories ??
+    0;
 
   return (
     <div className="max-w-lg mx-auto space-y-5">
@@ -230,27 +261,27 @@ export function CameraCapture() {
             <Camera className="w-8 h-8 text-primary" aria-hidden />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-foreground">Chụp hoặc tải ảnh bữa ăn</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("title")}</h2>
             <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-              AI sẽ nhận diện thành phần và ước lượng dinh dưỡng tự động
+              {t("aiSubtitle")}
             </p>
           </div>
           <div className="flex items-center gap-3 w-full max-w-xs">
             <button
               onClick={startCamera}
               className="flex-1 flex flex-col items-center gap-2 rounded-xl border border-border bg-background hover:bg-muted p-4 transition-colors cursor-pointer"
-              aria-label="Mở camera"
+              aria-label={t("openCamera")}
             >
               <Camera className="w-6 h-6 text-primary" />
-              <span className="text-xs font-medium text-foreground">Chụp ảnh</span>
+              <span className="text-xs font-medium text-foreground">{t("capture")}</span>
             </button>
             <button
               onClick={() => { setCaptureMode("upload"); fileInputRef.current?.click(); }}
               className="flex-1 flex flex-col items-center gap-2 rounded-xl border border-border bg-background hover:bg-muted p-4 transition-colors cursor-pointer"
-              aria-label="Tải ảnh lên"
+              aria-label={t("upload")}
             >
               <Upload className="w-6 h-6 text-primary" />
-              <span className="text-xs font-medium text-foreground">Tải ảnh</span>
+              <span className="text-xs font-medium text-foreground">{t("upload")}</span>
             </button>
           </div>
         </div>
@@ -271,12 +302,12 @@ export function CameraCapture() {
             <button
               onClick={captureFromCamera}
               className="w-14 h-14 rounded-full bg-white border-4 border-white/50 shadow-lg hover:scale-105 transition-transform cursor-pointer active:scale-95"
-              aria-label="Chụp ảnh"
+              aria-label={t("capturePhoto")}
             />
             <button
               onClick={reset}
               className="absolute right-4 top-0 translate-y-0 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center cursor-pointer"
-              aria-label="Hủy camera"
+              aria-label={t("cancelCamera")}
             >
               <X className="w-4 h-4 text-white" />
             </button>
@@ -291,13 +322,13 @@ export function CameraCapture() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageDataUrl}
-              alt="Ảnh bữa ăn đã chụp"
+              alt={t("takenAlt")}
               className="w-full h-full object-cover"
             />
             <button
               onClick={reset}
               className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
-              aria-label="Xóa ảnh"
+              aria-label={t("deletePhoto")}
             >
               <X className="w-4 h-4 text-white" />
             </button>
@@ -307,15 +338,15 @@ export function CameraCapture() {
               onClick={reset}
               className="flex-1 h-10 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
-              Chụp lại
+              {t("retake")}
             </button>
             <button
               onClick={startAnalysis}
               className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              aria-label="Phân tích bữa ăn bằng AI"
+              aria-label={t("analyzeAria")}
             >
               <Sparkles className="w-4 h-4" />
-              Phân tích AI
+              {t("analyze")}
             </button>
           </div>
         </div>
@@ -335,12 +366,12 @@ export function CameraCapture() {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageDataUrl}
-              alt="Đang phân tích"
+              alt={t("analyzingAlt")}
               className="w-24 h-24 rounded-xl object-cover border border-border opacity-60"
             />
           )}
           <div>
-            <p className="text-sm font-semibold text-foreground">Đang phân tích ảnh...</p>
+            <p className="text-sm font-semibold text-foreground">{t("analyzing")}</p>
             <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1.5">
               <Loader2 className="w-3 h-3 animate-spin" />
               {processingMsg}
@@ -355,7 +386,7 @@ export function CameraCapture() {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-green-500" />
             <p className="text-sm font-semibold text-foreground">
-              Phân tích xong! Kiểm tra và xác nhận kết quả.
+              {t("analyzeComplete")}
             </p>
           </div>
 
@@ -365,12 +396,12 @@ export function CameraCapture() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageDataUrl}
-                alt="Ảnh bữa ăn"
+                alt={t("mealPhotoAlt")}
                 className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
               />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">{analysisResult.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">AI nhận diện tự động</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("aiIdentified")}</p>
               </div>
               <div className="ml-auto text-right flex-shrink-0">
                 <p className="text-base font-bold text-foreground">{totalCalories}</p>
@@ -383,31 +414,35 @@ export function CameraCapture() {
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border bg-muted/30">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Thành phần nhận diện ({analysisResult.ingredients.length})
+                {t("ingredientsFound", { n: analysisResult.ingredients.length })}
               </p>
             </div>
-            <ul className="divide-y divide-border">
-              {analysisResult.ingredients.map((ing, i) => (
-                <li key={i} className="flex items-center justify-between px-4 py-3 gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">
-                      {ing.ingredient_name}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {ing.grams}g · P {ing.protein_g}g · C {ing.carbs_g}g · F {ing.fat_g}g
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground flex-shrink-0">
-                    {ing.calories} kcal
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {analysisResult.ingredients.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-muted-foreground">{t("noInfo")}</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {analysisResult.ingredients.map((ing, i) => (
+                  <li key={i} className="flex items-center justify-between px-4 py-3 gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">
+                        {ing.ingredient_name}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {ing.grams}g · P {ing.protein_g}g · C {ing.carbs_g}g · F {ing.fat_g}g
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground flex-shrink-0">
+                      {ing.calories} kcal
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Accuracy notice */}
           <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-xl px-4 py-3">
-            AI có thể không chính xác 100%. Bạn có thể chỉnh sửa thành phần trong bước tiếp theo.
+            {t("aiDisclaimer")}
           </p>
 
           {/* Actions */}
@@ -417,14 +452,14 @@ export function CameraCapture() {
               className="flex items-center gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
-              Chụp lại
+              {t("retake")}
             </button>
             <button
               onClick={proceedToForm}
               className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              aria-label="Tiếp tục chỉnh sửa trong form thêm bữa ăn"
+              aria-label={t("confirmEdit")}
             >
-              Xác nhận & chỉnh sửa
+              {t("confirmEdit")}
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -438,9 +473,9 @@ export function CameraCapture() {
             <AlertCircle className="w-7 h-7 text-destructive" aria-hidden />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Phân tích thất bại</p>
+            <p className="text-sm font-semibold text-foreground">{t("retry")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Không thể phân tích ảnh. Vui lòng thử lại hoặc nhập thủ công.
+              {t("analyzeError")}
             </p>
           </div>
           <div className="flex items-center gap-3 w-full max-w-xs">
@@ -448,13 +483,13 @@ export function CameraCapture() {
               onClick={reset}
               className="flex-1 h-9 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
             >
-              Thử lại
+              {t("retry")}
             </button>
             <button
               onClick={() => router.push("/dashboard/meals/add")}
               className="flex-1 h-9 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
             >
-              Nhập thủ công
+              {t("manualEntry")}
             </button>
           </div>
         </div>

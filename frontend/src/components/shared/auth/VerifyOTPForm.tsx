@@ -32,6 +32,7 @@ interface VerifyOTPFormProps {
 
 export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps) {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
 
   const [otp, setOtp] = useState("");
@@ -60,8 +61,8 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
       // BFF now sets the httpOnly cookie — do NOT store token in localStorage.
       setSuccess(t("verificationSuccess"));
       if (purpose === "signup") {
-        // Signup complete: go directly to dashboard
-        setTimeout(() => router.push("/dashboard"), 1200);
+        // Signup complete: go to onboarding to complete profile
+        setTimeout(() => router.push("/onboarding"), 1200);
       } else if (purpose === "reset_password") {
         // Need to proceed with password reset
         setTimeout(() => router.push("/forgot-password?step=reset&email=" + encodeURIComponent(email ?? "")), 1200);
@@ -69,7 +70,7 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
         setTimeout(() => router.push("/dashboard"), 1200);
       }
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +94,7 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
       }
       setOtp("");
     } catch {
-      setError("Không thể gửi lại mã. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsResending(false);
     }

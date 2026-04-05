@@ -1,17 +1,22 @@
 """Shared Pydantic schemas — response envelope, error, pagination."""
-from typing import Generic, TypeVar
+from typing import Generic, Optional, TypeVar
 from pydantic import BaseModel
 
 DataT = TypeVar("DataT")
 
 
 class ErrorDetail(BaseModel):
+    """Standard error response structure."""
+
     code: str
     message: str
-    details: dict = {}
+    details: Optional[str] = None
+    field_errors: Optional[dict[str, str]] = None
 
 
 class ErrorResponse(BaseModel):
+    """Standard error response envelope."""
+
     error: ErrorDetail
 
 

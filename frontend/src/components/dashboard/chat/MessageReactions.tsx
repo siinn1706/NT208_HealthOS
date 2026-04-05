@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslations } from "next-intl";
-import { MOCK_USERS, CURRENT_USER_ID } from "@/data/chat";
 import type { MessageReaction } from "@/types/api";
 import { cn } from "@/lib/utils";
 
@@ -11,9 +10,15 @@ interface MessageReactionsProps {
   reactions: MessageReaction[];
   onReact: (emoji: string) => void;
   align?: "left" | "right";
+  currentUserId: string | null;
 }
 
-export function MessageReactions({ reactions, onReact, align = "left" }: MessageReactionsProps) {
+export function MessageReactions({
+  reactions,
+  onReact,
+  align = "left",
+  currentUserId,
+}: MessageReactionsProps) {
   const [openEmoji, setOpenEmoji] = useState<string | null>(null);
   const t = useTranslations("chat");
 
@@ -22,7 +27,7 @@ export function MessageReactions({ reactions, onReact, align = "left" }: Message
   return (
     <div className={cn("flex flex-wrap gap-1 mt-1", align === "right" && "justify-end")}>
       {reactions.map((r) => {
-        const hasReacted = r.user_ids.includes(CURRENT_USER_ID);
+        const hasReacted = !!currentUserId && r.user_ids.includes(currentUserId);
         return (
           <Popover key={r.emoji} open={openEmoji === r.emoji} onOpenChange={(o) => setOpenEmoji(o ? r.emoji : null)}>
             <PopoverTrigger asChild>
@@ -48,11 +53,11 @@ export function MessageReactions({ reactions, onReact, align = "left" }: Message
               <ul className="space-y-0.5">
                 {r.user_ids.map((uid) => {
                   const name =
-                    uid === CURRENT_USER_ID
+                    uid === currentUserId
                       ? t("you")
                       : uid === "ai"
                       ? t("aiAssistant")
-                      : MOCK_USERS.find((u) => u.user_id === uid)?.display_name ?? uid;
+                      : r.user_names?.[uid] ?? uid;
                   return <li key={uid}>{name}</li>;
                 })}
               </ul>

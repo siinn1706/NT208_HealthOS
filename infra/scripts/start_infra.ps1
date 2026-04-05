@@ -12,6 +12,32 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
+$ComposeEnvFile = Join-Path $RepoRoot "infra\docker\.env.dev"
+
+function Get-ComposeArgs {
+    $args = @("-f", $ComposeFile)
+    if (Test-Path $ComposeEnvFile) {
+        $args += @("--env-file", $ComposeEnvFile)
+    }
+    return $args
+}
+
+function Invoke-DockerReadinessValidation {
+    $validatorPath = Join-Path $PSScriptRoot "validate_docker_ready.ps1"
+    if (-not (Test-Path $validatorPath)) {
+        throw "[Infra] Docker readiness validator is missing: $validatorPath"
+    }
+
+    $validatorArgs = @("-Scope", "infra")
+    if ($CheckOnly) {
+        $validatorArgs += "-CheckOnly"
+    }
+
+    & $validatorPath @validatorArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "[Infra] Docker readiness validation failed. Resolve the reported issues and retry."
+    }
+}
 
 function Resolve-LogFilePath {
     param(
@@ -601,17 +627,21 @@ Write-Host "[Infra] Effective mode: $effectiveMode" -ForegroundColor Cyan
 Write-Host "[Infra] Install policy: $InstallPolicy" -ForegroundColor Cyan
 
 if ($effectiveMode -eq "docker") {
+    Invoke-DockerReadinessValidation
+
     if (-not (Test-Path $ComposeFile)) {
         throw "[Infra] Compose file not found: $ComposeFile"
     }
 
+    $composeArgs = Get-ComposeArgs
+
     if ($CheckOnly) {
-        docker compose -f $ComposeFile ps postgres redis minio
+        docker compose @composeArgs ps postgres redis minio
         exit $LASTEXITCODE
     }
 
     Write-Host "[Infra] Starting postgres + redis + minio via Docker..." -ForegroundColor Cyan
-    docker compose -f $ComposeFile up -d postgres redis minio
+    docker compose @composeArgs up -d postgres redis minio
     if ($LASTEXITCODE -ne 0) {
         throw "[Infra] Failed to start docker infrastructure services."
     }

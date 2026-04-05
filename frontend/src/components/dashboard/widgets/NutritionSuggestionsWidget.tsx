@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -9,80 +12,82 @@ import {
 import Link from "next/link";
 import type { NutritionSuggestion, NutritionSuggestionType } from "@/types/api";
 
-const TYPE_CONFIG: Record<
-  NutritionSuggestionType,
-  {
-    icon: React.ComponentType<{ className?: string }>;
-    bg: string;
-    iconColor: string;
-    badgeBg: string;
-    badgeText: string;
-    label: string;
-  }
-> = {
-  warning: {
-    icon: AlertTriangle,
-    bg: "bg-red-50/60 dark:bg-red-950/20 border-red-200/60 dark:border-red-900/40",
-    iconColor: "text-red-500",
-    badgeBg: "bg-red-100 dark:bg-red-900/40",
-    badgeText: "text-red-600 dark:text-red-400",
-    label: "Cảnh báo",
-  },
-  tip: {
-    icon: Lightbulb,
-    bg: "bg-[#41BCE6]/8 dark:bg-[#41BCE6]/10 border-[#41BCE6]/25 dark:border-[#41BCE6]/30",
-    iconColor: "text-[#41BCE6]",
-    badgeBg: "bg-[#41BCE6]/15",
-    badgeText: "text-[#1a8ab3] dark:text-[#41BCE6]",
-    label: "Gợi ý",
-  },
-  goal: {
-    icon: Target,
-    bg: "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-900/40",
-    iconColor: "text-amber-500",
-    badgeBg: "bg-amber-100 dark:bg-amber-900/40",
-    badgeText: "text-amber-600 dark:text-amber-400",
-    label: "Mục tiêu",
-  },
-  success: {
-    icon: CheckCircle2,
-    bg: "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-900/40",
-    iconColor: "text-emerald-500",
-    badgeBg: "bg-emerald-100 dark:bg-emerald-900/40",
-    badgeText: "text-emerald-600 dark:text-emerald-400",
-    label: "Đạt",
-  },
-};
-
 interface NutritionSuggestionsWidgetProps {
   suggestions: NutritionSuggestion[];
 }
 
-export function NutritionSuggestionsWidget({
-  suggestions,
-}: NutritionSuggestionsWidgetProps) {
+type TypeKey = NutritionSuggestionType;
+
+function NutritionSuggestionsWidget({ suggestions }: NutritionSuggestionsWidgetProps) {
+  const t = useTranslations("dashboard.nutrition");
+
+  const cfgMap: Record<
+    TypeKey,
+    {
+      icon: React.ComponentType<{ className?: string }>;
+      bg: string;
+      iconColor: string;
+      badgeBg: string;
+      badgeText: string;
+      labelKey: Parameters<ReturnType<typeof useTranslations<TypeKey>>>[0];
+    }
+  > = {
+    warning: {
+      icon: AlertTriangle,
+      bg: "bg-red-50/60 dark:bg-red-950/20 border-red-200/60 dark:border-red-900/40",
+      iconColor: "text-red-500",
+      badgeBg: "bg-red-100 dark:bg-red-900/40",
+      badgeText: "text-red-600 dark:text-red-400",
+      labelKey: "types.warning",
+    },
+    tip: {
+      icon: Lightbulb,
+      bg: "bg-[#41BCE6]/8 dark:bg-[#41BCE6]/10 border-[#41BCE6]/25 dark:border-[#41BCE6]/30",
+      iconColor: "text-[#41BCE6]",
+      badgeBg: "bg-[#41BCE6]/15",
+      badgeText: "text-[#1a8ab3] dark:text-[#41BCE6]",
+      labelKey: "types.tip",
+    },
+    goal: {
+      icon: Target,
+      bg: "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-900/40",
+      iconColor: "text-amber-500",
+      badgeBg: "bg-amber-100 dark:bg-amber-900/40",
+      badgeText: "text-amber-600 dark:text-amber-400",
+      labelKey: "types.goal",
+    },
+    success: {
+      icon: CheckCircle2,
+      bg: "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-900/40",
+      iconColor: "text-emerald-500",
+      badgeBg: "bg-emerald-100 dark:bg-emerald-900/40",
+      badgeText: "text-emerald-600 dark:text-emerald-400",
+      labelKey: "types.success",
+    },
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       {/* Header */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground">Gợi ý dinh dưỡng</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t("title")}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Dựa trên nhật ký hôm nay
+          {t("subtitle")}
         </p>
       </div>
 
       {/* List */}
       {suggestions.length === 0 ? (
         <div className="flex flex-col items-center py-8 gap-2">
-          <CheckCircle2 className="size-8 text-emerald-500" />
+          <CheckCircle2 className="size-8 text-muted-foreground" />
           <p className="text-sm text-center text-muted-foreground">
-            Bạn đang ăn rất tốt hôm nay!
+            {t("noData")}
           </p>
         </div>
       ) : (
         <ul className="space-y-2.5">
           {suggestions.map((s) => {
-            const cfg = TYPE_CONFIG[s.type];
+            const cfg = cfgMap[s.type];
             const Icon = cfg.icon;
 
             return (
@@ -111,7 +116,7 @@ export function NutritionSuggestionsWidget({
                         cfg.badgeText
                       )}
                     >
-                      {cfg.label}
+                      {t(cfg.labelKey as Parameters<typeof t>[0])}
                     </span>
                   </div>
                   <p className="text-xs font-semibold text-foreground leading-snug">
@@ -143,3 +148,6 @@ export function NutritionSuggestionsWidget({
     </div>
   );
 }
+
+export { NutritionSuggestionsWidget };
+export default NutritionSuggestionsWidget;

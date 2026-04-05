@@ -15,7 +15,6 @@ import { Image as ImageIcon, FileText, Users, Bot } from "lucide-react";
 import { AiChatBadge } from "./AiChatBadge";
 import { OnlineStatus } from "./OnlineStatus";
 import { getConversationName, getInitials } from "@/lib/chat-utils";
-import { MOCK_USERS } from "@/data/chat";
 import type { Conversation, Message } from "@/types/api";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +22,7 @@ interface ConversationInfoPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   conversation: Conversation;
+  currentUserId: string | null;
   messages: Message[];
 }
 
@@ -30,11 +30,12 @@ export function ConversationInfoPanel({
   open,
   onOpenChange,
   conversation,
+  currentUserId,
   messages,
 }: ConversationInfoPanelProps) {
   const t = useTranslations("chat");
 
-  const name = getConversationName(conversation);
+  const name = getConversationName(conversation, currentUserId);
   const isAi = conversation.type === "ai";
   const isGroup = conversation.type === "group";
 
@@ -42,9 +43,7 @@ export function ConversationInfoPanel({
   const sharedImages = messages.filter((m) => m.type === "image" && !m.is_recalled);
   const sharedFiles = messages.filter((m) => m.type === "file" && !m.is_recalled);
 
-  const participantUsers = conversation.participants.map(
-    (p) => MOCK_USERS.find((u) => u.user_id === p.user_id) ?? p
-  );
+  const participantUsers = conversation.participants;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -112,7 +111,7 @@ export function ConversationInfoPanel({
                         <div className="relative flex-shrink-0">
                           <Avatar className="w-8 h-8">
                             <AvatarFallback className="text-xs">
-                              {getInitials(p.display_name)}
+                              {getInitials(p.display_name || "N/A")}
                             </AvatarFallback>
                           </Avatar>
                           {p.is_online && (
@@ -120,7 +119,7 @@ export function ConversationInfoPanel({
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{p.display_name}</p>
+                          <p className="text-sm font-medium truncate">{p.display_name || "Chưa có thông tin"}</p>
                           <p className="text-xs text-muted-foreground">
                             {p.is_online ? t("online") : t("offline")}
                           </p>

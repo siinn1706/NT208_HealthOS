@@ -13,13 +13,13 @@ import { ConversationInfoPanel } from "./ConversationInfoPanel";
 import { ForwardMessageDialog } from "./ForwardMessageDialog";
 import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
-import { CURRENT_USER_ID } from "@/data/chat";
 import type { Conversation, Message } from "@/types/api";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
 
 interface ChatWindowProps {
   conversation: Conversation;
+  currentUserId: string | null;
   conversations?: Conversation[];
   onBack?: () => void;
   onPin: () => void;
@@ -32,6 +32,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({
   conversation,
+  currentUserId,
   conversations = EMPTY_CONVERSATIONS,
   onBack,
   onPin,
@@ -54,7 +55,7 @@ export function ChatWindow({
     simulateAIReply,
     upsertMessage,
     setRemoteTyping,
-  } = useMessages(conversation.id);
+  } = useMessages(conversation.id, currentUserId);
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -107,11 +108,11 @@ export function ChatWindow({
     if (frame.event === "typing" || frame.event === "chat.typing") {
       if (payloadConvId && payloadConvId !== convId) return;
       const senderId = typeof payload.user_id === "string" ? payload.user_id : null;
-      if (!senderId || senderId === CURRENT_USER_ID) return;
+      if (!senderId || senderId === currentUserId) return;
       const typing = Boolean(payload.is_typing);
       setRemoteTyping(typing);
     }
-  }, [convId, upsertMessage, setRemoteTyping, onIncomingMessage]);
+  }, [convId, upsertMessage, setRemoteTyping, onIncomingMessage, currentUserId]);
 
   const { sendEvent, isConnected } = useChatWs({
     onEvent: handleWsEvent,
@@ -187,6 +188,14 @@ export function ChatWindow({
   );
 
   const pinnedMessages = useMemo(() => messages.filter((m) => m.is_pinned), [messages]);
+  const participantNameById = useMemo(
+    () =>
+      conversation.participants.reduce<Record<string, string>>((acc, participant) => {
+        acc[participant.user_id] = participant.display_name;
+        return acc;
+      }, {}),
+    [conversation.participants]
+  );
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
@@ -195,6 +204,7 @@ export function ChatWindow({
       <div className="relative z-10 flex flex-col h-full">
         <ChatWindowHeader
           conversation={conversation}
+          currentUserId={currentUserId}
           onBack={onBack}
           onPin={onPin}
           onMute={onMute}
@@ -214,7 +224,12 @@ export function ChatWindow({
         )}
 
         {pinnedMessages.length > 0 && (
-          <PinnedMessages messages={pinnedMessages} onJump={handleJump} />
+          <PinnedMessages
+            messages={pinnedMessages}
+            currentUserId={currentUserId}
+            participantNameById={participantNameById}
+            onJump={handleJump}
+          />
         )}
 
         {isLoadingMessages ? (
@@ -235,6 +250,8 @@ export function ChatWindow({
         ) : (
           <MessageList
             messages={messages}
+            currentUserId={currentUserId}
+            participantNameById={participantNameById}
             isTyping={isTyping}
             onReply={handleReply}
             onEdit={handleEdit}
@@ -253,6 +270,7 @@ export function ChatWindow({
 
         <MessageInput
           replyTo={replyTo}
+          currentUserId={currentUserId}
           editingMessage={editingMessage}
           onSend={handleSend}
           onCancelReply={handleCancelReply}
@@ -268,6 +286,7 @@ export function ChatWindow({
           open={showInfo}
           onOpenChange={setShowInfo}
           conversation={conversation}
+          currentUserId={currentUserId}
           messages={messages}
         />
       )}

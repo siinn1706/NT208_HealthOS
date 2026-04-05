@@ -2,25 +2,25 @@
 
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { MOCK_USERS, CURRENT_USER_ID } from "@/data/chat";
 import type { Message } from "@/types/api";
 
 interface MessageReplyPreviewProps {
-  replyTo: Pick<Message, "id" | "content" | "sender_id" | "type">;
+  replyTo: Pick<Message, "id" | "content" | "sender_id" | "sender_display_name" | "type">;
+  currentUserId: string | null;
   onCancel: () => void;
   /** shown in input bar */
   mode?: "input";
 }
 
-export function MessageReplyPreview({ replyTo, onCancel }: MessageReplyPreviewProps) {
+export function MessageReplyPreview({ replyTo, currentUserId, onCancel }: MessageReplyPreviewProps) {
   const t = useTranslations("chat");
 
   const senderName =
-    replyTo.sender_id === CURRENT_USER_ID
+    replyTo.sender_id === currentUserId
       ? t("you")
       : replyTo.sender_id === "ai"
       ? t("aiAssistant")
-      : MOCK_USERS.find((u) => u.user_id === replyTo.sender_id)?.display_name ?? "Unknown";
+      : replyTo.sender_display_name ?? "Chưa có thông tin";
 
   const preview =
     replyTo.type === "image"

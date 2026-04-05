@@ -18,8 +18,8 @@ export type AchievementTier = "bronze" | "silver" | "gold" | "platinum" | "diamo
 export interface ActivityMilestone {
   id: string;
   activityType: ActivityType;
-  /** Human-readable label, e.g. "Chạy 300m mỗi ngày" */
-  label: string;
+  /** Translation key under dashboard.goals.milestoneLabels and dashboard.achievements.milestoneLabels */
+  labelKey: string;
   targetValue: number;
   unit: string;
   /** Points awarded on unlock */
@@ -37,7 +37,8 @@ export interface ActivityMilestone {
 export interface UserGoal {
   id: string;
   activityType: ActivityType;
-  label: string;
+  /** Translation key under dashboard.goals.milestoneLabels and dashboard.achievements.milestoneLabels */
+  labelKey: string;
   dailyTarget: number;
   unit: string;
   todayProgress: number;
@@ -71,14 +72,18 @@ export interface LeaderboardEntry {
 
 /** BMI statistics with ranking contribution. */
 export interface UserBmiData {
-  heightCm: number;
-  weightKg: number;
-  bmi: number;
+  heightCm: number | null;
+  weightKg: number | null;
+  bmi: number | null;
   status: "underweight" | "normal" | "overweight" | "obese";
   /** 0-100: contributes to total ranking score */
-  bmiScore: number;
-  targetBmi: number;
-  targetWeightKg: number;
+  bmiScore: number | null;
+  targetBmi: number | null;
+  targetWeightKg: number | null;
+  /** ISO date string, null if no deadline set */
+  deadline: string | null;
+  /** null if no goal saved yet */
+  goalId: string | null;
 }
 
 /** Top-level summary for the Goals hub page. */
@@ -112,7 +117,7 @@ export const MOCK_ACTIVE_GOALS: UserGoal[] = [
   {
     id: "goal-running",
     activityType: "running",
-    label: "Chạy bộ mỗi ngày",
+    labelKey: "run-300",
     dailyTarget: 300,
     unit: "m",
     todayProgress: 250,
@@ -123,7 +128,7 @@ export const MOCK_ACTIVE_GOALS: UserGoal[] = [
   {
     id: "goal-steps",
     activityType: "steps",
-    label: "Số bước chân mỗi ngày",
+    labelKey: "steps-8000",
     dailyTarget: 8000,
     unit: "bước",
     todayProgress: 5600,
@@ -139,7 +144,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "run-100",
     activityType: "running",
-    label: "Chạy 100m mỗi ngày",
+    labelKey: "run-100",
     targetValue: 100,
     unit: "m",
     pointValue: 100,
@@ -153,7 +158,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "run-200",
     activityType: "running",
-    label: "Chạy 200m mỗi ngày",
+    labelKey: "run-200",
     targetValue: 200,
     unit: "m",
     pointValue: 200,
@@ -167,7 +172,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "run-300",
     activityType: "running",
-    label: "Chạy 300m mỗi ngày",
+    labelKey: "run-300",
     targetValue: 300,
     unit: "m",
     pointValue: 300,
@@ -180,7 +185,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "run-400",
     activityType: "running",
-    label: "Chạy 400m mỗi ngày",
+    labelKey: "run-400",
     targetValue: 400,
     unit: "m",
     pointValue: 400,
@@ -193,7 +198,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "run-500",
     activityType: "running",
-    label: "Chạy 500m mỗi ngày",
+    labelKey: "run-500",
     targetValue: 500,
     unit: "m",
     pointValue: 500,
@@ -208,7 +213,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "steps-5000",
     activityType: "steps",
-    label: "5.000 bước mỗi ngày",
+    labelKey: "steps-5000",
     targetValue: 5000,
     unit: "bước",
     pointValue: 100,
@@ -222,7 +227,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "steps-7000",
     activityType: "steps",
-    label: "7.000 bước mỗi ngày",
+    labelKey: "steps-7000",
     targetValue: 7000,
     unit: "bước",
     pointValue: 200,
@@ -236,7 +241,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "steps-8000",
     activityType: "steps",
-    label: "8.000 bước mỗi ngày",
+    labelKey: "steps-8000",
     targetValue: 8000,
     unit: "bước",
     pointValue: 250,
@@ -249,7 +254,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "steps-10000",
     activityType: "steps",
-    label: "10.000 bước mỗi ngày",
+    labelKey: "steps-10000",
     targetValue: 10000,
     unit: "bước",
     pointValue: 350,
@@ -262,7 +267,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "steps-15000",
     activityType: "steps",
-    label: "15.000 bước mỗi ngày",
+    labelKey: "steps-15000",
     targetValue: 15000,
     unit: "bước",
     pointValue: 600,
@@ -277,7 +282,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "cycle-5",
     activityType: "cycling",
-    label: "Đạp xe 5km mỗi ngày",
+    labelKey: "cycle-5",
     targetValue: 5,
     unit: "km",
     pointValue: 120,
@@ -290,7 +295,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "cycle-10",
     activityType: "cycling",
-    label: "Đạp xe 10km mỗi ngày",
+    labelKey: "cycle-10",
     targetValue: 10,
     unit: "km",
     pointValue: 250,
@@ -303,7 +308,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "cycle-15",
     activityType: "cycling",
-    label: "Đạp xe 15km mỗi ngày",
+    labelKey: "cycle-15",
     targetValue: 15,
     unit: "km",
     pointValue: 400,
@@ -316,7 +321,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "cycle-20",
     activityType: "cycling",
-    label: "Đạp xe 20km mỗi ngày",
+    labelKey: "cycle-20",
     targetValue: 20,
     unit: "km",
     pointValue: 600,
@@ -329,7 +334,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "cycle-25",
     activityType: "cycling",
-    label: "Đạp xe 25km mỗi ngày",
+    labelKey: "cycle-25",
     targetValue: 25,
     unit: "km",
     pointValue: 850,
@@ -344,7 +349,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "swim-100",
     activityType: "swimming",
-    label: "Bơi 100m mỗi ngày",
+    labelKey: "swim-100",
     targetValue: 100,
     unit: "m",
     pointValue: 150,
@@ -357,7 +362,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "swim-200",
     activityType: "swimming",
-    label: "Bơi 200m mỗi ngày",
+    labelKey: "swim-200",
     targetValue: 200,
     unit: "m",
     pointValue: 300,
@@ -370,7 +375,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "swim-400",
     activityType: "swimming",
-    label: "Bơi 400m mỗi ngày",
+    labelKey: "swim-400",
     targetValue: 400,
     unit: "m",
     pointValue: 500,
@@ -383,7 +388,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "swim-500",
     activityType: "swimming",
-    label: "Bơi 500m mỗi ngày",
+    labelKey: "swim-500",
     targetValue: 500,
     unit: "m",
     pointValue: 700,
@@ -396,7 +401,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
   {
     id: "swim-1000",
     activityType: "swimming",
-    label: "Bơi 1km mỗi ngày",
+    labelKey: "swim-1000",
     targetValue: 1000,
     unit: "m",
     pointValue: 1000,
@@ -446,6 +451,8 @@ export const MOCK_BMI_DATA: UserBmiData = {
   bmiScore: 72, // contributes 72 pts to ranking score
   targetBmi: 22.0,
   targetWeightKg: 63.6,
+  deadline: null,
+  goalId: null,
 };
 
 // ── Leaderboard ───────────────────────────────────────────────
@@ -576,11 +583,11 @@ export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
 // ── Possible milestones per activity (for Goal Wizard) ────────
 export const ACTIVITY_CONFIG: Record<
   ActivityType,
-  { emoji: string; labelVi: string; milestones: { value: number; unit: string }[] }
+  { emoji: string; labelKey: string; milestones: { value: number; unit: string }[] }
 > = {
   running: {
     emoji: "🏃",
-    labelVi: "Chạy bộ",
+    labelKey: "running",
     milestones: [
       { value: 100, unit: "m" },
       { value: 200, unit: "m" },
@@ -594,7 +601,7 @@ export const ACTIVITY_CONFIG: Record<
   },
   cycling: {
     emoji: "🚴",
-    labelVi: "Đạp xe",
+    labelKey: "cycling",
     milestones: [
       { value: 5, unit: "km" },
       { value: 10, unit: "km" },
@@ -605,7 +612,7 @@ export const ACTIVITY_CONFIG: Record<
   },
   swimming: {
     emoji: "🏊",
-    labelVi: "Bơi lội",
+    labelKey: "swimming",
     milestones: [
       { value: 100, unit: "m" },
       { value: 200, unit: "m" },
@@ -616,7 +623,7 @@ export const ACTIVITY_CONFIG: Record<
   },
   steps: {
     emoji: "👟",
-    labelVi: "Bước chân",
+    labelKey: "steps",
     milestones: [
       { value: 5000, unit: "bước" },
       { value: 7000, unit: "bước" },

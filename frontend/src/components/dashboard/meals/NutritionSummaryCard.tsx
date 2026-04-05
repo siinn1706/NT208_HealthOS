@@ -5,6 +5,7 @@ import { useWatch, useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import { Beef, Wheat, Droplets } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { findIngredient, calcNutrition } from "@/data/ingredients";
 import type { AddMealFormValues } from "@/lib/validators/meal-schema";
 
@@ -72,6 +73,7 @@ function MacroBar({ label, value, target, unit, colorClass, icon }: MacroBarProp
 export function NutritionSummaryCard() {
   const { control } = useFormContext<AddMealFormValues>();
   const ingredients = useWatch({ control, name: "ingredients" });
+  const tm = useTranslations("dashboard.meals");
 
   const totals = useMemo(() => {
     if (!ingredients || ingredients.length === 0) {
@@ -176,7 +178,7 @@ export function NutritionSummaryCard() {
         </div>
         <p className="text-xs text-muted-foreground text-center">
           {roundedTotals.calories > 0
-            ? `${Math.round(calPct)}% mục tiêu hàng ngày`
+            ? tm("dailyTarget", { pct: Math.round(calPct) })
             : "Chưa có thành phần nào"}
         </p>
       </div>

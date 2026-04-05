@@ -23,7 +23,178 @@
     "all": "Tất cả",
     "search": "Tìm kiếm...",
     "sort": "Sắp xếp",
-    "submit": "Gửi yêu cầu"
+    "submit": "Gửi yêu cầu",
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua",
+    "noData": "Chưa có dữ liệu",
+    "loading": "Đang tải...",
+    "tryAgain": "Thử lại",
+    "manualEntry": "Nhập thủ công",
+    "confirm": "Xác nhận",
+    "perDay": "{v}/day",
+    "dailyTarget": "{pct}% mục tiêu hàng ngày",
+    "vitamins": "Vitamin",
+    "mealTypeLabels": {
+      "breakfast": "Sáng",
+      "lunch": "Trưa",
+      "dinner": "Tối",
+      "snack": "Phụ"
+    }
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Thông tin cơ bản",
+      "subtitle": "Hãy cho chúng tôi biết một chút về bạn",
+      "fullName": "Họ và tên",
+      "fullNameRequired": "Họ và tên là bắt buộc",
+      "dateOfBirth": "Ngày sinh",
+      "dateOfBirthRequired": "Ngày sinh là bắt buộc",
+      "gender": "Giới tính",
+      "genderRequired": "Giới tính là bắt buộc",
+      "selectGender": "Chọn giới tính",
+      "male": "Nam",
+      "female": "Nữ",
+      "other": "Khác",
+      "bloodType": "Nhóm máu",
+      "selectBloodType": "Chọn nhóm máu"
+    },
+    "step2": {
+      "title": "Chiều cao & Cân nặng",
+      "subtitle": "Thông tin này giúp chúng tôi tính chỉ số BMI của bạn",
+      "height": "Chiều cao (cm)",
+      "weight": "Cân nặng (kg)",
+      "bmiLabel": "Chỉ số BMI của bạn",
+      "bmiPlaceholder": "Nhập chiều cao và cân nặng để tính BMI"
+    },
+    "bmi": {
+      "underweight": "Thiếu cân",
+      "normal": "Bình thường",
+      "overweight": "Thừa cân",
+      "obese": "Béo phì",
+      "advice": {
+        "underweight": "Bạn nên tăng cân để có sức khỏe tốt hơn.",
+        "normal": "Bạn có cân nặng bình thường. Giữ gìn sức khỏe tốt!",
+        "overweight": "Bạn nên giảm cân để có sức khỏe tốt hơn.",
+        "obese": "Bạn nên tham khảo ý kiến bác sĩ về việc quản lý cân nặng."
+      }
+    },
+    "step3": {
+      "title": "Thông tin liên hệ",
+      "subtitle": "Chúng tôi cần thông tin này để liên lạc với bạn",
+      "phone": "Số điện thoại",
+      "address": "Địa chỉ"
+    },
+    "step5": {
+      "title": "Thông tin y tế",
+      "subtitle": "Thông tin này giúp chúng tôi chăm sóc sức khỏe tốt hơn cho bạn",
+      "allergies": "Dị ứng",
+      "allergiesPlaceholder": "Ví dụ: Hải sản, thuốc penicillin...",
+      "chronicConditions": "Bệnh mãn tính",
+      "chronicConditionsPlaceholder": "Ví dụ: Tiểu đường, cao huyết áp...",
+      "currentMedications": "Thuốc đang sử dụng",
+      "currentMedicationsPlaceholder": "Ví dụ: Aspirin 100mg mỗi ngày...",
+      "notes": "Ghi chú thêm",
+      "complete": "Hoàn tất đăng ký",
+      "completeHint": "Nhấn \"Hoàn thành\" để lưu thông tin và bắt đầu sử dụng HealthOS",
+      "notesPlaceholder": "Ghi chú thêm..."
+    },
+    "emergencyContactRequired": "Vui lòng thêm ít nhất 1 liên hệ khẩn cấp",
+    "saveError": "Không thể lưu thông tin",
+    "saveSuccess": "Thông tin đã được lưu thành công!",
+    "saveGenericError": "Có lỗi xảy ra. Vui lòng thử lại."
+  },
+  "errors": {
+    "unknown": "Đã xảy ra lỗi không xác định",
+    "generic": "Đã xảy ra lỗi",
+    "networkError": "Lỗi mạng. Vui lòng kiểm tra kết nối.",
+    "serverError": "Lỗi máy chủ. Vui lòng thử lại sau.",
+    "invalidEmail": "Email không hợp lệ",
+    "invalidPhone": "Số điện thoại không hợp lệ",
+    "required": "{field} là bắt buộc",
+    "loginFailed": "Đăng nhập thất bại",
+    "loginSuccess": "Đăng nhập thành công!",
+    "emailTaken": "Email đã được sử dụng. Vui lòng dùng email khác.",
+    "genericTryAgain": "Có lỗi xảy ra. Vui lòng thử lại.",
+    "sessionExpired": "Phiên đăng nhập hết hạn"
+  },
+  "camera": {
+    "title": "Chụp hoặc tải ảnh bữa ăn",
+    "aiSubtitle": "AI sẽ nhận diện thành phần và ước lượng dinh dưỡng tự động",
+    "openCamera": "Mở camera",
+    "capture": "Chụp ảnh",
+    "upload": "Tải ảnh",
+    "takenAlt": "Ảnh bữa ăn đã chụp",
+    "deletePhoto": "Xóa ảnh",
+    "retake": "Chụp lại",
+    "analyzeAria": "Phân tích bữa ăn bằng AI",
+    "analyze": "Phân tích AI",
+    "analyzing": "Đang phân tích ảnh...",
+    "analyzingAlt": "Đang phân tích",
+    "analyzeComplete": "Phân tích xong! Kiểm tra và xác nhận kết quả.",
+    "mealPhotoAlt": "Ảnh bữa ăn",
+    "aiIdentified": "AI nhận diện tự động",
+    "ingredientsFound": "Thành phần nhận diện ({n})",
+    "noInfo": "Chưa có thông tin",
+    "aiDisclaimer": "AI có thể không chính xác 100%. Bạn có thể chỉnh sửa thành phần trong bước tiếp theo.",
+    "confirmEdit": "Xác nhận & chỉnh sửa",
+    "cancelCamera": "Hủy camera",
+    "capturePhoto": "Chụp ảnh",
+    "analyzeError": "Không thể phân tích ảnh. Vui lòng thử lại hoặc nhập thủ công.",
+    "retry": "Thử lại",
+    "manualEntry": "Nhập thủ công"
+  },
+  "quickMeal": {
+    "title": "Ghi bữa ăn nhanh",
+    "searchPlaceholder": "VD: Phở bò, Cơm chiên...",
+    "ingredientPlaceholder": "Tên nguyên liệu",
+    "saving": "Đang lưu...",
+    "save": "Lưu nhanh"
+  },
+  "addMeal": {
+    "title": "Thêm món ăn thủ công",
+    "subtitle": "Nhập tên món, thêm thành phần và gram — hệ thống tự tính calo, protein, carbs, chất béo.",
+    "sectionGeneral": "Thông tin chung",
+    "dishNameTitle": "Thông tin món ăn",
+    "dishNameSubtitle": "Đặt tên và chọn loại bữa ăn",
+    "dishName": "Tên món ăn",
+    "dishNameRequired": "Tên món ăn là bắt buộc",
+    "dishNamePlaceholder": "VD: Phở bò tái, Cơm sườn, Bún riêu...",
+    "mealType": "Loại bữa ăn",
+    "notesLabel": "Ghi lại cảm nhận, nguồn gốc món ăn, hoặc thông tin thêm",
+    "saving": "Đang lưu...",
+    "submit": "Ghi vào nhật ký"
+  },
+  "validation": {
+    "componentNameRequired": "Tên thành phần không được để trống.",
+    "componentNameTooLong": "Tên thành phần không được vượt quá 100 ký tự.",
+    "gramInvalid": "Giá trị gram không hợp lệ.",
+    "gramNegative": "Giá trị gram không được âm.",
+    "mealNameRequired": "Tên món ăn là bắt buộc.",
+    "mealNameTooShort": "Tên món ăn phải có ít nhất 2 ký tự.",
+    "selectTime": "Vui lòng chọn thời gian.",
+    "addIngredient": "Vui lòng thêm ít nhất 1 thành phần.",
+    "phoneInvalid": "Số điện thoại không hợp lệ.",
+    "heightInvalid": "Chiều cao không hợp lệ.",
+    "weightInvalid": "Cân nặng không hợp lệ.",
+    "fullNameRequired": "Họ và tên là bắt buộc.",
+    "fullNameTooShort": "Họ và tên phải có ít nhất 2 ký tự."
+  },
+  "system": {
+    "noServerData": "Máy chủ không trả dữ liệu mục tiêu",
+    "dailyGoalCompleted": "Hoàn thành mục tiêu hàng ngày",
+    "shareSuccess": "Đã gửi báo cáo đến {n} người nhận thành công.",
+    "sharePartial": "Gửi thành công {sent}/{total} người nhận.",
+    "shareUnknownError": "Lỗi không xác định.",
+    "shareCancelled": "Đã hủy gửi tự động."
+  },
+  "goalDialog": {
+    "saveSuccess": "Đã cập nhật mục tiêu",
+    "saveNewSuccess": "Đã lưu mục tiêu",
+    "saveFailed": "Không thể lưu mục tiêu sức khỏe"
+  },
+  "main": {
+    "exploreMore": "Tìm hiểu thêm",
+    "viewPlans": "Xem tất cả gói"
   },
   "footer": {
     "tagline": "Bác sĩ cá nhân ảo của bạn",
@@ -263,6 +434,27 @@
       "loading": "Đang tải biểu đồ...",
       "noData": "Chưa có dữ liệu chỉ số"
     },
+    "calorieChart": {
+      "title": "Lượng calories theo ngày",
+      "subtitle": "{n} ngày qua",
+      "noData": "Chưa có thông tin",
+      "target": "Mục tiêu: {n} kcal",
+      "tooltipTarget": "Mục tiêu:",
+      "tooltipCalories": "Calories:",
+      "legend": "Calories",
+      "loading": "Đang tải..."
+    },
+    "nutrition": {
+      "title": "Gợi ý dinh dưỡng",
+      "subtitle": "Dựa trên nhật ký hôm nay",
+      "noData": "Chưa có thông tin",
+      "types": {
+        "warning": "Cảnh báo",
+        "tip": "Gợi ý",
+        "goal": "Mục tiêu",
+        "success": "Đạt"
+      }
+    },
     "reminders": {
       "title": "Lịch trình hôm nay",
       "pageTitle": "Nhắc nhở & Lịch trình",
@@ -291,25 +483,288 @@
         "repeat": "Lặp lại",
         "note": "Ghi chú (tuỳ chọn)",
         "cancel": "Hủy"
-      }
+      },
+      "createFailed": "Không thể tạo nhắc nhở"
     },
     "health": {
-      "subtitle": "Theo dõi chỉ số sinh lý và thiết bị kết nối",
+      "title": "Vitals & Thiết bị",
+      "subtitle": "Theo dõi các chỉ số sức khỏe của bạn",
+      "addMetric": "Thêm chỉ số",
+      "addMetricAria": "Thêm chỉ số",
+      "heartRate": "Nhịp tim",
+      "systolic": "Huyết áp tâm thu",
+      "diastolic": "Huyết áp tâm trương",
+      "temperature": "Nhiệt độ",
+      "compareTitle": "So sánh theo kỳ",
+      "compareChartTitle": "Nhịp tim & Huyết áp theo thời gian",
+      "loading": "Đang tải...",
+      "noData": "Chưa có dữ liệu",
+      "connectedDevices": "Thiết bị đã kết nối",
+      "noDeviceInfo": "Chưa có thông tin",
+      "connected": "Đã kết nối",
+      "notConnected": "Chưa kết nối",
+      "addDevice": "Thêm thiết bị",
       "addVital": "Thêm chỉ số",
-      "connectedDevices": "Thiết bị kết nối",
       "deviceConnected": "Đã kết nối",
       "deviceDisconnected": "Ngắt kết nối",
-      "addDevice": "+ Thêm thiết bị",
-      "manualEntry": "Nhập thủ công",
-      "manualEntryDesc": "Bạn muốn ghi chỉ số không từ thiết bị? Sử dụng nút \"Thêm chỉ số\" ở trên để nhập thủ công nhịp tim, huyết áp, SpO\u2082, và nhiệt độ.",
+      "manualEntry": "Nhập liệu thủ công",
+      "manualEntryHint": "Bạn có thể nhập các chỉ số sức khỏe thủ công nếu không có thiết bị wearable.",
+      "manualEntryDesc": "Bạn muốn ghi chỉ số không từ thiết bị? Sử dụng nút \"Thêm chỉ số\" ở trên để nhập thủ công nhịp tim, huyết áp, SpO₂, và nhiệt độ.",
       "vitalLabels": {
         "heartRate": "Nhịp tim",
         "systolic": "Huyết áp tâm thu",
         "diastolic": "Huyết áp tâm trương",
         "temperature": "Nhiệt độ cơ thể",
-        "spo2": "SpO\u2082"
+        "spo2": "SpO₂"
       },
       "trendVsYesterday": "so với hôm qua"
+    },
+    "appointments": {
+      "status": {
+        "completed": "Đã khám",
+        "upcoming": "Sắp tới",
+        "cancelled": "Đã hủy"
+      },
+      "filter": {
+        "all": "Tất cả"
+      },
+      "searchPlaceholder": "Tìm kiếm bác sĩ, chẩn đoán...",
+      "addNew": "Thêm lịch khám mới",
+      "addNewAria": "Thêm lịch khám mới",
+      "doctor": "Bác sĩ",
+      "pageTitle": "Lịch sử khám bệnh",
+      "pageSubtitle": "Xem lịch sử khám và toa thuốc đã kê",
+      "hasPrescription": "Có toa thuốc",
+      "emptyTitle": "Không tìm thấy lịch khám",
+      "emptyRetry": "Thử lại với từ khóa khác",
+      "emptyList": "Chưa có lịch sử khám nào",
+      "noData": "Chưa có thông tin",
+      "disclaimer": "⚕️ Lưu ý: Dữ liệu lịch sử khám bệnh chỉ mang tính chất tham khảo. Toa thuốc phải được sử dụng theo hướng dẫn của bác sĩ. Không tự ý thay đổi liều lượng hoặc dừng thuốc.",
+      "viewPrescription": "Xem toa thuốc",
+      "prescriptionAria": "Xem toa thuốc của {name}",
+      "facility": "Cơ sở",
+      "prescriptionDate": "Ngày kê đơn",
+      "close": "Đóng"
+    },
+    "meals": {
+      "today": "Today",
+      "noMealsToday": "No meals logged today",
+      "addMeal": "Add meal",
+      "addMealPage": "Thêm bữa ăn",
+      "snapPage": "Chụp ảnh bữa ăn",
+      "mealTypes": {
+        "breakfast": "Bữa sáng",
+        "lunch": "Bữa trưa",
+        "dinner": "Bữa tối",
+        "snack": "Bữa phụ"
+      },
+      "saveSuccess": "Đã ghi món ăn thành công!",
+      "viewDiary": "Xem nhật ký",
+      "saveFailed": "Lưu thất bại. Vui lòng thử lại.",
+      "diary": "Nhật ký dinh dưỡng",
+      "dailyTarget": "{pct}% mục tiêu hàng ngày",
+      "todayH2": "Hôm nay",
+      "noMealsLogged": "Chưa ghi bữa nào",
+      "mealsLogged": "{count} bữa · {cal} kcal",
+      "noMealsTodayMsg": "Log meals to track your nutrition",
+      "addFirst": "Add first meal",
+      "ingredients": "Ingredients",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "kcalUnit": "kcal",
+      "todayAdd": "Thêm bữa",
+      "noMealsLoggedMsg": "Ghi nhật ký để theo dõi dinh dưỡng của bạn"
+    },
+    "reports": {
+      "title": "Báo cáo sức khỏe",
+      "subtitle": "Tổng quan các chỉ số sức khỏe",
+      "detailedInDev": "Nội dung báo cáo chi tiết đang được phát triển",
+      "kpiOverview": "Tổng quan KPI",
+      "heartRateAvg": "Nhịp tim TB",
+      "stepsAvg": "Số bước TB",
+      "sleepAvg": "Giấc ngủ TB",
+      "weightAvg": "Cân nặng TB",
+      "sleepChart": {
+        "hours": "Số giờ",
+        "qualityPercent": "Chất lượng (%)"
+      },
+      "exportPdf": {
+        "warning": "Cần chú ý",
+        "activity": "Hoạt động",
+        "sleep": "Giấc ngủ"
+      },
+      "shareStatus": {
+        "normal": "Bình thường",
+        "warning": "Cần chú ý",
+        "critical": "Cần can thiệp"
+      }
+    },
+    "achievements": {
+      "tracking": "Theo dõi tiến độ và streak của bạn",
+      "activeGoals": "Mục tiêu đang theo dõi",
+      "activeGoalsCount": "{n} mục tiêu đang hoạt động",
+      "noGoals": "Chưa có mục tiêu nào",
+      "pageTitle": "Thành tích",
+      "pageSubtitle": "Theo dõi tiến độ và chuỗi ngày của bạn",
+      "streakHistory": "Lịch sử chuỗi",
+      "last8Weeks": "8 tuần gần nhất",
+      "currentStreak": "Chuỗi hiện tại",
+      "longestStreak": "Chuỗi dài nhất",
+      "totalScore": "Tổng điểm",
+      "recentAchievements": "Thành tựu gần đây",
+      "unlocked": "Đã mở khóa",
+      "noStreakData": "Chưa có dữ liệu chuỗi",
+      "recentUnlocked": "Thành tựu đã mở khóa",
+      "tierLabels": {
+        "bronze": "Đồng",
+        "silver": "Bạc",
+        "gold": "Vàng",
+        "platinum": "Bạch kim",
+        "diamond": "Kim cương"
+      },
+      "badgeCard": {
+        "points": "điểm",
+        "achieved": "Đã đạt",
+        "daysCompleted": "{n}/20 ngày hoàn thành",
+        "weekProgress": "Tuần {week}/4 — Ngày {day}/5 tuần này",
+        "notStarted": "Chưa bắt đầu"
+      },
+      "dailyProgress": {
+        "title": "Tiến độ hôm nay",
+        "goalsCompleted": "{done}/{total} mục tiêu hoàn thành",
+        "perfect": "Hoàn hảo!"
+      },
+      "milestoneLabels": {
+        "daily-goal": "Hoàn thành mục tiêu hàng ngày",
+        "run-100": "Chạy 100m mỗi ngày",
+        "run-200": "Chạy 200m mỗi ngày",
+        "run-300": "Chạy 300m mỗi ngày",
+        "run-400": "Chạy 400m mỗi ngày",
+        "run-500": "Chạy 500m mỗi ngày",
+        "cycle-5": "Đạp xe 5km mỗi ngày",
+        "cycle-10": "Đạp xe 10km mỗi ngày",
+        "cycle-15": "Đạp xe 15km mỗi ngày",
+        "cycle-20": "Đạp xe 20km mỗi ngày",
+        "cycle-25": "Đạp xe 25km mỗi ngày",
+        "swim-100": "Bơi 100m mỗi ngày",
+        "swim-200": "Bơi 200m mỗi ngày",
+        "swim-400": "Bơi 400m mỗi ngày",
+        "swim-500": "Bơi 500m mỗi ngày",
+        "swim-1000": "Bơi 1km mỗi ngày",
+        "steps-5000": "5.000 bước mỗi ngày",
+        "steps-7000": "7.000 bước mỗi ngày",
+        "steps-8000": "8.000 bước mỗi ngày",
+        "steps-10000": "10.000 bước mỗi ngày",
+        "steps-15000": "15.000 bước mỗi ngày"
+      }
+    },
+    "risk": {
+      "title": "Dự đoán rủi ro sức khỏe",
+      "updateAria": "Cập nhật dự đoán mới",
+      "subtitle": "Phân tích AI dựa trên sinh trắc học và hành vi của bạn",
+      "scoreGood": "Tốt",
+      "scoreAverage": "Trung bình",
+      "scoreNeedsWork": "Cần cải thiện",
+      "monitoredConditions": "Các chỉ số theo dõi",
+      "highLevel": "Mức cao",
+      "moderateLevel": "Trung bình",
+      "lastUpdated": "Cập nhật lần cuối",
+      "monitoredRisks": "Các rủi ro được theo dõi",
+      "noInfo": "Không có thông tin",
+      "factors": "Yếu tố ảnh hưởng",
+      "tips": "Gợi ý phòng ngừa ({n})",
+      "level": {
+        "low": "Thấp",
+        "moderate": "Trung bình",
+        "high": "Cao",
+        "critical": "Nghiêm trọng"
+      },
+      "trend": {
+        "improving": "Cải thiện",
+        "stable": "Ổn định",
+        "worsening": "Tăng"
+      },
+      "priority": {
+        "high": "Ưu tiên cao",
+        "medium": "Trung bình",
+        "low": "Thấp"
+      },
+      "category": {
+        "diet": "Chế độ ăn",
+        "exercise": "Vận động",
+        "medication": "Thuốc",
+        "monitoring": "Theo dõi",
+        "lifestyle": "Lối sống"
+      },
+      "update": "Cập nhật",
+      "conditionLabels": {
+        "obesity": "Béo phì",
+        "fatty_liver": "Gan nhiễu mỡ"
+      }
+    },
+    "goals": {
+      "title": "Tiến độ mục tiêu",
+      "water": "Uống nước",
+      "steps": "Số bước mỗi ngày",
+      "calories": "Mục tiêu calo",
+      "viewAll": "Xem tất cả mục tiêu",
+      "addGoal": "Thêm mục tiêu",
+      "newGoal": "Đặt mục tiêu mới",
+      "step1": "Chọn hoạt động",
+      "step2": "Chọn mức mục tiêu",
+      "step3": "Xác nhận",
+      "hint": "Duy trì ≥ 5 ngày/tuần trong 4 tuần để nhận huy hiệu thành tựu.",
+      "dailyUnit": "{v}/ngày",
+      "setSuccess": "Mục tiêu đã được thiết lập!",
+      "pointsHint": "Tích lũy điểm thưởng mỗi ngày hoàn thành",
+      "completedCount": "{n}/{total} mục tiêu hoàn thành",
+      "everyday": "mỗi ngày",
+      "maintainReq": "Yêu cầu duy trì:",
+      "perWeek": "ngày/tuần × 4 tuần liên tiếp",
+      "reward": "Phần thưởng:",
+      "badgePoints": "Huy hiệu thành tựu + điểm xếp hạng",
+      "streak": "Streak:",
+      "streakAccumulate": "Tích lũy điểm thưởng mỗi ngày hoàn thành",
+      "back": "Quay lại",
+      "startNow": "Bắt đầu ngay",
+      "activityLabels": {
+        "running": "Chạy bộ",
+        "cycling": "Đạp xe",
+        "swimming": "Bơi lội",
+        "steps": "Bước chân"
+      },
+      "milestoneLabels": {
+        "daily-goal": "Hoàn thành mục tiêu hàng ngày",
+        "run-100": "Chạy 100m mỗi ngày",
+        "run-200": "Chạy 200m mỗi ngày",
+        "run-300": "Chạy 300m mỗi ngày",
+        "run-400": "Chạy 400m mỗi ngày",
+        "run-500": "Chạy 500m mỗi ngày",
+        "cycle-5": "Đạp xe 5km mỗi ngày",
+        "cycle-10": "Đạp xe 10km mỗi ngày",
+        "cycle-15": "Đạp xe 15km mỗi ngày",
+        "cycle-20": "Đạp xe 20km mỗi ngày",
+        "cycle-25": "Đạp xe 25km mỗi ngày",
+        "swim-100": "Bơi 100m mỗi ngày",
+        "swim-200": "Bơi 200m mỗi ngày",
+        "swim-400": "Bơi 400m mỗi ngày",
+        "swim-500": "Bơi 500m mỗi ngày",
+        "swim-1000": "Bơi 1km mỗi ngày",
+        "steps-5000": "5.000 bước mỗi ngày",
+        "steps-7000": "7.000 bước mỗi ngày",
+        "steps-8000": "8.000 bước mỗi ngày",
+        "steps-10000": "10.000 bước mỗi ngày",
+        "steps-15000": "15.000 bước mỗi ngày"
+      }
+    },
+    "services": {
+      "pageTitle": "Bắt đầu hành trình sức khỏe"
+    },
+    "devices": {
+      "title": "Quản lý wearable và thiết bị theo dõi sức khỏe của bạn",
+      "syncSuccess": "Đồng bộ thành công",
+      "privacyNote": "Dữ liệu từ thiết bị đeo được mã hóa và chỉ dùng để cải thiện trải nghiệm sức khỏe của bạn."
     },
     "settingsPage": {
       "pageTitle": "Cài đặt",
@@ -336,7 +791,13 @@
         "themeDesc": "Chọn chủ đề màu cho HealthOS",
         "themeSystem": "Theo hệ thống",
         "themeLight": "Sáng",
-        "themeDark": "Tối"
+        "themeDark": "Tối",
+        "accentColor": "Màu nhấn",
+        "accentColorDesc": "Tuỳ chỉnh giao diện ứng dụng",
+        "saveAccent": "Lưu",
+        "accentSaved": "Đã lưu màu nhấn",
+        "accentSaveFailed": "Không thể lưu màu nhấn",
+        "resetDefault": "Đặt lại mặc định"
       },
       "notifications": {
         "healthAlerts": "Cảnh báo sức khỏe",
@@ -360,13 +821,6 @@
       },
       "logout": "Đăng xuất",
       "logoutDesc": "Đăng xuất khỏi tài khoản trên thiết bị này"
-    },
-    "goals": {
-      "title": "Tiến độ mục tiêu",
-      "water": "Uống nước",
-      "steps": "Số bước mỗi ngày",
-      "calories": "Mục tiêu calo",
-      "viewAll": "Xem tất cả mục tiêu"
     },
     "ai": {
       "title": "Gợi ý từ AI",
@@ -467,6 +921,31 @@
         "chronicConditions": "VD: Tiểu đường type 2, viêm dạ dày...",
         "currentMedications": "VD: Metformin 500mg 2 lần/ngày...",
         "notes": "Ghi chú thêm về sức khoẻ..."
+      }
+    },
+    "progress": {
+      "bmiProgress": "Tiến độ BMI",
+      "bmiChart": "Biểu đồ BMI",
+      "classification": "Phân loại",
+      "achievedGoals": "{n} đã đạt",
+      "chartSubtitle": "Lịch sử BMI theo thời gian",
+      "chartNoData": "Chưa có dữ liệu BMI",
+      "bmiInfo": "Thông tin BMI",
+      "streakCalendar": {
+        "title": "Chuỗi ngày luyện tập",
+        "active": "Hoạt động",
+        "rest": "Nghỉ",
+        "currentStreak": "Streak hiện tại",
+        "longestStreak": "Streak dài nhất",
+        "pastWeeks": "8 tuần qua",
+        "days": "ngày",
+        "activitiesCount": "{n} hoạt động"
+      },
+      "bmiLabels": {
+        "underweight": "Thiếu cân",
+        "normal": "Bình thường",
+        "overweight": "Thừa cân",
+        "obese": "Béo phì"
       }
     }
   },
@@ -613,7 +1092,10 @@
     "noSearchResults": "Không tìm thấy tin nhắn",
     "attachFile": "Đính kèm tệp",
     "attachImage": "Đính kèm ảnh",
-    "uploadComingSoon": "Tính năng upload sắp ra mắt"
+    "uploadComingSoon": "Tính năng upload sắp ra mắt",
+    "typingAria": "Người dùng đang nhập",
+    "healthQuestion": "Hỏi về sức khỏe",
+    "aiIntegrationNote": "Tôi đã nhận được tin nhắn của bạn! Tính năng AI đang được tích hợp với AI Worker."
   },
   "reports": {
     "title": "Báo cáo sức khỏe",
@@ -747,6 +1229,45 @@
     },
     "noEmergencyContacts": "Chưa có người liên hệ khẩn cấp. Thêm trong phần hồ sơ.",
     "goToProfile": "Đến hồ sơ"
+  },
+  "progress": {
+    "setGoal": "Đặt mục tiêu BMI",
+    "editGoal": "Chỉnh sửa mục tiêu",
+    "deadline": "Ngày mục tiêu",
+    "daysRemaining": "Còn X ngày",
+    "overdue": "Đã quá hạn",
+    "height": "Chiều cao",
+    "targetHeight": "Chiều cao mục tiêu",
+    "currentWeight": "Cân nặng hiện tại",
+    "targetWeight": "Cân nặng mục tiêu",
+    "targetBmi": "BMI mục tiêu",
+    "bmi": "BMI",
+    "bmiAutoHint": "BMI tự động tính từ cân nặng và chiều cao mục tiêu",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "currentBmi": "BMI hiện tại",
+    "bmiScore": "Điểm BMI",
+    "recWeight": "Cân nặng gợi ý: {weight} kg (BMI=22)",
+    "recHeight": "Chiều cao gợi ý: {height} cm (BMI=22)",
+    "legendCurrent": "Hiện tại",
+    "legendTarget": "Mục tiêu",
+    "cardWeight": "Cân nặng",
+    "cardHeight": "Chiều cao",
+    "bmiProgress": "Tiến độ BMI",
+    "bmiChart": "Biểu đồ BMI",
+    "chartSubtitle": "Lịch sử BMI theo thời gian",
+    "chartNoData": "Chưa có dữ liệu BMI",
+    "bmiInfo": "Thông tin BMI",
+    "classification": "Phân loại",
+    "achievedGoals": "{n} đã đạt",
+    "pageTitle": "Tiến độ BMI",
+    "pageSubtitle": "Theo dõi chỉ số BMI và cân nặng của bạn",
+    "bmiCategory": {
+      "underweight": "Gầy",
+      "normal": "Bình thường",
+      "overweight": "Thừa cân",
+      "obese": "Béo phì"
+    }
   },
   "comingSoon": {
     "title": "Tính năng đang được phát triển",

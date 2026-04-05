@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { CirclePlus } from "lucide-react";
 import { getMealsToday, getWeeklyCalorieChart, getNutritionSuggestions } from "@/lib/meals-data";
 import { TodayMealsWidget } from "@/components/dashboard/widgets/TodayMealsWidget";
@@ -6,6 +7,7 @@ import { WeeklyCalorieChartWidget } from "@/components/dashboard/widgets/WeeklyC
 import { NutritionSuggestionsWidget } from "@/components/dashboard/widgets/NutritionSuggestionsWidget";
 
 export default async function MealsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const t = await getTranslations("dashboard.meals");
   const { locale } = await params;
 
   // Parallel data fetch
@@ -20,18 +22,16 @@ export default async function MealsPage({ params }: { params: Promise<{ locale: 
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Nhật ký dinh dưỡng</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Theo dõi chế độ ăn uống và mục tiêu dinh dưỡng
-          </p>
+          <h1 className="text-xl font-bold text-foreground">{t("diary")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Track your diet and nutrition goals</p>
         </div>
         <Link
           href={`/${locale}/dashboard/meals/add`}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <CirclePlus className="size-4" />
-          <span className="hidden sm:inline">Thêm bữa ăn</span>
-          <span className="sm:hidden">Thêm</span>
+          <span className="hidden sm:inline">{t("addMeal")}</span>
+          <span className="sm:hidden">Add</span>
         </Link>
       </div>
 

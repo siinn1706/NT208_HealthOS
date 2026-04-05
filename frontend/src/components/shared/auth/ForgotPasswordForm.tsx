@@ -61,6 +61,7 @@ function StepIndicator({ current }: { current: Step }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function ForgotPasswordForm() {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("email");
@@ -108,7 +109,7 @@ export function ForgotPasswordForm() {
       }
       setStep("otp");
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +134,7 @@ export function ForgotPasswordForm() {
       }
       setStep("reset");
     } catch {
-      setError("Mã xác minh không hợp lệ. Vui lòng thử lại.");
+      setError(tErrors("otpInvalid"));
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +157,7 @@ export function ForgotPasswordForm() {
       }
       setOtp("");
     } catch {
-      setError("Không thể gửi lại mã. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsResending(false);
     }
@@ -165,10 +166,17 @@ export function ForgotPasswordForm() {
   // ─── Step 3: Reset password ──────────────────────────────────────────────────
   async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (newPassword !== confirmNewPassword) {
-      setError(t("passwordMismatch"));
+
+    if (newPassword.length < 8) {
+      setError("Mật khẩu phải có ít nhất 8 ký tự"); 
       return;
     }
+
+    if (newPassword !== confirmNewPassword) {
+      setError(t("passwordMismatch")); 
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
 
@@ -189,7 +197,7 @@ export function ForgotPasswordForm() {
       setSuccess(t("resetPasswordSuccess"));
       setTimeout(() => router.push("/login"), 2000);
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -444,6 +452,9 @@ export function ForgotPasswordForm() {
                     )}
                   </button>
                 </div>
+                {newPassword && newPassword.length < 8 && (
+                  <p className="text-xs text-destructive mt-1">Password must be at least 8 characters</p>
+                )}
               </div>
 
               {/* Confirm new password */}
@@ -488,6 +499,7 @@ export function ForgotPasswordForm() {
                   isLoading ||
                   !!success ||
                   !newPassword ||
+                  newPassword.length < 8 ||
                   newPassword !== confirmNewPassword
                 }
               >

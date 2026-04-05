@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import {
   CHAT_GRADIENTS,
   CHAT_PATTERNS,
@@ -63,6 +64,13 @@ export function ChatThemePicker({
   onSelect,
 }: ChatThemePickerProps) {
   const t = useTranslations("chat");
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  // Only show gradients that match the current theme mode (plus "none")
+  const filteredGradients = CHAT_GRADIENTS.filter(
+    (g) => g.id === "none" || g.type === (isDark ? "dark" : "light")
+  );
 
   const { gradId: currentGradId, patId: currentPatId, opacity: initialOpacity } =
     parseThemeId(currentThemeId);
@@ -70,19 +78,6 @@ export function ChatThemePicker({
   const [hoverGradId, setHoverGradId] = useState<string | undefined>(undefined);
   const [hoverPatId,  setHoverPatId]  = useState<string | undefined>(undefined);
   const [opacity, setOpacity]         = useState(initialOpacity);
-
-  // Sync opacity each time the dialog is freshly opened
-  /* eslint-disable react-hooks/set-state-in-effect */
-  // Also eagerly preload the active pattern so the preview strip loads fast
-  useEffect(() => {
-    if (open) {
-      setOpacity(parseThemeId(currentThemeId).opacity);
-      if (previewPat?.filename) {
-        preloadUrl(resolvePatternUrl(previewPat, currentGradType));
-      }
-    }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const displayGradId = hoverGradId !== undefined ? hoverGradId : currentGradId;
   const displayPatId  = hoverPatId  !== undefined ? hoverPatId  : currentPatId;
@@ -96,6 +91,18 @@ export function ChatThemePicker({
   const previewPatUrl   = previewPat?.filename
     ? resolvePatternUrl(previewPat, previewGradType)
     : "";
+
+  // Sync opacity each time the dialog is freshly opened
+  // Also eagerly preload the active pattern so the preview strip loads fast
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpacity(parseThemeId(currentThemeId).opacity);
+      if (previewPat?.filename) {
+        preloadUrl(resolvePatternUrl(previewPat, currentGradType));
+      }
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Base gradient css for pattern thumbnail cards
   const thumbGradCss =
@@ -200,9 +207,9 @@ export function ChatThemePicker({
 
             {/* ── Gradient swatches (wrap, not scroll) ── */}
             <div>
-              <SectionLabel label={t("themeGradients")} count={CHAT_GRADIENTS.length - 1} />
+              <SectionLabel label={t("themeGradients")} count={filteredGradients.length - 1} />
               <div className="flex flex-wrap gap-2.5">
-                {CHAT_GRADIENTS.map((grad) => (
+                {filteredGradients.map((grad) => (
                   <GradientSwatch
                     key={grad.id}
                     grad={grad}

@@ -2,13 +2,11 @@
 //   Trigger: Client-side load on /dashboard/reminders
 //   Request: { type?: "medicine" | "appointment" | "exercise" }
 //   Response: { data: Reminder[] }
-//   Fallback: INITIAL_REMINDERS hardcoded array
 
 // BFF TODO: POST /api/v1/reminders
 //   Trigger: User submits AddReminderDialog
 //   Request: { type: string; title: string; time: string; repeat?: string; note?: string }
 //   Response: Reminder
-//   Fallback: Optimistic add to local state
 
 import { NextRequest } from "next/server";
 import { coreProxy } from "@/lib/core-api-proxy";

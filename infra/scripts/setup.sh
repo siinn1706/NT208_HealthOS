@@ -23,6 +23,7 @@ copy_env "$ROOT_DIR/infra/env/backend.env.example"  "$ROOT_DIR/backend/.env"
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/ai-worker/.env"
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/queue-worker/.env"
 copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/notification/.env"
+copy_env "$ROOT_DIR/infra/docker/.env.dev.example"  "$ROOT_DIR/infra/docker/.env.dev"
 
 if [[ "${1:-}" == "--docker" ]]; then
     echo "[DOCKER] Starting full stack..."
@@ -52,6 +53,8 @@ pip install -r requirements.txt
 if [ -f requirements-dev.txt ]; then
     pip install -r requirements-dev.txt
 fi
+echo "[BE] Running database migrations..."
+python -m alembic upgrade head || echo "[BE] WARNING: Migration failed. DB may not be running yet."
 echo "[BE] Done."
 
 echo ""

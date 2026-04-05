@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 
 interface ChatWindowHeaderProps {
   conversation: Conversation;
+  currentUserId: string | null;
   onBack?: () => void;
   onPin: () => void;
   onMute: () => void;
@@ -44,6 +45,7 @@ interface ChatWindowHeaderProps {
 
 export function ChatWindowHeader({
   conversation,
+  currentUserId,
   onBack,
   onPin,
   onMute,
@@ -55,8 +57,8 @@ export function ChatWindowHeader({
   const t = useTranslations("chat");
   const [showThemePicker, setShowThemePicker] = useState(false);
 
-  const name = getConversationName(conversation);
-  const other = getOtherParticipant(conversation);
+  const name = getConversationName(conversation, currentUserId);
+  const other = getOtherParticipant(conversation, currentUserId);
   const isAi = conversation.type === "ai";
   const isGroup = conversation.type === "group";
 

@@ -23,6 +23,7 @@ import type { Conversation, StrangerRequest } from "@/types/api";
 
 interface ConversationListProps {
   conversations: Conversation[];
+  currentUserId: string | null;
   activeId: string | null;
   strangerRequests: StrangerRequest[];
   isLoading?: boolean;
@@ -38,6 +39,7 @@ interface ConversationListProps {
 
 export function ConversationList({
   conversations,
+  currentUserId,
   activeId,
   strangerRequests,
   isLoading = false,
@@ -66,13 +68,14 @@ export function ConversationList({
           ? "healthos ai"
           : c.type === "group"
           ? (c.name ?? "").toLowerCase()
-          : (c.participants.find((p) => p.user_id !== "user-me")?.display_name ?? "").toLowerCase();
+          : (c.participants.find((p) => p.user_id !== currentUserId)?.display_name ?? "")
+              .toLowerCase();
       return (
         name.includes(q) ||
         (c.last_message?.content.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [conversations, searchQuery]);
+  }, [conversations, searchQuery, currentUserId]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -136,6 +139,7 @@ export function ConversationList({
                     <ConversationItem
                       key={conv.id}
                       conversation={conv}
+                      currentUserId={currentUserId}
                       isActive={activeId === conv.id}
                       onClick={() => onSelectConversation(conv.id)}
                       onPin={() => onPinConversation(conv.id)}

@@ -13,20 +13,10 @@ import {
   Cookie,
 } from "lucide-react";
 import Link from "next/link";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { Meal } from "@/types/api";
-
-const MEAL_TYPE_CONFIG: Record<
-  string,
-  { icon: React.ComponentType<{ className?: string }>; label: string; color: string }
-> = {
-  breakfast: { icon: Sunrise, label: "Sáng",  color: "text-orange-400" },
-  lunch:     { icon: Sun,     label: "Trưa",  color: "text-yellow-400" },
-  dinner:    { icon: Moon,    label: "Tối",   color: "text-indigo-400" },
-  snack:     { icon: Cookie,  label: "Phụ",   color: "text-emerald-400" },
-};
 
 const MEAL_TYPE_ORDER: Record<string, number> = {
   breakfast: 0,
@@ -39,8 +29,14 @@ interface TodayMealsWidgetProps {
   meals: Meal[];
 }
 
-function MealCard({ meal }: { meal: Meal }) {
+function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslations> }) {
   const [expanded, setExpanded] = useState(false);
+  const { [meal.meal_type ?? "snack"]: cfg } = {
+    breakfast: { icon: Sunrise, label: tm("mealTypes.breakfast"),  color: "text-orange-400" },
+    lunch:     { icon: Sun,     label: tm("mealTypes.lunch"),      color: "text-yellow-400" },
+    dinner:    { icon: Moon,    label: tm("mealTypes.dinner"),     color: "text-indigo-400" },
+    snack:     { icon: Cookie,  label: tm("mealTypes.snack"),      color: "text-emerald-400" },
+  } as Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; color: string }>;
   const hr = new Date(meal.logged_at).toLocaleTimeString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
@@ -64,12 +60,17 @@ function MealCard({ meal }: { meal: Meal }) {
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs text-muted-foreground">{hr}</span>
             {meal.meal_type && (() => {
-              const cfg = MEAL_TYPE_CONFIG[meal.meal_type!];
-              const Icon = cfg?.icon;
+              const { [meal.meal_type ?? "snack"]: cfgLocal } = {
+                breakfast: { icon: Sunrise, label: tm("mealTypes.breakfast"),  color: "text-orange-400" },
+                lunch:     { icon: Sun,     label: tm("mealTypes.lunch"),      color: "text-yellow-400" },
+                dinner:    { icon: Moon,    label: tm("mealTypes.dinner"),     color: "text-indigo-400" },
+                snack:     { icon: Cookie,  label: tm("mealTypes.snack"),      color: "text-emerald-400" },
+              } as Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; color: string }>;
+              const Icon = cfgLocal?.icon;
               return (
                 <Badge variant="secondary" className="inline-flex items-center gap-1 text-[10px] h-4 px-1.5">
-                  {Icon && <Icon className={`size-2.5 ${cfg.color}`} />}
-                  {cfg?.label ?? meal.meal_type}
+                  {Icon && <Icon className={`size-2.5 ${cfgLocal.color}`} />}
+                  {cfgLocal?.label ?? meal.meal_type}
                 </Badge>
               );
             })()}
@@ -106,19 +107,19 @@ function MealCard({ meal }: { meal: Meal }) {
               {nr && (
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-md bg-[#41BCE6]/10 px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-muted-foreground">Protein</p>
+                    <p className="text-[10px] text-muted-foreground">{tm("protein")}</p>
                     <p className="text-xs font-bold text-[#41BCE6] tabular-nums">
                       {nr.protein_g}g
                     </p>
                   </div>
                   <div className="rounded-md bg-[#E7DEA7]/20 px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-muted-foreground">Carbs</p>
+                    <p className="text-[10px] text-muted-foreground">{tm("carbs")}</p>
                     <p className="text-xs font-bold text-[#b5a97a] dark:text-[#E7DEA7] tabular-nums">
                       {nr.carbs_g}g
                     </p>
                   </div>
                   <div className="rounded-md bg-[#E3B79A]/20 px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-muted-foreground">Chất béo</p>
+                    <p className="text-[10px] text-muted-foreground">{tm("fat")}</p>
                     <p className="text-xs font-bold text-[#c4825a] dark:text-[#E3B79A] tabular-nums">
                       {nr.fat_g}g
                     </p>
@@ -130,7 +131,7 @@ function MealCard({ meal }: { meal: Meal }) {
               {meal.ingredients.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                    Thành phần
+                    {tm("ingredients")}
                   </p>
                   <ul className="space-y-1">
                     {meal.ingredients.map((ing, i) => (
@@ -144,7 +145,7 @@ function MealCard({ meal }: { meal: Meal }) {
                         <span className="text-muted-foreground tabular-nums flex-shrink-0 ml-2">
                           {ing.grams}g
                           {ing.calories > 0 && (
-                            <span className="ml-1 text-primary/80">
+                            <span className="ml-1 text-muted-foreground">
                               ({Math.round(ing.calories)} kcal)
                             </span>
                           )}
@@ -164,6 +165,7 @@ function MealCard({ meal }: { meal: Meal }) {
 
 export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
   const locale = useLocale();
+  const tm = useTranslations("dashboard.meals");
   const sorted = [...meals].sort(
     (a, b) =>
       (MEAL_TYPE_ORDER[a.meal_type ?? "snack"] ?? 2) -
@@ -180,11 +182,11 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Hôm nay</h2>
+          <h2 className="text-sm font-semibold text-foreground">{tm("today")}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {meals.length > 0
-              ? `${meals.length} bữa · ${Math.round(totalCalories)} kcal`
-              : "Chưa ghi bữa nào"}
+              ? tm("mealsLogged", { count: meals.length, cal: Math.round(totalCalories) })
+              : tm("noMealsLogged")}
           </p>
         </div>
         <Link
@@ -195,7 +197,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
           )}
         >
           <CirclePlus className="size-4" />
-          Thêm bữa
+          {tm("addMeal")}
         </Link>
       </div>
 
@@ -207,10 +209,10 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
           </div>
           <div className="text-center">
             <p className="text-sm font-medium text-foreground">
-              Chưa có bữa ăn nào hôm nay
+              {tm("noMealsToday")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Ghi nhật ký để theo dõi dinh dưỡng của bạn
+              {tm("noMealsTodayMsg")}
             </p>
           </div>
           <Link
@@ -222,7 +224,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
             )}
           >
             <CirclePlus className="size-3.5" />
-            Thêm bữa đầu tiên
+            {tm("addFirst")}
           </Link>
         </div>
       ) : (
@@ -235,7 +237,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.2 }}
               >
-                <MealCard meal={meal} />
+                <MealCard meal={meal} tm={tm} />
               </motion.div>
             ))}
           </AnimatePresence>

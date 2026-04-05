@@ -1,14 +1,6 @@
-export default function Home() {
-  return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      minHeight: '100vh',
-      fontSize: '3rem',
-      fontWeight: 'bold'
-    }}>
-      Hello HThuong!
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { routing } from "@/i18n/routing";
+
+export default async function RootPage() {
+  redirect(`/${routing.defaultLocale}`);
 }

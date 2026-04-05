@@ -183,6 +183,60 @@ export interface HealthMetric {
   source: WearableSource;
 }
 
+// ─── Analytics ─────────────────────────────────────────────────────
+
+export type AggregationPeriod = "daily" | "weekly" | "monthly";
+
+export interface AggregationPoint {
+  date: string;
+  avg_value: number;
+  min_value: number;
+  max_value: number;
+  count: number;
+}
+
+export interface AggregationResponse {
+  data: AggregationPoint[];
+}
+
+export interface ComparisonPoint {
+  date: string;
+  values: Record<string, number | null>;
+}
+
+export interface ComparisonResponse {
+  data: ComparisonPoint[];
+}
+
+export interface GoalProgressPoint {
+  date: string;
+  value: number;
+  target: number;
+  progress_percent: number;
+}
+
+export interface GoalProgressResponse {
+  data: GoalProgressPoint[];
+}
+
+export interface PeriodStats {
+  period: "current" | "previous";
+  avg_value: number;
+  min_value: number;
+  max_value: number;
+  total_value: number;
+  count: number;
+  trend: "improving" | "declining" | "stable";
+}
+
+export interface PeriodComparisonResponse {
+  data: {
+    current: PeriodStats;
+    previous: PeriodStats;
+    change_percent: number;
+  };
+}
+
 // ─── Devices ────────────────────────────────────────────────────────
 
 export type WearableProvider = "apple_health" | "google_fit" | "garmin" | "fitbit";
@@ -192,6 +246,79 @@ export interface ConnectedDevice {
   provider: WearableProvider;
   connected_at: string;
   last_synced_at?: string;
+}
+
+// ─── Appointments ────────────────────────────────────────────────────
+
+export type AppointmentStatus = "completed" | "upcoming" | "cancelled";
+
+export interface PrescriptionMedicine {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  notes?: string;
+}
+
+export interface Prescription {
+  id: string;
+  issuedAt: string;
+  doctor: string;
+  clinic: string;
+  diagnosis: string;
+  medicines: PrescriptionMedicine[];
+  notes: string | null;
+}
+
+export interface Appointment {
+  id: string;
+  date: string;
+  doctorName: string;
+  specialty: string;
+  clinic: string;
+  diagnosis: string;
+  status: AppointmentStatus;
+  hasPrescription: boolean;
+  prescription?: Prescription | null;
+  notes?: string;
+}
+
+// ─── Risk Predictions ────────────────────────────────────────────────
+
+export type RiskLevel = "low" | "moderate" | "high" | "critical";
+export type RiskTrend = "improving" | "stable" | "worsening";
+
+export interface RiskFactor {
+  label: string;
+  impact: "positive" | "negative" | "neutral";
+  detail: string;
+}
+
+export interface PreventionTip {
+  id: string;
+  category: "diet" | "exercise" | "medication" | "monitoring" | "lifestyle";
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "low";
+}
+
+export interface RiskItem {
+  id: string;
+  condition: string;
+  conditionVi: string;
+  probability: number;
+  level: RiskLevel;
+  trend: RiskTrend;
+  factors: RiskFactor[];
+  tips: PreventionTip[];
+  icdCode?: string;
+}
+
+export interface RiskPredictionSummary {
+  generatedAt: string;
+  overallScore: number;
+  risks: RiskItem[];
+  disclaimer: string;
 }
 
 // ─── Notifications ──────────────────────────────────────────────────
@@ -242,16 +369,18 @@ export interface ChatParticipant {
 export interface MessageReaction {
   emoji: string;
   user_ids: string[];
+  user_names?: Record<string, string>;
 }
 
 export interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
+  sender_display_name?: string;
   content: string;
   type: MessageType;
   status: MessageStatus;
-  reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type">;
+  reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type" | "sender_display_name">;
   reactions: MessageReaction[];
   is_edited: boolean;
   is_recalled: boolean;
@@ -462,4 +591,11 @@ export interface AutoShareSettings {
   default_recipients: ShareRecipient[];
   default_channels: ShareChannel[];
   countdown_seconds: number; // delay before auto-sending
+}
+
+// ─── User Preferences ────────────────────────────────────────────────
+
+export interface UserPreference {
+  theme_mode: "system" | "light" | "dark";
+  accent_color: string | null;
 }

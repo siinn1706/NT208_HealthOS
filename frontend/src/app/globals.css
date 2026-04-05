@@ -1,11 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@dayflow/blossom-color-picker/styles.css";
+@import "@twallpaper/react/css";
 /* @plugin "@tailwindcss/typography"; */
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── Night Sky Palette ── */
+/* ── Night Sky Palette (v2 — deep dark) ── */
 @theme inline {
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
@@ -47,9 +49,9 @@
     --color-sidebar-ring: var(--sidebar-ring);
 
     /* Night Sky custom tokens */
-    --color-night-900: #0F2743;
-    --color-night-800: #1A4474;
-    --color-night-700: #1965B3;
+    --color-night-900: #0B0F14;
+    --color-night-800: #141A22;
+    --color-night-700: #1A2130;
     --color-night-600: #5B90C4;
     --color-night-500: #75A2B9;
     --color-night-400: #41BCE6;
@@ -72,6 +74,7 @@
     --popover: #FFFFFF;
     --popover-foreground: #0F2743;
     --primary: #1965B3;
+    --primary-base: #1965B3;
     --primary-foreground: #FFFFFF;
     --secondary: #E8F8FD;
     --secondary-foreground: #1A4474;
@@ -99,37 +102,38 @@
 }
 
 .dark {
-    --background: #0F2743;
-    --foreground: #E8F8FD;
-    --card: #1A4474;
-    --card-foreground: #E8F8FD;
-    --popover: #1A4474;
-    --popover-foreground: #E8F8FD;
-    --primary: #41BCE6;
-    --primary-foreground: #0F2743;
-    --secondary: #1A4474;
-    --secondary-foreground: #E8F8FD;
-    --muted: #1A4474;
-    --muted-foreground: #75A2B9;
-    --accent: #6DE7F7;
-    --accent-foreground: #0F2743;
+    --background: #0B0F14;
+    --foreground: #EAEEF2;
+    --card: #141A22;
+    --card-foreground: #EAEEF2;
+    --popover: #1A2130;
+    --popover-foreground: #EAEEF2;
+    --primary: #5BA8C8;
+    --primary-base: #5BA8C8;
+    --primary-foreground: #0B0F14;
+    --secondary: #1A2130;
+    --secondary-foreground: #EAEEF2;
+    --muted: #1A2130;
+    --muted-foreground: #7A8A99;
+    --accent: #7EC8D8;
+    --accent-foreground: #0B0F14;
     --destructive: #E54D4D;
-    --border: rgba(65, 188, 230, 0.2);
-    --input: rgba(65, 188, 230, 0.15);
-    --ring: #41BCE6;
-    --chart-1: #41BCE6;
-    --chart-2: #6DE7F7;
-    --chart-3: #1965B3;
-    --chart-4: #E7DEA7;
-    --chart-5: #E3B79A;
-    --sidebar: #1A4474;
-    --sidebar-foreground: #E8F8FD;
-    --sidebar-primary: #41BCE6;
-    --sidebar-primary-foreground: #0F2743;
-    --sidebar-accent: #0F2743;
-    --sidebar-accent-foreground: #E8F8FD;
-    --sidebar-border: rgba(65, 188, 230, 0.2);
-    --sidebar-ring: #41BCE6;
+    --border: rgba(138, 162, 180, 0.15);
+    --input: rgba(138, 162, 180, 0.12);
+    --ring: #5BA8C8;
+    --chart-1: #5BA8C8;
+    --chart-2: #7EC8D8;
+    --chart-3: #3D7A9E;
+    --chart-4: #D4CFA0;
+    --chart-5: #D4A890;
+    --sidebar: #101620;
+    --sidebar-foreground: #EAEEF2;
+    --sidebar-primary: #5BA8C8;
+    --sidebar-primary-foreground: #0B0F14;
+    --sidebar-accent: #141A22;
+    --sidebar-accent-foreground: #EAEEF2;
+    --sidebar-border: rgba(138, 162, 180, 0.12);
+    --sidebar-ring: #5BA8C8;
 }
 
 @layer base {
@@ -225,4 +229,25 @@ html {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
+}
+
+/* ── Accent surface lock ──
+   Tailwind maps --color-primary: var(--primary) for BOTH bg-primary and text-primary.
+   JS overrides --primary to the user's accent color (for surface tokens like buttons,
+   borders, rings). This unlayered rule re-locks text-primary to --primary-base, which
+   is defined only in CSS and is NEVER touched by JS accent overrides.
+   Unlayered rules always beat @layer utilities, so this takes precedence cleanly.
+   Result: bg-primary/border-primary/ring follow accent; text-primary/icons do NOT. */
+.text-primary,
+.hover\:text-primary:hover {
+  color: var(--primary-base);
+}
+
+/* ── TWallpaper containment fix ─────────────────────────────────────────────
+   The library default uses position:fixed which would span the full viewport.
+   We constrain it to the chat area by overriding position to absolute.
+   The parent ChatBackground div is already absolute inset-0 overflow-hidden. */
+.tw-wrap {
+  position: absolute;
+  z-index: 0;
 }
