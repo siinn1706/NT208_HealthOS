@@ -4,11 +4,12 @@ import { useState, useCallback, useMemo } from "react";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { getProfileSchema, type ProfileFormValues } from "@/lib/validators/profile-schema";
-import { bffFetch } from "@/lib/api-client";
-import type { UserProfile } from "@/types/api";
+import { bffFetchClient } from "@/lib/api-client";
+import type { UserProfile, UserProfileUpdate } from "@/types/api";
 
 import { ProfileHeader } from "./ProfileHeader";
 import { BasicInfoSection } from "./BasicInfoSection";
@@ -42,9 +43,8 @@ function profileToFormValues(profile: UserProfile): ProfileFormValues {
     phone: profile.phone ?? null,
     address: profile.address ?? null,
     emergency_contacts: emergencyContacts.map((ec) => ({
-      id: ec.id,
-      name: ec.name ?? null,
-      relationship: ec.relationship ?? null,
+      name: ec.name ?? "",
+      relationship: ec.relationship ?? "",
       phone: ec.phone ?? null,
     })),
     medical_info: {
@@ -52,6 +52,30 @@ function profileToFormValues(profile: UserProfile): ProfileFormValues {
       chronic_conditions: medicalInfo.chronic_conditions ?? null,
       current_medications: medicalInfo.current_medications ?? null,
       notes: medicalInfo.notes ?? null,
+    },
+  };
+}
+
+function formValuesToUpdate(values: ProfileFormValues): UserProfileUpdate {
+  return {
+    full_name: values.full_name,
+    date_of_birth: values.date_of_birth ?? null,
+    gender: values.gender ?? null,
+    blood_type: values.blood_type ?? null,
+    height_cm: values.height_cm ?? null,
+    weight_kg: values.weight_kg ?? null,
+    phone: values.phone ?? null,
+    address: values.address ?? null,
+    emergency_contacts: values.emergency_contacts.map((ec) => ({
+      name: ec.name || null,
+      relationship: ec.relationship || null,
+      phone: ec.phone ?? null,
+    })),
+    medical_info: {
+      allergies: values.medical_info?.allergies ?? null,
+      chronic_conditions: values.medical_info?.chronic_conditions ?? null,
+      current_medications: values.medical_info?.current_medications ?? null,
+      notes: values.medical_info?.notes ?? null,
     },
   };
 }
@@ -64,6 +88,8 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const router = useRouter();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema) as Resolver<ProfileFormValues>,
@@ -94,26 +120,29 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
     const values = form.getValues();
     setIsSaving(true);
     setSaveStatus("idle");
+    setSaveError(null);
 
-    try {
-      // BFF: PATCH /api/v1/users/me
-      const res = await bffFetch("/api/v1/users/me", {
-        method: "PATCH",
-        body: values,
-      });
-      void res; // BFF returns updated user, can be used to sync local state
+    const { data, error } = await bffFetchClient("/api/v1/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(formValuesToUpdate(values)),
+    });
 
-      form.reset(values); // set new defaults to prevent stale "dirty" state
-      setIsEditing(false);
-      setSaveStatus("success");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (err) {
-      console.error("[ProfileFormProvider] Save failed:", err);
+    setIsSaving(false);
+
+    if (error) {
+      const errObj = error as Record<string, unknown>;
+      const msg = (errObj?.error as Record<string, unknown>)?.message ?? errObj?.detail ?? null;
+      setSaveError(typeof msg === "string" ? msg : null);
       setSaveStatus("error");
-    } finally {
-      setIsSaving(false);
+      return;
     }
-  }, [form]);
+
+    form.reset(data ? profileToFormValues(data as UserProfile) : values);
+    router.refresh();
+    setIsEditing(false);
+    setSaveStatus("success");
+    setTimeout(() => setSaveStatus("idle"), 3000);
+  }, [form, router]);
 
   return (
     <TooltipProvider>
@@ -145,7 +174,7 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
               role="alert"
               className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
-              ✕ {t("saveError")}
+              ✕ {saveError ?? t("saveError")}
             </div>
           )}
 

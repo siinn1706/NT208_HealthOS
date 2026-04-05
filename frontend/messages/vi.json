@@ -213,7 +213,9 @@
     "fullNameRequired": "Họ và tên là bắt buộc.",
     "fullNameTooShort": "Họ và tên phải có ít nhất 2 ký tự.",
     "fullNameTooLong": "Họ và tên không được vượt quá 100 ký tự.",
-    "addressTooLong": "Địa chỉ không được vượt quá 200 ký tự."
+    "addressTooLong": "Địa chỉ không được vượt quá 512 ký tự.",
+    "ecNameRequired": "Vui lòng nhập tên người liên hệ.",
+    "ecRelationshipRequired": "Vui lòng nhập mối quan hệ."
   },
   "system": {
     "noServerData": "Máy chủ không trả dữ liệu mục tiêu",
@@ -1014,6 +1016,7 @@
       "notSpecified": "Chưa cập nhật",
       "saveSuccess": "Cập nhật hồ sơ thành công!",
       "saveError": "Lưu thất bại. Vui lòng thử lại.",
+      "loadError": "Không thể tải thông tin của bạn. Vui lòng thử lại.",
       "addContact": "Thêm người liên hệ",
       "removeContact": "Xóa",
       "contactN": "Người liên hệ {n}",
