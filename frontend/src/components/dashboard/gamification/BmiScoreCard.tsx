@@ -17,21 +17,25 @@ const BMI_STATUS_CONFIG = {
     color: "#60A5FA",
     bg: "bg-blue-500/10",
     border: "border-blue-500/30",
+    label: "Thiếu cân",
   },
   normal: {
     color: "#4ADE80",
     bg: "bg-green-500/10",
     border: "border-green-500/30",
+    label: "Bình thường",
   },
   overweight: {
     color: "#FBBF24",
     bg: "bg-yellow-500/10",
     border: "border-yellow-500/30",
+    label: "Thừa cân",
   },
   obese: {
     color: "#F87171",
     bg: "bg-red-500/10",
     border: "border-red-500/30",
+    label: "Béo phì",
   },
 };
 

@@ -4,7 +4,13 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export interface DashboardSummary {
   userName: string;
-  alerts: Array<{ id: string; type: "critical" | "warning" | "info"; message: string }>;
+  alerts: Array<{
+    id: string;
+    type: "critical" | "warning" | "info";
+    message: string;
+    alert_code?: string;
+    alert_params?: Record<string, unknown>;
+  }>;
   kpis: {
     caloriesBurned: { current: number | null; target: number | null };
     sleepScore: { current: number | null; target: number | null };
@@ -74,7 +80,18 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
         typeof d.user_name === "string" && d.user_name.trim()
           ? d.user_name
           : "",
-      alerts: Array.isArray(d.alerts) ? d.alerts : [],
+      alerts: Array.isArray(d.alerts)
+        ? d.alerts.map((a: Record<string, unknown>) => ({
+            id: typeof a?.id === "string" ? a.id : "",
+            type:
+              a?.type === "critical" || a?.type === "warning" || a?.type === "info"
+                ? a.type as "critical" | "warning" | "info"
+                : "info",
+            message: typeof a?.message === "string" ? a.message : "",
+            ...(typeof a?.alert_code === "string" ? { alert_code: a.alert_code } : {}),
+            ...(a?.alert_params && typeof a.alert_params === "object" ? { alert_params: a.alert_params as Record<string, unknown> } : {}),
+          }))
+        : [],
       kpis: {
         caloriesBurned: {
           current: numOrNull(d.kpis?.caloriesBurned?.current),
