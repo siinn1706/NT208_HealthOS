@@ -54,19 +54,19 @@ export function RegisterForm() {
 
     // Username validation
     if (!username) {
-      errors.username = ValidationMessages.required("Username");
+      errors.username = ValidationMessages.required(t("usernameLabel"));
       usernameRef.current?.focus();
     } else if (username.length < 3) {
-      errors.username = ValidationMessages.minLength("Username", 3);
+      errors.username = t("usernameTooShort");
       if (!errors.username) usernameRef.current?.focus();
     } else if (!usernameAvailable) {
-      errors.username = tErrors("emailTaken");
+      errors.username = t("usernameTaken");
       if (!errors.username) usernameRef.current?.focus();
     }
 
     // Email validation
     if (!email) {
-      errors.email = ValidationMessages.required("Email");
+      errors.email = ValidationMessages.required(t("email"));
       if (!errors.username && !errors.email) emailRef.current?.focus();
     } else if (!isValidEmail(email)) {
       errors.email = ValidationMessages.email;
@@ -78,24 +78,23 @@ export function RegisterForm() {
 
     // Password validation - client-side check (backend also validates)
     if (!password) {
-      errors.password = ValidationMessages.required("Mật khẩu");
+      errors.password = ValidationMessages.required(t("password"));
     } else {
-      // Check complexity requirements
-      const issues: string[] = [];
-      if (password.length < 8) issues.push("ít nhất 8 ký tự");
-      if (!/[A-Z]/.test(password)) issues.push("1 chữ hoa");
-      if (!/[a-z]/.test(password)) issues.push("1 chữ thường");
-      if (!/\d/.test(password)) issues.push("1 số");
-      if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) issues.push("1 ký tự đặc biệt");
+      const failsComplexity =
+        password.length < 8 ||
+        !/[A-Z]/.test(password) ||
+        !/[a-z]/.test(password) ||
+        !/\d/.test(password) ||
+        !/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password);
 
-      if (issues.length > 0) {
-        errors.password = `Mật khẩu cần: ${issues.join(", ")}`;
+      if (failsComplexity) {
+        errors.password = t("passwordRequirements");
       }
     }
 
     // Confirm password validation
     if (!confirmPassword) {
-      errors.confirmPassword = ValidationMessages.required("Xác nhận mật khẩu");
+      errors.confirmPassword = ValidationMessages.required(t("confirmPassword"));
     } else if (password !== confirmPassword) {
       errors.confirmPassword = ValidationMessages.passwordMismatch;
     }
@@ -181,7 +180,7 @@ export function RegisterForm() {
       if (!available) {
         setFieldErrors((prev) => ({
           ...prev,
-          username: tErrors("emailTaken"),
+          username: t("usernameTaken"),
         }));
       } else if (fieldErrors.username) {
         setFieldErrors((prev) => ({ ...prev, username: "" }));
@@ -303,7 +302,7 @@ export function RegisterForm() {
         if (data?.error?.code === "EMAIL_TAKEN") {
           setFieldErrors((prev) => ({
             ...prev,
-            email: "Email đã được sử dụng. Vui lòng dùng email khác.",
+            email: tErrors("emailTaken"),
           }));
           setEmailAvailable(false);
         }
@@ -347,14 +346,14 @@ export function RegisterForm() {
           {/* Username */}
           <div className="space-y-1.5">
             <Label htmlFor="reg-username">
-              Username <span className="text-destructive">*</span>
+              {t("usernameLabel")} <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
               <Input
                 ref={usernameRef}
                 id="reg-username"
                 type="text"
-                placeholder="you123"
+                placeholder={t("usernamePlaceholder")}
                 autoComplete="username"
                 value={username}
                 onChange={(e) => handleUsernameChange(e.target.value)}
@@ -381,12 +380,12 @@ export function RegisterForm() {
               </p>
             ) : username && username.length > 0 && username.length < 3 ? (
               <p className="text-xs text-muted-foreground">
-                Username phải có ít nhất 3 ký tự
+                {t("usernameTooShort")}
               </p>
             ) : username && username.length >= 3 && usernameAvailable === false ? (
               <p className="flex items-center gap-1 text-xs text-destructive" role="alert">
                 <AlertCircle className="size-3 shrink-0" aria-hidden="true" />
-                Username đã được sử dụng
+                {t("usernameTaken")}
               </p>
             ) : null}
           </div>
@@ -431,7 +430,7 @@ export function RegisterForm() {
               </p>
             ) : email && isValidEmail(email) && emailAvailable === false ? (
               <p className="text-xs text-destructive" role="alert">
-                Email đã được sử dụng
+                {tErrors("emailTaken")}
               </p>
             ) : null}
           </div>

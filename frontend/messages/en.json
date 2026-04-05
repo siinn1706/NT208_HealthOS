@@ -1155,7 +1155,13 @@
     "otpInvalid": "Invalid or expired OTP code.",
     "resendFailed": "Could not resend code. Please try again.",
     "sendCodeFailed": "Could not send verification code. Please try again.",
-    "resetPasswordFailed": "Failed to reset password. Please try again."
+    "resetPasswordFailed": "Failed to reset password. Please try again.",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "you123",
+    "usernameTooShort": "Username must be at least 3 characters",
+    "usernameTaken": "Username already taken",
+    "passwordRequirements": "Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special character",
+    "passwordMinLength": "Password must be at least 8 characters"
   },
   "chat": {
     "title": "Messages",
