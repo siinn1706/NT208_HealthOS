@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeGitHubCodeForToken, getGitHubUserInfo, getGitHubEmails } from "@/lib/oauth/github";
 
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import { CORE_API_URL } from "@/lib/env";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);

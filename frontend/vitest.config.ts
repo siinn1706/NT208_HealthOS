@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['@testing-library/jest-dom', './src/__tests__/setup-vitest.ts'],
+    setupFiles: ['./src/__tests__/setup-vitest.ts'],
   },
   resolve: {
     alias: {
