@@ -43,7 +43,7 @@ export async function AiInsightWidget({ insight }: AiInsightWidgetProps) {
         )}
 
         <Link
-          href={`/${locale}/dashboard/ai-chat`}
+          href={`/${locale}/dashboard/chat`}
           className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/85 transition-colors duration-200"
         >
           <Bot className="w-3.5 h-3.5" />

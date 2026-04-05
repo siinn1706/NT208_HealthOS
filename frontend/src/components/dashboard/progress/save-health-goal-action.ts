@@ -32,7 +32,7 @@ export async function saveHealthGoalAction(
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
-    return { ok: false, message: "Phiên đăng nhập hết hạn" };
+    return { ok: false, message: "Session expired" };
   }
 
   const endpoint =
@@ -54,7 +54,7 @@ export async function saveHealthGoalAction(
     });
 
     if (!beRes.ok) {
-      let msg = `Lỗi ${beRes.status}`;
+      let msg = `Error ${beRes.status}`;
       try {
         const errJson = await beRes.json();
         msg = (errJson as { message?: string }).message ?? msg;
@@ -69,11 +69,11 @@ export async function saveHealthGoalAction(
     const goal = beJson?.data ?? null;
 
     if (!goal) {
-      return { ok: false, message: "Máy chủ không trả dữ liệu mục tiêu" };
+      return { ok: false, message: "Server returned no goal data" };
     }
 
     return { ok: true, goal };
   } catch {
-    return { ok: false, message: "Không thể kết nối máy chủ" };
+    return { ok: false, message: "Cannot connect to server" };
   }
 }
