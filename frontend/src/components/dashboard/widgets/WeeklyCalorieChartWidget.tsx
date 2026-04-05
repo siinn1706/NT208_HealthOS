@@ -173,7 +173,7 @@ export function WeeklyCalorieChartWidget({
           {t("noData")}
         </div>
       ) : (
-        <EChartWrapper option={option} style={{ height: "220px" }} />
+        <EChartWrapper option={option} height="220px" />
       )}
     </div>
   );
