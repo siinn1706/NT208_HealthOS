@@ -79,10 +79,10 @@ async function getSessionDisplayName(): Promise<string> {
       const name = typeof session.display_name === "string" ? session.display_name.trim() : "";
       const user = typeof session.username === "string" ? session.username.trim() : "";
       const email = typeof session.email === "string" ? session.email.split("@")[0].trim() : "";
-      return name || user || email || "User";
+      return name || user || email || "";
     }
   }
-  return "User";
+  return "";
 }
 
 // ─── Public API ───────────────────────────────────────────────

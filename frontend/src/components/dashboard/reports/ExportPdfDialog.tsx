@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getLocaleTag } from "@/lib/format-utils";
 import { Button } from "@/components/ui/button";
 import type { HealthReport } from "@/types/api";
 import {
@@ -25,6 +26,8 @@ async function generateAndDownloadPdf(
     includeDataTable: boolean;
     includeAiInsights: boolean;
     sectionsToInclude: string[];
+    locale: string;
+    createdAtLabel: string;
   }
 ) {
   // Phase 1: Generate a structured HTML snapshot and use window.print()
@@ -89,7 +92,7 @@ async function generateAndDownloadPdf(
     <div style="text-align:right">
       <span class="badge badge-${report.status}">${statusLabel}</span>
       <div class="meta">Kỳ: ${report.period === "7d" ? "7 ngày" : report.period === "30d" ? "30 ngày" : "90 ngày"}</div>
-      <div class="meta">Tạo lúc: ${new Date(report.generated_at).toLocaleDateString("vi-VN")}</div>
+      <div class="meta">${options.createdAtLabel} ${new Date(report.generated_at).toLocaleDateString(getLocaleTag(options.locale))}</div>
     </div>
   </div>
 
@@ -150,6 +153,7 @@ interface ExportPdfDialogProps {
 
 export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogProps) {
   const t = useTranslations("reports");
+  const locale = useLocale();
   const [generating, setGenerating] = useState(false);
   const [includeDataTable, setIncludeDataTable] = useState(true);
   const [includeAiInsights, setIncludeAiInsights] = useState(true);
@@ -182,6 +186,8 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
       includeDataTable,
       includeAiInsights,
       sectionsToInclude: selectedSections,
+      locale,
+      createdAtLabel: t("export.createdAt"),
     });
     toast.promise(exportPromise, {
       loading: t("exportPdfLoading"),

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { formatTime } from "@/lib/format-utils";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { Meal } from "@/types/api";
@@ -31,16 +32,14 @@ interface TodayMealsWidgetProps {
 
 function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslations> }) {
   const [expanded, setExpanded] = useState(false);
+  const locale = useLocale();
   const { [meal.meal_type ?? "snack"]: cfg } = {
     breakfast: { icon: Sunrise, label: tm("mealTypes.breakfast"),  color: "text-orange-400" },
     lunch:     { icon: Sun,     label: tm("mealTypes.lunch"),      color: "text-yellow-400" },
     dinner:    { icon: Moon,    label: tm("mealTypes.dinner"),     color: "text-indigo-400" },
     snack:     { icon: Cookie,  label: tm("mealTypes.snack"),      color: "text-emerald-400" },
   } as Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; color: string }>;
-  const hr = new Date(meal.logged_at).toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const hr = formatTime(meal.logged_at, locale);
   const nr = meal.nutrition_result;
 
   return (

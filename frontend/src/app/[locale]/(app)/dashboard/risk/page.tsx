@@ -182,7 +182,7 @@ export default async function RiskPage() {
       {/* ── Medical disclaimer ── */}
       <div className="rounded-xl border border-border bg-muted/20 px-5 py-4 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" aria-hidden />
-        <p className="text-xs text-muted-foreground leading-relaxed">{data.disclaimer || t("noInfo")}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{t("disclaimer")}</p>
       </div>
     </div>
   );

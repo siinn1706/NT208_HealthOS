@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -29,18 +30,18 @@ interface TimeRangeSelectorProps {
   onChange: (range: ReportPeriod | "custom", dateFrom?: string, dateTo?: string) => void;
 }
 
-const PRESETS: { label: string; value: ReportPeriod }[] = [
-  { label: "7 ngày", value: "7d" },
-  { label: "30 ngày", value: "30d" },
-  { label: "90 ngày", value: "90d" },
-];
-
 export function TimeRangeSelector({
   value,
   dateFrom,
   dateTo,
   onChange,
 }: TimeRangeSelectorProps) {
+  const t = useTranslations("common.timeRange");
+  const PRESETS: { label: string; value: ReportPeriod }[] = [
+    { label: t("days7"), value: "7d" },
+    { label: t("days30"), value: "30d" },
+    { label: t("days90"), value: "90d" },
+  ];
   const [customOpen, setCustomOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<string>(
     dateFrom ?? ""
@@ -71,14 +72,14 @@ export function TimeRangeSelector({
             <CalendarIcon className="h-3 w-3" />
             {value === "custom" && dateFrom && dateTo
               ? `${formatDisplay(dateFrom)} - ${formatDisplay(dateTo)}`
-              : "Tùy chỉnh"}
+              : t("custom")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto" align="end">
           <div className="flex flex-col gap-3 p-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Từ ngày</span>
+                <span className="text-xs text-muted-foreground">{t("fromDate")}</span>
                 <input
                   type="date"
                   value={tempFrom}
@@ -87,7 +88,7 @@ export function TimeRangeSelector({
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Đến ngày</span>
+                <span className="text-xs text-muted-foreground">{t("toDate")}</span>
                 <input
                   type="date"
                   value={tempTo}
@@ -110,7 +111,7 @@ export function TimeRangeSelector({
                 }
               }}
             >
-              Áp dụng
+              {t("apply")}
             </Button>
           </div>
         </PopoverContent>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-import { profileSchema, type ProfileFormValues } from "@/lib/validators/profile-schema";
+import { getProfileSchema, type ProfileFormValues } from "@/lib/validators/profile-schema";
 import { bffFetch } from "@/lib/api-client";
 import type { UserProfile } from "@/types/api";
 
@@ -58,6 +58,8 @@ function profileToFormValues(profile: UserProfile): ProfileFormValues {
 
 export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
   const t = useTranslations("dashboard.profile");
+  const tv = useTranslations();
+  const profileSchema = useMemo(() => getProfileSchema(tv), [tv]);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);

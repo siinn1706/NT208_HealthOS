@@ -9,7 +9,10 @@
     "lint": "eslint",
     "optimize:assets": "node tools/optimize-assets.mjs",
     "optimize:svgo": "node tools/optimize-assets.mjs --svgo",
-    "optimize:thumbs": "node tools/optimize-assets.mjs --thumbs"
+    "optimize:thumbs": "node tools/optimize-assets.mjs --thumbs",
+    "i18n:check": "node tools/check-i18n-parity.mjs",
+    "i18n:scan:locale": "grep -rn \"vi-VN\\|en-US\" src/ --include=\"*.tsx\" --include=\"*.ts\" || true",
+    "i18n:scan:vi": "grep -rPn \"[\\x{1E00}-\\x{1EFF}\\x{00C0}-\\x{024F}]\" src/app/ src/components/ src/lib/ --include=\"*.tsx\" --include=\"*.ts\" || true"
   },
   "dependencies": {
     "@dayflow/blossom-color-picker": "^2.2.0",

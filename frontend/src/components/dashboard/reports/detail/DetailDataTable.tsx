@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { TimeseriesPoint } from "@/types/api";
+import { getLocaleTag } from "@/lib/format-utils";
 
 interface DetailDataTableProps {
   data: TimeseriesPoint[];
@@ -22,6 +23,7 @@ export function DetailDataTable({
   secondaryLabel = "Giá trị 2",
 }: DetailDataTableProps) {
   const t = useTranslations("reports.detail");
+  const locale = useLocale();
   const [page, setPage] = useState(0);
 
   const totalPages = Math.ceil(data.length / PAGE_SIZE);
@@ -53,11 +55,11 @@ export function DetailDataTable({
               <tr key={row.date} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-2.5 font-mono text-muted-foreground">{row.date}</td>
                 <td className="px-4 py-2.5 text-right font-medium tabular-nums">
-                  {row.value.toLocaleString()}
+                  {row.value.toLocaleString(getLocaleTag(locale))}
                 </td>
                 {hasSecondary && (
                   <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
-                    {row.value2?.toLocaleString() ?? "—"}
+                    {row.value2?.toLocaleString(getLocaleTag(locale)) ?? "—"}
                   </td>
                 )}
               </tr>

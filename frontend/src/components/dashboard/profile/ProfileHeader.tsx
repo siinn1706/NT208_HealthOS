@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile } from "@/types/api";
+import { getLocaleTag } from "@/lib/format-utils";
 
 interface ProfileHeaderProps {
   profile: UserProfile;
@@ -30,7 +31,7 @@ function getInitials(name: string): string {
 }
 
 function formatMemberSince(isoDate: string, locale: string): string {
-  return new Date(isoDate).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US", {
+  return new Date(isoDate).toLocaleDateString(getLocaleTag(locale), {
     month: "long",
     year: "numeric",
   });

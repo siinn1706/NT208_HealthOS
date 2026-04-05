@@ -9,6 +9,8 @@ class DashboardAlert(BaseModel):
     id: str
     type: str
     message: str
+    alert_code: str | None = None
+    alert_params: dict | None = None
 
 
 class KpiValue(BaseModel):
@@ -27,6 +29,8 @@ class DashboardGoal(BaseModel):
 class DashboardAiInsight(BaseModel):
     text: str
     category: str | None = None
+    insight_code: str | None = None
+    insight_params: dict | None = None
 
 
 class DashboardSummaryDTO(BaseModel):
@@ -50,6 +54,7 @@ class NutritionSuggestionDTO(BaseModel):
     icon: str
     title: str
     message: str
+    message_params: dict[str, int] | None = None
     priority: int
     cta: dict[str, str] | None = None
 

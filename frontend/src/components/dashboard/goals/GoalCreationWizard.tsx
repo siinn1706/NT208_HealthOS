@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
+import { getLocaleTag } from "@/lib/format-utils";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ export function GoalCreationWizard({
   onGoalCreated,
 }: GoalCreationWizardProps) {
   const t = useTranslations("dashboard.goals");
+  const locale = useLocale();
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedActivity, setSelectedActivity] = useState<ActivityType | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<{
@@ -170,7 +172,7 @@ export function GoalCreationWizard({
                     )}
                   >
                     <span className="text-lg font-bold text-foreground">
-                      {m.value.toLocaleString()}
+                      {m.value.toLocaleString(getLocaleTag(locale))}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
                       {t("dailyUnit", { u: m.unit })}
@@ -201,7 +203,7 @@ export function GoalCreationWizard({
                       <div>
                         <p className="text-sm font-bold text-foreground">
                           {t(`dashboard.goals.activityLabels.${selectedActivity}` as Parameters<typeof t>[0])}{" "}
-                          {selectedMilestone.value.toLocaleString()}{" "}
+                          {selectedMilestone.value.toLocaleString(getLocaleTag(locale))}{" "}
                           {selectedMilestone.unit}
                         </p>
                         <p className="text-xs text-muted-foreground">

@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       activityType: "steps",
       labelKey: "daily-goal",
       targetValue: 1,
-      unit: "ngày",
+      unit: "days",
       pointValue: 10,
       tier: "bronze" as const,
       currentWeek: 1 as const,
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
       targetWeightKg: null,
     },
     activeGoals: activeGoals.length > 0 ? activeGoals : [
-      { id: "default-steps", activityType: "steps", labelKey: "steps-10000", dailyTarget: 10000, unit: "bước", todayProgress: 0, isActive: true, color: "#41BCE6", createdAt: new Date().toISOString() },
+      { id: "default-steps", activityType: "steps", labelKey: "steps-10000", dailyTarget: 10000, unit: "steps", todayProgress: 0, isActive: true, color: "#41BCE6", createdAt: new Date().toISOString() },
       { id: "default-running", activityType: "running", labelKey: "run-300", dailyTarget: 300, unit: "m", todayProgress: 0, isActive: true, color: "#E3B79A", createdAt: new Date().toISOString() },
     ],
     streakHistory: streakHistory.map((e) => ({

@@ -194,6 +194,7 @@ def _risk_item(
     risk_id: str,
     condition: str,
     condition_vi: str,
+    condition_code: str,
     icd_code: str,
     probability: float,
     factors: list[dict],
@@ -203,6 +204,7 @@ def _risk_item(
         "id": risk_id,
         "condition": condition,
         "conditionVi": condition_vi,
+        "conditionCode": condition_code,
         "probability": round(max(0.0, min(probability, 0.99)), 2),
         "level": _risk_level(probability),
         "trend": _risk_trend(probability),
@@ -255,26 +257,27 @@ async def get_risk_summary(db: AsyncSession, user: User) -> dict:
             risk_id="risk-diabetes",
             condition="Type 2 Diabetes",
             condition_vi="Dai thao duong type 2",
+            condition_code="DIABETES_T2",
             icd_code="E11",
             probability=diabetes_prob,
             factors=[
                 {
                     "label": "BMI",
                     "impact": "negative" if bmi and bmi >= 25 else "neutral",
-                    "detail": f"{round(bmi, 1)}" if bmi is not None else "Chua co thong tin",
+                    "detail": f"{round(bmi, 1)}" if bmi is not None else "NO_DATA",
                 },
                 {
-                    "label": "So buoc",
+                    "label": "STEPS",
                     "impact": "negative" if steps is not None and steps < 7000 else "positive",
-                    "detail": f"{round(steps)} buoc" if steps is not None else "Chua co thong tin",
+                    "detail": f"{round(steps)}" if steps is not None else "NO_DATA",
                 },
             ],
             tips=[
                 {
                     "id": "tip-diabetes-activity",
                     "category": "exercise",
-                    "title": "Tang cuong van dong",
-                    "description": "Dat muc tieu van dong toi thieu 150 phut moi tuan.",
+                    "title": "tip-diabetes-activity",
+                    "description": "tip-diabetes-activity",
                     "priority": "high",
                 },
             ],
@@ -283,26 +286,27 @@ async def get_risk_summary(db: AsyncSession, user: User) -> dict:
             risk_id="risk-hypertension",
             condition="Hypertension",
             condition_vi="Tang huyet ap",
+            condition_code="HYPERTENSION",
             icd_code="I10",
             probability=hypertension_prob,
             factors=[
                 {
-                    "label": "Huyet ap tam thu",
+                    "label": "SYSTOLIC_BP",
                     "impact": "negative" if systolic is not None and systolic >= 130 else "neutral",
-                    "detail": f"{round(systolic)} mmHg" if systolic is not None else "Chua co thong tin",
+                    "detail": f"{round(systolic)}" if systolic is not None else "NO_DATA",
                 },
                 {
-                    "label": "Huyet ap tam truong",
+                    "label": "DIASTOLIC_BP",
                     "impact": "negative" if diastolic is not None and diastolic >= 85 else "neutral",
-                    "detail": f"{round(diastolic)} mmHg" if diastolic is not None else "Chua co thong tin",
+                    "detail": f"{round(diastolic)}" if diastolic is not None else "NO_DATA",
                 },
             ],
             tips=[
                 {
                     "id": "tip-hypertension-diet",
                     "category": "diet",
-                    "title": "Giam muoi trong khau phan",
-                    "description": "Uu tien che do an DASH va han che thuc pham che bien.",
+                    "title": "tip-hypertension-diet",
+                    "description": "tip-hypertension-diet",
                     "priority": "high",
                 },
             ],
@@ -311,26 +315,27 @@ async def get_risk_summary(db: AsyncSession, user: User) -> dict:
             risk_id="risk-obesity",
             condition="Overweight",
             condition_vi="Thua can",
+            condition_code="OVERWEIGHT",
             icd_code="E66",
             probability=obesity_prob,
             factors=[
                 {
                     "label": "BMI",
                     "impact": "negative" if bmi and bmi >= 25 else "neutral",
-                    "detail": f"{round(bmi, 1)}" if bmi is not None else "Chua co thong tin",
+                    "detail": f"{round(bmi, 1)}" if bmi is not None else "NO_DATA",
                 },
                 {
-                    "label": "Hoat dong the chat",
+                    "label": "PHYSICAL_ACTIVITY",
                     "impact": "negative" if steps is not None and steps < 6000 else "positive",
-                    "detail": f"{round(steps)} buoc" if steps is not None else "Chua co thong tin",
+                    "detail": f"{round(steps)}" if steps is not None else "NO_DATA",
                 },
             ],
             tips=[
                 {
                     "id": "tip-obesity-goal",
                     "category": "lifestyle",
-                    "title": "Duy tri tham hut calo hop ly",
-                    "description": "Theo doi che do an va muc tieu van dong hang ngay.",
+                    "title": "tip-obesity-goal",
+                    "description": "tip-obesity-goal",
                     "priority": "medium",
                 },
             ],
@@ -344,7 +349,7 @@ async def get_risk_summary(db: AsyncSession, user: User) -> dict:
         "generatedAt": _utc_now().isoformat(),
         "overallScore": overall_score,
         "risks": risks,
-        "disclaimer": "Ket qua chi de tham khao, khong thay the chan doan y khoa chuyen sau.",
+        "disclaimer": "RISK_DISCLAIMER",
     }
 
 
@@ -400,8 +405,10 @@ async def get_health_report(
             {
                 "id": "alert-vitals-hr",
                 "severity": "warning",
-                "metric": "Nhip tim",
-                "message": "Nhip tim gan nhat cao hon nguong khuyen nghi.",
+                "metric": "HEART_RATE",
+                "message": "HEART_RATE_HIGH",
+                "alert_code": "HEART_RATE_HIGH",
+                "alert_params": {"value": round(vitals_values[-1], 1), "unit": "bpm", "threshold": 100},
                 "value": vitals_values[-1],
                 "threshold": 100,
                 "unit": "bpm",
@@ -425,8 +432,10 @@ async def get_health_report(
             {
                 "id": "alert-nutrition-calories",
                 "severity": "warning",
-                "metric": "Calo",
-                "message": "Luong calo trong ngay vuot muc khuyen nghi.",
+                "metric": "CALORIES",
+                "message": "CALORIE_HIGH",
+                "alert_code": "CALORIE_HIGH",
+                "alert_params": {"value": round(nutrition_values[-1], 1), "unit": "kcal", "threshold": 2300},
                 "value": nutrition_values[-1],
                 "threshold": 2300,
                 "unit": "kcal",
@@ -442,11 +451,13 @@ async def get_health_report(
             {
                 "id": "alert-activity-steps",
                 "severity": "warning",
-                "metric": "So buoc",
-                "message": "Muc van dong hom nay dang thap.",
+                "metric": "STEPS",
+                "message": "STEPS_LOW",
+                "alert_code": "STEPS_LOW",
+                "alert_params": {"value": round(activity_values[-1]), "unit": "steps", "threshold": 5000},
                 "value": activity_values[-1],
                 "threshold": 5000,
-                "unit": "buoc",
+                "unit": "steps",
                 "timestamp": _utc_now().isoformat(),
             }
         )
@@ -462,11 +473,13 @@ async def get_health_report(
             {
                 "id": "alert-sleep-low",
                 "severity": "critical",
-                "metric": "Giac ngu",
-                "message": "Thoi luong ngu gan nhat duoi nguong toi thieu.",
+                "metric": "SLEEP",
+                "message": "SLEEP_LOW",
+                "alert_code": "SLEEP_LOW",
+                "alert_params": {"value": round(sleep_values[-1], 1), "unit": "hours", "threshold": 6},
                 "value": sleep_values[-1],
                 "threshold": 6,
-                "unit": "gio",
+                "unit": "hours",
                 "timestamp": _utc_now().isoformat(),
             }
         )
@@ -493,7 +506,9 @@ async def get_health_report(
                 "id": "alert-bmi",
                 "severity": "warning",
                 "metric": "BMI",
-                "message": "BMI hien tai dang trong nhom can theo doi.",
+                "message": "BMI_OVERWEIGHT",
+                "alert_code": "BMI_OVERWEIGHT",
+                "alert_params": {"value": round(bmi_values[-1], 1), "unit": "kg/m2", "threshold": 25},
                 "value": bmi_values[-1],
                 "threshold": 25,
                 "unit": "kg/m2",
@@ -515,8 +530,10 @@ async def get_health_report(
                 {
                     "id": "alert-medication",
                     "severity": "warning",
-                    "metric": "Tuan thu thuoc",
-                    "message": "Muc do tuan thu thuoc chua dat muc muc tieu.",
+                    "metric": "MEDICATION",
+                    "message": "MEDICATION_ADHERENCE_LOW",
+                    "alert_code": "MEDICATION_ADHERENCE_LOW",
+                    "alert_params": {"value": adherence, "unit": "%", "threshold": 80},
                     "value": adherence,
                     "threshold": 80,
                     "unit": "%",
@@ -527,8 +544,9 @@ async def get_health_report(
     sections = [
         {
             "category": "vitals",
-            "title": "Chi so sinh ton",
-            "summary": "Tong hop nhip tim va huyet ap.",
+            "section_code": "VITALS",
+            "title": "VITALS",
+            "summary": "VITALS",
             "status": _section_status(vitals_alerts),
             "data": vitals_data,
             "stats": _safe_stats(vitals_values, "bpm"),
@@ -536,8 +554,9 @@ async def get_health_report(
         },
         {
             "category": "nutrition",
-            "title": "Dinh duong",
-            "summary": "Tong hop luong calo va thanh phan da ghi nhan.",
+            "section_code": "NUTRITION",
+            "title": "NUTRITION",
+            "summary": "NUTRITION",
             "status": _section_status(nutrition_alerts),
             "data": nutrition_data,
             "stats": _safe_stats(nutrition_values, "kcal"),
@@ -545,17 +564,19 @@ async def get_health_report(
         },
         {
             "category": "activity",
-            "title": "Hoat dong the chat",
-            "summary": "Theo doi so buoc hang ngay.",
+            "section_code": "ACTIVITY",
+            "title": "ACTIVITY",
+            "summary": "ACTIVITY",
             "status": _section_status(activity_alerts),
             "data": activity_data,
-            "stats": _safe_stats(activity_values, "buoc"),
+            "stats": _safe_stats(activity_values, "steps"),
             "alerts": activity_alerts,
         },
         {
             "category": "sleep",
-            "title": "Giac ngu",
-            "summary": "Theo doi tong thoi gian ngu.",
+            "section_code": "SLEEP",
+            "title": "SLEEP",
+            "summary": "SLEEP",
             "status": _section_status(sleep_alerts),
             "data": sleep_data,
             "stats": _safe_stats(sleep_values, "gio"),
@@ -563,8 +584,9 @@ async def get_health_report(
         },
         {
             "category": "bmi",
-            "title": "BMI va can nang",
-            "summary": "Tong hop chi so BMI theo thoi gian.",
+            "section_code": "BMI",
+            "title": "BMI",
+            "summary": "BMI",
             "status": _section_status(bmi_alerts),
             "data": bmi_data,
             "stats": _safe_stats(bmi_values, "kg/m2"),
@@ -572,8 +594,9 @@ async def get_health_report(
         },
         {
             "category": "medication",
-            "title": "Tuan thu dung thuoc",
-            "summary": "Muc do tuan thu nhac thuoc.",
+            "section_code": "MEDICATION",
+            "title": "MEDICATION",
+            "summary": "MEDICATION",
             "status": _section_status(medication_alerts),
             "data": medication_data,
             "stats": _safe_stats([float(item["value"]) for item in medication_data], "%"),
@@ -679,26 +702,26 @@ async def get_trend_analysis(
 
     mapping = {
         "heart_rate": {
-            "label": "Nhip tim",
+            "label": "HEART_RATE",
             "unit": "bpm",
             "higher_is_better": False,
             "series": _daily_metric_series(metrics, MetricTypeEnum.HEART_RATE, period),
         },
         "blood_pressure": {
-            "label": "Huyet ap tam thu",
+            "label": "SYSTOLIC_BP",
             "unit": "mmHg",
             "higher_is_better": False,
             "series": _daily_metric_series(metrics, MetricTypeEnum.BLOOD_PRESSURE_SYSTOLIC, period),
         },
         "steps": {
-            "label": "So buoc",
-            "unit": "buoc",
+            "label": "STEPS",
+            "unit": "steps",
             "higher_is_better": True,
             "series": _daily_metric_series(metrics, MetricTypeEnum.STEPS, period),
         },
         "sleep": {
-            "label": "Giac ngu",
-            "unit": "gio",
+            "label": "SLEEP",
+            "unit": "hours",
             "higher_is_better": True,
             "series": [
                 {"date": item["date"], "value": round(item["value"] / 60.0, 2)}
@@ -712,13 +735,13 @@ async def get_trend_analysis(
             "series": [],
         },
         "weight": {
-            "label": "Can nang",
+            "label": "WEIGHT",
             "unit": "kg",
             "higher_is_better": False,
             "series": _daily_metric_series(metrics, MetricTypeEnum.WEIGHT_KG, period),
         },
         "calories": {
-            "label": "Calo",
+            "label": "CALORIES",
             "unit": "kcal",
             "higher_is_better": True,
             "series": [
@@ -762,12 +785,16 @@ async def get_trend_analysis(
     anomalies = _find_anomalies(data_points, str(selected["unit"]))
 
     if not values:
-        ai_summary = "Chua co thong tin de phan tich xu huong."
+        ai_summary = "TREND_NO_DATA"
+        ai_summary_params: dict = {}
     else:
-        ai_summary = (
-            f"Du lieu {selected['label']} trong {period} dang {trend}, "
-            f"thay doi {change_percent}% so voi dau ky."
-        )
+        ai_summary = "TREND_SUMMARY"
+        ai_summary_params = {
+            "metric": selected["label"],
+            "period": period,
+            "trend": trend,
+            "change": change_percent,
+        }
 
     return {
         "metric": metric,
@@ -781,5 +808,6 @@ async def get_trend_analysis(
         "trend": trend,
         "change_percent": change_percent,
         "ai_summary": ai_summary,
+        "ai_summary_params": ai_summary_params,
     }
 

@@ -34,7 +34,7 @@ function emptyTrend(metric: string, period: ReportPeriod): TrendAnalysis {
     anomalies: [],
     trend: "stable",
     change_percent: 0,
-    ai_summary: "Chưa có thông tin",
+    ai_summary: "",
   };
 }
 
@@ -87,7 +87,7 @@ export async function shareReport(request: ShareRequest): Promise<ShareResult[]>
       recipient,
       channel,
       status: "failed" as const,
-      error_message: "Chưa có thông tin",
+      error_message: "",
     }))
   );
 }

@@ -120,10 +120,14 @@ function NutritionSuggestionsWidget({ suggestions }: NutritionSuggestionsWidgetP
                     </span>
                   </div>
                   <p className="text-xs font-semibold text-foreground leading-snug">
-                    {s.title}
+                    {t.has(`suggestions.${s.id}.title` as never)
+                      ? t(`suggestions.${s.id}.title` as never)
+                      : s.title}
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {s.message}
+                    {t.has(`suggestions.${s.id}.message` as never)
+                      ? t(`suggestions.${s.id}.message` as never, s.message_params ?? {})
+                      : s.message}
                   </p>
 
                   {s.cta?.label && s.cta?.href && (

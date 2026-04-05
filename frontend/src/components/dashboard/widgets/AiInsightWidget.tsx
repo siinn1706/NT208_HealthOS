@@ -39,7 +39,7 @@ export async function AiInsightWidget({ insight }: AiInsightWidgetProps) {
             </p>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">Chưa có thông tin</p>
+          <p className="text-sm text-muted-foreground italic">{t("noInfo")}</p>
         )}
 
         <Link
