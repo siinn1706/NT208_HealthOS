@@ -86,12 +86,12 @@ export function LoginForm() {
     const errors: Record<string, string> = {};
 
     if (!identifier.trim()) {
-      errors.identifier = ValidationMessages.required("Email/Username");
+      errors.identifier = ValidationMessages.required(t("loginIdentifier"));
       identifierRef.current?.focus();
     }
 
     if (!password) {
-      errors.password = ValidationMessages.required("Mật khẩu");
+      errors.password = ValidationMessages.required(t("password"));
       if (!errors.identifier) {
         passwordRef.current?.focus();
       }

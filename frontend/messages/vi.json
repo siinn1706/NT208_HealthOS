@@ -1155,7 +1155,13 @@
     "otpInvalid": "Mã OTP không hợp lệ hoặc đã hết hạn.",
     "resendFailed": "Không thể gửi lại mã. Vui lòng thử lại.",
     "sendCodeFailed": "Không thể gửi mã xác minh. Vui lòng thử lại.",
-    "resetPasswordFailed": "Đặt lại mật khẩu thất bại. Vui lòng thử lại."
+    "resetPasswordFailed": "Đặt lại mật khẩu thất bại. Vui lòng thử lại.",
+    "usernameLabel": "Tên đăng nhập",
+    "usernamePlaceholder": "vidu123",
+    "usernameTooShort": "Username phải có ít nhất 3 ký tự",
+    "usernameTaken": "Username đã được sử dụng",
+    "passwordRequirements": "Mật khẩu cần ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt",
+    "passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự"
   },
   "chat": {
     "title": "Tin nhắn",
