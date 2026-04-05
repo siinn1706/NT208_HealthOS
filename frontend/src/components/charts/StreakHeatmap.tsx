@@ -3,6 +3,7 @@
 import { EChartWrapper } from "./EChartWrapper";
 import type { EChartsOption } from "echarts";
 import type { UserStreakEntry } from "@/data/gamification";
+import { useTranslations } from "next-intl";
 
 interface StreakHeatmapProps {
   entries: UserStreakEntry[];
@@ -10,6 +11,7 @@ interface StreakHeatmapProps {
 }
 
 export function StreakHeatmap({ entries, height = 120 }: StreakHeatmapProps) {
+  const t = useTranslations("dashboard.achievements");
   const weeks: UserStreakEntry[][] = [];
   for (let i = 0; i < entries.length; i += 7) {
     weeks.push(entries.slice(i, i + 7));
@@ -34,7 +36,7 @@ export function StreakHeatmap({ entries, height = 120 }: StreakHeatmapProps) {
         const [wi, di] = params.data;
         const entry = weeks[wi]?.[di];
         if (!entry) return "";
-        return `${entry.date}<br/>${entry.completed ? "Hoàn thành" : "Chưa hoàn thành"}`;
+        return `${entry.date}<br/>${entry.completed ? t("completed") : t("notCompleted")}`;
       },
     },
     grid: { top: 0, left: 2, right: 2, bottom: 0, containLabel: true },

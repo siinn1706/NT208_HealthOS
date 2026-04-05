@@ -89,9 +89,10 @@ async function getSessionDisplayName(): Promise<string> {
 
 export async function getActiveGoals(): Promise<UserGoal[]> {
   const json = await bffFetch("/api/v1/analytics/gamification-summary");
-  if (!json) return MOCK_ACTIVE_GOALS;
+  const devFallback = process.env.NODE_ENV === "development" ? MOCK_ACTIVE_GOALS : [];
+  if (!json) return devFallback;
   const data = json as { activeGoals?: UserGoal[] };
-  return data.activeGoals ?? MOCK_ACTIVE_GOALS;
+  return data.activeGoals ?? devFallback;
 }
 
 export async function getAllMilestones(): Promise<ActivityMilestone[]> {
@@ -106,9 +107,10 @@ export async function getMilestonesByActivity(
 
 export async function getUserStreakHistory(): Promise<UserStreakEntry[]> {
   const json = await bffFetch("/api/v1/analytics/gamification-summary");
-  if (!json) return MOCK_STREAK_HISTORY;
+  const devFallback = process.env.NODE_ENV === "development" ? MOCK_STREAK_HISTORY : [];
+  if (!json) return devFallback;
   const data = json as { streakHistory?: UserStreakEntry[] };
-  return data.streakHistory ?? MOCK_STREAK_HISTORY;
+  return data.streakHistory ?? devFallback;
 }
 
 export async function getUserBmiData(): Promise<UserBmiData> {
@@ -156,7 +158,7 @@ export async function getUserBmiData(): Promise<UserBmiData> {
       weightKg: profile!.weight_kg as number,
       bmi,
       status,
-      bmiScore: profile!.weight_kg as number,
+      bmiScore: null,
       targetBmi,
       targetWeightKg,
       deadline,

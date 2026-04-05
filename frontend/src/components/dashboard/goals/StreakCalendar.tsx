@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { cn } from "@/lib/utils";
 import type { UserStreakEntry } from "@/data/gamification";
 import { useTranslations, useLocale } from "next-intl";
@@ -130,7 +128,7 @@ export function StreakCalendar({
           </div>
           {/* Week requirement note */}
           <p className="text-[11px] text-muted-foreground mt-3 text-center">
-            Cần ≥ 5 ngày/tuần × 4 tuần để nhận huy hiệu
+            {t("streakCalendar.requirement")}
           </p>
         </div>
       </div>
