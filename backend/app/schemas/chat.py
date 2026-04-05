@@ -93,6 +93,7 @@ class ConversationDTO(BaseModel):
     unread_count: int = 0
     is_muted: bool = False
     is_pinned: bool = False
+    theme_id: str | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 

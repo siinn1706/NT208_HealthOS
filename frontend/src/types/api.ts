@@ -368,7 +368,7 @@ export interface WsEvent<T = unknown> {
 // ─── Chat ────────────────────────────────────────────────────────────
 
 export type ConversationType = "direct" | "group" | "ai";
-export type MessageType = "text" | "image" | "file" | "system";
+export type MessageType = "text" | "image" | "file" | "audio" | "system";
 export type MessageStatus = "sending" | "sent" | "delivered" | "read";
 export type ConversationTab = "all" | "strangers";
 export type StrangerRequestStatus = "pending" | "accepted" | "rejected" | "blocked";
@@ -389,6 +389,13 @@ export interface MessageReaction {
   user_names?: Record<string, string>;
 }
 
+export interface MessageAttachment {
+  url: string;
+  name: string;
+  size: number;
+  mime_type: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -399,6 +406,7 @@ export interface Message {
   status: MessageStatus;
   reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type" | "sender_display_name">;
   reactions: MessageReaction[];
+  attachments?: MessageAttachment[] | null;
   is_edited: boolean;
   is_recalled: boolean;
   is_pinned: boolean;

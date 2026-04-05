@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "chat.message.read",
+  "description": "WS broadcast when a user marks messages as read up to a given message (canonical format). Also emitted as legacy `msg:read`.",
+  "type": "object",
+  "required": ["event", "version", "payload", "metadata"],
+  "properties": {
+    "event": { "type": "string", "const": "chat.message.read" },
+    "version": { "type": "string", "const": "1.0" },
+    "payload": {
+      "type": "object",
+      "required": ["user_id", "conversation_id", "last_read_message_id"],
+      "properties": {
+        "user_id":              { "type": "string", "format": "uuid" },
+        "conversation_id":      { "type": "string", "format": "uuid" },
+        "last_read_message_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "user_id"],
+      "properties": {
+        "event_id":       { "type": "string", "format": "uuid" },
+        "timestamp":      { "type": "string", "format": "date-time" },
+        "user_id":        { "type": "string", "format": "uuid" },
+        "correlation_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

@@ -28,6 +28,7 @@ interface ChatWindowProps {
   onThemeChange: (themeId: string | null) => void;
   onMessageSent?: (msg: Message) => void;
   onIncomingMessage?: (raw: unknown) => void;
+  onConversationUpdate?: (raw: unknown) => void;
 }
 
 export function ChatWindow({
@@ -41,6 +42,7 @@ export function ChatWindow({
   onThemeChange,
   onMessageSent,
   onIncomingMessage,
+  onConversationUpdate,
 }: ChatWindowProps) {
   const {
     messages,
@@ -54,6 +56,7 @@ export function ChatWindow({
     pinMessage,
     simulateAIReply,
     upsertMessage,
+    setPinnedState,
     setRemoteTyping,
   } = useMessages(conversation.id, currentUserId);
 
@@ -78,7 +81,13 @@ export function ChatWindow({
       frame.event === "msg:delete" ||
       frame.event === "chat.message.recalled" ||
       frame.event === "msg:react" ||
-      frame.event === "chat.message.reacted";
+      frame.event === "chat.message.reacted" ||
+      frame.event === "msg:pinned" ||
+      frame.event === "chat.message.pinned" ||
+      frame.event === "msg:unpinned" ||
+      frame.event === "chat.message.unpinned" ||
+      frame.event === "msg:read" ||
+      frame.event === "chat.message.read";
 
     if (isMessageEvent && payloadConvId && payloadConvId !== convId) {
       onIncomingMessage?.(payload);
@@ -105,6 +114,23 @@ export function ChatWindow({
       return;
     }
 
+    if (frame.event === "msg:pinned" || frame.event === "chat.message.pinned") {
+      const msgId = typeof payload.message_id === "string" ? payload.message_id : null;
+      if (msgId) setPinnedState(msgId, true);
+      return;
+    }
+
+    if (frame.event === "msg:unpinned" || frame.event === "chat.message.unpinned") {
+      const msgId = typeof payload.message_id === "string" ? payload.message_id : null;
+      if (msgId) setPinnedState(msgId, false);
+      return;
+    }
+
+    if (frame.event === "msg:read" || frame.event === "chat.message.read") {
+      // No-op: read receipts don't require visual message state changes currently
+      return;
+    }
+
     if (frame.event === "typing" || frame.event === "chat.typing") {
       if (payloadConvId && payloadConvId !== convId) return;
       const senderId = typeof payload.user_id === "string" ? payload.user_id : null;
@@ -112,7 +138,11 @@ export function ChatWindow({
       const typing = Boolean(payload.is_typing);
       setRemoteTyping(typing);
     }
-  }, [convId, upsertMessage, setRemoteTyping, onIncomingMessage, currentUserId]);
+
+    if (frame.event === "conversation.updated") {
+      onConversationUpdate?.(payload);
+    }
+  }, [convId, upsertMessage, setPinnedState, setRemoteTyping, onIncomingMessage, onConversationUpdate, currentUserId]);
 
   const { sendEvent, isConnected } = useChatWs({
     onEvent: handleWsEvent,

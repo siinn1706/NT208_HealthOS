@@ -117,6 +117,11 @@ export function ChatLayout() {
     [activeConvId, updateLastMessage]
   );
 
+  const handleConversationUpdate = useCallback(
+    (raw: unknown) => { upsertConversation(raw); },
+    [upsertConversation]
+  );
+
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-background">
       {/* ── Conversation list panel ── */}
@@ -176,6 +181,7 @@ export function ChatLayout() {
                 onThemeChange={handleThemeChange}
                 onMessageSent={handleMessageSent}
                 onIncomingMessage={(raw) => applyIncomingMessage(raw, activeId)}
+                onConversationUpdate={handleConversationUpdate}
               />
             </motion.div>
           ) : (
