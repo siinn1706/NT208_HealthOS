@@ -42,12 +42,12 @@ class ReactionDTO(BaseModel):
 
     emoji: str
     user_id: uuid.UUID
-    user_display_name: str
+    user_display_name: str | None = None
 
 
 class ReplyPreviewDTO(BaseModel):
     id: uuid.UUID
-    sender_display_name: str
+    sender_display_name: str | None = None
     content: str
     content_type: MessageContentType = "text"
 

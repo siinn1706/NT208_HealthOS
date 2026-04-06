@@ -9,6 +9,8 @@ import pyotp
 import qrcode
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
@@ -103,7 +105,16 @@ async def setup_mfa(
     qr_code_b64 = base64.b64encode(qr_code).decode()
 
     # Store Fernet-encrypted secret and bcrypt-hashed recovery codes
-    current_user.mfa_secret = encrypt_totp_secret(plaintext_secret)
+    encrypted_secret = encrypt_totp_secret(plaintext_secret)
+    totp_probe = pyotp.TOTP(plaintext_secret)
+    if not totp_service.verify(encrypted_secret, totp_probe.now()):
+        raise ApiException(
+            status_code=500,
+            code="MFA_STORAGE_MISCONFIGURED",
+            message="MFA could not be initialized. Verify TOTP encryption configuration.",
+        )
+
+    current_user.mfa_secret = encrypted_secret
     current_user.mfa_recovery_codes = totp_service.hash_recovery_codes(plaintext_recovery_codes)
     await db.commit()
 
@@ -172,26 +183,47 @@ async def verify_mfa(
     _rl: None = Depends(rate_limit_mfa),
 ) -> DataResponse[dict]:
     """Verify TOTP code or recovery code for MFA."""
-    if not current_user.mfa_enabled or not current_user.mfa_secret:
+    locked_user = (
+        await db.execute(
+            select(User).where(User.id == current_user.id).with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if locked_user is None:
+        raise UnauthorizedException(
+            code="AUTH_NOT_FOUND",
+            message="User not found.",
+        )
+
+    if not locked_user.mfa_enabled or not locked_user.mfa_secret:
+        await db.rollback()
         raise UnauthorizedException(
             code="MFA_NOT_ENABLED",
             message="MFA is not enabled for this account",
         )
 
     # Check recovery codes first (handles both hashed and legacy plaintext codes)
-    if current_user.mfa_recovery_codes:
+    if locked_user.mfa_recovery_codes:
         is_valid, remaining = totp_service.verify_recovery_code(
             body.code,
-            current_user.mfa_recovery_codes,
+            locked_user.mfa_recovery_codes,
         )
         if is_valid:
-            # Persist the updated list with the used code removed
-            current_user.mfa_recovery_codes = remaining
-            await db.commit()
+            locked_user.mfa_recovery_codes = remaining
+            try:
+                await db.commit()
+            except SQLAlchemyError as exc:
+                await db.rollback()
+                logger.exception("MFA recovery code persist failed")
+                raise ApiException(
+                    status_code=503,
+                    code="MFA_STATE_SAVE_FAILED",
+                    message="Could not update MFA state. Please try again.",
+                ) from exc
             await log_security_event(
                 db,
                 AuditEventTypeEnum.MFA_VERIFIED,
-                user_id=current_user.id,
+                user_id=locked_user.id,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
                 details={"method": "recovery_code"},
@@ -201,11 +233,12 @@ async def verify_mfa(
             )
 
     # Verify TOTP code
-    if totp_service.verify(current_user.mfa_secret, body.code):
+    if totp_service.verify(locked_user.mfa_secret, body.code):
+        await db.rollback()
         await log_security_event(
             db,
             AuditEventTypeEnum.MFA_VERIFIED,
-            user_id=current_user.id,
+            user_id=locked_user.id,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
             details={"method": "totp"},
@@ -214,16 +247,17 @@ async def verify_mfa(
             data={"verified": True, "method": "totp"}
         )
 
+    await db.rollback()
     await log_security_event(
         db,
         AuditEventTypeEnum.MFA_FAILED,
-        user_id=current_user.id,
+        user_id=locked_user.id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
         details={"reason": "invalid_totp_code"},
     )
     # Increment account lockout counter so repeated MFA failures trigger lockout
-    await record_failed_login(db, current_user)
+    await record_failed_login(db, locked_user)
     raise UnauthorizedException(
         code="INVALID_TOTP_CODE",
         message="Invalid verification code",

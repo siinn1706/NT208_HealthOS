@@ -67,9 +67,9 @@ function formValuesToUpdate(values: ProfileFormValues): UserProfileUpdate {
     phone: values.phone ?? null,
     address: values.address ?? null,
     emergency_contacts: values.emergency_contacts.map((ec) => ({
-      name: ec.name || null,
-      relationship: ec.relationship || null,
-      phone: ec.phone ?? null,
+      name: ec.name,
+      relationship: ec.relationship,
+      phone: ec.phone ?? "",
     })),
     medical_info: {
       allergies: values.medical_info?.allergies ?? null,

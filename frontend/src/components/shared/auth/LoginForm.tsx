@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useNotification, ValidationMessages } from "@/hooks/use-notification";
+import { getSafePostLoginRedirectPath } from "@/lib/safe-post-login-redirect";
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -141,11 +142,11 @@ export function LoginForm() {
       success(tErrors("loginSuccess"));
 
       const onboardingStatus = data?.data?.onboarding_status;
-      const from = searchParams.get("from");
+      const fromRaw = searchParams.get("from");
+      const fromSafe = getSafePostLoginRedirectPath(fromRaw);
 
-      // Redirect to original page if safe (prevent open redirect via protocol-relative URLs)
-      if (onboardingStatus === "completed" && from && from.startsWith("/") && !from.startsWith("//")) {
-        router.push(from);
+      if (onboardingStatus === "completed" && fromSafe) {
+        router.push(fromSafe);
       } else if (onboardingStatus === "completed") {
         router.push("/dashboard");
       } else {

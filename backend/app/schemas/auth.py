@@ -159,7 +159,8 @@ class UserProfileUpdate(BaseModel):
     address: Optional[str] = None
     emergency_contacts: Optional[list[EmergencyContact]] = None
     medical_info: Optional[MedicalInfo] = None
-    onboarding_completed: Optional[bool] = False
+    # None = no-op (field absent); False = explicitly mark incomplete; True = mark complete
+    onboarding_completed: Optional[bool] = None
 
     @model_validator(mode="before")
     @classmethod

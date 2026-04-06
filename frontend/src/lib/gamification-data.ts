@@ -96,12 +96,14 @@ export async function getActiveGoals(): Promise<UserGoal[]> {
 }
 
 export async function getAllMilestones(): Promise<ActivityMilestone[]> {
+  // TODO: connect to Core endpoint once /api/v1/analytics/milestones is implemented
   return MOCK_ALL_MILESTONES;
 }
 
 export async function getMilestonesByActivity(
   type: ActivityType
 ): Promise<ActivityMilestone[]> {
+  // TODO: connect to Core endpoint once /api/v1/analytics/milestones is implemented
   return MOCK_ALL_MILESTONES.filter((m) => m.activityType === type);
 }
 
@@ -191,7 +193,7 @@ interface HealthGoalBEData {
 }
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  // TODO: Create GET /api/v1/leaderboard BFF route
+  // TODO: Create GET /api/v1/leaderboard BFF route and connect to Core endpoint
   return MOCK_LEADERBOARD;
 }
 
@@ -217,7 +219,7 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
       currentUser: {
         displayName,
         totalScore,
-        globalRank: 4,
+        globalRank: null,
         currentStreak,
         longestStreak,
         unlockedAchievements: unlocked.length,
@@ -247,12 +249,12 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
   return {
     currentUser: data.currentUser ?? {
       displayName: await getSessionDisplayName(),
-      totalScore: 1000,
-      globalRank: 1,
+      totalScore: 0,
+      globalRank: null,
       currentStreak: 0,
       longestStreak: 0,
       unlockedAchievements: 0,
-      totalAchievements: 20,
+      totalAchievements: 0,
     },
     bmi: data.bmi ?? {
       heightCm: null,
@@ -265,8 +267,8 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
       deadline: null,
       goalId: null,
     },
-    activeGoals: data.activeGoals ?? MOCK_ACTIVE_GOALS,
-    streakHistory: data.streakHistory ?? MOCK_STREAK_HISTORY,
+    activeGoals: data.activeGoals ?? [],
+    streakHistory: data.streakHistory ?? [],
     recentUnlocked: data.recentUnlocked ?? [],
   };
 }

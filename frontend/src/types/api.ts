@@ -44,9 +44,9 @@ export interface User {
 }
 
 export interface EmergencyContact {
-  name: string | null;
-  relationship: string | null;
-  phone: string | null;
+  name: string;
+  relationship: string;
+  phone: string;
   email?: string | null;
 }
 

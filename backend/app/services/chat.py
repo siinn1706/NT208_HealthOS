@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from typing import Any
-
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -48,7 +46,7 @@ def _build_reaction_dtos(reactions: list[MessageReaction]) -> list[ReactionDTO]:
         ReactionDTO(
             emoji=r.emoji,
             user_id=r.user_id,
-            user_display_name=r.user.display_name if r.user else "Unknown",
+            user_display_name=r.user.display_name if r.user else None,
         )
         for r in reactions
     ]
@@ -63,7 +61,7 @@ def _build_message_dto(
         reply_preview = ReplyPreviewDTO(
             id=msg.reply_to.id,
             sender_display_name=(
-                msg.reply_to.sender.display_name if msg.reply_to.sender else "Unknown"
+                msg.reply_to.sender.display_name if msg.reply_to.sender else None
             ),
             content=msg.reply_to.content,
             content_type=msg.reply_to.content_type.value,  # type: ignore[arg-type]
@@ -84,7 +82,7 @@ def _build_message_dto(
             else None
         ),
         client_message_id=msg.client_message_id,
-        content=msg.content if not msg.is_recalled else "Tin nhắn đã bị thu hồi",
+        content=msg.content if not msg.is_recalled else "",
         content_type=msg.content_type.value,  # type: ignore[arg-type]
         attachments=attachments,
         reply_to_id=msg.reply_to_id,
@@ -384,33 +382,6 @@ async def get_conversation_by_id(
         )
     )
     return result.scalar_one_or_none()
-
-
-async def get_pending_conversations(
-    db: AsyncSession,
-    user_id: uuid.UUID,
-) -> list[ConversationDTO]:
-    """Return stranger-request conversations pending this user's acceptance."""
-    result = await db.execute(
-        select(Conversation)
-        .join(
-            ConversationMember,
-            and_(
-                ConversationMember.conversation_id == Conversation.id,
-                ConversationMember.user_id == user_id,
-                ConversationMember.is_accepted.is_(False),
-            ),
-        )
-        .options(
-            selectinload(Conversation.members).selectinload(ConversationMember.user).selectinload(User.profile),
-        )
-        .order_by(Conversation.created_at.desc())
-    )
-    convs = result.scalars().unique().all()
-    dtos = []
-    for conv in convs:
-        dtos.append(await _build_conversation_dto(db, conv, user_id))
-    return dtos
 
 
 async def get_pending_conversations(
@@ -869,7 +840,7 @@ async def recall_message(
 
     if delete_for_everyone:
         msg.is_recalled = True
-        msg.content = "Tin nhắn đã bị thu hồi"
+        msg.content = ""
     else:
         msg.deleted_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()
