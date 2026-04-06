@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as v1_router
 from app.adapters.redis_client import close_redis
+from app.adapters.database import engine
 from app.core.config import settings
 from app.ws.handlers import manager
 from app.ws.chat_router import handle_ws_event
@@ -20,6 +21,7 @@ _startup_logger = logging.getLogger("healthos")
 async def lifespan(application: FastAPI):
     yield
     await close_redis()
+    await engine.dispose()
 
 
 app = FastAPI(
@@ -98,17 +100,42 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # M13: Additional security headers
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # API-only CSP — no scripts served; frame-ancestors blocks clickjacking
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
     return response
 
 app.include_router(v1_router)
 
 
 @app.get("/health")
-async def health() -> dict:
-    return {"status": "ok"}
+async def health() -> JSONResponse:
+    from app.adapters.redis_client import get_redis
+    from app.adapters.database import engine
+    from sqlalchemy import text
+
+    checks: dict[str, str] = {"db": "ok", "redis": "ok"}
+    status_code = 200
+
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        checks["db"] = "error"
+        status_code = 503
+
+    try:
+        r = await get_redis()
+        await r.ping()
+    except Exception:
+        checks["redis"] = "error"
+        status_code = 503
+
+    return JSONResponse(
+        content={"status": "ok" if status_code == 200 else "degraded", **checks},
+        status_code=status_code,
+    )
 
 
 # ─── WebSocket ────────────────────────────────────────────────────────────────

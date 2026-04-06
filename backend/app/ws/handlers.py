@@ -64,7 +64,8 @@ class ConnectionManager:
     """
 
     HEARTBEAT_INTERVAL = 30  # seconds between server pings
-    MAX_CONNECTIONS_PER_USER = 10  # H8: per-user connection limit
+    MAX_CONNECTIONS_PER_USER = 10  # per-user connection limit
+    MAX_GLOBAL_CONNECTIONS = 2000  # global cap to prevent resource exhaustion
 
     def __init__(self) -> None:
         self.user_connections: dict[str, set[WebSocket]] = {}
@@ -80,7 +81,13 @@ class ConnectionManager:
     # ──────────────────────────────────────────────────────────────────────────
 
     async def connect(self, ws: WebSocket, user_id: str) -> None:
-        # H8: Check per-user connection limit before accepting
+        # Check global cap first — reject without accept to minimise resource use
+        total = sum(len(conns) for conns in self.user_connections.values())
+        if total >= self.MAX_GLOBAL_CONNECTIONS:
+            await ws.close(code=1013)  # Try Again Later
+            return
+
+        # Check per-user connection limit before accepting
         current_count = len(self.user_connections.get(user_id, set()))
         if current_count >= self.MAX_CONNECTIONS_PER_USER:
             await ws.accept()

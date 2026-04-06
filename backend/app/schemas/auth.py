@@ -154,8 +154,8 @@ class UserProfileUpdate(BaseModel):
     date_of_birth: Optional[datetime.date] = None
     gender: Optional[Literal["male", "female", "other"]] = None
     blood_type: Optional[str] = None
-    height_cm: Optional[float] = None
-    weight_kg: Optional[float] = None
+    height_cm: Optional[float] = Field(None, ge=50, le=300)
+    weight_kg: Optional[float] = Field(None, ge=1, le=500)
     phone: Optional[str] = None
     address: Optional[str] = None
     avatar_url: Optional[str] = Field(None, max_length=512)

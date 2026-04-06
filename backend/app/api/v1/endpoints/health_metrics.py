@@ -41,17 +41,9 @@ async def list_health_metrics(
     date_to: datetime.date | None = None,
     source: WearableSourceEnum | None = None,
     range: Annotated[str | None, Query(pattern="^(7d|30d|90d)$")] = None,
-    page: int = 1,
-    per_page: int = 20,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
 ) -> HealthMetricListResponse:
-    if page < 1 or per_page < 1:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "VALIDATION_ERROR",
-                "message": "page and per_page must be >= 1",
-            },
-        )
 
     metrics, total = await health_metric_svc.list_health_metrics(
         db=db,

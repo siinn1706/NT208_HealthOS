@@ -15,9 +15,20 @@ import {
 } from "@/lib/bff-auth-cookie";
 
 import { CORE_API_URL } from "@/lib/env";
+import { fetchWithTimeout, parseJsonBody } from "@/lib/bff-fetch-utils";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null);
+  let body: unknown;
+  try {
+    body = await parseJsonBody(req);
+  } catch (err: unknown) {
+    const status = (err as { status?: number }).status === 413 ? 413 : 400;
+    return NextResponse.json(
+      { error: { code: "VALIDATION_ERROR", message: status === 413 ? "Request body too large." : "Invalid JSON body." } },
+      { status }
+    );
+  }
+
   if (!body) {
     return NextResponse.json(
       { error: { code: "VALIDATION_ERROR", message: "Invalid JSON body." } },
@@ -27,13 +38,10 @@ export async function POST(req: NextRequest) {
 
   let res: Response;
   try {
-    res = await fetch(`${CORE_API_URL}/v1/auth/verify-otp`, {
+    res = await fetchWithTimeout(`${CORE_API_URL}/v1/auth/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore – Next.js fetch extension
-      next: { revalidate: 0 },
     });
   } catch {
     return NextResponse.json(
@@ -51,17 +59,18 @@ export async function POST(req: NextRequest) {
   }
 
   // For signup/login: Core BE returns access_token — store in httpOnly cookie.
-  const accessToken: string | undefined = data?.data?.access_token;
-  if (res.ok && accessToken && body.purpose !== "reset_password") {
+  const bodyObj = body as Record<string, unknown>;
+  const accessToken: string | undefined = (data as Record<string, unknown> & { data?: Record<string, unknown> })?.data?.access_token as string | undefined;
+  if (res.ok && accessToken && bodyObj.purpose !== "reset_password") {
     const response = NextResponse.json(
       {
         data: {
-          user_id: data.data.user_id,
-          email: data.data.email,
-          username: data.data.username ?? null,
-          display_name: data.data.display_name,
-          avatar_url: data.data.avatar_url ?? null,
-          onboarding_status: data.data.onboarding_status ?? "pending",
+          user_id: (data as { data: { user_id: string } }).data.user_id,
+          email: (data as { data: { email: string } }).data.email,
+          username: (data as { data: { username?: string } }).data.username ?? null,
+          display_name: (data as { data: { display_name: string } }).data.display_name,
+          avatar_url: (data as { data: { avatar_url?: string } }).data.avatar_url ?? null,
+          onboarding_status: (data as { data: { onboarding_status?: string } }).data.onboarding_status ?? "pending",
         },
       },
       { status: res.status }
@@ -78,7 +87,7 @@ export async function POST(req: NextRequest) {
     // Non-httpOnly meta cookie for middleware onboarding gate
     response.cookies.set(
       META_COOKIE_NAME,
-      JSON.stringify({ onboarding_status: data.data.onboarding_status ?? "pending" }),
+      JSON.stringify({ onboarding_status: (data as { data: { onboarding_status?: string } }).data.onboarding_status ?? "pending" }),
       { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
     );
 

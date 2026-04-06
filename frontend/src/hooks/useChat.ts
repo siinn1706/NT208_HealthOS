@@ -514,9 +514,9 @@ export function useMessages(conversationId: string | null, currentUserId: string
         );
         return confirmed;
       } catch {
-        // Mark as failed (keep in list with sending status for retry UX)
+        // Mark as failed so UI shows a failed indicator instead of a checkmark
         setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticId ? { ...m, status: "sent" as const } : m))
+          prev.map((m) => (m.id === optimisticId ? { ...m, status: "failed" as const } : m))
         );
         return optimistic;
       }
@@ -525,12 +525,14 @@ export function useMessages(conversationId: string | null, currentUserId: string
   );
 
   const editMessage = useCallback(async (convId: string, messageId: string, content: string) => {
-    // Optimistic
-    setMessages((prev) =>
-      prev.map((m) =>
+    // Capture state for rollback before applying optimistic update
+    let prevMessages: Message[] | null = null;
+    setMessages((prev) => {
+      prevMessages = prev;
+      return prev.map((m) =>
         m.id === messageId ? { ...m, content, is_edited: true, edited_at: new Date().toISOString() } : m
-      )
-    );
+      );
+    });
     try {
       const result = await bffFetch<{ data: unknown }>(
         `/api/v1/conversations/${convId}/messages/${messageId}`,
@@ -540,33 +542,42 @@ export function useMessages(conversationId: string | null, currentUserId: string
         prev.map((m) => (m.id === messageId ? adaptMessage(result.data) : m))
       );
     } catch {
-      // Optimistic stays; could show toast error in production
+      // Rollback to state before optimistic update
+      if (prevMessages) setMessages(prevMessages);
     }
   }, []);
 
   const recallMessage = useCallback(async (convId: string, messageId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, content: "", is_recalled: true } : m))
-    );
+    let prevMessages: Message[] | null = null;
+    setMessages((prev) => {
+      prevMessages = prev;
+      return prev.map((m) => (m.id === messageId ? { ...m, content: "", is_recalled: true } : m));
+    });
     try {
       await bffFetch(
         `/api/v1/conversations/${convId}/messages/${messageId}`,
         { method: "DELETE" }
       );
     } catch {
-      // optimistic stays
+      // Rollback — message was not actually recalled
+      if (prevMessages) setMessages(prevMessages);
     }
   }, []);
 
   const deleteMessage = useCallback(async (convId: string, messageId: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    let prevMessages: Message[] | null = null;
+    setMessages((prev) => {
+      prevMessages = prev;
+      return prev.filter((m) => m.id !== messageId);
+    });
     try {
       await bffFetch(
         `/api/v1/conversations/${convId}/messages/${messageId}?for_everyone=false`,
         { method: "DELETE" }
       );
     } catch {
-      // optimistic stays
+      // Rollback — message was not actually deleted
+      if (prevMessages) setMessages(prevMessages);
     }
   }, []);
 

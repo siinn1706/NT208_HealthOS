@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 import { CORE_API_URL } from "@/lib/env";
+import { fetchWithTimeout } from "@/lib/bff-fetch-utils";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -20,7 +21,7 @@ export async function GET() {
   }
 
   try {
-    const upstream = await fetch(`${CORE_API_URL}/v1/auth/ws-ticket`, {
+    const upstream = await fetchWithTimeout(`${CORE_API_URL}/v1/auth/ws-ticket`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

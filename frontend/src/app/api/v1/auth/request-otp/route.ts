@@ -7,9 +7,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { CORE_API_URL } from "@/lib/env";
+import { fetchWithTimeout, parseJsonBody } from "@/lib/bff-fetch-utils";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null);
+  let body: unknown;
+  try {
+    body = await parseJsonBody(req);
+  } catch (err: unknown) {
+    const status = (err as { status?: number }).status === 413 ? 413 : 400;
+    return NextResponse.json(
+      { error: { code: "VALIDATION_ERROR", message: status === 413 ? "Request body too large." : "Invalid JSON body." } },
+      { status }
+    );
+  }
+
   if (!body) {
     return NextResponse.json(
       { error: { code: "VALIDATION_ERROR", message: "Invalid JSON body." } },
@@ -19,13 +30,10 @@ export async function POST(req: NextRequest) {
 
   let res: Response;
   try {
-    res = await fetch(`${CORE_API_URL}/v1/auth/request-otp`, {
+    res = await fetchWithTimeout(`${CORE_API_URL}/v1/auth/request-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore – Next.js fetch extension
-      next: { revalidate: 0 },
     });
   } catch {
     return NextResponse.json(
@@ -44,4 +52,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(data, { status: res.status });
 }
-

@@ -115,6 +115,14 @@ export async function coreProxy(
 
     const responseData = await upstream.json().catch(() => null);
 
+    // Sanitize 5xx responses — do not leak stack traces or internal paths to the browser
+    if (upstream.status >= 500) {
+      return NextResponse.json(
+        { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error" } },
+        { status: upstream.status }
+      );
+    }
+
     return NextResponse.json(responseData ?? {}, { status: upstream.status });
   } catch (err) {
     clearTimeout(timeoutId);
