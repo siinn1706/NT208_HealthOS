@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
@@ -83,6 +83,26 @@ export function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const oauthErrorBanner = useMemo(() => {
+    const raw = searchParams.get("oauth_error");
+    if (!raw) return null;
+    const known: Record<string, string> = {
+      core_unreachable: t("oauthErrorCoreUnreachable"),
+      server_error: t("oauthErrorServerError"),
+      missing_code: t("oauthErrorMissingCode"),
+      invalid_state: t("oauthErrorInvalidState"),
+      missing_verifier: t("oauthErrorMissingVerifier"),
+      nonce_mismatch: t("oauthErrorNonceMismatch"),
+      unverified_email: t("oauthErrorUnverifiedEmail"),
+    };
+    if (known[raw]) return known[raw];
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return t("oauthErrorServerError");
+    }
+  }, [searchParams, t]);
 
   // Client-side validation
   const validate = (): boolean => {
@@ -203,6 +223,14 @@ export function LoginForm() {
 
       {/* Form */}
       <CardContent>
+        {oauthErrorBanner && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {oauthErrorBanner}
+          </div>
+        )}
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Username or Email */}
           <div className="space-y-1.5">

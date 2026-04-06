@@ -158,11 +158,27 @@ class UserProfileUpdate(BaseModel):
     weight_kg: Optional[float] = Field(None, ge=1, le=500)
     phone: Optional[str] = None
     address: Optional[str] = None
+    avatar_url: Optional[str] = Field(None, max_length=512)
     emergency_contacts: Optional[list[EmergencyContact]] = None
     medical_info: Optional[MedicalInfo] = None
     # None = no-op (field absent); False = explicitly mark incomplete; True = mark complete
     onboarding_completed: Optional[bool] = None
-    
+
+    @field_validator("avatar_url", mode="before")
+    @classmethod
+    def validate_avatar_url(cls, v: object) -> object:
+        if v is None or v == "":
+            return None
+        if not isinstance(v, str):
+            raise ValueError("avatar_url must be a string")
+        s = v.strip()
+        if len(s) > 512:
+            raise ValueError("avatar_url exceeds maximum length")
+        lower = s.lower()
+        if not (lower.startswith("http://") or lower.startswith("https://")):
+            raise ValueError("avatar_url must be an http(s) URL")
+        return s
+
     @field_validator("phone", mode="before")
     @classmethod
     def validate_phone(cls, v: object) -> object:

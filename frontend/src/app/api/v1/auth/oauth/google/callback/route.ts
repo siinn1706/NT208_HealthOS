@@ -12,6 +12,7 @@ import {
 } from "@/lib/bff-auth-cookie";
 import { getLocaleFromReferer } from "@/lib/locale-path";
 import { CORE_API_URL } from "@/lib/env";
+import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
       path: "/",
     });
 
-    // Meta cookie (non-httpOnly — carries onboarding_status for middleware)
+    // Meta cookie (non-httpOnly — carries onboarding_status for src/proxy.ts)
     response.cookies.set(
       META_COOKIE_NAME,
       JSON.stringify({ onboarding_status: onboardingStatus }),
@@ -149,6 +150,14 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (err) {
     console.error("Google OAuth callback error:", err);
+    if (isCoreUpstreamUnreachable(err)) {
+      console.error(
+        `Core BE unreachable at ${CORE_API_URL}. Start the API (see README) or fix CORE_API_URL in frontend/.env.local.`
+      );
+      return NextResponse.redirect(
+        new URL(`/${locale}/login?oauth_error=core_unreachable`, request.url).toString()
+      );
+    }
     return NextResponse.redirect(
       new URL(`/${locale}/login?oauth_error=server_error`, request.url).toString()
     );

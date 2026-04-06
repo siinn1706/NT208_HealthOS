@@ -80,6 +80,8 @@ export interface UserProfileUpdate {
   weight_kg?: number | null;
   phone?: string | null;
   address?: string | null;
+  /** Public http(s) URL; omit when uploading via POST /users/me/avatar */
+  avatar_url?: string | null;
   emergency_contacts?: EmergencyContact[] | null;
   medical_info?: MedicalInfo | null;
 }
