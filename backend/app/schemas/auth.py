@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import re
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -161,6 +162,17 @@ class UserProfileUpdate(BaseModel):
     medical_info: Optional[MedicalInfo] = None
     # None = no-op (field absent); False = explicitly mark incomplete; True = mark complete
     onboarding_completed: Optional[bool] = None
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v: object) -> object:
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("phone must be a string")
+        if not re.match(r"^\+?[0-9][0-9\-\s()]{4,18}[0-9]$", v):
+            raise ValueError("Invalid phone number format")
+        return v
 
     @model_validator(mode="before")
     @classmethod

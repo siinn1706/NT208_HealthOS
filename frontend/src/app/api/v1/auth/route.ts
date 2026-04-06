@@ -5,6 +5,9 @@
  * POST   /api/v1/auth/session  → login with email+password, set httpOnly cookie
  * DELETE /api/v1/auth/session  → logout, clear httpOnly cookie
  */
+
+// TODO: Add per-IP rate limiting (e.g., @upstash/ratelimit) to auth endpoints
+
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -25,7 +28,8 @@ function getDevBypassMap(): Map<string, { email: string; display_name: string }>
   const map = new Map<string, { email: string; display_name: string }>();
   if (process.env.NODE_ENV === "production") return map;
 
-  const raw = process.env.DEV_BYPASS_CREDENTIALS ?? "admin:admin";
+  const raw = process.env.DEV_BYPASS_CREDENTIALS;
+  if (!raw) return map;  // No credentials configured, no bypass
   for (const entry of raw.split(",")) {
     const [loginId, password] = entry.trim().split(":");
     if (loginId && password) {

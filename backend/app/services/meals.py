@@ -94,7 +94,10 @@ async def update_meal_result(
     meal_id: uuid.UUID,
     nutrition_result: dict,
 ) -> Meal | None:
-    """Update meal with nutrition analysis result."""
+    """Update meal with nutrition analysis result.
+    
+    INTERNAL: called only by Celery task, not exposed via API.
+    """
     meal = (await db.execute(select(Meal).where(Meal.id == meal_id))).scalar_one_or_none()
     if meal is None:
         return None

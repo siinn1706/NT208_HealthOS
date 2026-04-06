@@ -129,6 +129,10 @@ async def login_with_password(
             code="INVALID_CREDENTIALS",
         )
 
+    # KNOWN LIMITATION: No cross-account per-IP failed login tracking.
+    # Current mitigation: per-user lockout + per-IP rate limiting (10/min).
+    # Future: Add Redis counter `failed_login:ip:{ip}` with threshold detection.
+
     # Check lockout BEFORE verifying password (prevents timing attacks)
     if await check_account_lockout(user):
         locked_minutes = int((user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
@@ -310,6 +314,7 @@ async def request_email_otp(
 
             if body.purpose == "reset_password" and existing_user is None:
                 # Return generic success to prevent email enumeration
+                await redis.setex(cooldown_key, 60, "1")  # Prevent email enumeration
                 return OtpRequestedResponse(
                     data=OtpRequested(
                         delivery="email",
@@ -665,7 +670,8 @@ async def reset_password(
     Updates the user\'s hashed password and returns a JWT access token.
     """
     verified_key = f"auth:otp:reset_verified:{body.email}"
-    if not await redis.exists(verified_key):
+    consumed = await redis.getdel(verified_key)
+    if consumed is None:
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_REQUIRED",
@@ -697,7 +703,6 @@ async def reset_password(
         )
 
     user.hashed_password = hash_password(body.new_password)
-    await redis.delete(verified_key)
 
     access_token = create_user_access_token(user)
     token = AuthToken(

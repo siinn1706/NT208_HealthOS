@@ -85,6 +85,13 @@ export async function GET(request: NextRequest) {
     // ─── Get User Info ─────────────────────────────────────────────────────────
     const googleUser = await getGoogleUserInfo(tokenResponse.access_token);
 
+    // ─── Verify Email ──────────────────────────────────────────────────────────
+    if (googleUser.verified_email === false || googleUser.email_verified === false) {
+      return NextResponse.redirect(
+        new URL(`/${locale}/login?oauth_error=unverified_email`, request.url)
+      );
+    }
+
     // ─── Call Core BE to Create/Retrieve User ────────────────────────────────
     const coreRes = await fetch(`${CORE_API_URL}/v1/auth/token`, {
       method: "POST",
