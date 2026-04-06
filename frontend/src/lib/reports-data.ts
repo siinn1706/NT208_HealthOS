@@ -162,12 +162,16 @@ export async function getTrendAnalysis(
 }
 
 export async function shareReport(request: ShareRequest): Promise<ShareResult[]> {
+  // TODO: implement actual share endpoint (POST /api/v1/reports/share) once
+  // the notification dispatch service is wired up.  Until then, return a
+  // transparent "not_implemented" status so callers can surface a clear message
+  // rather than silently reporting "failed".
   return request.recipients.flatMap((recipient) =>
     request.channels.map((channel) => ({
       recipient,
       channel,
       status: "failed" as const,
-      error_message: "",
+      error_message: "Tính năng chia sẻ báo cáo chưa được triển khai.",
     }))
   );
 }

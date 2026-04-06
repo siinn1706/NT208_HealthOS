@@ -22,6 +22,11 @@ http_bearer = HTTPBearer(auto_error=False)
 
 JWT_BLACKLIST_PREFIX = "auth:jwt:blacklist:"
 
+# Pre-computed bcrypt hash of a throwaway string.  Used in login to perform a
+# dummy verify when the identifier is not found, equalising response time and
+# preventing timing-based user enumeration attacks.
+DUMMY_HASH: str = pwd_context.hash("__healthos_timing_dummy__")
+
 
 def hash_password(plain: str) -> str:
     return pwd_context.hash(plain)

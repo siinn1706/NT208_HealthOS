@@ -4,6 +4,43 @@
 
 ---
 
+## [1.2.2] - 2026-04-06
+
+### Fixed / Security
+
+#### Backend
+
+- **Rate limiter fails CLOSED** (`core/rate_limit.py`) — Redis unavailability now returns HTTP 503 instead of allowing requests through
+- **Meals bug fix** (`services/meals.py`) — `update_meal_result()` was passing `meal_id` as `user_id`; corrected argument mapping
+- **Timing-safe login** (`core/security.py`) — Added `DUMMY_HASH` constant; bcrypt compare always runs (even for missing users) to prevent user-enumeration via timing side-channel
+- **Atomic account lockout** (`services/auth.py`) — Lockout counter now uses a single atomic `UPDATE … WHERE` instead of ORM read-modify-write to eliminate TOCTOU race condition
+- **OTP hardening** (`api/v1/endpoints/auth.py`):
+  - OTP stored hashed (bcrypt) at creation time
+  - OTP consumed atomically via Redis `GETDEL` (prevents replay)
+  - Username collision returns HTTP 409 (was silent overwrite)
+  - Dummy bcrypt compare on missing user during OTP verify (timing parity)
+  - Accepted limitations documented: OAuth token introspection and WS presence not yet hardened
+- **Input validation** (`schemas/chat.py`, `schemas/auth.py`):
+  - `AttachmentDTO.url` restricted to `^https?://`
+  - Chat `content` fields have `max_length` constraints
+  - Emoji field capped at 64 bytes
+  - `MedicalInfo` fields have `max_length` constraints
+- **WebSocket rate limiting extended** (`ws/chat_router.py`) — `msg:edit` and `msg:delete` now rate-limited alongside `msg:send`; emoji byte-length validated server-side
+- **In-process presence limitation documented** (`ws/handlers.py`) — Known limitation (presence not shared across replicas) noted in code
+- **Profile PATCH race condition** (`api/v1/endpoints/users.py`) — Profile update now uses `SELECT FOR UPDATE` to prevent concurrent-write conflicts
+
+#### Frontend
+
+- **Removed AI spoofing vector** (`hooks/useChat.ts`) — Display-name heuristic that could falsely flag messages as AI was removed; optimistic message IDs now use `crypto.randomUUID()`
+- **Dev bypass gated by NODE_ENV** (`app/api/v1/auth/route.ts`) — Auth bypass path only available when `NODE_ENV !== "production"`
+- **App-level error boundary** (`app/[locale]/(app)/error.tsx`) — New `error.tsx` prevents white-screen crashes in the `(app)` route group
+- **DevicesPageClient error handling** (`components/dashboard/settings/DevicesPageClient.tsx`) — `handleSync` wrapped in `try/catch` to prevent unhandled rejections
+- **Core API proxy hardening** (`lib/core-api-proxy.ts`) — 1 MiB request body limit + 30 s fetch timeout added
+- **Client-side fetch timeout** (`lib/api-client.ts`) — 30 s `AbortSignal` timeout on all `bffFetchClient` calls
+- **Server-side onboarding guard** (`app/[locale]/(app)/layout.tsx`) — Layout performs server-side onboarding check (defense-in-depth against forged `healthos.meta` cookie)
+
+---
+
 ## [1.2.1] - 2026-04-06
 
 ### Added

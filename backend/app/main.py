@@ -183,9 +183,20 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
 
     ts_now = lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()  # noqa: E731
 
+    # Maximum inbound WS frame size: 64 KiB is generous for chat messages and
+    # prevents memory exhaustion from maliciously large frames.
+    _WS_MAX_FRAME_BYTES = 65_536
+
     try:
         while True:
             raw = await ws.receive_text()
+            if len(raw.encode("utf-8")) > _WS_MAX_FRAME_BYTES:
+                await manager.send_to_ws(ws, {
+                    "event": "error",
+                    "payload": {"code": "FRAME_TOO_LARGE", "message": "Message frame exceeds maximum allowed size."},
+                    "timestamp": ts_now(),
+                })
+                continue
             try:
                 frame = json.loads(raw)
             except (json.JSONDecodeError, ValueError):

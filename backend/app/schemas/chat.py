@@ -31,10 +31,11 @@ class ParticipantDTO(BaseModel):
 
 
 class AttachmentDTO(BaseModel):
-    url: str
-    name: str
-    size: int
-    mime_type: str
+    # Restrict to https:// or relative paths to prevent XSS via javascript:/data: URLs
+    url: str = Field(..., max_length=2048, pattern=r"^https?://")
+    name: str = Field(..., max_length=255)
+    size: int = Field(..., ge=0, le=104_857_600)  # max 100 MiB
+    mime_type: str = Field(..., max_length=128)
 
 
 class ReactionDTO(BaseModel):
@@ -128,15 +129,15 @@ class CreateGroupConversationBody(BaseModel):
 
 
 class SendMessageBody(BaseModel):
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=4096)
     content_type: MessageContentType = "text"
     client_message_id: str | None = Field(None, max_length=128)
     reply_to_id: uuid.UUID | None = None
-    attachments: list[AttachmentDTO] | None = None
+    attachments: list[AttachmentDTO] | None = Field(None, max_length=10)
 
 
 class EditMessageBody(BaseModel):
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=4096)
 
 
 class ReactMessageBody(BaseModel):
@@ -184,16 +185,16 @@ class WsEventEnvelope(BaseModel):
 class WsSendMessage(BaseModel):
     conversation_id: uuid.UUID
     client_message_id: str | None = None
-    content: str
+    content: str = Field(..., min_length=1, max_length=4096)
     content_type: MessageContentType = "text"
     reply_to_id: uuid.UUID | None = None
-    attachments: list[AttachmentDTO] | None = None
+    attachments: list[AttachmentDTO] | None = Field(None, max_length=10)
 
 
 class WsEditMessage(BaseModel):
     conversation_id: uuid.UUID
     message_id: uuid.UUID
-    content: str
+    content: str = Field(..., min_length=1, max_length=4096)
 
 
 class WsDeleteMessage(BaseModel):

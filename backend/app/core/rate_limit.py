@@ -54,7 +54,16 @@ def ip_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
         except HTTPException:
             raise
         except Exception:
-            logger.warning("Rate limit Redis check failed for %s — allowing request", key)
+            # Fail-closed: deny the request when Redis is unavailable to prevent
+            # an attacker from exploiting the outage to bypass rate limits.
+            logger.error("Rate limit Redis check failed for %s — denying request (fail-closed)", key)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "SERVICE_UNAVAILABLE",
+                    "message": "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau.",
+                },
+            )
 
     return _check_rate_limit
 
@@ -66,8 +75,10 @@ rate_limit_login = ip_rate_limiter(
 rate_limit_otp_request = ip_rate_limiter(
     max_requests=5, window_seconds=60, route_key="otp_request"
 )
+# Availability checks (check-email, check-username) are tightened to 20/min to
+# slow automated enumeration while remaining comfortable for normal signup flows.
 rate_limit_availability = ip_rate_limiter(
-    max_requests=30, window_seconds=60, route_key="availability"
+    max_requests=20, window_seconds=60, route_key="availability"
 )
 # Stricter limit for MFA verify — 5 attempts per 5-minute window to resist TOTP brute-force
 rate_limit_mfa = ip_rate_limiter(

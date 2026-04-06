@@ -58,19 +58,21 @@ export async function GET() {
     );
   }
 
-  // Dev bypass — no backend call needed
-  const devUser = parseDevToken(token);
-  if (devUser) {
-    return NextResponse.json({
-      data: {
-        user_id: "00000000-0000-0000-0000-000000000001",
-        email: devUser.email,
-        username: devUser.email.split("@")[0],
-        display_name: devUser.display_name,
-        avatar_url: null,
-        onboarding_status: "completed",
-      },
-    });
+  // Dev bypass — only active outside production; never trust DEV_BYPASS tokens in prod
+  if (process.env.NODE_ENV !== "production") {
+    const devUser = parseDevToken(token);
+    if (devUser) {
+      return NextResponse.json({
+        data: {
+          user_id: "00000000-0000-0000-0000-000000000001",
+          email: devUser.email,
+          username: devUser.email.split("@")[0],
+          display_name: devUser.display_name,
+          avatar_url: null,
+          onboarding_status: "completed",
+        },
+      });
+    }
   }
 
   try {

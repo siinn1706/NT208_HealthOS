@@ -95,17 +95,15 @@ async def update_meal_result(
     nutrition_result: dict,
 ) -> Meal | None:
     """Update meal with nutrition analysis result."""
-    stmt = (
-        select(Meal)
-        .where(Meal.id == meal_id)
-        .values(
-            status=MealStatusEnum.ANALYZED,
-            nutrition_result=nutrition_result,
-        )
-    )
-    await db.execute(stmt)
+    meal = (await db.execute(select(Meal).where(Meal.id == meal_id))).scalar_one_or_none()
+    if meal is None:
+        return None
+    meal.status = MealStatusEnum.ANALYZED
+    meal.nutrition_result = nutrition_result
     await db.flush()
-    return await get_meal_by_id(db, meal_id, meal_id)
+    # Pass a sentinel user_id=None bypass: fetch directly by meal id only
+    result = await db.execute(select(Meal).where(Meal.id == meal_id))
+    return result.scalar_one_or_none()
 
 
 async def get_meal_analysis_status(

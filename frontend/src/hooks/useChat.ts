@@ -75,13 +75,9 @@ function adaptReactions(reactions: any[]): MessageReaction[] {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptMessage(m: any): Message {
-  const senderId =
-    m.sender_id != null
-      ? String(m.sender_id)
-      : typeof m.sender_display_name === "string" &&
-        m.sender_display_name.toLowerCase().includes("ai")
-      ? "ai"
-      : "";
+  // sender_id is the authoritative source — never infer identity from display_name
+  // to prevent AI message spoofing by a user setting their name to contain "ai".
+  const senderId = m.sender_id != null ? String(m.sender_id) : "";
   return {
     id: String(m.id),
     conversation_id: String(m.conversation_id),
@@ -478,7 +474,9 @@ export function useMessages(conversationId: string | null, currentUserId: string
       if (!currentUserId) {
         throw new Error("Cannot send message: user session not loaded");
       }
-      const optimisticId = `optimistic-${Date.now()}`;
+      // Use crypto.randomUUID() for collision-free IDs even when multiple
+      // messages are sent in the same millisecond.
+      const optimisticId = `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
       const optimistic: Message = {
         id: optimisticId,
         conversation_id: convId,
