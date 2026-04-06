@@ -34,6 +34,12 @@ export async function bffFetch<T = unknown>(
   });
 
   if (!res.ok) {
+    // Redirect to login on session expiry (client-side only)
+    if (res.status === 401 && typeof window !== "undefined") {
+      const from = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?from=${from}`;
+      return new Promise<T>(() => {});
+    }
     const error = await res.json().catch(() => ({ error: { code: "UNKNOWN", message: res.statusText } }));
     throw new BffError(res.status, error?.error?.code ?? "UNKNOWN", error?.error?.message ?? res.statusText);
   }
@@ -73,6 +79,11 @@ export async function bffFetchClient(
   });
 
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      const from = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?from=${from}`;
+      return { error: { code: "SESSION_EXPIRED" } };
+    }
     const err = await res.json().catch(() => ({}));
     return { error: err };
   }

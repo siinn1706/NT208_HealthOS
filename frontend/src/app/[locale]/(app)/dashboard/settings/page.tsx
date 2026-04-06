@@ -284,19 +284,16 @@ export default function SettingsPage() {
           icon={Shield}
           label={t("settingsPage.privacy.policy")}
           description={t("settingsPage.privacy.policyDesc")}
-          onClick={() => {}}
         />
         <SettingRow
           icon={Download}
           label={t("settingsPage.privacy.download")}
           description={t("settingsPage.privacy.downloadDesc")}
-          onClick={() => {}}
         />
         <SettingRow
           icon={Trash2}
           label={t("settingsPage.privacy.delete")}
           description={t("settingsPage.privacy.deleteDesc")}
-          onClick={() => {}}
           danger
         />
       </SettingGroup>

@@ -1,12 +1,3 @@
-// BFF TODO: GET /api/v1/health/risk-predictions
-//   Trigger: Page load on /dashboard/risk
-//   Request: { timeframe?: "current" }
-//   Response: { data: RiskPredictionSummary }
-
-// BFF TODO: POST /api/v1/health/risk-predictions/refresh
-//   Trigger: User clicks refresh button
-//   Response: { data: RiskPredictionSummary }
-
 import { NextRequest } from "next/server";
 import { coreProxy } from "@/lib/core-api-proxy";
 

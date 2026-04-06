@@ -134,6 +134,7 @@ async def login_with_password(
             AuditEventTypeEnum.ACCOUNT_LOCKED,
             user_id=user.id,
             ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
             details={"locked_minutes": locked_minutes},
         )
         raise UnauthorizedException(
@@ -148,6 +149,7 @@ async def login_with_password(
             AuditEventTypeEnum.LOGIN_FAILED,
             user_id=user.id,
             ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
             details={"reason": "invalid_password"},
         )
         raise UnauthorizedException(
@@ -162,6 +164,7 @@ async def login_with_password(
         AuditEventTypeEnum.LOGIN_SUCCESS,
         user_id=user.id,
         ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
     )
 
     access_token = create_user_access_token(user)
@@ -284,6 +287,7 @@ async def request_email_otp(
     """
     from app.adapters.database import AsyncSessionLocal
 
+    existing_user = None
     if body.purpose in {"reset_password", "signup", "login"}:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -292,10 +296,13 @@ async def request_email_otp(
             existing_user = result.scalar_one_or_none()
 
             if body.purpose == "reset_password" and existing_user is None:
-                raise NotFoundException(
-                    resource="Email",
-                    message="Không tìm thấy tài khoản với email này",
-                    code="ACCOUNT_NOT_FOUND_EMAIL",
+                # Return generic success to prevent email enumeration
+                return OtpRequestedResponse(
+                    data=OtpRequested(
+                        delivery="email",
+                        expires_in_seconds=OTP_TTL_SECONDS,
+                        otp=None,
+                    )
                 )
 
             if body.purpose == "signup" and existing_user is not None:
@@ -305,22 +312,24 @@ async def request_email_otp(
                     field_errors={"email": "Email đã được sử dụng"},
                 )
 
-            if body.purpose == "login" and existing_user is None:
-                # Return generic success without sending email — prevents enumeration
-                return OtpRequestedResponse(
-                    data=OtpRequested(
-                        delivery="email",
-                        expires_in_seconds=OTP_TTL_SECONDS,
-                        otp=None,
-                    )
-                )
-
-    # Per-email cooldown first: avoids HIBP/bcrypt/signup Redis work when throttled.
+    # Per-email cooldown: same semantics as real OTP sends (incl. login probe for unknown email).
+    # Enforced before expensive work; fake login success must still set cooldown to limit enumeration.
     cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
     if await redis.exists(cooldown_key):
         from app.exceptions import RateLimitException
         raise RateLimitException(
             message="Vui lòng đợi 60 giây trước khi yêu cầu mã OTP mới",
+        )
+
+    if body.purpose == "login" and existing_user is None:
+        # Generic success without email — cooldown already enforced and consumed below.
+        await redis.setex(cooldown_key, 60, "1")
+        return OtpRequestedResponse(
+            data=OtpRequested(
+                delivery="email",
+                expires_in_seconds=OTP_TTL_SECONDS,
+                otp=None,
+            )
         )
 
     code = f"{random.randint(0, 999999):06d}"

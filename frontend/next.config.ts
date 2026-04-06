@@ -14,6 +14,24 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
   },
+  {
+    // Report-only first: monitor violations before enforcing. Switch to
+    // "Content-Security-Policy" once no violations are seen in the console.
+    key: "Content-Security-Policy-Report-Only",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https://images.unsplash.com https://unsplash.com https://randomuser.me",
+      "font-src 'self' data:",
+      "connect-src 'self' https://accounts.google.com https://github.com",
+      "frame-ancestors 'none'",
+    ].join("; "),
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
 ];
 
 const nextConfig: NextConfig = {

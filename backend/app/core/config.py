@@ -1,8 +1,11 @@
 """Core configuration — reads from .env via pydantic-settings."""
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+_config_logger = logging.getLogger(__name__)
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -77,6 +80,12 @@ class Settings(BaseSettings):
             self.smtp_password = self.smtp_pass
         if self.smtp_from is None and self.from_email is not None:
             self.smtp_from = self.from_email
+        # Warn in non-production if FERNET_KEY is unset — TOTP secrets will be stored unencrypted
+        if not _is_production() and not self.fernet_key:
+            _config_logger.warning(
+                "FERNET_KEY is not set — TOTP secrets will NOT be encrypted at rest. "
+                "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+            )
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":

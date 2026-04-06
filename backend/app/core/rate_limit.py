@@ -69,3 +69,7 @@ rate_limit_otp_request = ip_rate_limiter(
 rate_limit_availability = ip_rate_limiter(
     max_requests=30, window_seconds=60, route_key="availability"
 )
+# Stricter limit for MFA verify — 5 attempts per 5-minute window to resist TOTP brute-force
+rate_limit_mfa = ip_rate_limiter(
+    max_requests=5, window_seconds=300, route_key="mfa_verify"
+)

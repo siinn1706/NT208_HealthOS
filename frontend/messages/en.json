@@ -909,7 +909,8 @@
       "pageTitle": "Start Your Health Journey"
     },
     "devices": {
-      "title": "Manage wearables and health tracking devices",
+      "title": "Connected Devices",
+      "subtitle": "Manage your wearables and health monitors",
       "syncSuccess": "Sync successful",
       "syncing": "Syncing...",
       "syncFailed": "Sync failed",
@@ -918,7 +919,17 @@
       "justNow": "Just now",
       "minutesAgo": "{n} min ago",
       "hoursAgo": "{n} hr ago",
-      "privacyNote": "Device data is encrypted and only used to improve your health experience."
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "syncNow": "Sync now",
+      "disconnect": "Disconnect",
+      "battery": "Battery",
+      "connectedSection": "Connected ({n})",
+      "availableSection": "Available ({n})",
+      "connecting": "Connecting...",
+      "tapToConnect": "Tap to connect",
+      "connectFailed": "Failed to connect",
+      "privacyNote": "Device data is encrypted and only used to improve your health experience. You can disconnect at any time."
     },
     "settingsPage": {
       "pageTitle": "Settings",

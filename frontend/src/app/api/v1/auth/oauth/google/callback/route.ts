@@ -63,6 +63,25 @@ export async function GET(request: NextRequest) {
       redirectUri,
     });
 
+    // ─── Validate Nonce (OIDC replay protection) ──────────────────────────────
+    const storedNonce = request.cookies.get("oauth_nonce_google")?.value;
+    if (tokenResponse.id_token && storedNonce) {
+      try {
+        const payload = JSON.parse(
+          Buffer.from(tokenResponse.id_token.split(".")[1], "base64url").toString()
+        );
+        if (payload.nonce !== storedNonce) {
+          console.error("Google OAuth nonce mismatch");
+          return NextResponse.redirect(
+            new URL(`/${locale}/login?oauth_error=nonce_mismatch`, request.url).toString()
+          );
+        }
+      } catch (e) {
+        // Non-blocking — nonce is defense-in-depth; PKCE+state already protect the flow
+        console.error("Failed to decode id_token for nonce validation:", e);
+      }
+    }
+
     // ─── Get User Info ─────────────────────────────────────────────────────────
     const googleUser = await getGoogleUserInfo(tokenResponse.access_token);
 

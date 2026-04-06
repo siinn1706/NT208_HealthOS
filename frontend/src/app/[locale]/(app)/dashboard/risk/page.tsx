@@ -1,7 +1,8 @@
 import { getTranslations, getLocale } from "next-intl/server";
-import { Brain, RefreshCw, ShieldCheck } from "lucide-react";
+import { Brain, ShieldCheck } from "lucide-react";
 import { headers } from "next/headers";
 import { RiskGaugeRow } from "@/components/dashboard/risk/RiskGaugeRow";
+import { RiskRefreshButton } from "@/components/dashboard/risk/RiskRefreshButton";
 import type { RiskPredictionSummary } from "@/types/api";
 
 async function fetchRiskPredictions(): Promise<RiskPredictionSummary> {
@@ -119,15 +120,8 @@ export default async function RiskPage() {
           </p>
         </div>
 
-        {/* Refresh – BFF TODO: POST /api/v1/health/risk-predictions/refresh */}
-        <button
-          className="flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer self-start"
-          aria-label={t("updateAria")}
-          disabled
-        >
-          <RefreshCw className="w-4 h-4" />
-          {t("update")}
-        </button>
+        {/* Refresh */}
+        <RiskRefreshButton />
       </div>
 
       {/* ── Score overview card ── */}

@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -70,6 +71,7 @@ export function LoginForm() {
   const t = useTranslations("auth");
   const tErrors = useTranslations("errors");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { handleApiError, success, handleError } = useNotification();
   const identifierRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -138,9 +140,13 @@ export function LoginForm() {
       // Success - show toast and redirect
       success(tErrors("loginSuccess"));
 
-      // Check onboarding status and redirect accordingly
       const onboardingStatus = data?.data?.onboarding_status;
-      if (onboardingStatus === "completed") {
+      const from = searchParams.get("from");
+
+      // Redirect to original page if safe (prevent open redirect via protocol-relative URLs)
+      if (onboardingStatus === "completed" && from && from.startsWith("/") && !from.startsWith("//")) {
+        router.push(from);
+      } else if (onboardingStatus === "completed") {
         router.push("/dashboard");
       } else {
         router.push("/onboarding");

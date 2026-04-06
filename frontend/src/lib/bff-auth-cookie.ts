@@ -18,6 +18,21 @@ export const SESSION_COOKIE_MAX_AGE =
 
 /**
  * Whether to set the `secure` flag on the session cookie.
- * Default: true in production, false in dev (set COOKIE_SECURE=false in .env.local).
+ * When unset, defaults to true (secure) for production-safe behavior.
+ * To disable for local HTTP, use any common “off” value: false, 0, off, no (case-insensitive).
  */
-export const SESSION_COOKIE_SECURE = process.env.COOKIE_SECURE !== "false";
+function disablesSecureCookieFlag(raw: string | undefined): boolean {
+  if (raw === undefined) return false;
+  const v = raw.trim().toLowerCase();
+  return (
+    v === "false" ||
+    v === "0" ||
+    v === "off" ||
+    v === "no" ||
+    v === ""
+  );
+}
+
+export const SESSION_COOKIE_SECURE = !disablesSecureCookieFlag(
+  process.env.COOKIE_SECURE,
+);
