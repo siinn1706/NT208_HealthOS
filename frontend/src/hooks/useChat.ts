@@ -171,7 +171,11 @@ export function useConversations() {
         }
       })
       .catch(() => {
-        if (!cancelled) setConversations([FALLBACK_AI_CONVERSATION]);
+        if (!cancelled) {
+          // On error, keep just the AI placeholder so the chat screen isn't blank;
+          // a real error toast should be shown by the caller if needed.
+          setConversations([FALLBACK_AI_CONVERSATION]);
+        }
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
@@ -464,10 +468,12 @@ export function useMessages(conversationId: string | null, currentUserId: string
     ): Promise<Message> => {
       // Optimistic message (shows immediately while request is in-flight)
       const optimisticId = `optimistic-${Date.now()}`;
+      // sender_id must be a non-empty string — if session hasn't loaded yet,
+      // use a local sentinel that won't match any real user_id
       const optimistic: Message = {
         id: optimisticId,
         conversation_id: convId,
-        sender_id: currentUserId ?? "",
+        sender_id: currentUserId ?? "__self__",
         sender_display_name: undefined,
         content,
         type: "text",
@@ -576,55 +582,56 @@ export function useMessages(conversationId: string | null, currentUserId: string
 
   const reactToMessage = useCallback(
     async (convId: string, messageId: string, emoji: string) => {
-      const selfUserId = currentUserId ?? "";
       const selfDisplayName = "Bạn";
-      // Optimistic toggle
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id !== messageId) return m;
-          if (!selfUserId) return m;
-          const existing = m.reactions.find((r) => r.emoji === emoji);
-          let newReactions: MessageReaction[];
-          if (existing) {
-            const hasReacted = existing.user_ids.includes(selfUserId);
-            if (hasReacted) {
-              const filtered = existing.user_ids.filter((id) => id !== selfUserId);
-              const userNames = { ...(existing.user_names ?? {}) };
-              delete userNames[selfUserId];
-              newReactions = filtered.length === 0
-                ? m.reactions.filter((r) => r.emoji !== emoji)
-                : m.reactions.map((r) =>
-                    r.emoji === emoji
-                      ? {
-                          ...r,
-                          user_ids: filtered,
-                          user_names: Object.keys(userNames).length > 0 ? userNames : undefined,
-                        }
-                      : r
-                  );
+      // Optimistic toggle — only update local state when userId is known
+      if (currentUserId) {
+        const selfUserId = currentUserId;
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== messageId) return m;
+            const existing = m.reactions.find((r) => r.emoji === emoji);
+            let newReactions: MessageReaction[];
+            if (existing) {
+              const hasReacted = existing.user_ids.includes(selfUserId);
+              if (hasReacted) {
+                const filtered = existing.user_ids.filter((id) => id !== selfUserId);
+                const userNames = { ...(existing.user_names ?? {}) };
+                delete userNames[selfUserId];
+                newReactions = filtered.length === 0
+                  ? m.reactions.filter((r) => r.emoji !== emoji)
+                  : m.reactions.map((r) =>
+                      r.emoji === emoji
+                        ? {
+                            ...r,
+                            user_ids: filtered,
+                            user_names: Object.keys(userNames).length > 0 ? userNames : undefined,
+                          }
+                        : r
+                    );
+              } else {
+                newReactions = m.reactions.map((r) =>
+                  r.emoji === emoji
+                    ? {
+                        ...r,
+                        user_ids: [...r.user_ids, selfUserId],
+                        user_names: {
+                          ...(r.user_names ?? {}),
+                          [selfUserId]: selfDisplayName,
+                        },
+                      }
+                    : r
+                );
+              }
             } else {
-              newReactions = m.reactions.map((r) =>
-                r.emoji === emoji
-                  ? {
-                      ...r,
-                      user_ids: [...r.user_ids, selfUserId],
-                      user_names: {
-                        ...(r.user_names ?? {}),
-                        [selfUserId]: selfDisplayName,
-                      },
-                    }
-                  : r
-              );
+              newReactions = [
+                ...m.reactions,
+                { emoji, user_ids: [selfUserId], user_names: { [selfUserId]: selfDisplayName } },
+              ];
             }
-          } else {
-            newReactions = [
-              ...m.reactions,
-              { emoji, user_ids: [selfUserId], user_names: { [selfUserId]: selfDisplayName } },
-            ];
-          }
-          return { ...m, reactions: newReactions };
-        })
-      );
+            return { ...m, reactions: newReactions };
+          })
+        );
+      }
       try {
         await bffFetch(`/api/v1/conversations/${convId}/messages/${messageId}/reactions`, {
           method: "POST",

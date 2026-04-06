@@ -91,7 +91,7 @@ export interface GamificationSummary {
   currentUser: {
     displayName: string;
     totalScore: number;
-    globalRank: number;
+    globalRank: number | null;
     currentStreak: number;
     longestStreak: number;
     unlockedAchievements: number;

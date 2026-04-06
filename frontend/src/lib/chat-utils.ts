@@ -119,23 +119,20 @@ export interface MessagePreviewLabels {
 
 export function getMessagePreview(
   conversation: Conversation,
-  currentUserId: string,
+  currentUserId: string | null,
   labels?: MessagePreviewLabels
 ): string {
   const l = labels ?? {};
   const msg = conversation.last_message;
   if (!msg) return "";
   if (msg.is_recalled) return l.recalled ?? "";
+  const isSelf = !!currentUserId && msg.sender_id === currentUserId;
   if (msg.type === "image") {
-    return msg.sender_id === currentUserId
-      ? (l.imageSelf ?? "You sent an image")
-      : (l.imageOther ?? "Sent an image");
+    return isSelf ? (l.imageSelf ?? "You sent an image") : (l.imageOther ?? "Sent an image");
   }
   if (msg.type === "file") {
-    return msg.sender_id === currentUserId
-      ? (l.fileSelf ?? "You sent a file")
-      : (l.fileOther ?? "Sent a file");
+    return isSelf ? (l.fileSelf ?? "You sent a file") : (l.fileOther ?? "Sent a file");
   }
-  const prefix = msg.sender_id === currentUserId ? (l.you ?? "You: ") : "";
+  const prefix = isSelf ? (l.you ?? "You: ") : "";
   return prefix + msg.content;
 }

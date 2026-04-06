@@ -56,7 +56,12 @@ export function getProfileSchema(t: TranslateFn) {
         z.object({
           name: z.string().min(1, { message: t("validation.ecNameRequired") }),
           relationship: z.string().min(1, { message: t("validation.ecRelationshipRequired") }),
-          phone: nullablePhone,
+          phone: z
+            .string()
+            .min(1, { message: t("validation.ecPhoneRequired") })
+            .refine((v) => /^[0-9+\-\s()]{7,20}$/.test(v), {
+              message: t("validation.phoneInvalid"),
+            }),
         })
       )
       .default([]),

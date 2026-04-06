@@ -34,7 +34,7 @@ def _safe_display_name(user: User) -> str:
         return user.profile.full_name
     if user.display_name:
         return user.display_name
-    return "Chưa có thông tin"
+    return user.email
 
 
 def _latest_metric_value(
