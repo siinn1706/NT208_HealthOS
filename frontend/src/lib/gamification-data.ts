@@ -97,14 +97,22 @@ export async function getActiveGoals(): Promise<UserGoal[]> {
 
 export async function getAllMilestones(): Promise<ActivityMilestone[]> {
   // TODO: connect to Core endpoint once /api/v1/analytics/milestones is implemented
-  return MOCK_ALL_MILESTONES;
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[gamification] getAllMilestones: returning mock data (no API yet)");
+    return MOCK_ALL_MILESTONES;
+  }
+  return [];
 }
 
 export async function getMilestonesByActivity(
   type: ActivityType
 ): Promise<ActivityMilestone[]> {
   // TODO: connect to Core endpoint once /api/v1/analytics/milestones is implemented
-  return MOCK_ALL_MILESTONES.filter((m) => m.activityType === type);
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[gamification] getMilestonesByActivity: returning mock data (no API yet)");
+    return MOCK_ALL_MILESTONES.filter((m) => m.activityType === type);
+  }
+  return [];
 }
 
 export async function getUserStreakHistory(): Promise<UserStreakEntry[]> {
@@ -194,7 +202,11 @@ interface HealthGoalBEData {
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   // TODO: Create GET /api/v1/leaderboard BFF route and connect to Core endpoint
-  return MOCK_LEADERBOARD;
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[gamification] getLeaderboard: returning mock data (no API yet)");
+    return MOCK_LEADERBOARD;
+  }
+  return [];
 }
 
 /** Full summary for the Goals hub page. */

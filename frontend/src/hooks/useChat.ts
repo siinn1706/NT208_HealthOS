@@ -40,8 +40,9 @@ const FALLBACK_AI_CONVERSATION: Conversation = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptParticipant(p: any): ChatParticipant {
+  const rawId = p.id ?? p.user_id;
   return {
-    user_id: String(p.id ?? p.user_id ?? ""),
+    user_id: rawId != null ? String(rawId) : "",
     display_name: p.display_name ?? "",
     avatar_url: p.avatar_url ?? null,
     email: p.email ?? "",
@@ -146,7 +147,7 @@ function adaptConversation(c: any): Conversation {
 // useConversations
 // ──────────────────────────────────────────────────────────────────────────────
 export function useConversations() {
-  const [conversations, setConversations] = useState<Conversation[]>([FALLBACK_AI_CONVERSATION]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Initial load
@@ -164,17 +165,22 @@ export function useConversations() {
           const nonAiConversations = apiConversations.filter(
             (conversation) => conversation.type !== "ai"
           );
+          const aiConv = apiAiConversation
+            ?? (process.env.NODE_ENV === "development" ? FALLBACK_AI_CONVERSATION : undefined);
           setConversations([
-            apiAiConversation ?? FALLBACK_AI_CONVERSATION,
+            ...(aiConv ? [aiConv] : []),
             ...nonAiConversations,
           ]);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          // On error, keep just the AI placeholder so the chat screen isn't blank;
-          // a real error toast should be shown by the caller if needed.
-          setConversations([FALLBACK_AI_CONVERSATION]);
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[useChat] Failed to fetch conversations — using AI fallback for dev");
+            setConversations([FALLBACK_AI_CONVERSATION]);
+          } else {
+            setConversations([]);
+          }
         }
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
@@ -466,14 +472,17 @@ export function useMessages(conversationId: string | null, currentUserId: string
       replyToId?: string,
       onMessageSent?: (msg: Message) => void
     ): Promise<Message> => {
-      // Optimistic message (shows immediately while request is in-flight)
+      // Require a valid currentUserId before sending — the session must be
+      // loaded.  Without it the optimistic message would carry a sentinel ID
+      // that breaks sender comparison and may cause duplicate rendering.
+      if (!currentUserId) {
+        throw new Error("Cannot send message: user session not loaded");
+      }
       const optimisticId = `optimistic-${Date.now()}`;
-      // sender_id must be a non-empty string — if session hasn't loaded yet,
-      // use a local sentinel that won't match any real user_id
       const optimistic: Message = {
         id: optimisticId,
         conversation_id: convId,
-        sender_id: currentUserId ?? "__self__",
+        sender_id: currentUserId,
         sender_display_name: undefined,
         content,
         type: "text",
