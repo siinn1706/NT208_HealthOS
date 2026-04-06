@@ -1,12 +1,23 @@
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { META_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 const intlMiddleware = createMiddleware(routing);
 
 /** Routes that require an active session cookie. */
 const PROTECTED_PREFIXES = ["/dashboard"];
+
+// Build locale-strip regex from next-intl config (single source of truth)
+const LOCALE_PREFIX_RE = new RegExp(`^/(${routing.locales.join("|")})`);
+
+function stripLocale(pathname: string): string {
+  return pathname.replace(LOCALE_PREFIX_RE, "") || "/";
+}
+
+function getLocale(pathname: string): string {
+  return LOCALE_PREFIX_RE.exec(pathname)?.[1] ?? routing.defaultLocale;
+}
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -14,90 +25,56 @@ function isProtected(pathname: string): boolean {
   );
 }
 
-async function checkOnboardingStatus(req: NextRequest): Promise<boolean> {
-  const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!token) return false;
-
+/**
+ * Read onboarding status from the non-httpOnly meta cookie set by BFF on login.
+ * Avoids a round-trip fetch to /api/v1/auth/session on every middleware invocation.
+ */
+function getOnboardingStatus(req: NextRequest): string {
+  const raw = req.cookies.get(META_COOKIE_NAME)?.value;
+  if (!raw) return "pending";
   try {
-    // Call the session endpoint to get onboarding status
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const sessionRes = await fetch(`${baseUrl}/api/v1/auth/session`, {
-      headers: {
-        Cookie: `${SESSION_COOKIE_NAME}=${token}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!sessionRes.ok) return false;
-
-    const sessionData = await sessionRes.json();
-    const status = sessionData?.data?.onboarding_status;
-    return status === "completed";
+    const meta = JSON.parse(raw) as Record<string, unknown>;
+    return typeof meta.onboarding_status === "string"
+      ? meta.onboarding_status
+      : "pending";
   } catch {
-    return false;
+    return "pending";
   }
 }
 
-async function isAuthenticated(req: NextRequest): Promise<boolean> {
-  const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!token) return false;
-
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const sessionRes = await fetch(`${baseUrl}/api/v1/auth/session`, {
-      headers: {
-        Cookie: `${SESSION_COOKIE_NAME}=${token}`,
-      },
-      cache: "no-store",
-    });
-    return sessionRes.ok;
-  } catch {
-    return false;
-  }
-}
-
-export default async function middleware(req: NextRequest): Promise<NextResponse> {
+export default function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
+  const pathnameWithoutLocale = stripLocale(pathname);
+  const locale = getLocale(pathname);
 
-  // Strip locale prefix for protection check (e.g. /vi/dashboard → /dashboard)
-  const pathnameWithoutLocale = pathname.replace(/^\/(vi|en)/, "") || "/";
+  const hasSession = Boolean(req.cookies.get(SESSION_COOKIE_NAME)?.value);
 
-  // Onboarding protection: only accessible to authenticated users with incomplete onboarding
-  if (pathnameWithoutLocale === "/onboarding" || pathnameWithoutLocale.startsWith("/onboarding/")) {
-    const authenticated = await isAuthenticated(req);
-    if (!authenticated) {
-      // Not logged in → redirect to login
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
+  // ── Onboarding route protection ───────────────────────────────────────────
+  if (
+    pathnameWithoutLocale === "/onboarding" ||
+    pathnameWithoutLocale.startsWith("/onboarding/")
+  ) {
+    if (!hasSession) {
       const loginUrl = new URL(`/${locale}/login`, req.url);
       loginUrl.searchParams.set("from", req.nextUrl.pathname);
       return NextResponse.redirect(loginUrl);
     }
-
-    // Logged in but onboarding already completed → redirect to dashboard
-    const onboardingComplete = await checkOnboardingStatus(req);
-    if (onboardingComplete) {
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
-      const dashboardUrl = new URL(`/${locale}/dashboard`, req.url);
-      return NextResponse.redirect(dashboardUrl);
+    // Already completed → skip onboarding
+    if (getOnboardingStatus(req) === "completed") {
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, req.url));
     }
   }
 
+  // ── Dashboard (and other protected) route protection ─────────────────────
   if (isProtected(pathnameWithoutLocale)) {
-    const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (!token) {
-      // Redirect to the locale-prefixed login page
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
+    if (!hasSession) {
       const loginUrl = new URL(`/${locale}/login`, req.url);
       loginUrl.searchParams.set("from", req.nextUrl.pathname);
       return NextResponse.redirect(loginUrl);
     }
-
-    // Check onboarding status
-    const onboardingComplete = await checkOnboardingStatus(req);
-    if (!onboardingComplete) {
-      const locale = pathname.match(/^\/(vi|en)/)?.[1] ?? routing.defaultLocale;
-      const onboardingUrl = new URL(`/${locale}/onboarding`, req.url);
-      return NextResponse.redirect(onboardingUrl);
+    // Onboarding incomplete → gate before dashboard
+    if (getOnboardingStatus(req) !== "completed") {
+      return NextResponse.redirect(new URL(`/${locale}/onboarding`, req.url));
     }
   }
 
@@ -106,10 +83,10 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
 
 export const config = {
   matcher: [
-    // Match root and locale-prefixed routes
     "/",
+    // IMPORTANT: keep in sync with routing.locales in src/i18n/routing.ts
+    // The matcher cannot use runtime values, so it must be updated manually when locales change.
     "/(vi|en)/:path*",
-    // Skip Next.js internals, static files, and API routes
     "/((?!_next|_vercel|api|.*\\..*).*)",
   ],
 };

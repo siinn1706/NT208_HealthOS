@@ -15,7 +15,8 @@ from redis.asyncio import Redis
 from app.adapters.database import get_db
 from app.adapters.email_client import send_otp_email
 from app.adapters.redis_client import get_redis
-from app.core.security import create_ws_ticket, get_current_user
+from app.core.security import create_ws_ticket, get_current_user, http_bearer, revoke_token
+from app.core.rate_limit import rate_limit_login, rate_limit_otp_request, rate_limit_availability
 from app.core.config import settings
 from app.exceptions import (
     ApiException,
@@ -93,23 +94,22 @@ async def issue_ws_ticket(
     "/login",
     response_model=AuthTokenResponse,
     responses={
-        400: {"model": ErrorResponse},
         401: {"model": ErrorResponse},
-        404: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
     },
 )
 async def login_with_password(
     body: LoginBody,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(rate_limit_login),
 ) -> AuthTokenResponse:
     """
     Authenticate with email or username + password and return a JWT access token.
 
     The identifier can be an email address or username.
-    The password must have been set via the reset-password flow.
-    Returns 401 if the password is wrong, 404 if the account doesn't exist.
-    Implements account lockout after 5 failed attempts.
+    Returns 401 INVALID_CREDENTIALS for both wrong password and unknown identifier
+    to prevent user enumeration. Implements account lockout after 5 failed attempts.
     """
     from app.core.security import verify_password
     from app.services.auth import (
@@ -120,19 +120,11 @@ async def login_with_password(
 
     user = await get_user_by_identifier(db, body.identifier)
     if user is None:
-        # Determine error message based on identifier type
-        if "@" in body.identifier:
-            raise NotFoundException(
-                resource="Email",
-                message="Không tìm thấy tài khoản với email này",
-                code="ACCOUNT_NOT_FOUND_EMAIL",
-            )
-        else:
-            raise NotFoundException(
-                resource="Username",
-                message="Không tìm thấy tài khoản với username này",
-                code="ACCOUNT_NOT_FOUND_USERNAME",
-            )
+        # Use generic error to prevent user enumeration via different error codes
+        raise UnauthorizedException(
+            message="Tên đăng nhập hoặc mật khẩu không đúng",
+            code="INVALID_CREDENTIALS",
+        )
 
     # Check lockout BEFORE verifying password (prevents timing attacks)
     if await check_account_lockout(user):
@@ -188,11 +180,12 @@ async def login_with_password(
 @router.get(
     "/check-username",
     response_model=CheckUsernameResponse,
-    responses={400: {"model": ErrorResponse}},
+    responses={400: {"model": ErrorResponse}, 429: {"model": ErrorResponse}},
 )
 async def check_username(
     username: str,
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(rate_limit_availability),
 ) -> CheckUsernameResponse:
     """
     Check if a username is available.
@@ -213,11 +206,12 @@ async def check_username(
 @router.get(
     "/check-email",
     response_model=CheckEmailResponse,
-    responses={400: {"model": ErrorResponse}},
+    responses={400: {"model": ErrorResponse}, 429: {"model": ErrorResponse}},
 )
 async def check_email(
     email: str,
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(rate_limit_availability),
 ) -> CheckEmailResponse:
     """
     Check if an email is available.
@@ -259,6 +253,7 @@ async def exchange_oauth_profile_for_token(
         email=user.email,
         display_name=user.display_name,
         avatar_url=user.profile.avatar_url if user.profile is not None else None,
+        onboarding_status=user.onboarding_status,
     )
     return AuthTokenResponse(data=token)
 
@@ -276,22 +271,20 @@ async def exchange_oauth_profile_for_token(
 async def request_email_otp(
     body: RequestOtpBody,
     redis: Redis = Depends(get_redis),
+    _rate: None = Depends(rate_limit_otp_request),
 ) -> OtpRequestedResponse:
     """
     Request a one-time password (OTP) to be sent via email.
 
-    - For **reset_password** purpose: the email must belong to an existing account;
-      returns 404 EMAIL_NOT_FOUND otherwise so the caller can redirect to signup.
-      DB is opened lazily so signup requests never need a DB connection.
+    - For **reset_password**: email must belong to an existing account.
+    - For **login**: checks user existence; returns generic success if not found (prevents enumeration).
+    - For **signup**: email must not already be registered; password is HIBP-checked and hashed before Redis storage.
     - Stores OTP in Redis with a 5-minute TTL.
     - Sends OTP to the given email address via SMTP.
     """
-    # For password-reset, the account must already exist.
-    # For signup, the email must NOT exist.
-    # Open DB only for these branches.
-    if body.purpose in {"reset_password", "signup"}:
-        from app.adapters.database import AsyncSessionLocal
+    from app.adapters.database import AsyncSessionLocal
 
+    if body.purpose in {"reset_password", "signup", "login"}:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(User).where(func.lower(User.email) == body.email.lower())
@@ -312,19 +305,45 @@ async def request_email_otp(
                     field_errors={"email": "Email đã được sử dụng"},
                 )
 
+            if body.purpose == "login" and existing_user is None:
+                # Return generic success without sending email — prevents enumeration
+                return OtpRequestedResponse(
+                    data=OtpRequested(
+                        delivery="email",
+                        expires_in_seconds=OTP_TTL_SECONDS,
+                        otp=None,
+                    )
+                )
+
     code = f"{random.randint(0, 999999):06d}"
     otp_key = f"auth:otp:{body.purpose}:{body.email}"
     cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
 
-    # Store signup data in Redis (username, password, name) for signup purpose
+    # For signup: HIBP-check and hash the password before storing in Redis
     if body.purpose == "signup" and body.username:
         import json
+
+        plaintext_password = body.password or ""
+        if plaintext_password:
+            is_breached, breach_count = await check_password_breach(plaintext_password)
+            if is_breached:
+                raise ApiException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    code="PASSWORD_BREACHED",
+                    message="Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu. Vui lòng chọn mật khẩu khác.",
+                )
+            from app.core.security import hash_password
+            hashed_pw = hash_password(plaintext_password)
+        else:
+            hashed_pw = ""
+
         signup_data = {
             "username": body.username,
-            "password": body.password,
+            "password": hashed_pw,
+            "password_hashed": True,
             "name": body.name or body.email,
         }
-        # Signup session lasts 10 minutes (longer than OTP)
+        # Signup session lasts 10 minutes (longer than OTP TTL)
         await redis.setex(f"signup:pending:{body.email}", 600, json.dumps(signup_data))
 
     # Basic rate limit: 1 OTP per 60 seconds per email+purpose.
@@ -461,17 +480,20 @@ async def verify_email_otp(
     # ── login: verify OTP for existing user, return JWT ─────────────────────
     if body.purpose == "login":
         result = await db.execute(
-    select(User)
-    .options(selectinload(User.profile)) 
-    .where(User.email == body.email)
-)
+            select(User)
+            .options(selectinload(User.profile))
+            .where(User.email == body.email)
+        )
         user = result.scalar_one_or_none()
         if user is None:
-            raise NotFoundException(
-                resource="Email",
+            raise UnauthorizedException(
                 message="Không tìm thấy tài khoản với email này",
-                code="ACCOUNT_NOT_FOUND_EMAIL",
+                code="INVALID_CREDENTIALS",
             )
+        # Mark email as verified (OTP proves email ownership)
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now(timezone.utc)
+            await db.commit()
         access_token = create_user_access_token(user)
         token = AuthToken(
             access_token=access_token,
@@ -479,6 +501,7 @@ async def verify_email_otp(
             email=user.email,
             display_name=user.display_name,
             avatar_url=user.profile.avatar_url if user.profile is not None else None,
+            onboarding_status=user.onboarding_status,
         )
         return AuthTokenResponse(data=token)
 
@@ -507,25 +530,8 @@ async def verify_email_otp(
     # Get username and password from Redis (not request body)
     username = signup_data.get("username")
     password = signup_data.get("password")
+    password_hashed = signup_data.get("password_hashed", False)
     name = signup_data.get("name", body.email)
-
-    # HIBP breach check before creating user
-    if password:
-        from app.services.hibp import check_password_breach
-
-        is_breached, breach_count = await check_password_breach(password)
-        if is_breached:
-            await log_security_event(
-                db,
-                AuditEventTypeEnum.PASSWORD_BREACHED,
-                ip_address=None,
-                details={"breach_count": breach_count},
-            )
-            raise ApiException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                code="PASSWORD_BREACHED",
-                message="Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu trước đó. Vui lòng chọn mật khẩu khác.",
-            )
 
     synthetic_profile = OAuthProfile(
         provider="otp",
@@ -554,10 +560,17 @@ async def verify_email_otp(
             message="Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.",
         ) from exc
 
-    # Set password and username from Redis data
+    # Set password (already bcrypt-hashed from request-otp step) and username
     if password:
-        from app.core.security import hash_password
-        user.hashed_password = hash_password(password)
+        if password_hashed:
+            user.hashed_password = password
+        else:
+            from app.core.security import hash_password
+            user.hashed_password = hash_password(password)
+
+    # Mark email as verified since OTP confirms ownership
+    if user.email_verified_at is None:
+        user.email_verified_at = datetime.now(timezone.utc)
 
     if username:
         user.username = username.lower().strip()
@@ -616,9 +629,18 @@ async def reset_password(
 
     from app.core.security import hash_password
 
+    # HIBP check before allowing a potentially breached password to be set
+    is_breached, _ = await check_password_breach(body.new_password)
+    if is_breached:
+        raise ApiException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="PASSWORD_BREACHED",
+            message="Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu. Vui lòng chọn mật khẩu khác.",
+        )
+
     result = await db.execute(
         select(User)
-        .options(selectinload(User.profile)) 
+        .options(selectinload(User.profile))
         .where(User.email == body.email)
     )
     user = result.scalar_one_or_none()
@@ -686,4 +708,26 @@ async def get_me(current_user: User = Depends(get_current_user)) -> CurrentUserR
             else None,
         )
     )
+
+
+from fastapi.security import HTTPAuthorizationCredentials
+
+
+@router.post(
+    "/logout",
+    responses={200: {"model": dict}},
+)
+async def logout(
+    credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    redis: Redis = Depends(get_redis),
+) -> dict:
+    """Revoke the current JWT by adding its jti to the Redis blacklist.
+
+    Idempotent — returns 200 even if the token is already revoked or expired.
+    Does not require a valid session (no get_current_user dependency) so retry
+    after network failure still succeeds.
+    """
+    if credentials and credentials.credentials:
+        await revoke_token(credentials.credentials, redis)
+    return {"data": {"success": True}}
 

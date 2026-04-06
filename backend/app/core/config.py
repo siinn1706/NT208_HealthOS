@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     auth_issuer: str = "healthos-core"
     auth_audience: str = "healthos-clients"
 
+    # Fernet key for symmetric encryption of TOTP secrets at rest.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    fernet_key: str = ""
+
     # CORS
     allowed_origins: list[str] = ["http://localhost:3000"]
 
@@ -88,6 +92,11 @@ class Settings(BaseSettings):
                 raise ValueError("STORAGE_ACCESS_KEY must be set in production")
             if not self.storage_secret_key:
                 raise ValueError("STORAGE_SECRET_KEY must be set in production")
+            if not self.fernet_key:
+                raise ValueError(
+                    "FERNET_KEY must be set in production to encrypt TOTP secrets at rest. "
+                    "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                )
         return self
 
 

@@ -11,7 +11,7 @@ export interface ApiFieldError {
 export interface ApiError {
   code: string;
   message: string;
-  details?: string;
+  details?: string | Record<string, unknown>;
   field_errors?: Record<string, string>;
 }
 
@@ -93,8 +93,17 @@ export function parseApiError(response: unknown): ApiError {
     };
   }
 
-  // Fallback for other error formats
+  // Fallback: FastAPI { "detail": { code, message } } or { "detail": "string" }
   if (data.detail) {
+    if (typeof data.detail === "object") {
+      const det = data.detail as Record<string, unknown>;
+      return {
+        code: (det.code as string) || ErrorCodes.UNKNOWN_ERROR,
+        message: (det.message as string) || "Đã xảy ra lỗi",
+        details: det.details as string | undefined,
+        field_errors: det.field_errors as Record<string, string> | undefined,
+      };
+    }
     return {
       code: ErrorCodes.UNKNOWN_ERROR,
       message: String(data.detail),

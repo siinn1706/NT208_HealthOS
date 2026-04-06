@@ -4,8 +4,27 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeGoogleCodeForToken, getGoogleUserInfo } from "@/lib/oauth/google";
-
+import {
+  META_COOKIE_NAME,
+  SESSION_COOKIE_MAX_AGE,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_SECURE,
+} from "@/lib/bff-auth-cookie";
+import { routing } from "@/i18n/routing";
 import { CORE_API_URL } from "@/lib/env";
+
+const LOCALE_PREFIX_RE = new RegExp(`^/(${routing.locales.join("|")})`);
+
+function getLocaleFromReferer(request: NextRequest): string {
+  const referer = request.headers.get("referer") ?? "";
+  try {
+    const url = new URL(referer);
+    const match = LOCALE_PREFIX_RE.exec(url.pathname);
+    return match?.[1] ?? routing.defaultLocale;
+  } catch {
+    return routing.defaultLocale;
+  }
+}
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -14,18 +33,20 @@ export async function GET(request: NextRequest) {
   const error = url.searchParams.get("error");
   const errorDescription = url.searchParams.get("error_description");
 
+  const locale = getLocaleFromReferer(request);
+
   // ─── Handle OAuth Errors ────────────────────────────────────────────────────
   if (error) {
     console.error("Google OAuth error:", error, errorDescription);
     return NextResponse.redirect(
-      new URL(`/login?oauth_error=${encodeURIComponent(errorDescription || error)}`, request.url).toString()
+      new URL(`/${locale}/login?oauth_error=${encodeURIComponent(errorDescription || error)}`, request.url).toString()
     );
   }
 
   // ─── Validate Required Parameters ───────────────────────────────────────────
   if (!code) {
     return NextResponse.redirect(
-      new URL("/login?oauth_error=missing_code", request.url).toString()
+      new URL(`/${locale}/login?oauth_error=missing_code`, request.url).toString()
     );
   }
 
@@ -34,7 +55,7 @@ export async function GET(request: NextRequest) {
   if (!storedState || state !== storedState) {
     console.error("Invalid OAuth state");
     return NextResponse.redirect(
-      new URL("/login?oauth_error=invalid_state", request.url).toString()
+      new URL(`/${locale}/login?oauth_error=invalid_state`, request.url).toString()
     );
   }
 
@@ -42,7 +63,7 @@ export async function GET(request: NextRequest) {
   const codeVerifier = request.cookies.get("oauth_verifier_google")?.value;
   if (!codeVerifier) {
     return NextResponse.redirect(
-      new URL("/login?oauth_error=missing_verifier", request.url).toString()
+      new URL(`/${locale}/login?oauth_error=missing_verifier`, request.url).toString()
     );
   }
 
@@ -80,18 +101,29 @@ export async function GET(request: NextRequest) {
     const coreData = await coreRes.json();
     const accessToken = coreData.data.access_token;
 
+    const onboardingStatus: string = coreData.data?.onboarding_status ?? "pending";
+
     // ─── Create Session and Redirect ─────────────────────────────────────────
-    const redirectTo = new URL("/dashboard", request.url);
+    const redirectTo = onboardingStatus === "completed"
+      ? new URL(`/${locale}/dashboard`, request.url)
+      : new URL(`/${locale}/onboarding`, request.url);
     const response = NextResponse.redirect(redirectTo.toString());
 
-    // Set session cookie
-    response.cookies.set("healthos.session", accessToken, {
+    // Session cookie (httpOnly — carries JWT)
+    response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: SESSION_COOKIE_SECURE,
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     });
+
+    // Meta cookie (non-httpOnly — carries onboarding_status for middleware)
+    response.cookies.set(
+      META_COOKIE_NAME,
+      JSON.stringify({ onboarding_status: onboardingStatus }),
+      { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+    );
 
     // Clear temporary OAuth cookies
     response.cookies.delete("oauth_state_google");
@@ -102,7 +134,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error("Google OAuth callback error:", err);
     return NextResponse.redirect(
-      new URL("/login?oauth_error=server_error", request.url).toString()
+      new URL(`/${locale}/login?oauth_error=server_error`, request.url).toString()
     );
   }
 }

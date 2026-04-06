@@ -13,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import rate_limit_otp_request
 from app.exceptions import ApiException, UnauthorizedException
 from app.models.core import User
 from app.schemas.common import DataResponse
-from app.services.mfa import totp_service
+from app.services.mfa import encrypt_totp_secret, totp_service
 from app.services.security_logging import log_security_event
 from app.models.audit import AuditEventTypeEnum
 
@@ -81,12 +82,12 @@ async def setup_mfa(
             message="MFA is already enabled for this account",
         )
 
-    # Generate secret and recovery codes
-    secret = totp_service.generate_secret()
-    recovery_codes = totp_service.generate_recovery_codes(8)
+    # Generate plaintext secret and recovery codes
+    plaintext_secret = totp_service.generate_secret()
+    plaintext_recovery_codes = totp_service.generate_recovery_codes(8)
 
-    # Generate QR code
-    uri = totp_service.get_provisioning_uri(secret, current_user.email)
+    # Generate QR code using plaintext secret (user will scan this)
+    uri = totp_service.get_provisioning_uri(plaintext_secret, current_user.email)
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(uri)
     qr.make(fit=True)
@@ -99,16 +100,17 @@ async def setup_mfa(
     import base64
     qr_code_b64 = base64.b64encode(qr_code).decode()
 
-    # Store secret temporarily (not enabled yet)
-    current_user.mfa_secret = secret
-    current_user.mfa_recovery_codes = recovery_codes
+    # Store Fernet-encrypted secret and bcrypt-hashed recovery codes
+    current_user.mfa_secret = encrypt_totp_secret(plaintext_secret)
+    current_user.mfa_recovery_codes = totp_service.hash_recovery_codes(plaintext_recovery_codes)
     await db.commit()
 
+    # Return plaintext codes to user — this is the ONLY time they are shown
     return DataResponse(
         data=MFASetupResponse(
-            secret=secret,
+            secret=plaintext_secret,
             qr_code=qr_code_b64,
-            recovery_codes=recovery_codes,
+            recovery_codes=plaintext_recovery_codes,
         )
     )
 
@@ -163,6 +165,7 @@ async def verify_mfa(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(rate_limit_otp_request),
 ) -> DataResponse[dict]:
     """Verify TOTP code or recovery code for MFA."""
     if not current_user.mfa_enabled or not current_user.mfa_secret:
@@ -171,13 +174,16 @@ async def verify_mfa(
             message="MFA is not enabled for this account",
         )
 
-    # Check recovery codes first
+    # Check recovery codes first (handles both hashed and legacy plaintext codes)
     if current_user.mfa_recovery_codes:
         is_valid, remaining = totp_service.verify_recovery_code(
             body.code,
             current_user.mfa_recovery_codes,
         )
         if is_valid:
+            # Persist the updated list with the used code removed
+            current_user.mfa_recovery_codes = remaining
+            await db.commit()
             await log_security_event(
                 db,
                 AuditEventTypeEnum.MFA_VERIFIED,
@@ -221,6 +227,7 @@ async def disable_mfa(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(rate_limit_otp_request),
 ) -> DataResponse[MFASetupResponseData]:
     """Disable MFA. Requires TOTP code verification."""
     if not current_user.mfa_enabled:

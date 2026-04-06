@@ -7,7 +7,12 @@
  * For reset_password purpose: just proxies the response (no cookie).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_MAX_AGE, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import {
+  META_COOKIE_NAME,
+  SESSION_COOKIE_MAX_AGE,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_SECURE,
+} from "@/lib/bff-auth-cookie";
 
 import { CORE_API_URL } from "@/lib/env";
 
@@ -64,11 +69,18 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: SESSION_COOKIE_SECURE,
       sameSite: "lax",
       maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     });
+
+    // Non-httpOnly meta cookie for middleware onboarding gate
+    response.cookies.set(
+      META_COOKIE_NAME,
+      JSON.stringify({ onboarding_status: data.data.onboarding_status ?? "pending" }),
+      { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+    );
 
     return response;
   }

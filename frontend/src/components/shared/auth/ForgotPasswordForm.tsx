@@ -99,7 +99,7 @@ export function ForgotPasswordForm() {
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         const errorCode = data?.error?.code;
-        if (errorCode === "EMAIL_NOT_FOUND") {
+        if (errorCode === "ACCOUNT_NOT_FOUND_EMAIL") {
           // Email not registered — redirect to signup
           router.push("/register");
           return;
