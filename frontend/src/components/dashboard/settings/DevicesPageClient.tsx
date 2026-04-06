@@ -104,29 +104,29 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
     }
   };
 
-  const connected = devices.filter((device) => device.connected);
-  const connectedProviderSet = useMemo(
-    () => new Set(connected.map((device) => device.provider)),
-    [connected]
+  const linkedProviderSet = useMemo(
+    () => new Set(devices.map((device) => device.provider)),
+    [devices]
   );
   const availableProviders = SUPPORTED_PROVIDERS.filter(
-    ({ provider }) => !connectedProviderSet.has(provider)
+    ({ provider }) => !linkedProviderSet.has(provider)
   );
 
   return (
     <div className="space-y-6">
-      {connected.length > 0 && (
+      {devices.length > 0 && (
         <section>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            {t("connectedSection", { n: connected.length })}
+            {t("yourDevicesSection", { n: devices.length })}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {connected.map((device) => (
+            {devices.map((device) => (
               <DeviceConnectionCard
                 key={device.id}
                 device={device}
                 onSync={handleSync}
                 onDisconnect={handleDisconnect}
+                onConnect={handleConnect}
               />
             ))}
           </div>

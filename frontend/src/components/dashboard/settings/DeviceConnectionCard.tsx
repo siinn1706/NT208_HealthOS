@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { formatDate } from "@/lib/format-utils";
 import {
   Wifi,
+  WifiOff,
   RefreshCw,
   CheckCircle2,
   Clock,
@@ -57,6 +58,7 @@ interface DeviceConnectionCardProps {
   device: Device;
   onSync: (id: string) => Promise<void>;
   onDisconnect: (id: string) => void;
+  onConnect?: (provider: DeviceProvider) => void | Promise<void>;
 }
 
 interface SyncLabels {
@@ -83,6 +85,7 @@ export function DeviceConnectionCard({
   device,
   onSync,
   onDisconnect,
+  onConnect,
 }: DeviceConnectionCardProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const t = useTranslations("dashboard.devices");
@@ -129,10 +132,17 @@ export function DeviceConnectionCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-foreground truncate">{meta.label}</p>
-            <span className="flex items-center gap-1 text-[11px] text-green-500">
-              <Wifi className="w-3 h-3" />
-              {t("connected")}
-            </span>
+            {device.connected ? (
+              <span className="flex items-center gap-1 text-[11px] text-green-500">
+                <Wifi className="w-3 h-3" />
+                {t("connected")}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <WifiOff className="w-3 h-3" />
+                {t("notConnected")}
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{device.model ?? "--"}</p>
         </div>
@@ -171,26 +181,43 @@ export function DeviceConnectionCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1">
-        <button
-          onClick={handleSync}
-          disabled={syncStatus === "syncing"}
-          className={cn(
-            "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer",
-            "bg-primary/10 text-primary hover:bg-primary/20",
-            syncStatus === "syncing" && "opacity-60 cursor-not-allowed"
-          )}
-          aria-label={`${t("syncNow")} ${meta.label}`}
-        >
-          <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === "syncing" && "animate-spin")} />
-          {t("syncNow")}
-        </button>
-        <button
-          onClick={() => onDisconnect(device.id)}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-          aria-label={`${t("disconnect")} ${meta.label}`}
-        >
-          {t("disconnect")}
-        </button>
+        {device.connected ? (
+          <>
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={syncStatus === "syncing"}
+              className={cn(
+                "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                "bg-primary/10 text-primary hover:bg-primary/20",
+                syncStatus === "syncing" && "opacity-60 cursor-not-allowed"
+              )}
+              aria-label={`${t("syncNow")} ${meta.label}`}
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === "syncing" && "animate-spin")} />
+              {t("syncNow")}
+            </button>
+            <button
+              type="button"
+              onClick={() => onDisconnect(device.id)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+              aria-label={`${t("disconnect")} ${meta.label}`}
+            >
+              {t("disconnect")}
+            </button>
+          </>
+        ) : (
+          onConnect && (
+            <button
+              type="button"
+              onClick={() => void onConnect(device.provider)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer bg-primary/10 text-primary hover:bg-primary/20"
+              aria-label={`${t("connect")} ${meta.label}`}
+            >
+              {t("connect")}
+            </button>
+          )
+        )}
       </div>
     </div>
   );
