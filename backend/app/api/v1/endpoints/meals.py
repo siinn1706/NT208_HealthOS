@@ -22,6 +22,9 @@ from app.tasks.meal_analysis import analyze_meal_image
 
 router = APIRouter(prefix="/meals", tags=["Meals"])
 
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
 
 class _MealCreateJsonBody(BaseModel):
     name: str = Field(min_length=1)
@@ -113,9 +116,15 @@ async def create_meal(
     # Handle image upload
     if image and image.filename:
         image_bytes = await image.read()
+        if len(image_bytes) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
+        
+        content_type = image.content_type or "image/jpeg"
+        if content_type not in _ALLOWED_IMAGE_TYPES:
+            raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
+        
         file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
         key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
-        content_type = image.content_type or "image/jpeg"
         image_url = upload_file(
             bucket=settings.storage_bucket_meals,
             key=key,
@@ -193,9 +202,15 @@ async def analyze_meal_photo(
 
     # Upload image to storage
     image_bytes = await image.read()
+    if len(image_bytes) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
+    
+    content_type = image.content_type or "image/jpeg"
+    if content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
+    
     file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
     key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
-    content_type = image.content_type or "image/jpeg"
     image_url = upload_file(
         bucket=settings.storage_bucket_meals,
         key=key,

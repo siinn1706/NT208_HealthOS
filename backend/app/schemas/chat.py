@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import datetime
+import re
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -142,6 +143,14 @@ class EditMessageBody(BaseModel):
 
 class ReactMessageBody(BaseModel):
     emoji: str = Field(..., min_length=1, max_length=64)
+    
+    @field_validator("emoji")
+    @classmethod
+    def validate_emoji_chars(cls, v: str) -> str:
+        # Allow only Unicode emoji characters (no HTML/script tags)
+        if re.search(r'[<>&"\']', v):
+            raise ValueError("emoji must not contain HTML characters")
+        return v
 
 
 class MarkReadBody(BaseModel):

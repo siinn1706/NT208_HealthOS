@@ -106,6 +106,19 @@ class Settings(BaseSettings):
                     "FERNET_KEY must be set in production to encrypt TOTP secrets at rest. "
                     "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
                 )
+            # H4: CORS production defaults validation
+            if self.allowed_origins == ["http://localhost:3000"]:
+                raise ValueError("ALLOWED_ORIGINS must be explicitly set in production (not localhost default)")
+            # M14: SMTP config validation for OTP email delivery
+            if not self.smtp_host or not self.smtp_user or not self.smtp_password:
+                raise ValueError("SMTP_HOST, SMTP_USER, SMTP_PASSWORD must be set in production for OTP email delivery")
+        # H5: Fernet key format validation (when set)
+        if self.fernet_key:
+            try:
+                from cryptography.fernet import Fernet
+                Fernet(self.fernet_key.encode())
+            except Exception as e:
+                raise ValueError(f"FERNET_KEY is not a valid Fernet key: {e}")
         return self
 
 

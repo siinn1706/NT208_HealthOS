@@ -10,7 +10,13 @@ async def get_redis() -> Redis:
     """FastAPI dependency — returns shared Redis client."""
     global _redis
     if _redis is None:
-        _redis = from_url(settings.redis_url, decode_responses=True)
+        _redis = from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_timeout=5,
+            socket_connect_timeout=5,
+            retry_on_timeout=True,
+        )
     return _redis
 
 

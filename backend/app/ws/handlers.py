@@ -64,6 +64,7 @@ class ConnectionManager:
     """
 
     HEARTBEAT_INTERVAL = 30  # seconds between server pings
+    MAX_CONNECTIONS_PER_USER = 10  # H8: per-user connection limit
 
     def __init__(self) -> None:
         self.user_connections: dict[str, set[WebSocket]] = {}
@@ -79,6 +80,17 @@ class ConnectionManager:
     # ──────────────────────────────────────────────────────────────────────────
 
     async def connect(self, ws: WebSocket, user_id: str) -> None:
+        # H8: Check per-user connection limit before accepting
+        current_count = len(self.user_connections.get(user_id, set()))
+        if current_count >= self.MAX_CONNECTIONS_PER_USER:
+            await ws.accept()
+            await ws.send_json({
+                "event": "error",
+                "payload": {"code": "TOO_MANY_CONNECTIONS", "message": f"Maximum {self.MAX_CONNECTIONS_PER_USER} connections per user exceeded."},
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            })
+            await ws.close(code=4008)
+            return
         await ws.accept()
         self.user_connections.setdefault(user_id, set()).add(ws)
         self.ws_to_user[ws] = user_id
@@ -135,7 +147,10 @@ class ConnectionManager:
         try:
             await ws.send_json(message)
         except Exception:
-            pass
+            # M11: Dead socket cleanup — remove from tracking to prevent repeated failures
+            user_id = self.ws_to_user.get(ws)
+            if user_id and ws in self.user_connections.get(user_id, set()):
+                self.user_connections[user_id].discard(ws)
 
     async def send_to_user(self, user_id: str, message: dict) -> None:
         """Deliver to ALL connected sockets of a user (multi-device)."""
@@ -177,13 +192,18 @@ class ConnectionManager:
     # ──────────────────────────────────────────────────────────────────────────
 
     async def _heartbeat_loop(self, ws: WebSocket) -> None:
+        import logging
+        log = logging.getLogger("healthos.ws")
         try:
             while True:
                 await asyncio.sleep(self.HEARTBEAT_INTERVAL)
                 ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 await self.send_to_ws(ws, {"event": "ping", "payload": {}, "timestamp": ts})
-        except (asyncio.CancelledError, Exception):
+        except asyncio.CancelledError:
             pass
+        except Exception as exc:
+            # M12: Log heartbeat exceptions instead of silently swallowing
+            log.debug("Heartbeat ended: %s", exc)
 
 
 manager = ConnectionManager()

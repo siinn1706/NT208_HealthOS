@@ -10,6 +10,16 @@ from app.models.core import Meal, MealStatusEnum
 from app.tasks import celery_app
 
 
+_NUTRITION_KEYS = {"calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "confidence"}
+
+
+def _validate_nutrition(data: dict) -> dict:
+    """Sanitize AI Worker nutrition response to expected schema."""
+    if not isinstance(data, dict):
+        return {}
+    return {k: float(v) for k, v in data.items() if k in _NUTRITION_KEYS and isinstance(v, (int, float))}
+
+
 def update_meal_status_sync(
     meal_id: uuid.UUID,
     status: MealStatusEnum,
@@ -44,7 +54,7 @@ def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
             result = response.json()
 
         # Update meal with result
-        nutrition = result.get("nutrition", {})
+        nutrition = _validate_nutrition(result.get("nutrition", {}))
         update_meal_status_sync(
             meal_uuid,
             MealStatusEnum.ANALYZED,

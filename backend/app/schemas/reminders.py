@@ -22,7 +22,7 @@ class ReminderDTO(BaseModel):
 class ReminderCreateBody(BaseModel):
     type: str = Field(pattern="^(medicine|appointment|exercise)$")
     title: str = Field(min_length=1, max_length=255)
-    time: str = Field(min_length=1, max_length=16)
+    time: str = Field(min_length=1, max_length=16, pattern=r"^\d{2}:\d{2}$")
     repeat: str = Field(default="once", pattern="^(once|daily|weekly|monthly)$")
     note: str | None = Field(default=None, max_length=2000)
 
