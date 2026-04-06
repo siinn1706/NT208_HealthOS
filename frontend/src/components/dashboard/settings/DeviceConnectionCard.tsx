@@ -5,12 +5,10 @@ import { useTranslations, useLocale } from "next-intl";
 import { formatDate } from "@/lib/format-utils";
 import {
   Wifi,
-  WifiOff,
   RefreshCw,
   CheckCircle2,
   Clock,
   AlertCircle,
-  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -111,10 +109,7 @@ export function DeviceConnectionCard({
 
   return (
     <div
-      className={cn(
-        "rounded-xl border bg-card p-4 space-y-3",
-        device.connected ? "border-border" : "border-border opacity-70"
-      )}
+      className="rounded-xl border border-border bg-card p-4 space-y-3"
     >
       {/* Top row */}
       <div className="flex items-start gap-3">
@@ -134,17 +129,10 @@ export function DeviceConnectionCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-foreground truncate">{meta.label}</p>
-            {device.connected ? (
-              <span className="flex items-center gap-1 text-[11px] text-green-500">
-                <Wifi className="w-3 h-3" />
-                Đã kết nối
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <WifiOff className="w-3 h-3" />
-                Chưa kết nối
-              </span>
-            )}
+            <span className="flex items-center gap-1 text-[11px] text-green-500">
+              <Wifi className="w-3 h-3" />
+              {t("connected")}
+            </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{device.model ?? "--"}</p>
         </div>
@@ -153,7 +141,7 @@ export function DeviceConnectionCard({
         {device.batteryPct !== null && (
           <div className="flex-shrink-0 text-right">
             <p className="text-xs font-medium text-foreground">{device.batteryPct}%</p>
-            <p className="text-[10px] text-muted-foreground">Pin</p>
+            <p className="text-[10px] text-muted-foreground">{t("battery")}</p>
           </div>
         )}
       </div>
@@ -183,39 +171,26 @@ export function DeviceConnectionCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1">
-        {device.connected ? (
-          <>
-            <button
-              onClick={handleSync}
-              disabled={syncStatus === "syncing"}
-              className={cn(
-                "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer",
-                "bg-primary/10 text-primary hover:bg-primary/20",
-                syncStatus === "syncing" && "opacity-60 cursor-not-allowed"
-              )}
-              aria-label={`Đồng bộ ${meta.label}`}
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === "syncing" && "animate-spin")} />
-              Đồng bộ ngay
-            </button>
-            <button
-              onClick={() => onDisconnect(device.id)}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-              aria-label={`Ngắt kết nối ${meta.label}`}
-            >
-              Ngắt kết nối
-            </button>
-          </>
-        ) : (
-          <button
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-            aria-label={`Kết nối ${meta.label}`}
-            // BFF TODO: GET /api/v1/devices/:provider/auth-url to initiate OAuth
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Kết nối
-          </button>
-        )}
+        <button
+          onClick={handleSync}
+          disabled={syncStatus === "syncing"}
+          className={cn(
+            "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+            "bg-primary/10 text-primary hover:bg-primary/20",
+            syncStatus === "syncing" && "opacity-60 cursor-not-allowed"
+          )}
+          aria-label={`${t("syncNow")} ${meta.label}`}
+        >
+          <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === "syncing" && "animate-spin")} />
+          {t("syncNow")}
+        </button>
+        <button
+          onClick={() => onDisconnect(device.id)}
+          className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+          aria-label={`${t("disconnect")} ${meta.label}`}
+        >
+          {t("disconnect")}
+        </button>
       </div>
     </div>
   );

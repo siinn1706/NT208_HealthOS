@@ -28,6 +28,7 @@ class AuditEventTypeEnum(str, Enum):
     MFA_DISABLED = "mfa_disabled"
     MFA_VERIFIED = "mfa_verified"
     MFA_FAILED = "mfa_failed"
+    MFA_RECOVERY_REGENERATED = "mfa_recovery_regenerated"
     # Account events
     ACCOUNT_CREATED = "account_created"
     ACCOUNT_DELETED = "account_deleted"

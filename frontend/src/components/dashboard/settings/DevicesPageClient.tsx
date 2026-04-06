@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
-import { Link } from "@/navigation";
 import { DeviceConnectionCard, type Device, type DeviceProvider } from "./DeviceConnectionCard";
 
 const SUPPORTED_PROVIDERS: Array<{ provider: DeviceProvider; label: string }> = [
@@ -48,8 +48,10 @@ interface DevicesPageClientProps {
 }
 
 export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProps) {
+  const t = useTranslations("dashboard.devices");
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [connectingProvider, setConnectingProvider] = useState<DeviceProvider | null>(null);
+  const [connectErrorProvider, setConnectErrorProvider] = useState<DeviceProvider | null>(null);
 
   const handleSync = async (id: string) => {
     const res = await fetch(`/api/v1/devices/${id}/sync`, { method: "POST" });
@@ -76,6 +78,7 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
 
   const handleConnect = async (provider: DeviceProvider) => {
     setConnectingProvider(provider);
+    setConnectErrorProvider(null);
     try {
       const res = await fetch("/api/v1/devices", {
         method: "POST",
@@ -93,6 +96,9 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
         if (existing) return prev.map((device) => (device.id === connected.id ? connected : device));
         return [connected, ...prev];
       });
+    } catch {
+      setConnectErrorProvider(provider);
+      setTimeout(() => setConnectErrorProvider(null), 3000);
     } finally {
       setConnectingProvider(null);
     }
@@ -112,7 +118,7 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
       {connected.length > 0 && (
         <section>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            Đang kết nối ({connected.length})
+            {t("connectedSection", { n: connected.length })}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {connected.map((device) => (
@@ -130,7 +136,7 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
       {availableProviders.length > 0 && (
         <section>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            Có thể kết nối ({availableProviders.length})
+            {t("availableSection", { n: availableProviders.length })}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {availableProviders.map(({ provider, label }) => (
@@ -139,7 +145,7 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
                 onClick={() => handleConnect(provider)}
                 disabled={connectingProvider === provider}
                 className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-card p-4 hover:bg-muted/40 transition-colors cursor-pointer text-left disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label={`Thêm ${label}`}
+                aria-label={`${t("tapToConnect")} ${label}`}
               >
                 <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
                   <Plus className="w-5 h-5 text-muted-foreground" />
@@ -147,7 +153,11 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
                 <div>
                   <p className="text-sm font-medium text-foreground">{label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {connectingProvider === provider ? "Đang kết nối..." : "Nhấn để kết nối"}
+                    {connectingProvider === provider
+                      ? t("connecting")
+                      : connectErrorProvider === provider
+                      ? t("connectFailed")
+                      : t("tapToConnect")}
                   </p>
                 </div>
               </button>
@@ -156,17 +166,8 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
         </section>
       )}
 
-      {connected.length === 0 && availableProviders.length === 0 && (
-        <p className="text-sm text-muted-foreground">Chưa có thông tin</p>
-      )}
-
       <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-        Dữ liệu từ thiết bị đeo được mã hóa và chỉ dùng để cải thiện trải nghiệm sức khỏe của bạn.
-        Bạn có thể ngắt kết nối bất cứ lúc nào. Xem{" "}
-        <Link href="/about" className="underline underline-offset-2 hover:text-foreground transition-colors">
-          chính sách bảo mật
-        </Link>
-        .
+        {t("privacyNote")}
       </p>
     </div>
   );

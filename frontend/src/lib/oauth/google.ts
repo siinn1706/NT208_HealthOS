@@ -22,6 +22,7 @@ export interface GoogleTokenResponse {
   token_type: string;
   scope: string;
   refresh_token?: string;
+  id_token?: string;
 }
 
 // ─── Get Authorization URL ───────────────────────────────────────────────────

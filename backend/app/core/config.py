@@ -1,8 +1,11 @@
 """Core configuration — reads from .env via pydantic-settings."""
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+_config_logger = logging.getLogger(__name__)
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,6 +61,10 @@ class Settings(BaseSettings):
     auth_issuer: str = "healthos-core"
     auth_audience: str = "healthos-clients"
 
+    # Fernet key for symmetric encryption of TOTP secrets at rest.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    fernet_key: str = ""
+
     # CORS
     allowed_origins: list[str] = ["http://localhost:3000"]
 
@@ -73,6 +80,12 @@ class Settings(BaseSettings):
             self.smtp_password = self.smtp_pass
         if self.smtp_from is None and self.from_email is not None:
             self.smtp_from = self.from_email
+        # Warn in non-production if FERNET_KEY is unset — TOTP secrets will be stored unencrypted
+        if not _is_production() and not self.fernet_key:
+            _config_logger.warning(
+                "FERNET_KEY is not set — TOTP secrets will NOT be encrypted at rest. "
+                "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+            )
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
@@ -88,6 +101,11 @@ class Settings(BaseSettings):
                 raise ValueError("STORAGE_ACCESS_KEY must be set in production")
             if not self.storage_secret_key:
                 raise ValueError("STORAGE_SECRET_KEY must be set in production")
+            if not self.fernet_key:
+                raise ValueError(
+                    "FERNET_KEY must be set in production to encrypt TOTP secrets at rest. "
+                    "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                )
         return self
 
 

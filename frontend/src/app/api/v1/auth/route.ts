@@ -7,7 +7,12 @@
  */
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_MAX_AGE, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import {
+  META_COOKIE_NAME,
+  SESSION_COOKIE_MAX_AGE,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_SECURE,
+} from "@/lib/bff-auth-cookie";
 import { CORE_API_URL } from "@/lib/env";
 
 // ── Dev bypass ───────────────────────────────────────────────────────────────
@@ -76,12 +81,13 @@ export async function GET() {
 
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      // Token invalid/expired — clear cookie
+      // Token invalid/expired — clear both session and meta cookies
       const response = NextResponse.json(
         data ?? { error: { code: "AUTH_REQUIRED", message: "Session expired." } },
         { status: 401 }
       );
       response.cookies.delete(SESSION_COOKIE_NAME);
+      response.cookies.delete(META_COOKIE_NAME);
       return response;
     }
 
@@ -122,11 +128,16 @@ export async function POST(req: NextRequest) {
       });
       response.cookies.set(SESSION_COOKIE_NAME, makeDevToken(devUser.email), {
         httpOnly: true,
-        secure: false,
+        secure: false, // dev bypass always insecure
         sameSite: "lax",
         maxAge: SESSION_COOKIE_MAX_AGE,
         path: "/",
       });
+      response.cookies.set(
+        META_COOKIE_NAME,
+        JSON.stringify({ onboarding_status: "completed" }),
+        { httpOnly: false, secure: false, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+      );
       return response;
     }
   }
@@ -171,11 +182,18 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: SESSION_COOKIE_SECURE,
       sameSite: "lax",
       maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     });
+
+    // Non-httpOnly meta cookie for middleware onboarding gate (no sensitive data)
+    response.cookies.set(
+      META_COOKIE_NAME,
+      JSON.stringify({ onboarding_status: data.data.onboarding_status ?? "pending" }),
+      { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+    );
 
     return response;
   } catch {
@@ -186,9 +204,26 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── DELETE /api/v1/auth/session → Logout, clear cookie ──────────────────────
+// ── DELETE /api/v1/auth/session → Logout, clear cookie + revoke JWT on Core ─
 export async function DELETE() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  // Best-effort: notify Core to blacklist the JWT
+  if (token) {
+    try {
+      await fetch(`${CORE_API_URL}/v1/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+    } catch {
+      // Proceed with cookie deletion even if Core is unreachable
+    }
+  }
+
   const response = NextResponse.json({ data: { success: true } }, { status: 200 });
   response.cookies.delete(SESSION_COOKIE_NAME);
+  response.cookies.delete(META_COOKIE_NAME);
   return response;
 }

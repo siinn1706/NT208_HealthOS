@@ -909,7 +909,8 @@
       "pageTitle": "Bắt đầu hành trình sức khỏe"
     },
     "devices": {
-      "title": "Quản lý wearable và thiết bị theo dõi sức khỏe của bạn",
+      "title": "Thiết bị kết nối",
+      "subtitle": "Quản lý thiết bị đeo thông minh và thiết bị theo dõi sức khỏe",
       "syncSuccess": "Đồng bộ thành công",
       "syncing": "Đang đồng bộ...",
       "syncFailed": "Đồng bộ thất bại",
@@ -918,7 +919,17 @@
       "justNow": "Vừa xong",
       "minutesAgo": "{n} phút trước",
       "hoursAgo": "{n} giờ trước",
-      "privacyNote": "Dữ liệu từ thiết bị đeo được mã hóa và chỉ dùng để cải thiện trải nghiệm sức khỏe của bạn."
+      "connected": "Đã kết nối",
+      "notConnected": "Chưa kết nối",
+      "syncNow": "Đồng bộ ngay",
+      "disconnect": "Ngắt kết nối",
+      "battery": "Pin",
+      "connectedSection": "Đang kết nối ({n})",
+      "availableSection": "Có thể kết nối ({n})",
+      "connecting": "Đang kết nối...",
+      "tapToConnect": "Nhấn để kết nối",
+      "connectFailed": "Kết nối thất bại",
+      "privacyNote": "Dữ liệu từ thiết bị đeo được mã hóa và chỉ dùng để cải thiện trải nghiệm sức khỏe của bạn. Bạn có thể ngắt kết nối bất cứ lúc nào."
     },
     "settingsPage": {
       "pageTitle": "Cài đặt",
