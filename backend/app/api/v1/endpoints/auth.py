@@ -1,11 +1,12 @@
 """Auth endpoints — OAuth session exchange, email OTP, and current user."""
 import asyncio
+import hmac
 import logging
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -237,14 +238,31 @@ async def check_email(
     return CheckEmailResponse(available=available)
 
 
+def verify_bff_secret(request: Request) -> None:
+    """Dependency: ensures /auth/token is only callable from the BFF via a shared secret."""
+    expected = settings.bff_shared_secret
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "CONFIG_ERROR", "message": "BFF secret not configured on server"},
+        )
+    actual = request.headers.get("X-BFF-Secret", "")
+    if not hmac.compare_digest(actual, expected):
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "FORBIDDEN", "message": "Invalid BFF secret"},
+        )
+
+
 @router.post(
     "/token",
     response_model=AuthTokenResponse,
-    responses={401: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
 async def exchange_oauth_profile_for_token(
     body: OAuthProfile,
     db: AsyncSession = Depends(get_db),
+    _bff: None = Depends(verify_bff_secret),
 ) -> AuthTokenResponse:
     """
     Exchange an OAuth profile (from BFF) for a Core BE JWT.

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // POST /api/v1/meals/analyze-photo
 // Trigger: user submits a captured/uploaded image
@@ -69,9 +70,18 @@ export function CameraCapture() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
   // ── Upload flow ──────────────────────────────────────────────────
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MiB — matches BFF proxy limit
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Ảnh phải nhỏ hơn 1 MB. Vui lòng chọn ảnh khác.");
+      e.target.value = "";
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       setImageDataUrl(ev.target?.result as string);

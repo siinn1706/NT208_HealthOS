@@ -6,7 +6,7 @@ import io
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,12 +24,20 @@ router = APIRouter(prefix="/meals", tags=["Meals"])
 
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+# Magic-byte signatures: first N bytes → detected type (imghdr names)
+_ALLOWED_MAGIC_TYPES = {"jpeg", "png", "gif", "webp"}
 
 
 class _MealCreateJsonBody(BaseModel):
     name: str = Field(min_length=1)
     notes: str | None = None
     logged_at: datetime.datetime | None = None
+
+
+def _detect_image_type(header: bytes) -> str | None:
+    """Return imghdr-style type string from the first bytes of a file, or None."""
+    import imghdr
+    return imghdr.what(None, h=header)
 
 
 def _bad_request(message: str) -> HTTPException:
@@ -51,13 +59,11 @@ def _bad_request(message: str) -> HTTPException:
 async def list_meals(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    page: int = 1,
-    per_page: int = 20,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
     date_from: datetime.date | None = None,
     date_to: datetime.date | None = None,
 ) -> MealListResponse:
-    if page < 1 or per_page < 1:
-        raise _bad_request("page and per_page must be >= 1")
 
     meals, total = await meal_svc.list_meals(
         db=db,
@@ -118,11 +124,16 @@ async def create_meal(
         image_bytes = await image.read()
         if len(image_bytes) > _MAX_UPLOAD_BYTES:
             raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
-        
+
+        # Validate magic bytes — reject files that lie about their Content-Type
+        detected = _detect_image_type(image_bytes[:32])
+        if detected not in _ALLOWED_MAGIC_TYPES:
+            raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
+
         content_type = image.content_type or "image/jpeg"
         if content_type not in _ALLOWED_IMAGE_TYPES:
             raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
-        
+
         file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
         key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
         image_url = upload_file(
@@ -204,7 +215,12 @@ async def analyze_meal_photo(
     image_bytes = await image.read()
     if len(image_bytes) > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
-    
+
+    # Validate magic bytes — reject files that lie about their Content-Type
+    detected = _detect_image_type(image_bytes[:32])
+    if detected not in _ALLOWED_MAGIC_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
+
     content_type = image.content_type or "image/jpeg"
     if content_type not in _ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")

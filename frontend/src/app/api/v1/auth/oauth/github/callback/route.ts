@@ -72,7 +72,10 @@ export async function GET(request: NextRequest) {
     // ─── Call Core BE to Create/Retrieve User ────────────────────────────────
     const coreRes = await fetch(`${CORE_API_URL}/v1/auth/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-BFF-Secret": process.env.BFF_SHARED_SECRET ?? "",
+      },
       body: JSON.stringify({
         provider: "github",
         provider_account_id: String(githubUser.id),

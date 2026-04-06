@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     # CORS
     allowed_origins: list[str] = ["http://localhost:3000"]
 
+    # BFF shared secret — gates /v1/auth/token so only the BFF can mint tokens
+    # Must be a non-empty string in production; empty string disables the endpoint
+    bff_shared_secret: str = ""
+
     # Service URLs
     ai_worker_url: str = "http://localhost:8001"
     celery_broker_url: str = "redis://localhost:6379/2"

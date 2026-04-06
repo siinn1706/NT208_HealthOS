@@ -369,7 +369,7 @@ export interface WsEvent<T = unknown> {
 
 export type ConversationType = "direct" | "group" | "ai";
 export type MessageType = "text" | "image" | "file" | "audio" | "system";
-export type MessageStatus = "sending" | "sent" | "delivered" | "read";
+export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 export type ConversationTab = "all" | "strangers";
 export type StrangerRequestStatus = "pending" | "accepted" | "rejected" | "blocked";
 export type ChatThemeType = "gradient" | "pattern";
