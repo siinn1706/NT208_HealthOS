@@ -277,6 +277,10 @@ Write-Host "[ALL] Mode effective: $effectiveMode" -ForegroundColor DarkCyan
 Write-Host "[ALL] Selected components: $($selected -join ', ')" -ForegroundColor DarkCyan
 Write-Host "[ALL] Install policy: $InstallPolicy" -ForegroundColor DarkCyan
 
+# Sync .env files from examples (add new keys, preserve existing values)
+Write-Host "[ALL] Syncing env files..." -ForegroundColor Cyan
+& (Join-Path $PSScriptRoot "sync-env.ps1")
+
 try {
     if ($effectiveMode -eq "docker") {
         Invoke-DockerReadinessValidation -ScriptsRoot $PSScriptRoot -Scope all -CheckOnly:$CheckOnly -ErrorPrefix "[ALL]"
