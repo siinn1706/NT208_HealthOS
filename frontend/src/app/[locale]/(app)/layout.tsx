@@ -1,5 +1,6 @@
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AccentColorProvider } from "@/components/providers/accent-color-provider";
+import { ThemeModeBootstrap } from "@/components/providers/theme-mode-bootstrap";
 import { headers } from "next/headers";
 
 interface SessionResponse {
@@ -48,6 +49,7 @@ export default async function AppLayout({
   const user = await getTopNavUser();
 
   let initialAccent: string | null = null;
+  let initialThemeMode: "system" | "light" | "dark" | null = null;
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const reqHeaders = await headers();
@@ -58,16 +60,23 @@ export default async function AppLayout({
     if (res.ok) {
       const data = await res.json().catch(() => null);
       initialAccent = data?.data?.accent_color ?? null;
+      const tm = data?.data?.theme_mode;
+      if (tm === "system" || tm === "light" || tm === "dark") {
+        initialThemeMode = tm;
+      }
     }
   } catch {
     // ignore — use null default
   }
 
   return (
-    <AccentColorProvider initialAccent={initialAccent}>
-      <DashboardShell userName={user.name} userAvatar={user.avatarUrl ?? undefined}>
-        {children}
-      </DashboardShell>
-    </AccentColorProvider>
+    <>
+      <ThemeModeBootstrap serverThemeMode={initialThemeMode} />
+      <AccentColorProvider initialAccent={initialAccent}>
+        <DashboardShell userName={user.name} userAvatar={user.avatarUrl ?? undefined}>
+          {children}
+        </DashboardShell>
+      </AccentColorProvider>
+    </>
   );
 }

@@ -215,6 +215,7 @@
     "fullNameTooLong": "Full name cannot exceed 100 characters.",
     "addressTooLong": "Address cannot exceed 512 characters.",
     "ecNameRequired": "Contact name is required.",
+    "ecPhoneRequired": "Contact phone number is required.",
     "ecRelationshipRequired": "Relationship is required."
   },
   "system": {

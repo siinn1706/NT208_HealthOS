@@ -31,6 +31,7 @@ export function AccentColorSetting() {
   // known hex without any prior pendingColor state.
   const [forceHex, setForceHex] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
 
   // What color the preview and save action currently reflect.
@@ -49,8 +50,10 @@ export function AccentColorSetting() {
   const isDirty = (pendingColor !== null || forceHex !== null)
     && displayHex.toUpperCase() !== savedHex;
 
-  // Reset button: display value is not the original app default.
-  const canReset = displayHex.toUpperCase() !== DEFAULT_APP_ACCENT.toUpperCase();
+  /** One-click reset clears DB + localStorage when user has a custom saved accent or non-default UI state. */
+  const canReset =
+    accentColor !== null
+    || displayHex.toUpperCase() !== DEFAULT_APP_ACCENT.toUpperCase();
 
   const showActionBar = isDirty || saveStatus !== "idle" || canReset;
 
@@ -87,13 +90,34 @@ export function AccentColorSetting() {
     }
   };
 
-  // Reset: clear active pending pick and force-start the picker from the original default.
-  // The live app theme does NOT change until the user explicitly presses Save.
-  const handleReset = useCallback(() => {
-    setPendingColor(null);
-    setForceHex(DEFAULT_APP_ACCENT);
+  const handleReset = useCallback(async () => {
+    if (isSaving || isResetting) return;
+    setIsResetting(true);
     setSaveStatus("idle");
-  }, []);
+    try {
+      const res = await fetch("/api/v1/preferences/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accent_color: null }),
+      });
+      if (!res.ok) throw new Error("Reset failed");
+      setAccentColor(null);
+      try {
+        localStorage.removeItem("healthos-accent");
+      } catch {
+        /* ignore */
+      }
+      setPendingColor(null);
+      setForceHex(null);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2500);
+    } catch {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } finally {
+      setIsResetting(false);
+    }
+  }, [isSaving, isResetting, setAccentColor]);
 
   return (
     <div className="space-y-3 w-full">
@@ -122,7 +146,8 @@ export function AccentColorSetting() {
         <div className="flex items-center gap-2">
           {isDirty && (
             <button
-              onClick={handleSave}
+              type="button"
+              onClick={() => void handleSave()}
               disabled={isSaving}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
@@ -144,11 +169,12 @@ export function AccentColorSetting() {
           )}
           {canReset && (
             <button
-              onClick={handleReset}
-              disabled={isSaving}
+              type="button"
+              onClick={() => void handleReset()}
+              disabled={isSaving || isResetting}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:bg-muted transition-colors cursor-pointer",
-                isSaving && "opacity-60 cursor-not-allowed",
+                (isSaving || isResetting) && "opacity-60 cursor-not-allowed",
               )}
             >
               <RotateCcw className="w-3.5 h-3.5" />

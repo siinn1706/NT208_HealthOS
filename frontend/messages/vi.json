@@ -215,6 +215,7 @@
     "fullNameTooLong": "Họ và tên không được vượt quá 100 ký tự.",
     "addressTooLong": "Địa chỉ không được vượt quá 512 ký tự.",
     "ecNameRequired": "Vui lòng nhập tên người liên hệ.",
+    "ecPhoneRequired": "Vui lòng nhập số điện thoại người liên hệ.",
     "ecRelationshipRequired": "Vui lòng nhập mối quan hệ."
   },
   "system": {

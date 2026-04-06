@@ -1,5 +1,9 @@
 // Hex/HSL color conversion and accent token derivation utilities
 
+const ACCENT_HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+/** Stock light-mode primary; safe fallback when stored hex is invalid */
+const FALLBACK_ACCENT_HEX = "#1965B3";
+
 export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -37,12 +41,38 @@ export function getRelativeLuminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+/** WCAG 2.1 contrast ratio for two sRGB hex colors (normal text target 4.5:1). */
+export function getContrastRatio(fgHex: string, bgHex: string): number {
+  const L1 = getRelativeLuminance(fgHex);
+  const L2 = getRelativeLuminance(bgHex);
+  const lighter = Math.max(L1, L2);
+  const darker = Math.min(L1, L2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+const DARK_FG = "#0B0F14";
+const LIGHT_FG = "#FFFFFF";
+/** Prefer brand off-black, then pure black, then white — first to hit WCAG AA wins. */
+const FG_CANDIDATES = [DARK_FG, "#000000", LIGHT_FG] as const;
+
+/** Picks readable text on `bgHex` (≥4.5:1 when possible; else strongest contrast). */
 export function getContrastColor(bgHex: string): string {
-  return getRelativeLuminance(bgHex) > 0.179 ? "#0B0F14" : "#FFFFFF";
+  let best = DARK_FG;
+  let bestR = 0;
+  for (const c of FG_CANDIDATES) {
+    const r = getContrastRatio(c, bgHex);
+    if (r >= 4.5) return c;
+    if (r > bestR) {
+      bestR = r;
+      best = c;
+    }
+  }
+  return best;
 }
 
 export function deriveAccentTokens(accentHex: string, isDark: boolean): Record<string, string> {
-  const { h, s, l } = hexToHsl(accentHex);
+  const hex = ACCENT_HEX_RE.test(accentHex) ? accentHex : FALLBACK_ACCENT_HEX;
+  const { h, s, l } = hexToHsl(hex);
   const safeS = Math.min(s, 75);
 
   const primary = isDark
