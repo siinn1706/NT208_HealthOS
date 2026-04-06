@@ -8,6 +8,16 @@ from app.adapters.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
+# Atomic INCR + EXPIRE on first count — avoids a key without TTL if the process dies
+# between separate INCR and EXPIRE calls.
+_INCR_WITH_WINDOW_TTL_LUA = """
+local c = redis.call('INCR', KEYS[1])
+if c == 1 then
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+end
+return c
+"""
+
 
 def ip_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
     """Return a FastAPI dependency that enforces per-IP rate limits.
@@ -25,9 +35,14 @@ def ip_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
         client_ip = (request.client.host if request.client else "unknown")
         key = f"rate:{route_key}:{client_ip}"
         try:
-            count = await redis.incr(key)
-            if count == 1:
-                await redis.expire(key, window_seconds)
+            count = int(
+                await redis.eval(
+                    _INCR_WITH_WINDOW_TTL_LUA,
+                    1,
+                    key,
+                    str(window_seconds),
+                )
+            )
             if count > max_requests:
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,

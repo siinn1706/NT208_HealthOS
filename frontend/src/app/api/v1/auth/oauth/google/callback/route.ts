@@ -10,21 +10,8 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_COOKIE_SECURE,
 } from "@/lib/bff-auth-cookie";
-import { routing } from "@/i18n/routing";
+import { getLocaleFromReferer } from "@/lib/locale-path";
 import { CORE_API_URL } from "@/lib/env";
-
-const LOCALE_PREFIX_RE = new RegExp(`^/(${routing.locales.join("|")})`);
-
-function getLocaleFromReferer(request: NextRequest): string {
-  const referer = request.headers.get("referer") ?? "";
-  try {
-    const url = new URL(referer);
-    const match = LOCALE_PREFIX_RE.exec(url.pathname);
-    return match?.[1] ?? routing.defaultLocale;
-  } catch {
-    return routing.defaultLocale;
-  }
-}
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);

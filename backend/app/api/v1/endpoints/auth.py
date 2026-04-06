@@ -315,9 +315,16 @@ async def request_email_otp(
                     )
                 )
 
+    # Per-email cooldown first: avoids HIBP/bcrypt/signup Redis work when throttled.
+    cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
+    if await redis.exists(cooldown_key):
+        from app.exceptions import RateLimitException
+        raise RateLimitException(
+            message="Vui lòng đợi 60 giây trước khi yêu cầu mã OTP mới",
+        )
+
     code = f"{random.randint(0, 999999):06d}"
     otp_key = f"auth:otp:{body.purpose}:{body.email}"
-    cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
 
     # For signup: HIBP-check and hash the password before storing in Redis
     if body.purpose == "signup" and body.username:
@@ -345,13 +352,6 @@ async def request_email_otp(
         }
         # Signup session lasts 10 minutes (longer than OTP TTL)
         await redis.setex(f"signup:pending:{body.email}", 600, json.dumps(signup_data))
-
-    # Basic rate limit: 1 OTP per 60 seconds per email+purpose.
-    if await redis.exists(cooldown_key):
-        from app.exceptions import RateLimitException
-        raise RateLimitException(
-            message="Vui lòng đợi 60 giây trước khi yêu cầu mã OTP mới",
-        )
 
     expires_in_seconds = OTP_TTL_SECONDS
 

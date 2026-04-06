@@ -2,22 +2,12 @@ import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 import { NextRequest, NextResponse } from "next/server";
 import { META_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { getLocaleFromPathname, stripLocalePrefix } from "@/lib/locale-path";
 
 const intlMiddleware = createMiddleware(routing);
 
 /** Routes that require an active session cookie. */
 const PROTECTED_PREFIXES = ["/dashboard"];
-
-// Build locale-strip regex from next-intl config (single source of truth)
-const LOCALE_PREFIX_RE = new RegExp(`^/(${routing.locales.join("|")})`);
-
-function stripLocale(pathname: string): string {
-  return pathname.replace(LOCALE_PREFIX_RE, "") || "/";
-}
-
-function getLocale(pathname: string): string {
-  return LOCALE_PREFIX_RE.exec(pathname)?.[1] ?? routing.defaultLocale;
-}
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -44,8 +34,8 @@ function getOnboardingStatus(req: NextRequest): string {
 
 export default function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
-  const pathnameWithoutLocale = stripLocale(pathname);
-  const locale = getLocale(pathname);
+  const pathnameWithoutLocale = stripLocalePrefix(pathname);
+  const locale = getLocaleFromPathname(pathname);
 
   const hasSession = Boolean(req.cookies.get(SESSION_COOKIE_NAME)?.value);
 
