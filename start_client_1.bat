@@ -1,11 +1,3 @@
 @echo off
-setlocal
-echo [WARN] This script runs the frontend on port 3001.
-echo [WARN] Backend ALLOWED_ORIGINS must include http://localhost:3001 for CORS to work.
-cd /d "%~dp0frontend"
-if exist package-lock.json (
-    npm ci
-) else (
-    npm install
-)
-npm run dev -- --port 3001
+call "%~dp0infra\scripts\run-service.bat" start_client.ps1 client -Port 3001 %*
+exit /b %ERRORLEVEL%

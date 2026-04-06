@@ -7,6 +7,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Import-Module (Join-Path $PSScriptRoot "healthos-common.psm1") -Force
+
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
 $ComposeEnvFile = Join-Path $RepoRoot "infra\docker\.env.dev"
@@ -35,11 +37,6 @@ function Add-Result {
     if ($Status -eq "fail" -and $Critical) {
         $script:HasCriticalFailure = $true
     }
-}
-
-function Test-CommandAvailable {
-    param([string]$CommandName)
-    return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
 }
 
 function Test-FileRequired {
@@ -123,11 +120,7 @@ $daemonAvailable = ($Results | Where-Object { $_.Category -eq "docker" -and $_.I
 
 if ($dockerAvailable -and $composeAvailable -and $daemonAvailable -and (Test-Path $ComposeFile)) {
     try {
-        $composeArgs = @("-f", $ComposeFile)
-        if (Test-Path $ComposeEnvFile) {
-            $composeArgs += @("--env-file", $ComposeEnvFile)
-        }
-
+        $composeArgs = Get-ComposeArgs -ComposeFile $ComposeFile -ComposeEnvFile $ComposeEnvFile
         docker compose @composeArgs config | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Add-Result -Category "compose" -Item "docker compose config" -Status "ok" -Detail "Compose file renders successfully."
