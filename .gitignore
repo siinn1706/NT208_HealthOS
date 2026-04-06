@@ -54,7 +54,8 @@ infra/env/backend.env
 infra/env/frontend.env
 infra/env/worker.env
 *.log
-infra/logs/
+infra/logs/*
+!infra/logs/.gitkeep
 
 # Ignore local infrastructure data
 .data/
