@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -202,21 +202,33 @@ async def check_account_lockout(user: User) -> bool:
 async def record_failed_login(db: AsyncSession, user: User) -> None:
     """Record failed login attempt and apply lockout if threshold reached.
 
-    Args:
-        db: Database session
-        user: The user who failed login
+    Uses a database-level atomic increment (UPDATE … SET failed_login_attempts =
+    failed_login_attempts + 1) to prevent a race where two concurrent failed
+    logins both read the same counter and each increment to the same value,
+    effectively losing one count.
     """
-    user.failed_login_attempts += 1
+    new_count = user.failed_login_attempts + 1
+    lockout_until: Optional[datetime] = user.locked_until
 
-    if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
-        # Calculate escalating lockout duration
+    if new_count >= MAX_FAILED_ATTEMPTS:
         lockout_index = min(
             len(ESCALATING_LOCKOUT) - 1,
-            (user.failed_login_attempts // MAX_FAILED_ATTEMPTS) - 1
+            (new_count // MAX_FAILED_ATTEMPTS) - 1,
         )
         lockout_minutes = ESCALATING_LOCKOUT[lockout_index]
-        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
+        lockout_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
 
+    await db.execute(
+        update(User)
+        .where(User.id == user.id)
+        .values(
+            failed_login_attempts=User.failed_login_attempts + 1,
+            locked_until=lockout_until,
+        )
+    )
+    # Reflect the change on the in-memory object so callers see up-to-date state
+    user.failed_login_attempts = new_count
+    user.locked_until = lockout_until
     await db.commit()
 
 
@@ -227,6 +239,11 @@ async def reset_failed_login_attempts(db: AsyncSession, user: User) -> None:
         db: Database session
         user: The user who logged in successfully
     """
+    await db.execute(
+        update(User)
+        .where(User.id == user.id)
+        .values(failed_login_attempts=0, locked_until=None)
+    )
     user.failed_login_attempts = 0
     user.locked_until = None
     await db.commit()

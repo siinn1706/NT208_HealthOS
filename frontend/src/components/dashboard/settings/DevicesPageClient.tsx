@@ -54,14 +54,18 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
   const [connectErrorProvider, setConnectErrorProvider] = useState<DeviceProvider | null>(null);
 
   const handleSync = async (id: string) => {
-    const res = await fetch(`/api/v1/devices/${id}/sync`, { method: "POST" });
-    if (!res.ok) throw new Error("SYNC_FAILED");
+    try {
+      const res = await fetch(`/api/v1/devices/${id}/sync`, { method: "POST" });
+      if (!res.ok) return; // non-fatal — keep stale device data, no crash
 
-    const json = await res.json().catch(() => null);
-    const synced = normalizeDevice(json?.data);
-    if (!synced) return;
+      const json = await res.json().catch(() => null);
+      const synced = normalizeDevice(json?.data);
+      if (!synced) return;
 
-    setDevices((prev) => prev.map((device) => (device.id === id ? synced : device)));
+      setDevices((prev) => prev.map((device) => (device.id === id ? synced : device)));
+    } catch {
+      // Network error or unexpected throw — ignore silently to avoid white screen
+    }
   };
 
   const handleDisconnect = async (id: string) => {

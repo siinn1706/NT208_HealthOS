@@ -6,6 +6,16 @@ Design:
   - Online presence tracking per user.
   - Heartbeat: server sends ping every 30s.
   - Rate limiting: 5 sends/second per user (token bucket).
+
+ACCEPTED LIMITATION — In-process WS presence state (#6):
+  All connection state (user_connections, room_connections, presence, rate-limiter
+  buckets) is stored in a single Python dict in this process. This means:
+    * Presence and online/offline events are NOT shared across multiple worker
+      processes or replicas.
+    * A user connected to worker A appears offline to worker B.
+  Resolution path: replace in-process state with a Redis Pub/Sub fan-out and a
+  Redis-backed presence store (e.g. HSET healthos:presence:<user_id> ...).
+  For the current single-worker student deployment this is an acceptable trade-off.
 """
 from __future__ import annotations
 

@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
@@ -84,8 +85,14 @@ async def update_current_user_profile(
 
     If onboarding_completed is set to true, updates the user's onboarding status.
     """
-    # Get or create user profile
-    profile = current_user.profile
+    # Re-fetch the profile with a row-level lock to prevent last-write-wins race
+    # conditions when the user submits two PATCH requests concurrently.
+    locked = await db.execute(
+        select(UserProfile)
+        .where(UserProfile.user_id == current_user.id)
+        .with_for_update()
+    )
+    profile = locked.scalar_one_or_none()
     if profile is None:
         profile = UserProfile(user_id=current_user.id, full_name=current_user.display_name)
         db.add(profile)

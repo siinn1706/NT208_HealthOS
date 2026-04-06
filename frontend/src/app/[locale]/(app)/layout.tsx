@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AccentColorProvider } from "@/components/providers/accent-color-provider";
 import { ThemeModeBootstrap } from "@/components/providers/theme-mode-bootstrap";
 import { headers } from "next/headers";
+import { getLocaleFromPathname } from "@/lib/locale-path";
 
 interface SessionResponse {
   data?: {
@@ -9,10 +11,20 @@ interface SessionResponse {
     username?: string | null;
     display_name?: string | null;
     avatar_url?: string | null;
+    onboarding_status?: string | null;
   };
 }
 
-async function getTopNavUser(): Promise<{ name: string | undefined; avatarUrl: string | null | undefined }> {
+/**
+ * Server-side onboarding gate: supplements the middleware cookie check.
+ * The middleware's meta cookie is client-modifiable (non-httpOnly), so a
+ * user could forge `onboarding_status: "completed"` to reach the dashboard.
+ * This RSC validates the real session from Core BE on every dashboard render.
+ */
+async function getSessionAndGuard(locale: string): Promise<{
+  name: string | undefined;
+  avatarUrl: string | null | undefined;
+}> {
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const reqHeaders = await headers();
@@ -27,6 +39,11 @@ async function getTopNavUser(): Promise<{ name: string | undefined; avatarUrl: s
     const json = (await res.json().catch(() => null)) as SessionResponse | null;
     const session = json?.data;
     if (!session) return { name: undefined, avatarUrl: undefined };
+
+    // Server-side guard: redirect to onboarding if not yet completed
+    if (session.onboarding_status && session.onboarding_status !== "completed") {
+      redirect(`/${locale}/onboarding`);
+    }
 
     return {
       name:
@@ -43,10 +60,13 @@ async function getTopNavUser(): Promise<{ name: string | undefined; avatarUrl: s
 
 export default async function AppLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }) {
-  const user = await getTopNavUser();
+  const { locale } = await params;
+  const user = await getSessionAndGuard(locale);
 
   let initialAccent: string | null = null;
   let initialThemeMode: "system" | "light" | "dark" | null = null;

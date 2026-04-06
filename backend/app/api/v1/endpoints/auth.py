@@ -120,7 +120,10 @@ async def login_with_password(
 
     user = await get_user_by_identifier(db, body.identifier)
     if user is None:
-        # Use generic error to prevent user enumeration via different error codes
+        # Run a dummy bcrypt verify to equalise response time regardless of
+        # whether the identifier exists, preventing timing-based user enumeration.
+        from app.core.security import verify_password as _vp, DUMMY_HASH as _DH
+        _vp(body.password, _DH)
         raise UnauthorizedException(
             message="Tên đăng nhập hoặc mật khẩu không đúng",
             code="INVALID_CREDENTIALS",
@@ -246,6 +249,16 @@ async def exchange_oauth_profile_for_token(
       1. BFF calls this endpoint after OAuth login succeeds.
       2. Core BE finds or creates a User.
       3. Core BE returns a JWT access token bound to the user.id.
+
+    ACCEPTED LIMITATION — OAuth ID token local signature verification (#11):
+      The Core BE trusts the OAuthProfile payload forwarded by the BFF without
+      independently verifying the original OAuth provider's ID token signature.
+      Security relies on: (a) this endpoint being BFF-internal (not browser-exposed),
+      (b) network-level isolation between BFF and Core BE.
+      Resolution path: pass the raw id_token through the BFF and have Core BE
+      verify it using the provider's JWKS endpoint before accepting the profile.
+      For the current student deployment where BFF and Core run in the same
+      Docker network, this is an acceptable trade-off.
     """
     user = await get_or_create_user_from_oauth(body, db)
     access_token = create_user_access_token(user)
@@ -364,8 +377,11 @@ async def request_email_otp(
 
     expires_in_seconds = OTP_TTL_SECONDS
 
+    # Store hashed OTP so plaintext is never recoverable from Redis.
+    from app.services.otp import hash_otp_code
+    hashed_code = hash_otp_code(code)
     # OTP TTL: 5 minutes (300 s).  Cooldown: 60 s.
-    await redis.setex(otp_key, expires_in_seconds, code)
+    await redis.setex(otp_key, expires_in_seconds, hashed_code)
     await redis.setex(cooldown_key, 60, "1")
 
     try:
@@ -428,6 +444,7 @@ async def verify_email_otp(
       The caller must then call POST /auth/reset-password within 5 minutes.
     """
     key = f"auth:otp:{body.purpose}:{body.email}"
+    from app.services.otp import hash_otp_code as _hash_otp
     otp_record = await get_latest_active_otp(db, body.email, body.purpose)
     if otp_record is not None and otp_record.attempts_left <= 0:
         await redis.delete(key)
@@ -437,15 +454,17 @@ async def verify_email_otp(
             message="Bạn đã nhập sai OTP quá nhiều lần. Vui lòng yêu cầu mã mới.",
         )
 
-    stored_code = await redis.get(key)
-    if stored_code is None:
+    # Peek (not consume yet) — we need the stored hash to validate before deleting
+    stored_hash = await redis.get(key)
+    if stored_hash is None:
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_INVALID",
             message="Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.",
         )
 
-    if stored_code != body.code:
+    submitted_hash = _hash_otp(body.code)
+    if stored_hash != submitted_hash:
         remaining_attempts = None
         if otp_record is not None:
             remaining_attempts = await decrement_attempts(db, otp_record)
@@ -453,20 +472,22 @@ async def verify_email_otp(
             if remaining_attempts <= 0:
                 await redis.delete(key)
 
-        details = {}
-        if remaining_attempts is not None:
-            details = {
-                "attempts_left": remaining_attempts,
-                "max_attempts": OTP_MAX_ATTEMPTS,
-            }
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_INVALID",
             message="Mã OTP không đúng",
         )
 
-    # OTP is one-time use
-    await redis.delete(key)
+    # Atomically consume the OTP — GETDEL prevents two concurrent requests from
+    # both reading the valid hash before either deletes it (TOCTOU).
+    consumed = await redis.getdel(key)
+    if consumed is None:
+        # Another concurrent request consumed the OTP first
+        raise ApiException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="OTP_INVALID",
+            message="Mã OTP đã được sử dụng. Vui lòng yêu cầu mã mới.",
+        )
     if otp_record is not None:
         await mark_otp_consumed(db, otp_record)
 
@@ -587,7 +608,22 @@ async def verify_email_otp(
     if name and name != body.email:
         user.display_name = name
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        # Username collision: another user registered the same username between
+        # OTP issuance and verification. Return a descriptive 409 rather than 500.
+        if "username" in str(exc.orig).lower() or "users_username_key" in str(exc.orig).lower():
+            raise ConflictException(
+                code="USERNAME_TAKEN",
+                message="Tên người dùng đã được sử dụng. Vui lòng chọn tên khác.",
+                field_errors={"username": "Tên người dùng đã được sử dụng"},
+            ) from exc
+        raise ConflictException(
+            code="CONFLICT",
+            message="Đã xảy ra xung đột dữ liệu. Vui lòng thử lại.",
+        ) from exc
 
     # Clean up Redis signup data
     if signup_data_raw:

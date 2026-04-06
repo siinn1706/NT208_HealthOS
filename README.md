@@ -46,6 +46,17 @@ bash infra/scripts/setup.sh
 
 This copies env example files, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
 
+### Seed Test Admin (Optional)
+
+Create an initial admin user for testing (run after setup):
+
+```bash
+cd backend
+.\.venv\Scripts\python.exe scripts/seed_admin.py
+```
+
+Creates: email `admin@healthos.local` with a pre-configured password.
+
 ### Option A: Docker (recommended)
 
 ```bash
@@ -130,8 +141,24 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 
 ## Current Status
 
-- Implemented: auth/session/otp, profile, meals, reports, appointments, reminders, conversations/chat, vitals, devices, dashboard, goals/health-goals routes.
-- Stub/placeholder: AI Worker `POST /analyze`, Notification `POST /dispatch`, queue task internals, some UX paths (feature-level TODO).
+**v1.2.2 (Current)**: Data layer refactor and documentation audit.
+**v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
+**v1.2.0**: User accent color customization and theming.
+
+- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification.
+- **Stub/placeholder**: AI Worker real implementation (currently mock), Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
+
+## CI/CD Pipeline
+
+GitHub Actions workflows in `.github/workflows/`:
+- `ci-smoke.yml` — PR checks (lint, build, dependency verification)
+- `release.yml` — Production release with tag
+- `release-beta.yml` — Beta release to staging
+- `branch-protection.yml` — Enforce protection rules
+- `sync-main-to-dev.yml` — Auto-sync main → dev after release
+- `sync-dev-after-release.yml` — Auto-sync dev → feature branches
+
+See [Deployment Guide](./docs/deployment-guide.md) for workflow details and troubleshooting.
 
 ## Git Workflow
 

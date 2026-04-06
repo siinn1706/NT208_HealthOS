@@ -251,7 +251,7 @@ export function EmergencyContactSection({
             variant="outline"
             size="sm"
             onClick={() =>
-              append({ name: "", relationship: "", phone: null })
+              append({ name: "", relationship: "", phone: "" })
             }
             className="mt-1 gap-1.5"
           >

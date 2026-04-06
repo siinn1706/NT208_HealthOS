@@ -140,10 +140,10 @@ class EmergencyContact(BaseModel):
 class MedicalInfo(BaseModel):
     """Medical information."""
 
-    allergies: Optional[str] = None
-    chronic_conditions: Optional[str] = None
-    current_medications: Optional[str] = None
-    notes: Optional[str] = None
+    allergies: Optional[str] = Field(None, max_length=2000)
+    chronic_conditions: Optional[str] = Field(None, max_length=2000)
+    current_medications: Optional[str] = Field(None, max_length=2000)
+    notes: Optional[str] = Field(None, max_length=4000)
 
 
 class UserProfileUpdate(BaseModel):

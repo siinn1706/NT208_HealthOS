@@ -20,18 +20,30 @@ type BffFetchOptions = {
   revalidate?: number | false;
 };
 
+/** Default client-side BFF request timeout in milliseconds. */
+const BFF_FETCH_TIMEOUT_MS = 30_000;
+
 export async function bffFetch<T = unknown>(
   path: string,
   options: BffFetchOptions = {}
 ): Promise<T> {
   const { method = "GET", body, headers = {}, revalidate = 0 } = options;
 
+  // Only apply AbortController timeout in browser contexts; Node RSC fetch
+  // uses the `next` cache option which handles its own lifecycle.
+  const controller = typeof window !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), BFF_FETCH_TIMEOUT_MS)
+    : null;
+
   const res = await fetch(path, {
     method,
     headers: { ...DEFAULT_HEADERS, ...headers },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     next: revalidate !== false ? { revalidate } : undefined,
+    signal: controller?.signal,
   });
+  if (timeoutId !== null) clearTimeout(timeoutId);
 
   if (!res.ok) {
     // Redirect to login on session expiry (client-side only)
