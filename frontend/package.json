@@ -15,7 +15,8 @@
     "i18n:scan:vi": "grep -rPn \"[\\x{1E00}-\\x{1EFF}\\x{00C0}-\\x{024F}]\" src/app/ src/components/ src/lib/ --include=\"*.tsx\" --include=\"*.ts\" || true",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@dayflow/blossom-color-picker": "^2.2.0",
@@ -51,6 +52,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

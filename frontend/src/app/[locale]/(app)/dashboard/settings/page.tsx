@@ -33,6 +33,14 @@ const AccentColorSetting = dynamic(
 
 type ThemeOption = "system" | "light" | "dark";
 
+function pushThemeModeToBackend(value: ThemeOption): void {
+  void fetch("/api/v1/preferences/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ theme_mode: value }),
+  });
+}
+
 interface SettingRowProps {
   icon: React.ElementType;
   label: string;
@@ -196,7 +204,10 @@ export default function SettingsPage() {
               return (
                 <button
                   key={opt.value}
-                  onClick={() => setTheme(opt.value)}
+                  onClick={() => {
+                    setTheme(opt.value);
+                    pushThemeModeToBackend(opt.value);
+                  }}
                   title={t(opt.labelKey as Parameters<typeof t>[0])}
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer",

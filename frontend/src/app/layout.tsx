@@ -25,7 +25,8 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var a=localStorage.getItem('healthos-accent');if(a){document.documentElement.style.setProperty('--primary',a);document.documentElement.style.setProperty('--ring',a);}}catch(e){}}());` }} />
+        {/* Full 5-token early hydration lives in /accent-early.js (~2KB) — keeps layout HTML small. */}
+        <script src="/accent-early.js" />
       </head>
       <body className="overflow-x-hidden font-[family-name:var(--font-be-vietnam-pro)]">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
