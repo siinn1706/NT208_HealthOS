@@ -1,4 +1,4 @@
-import { redirect, isRedirectError } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AccentColorProvider } from "@/components/providers/accent-color-provider";
 import { ThemeModeBootstrap } from "@/components/providers/theme-mode-bootstrap";
@@ -54,7 +54,7 @@ async function getSessionAndGuard(locale: string): Promise<{
       avatarUrl: session.avatar_url ?? null,
     };
   } catch (err) {
-    if (isRedirectError(err)) throw err;
+    unstable_rethrow(err);
     return { name: undefined, avatarUrl: undefined };
   }
 }

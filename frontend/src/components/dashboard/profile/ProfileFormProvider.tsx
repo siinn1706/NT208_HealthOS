@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { getProfileSchema, type ProfileFormValues } from "@/lib/validators/profile-schema";
 import { bffFetchClient } from "@/lib/api-client";
+import { normalizeProfile } from "@/lib/user-profile-normalize";
 import type { UserProfile, UserProfileUpdate } from "@/types/api";
 
 import { ProfileHeader } from "./ProfileHeader";
@@ -87,6 +88,7 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const router = useRouter();
@@ -103,14 +105,21 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
 
   const handleCancel = useCallback(() => {
     form.reset(profileToFormValues(profile));
-    setAvatarPreview(null);
+    setAvatarPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPendingAvatarFile(null);
     setIsEditing(false);
     setSaveStatus("idle");
   }, [form, profile]);
 
   const handleAvatarChange = useCallback((file: File) => {
-    const url = URL.createObjectURL(file);
-    setAvatarPreview(url);
+    setAvatarPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setPendingAvatarFile(file);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -121,6 +130,28 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
     setIsSaving(true);
     setSaveStatus("idle");
     setSaveError(null);
+
+    if (pendingAvatarFile) {
+      const fd = new FormData();
+      fd.append("file", pendingAvatarFile);
+      const uploadRes = await fetch("/api/v1/users/me/avatar", {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      const uploadJson = await uploadRes.json().catch(() => null);
+      if (!uploadRes.ok) {
+        setIsSaving(false);
+        const detail = uploadJson?.error ?? uploadJson?.detail;
+        const msg =
+          (typeof detail?.message === "string" && detail.message) ||
+          (typeof uploadJson?.detail === "string" && uploadJson.detail) ||
+          null;
+        setSaveError(msg ?? t("saveError"));
+        setSaveStatus("error");
+        return;
+      }
+    }
 
     const { data, error } = await bffFetchClient("/api/v1/users/me", {
       method: "PATCH",
@@ -137,12 +168,20 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
       return;
     }
 
-    form.reset(data ? profileToFormValues(data as UserProfile) : values);
+    const resBody = data as { data?: unknown } | undefined;
+    const nextProfile =
+      resBody?.data != null ? normalizeProfile(resBody.data) : profile;
+    form.reset(profileToFormValues(nextProfile));
+    setAvatarPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPendingAvatarFile(null);
     router.refresh();
     setIsEditing(false);
     setSaveStatus("success");
     setTimeout(() => setSaveStatus("idle"), 3000);
-  }, [form, router]);
+  }, [form, router, pendingAvatarFile, t, profile]);
 
   return (
     <TooltipProvider>

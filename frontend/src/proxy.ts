@@ -17,7 +17,7 @@ function isProtected(pathname: string): boolean {
 
 /**
  * Read onboarding status from the non-httpOnly meta cookie set by BFF on login.
- * Avoids a round-trip fetch to /api/v1/auth/session on every middleware invocation.
+ * Avoids a round-trip fetch to /api/v1/auth/session on every proxy invocation.
  */
 function getOnboardingStatus(req: NextRequest): string {
   const raw = req.cookies.get(META_COOKIE_NAME)?.value;
@@ -32,7 +32,7 @@ function getOnboardingStatus(req: NextRequest): string {
   }
 }
 
-export default function middleware(req: NextRequest): NextResponse {
+export default function proxy(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
   const pathnameWithoutLocale = stripLocalePrefix(pathname);
   const locale = getLocaleFromPathname(pathname);
@@ -80,4 +80,3 @@ export const config = {
     "/((?!_next|_vercel|api|.*\\..*).*)",
   ],
 };
-

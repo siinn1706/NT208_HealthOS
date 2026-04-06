@@ -1198,7 +1198,14 @@
     "usernameTooShort": "Username phải có ít nhất 3 ký tự",
     "usernameTaken": "Username đã được sử dụng",
     "passwordRequirements": "Mật khẩu cần ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt",
-    "passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự"
+    "passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự",
+    "oauthErrorCoreUnreachable": "Không kết nối được Core API. Hãy chạy backend (mặc định cổng 8000) hoặc đặt CORE_API_URL trong frontend/.env.local khớp với nơi API chạy.",
+    "oauthErrorServerError": "Đăng nhập bằng nhà cung cấp này thất bại. Vui lòng thử lại.",
+    "oauthErrorMissingCode": "Phản hồi OAuth không đầy đủ. Vui lòng đăng nhập lại.",
+    "oauthErrorInvalidState": "Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng thử lại.",
+    "oauthErrorMissingVerifier": "Thiếu dữ liệu bảo mật OAuth. Vui lòng đăng nhập lại.",
+    "oauthErrorNonceMismatch": "Kiểm tra bảo mật OAuth thất bại. Vui lòng đăng nhập lại.",
+    "oauthErrorUnverifiedEmail": "Email tài khoản này chưa được xác minh với nhà cung cấp."
   },
   "chat": {
     "title": "Tin nhắn",

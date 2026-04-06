@@ -1198,7 +1198,14 @@
     "usernameTooShort": "Username must be at least 3 characters",
     "usernameTaken": "Username already taken",
     "passwordRequirements": "Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special character",
-    "passwordMinLength": "Password must be at least 8 characters"
+    "passwordMinLength": "Password must be at least 8 characters",
+    "oauthErrorCoreUnreachable": "Cannot reach the Core API. Start the backend (port 8000 by default), or set CORE_API_URL in frontend/.env.local to match where the API runs.",
+    "oauthErrorServerError": "Sign-in with this provider failed. Please try again.",
+    "oauthErrorMissingCode": "OAuth response was incomplete. Please try signing in again.",
+    "oauthErrorInvalidState": "Sign-in session expired or was invalid. Please try again.",
+    "oauthErrorMissingVerifier": "OAuth security data was missing. Please try signing in again.",
+    "oauthErrorNonceMismatch": "OAuth security check failed. Please try signing in again.",
+    "oauthErrorUnverifiedEmail": "This account's email is not verified with the provider."
   },
   "chat": {
     "title": "Messages",

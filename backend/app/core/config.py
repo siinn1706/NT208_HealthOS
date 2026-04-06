@@ -31,8 +31,13 @@ class Settings(BaseSettings):
     # Database
     database_url: str = ""
 
-    # Redis
+    # Redis — put credentials in REDIS_URL (e.g. redis://:secret@host:6379/0) when Redis requires AUTH.
     redis_url: str = "redis://localhost:6379/0"
+    # Accepted so .env files with a stray key do not break Settings; not applied to redis_url (local Redis often has no password).
+    redis_password: str | None = None
+
+    # Shared secret for BFF↔Core hardening (optional; reserved for future request signing).
+    bff_shared_secret: str | None = None
 
     # Object Storage (MinIO / S3)
     storage_endpoint: str = "http://localhost:9000"

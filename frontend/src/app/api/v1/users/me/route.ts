@@ -6,8 +6,16 @@
  * Rule: Always validate session before forwarding to Core BE.
  * PATCH invalidates the gamification-summary cache so height/weight
  * changes are reflected immediately on /dashboard/progress.
+ *
+ * On successful PATCH, refresh `healthos.meta` from Core `data.onboarding_status`
+ * so src/proxy.ts can allow navigation to /dashboard after onboarding completion.
  */
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  META_COOKIE_NAME,
+  SESSION_COOKIE_MAX_AGE,
+  SESSION_COOKIE_SECURE,
+} from "@/lib/bff-auth-cookie";
 import { coreProxy } from "@/lib/core-api-proxy";
 import { cacheDel, cacheKey } from "@/lib/redis-cache";
 
@@ -36,5 +44,29 @@ export async function PATCH(req: NextRequest) {
   if (userId) {
     await cacheDel(cacheKey(userId, "gamification-summary", {}));
   }
-  return coreProxy(req, "/v1/users/me", { method: "PATCH" });
+
+  const upstream = await coreProxy(req, "/v1/users/me", { method: "PATCH" });
+  const payload = await upstream.json().catch(() => null);
+  const response = NextResponse.json(payload ?? {}, { status: upstream.status });
+
+  if (
+    upstream.ok &&
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload &&
+    payload.data &&
+    typeof (payload as { data: { onboarding_status?: unknown } }).data.onboarding_status === "string"
+  ) {
+    const onboardingStatus = (payload as { data: { onboarding_status: string } }).data
+      .onboarding_status;
+    response.cookies.set(META_COOKIE_NAME, JSON.stringify({ onboarding_status: onboardingStatus }), {
+      httpOnly: false,
+      secure: SESSION_COOKIE_SECURE,
+      sameSite: "lax",
+      maxAge: SESSION_COOKIE_MAX_AGE,
+      path: "/",
+    });
+  }
+
+  return response;
 }
