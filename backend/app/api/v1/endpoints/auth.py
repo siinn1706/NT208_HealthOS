@@ -1,10 +1,8 @@
 """Auth endpoints — OAuth session exchange, email OTP, and current user."""
 import asyncio
 import hmac
-import json
 import logging
 import random
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -14,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from redis.asyncio import Redis
+from redis.exceptions import ResponseError
 
 from app.adapters.database import get_db
 from app.adapters.email_client import send_otp_email
@@ -76,30 +75,20 @@ logger = logging.getLogger(__name__)
 WS_TICKET_EXPIRES_SECONDS = 120
 
 
-def _agent_debug_log(
-    *,
-    run_id: str,
-    hypothesis_id: str,
-    location: str,
-    message: str,
-    data: dict,
-) -> None:
-    # region agent log
+async def _redis_getdel_compat(redis: Redis, key: str) -> bytes | str | None:
+    """GETDEL with backward compatibility for Redis versions < 6.2."""
     try:
-        payload = {
-            "sessionId": "c4384e",
-            "runId": run_id,
-            "hypothesisId": hypothesis_id,
-            "location": location,
-            "message": message,
-            "data": data,
-            "timestamp": int(time.time() * 1000),
-        }
-        with open("debug-c4384e.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
-    # endregion
+        return await redis.getdel(key)
+    except ResponseError as exc:
+        error_text = str(exc).lower()
+        if "unknown command" not in error_text or "getdel" not in error_text:
+            raise
+        # Atomic fallback equivalent to GETDEL using Lua script.
+        return await redis.eval(
+            "local v=redis.call('GET',KEYS[1]); if v then redis.call('DEL',KEYS[1]); end; return v",
+            1,
+            key,
+        )
 
 
 @router.get(
@@ -360,23 +349,6 @@ async def request_email_otp(
                 select(User).where(func.lower(User.email) == body.email.lower())
             )
             existing_user = result.scalar_one_or_none()
-            # region agent log
-            _agent_debug_log(
-                run_id="pre-fix",
-                hypothesis_id="H2",
-                location="auth.py:request_email_otp:user_lookup",
-                message="request_otp_user_lookup_done",
-                data={
-                    "purpose": body.purpose,
-                    "existing_user": existing_user is not None,
-                },
-            )
-            # endregion
-            logger.warning(
-                "H10 request_otp_user_lookup purpose=%s existing_user=%s",
-                body.purpose,
-                existing_user is not None,
-            )
 
             if body.purpose == "reset_password" and existing_user is None:
                 # Return generic success to prevent email enumeration
@@ -425,25 +397,6 @@ async def request_email_otp(
         plaintext_password = body.password or ""
         if plaintext_password:
             is_breached, breach_count = await check_password_breach(plaintext_password)
-            # region agent log
-            _agent_debug_log(
-                run_id="pre-fix",
-                hypothesis_id="H4",
-                location="auth.py:request_email_otp:hibp",
-                message="request_otp_hibp_checked",
-                data={
-                    "purpose": body.purpose,
-                    "is_breached": is_breached,
-                    "breach_count": breach_count,
-                },
-            )
-            # endregion
-            logger.warning(
-                "H12 request_otp_hibp purpose=%s is_breached=%s breach_count=%s",
-                body.purpose,
-                is_breached,
-                breach_count,
-            )
             if is_breached:
                 raise ApiException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -569,7 +522,7 @@ async def verify_email_otp(
 
     # Atomically consume the OTP — GETDEL prevents two concurrent requests from
     # both reading the valid hash before either deletes it (TOCTOU).
-    consumed = await redis.getdel(key)
+    consumed = await _redis_getdel_compat(redis, key)
     if consumed is None:
         # Another concurrent request consumed the OTP first
         raise ApiException(
@@ -754,7 +707,7 @@ async def reset_password(
     Updates the user\'s hashed password and returns a JWT access token.
     """
     verified_key = f"auth:otp:reset_verified:{body.email}"
-    consumed = await redis.getdel(verified_key)
+    consumed = await _redis_getdel_compat(redis, verified_key)
     if consumed is None:
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,

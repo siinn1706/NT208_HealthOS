@@ -1,7 +1,5 @@
 """HealthOS Core BE — FastAPI application factory."""
-import json
 import logging
-import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -18,32 +16,6 @@ from app.ws.handlers import manager
 from app.ws.chat_router import handle_ws_event
 
 _startup_logger = logging.getLogger("healthos")
-
-
-def _agent_debug_log(
-    *,
-    run_id: str,
-    hypothesis_id: str,
-    location: str,
-    message: str,
-    data: dict,
-) -> None:
-    # region agent log
-    try:
-        payload = {
-            "sessionId": "c4384e",
-            "runId": run_id,
-            "hypothesisId": hypothesis_id,
-            "location": location,
-            "message": message,
-            "data": data,
-            "timestamp": int(time.time() * 1000),
-        }
-        with open("debug-c4384e.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
-    # endregion
 
 
 @asynccontextmanager
@@ -71,25 +43,6 @@ if settings.debug:
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Normalise all HTTPException details to { error: { code, message } }."""
-    # region agent log
-    if request.url.path == "/v1/auth/request-otp":
-        _startup_logger.warning(
-            "H13 request_otp_http_exception status=%s detail=%s",
-            exc.status_code,
-            exc.detail if isinstance(exc.detail, dict) else str(exc.detail),
-        )
-        _agent_debug_log(
-            run_id="pre-fix",
-            hypothesis_id="H5",
-            location="main.py:http_exception_handler",
-            message="request_otp_http_exception",
-            data={
-                "status_code": exc.status_code,
-                "detail_type": type(exc.detail).__name__,
-                "detail": exc.detail if isinstance(exc.detail, dict) else str(exc.detail),
-            },
-        )
-    # endregion
     detail = exc.detail
     if isinstance(detail, dict):
         error_body = detail
@@ -101,20 +54,6 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Return Pydantic validation errors in the standard error envelope."""
-    # region agent log
-    if request.url.path == "/v1/auth/request-otp":
-        _startup_logger.warning(
-            "H14 request_otp_validation_exception errors=%s",
-            exc.errors(),
-        )
-        _agent_debug_log(
-            run_id="pre-fix",
-            hypothesis_id="H5",
-            location="main.py:validation_exception_handler",
-            message="request_otp_validation_exception",
-            data={"errors": exc.errors()},
-        )
-    # endregion
     field_errors: dict[str, str] = {}
     for err in exc.errors():
         loc = ".".join(str(p) for p in err["loc"] if p != "body")
