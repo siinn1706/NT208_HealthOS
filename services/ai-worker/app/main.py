@@ -1,39 +1,45 @@
 """AI Worker — FastAPI application entry point."""
-from fastapi import FastAPI
+from __future__ import annotations
 
-app = FastAPI(title="HealthOS AI Worker", version="0.1.0")
+from fastapi import FastAPI, HTTPException
+
+from app.core.config import settings
+from app.schemas.analysis import AnalyzeMealRequest, AnalyzeMealResponse
+from app.services.food_detector_service import detect_food_nutrition
+from app.services.image_loader import ImageLoadError, load_image_from_url
+from app.services.nutrition_mapper import map_to_healthos_nutrition
+
+app = FastAPI(title=settings.app_name, version="0.2.0")
 
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "service": "ai-worker"}
+    return {
+        "status": "ok",
+        "service": "ai-worker",
+        "debug": settings.debug,
+    }
 
 
 @app.post("/analyze")
-async def analyze_meal(body: dict) -> dict:
-    """
-    TODO: Implement food recognition + nutrition estimation.
+async def analyze_meal(body: AnalyzeMealRequest) -> AnalyzeMealResponse:
+    """Analyze a meal image and return normalized nutrition result."""
+    try:
+        image = load_image_from_url(
+            image_url=body.image_url,
+            timeout_seconds=settings.ai_request_timeout_seconds,
+        )
+    except ImageLoadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    Expected input:
-      { "meal_id": "uuid", "image_url": "s3://..." }
+    try:
+        raw = detect_food_nutrition(image)
+        nutrition = map_to_healthos_nutrition(raw)
+    except Exception as exc:  # pragma: no cover - model runtime path
+        raise HTTPException(status_code=503, detail=f"Meal analysis failed: {exc}") from exc
 
-    Expected output:
-      { "meal_id": "uuid", "status": "analyzed", "nutrition": { ... } }
-
-    Steps:
-      1. Download image from Object Storage (adapters/storage.py)
-      2. Run food recognition model (tasks/food_recognition.py)
-      3. Estimate nutrition (tasks/nutrition_estimation.py)
-      4. Return result — Core BE will persist + publish WS event
-    """
-    return {
-        "meal_id": body.get("meal_id"),
-        "status": "analyzed",
-        "nutrition": {
-            "calories": 0.0,
-            "protein_g": 0.0,
-            "carbs_g": 0.0,
-            "fat_g": 0.0,
-            "confidence": 0.0,
-        },
-    }
+    return AnalyzeMealResponse(
+        meal_id=body.meal_id,
+        status="analyzed",
+        nutrition=nutrition,
+    )
