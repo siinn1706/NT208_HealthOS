@@ -10,6 +10,8 @@ GEMINI.md
 .github/
 docs/*
 !docs/sync-env-secrets.ps1
+docs/FoodDetector/
+docs/FoodDetector/.git/
 plans/
 guide/
 AGENTS.md
