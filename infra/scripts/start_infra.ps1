@@ -498,10 +498,11 @@ function Ensure-MinioLocal {
         ":9001"
     ) | Out-Null
 
-    Start-Sleep -Seconds 3
-    if (-not (Test-TcpPort -Port 9000)) {
-        throw "[MinIO] Failed to start local MinIO."
-    }
+Start-Sleep -Seconds 3
+
+if (-not $minioStarted) {
+    throw "[MinIO] Failed to start local MinIO. Please check port 9000."
+}
 
     Write-Host "[MinIO] Started (api=http://localhost:9000, console=http://localhost:9001)" -ForegroundColor Green
 }
