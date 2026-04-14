@@ -169,26 +169,6 @@ export function ChatWindow({
 
   const handleSend = useCallback(
     (content: string) => {
-      // #region agent log
-      fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
-        body: JSON.stringify({
-          sessionId: "462cac",
-          runId: "chat-session-pre-fix",
-          hypothesisId: "H4",
-          location: "ChatWindow.tsx:173",
-          message: "User initiated send",
-          data: {
-            convId,
-            currentUserId: currentUserId ?? null,
-            isEditing: Boolean(editingMessage),
-            hasReplyTo: Boolean(replyTo?.id),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       if (editingMessage) {
         editMessage(convId, editingMessage.id, content);
         setEditingMessage(null);
@@ -221,6 +201,21 @@ export function ChatWindow({
 
   const handleCancelReply = useCallback(() => setReplyTo(null), []);
   const handleCancelEdit = useCallback(() => setEditingMessage(null), []);
+
+  // Keyboard shortcut: Escape cancels reply/edit mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (editingMessage) {
+          handleCancelEdit();
+        } else if (replyTo) {
+          handleCancelReply();
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editingMessage, replyTo, handleCancelEdit, handleCancelReply]);
 
   // Bind conversationId so MessageList/PinnedMessages get simple (msgId) callbacks
   const handleRecall = useCallback((msgId: string) => recallMessage(convId, msgId), [convId, recallMessage]);
@@ -317,6 +312,7 @@ export function ChatWindow({
             onReact={handleReact}
             onPin={handlePin}
             onForward={handleForward}
+            onJumpToReply={handleJump}
           />
         )}
 

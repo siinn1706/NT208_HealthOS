@@ -1,10 +1,10 @@
 "use client";
 
-import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
-import { formatDateSeparator, shouldGroup } from "@/lib/chat-utils";
+import { formatDateSeparator, getGroupPosition, getBubbleRadius, type GroupPosition } from "@/lib/chat-utils";
 import { useLocale } from "next-intl";
 import type { Message } from "@/types/api";
 
@@ -21,6 +21,7 @@ interface MessageListProps {
   onPin: (msgId: string) => void;
   onReact: (msgId: string, emoji: string) => void;
   onForward?: (msg: Message) => void;
+  onJumpToReply?: (replyId: string) => void;
 }
 
 export interface MessageListHandle {
@@ -40,15 +41,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   onPin,
   onReact,
   onForward,
+  onJumpToReply,
 }, ref) {
   const locale = useLocale();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  // Track highlighted message for jump-to-reply feedback
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useImperativeHandle(ref, () => ({
     jumpToMessage(msgId: string) {
       const index = messages.findIndex((m) => m.id === msgId);
       if (index >= 0 && virtuosoRef.current) {
         virtuosoRef.current.scrollToIndex({ index, align: "center", behavior: "smooth" });
+        setHighlightedId(msgId);
       }
     },
   }), [messages]);
@@ -61,9 +66,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         msg.sender_id === "ai" ||
         (msg.sender_display_name?.toLowerCase().includes("ai") ?? false);
       const prev  = messages[index - 1];
+      const next  = messages[index + 1];
 
-      const grouped    = prev ? shouldGroup(prev, msg) : false;
-      const showAvatar = !grouped;
+      const groupPosition = getGroupPosition(
+        prev ? { sender_id: prev.sender_id, created_at: prev.created_at } : null,
+        { sender_id: msg.sender_id, created_at: msg.created_at },
+        next ? { sender_id: next.sender_id, created_at: next.created_at } : null
+      );
+
+      const showAvatar = groupPosition === "solo" || groupPosition === "first";
 
       let dateSep: string | undefined;
       if (!prev) {
@@ -80,8 +91,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         }
       }
 
+      // Wrap highlight on the target element
+      const isHighlighted = msg.id === highlightedId;
+
       return (
-        <div id={`msg-${msg.id}`}>
+        <div
+          id={`msg-${msg.id}`}
+          className={isHighlighted ? "animate-msg-highlight rounded-xl" : undefined}
+          onAnimationEnd={() => { if (isHighlighted) setHighlightedId(null); }}
+        >
           <MessageBubble
             message={msg}
             isOwn={isOwn}
@@ -90,6 +108,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             participantNameById={participantNameById}
             showAvatar={showAvatar}
             showDateSeparator={dateSep}
+            groupPosition={groupPosition}
+            bubbleRadius={getBubbleRadius(groupPosition, isOwn)}
             onReply={() => onReply(msg)}
             onEdit={() => onEdit(msg)}
             onRecall={() => onRecall(msg.id)}
@@ -97,6 +117,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             onPin={() => onPin(msg.id)}
             onReact={(emoji) => onReact(msg.id, emoji)}
             onForward={onForward ? () => onForward(msg) : undefined}
+            onJumpToReply={onJumpToReply}
           />
         </div>
       );
@@ -111,6 +132,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       onPin,
       onReact,
       onForward,
+      onJumpToReply,
       currentUserId,
       participantNameById,
     ]

@@ -429,6 +429,7 @@ export interface Conversation {
     created_at: string;
     type: MessageType;
     is_recalled: boolean;
+    status?: MessageStatus; // delivery status for outgoing messages in preview
   };
   is_pinned: boolean;
   is_muted: boolean;

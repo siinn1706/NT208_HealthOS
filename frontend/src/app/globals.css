@@ -204,6 +204,12 @@ html {
   animation: float-delayed 5s ease-in-out infinite;
 }
 
+/* Chat: highlight animation for jump-to-original-message (reply feature) */
+@keyframes msg-highlight {
+  0% { background-color: hsl(var(--primary) / 0.12); }
+  100% { background-color: transparent; }
+}
+
 /* Accessibility: Disable animations for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -119,23 +119,23 @@ export function MessageActions({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align={align === "right" ? "end" : "start"} className="w-44">
-            <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer">
+            <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer" aria-label={t("replyTo")}>
               <Reply className="w-4 h-4" />
               {t("replyTo")}
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={onCopy} className="gap-2 cursor-pointer">
+            <DropdownMenuItem onClick={onCopy} className="gap-2 cursor-pointer" aria-label={t("copyMessage")}>
               <Copy className="w-4 h-4" />
               {t("copyMessage")}
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={onPin} className="gap-2 cursor-pointer">
+            <DropdownMenuItem onClick={onPin} className="gap-2 cursor-pointer" aria-label={message.is_pinned ? t("unpinMessage") : t("pinMessage")}>
               {message.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
               {message.is_pinned ? t("unpinMessage") : t("pinMessage")}
             </DropdownMenuItem>
 
             {onForward && (
-              <DropdownMenuItem onClick={onForward} className="gap-2 cursor-pointer">
+              <DropdownMenuItem onClick={onForward} className="gap-2 cursor-pointer" aria-label={t("forwardMessage")}>
                 <Share2 className="w-4 h-4" />
                 {t("forwardMessage")}
               </DropdownMenuItem>
@@ -144,13 +144,14 @@ export function MessageActions({
             {isOwn && !isAi && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onEdit} className="gap-2 cursor-pointer">
+                <DropdownMenuItem onClick={onEdit} className="gap-2 cursor-pointer" aria-label={t("editMessage")}>
                   <Pencil className="w-4 h-4" />
                   {t("editMessage")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setShowRecallDialog(true)}
                   className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                  aria-label={t("recallMessage")}
                 >
                   <Undo2 className="w-4 h-4" />
                   {t("recallMessage")}
@@ -162,6 +163,7 @@ export function MessageActions({
             <DropdownMenuItem
               onClick={() => setShowDeleteDialog(true)}
               className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              aria-label={t("deleteMessage")}
             >
               <Trash2 className="w-4 h-4" />
               {t("deleteMessage")}

@@ -24,69 +24,14 @@ export function ChatLayout() {
     fetch("/api/v1/auth/session", { cache: "no-store" })
       .then(async (res) => {
         const body = res.ok ? await res.json().catch(() => null) : null;
-        // #region agent log
-        fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
-          body: JSON.stringify({
-            sessionId: "462cac",
-            runId: "chat-session-pre-fix",
-            hypothesisId: "H1",
-            location: "ChatLayout.tsx:28",
-            message: "Auth session fetch result",
-            data: {
-              ok: res.ok,
-              status: res.status,
-              hasData: Boolean(body?.data),
-              hasUserIdField: typeof body?.data?.user_id === "string",
-              hasIdField: typeof body?.data?.id === "string",
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         return body;
       })
       .then((json) => {
         if (cancelled) return;
         const userId = json?.data?.user_id ?? json?.data?.id;
-        // #region agent log
-        fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
-          body: JSON.stringify({
-            sessionId: "462cac",
-            runId: "chat-session-pre-fix",
-            hypothesisId: "H2",
-            location: "ChatLayout.tsx:49",
-            message: "Resolved currentUserId from session payload",
-            data: {
-              resolvedUserId: typeof userId === "string" ? userId : null,
-              payloadUserIdType: typeof json?.data?.user_id,
-              payloadIdType: typeof json?.data?.id,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         setCurrentUserId(typeof userId === "string" ? userId : null);
       })
       .catch(() => {
-        // #region agent log
-        fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
-          body: JSON.stringify({
-            sessionId: "462cac",
-            runId: "chat-session-pre-fix",
-            hypothesisId: "H3",
-            location: "ChatLayout.tsx:64",
-            message: "Auth session fetch failed",
-            data: {},
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         if (!cancelled) setCurrentUserId(null);
       });
     return () => {

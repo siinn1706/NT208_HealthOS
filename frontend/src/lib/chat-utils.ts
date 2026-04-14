@@ -100,11 +100,63 @@ export function formatDateSeparator(
   });
 }
 
-/** Should messages be grouped? (same sender, within 2 min) */
+/** Should messages be grouped? (same sender, within 60s) */
 export function shouldGroup(a: { sender_id: string; created_at: string }, b: { sender_id: string; created_at: string }): boolean {
   if (a.sender_id !== b.sender_id) return false;
   const diff = Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  return diff < 2 * 60 * 1000;
+  return diff < 60 * 1000;
+}
+
+/** Determine position within a consecutive message group.
+ * Returns 'solo' | 'first' | 'middle' | 'last' based on sender + time proximity.
+ */
+export type GroupPosition = "solo" | "first" | "middle" | "last";
+
+export function getGroupPosition(
+  prev: { sender_id: string; created_at: string } | null,
+  current: { sender_id: string; created_at: string },
+  next: { sender_id: string; created_at: string } | null
+): GroupPosition {
+  const withPrev = prev && shouldGroup(prev, current);
+  const withNext = next && shouldGroup(current, next);
+
+  if (withPrev && withNext) return "middle";
+  if (withPrev) return "last";
+  if (withNext) return "first";
+  return "solo";
+}
+
+/** Compute Tailwind corner-radius classes based on group position and message direction.
+ * Telegram-style: tail corner (small radius) only on the last/solo message.
+ */
+export function getBubbleRadius(
+  position: GroupPosition,
+  isOwn: boolean
+): string {
+  if (isOwn) {
+    // Outgoing: tail on bottom-right
+    switch (position) {
+      case "solo":
+        return "rounded-2xl rounded-br-sm";
+      case "first":
+        return "rounded-t-2xl rounded-b-lg rounded-br-sm";
+      case "middle":
+        return "rounded-l-2xl rounded-r-sm";
+      case "last":
+        return "rounded-b-2xl rounded-tl-2xl rounded-tr-sm";
+    }
+  }
+  // Incoming: tail on bottom-left
+  switch (position) {
+    case "solo":
+      return "rounded-2xl rounded-bl-sm";
+    case "first":
+      return "rounded-t-2xl rounded-b-lg rounded-bl-sm";
+    case "middle":
+      return "rounded-r-2xl rounded-l-sm";
+    case "last":
+      return "rounded-b-2xl rounded-tr-2xl rounded-tl-sm";
+  }
 }
 
 /** Preview text for a message in the conversation list */

@@ -51,6 +51,19 @@ export const ConversationItem = memo(function ConversationItem({
   const name = getConversationName(conversation, currentUserId);
   const other = getOtherParticipant(conversation, currentUserId);
   const preview = getMessagePreview(conversation, currentUserId);
+
+  // Build delivery status prefix for own outgoing messages in the preview line
+  // ✓ for sent, ✓✓ for delivered or read. Kept subtle via muted-foreground color.
+  // TODO: Add typing indicator here when WebSocket per-conversation typing state is available
+  const deliveryStatusPrefix = (() => {
+    if (!conversation.last_message || conversation.last_message.sender_id !== currentUserId) {
+      return null;
+    }
+    const status = conversation.last_message.status;
+    if (status === "sent") return <span className="text-muted-foreground text-[10px]">{"✓ "}</span>;
+    if (status === "delivered" || status === "read") return <span className="text-muted-foreground text-[10px]">{"✓✓ "}</span>;
+    return null;
+  })();
   const timeStr = conversation.last_message
     ? formatChatTime(conversation.last_message.created_at, locale)
     : "";
@@ -65,8 +78,8 @@ export const ConversationItem = memo(function ConversationItem({
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-150 text-left cursor-pointer",
             isActive
-              ? "bg-primary/10 dark:bg-primary/20"
-              : "hover:bg-secondary"
+              ? "bg-primary/10 dark:bg-primary/20 border-l-[3px] border-l-primary rounded-l-none"
+              : "hover:bg-secondary border-l-[3px] border-l-transparent"
           )}
         >
           {/* Avatar */}
@@ -117,7 +130,11 @@ export const ConversationItem = memo(function ConversationItem({
               )}>
                 {conversation.last_message?.is_recalled
                   ? <span className="italic">{t("recalled")}</span>
-                  : preview}
+                  : <>
+                      {deliveryStatusPrefix}
+                      {preview}
+                    </>
+                }
               </p>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {conversation.is_muted && (
@@ -127,7 +144,12 @@ export const ConversationItem = memo(function ConversationItem({
                   <Pin className="w-3.5 h-3.5 text-muted-foreground rotate-45" />
                 )}
                 {conversation.unread_count > 0 && (
-                  <span className="min-w-[20px] h-5 px-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className={cn(
+                    "min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center",
+                    conversation.is_muted
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-primary text-primary-foreground"
+                  )}>
                     {conversation.unread_count > 99 ? "99+" : conversation.unread_count}
                   </span>
                 )}
