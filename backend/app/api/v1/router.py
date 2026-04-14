@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     security_logs,
     users,
     vitals,
+    chat,
 )
 
 router = APIRouter(prefix="/v1")
@@ -44,3 +45,4 @@ router.include_router(reports.router)
 router.include_router(mfa.router)
 router.include_router(security_logs.router)
 router.include_router(preferences.router)
+router.include_router(chat.router)
