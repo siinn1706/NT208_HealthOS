@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { getUnitLabel } from "@/lib/format-utils";
 import { FileBarChart2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
@@ -62,15 +63,15 @@ function KpiCard({
 
 export default function ReportsPage() {
   const t = useTranslations("dashboard.reports");
-  const kpiT = useTranslations("dashboard.kpi");
+  const locale = useLocale();
   const [period, setPeriod] = useState<ReportPeriod>("7d");
 
   const KPI_CONFIGS = [
-    { key: "heartRate" as const, label: t("heartRateAvg"), unit: kpiT("heartUnit"), target: 80, color: "#EF4444" },
-    { key: "steps" as const, label: t("stepsAvg"), unit: kpiT("stepsUnit"), target: 8000, color: "#41BCE6" },
-    { key: "sleep" as const, label: t("sleepAvg"), unit: kpiT("sleepUnit"), target: 8, color: "#A78BFA" },
-    { key: "weight" as const, label: t("weightAvg"), unit: "kg", target: 70, color: "#16A34A" },
-  ];
+    { key: "heartRate" as const, label: t("heartRateAvg"), unit: "bpm",                            target: 80,   color: "#EF4444" },
+    { key: "steps"    as const, label: t("stepsAvg"),    unit: getUnitLabel("steps", locale),   target: 8000, color: "#41BCE6" },
+    { key: "sleep"    as const, label: t("sleepAvg"),    unit: getUnitLabel("hours", locale),   target: 8,    color: "#A78BFA" },
+    { key: "weight"   as const, label: t("weightAvg"),   unit: "kg",                             target: 70,   color: "#16A34A" },
+  ] as const;
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -121,7 +122,7 @@ export default function ReportsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <FileBarChart2 className="h-5 w-5 text-primary" aria-hidden />
+            <FileBarChart2 className="h-5 w-5 text-muted-foreground" aria-hidden />
             <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
@@ -140,34 +141,16 @@ export default function ReportsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <KpiCard
-              label="Nhịp tim TB"
-              value={kpiData?.heartRate.avg ?? 0}
-              unit="bpm"
-              target={kpiData?.heartRate.target ?? 80}
-              color="#EF4444"
-            />
-            <KpiCard
-              label="Số bước TB"
-              value={kpiData?.steps.avg ?? 0}
-              unit="bước"
-              target={kpiData?.steps.target ?? 8000}
-              color="#41BCE6"
-            />
-            <KpiCard
-              label="Giấc ngủ TB"
-              value={kpiData?.sleep.avg ?? 0}
-              unit="giờ"
-              target={kpiData?.sleep.target ?? 8}
-              color="#A78BFA"
-            />
-            <KpiCard
-              label="Cân nặng TB"
-              value={kpiData?.weight.avg ?? 0}
-              unit="kg"
-              target={kpiData?.weight.target ?? 70}
-              color="#16A34A"
-            />
+            {KPI_CONFIGS.map((cfg) => (
+              <KpiCard
+                key={cfg.key}
+                label={cfg.label}
+                value={kpiData ? kpiData[cfg.key].avg : 0}
+                unit={cfg.unit}
+                target={cfg.target}
+                color={cfg.color}
+              />
+            ))}
           </div>
         )}
       </div>

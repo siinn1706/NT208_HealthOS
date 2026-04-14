@@ -1,4 +1,5 @@
 import { type Conversation, type ChatParticipant } from "@/types/api";
+import { getLocaleTag } from "@/lib/format-utils";
 
 /** Get the "other" participant in a direct conversation */
 export function getOtherParticipant(
@@ -11,11 +12,15 @@ export function getOtherParticipant(
 }
 
 /** Get display name for a conversation */
-export function getConversationName(conversation: Conversation, currentUserId?: string | null): string {
+export function getConversationName(
+  conversation: Conversation,
+  currentUserId?: string | null,
+  groupChatLabel = "Group Chat"
+): string {
   if (conversation.type === "ai") return "HealthOS AI";
-  if (conversation.type === "group") return conversation.name ?? "Group Chat";
+  if (conversation.type === "group") return conversation.name ?? groupChatLabel;
   const other = getOtherParticipant(conversation, currentUserId);
-  return other?.display_name ?? "Chưa có thông tin";
+  return other?.display_name ?? "";
 }
 
 /** Get initials for an avatar */
@@ -25,10 +30,15 @@ export function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/** Format chat timestamp: today → HH:mm, yesterday → "Hôm qua", older → dd/MM */
-export function formatChatTime(isoString: string, locale = "vi"): string {
+/** Format chat timestamp: today → HH:mm, yesterday → label, older → dd/MM */
+export function formatChatTime(
+  isoString: string,
+  locale = "vi",
+  labels?: { today?: string; yesterday?: string }
+): string {
   const date = new Date(isoString);
   const now = new Date();
+  const localeTag = getLocaleTag(locale);
 
   const isToday =
     date.getDate() === now.getDate() &&
@@ -43,30 +53,35 @@ export function formatChatTime(isoString: string, locale = "vi"): string {
     date.getFullYear() === yesterday.getFullYear();
 
   if (isToday) {
-    return date.toLocaleTimeString(locale === "vi" ? "vi-VN" : "en-US", {
+    return date.toLocaleTimeString(localeTag, {
       hour: "2-digit",
       minute: "2-digit",
     });
   }
   if (isYesterday) {
-    return locale === "vi" ? "Hôm qua" : "Yesterday";
+    return labels?.yesterday ?? (locale === "vi" ? "Hôm qua" : "Yesterday");
   }
-  return date.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US", {
+  return date.toLocaleDateString(localeTag, {
     day: "2-digit",
     month: "2-digit",
   });
 }
 
 /** Full date separator label */
-export function formatDateSeparator(isoString: string, locale = "vi"): string {
+export function formatDateSeparator(
+  isoString: string,
+  locale = "vi",
+  labels?: { today?: string; yesterday?: string }
+): string {
   const date = new Date(isoString);
   const now = new Date();
+  const localeTag = getLocaleTag(locale);
   const isToday =
     date.getDate() === now.getDate() &&
     date.getMonth() === now.getMonth() &&
     date.getFullYear() === now.getFullYear();
 
-  if (isToday) return locale === "vi" ? "Hôm nay" : "Today";
+  if (isToday) return labels?.today ?? (locale === "vi" ? "Hôm nay" : "Today");
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
@@ -75,9 +90,9 @@ export function formatDateSeparator(isoString: string, locale = "vi"): string {
     date.getMonth() === yesterday.getMonth() &&
     date.getFullYear() === yesterday.getFullYear();
 
-  if (isYesterday) return locale === "vi" ? "Hôm qua" : "Yesterday";
+  if (isYesterday) return labels?.yesterday ?? (locale === "vi" ? "Hôm qua" : "Yesterday");
 
-  return date.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US", {
+  return date.toLocaleDateString(localeTag, {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -93,12 +108,31 @@ export function shouldGroup(a: { sender_id: string; created_at: string }, b: { s
 }
 
 /** Preview text for a message in the conversation list */
-export function getMessagePreview(conversation: Conversation, currentUserId: string): string {
+export interface MessagePreviewLabels {
+  recalled?: string;    // "Message recalled"
+  imageSelf?: string;   // "You sent an image"
+  imageOther?: string;  // "Sent an image"
+  fileSelf?: string;    // "You sent a file"
+  fileOther?: string;   // "Sent a file"
+  you?: string;         // "You: " prefix
+}
+
+export function getMessagePreview(
+  conversation: Conversation,
+  currentUserId: string | null,
+  labels?: MessagePreviewLabels
+): string {
+  const l = labels ?? {};
   const msg = conversation.last_message;
   if (!msg) return "";
-  if (msg.is_recalled) return "Tin nhắn đã được thu hồi";
-  if (msg.type === "image") return msg.sender_id === currentUserId ? "Bạn đã gửi một ảnh" : "Đã gửi một ảnh";
-  if (msg.type === "file") return msg.sender_id === currentUserId ? "Bạn đã gửi một file" : "Đã gửi một file";
-  const prefix = msg.sender_id === currentUserId ? "Bạn: " : "";
+  if (msg.is_recalled) return l.recalled ?? "";
+  const isSelf = !!currentUserId && msg.sender_id === currentUserId;
+  if (msg.type === "image") {
+    return isSelf ? (l.imageSelf ?? "You sent an image") : (l.imageOther ?? "Sent an image");
+  }
+  if (msg.type === "file") {
+    return isSelf ? (l.fileSelf ?? "You sent a file") : (l.fileOther ?? "Sent a file");
+  }
+  const prefix = isSelf ? (l.you ?? "You: ") : "";
   return prefix + msg.content;
 }

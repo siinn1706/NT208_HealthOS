@@ -79,36 +79,48 @@ async function getSessionDisplayName(): Promise<string> {
       const name = typeof session.display_name === "string" ? session.display_name.trim() : "";
       const user = typeof session.username === "string" ? session.username.trim() : "";
       const email = typeof session.email === "string" ? session.email.split("@")[0].trim() : "";
-      return name || user || email || "User";
+      return name || user || email || "";
     }
   }
-  return "User";
+  return "";
 }
 
 // ─── Public API ───────────────────────────────────────────────
 
 export async function getActiveGoals(): Promise<UserGoal[]> {
   const json = await bffFetch("/api/v1/analytics/gamification-summary");
-  if (!json) return MOCK_ACTIVE_GOALS;
+  const devFallback = process.env.NODE_ENV === "development" ? MOCK_ACTIVE_GOALS : [];
+  if (!json) return devFallback;
   const data = json as { activeGoals?: UserGoal[] };
-  return data.activeGoals ?? MOCK_ACTIVE_GOALS;
+  return data.activeGoals ?? devFallback;
 }
 
 export async function getAllMilestones(): Promise<ActivityMilestone[]> {
-  return MOCK_ALL_MILESTONES;
+  // TODO: connect to Core endpoint once /api/v1/analytics/milestones is implemented
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[gamification] getAllMilestones: returning mock data (no API yet)");
+    return MOCK_ALL_MILESTONES;
+  }
+  return [];
 }
 
 export async function getMilestonesByActivity(
   type: ActivityType
 ): Promise<ActivityMilestone[]> {
-  return MOCK_ALL_MILESTONES.filter((m) => m.activityType === type);
+  // TODO: connect to Core endpoint once /api/v1/analytics/milestones is implemented
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[gamification] getMilestonesByActivity: returning mock data (no API yet)");
+    return MOCK_ALL_MILESTONES.filter((m) => m.activityType === type);
+  }
+  return [];
 }
 
 export async function getUserStreakHistory(): Promise<UserStreakEntry[]> {
   const json = await bffFetch("/api/v1/analytics/gamification-summary");
-  if (!json) return MOCK_STREAK_HISTORY;
+  const devFallback = process.env.NODE_ENV === "development" ? MOCK_STREAK_HISTORY : [];
+  if (!json) return devFallback;
   const data = json as { streakHistory?: UserStreakEntry[] };
-  return data.streakHistory ?? MOCK_STREAK_HISTORY;
+  return data.streakHistory ?? devFallback;
 }
 
 export async function getUserBmiData(): Promise<UserBmiData> {
@@ -156,7 +168,7 @@ export async function getUserBmiData(): Promise<UserBmiData> {
       weightKg: profile!.weight_kg as number,
       bmi,
       status,
-      bmiScore: profile!.weight_kg as number,
+      bmiScore: null,
       targetBmi,
       targetWeightKg,
       deadline,
@@ -189,8 +201,12 @@ interface HealthGoalBEData {
 }
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  // TODO: Create GET /api/v1/leaderboard BFF route
-  return MOCK_LEADERBOARD;
+  // TODO: Create GET /api/v1/leaderboard BFF route and connect to Core endpoint
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[gamification] getLeaderboard: returning mock data (no API yet)");
+    return MOCK_LEADERBOARD;
+  }
+  return [];
 }
 
 /** Full summary for the Goals hub page. */
@@ -215,7 +231,7 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
       currentUser: {
         displayName,
         totalScore,
-        globalRank: 4,
+        globalRank: null,
         currentStreak,
         longestStreak,
         unlockedAchievements: unlocked.length,
@@ -245,12 +261,12 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
   return {
     currentUser: data.currentUser ?? {
       displayName: await getSessionDisplayName(),
-      totalScore: 1000,
-      globalRank: 1,
+      totalScore: 0,
+      globalRank: null,
       currentStreak: 0,
       longestStreak: 0,
       unlockedAchievements: 0,
-      totalAchievements: 20,
+      totalAchievements: 0,
     },
     bmi: data.bmi ?? {
       heightCm: null,
@@ -263,8 +279,8 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
       deadline: null,
       goalId: null,
     },
-    activeGoals: data.activeGoals ?? MOCK_ACTIVE_GOALS,
-    streakHistory: data.streakHistory ?? MOCK_STREAK_HISTORY,
+    activeGoals: data.activeGoals ?? [],
+    streakHistory: data.streakHistory ?? [],
     recentUnlocked: data.recentUnlocked ?? [],
   };
 }

@@ -34,7 +34,7 @@ def _safe_display_name(user: User) -> str:
         return user.profile.full_name
     if user.display_name:
         return user.display_name
-    return "Chưa có thông tin"
+    return user.email
 
 
 def _latest_metric_value(
@@ -115,7 +115,9 @@ async def get_dashboard_summary(
             DashboardAlert(
                 id="alert-heart-rate-high",
                 type="warning",
-                message=f"Nhip tim hien tai {round(heart_rate)} bpm vuot nguong khuyen nghi.",
+                message="HEART_RATE_HIGH",
+                alert_code="HEART_RATE_HIGH",
+                alert_params={"value": round(heart_rate), "unit": "bpm", "threshold": 100},
             )
         )
     if systolic is not None and systolic >= 140:
@@ -123,7 +125,9 @@ async def get_dashboard_summary(
             DashboardAlert(
                 id="alert-bp-systolic",
                 type="critical",
-                message=f"Huyet ap tam thu {round(systolic)} mmHg dang o muc cao.",
+                message="BP_SYSTOLIC_HIGH",
+                alert_code="BP_SYSTOLIC_HIGH",
+                alert_params={"value": round(systolic), "unit": "mmHg", "threshold": 140},
             )
         )
     if diastolic is not None and diastolic >= 90:
@@ -131,7 +135,9 @@ async def get_dashboard_summary(
             DashboardAlert(
                 id="alert-bp-diastolic",
                 type="critical",
-                message=f"Huyet ap tam truong {round(diastolic)} mmHg dang o muc cao.",
+                message="BP_DIASTOLIC_HIGH",
+                alert_code="BP_DIASTOLIC_HIGH",
+                alert_params={"value": round(diastolic), "unit": "mmHg", "threshold": 90},
             )
         )
 
@@ -139,19 +145,23 @@ async def get_dashboard_summary(
     if calories_intake > 0:
         ratio = calories_intake / 2000.0
         if ratio < 0.6:
-            insight_text = "Ban dang an duoi nhu cau nang luong trong ngay."
+            insight_text = "CALORIE_LOW"
+            insight_code = "CALORIE_LOW"
             category = "nutrition"
         elif ratio > 1.2:
-            insight_text = "Luong calo hom nay cao hon muc khuyen nghi."
+            insight_text = "CALORIE_HIGH"
+            insight_code = "CALORIE_HIGH"
             category = "nutrition"
         else:
-            insight_text = "Nang luong hom nay dang gan muc muc tieu."
+            insight_text = "CALORIE_NORMAL"
+            insight_code = "CALORIE_NORMAL"
             category = "nutrition"
-        ai_insight = DashboardAiInsight(text=insight_text, category=category)
+        ai_insight = DashboardAiInsight(text=insight_text, category=category, insight_code=insight_code)
     elif steps is not None:
         ai_insight = DashboardAiInsight(
-            text="Ban co du lieu van dong, tiep tuc duy tri de cai thien suc khoe.",
+            text="ACTIVITY_GOOD",
             category="activity",
+            insight_code="ACTIVITY_GOOD",
         )
 
     return DashboardSummaryDTO(
@@ -176,7 +186,7 @@ async def get_dashboard_summary(
                 key="steps",
                 current=steps,
                 target=10000,
-                unit="buoc",
+                unit="steps",
             ),
             DashboardGoal(
                 id="goal-calories",
@@ -251,8 +261,8 @@ async def get_nutrition_suggestions(
                 id="nutrition-no-data",
                 type="tip",
                 icon="Info",
-                title="Chua co thong tin",
-                message="Hom nay chua co du lieu bua an de phan tich.",
+                title="NUTRITION_NO_DATA",
+                message="NUTRITION_NO_DATA",
                 priority=1,
                 cta=None,
             )
@@ -270,8 +280,8 @@ async def get_nutrition_suggestions(
                 id="nutrition-protein-low",
                 type="warning",
                 icon="AlertCircle",
-                title="Protein dang thap",
-                message="Can bo sung them nguon dam de can bang khau phan.",
+                title="NUTRITION_PROTEIN_LOW",
+                message="NUTRITION_PROTEIN_LOW",
                 priority=1,
                 cta=None,
             )
@@ -282,8 +292,8 @@ async def get_nutrition_suggestions(
                 id="nutrition-calories-high",
                 type="warning",
                 icon="AlertCircle",
-                title="Calo vuot muc muc tieu",
-                message="Luong calo hom nay dang cao hon muc khuyen nghi.",
+                title="NUTRITION_CALORIES_HIGH",
+                message="NUTRITION_CALORIES_HIGH",
                 priority=2,
                 cta=None,
             )
@@ -294,8 +304,8 @@ async def get_nutrition_suggestions(
                 id="nutrition-calories-low",
                 type="tip",
                 icon="Lightbulb",
-                title="Can nang luong bo sung",
-                message="Tong calo hom nay con thap, can bo sung bua phu.",
+                title="NUTRITION_CALORIES_LOW",
+                message="NUTRITION_CALORIES_LOW",
                 priority=2,
                 cta=None,
             )
@@ -307,8 +317,9 @@ async def get_nutrition_suggestions(
                 id="nutrition-balanced",
                 type="success",
                 icon="CheckCircle",
-                title="Khau phan dang can bang",
-                message=f"Protein {round(protein)}g, carbs {round(carbs)}g, chat beo {round(fat)}g.",
+                title="NUTRITION_BALANCED",
+                message="NUTRITION_BALANCED",
+                message_params={"protein": round(protein), "carbs": round(carbs), "fat": round(fat)},
                 priority=3,
                 cta=None,
             )

@@ -3,6 +3,7 @@
 import { EChartWrapper } from "./EChartWrapper";
 import type { EChartsOption } from "echarts";
 import type { UserStreakEntry } from "@/data/gamification";
+import { useTranslations } from "next-intl";
 
 interface StreakHeatmapProps {
   entries: UserStreakEntry[];
@@ -10,6 +11,7 @@ interface StreakHeatmapProps {
 }
 
 export function StreakHeatmap({ entries, height = 120 }: StreakHeatmapProps) {
+  const t = useTranslations("dashboard.achievements");
   const weeks: UserStreakEntry[][] = [];
   for (let i = 0; i < entries.length; i += 7) {
     weeks.push(entries.slice(i, i + 7));
@@ -26,12 +28,15 @@ export function StreakHeatmap({ entries, height = 120 }: StreakHeatmapProps) {
   const option: EChartsOption = {
     backgroundColor: "transparent",
     tooltip: {
+      backgroundColor: "var(--color-popover)",
+      borderColor: "var(--color-border)",
+      textStyle: { color: "var(--color-foreground)", fontSize: 12 },
       formatter: (p: unknown) => {
         const params = p as { data: [number, number, number] };
         const [wi, di] = params.data;
         const entry = weeks[wi]?.[di];
         if (!entry) return "";
-        return `${entry.date}<br/>${entry.completed ? "Hoàn thành" : "Chưa hoàn thành"}`;
+        return `${entry.date}<br/>${entry.completed ? t("completed") : t("notCompleted")}`;
       },
     },
     grid: { top: 0, left: 2, right: 2, bottom: 0, containLabel: true },
@@ -42,7 +47,7 @@ export function StreakHeatmap({ entries, height = 120 }: StreakHeatmapProps) {
       min: 0,
       max: 2,
       inRange: {
-        color: ["rgba(65,188,230,0.15)", "rgba(65,188,230,0.6)", "#41BCE6"],
+        color: ["var(--color-muted)", "var(--color-accent)", "var(--color-primary)"],
       },
     },
     series: [

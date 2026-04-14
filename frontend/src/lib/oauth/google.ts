@@ -14,6 +14,8 @@ export interface GoogleUserInfo {
   email: string;
   name: string;
   picture?: string;
+  verified_email?: boolean;
+  email_verified?: boolean;
 }
 
 export interface GoogleTokenResponse {
@@ -22,6 +24,7 @@ export interface GoogleTokenResponse {
   token_type: string;
   scope: string;
   refresh_token?: string;
+  id_token?: string;
 }
 
 // ─── Get Authorization URL ───────────────────────────────────────────────────

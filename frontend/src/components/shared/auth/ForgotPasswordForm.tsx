@@ -98,12 +98,6 @@ export function ForgotPasswordForm() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const errorCode = data?.error?.code;
-        if (errorCode === "EMAIL_NOT_FOUND") {
-          // Email not registered — redirect to signup
-          router.push("/register");
-          return;
-        }
         setError(data?.error?.message || t("sendCodeFailed"));
         return;
       }
@@ -168,7 +162,7 @@ export function ForgotPasswordForm() {
     e.preventDefault();
 
     if (newPassword.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự"); 
+      setError(t("passwordMinLength"));
       return;
     }
 
@@ -191,9 +185,7 @@ export function ForgotPasswordForm() {
         setError(data?.error?.message || t("resetPasswordFailed"));
         return;
       }
-      if (data?.data?.access_token) {
-        localStorage.setItem("healthos_token", data.data.access_token);
-      }
+      // BFF sets the httpOnly cookie — do NOT store token in localStorage.
       setSuccess(t("resetPasswordSuccess"));
       setTimeout(() => router.push("/login"), 2000);
     } catch {
@@ -453,7 +445,7 @@ export function ForgotPasswordForm() {
                   </button>
                 </div>
                 {newPassword && newPassword.length < 8 && (
-                  <p className="text-xs text-destructive mt-1">Password must be at least 8 characters</p>
+                  <p className="text-xs text-destructive mt-1">{t("passwordMinLength")}</p>
                 )}
               </div>
 

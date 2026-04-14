@@ -11,5 +11,3 @@ coverage
 htmlcov
 .env
 .env.*
-infra/logs
-scratch

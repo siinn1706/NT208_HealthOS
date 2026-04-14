@@ -6,7 +6,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import { CORE_API_URL } from "@/lib/env";
+import { fetchWithTimeout } from "@/lib/bff-fetch-utils";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -21,12 +22,9 @@ export async function GET(req: NextRequest) {
 
   let res: Response;
   try {
-    res = await fetch(`${CORE_API_URL}/v1/auth/check-username?username=${encodeURIComponent(username)}`, {
+    res = await fetchWithTimeout(`${CORE_API_URL}/v1/auth/check-username?username=${encodeURIComponent(username)}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore – Next.js fetch extension
-      next: { revalidate: 0 },
     });
   } catch {
     return NextResponse.json(

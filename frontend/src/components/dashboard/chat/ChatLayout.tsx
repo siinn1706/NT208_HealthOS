@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
 import { useConversations, useStrangerRequests } from "@/hooks/useChat";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
 import { ChatEmptyState } from "./ChatEmptyState";
@@ -15,6 +16,7 @@ export function ChatLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
+  const prefersReduced = useReducedMotion();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -117,6 +119,11 @@ export function ChatLayout() {
     [activeConvId, updateLastMessage]
   );
 
+  const handleConversationUpdate = useCallback(
+    (raw: unknown) => { upsertConversation(raw); },
+    [upsertConversation]
+  );
+
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-background">
       {/* ── Conversation list panel ── */}
@@ -160,10 +167,10 @@ export function ChatLayout() {
             <motion.div
               key={activeConversation.id}
               className="flex flex-col h-full"
-              initial={{ opacity: 0 }}
+              initial={{ opacity: prefersReduced ? 1 : 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
+              exit={{ opacity: prefersReduced ? 1 : 0 }}
+              transition={{ duration: prefersReduced ? 0 : 0.15, ease: "easeOut" }}
             >
               <ChatWindow
                 conversation={activeConversation}
@@ -176,16 +183,17 @@ export function ChatLayout() {
                 onThemeChange={handleThemeChange}
                 onMessageSent={handleMessageSent}
                 onIncomingMessage={(raw) => applyIncomingMessage(raw, activeId)}
+                onConversationUpdate={handleConversationUpdate}
               />
             </motion.div>
           ) : (
             <motion.div
               key="empty"
               className="flex-1 flex items-center justify-center"
-              initial={{ opacity: 0 }}
+              initial={{ opacity: prefersReduced ? 1 : 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: prefersReduced ? 1 : 0 }}
+              transition={{ duration: prefersReduced ? 0 : 0.15 }}
             >
               <ChatEmptyState />
             </motion.div>

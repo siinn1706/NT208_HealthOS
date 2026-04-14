@@ -50,10 +50,11 @@ class NotFoundException(ApiException):
         self,
         resource: str = "Resource",
         message: Optional[str] = None,
+        code: str = "NOT_FOUND",
     ):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            code="NOT_FOUND",
+            code=code,
             message=message or f"{resource} không tìm thấy",
         )
 

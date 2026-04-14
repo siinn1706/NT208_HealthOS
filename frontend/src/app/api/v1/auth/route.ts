@@ -5,11 +5,18 @@
  * POST   /api/v1/auth/session  → login with email+password, set httpOnly cookie
  * DELETE /api/v1/auth/session  → logout, clear httpOnly cookie
  */
+
+// TODO: Add per-IP rate limiting (e.g., @upstash/ratelimit) to auth endpoints
+
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_MAX_AGE, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
-
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import {
+  META_COOKIE_NAME,
+  SESSION_COOKIE_MAX_AGE,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_SECURE,
+} from "@/lib/bff-auth-cookie";
+import { CORE_API_URL } from "@/lib/env";
 
 // ── Dev bypass ───────────────────────────────────────────────────────────────
 // Set DEV_BYPASS_CREDENTIALS in .env.local as "email:password" pairs
@@ -21,7 +28,8 @@ function getDevBypassMap(): Map<string, { email: string; display_name: string }>
   const map = new Map<string, { email: string; display_name: string }>();
   if (process.env.NODE_ENV === "production") return map;
 
-  const raw = process.env.DEV_BYPASS_CREDENTIALS ?? "admin:admin";
+  const raw = process.env.DEV_BYPASS_CREDENTIALS;
+  if (!raw) return map;  // No credentials configured, no bypass
   for (const entry of raw.split(",")) {
     const [loginId, password] = entry.trim().split(":");
     if (loginId && password) {
@@ -54,19 +62,21 @@ export async function GET() {
     );
   }
 
-  // Dev bypass — no backend call needed
-  const devUser = parseDevToken(token);
-  if (devUser) {
-    return NextResponse.json({
-      data: {
-        user_id: "00000000-0000-0000-0000-000000000001",
-        email: devUser.email,
-        username: devUser.email.split("@")[0],
-        display_name: devUser.display_name,
-        avatar_url: null,
-        onboarding_status: "completed",
-      },
-    });
+  // Dev bypass — only active outside production; never trust DEV_BYPASS tokens in prod
+  if (process.env.NODE_ENV !== "production") {
+    const devUser = parseDevToken(token);
+    if (devUser) {
+      return NextResponse.json({
+        data: {
+          user_id: "00000000-0000-0000-0000-000000000001",
+          email: devUser.email,
+          username: devUser.email.split("@")[0],
+          display_name: devUser.display_name,
+          avatar_url: null,
+          onboarding_status: "completed",
+        },
+      });
+    }
   }
 
   try {
@@ -77,12 +87,13 @@ export async function GET() {
 
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      // Token invalid/expired — clear cookie
+      // Token invalid/expired — clear both session and meta cookies
       const response = NextResponse.json(
         data ?? { error: { code: "AUTH_REQUIRED", message: "Session expired." } },
         { status: 401 }
       );
       response.cookies.delete(SESSION_COOKIE_NAME);
+      response.cookies.delete(META_COOKIE_NAME);
       return response;
     }
 
@@ -123,11 +134,16 @@ export async function POST(req: NextRequest) {
       });
       response.cookies.set(SESSION_COOKIE_NAME, makeDevToken(devUser.email), {
         httpOnly: true,
-        secure: false,
+        secure: false, // dev bypass always insecure
         sameSite: "lax",
         maxAge: SESSION_COOKIE_MAX_AGE,
         path: "/",
       });
+      response.cookies.set(
+        META_COOKIE_NAME,
+        JSON.stringify({ onboarding_status: "completed" }),
+        { httpOnly: false, secure: false, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+      );
       return response;
     }
   }
@@ -172,11 +188,18 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: SESSION_COOKIE_SECURE,
       sameSite: "lax",
       maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     });
+
+    // Non-httpOnly meta cookie for middleware onboarding gate (no sensitive data)
+    response.cookies.set(
+      META_COOKIE_NAME,
+      JSON.stringify({ onboarding_status: data.data.onboarding_status ?? "pending" }),
+      { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+    );
 
     return response;
   } catch {
@@ -187,9 +210,26 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── DELETE /api/v1/auth/session → Logout, clear cookie ──────────────────────
+// ── DELETE /api/v1/auth/session → Logout, clear cookie + revoke JWT on Core ─
 export async function DELETE() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  // Best-effort: notify Core to blacklist the JWT
+  if (token) {
+    try {
+      await fetch(`${CORE_API_URL}/v1/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+    } catch {
+      // Proceed with cookie deletion even if Core is unreachable
+    }
+  }
+
   const response = NextResponse.json({ data: { success: true } }, { status: 200 });
   response.cookies.delete(SESSION_COOKIE_NAME);
+  response.cookies.delete(META_COOKIE_NAME);
   return response;
 }

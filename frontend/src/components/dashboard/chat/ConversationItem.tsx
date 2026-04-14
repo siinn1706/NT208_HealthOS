@@ -50,7 +50,7 @@ export const ConversationItem = memo(function ConversationItem({
 
   const name = getConversationName(conversation, currentUserId);
   const other = getOtherParticipant(conversation, currentUserId);
-  const preview = getMessagePreview(conversation, currentUserId ?? "");
+  const preview = getMessagePreview(conversation, currentUserId);
   const timeStr = conversation.last_message
     ? formatChatTime(conversation.last_message.created_at, locale)
     : "";

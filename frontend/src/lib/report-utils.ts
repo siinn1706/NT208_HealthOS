@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { HealthStatus, ReportCategory, TrendDirection } from "@/types/api";
+import { getLocaleTag } from "@/lib/format-utils";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -78,9 +79,10 @@ export function getCategoryMeta(category: ReportCategory): CategoryMeta {
 
 // ─── Date formatting ────────────────────────────────────────────────────────
 
-export function formatReportDate(isoDate: string): string {
+export function formatReportDate(isoDate: string, locale = "vi"): string {
   try {
-    return new Intl.DateTimeFormat("vi-VN", {
+    const localeTag = getLocaleTag(locale);
+    return new Intl.DateTimeFormat(localeTag, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -90,7 +92,8 @@ export function formatReportDate(isoDate: string): string {
   }
 }
 
-export function formatPeriodLabel(period: string): string {
-  const map: Record<string, string> = { "7d": "7 ngày", "30d": "30 ngày", "90d": "90 ngày" };
-  return map[period] ?? period;
+export function formatPeriodLabel(period: string, labels?: Record<string, string>): string {
+  if (labels) return labels[period] ?? period;
+  const fallback: Record<string, string> = { "7d": "7 days", "30d": "30 days", "90d": "90 days" };
+  return fallback[period] ?? period;
 }

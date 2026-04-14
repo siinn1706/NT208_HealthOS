@@ -2,13 +2,15 @@
 
 import { cn } from "@/lib/utils";
 import type { UserStreakEntry } from "@/data/gamification";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface StreakCalendarProps {
   history: UserStreakEntry[];
   currentStreak: number;
   longestStreak: number;
 }
+
+const DAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 // Generate locale-aware short day labels
 function getDayLabels(locale: string): string[] {
@@ -126,7 +128,7 @@ export function StreakCalendar({
           </div>
           {/* Week requirement note */}
           <p className="text-[11px] text-muted-foreground mt-3 text-center">
-            Cần ≥ 5 ngày/tuần × 4 tuần để nhận huy hiệu
+            {t("streakCalendar.requirement")}
           </p>
         </div>
       </div>

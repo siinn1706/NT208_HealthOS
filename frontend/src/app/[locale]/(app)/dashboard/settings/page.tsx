@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import {
   User,
   Bell,
@@ -17,12 +19,27 @@ import {
   Smartphone,
   Download,
   Trash2,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BlossomColorPicker } from "@/components/blossom/BlossomColorPicker";
-import { applyAccentColorToRoot } from "@/components/theme/UserAccentColorApplier";
+
+const AccentColorSetting = dynamic(
+  () => import("@/components/settings/accent-color-setting"),
+  {
+    ssr: false,
+    loading: () => <div className="h-8 animate-pulse rounded-lg bg-muted/40" />,
+  }
+);
 
 type ThemeOption = "system" | "light" | "dark";
+
+function pushThemeModeToBackend(value: ThemeOption): void {
+  void fetch("/api/v1/preferences/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ theme_mode: value }),
+  });
+}
 
 interface SettingRowProps {
   icon: React.ElementType;
@@ -69,11 +86,11 @@ function SettingRow({ icon: Icon, label, description, children, onClick, danger 
 
 function SettingGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border bg-muted/30">
+    <div className="rounded-xl border border-border bg-card">
+      <div className="px-5 py-3 border-b border-border bg-muted/30 rounded-tl-xl rounded-tr-xl">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{title}</p>
       </div>
-      <div className="divide-y divide-border">{children}</div>
+      <div className="divide-y divide-border [&>*:last-child]:rounded-b-xl">{children}</div>
     </div>
   );
 }
@@ -104,12 +121,8 @@ export default function SettingsPage() {
   const locale = useLocale();
   const t = useTranslations("dashboard");
 
-  const [theme, setTheme] = useState<ThemeOption>("system");
-  const [accentColor, setAccentColor] = useState<string | null>(null);
-  const [accentOriginal, setAccentOriginal] = useState<string | null>(null);
-  const [accentLoading, setAccentLoading] = useState<boolean>(true);
-  const [accentSaving, setAccentSaving] = useState<boolean>(false);
-  const [accentError, setAccentError] = useState<string | null>(null);
+  const { theme: rawTheme, setTheme } = useTheme();
+  const theme = (rawTheme ?? "system") as ThemeOption;
   const [notifications, setNotifications] = useState({
     healthAlerts: true,
     reminders: true,
@@ -117,64 +130,6 @@ export default function SettingsPage() {
     promotions: false,
     chatMessages: true,
   });
-
-  const canSaveAccent = useMemo(
-    () => !accentLoading && !accentSaving && accentColor !== accentOriginal,
-    [accentLoading, accentSaving, accentColor, accentOriginal]
-  );
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setAccentLoading(true);
-        setAccentError(null);
-        const res = await fetch("/api/v1/users/me", { cache: "no-store" });
-        const json = (await res.json().catch(() => null)) as { data?: { accent_color?: string | null } } | null;
-        const serverColor = typeof json?.data?.accent_color === "string" ? json.data.accent_color : null;
-        if (!alive) return;
-        setAccentColor(serverColor);
-        setAccentOriginal(serverColor);
-        applyAccentColorToRoot(serverColor);
-      } catch {
-        if (!alive) return;
-        setAccentError(t("settingsPage.appearance.accentColorLoadError"));
-      } finally {
-        if (!alive) return;
-        setAccentLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [t]);
-
-  useEffect(() => {
-    // Immediate UI feedback while picking; persisted value is still Core-backed.
-    applyAccentColorToRoot(accentColor);
-  }, [accentColor]);
-
-  const saveAccentColor = async () => {
-    try {
-      setAccentSaving(true);
-      setAccentError(null);
-      const res = await fetch("/api/v1/users/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accent_color: accentColor }),
-      });
-      if (!res.ok) throw new Error("save_failed");
-      const json = (await res.json().catch(() => null)) as { data?: { accent_color?: string | null } } | null;
-      const serverColor = typeof json?.data?.accent_color === "string" ? json.data.accent_color : null;
-      setAccentColor(serverColor);
-      setAccentOriginal(serverColor);
-      applyAccentColorToRoot(serverColor);
-    } catch {
-      setAccentError(t("settingsPage.appearance.accentColorSaveError"));
-    } finally {
-      setAccentSaving(false);
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -249,7 +204,10 @@ export default function SettingsPage() {
               return (
                 <button
                   key={opt.value}
-                  onClick={() => setTheme(opt.value)}
+                  onClick={() => {
+                    setTheme(opt.value);
+                    pushThemeModeToBackend(opt.value);
+                  }}
                   title={t(opt.labelKey as Parameters<typeof t>[0])}
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer",
@@ -264,57 +222,19 @@ export default function SettingsPage() {
             })}
           </div>
         </SettingRow>
-        <SettingRow
-          icon={Sun}
-          label={t("settingsPage.appearance.accentColor")}
-          description={t("settingsPage.appearance.accentColorDesc")}
-        >
-          <div className="flex items-center gap-3 flex-wrap justify-end">
-            <div className={cn("flex items-center gap-3", accentLoading && "opacity-70 pointer-events-none")}>
-              <BlossomColorPicker
-                value={accentColor}
-                onChange={(hex) => setAccentColor(hex)}
-                disabled={accentLoading || accentSaving}
-                className="shrink-0"
-              />
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-6 h-6 rounded border border-border"
-                  style={{ backgroundColor: accentColor ?? "transparent" }}
-                  aria-label={accentColor ? `Accent ${accentColor}` : "Accent default"}
-                />
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {accentColor ?? t("settingsPage.appearance.accentColorDefault")}
-                </span>
-              </div>
+        {/* Accent Color — full-width block so the two-column layout has room */}
+        <div className="px-5 py-4">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-muted">
+              <Palette className="w-4 h-4 text-muted-foreground" />
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setAccentColor(null)}
-                disabled={accentLoading || accentSaving}
-                className={cn(
-                  "px-2.5 py-1 text-xs font-medium rounded-md border transition-colors",
-                  "border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:hover:bg-transparent"
-                )}
-              >
-                {t("settingsPage.appearance.accentColorReset")}
-              </button>
-              <button
-                onClick={saveAccentColor}
-                disabled={!canSaveAccent}
-                className={cn(
-                  "px-2.5 py-1 text-xs font-medium rounded-md border transition-colors",
-                  canSaveAccent
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground"
-                )}
-              >
-                {accentSaving ? t("settingsPage.appearance.accentColorSaving") : t("settingsPage.appearance.accentColorSave")}
-              </button>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{t("settingsPage.appearance.accentColor")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settingsPage.appearance.accentColorDesc")}</p>
             </div>
-            {accentError && <p className="w-full text-xs text-destructive">{accentError}</p>}
           </div>
-        </SettingRow>
+          <AccentColorSetting />
+        </div>
       </SettingGroup>
 
       {/* Notifications */}
@@ -375,19 +295,16 @@ export default function SettingsPage() {
           icon={Shield}
           label={t("settingsPage.privacy.policy")}
           description={t("settingsPage.privacy.policyDesc")}
-          onClick={() => {}}
         />
         <SettingRow
           icon={Download}
           label={t("settingsPage.privacy.download")}
           description={t("settingsPage.privacy.downloadDesc")}
-          onClick={() => {}}
         />
         <SettingRow
           icon={Trash2}
           label={t("settingsPage.privacy.delete")}
           description={t("settingsPage.privacy.deleteDesc")}
-          onClick={() => {}}
           danger
         />
       </SettingGroup>

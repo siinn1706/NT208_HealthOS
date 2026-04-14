@@ -39,7 +39,7 @@ function normalizeMeal(row: any): Meal {
 
   return {
     id: typeof row?.id === "string" ? row.id : "",
-    name: typeof row?.name === "string" && row.name.trim() ? row.name : "Chưa có thông tin",
+    name: typeof row?.name === "string" && row.name.trim() ? row.name : "",
     status: row?.status === "pending" || row?.status === "processing" || row?.status === "analyzed" || row?.status === "failed"
       ? row.status
       : "pending",
@@ -164,12 +164,16 @@ export async function getNutritionSuggestions(): Promise<NutritionSuggestion[]> 
         title:
           typeof item?.title === "string" && item.title.trim()
             ? item.title
-            : "Chưa có thông tin",
+            : "",
         message:
           typeof item?.message === "string" && item.message.trim()
             ? item.message
-            : "Chưa có thông tin",
+            : "",
         priority: typeof item?.priority === "number" ? item.priority : 99,
+        message_params:
+          item?.message_params && typeof item.message_params === "object" && !Array.isArray(item.message_params)
+            ? (item.message_params as Record<string, number>)
+            : undefined,
         cta:
           item?.cta && typeof item.cta === "object" && typeof item.cta.label === "string" && typeof item.cta.href === "string"
             ? { label: item.cta.label, href: item.cta.href }

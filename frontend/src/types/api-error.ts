@@ -11,7 +11,7 @@ export interface ApiFieldError {
 export interface ApiError {
   code: string;
   message: string;
-  details?: string;
+  details?: string | Record<string, unknown>;
   field_errors?: Record<string, string>;
 }
 
@@ -49,6 +49,7 @@ export const ErrorCodes = {
   TOKEN_INVALID: "TOKEN_INVALID",
   SESSION_EXPIRED: "SESSION_EXPIRED",
   UNAUTHORIZED: "UNAUTHORIZED",
+  PASSWORD_BREACHED: "PASSWORD_BREACHED",
 
   // Rate limiting
   RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
@@ -93,8 +94,17 @@ export function parseApiError(response: unknown): ApiError {
     };
   }
 
-  // Fallback for other error formats
+  // Fallback: FastAPI { "detail": { code, message } } or { "detail": "string" }
   if (data.detail) {
+    if (typeof data.detail === "object") {
+      const det = data.detail as Record<string, unknown>;
+      return {
+        code: (det.code as string) || ErrorCodes.UNKNOWN_ERROR,
+        message: (det.message as string) || "Đã xảy ra lỗi",
+        details: det.details as string | undefined,
+        field_errors: det.field_errors as Record<string, string> | undefined,
+      };
+    }
     return {
       code: ErrorCodes.UNKNOWN_ERROR,
       message: String(data.detail),
@@ -138,6 +148,8 @@ export function getErrorMessage(errorCode: string, fallbackMessage?: string): st
     [ErrorCodes.TOKEN_INVALID]: "Phiên đăng nhập không hợp lệ",
     [ErrorCodes.SESSION_EXPIRED]: "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại",
     [ErrorCodes.UNAUTHORIZED]: "Bạn cần đăng nhập để tiếp tục",
+    [ErrorCodes.PASSWORD_BREACHED]:
+      "Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu. Vui lòng chọn mật khẩu khác.",
 
     // Rate limiting
     [ErrorCodes.RATE_LIMIT_EXCEEDED]: "Thao tác quá nhanh, vui lòng thử lại sau",

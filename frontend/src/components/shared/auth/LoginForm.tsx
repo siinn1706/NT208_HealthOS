@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -18,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useNotification, ValidationMessages } from "@/hooks/use-notification";
+import { getSafePostLoginRedirectPath } from "@/lib/safe-post-login-redirect";
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -70,6 +72,7 @@ export function LoginForm() {
   const t = useTranslations("auth");
   const tErrors = useTranslations("errors");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { handleApiError, success, handleError } = useNotification();
   const identifierRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -81,17 +84,37 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const oauthErrorBanner = useMemo(() => {
+    const raw = searchParams.get("oauth_error");
+    if (!raw) return null;
+    const known: Record<string, string> = {
+      core_unreachable: t("oauthErrorCoreUnreachable"),
+      server_error: t("oauthErrorServerError"),
+      missing_code: t("oauthErrorMissingCode"),
+      invalid_state: t("oauthErrorInvalidState"),
+      missing_verifier: t("oauthErrorMissingVerifier"),
+      nonce_mismatch: t("oauthErrorNonceMismatch"),
+      unverified_email: t("oauthErrorUnverifiedEmail"),
+    };
+    if (known[raw]) return known[raw];
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return t("oauthErrorServerError");
+    }
+  }, [searchParams, t]);
+
   // Client-side validation
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!identifier.trim()) {
-      errors.identifier = ValidationMessages.required("Email/Username");
+      errors.identifier = ValidationMessages.required(t("loginIdentifier"));
       identifierRef.current?.focus();
     }
 
     if (!password) {
-      errors.password = ValidationMessages.required("Mật khẩu");
+      errors.password = ValidationMessages.required(t("password"));
       if (!errors.identifier) {
         passwordRef.current?.focus();
       }
@@ -138,9 +161,13 @@ export function LoginForm() {
       // Success - show toast and redirect
       success(tErrors("loginSuccess"));
 
-      // Check onboarding status and redirect accordingly
       const onboardingStatus = data?.data?.onboarding_status;
-      if (onboardingStatus === "completed") {
+      const fromRaw = searchParams.get("from");
+      const fromSafe = getSafePostLoginRedirectPath(fromRaw);
+
+      if (onboardingStatus === "completed" && fromSafe) {
+        router.push(fromSafe);
+      } else if (onboardingStatus === "completed") {
         router.push("/dashboard");
       } else {
         router.push("/onboarding");
@@ -196,6 +223,14 @@ export function LoginForm() {
 
       {/* Form */}
       <CardContent>
+        {oauthErrorBanner && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {oauthErrorBanner}
+          </div>
+        )}
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Username or Email */}
           <div className="space-y-1.5">

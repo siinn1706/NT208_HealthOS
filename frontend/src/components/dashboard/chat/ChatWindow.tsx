@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useMessages, useTypingState } from "@/hooks/useChat";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
 import { PinnedMessages } from "./PinnedMessages";
-import { MessageList } from "./MessageList";
+import { MessageList, type MessageListHandle } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ConversationInfoPanel } from "./ConversationInfoPanel";
@@ -28,6 +28,7 @@ interface ChatWindowProps {
   onThemeChange: (themeId: string | null) => void;
   onMessageSent?: (msg: Message) => void;
   onIncomingMessage?: (raw: unknown) => void;
+  onConversationUpdate?: (raw: unknown) => void;
 }
 
 export function ChatWindow({
@@ -41,6 +42,7 @@ export function ChatWindow({
   onThemeChange,
   onMessageSent,
   onIncomingMessage,
+  onConversationUpdate,
 }: ChatWindowProps) {
   const {
     messages,
@@ -54,6 +56,7 @@ export function ChatWindow({
     pinMessage,
     simulateAIReply,
     upsertMessage,
+    setPinnedState,
     setRemoteTyping,
   } = useMessages(conversation.id, currentUserId);
 
@@ -62,6 +65,7 @@ export function ChatWindow({
   const [showSearch, setShowSearch] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
+  const messageListRef = useRef<MessageListHandle>(null);
 
   const convId = conversation.id;
   const wsEnabled = conversation.type !== "ai";
@@ -78,7 +82,13 @@ export function ChatWindow({
       frame.event === "msg:delete" ||
       frame.event === "chat.message.recalled" ||
       frame.event === "msg:react" ||
-      frame.event === "chat.message.reacted";
+      frame.event === "chat.message.reacted" ||
+      frame.event === "msg:pinned" ||
+      frame.event === "chat.message.pinned" ||
+      frame.event === "msg:unpinned" ||
+      frame.event === "chat.message.unpinned" ||
+      frame.event === "msg:read" ||
+      frame.event === "chat.message.read";
 
     if (isMessageEvent && payloadConvId && payloadConvId !== convId) {
       onIncomingMessage?.(payload);
@@ -105,6 +115,23 @@ export function ChatWindow({
       return;
     }
 
+    if (frame.event === "msg:pinned" || frame.event === "chat.message.pinned") {
+      const msgId = typeof payload.message_id === "string" ? payload.message_id : null;
+      if (msgId) setPinnedState(msgId, true);
+      return;
+    }
+
+    if (frame.event === "msg:unpinned" || frame.event === "chat.message.unpinned") {
+      const msgId = typeof payload.message_id === "string" ? payload.message_id : null;
+      if (msgId) setPinnedState(msgId, false);
+      return;
+    }
+
+    if (frame.event === "msg:read" || frame.event === "chat.message.read") {
+      // No-op: read receipts don't require visual message state changes currently
+      return;
+    }
+
     if (frame.event === "typing" || frame.event === "chat.typing") {
       if (payloadConvId && payloadConvId !== convId) return;
       const senderId = typeof payload.user_id === "string" ? payload.user_id : null;
@@ -112,7 +139,11 @@ export function ChatWindow({
       const typing = Boolean(payload.is_typing);
       setRemoteTyping(typing);
     }
-  }, [convId, upsertMessage, setRemoteTyping, onIncomingMessage, currentUserId]);
+
+    if (frame.event === "conversation.updated") {
+      onConversationUpdate?.(payload);
+    }
+  }, [convId, upsertMessage, setPinnedState, setRemoteTyping, onIncomingMessage, onConversationUpdate, currentUserId]);
 
   const { sendEvent, isConnected } = useChatWs({
     onEvent: handleWsEvent,
@@ -172,8 +203,7 @@ export function ChatWindow({
   const handleReact = useCallback((msgId: string, emoji: string) => reactToMessage(convId, msgId, emoji), [convId, reactToMessage]);
 
   const handleJump = useCallback((msgId: string) => {
-    const el = document.getElementById(`msg-${msgId}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    messageListRef.current?.jumpToMessage(msgId);
   }, []);
 
   const handleForward = useCallback((msg: Message) => {
@@ -249,6 +279,7 @@ export function ChatWindow({
           </div>
         ) : (
           <MessageList
+            ref={messageListRef}
             messages={messages}
             currentUserId={currentUserId}
             participantNameById={participantNameById}

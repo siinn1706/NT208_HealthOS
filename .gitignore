@@ -52,12 +52,13 @@ docs/secret/
 Thumbs.db
 .vscode/
 .idea/
-infra/env/backend.env
-infra/env/frontend.env
-infra/env/worker.env
+!infra/scripts/
 *.log
-infra/logs/
+infra/logs/*
+!infra/logs/.gitkeep
 
 # Ignore local infrastructure data
 .data/
 .husky/commit-msg
+infra/bin/
+infra/data/

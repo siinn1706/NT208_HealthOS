@@ -3,6 +3,7 @@
 import { EChartWrapper } from "./EChartWrapper";
 import type { EChartsOption, SeriesOption } from "echarts";
 import type { UserBmiData } from "@/data/gamification";
+import { useTranslations } from "next-intl";
 
 interface BmiProgressChartProps {
   bmiData: UserBmiData;
@@ -11,6 +12,7 @@ interface BmiProgressChartProps {
 }
 
 export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: BmiProgressChartProps) {
+  const t = useTranslations("dashboard.progress");
   const dates = historyData.map((d) => d.date);
   const bmiValues = historyData.map((d) => d.bmi);
 
@@ -64,15 +66,17 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
         },
         markPoint: {
           data: [
-            { type: "max", name: "Cao nhất", itemStyle: { color: "#E8BDB7" } },
-            { type: "min", name: "Thấp nhất", itemStyle: { color: "#E7DEA7" } },
+            { type: "max", name: t("chartHighest"), itemStyle: { color: "#E8BDB7" } },
+            { type: "min", name: t("chartLowest"), itemStyle: { color: "#E7DEA7" } },
           ],
         },
-        markLine: {
-          silent: true,
-          lineStyle: { color: "#16A34A", type: "solid", width: 1 },
-          data: [{ yAxis: bmiData.targetBmi, label: { formatter: `Mục tiêu ${bmiData.targetBmi}`, color: "#16A34A", fontSize: 10 } }],
-        },
+        ...(bmiData.targetBmi != null ? {
+          markLine: {
+            silent: true,
+            lineStyle: { color: "#16A34A", type: "solid", width: 1 },
+            data: [{ yAxis: bmiData.targetBmi, label: { formatter: `${t("chartTarget")} ${bmiData.targetBmi}`, color: "#16A34A", fontSize: 10 } }],
+          },
+        } : {}),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         markArea: {
           silent: true,

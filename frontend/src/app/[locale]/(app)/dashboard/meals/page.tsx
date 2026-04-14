@@ -23,7 +23,7 @@ export default async function MealsPage({ params }: { params: Promise<{ locale: 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground">{t("diary")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Track your diet and nutrition goals</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
         </div>
         <Link
           href={`/${locale}/dashboard/meals/add`}
@@ -31,7 +31,7 @@ export default async function MealsPage({ params }: { params: Promise<{ locale: 
         >
           <CirclePlus className="size-4" />
           <span className="hidden sm:inline">{t("addMeal")}</span>
-          <span className="sm:hidden">Add</span>
+          <span className="sm:hidden">{t("addMeal")}</span>
         </Link>
       </div>
 

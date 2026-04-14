@@ -9,7 +9,14 @@
     "lint": "eslint",
     "optimize:assets": "node tools/optimize-assets.mjs",
     "optimize:svgo": "node tools/optimize-assets.mjs --svgo",
-    "optimize:thumbs": "node tools/optimize-assets.mjs --thumbs"
+    "optimize:thumbs": "node tools/optimize-assets.mjs --thumbs",
+    "i18n:check": "node tools/check-i18n-parity.mjs",
+    "i18n:scan:locale": "grep -rn \"vi-VN\\|en-US\" src/ --include=\"*.tsx\" --include=\"*.ts\" || true",
+    "i18n:scan:vi": "grep -rPn \"[\\x{1E00}-\\x{1EFF}\\x{00C0}-\\x{024F}]\" src/app/ src/components/ src/lib/ --include=\"*.tsx\" --include=\"*.ts\" || true",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@dayflow/blossom-color-picker": "^2.2.0",
@@ -19,6 +26,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-slider": "^1.3.6",
     "@tailwindcss/typography": "^0.5.19",
+    "@twallpaper/react": "^2.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -38,12 +46,14 @@
     "react-markdown": "^10.1.0",
     "react-virtuoso": "^4.18.3",
     "redis": "^4.6.0",
+    "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

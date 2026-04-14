@@ -189,6 +189,9 @@ async def handle_ws_event(
 
     # ── Edit message ───────────────────────────────────────────────────────────
     elif event_type in {"msg:edit", "chat.message.edit"}:
+        if not manager.check_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending messages too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         content = payload.get("content", "")
@@ -216,6 +219,9 @@ async def handle_ws_event(
 
     # ── Delete / recall message ────────────────────────────────────────────────
     elif event_type in {"msg:delete", "chat.message.recall"}:
+        if not manager.check_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending messages too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         delete_for_everyone = bool(payload.get("delete_for_everyone", True))
@@ -254,6 +260,12 @@ async def handle_ws_event(
             return
         if not emoji:
             await ack_error("INVALID_PAYLOAD", "emoji is required.")
+            return
+        # Validate emoji length using grapheme clusters to correctly handle
+        # multi-codepoint emoji sequences (e.g. skin-tone modifiers, ZWJ sequences).
+        # The WsReactMessage schema allows max_length=64 bytes; mirror that here.
+        if len(emoji.encode("utf-8")) > 64:
+            await ack_error("INVALID_PAYLOAD", "emoji exceeds maximum allowed length.")
             return
 
         try:

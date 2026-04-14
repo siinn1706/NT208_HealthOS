@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { getLocaleTag } from "@/lib/format-utils";
 import { Check, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +24,7 @@ export function PlanCard({ plan }: PlanCardProps) {
   const isFree = plan.price === 0;
   const priceDisplay = isFree
     ? t("free")
-    : new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-US").format(plan.price) + "₫";
+    : new Intl.NumberFormat(getLocaleTag(locale)).format(plan.price) + "₫";
 
   return (
     <Card

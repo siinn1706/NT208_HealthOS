@@ -91,7 +91,7 @@ export interface GamificationSummary {
   currentUser: {
     displayName: string;
     totalScore: number;
-    globalRank: number;
+    globalRank: number | null;
     currentStreak: number;
     longestStreak: number;
     unlockedAchievements: number;
@@ -130,7 +130,7 @@ export const MOCK_ACTIVE_GOALS: UserGoal[] = [
     activityType: "steps",
     labelKey: "steps-8000",
     dailyTarget: 8000,
-    unit: "bước",
+    unit: "steps",
     todayProgress: 5600,
     isActive: true,
     color: "#E3B79A",
@@ -215,7 +215,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
     activityType: "steps",
     labelKey: "steps-5000",
     targetValue: 5000,
-    unit: "bước",
+    unit: "steps",
     pointValue: 100,
     tier: "bronze",
     currentWeek: 4,
@@ -229,7 +229,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
     activityType: "steps",
     labelKey: "steps-7000",
     targetValue: 7000,
-    unit: "bước",
+    unit: "steps",
     pointValue: 200,
     tier: "silver",
     currentWeek: 4,
@@ -243,7 +243,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
     activityType: "steps",
     labelKey: "steps-8000",
     targetValue: 8000,
-    unit: "bước",
+    unit: "steps",
     pointValue: 250,
     tier: "gold",
     currentWeek: 1,
@@ -256,7 +256,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
     activityType: "steps",
     labelKey: "steps-10000",
     targetValue: 10000,
-    unit: "bước",
+    unit: "steps",
     pointValue: 350,
     tier: "platinum",
     currentWeek: 1,
@@ -269,7 +269,7 @@ export const MOCK_ALL_MILESTONES: ActivityMilestone[] = [
     activityType: "steps",
     labelKey: "steps-15000",
     targetValue: 15000,
-    unit: "bước",
+    unit: "steps",
     pointValue: 600,
     tier: "diamond",
     currentWeek: 1,
@@ -625,11 +625,11 @@ export const ACTIVITY_CONFIG: Record<
     emoji: "👟",
     labelKey: "steps",
     milestones: [
-      { value: 5000, unit: "bước" },
-      { value: 7000, unit: "bước" },
-      { value: 8000, unit: "bước" },
-      { value: 10000, unit: "bước" },
-      { value: 15000, unit: "bước" },
+      { value: 5000, unit: "steps" },
+      { value: 7000, unit: "steps" },
+      { value: 8000, unit: "steps" },
+      { value: 10000, unit: "steps" },
+      { value: 15000, unit: "steps" },
     ],
   },
 };

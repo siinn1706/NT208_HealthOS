@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import datetime
+import re
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -31,10 +32,11 @@ class ParticipantDTO(BaseModel):
 
 
 class AttachmentDTO(BaseModel):
-    url: str
-    name: str
-    size: int
-    mime_type: str
+    # Restrict to https:// or relative paths to prevent XSS via javascript:/data: URLs
+    url: str = Field(..., max_length=2048, pattern=r"^https?://")
+    name: str = Field(..., max_length=255)
+    size: int = Field(..., ge=0, le=104_857_600)  # max 100 MiB
+    mime_type: str = Field(..., max_length=128)
 
 
 class ReactionDTO(BaseModel):
@@ -42,12 +44,12 @@ class ReactionDTO(BaseModel):
 
     emoji: str
     user_id: uuid.UUID
-    user_display_name: str
+    user_display_name: str | None = None
 
 
 class ReplyPreviewDTO(BaseModel):
     id: uuid.UUID
-    sender_display_name: str
+    sender_display_name: str | None = None
     content: str
     content_type: MessageContentType = "text"
 
@@ -93,6 +95,7 @@ class ConversationDTO(BaseModel):
     unread_count: int = 0
     is_muted: bool = False
     is_pinned: bool = False
+    theme_id: str | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
@@ -127,19 +130,27 @@ class CreateGroupConversationBody(BaseModel):
 
 
 class SendMessageBody(BaseModel):
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=4096)
     content_type: MessageContentType = "text"
     client_message_id: str | None = Field(None, max_length=128)
     reply_to_id: uuid.UUID | None = None
-    attachments: list[AttachmentDTO] | None = None
+    attachments: list[AttachmentDTO] | None = Field(None, max_length=10)
 
 
 class EditMessageBody(BaseModel):
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=4096)
 
 
 class ReactMessageBody(BaseModel):
     emoji: str = Field(..., min_length=1, max_length=64)
+    
+    @field_validator("emoji")
+    @classmethod
+    def validate_emoji_chars(cls, v: str) -> str:
+        # Allow only Unicode emoji characters (no HTML/script tags)
+        if re.search(r'[<>&"\']', v):
+            raise ValueError("emoji must not contain HTML characters")
+        return v
 
 
 class MarkReadBody(BaseModel):
@@ -183,16 +194,16 @@ class WsEventEnvelope(BaseModel):
 class WsSendMessage(BaseModel):
     conversation_id: uuid.UUID
     client_message_id: str | None = None
-    content: str
+    content: str = Field(..., min_length=1, max_length=4096)
     content_type: MessageContentType = "text"
     reply_to_id: uuid.UUID | None = None
-    attachments: list[AttachmentDTO] | None = None
+    attachments: list[AttachmentDTO] | None = Field(None, max_length=10)
 
 
 class WsEditMessage(BaseModel):
     conversation_id: uuid.UUID
     message_id: uuid.UUID
-    content: str
+    content: str = Field(..., min_length=1, max_length=4096)
 
 
 class WsDeleteMessage(BaseModel):

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
 
+from app.api.generate import router as ai_router
 from app.core.config import settings
 from app.schemas.analysis import AnalyzeMealRequest, AnalyzeMealResponse
 from app.services.food_detector_service import detect_food_nutrition
@@ -10,6 +11,7 @@ from app.services.image_loader import ImageLoadError, load_image_from_url
 from app.services.nutrition_mapper import map_to_healthos_nutrition
 
 app = FastAPI(title=settings.app_name, version="0.2.0")
+app.include_router(ai_router)
 
 
 @app.get("/health")

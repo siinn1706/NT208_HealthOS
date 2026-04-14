@@ -111,7 +111,7 @@ export function EmergencyContactSection({
               ? t(`relationships.${relKey}` as Parameters<typeof t>[0])
               : rel;
             return (
-              <div key={contact.id ?? index}>
+              <div key={index}>
                 {index > 0 && <Separator className="mb-5" />}
                 <p className="mb-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {t("contactN", { n: index + 1 })}
@@ -183,7 +183,7 @@ export function EmergencyContactSection({
                         placeholder={t("placeholders.emergencyName")}
                         {...f}
                         value={f.value ?? ""}
-                        onChange={(e) => f.onChange(e.target.value || null)}
+                        onChange={(e) => f.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -200,7 +200,7 @@ export function EmergencyContactSection({
                     <FormLabel>{t("fields.emergencyRelationship")}</FormLabel>
                     <Select
                       value={f.value ?? ""}
-                      onValueChange={(v) => f.onChange(v === "" ? null : v)}
+                      onValueChange={(v) => f.onChange(v)}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -251,7 +251,7 @@ export function EmergencyContactSection({
             variant="outline"
             size="sm"
             onClick={() =>
-              append({ id: undefined, name: null, relationship: null, phone: null })
+              append({ name: "", relationship: "", phone: "" })
             }
             className="mt-1 gap-1.5"
           >

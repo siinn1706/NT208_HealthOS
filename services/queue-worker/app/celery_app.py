@@ -22,11 +22,13 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    # Beat schedule — periodic tasks
-    beat_schedule={
-        "sync-wearable-every-15-min": {
-            "task": "app.tasks.wearable_tasks.sync_all_users_wearable",
-            "schedule": 900.0,  # seconds
-        },
-    },
+    # Expire task results after 1 hour to prevent unbounded Redis growth
+    result_expires=3600,
+    # Beat schedule — re-enable wearable sync when task is implemented
+    # beat_schedule={
+    #     "sync-wearable-every-15-min": {
+    #         "task": "app.tasks.wearable_tasks.sync_all_users_wearable",
+    #         "schedule": 900.0,
+    #     },
+    # },
 )

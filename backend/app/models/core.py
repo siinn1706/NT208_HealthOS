@@ -180,6 +180,9 @@ class User(Base):
         back_populates="user",
         uselist=False,
     )
+    preferences: Mapped["UserPreference | None"] = relationship(
+        "UserPreference", back_populates="user", uselist=False,
+    )
 
 
 class EmailOtp(Base):
@@ -248,8 +251,6 @@ class UserProfile(Base):
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     address: Mapped[str | None] = mapped_column(String(512), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    # UI preference: per-user accent color (hex "#rrggbb")
-    accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     emergency_contacts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB,
         nullable=True,
@@ -814,3 +815,24 @@ class PinnedMessage(Base):
     conversation: Mapped[Conversation] = relationship(back_populates="pinned_messages")
     message: Mapped[Message] = relationship()
     pinner: Mapped[User] = relationship(foreign_keys=[pinned_by])
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True, nullable=False,
+    )
+    theme_mode: Mapped[str] = mapped_column(String(10), default="system", nullable=False)
+    accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    appearance: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=dict, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
+    )
+    user: Mapped["User"] = relationship(back_populates="preferences")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import re
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -140,10 +141,10 @@ class EmergencyContact(BaseModel):
 class MedicalInfo(BaseModel):
     """Medical information."""
 
-    allergies: Optional[str] = None
-    chronic_conditions: Optional[str] = None
-    current_medications: Optional[str] = None
-    notes: Optional[str] = None
+    allergies: Optional[str] = Field(None, max_length=2000)
+    chronic_conditions: Optional[str] = Field(None, max_length=2000)
+    current_medications: Optional[str] = Field(None, max_length=2000)
+    notes: Optional[str] = Field(None, max_length=4000)
 
 
 class UserProfileUpdate(BaseModel):
@@ -153,31 +154,41 @@ class UserProfileUpdate(BaseModel):
     date_of_birth: Optional[datetime.date] = None
     gender: Optional[Literal["male", "female", "other"]] = None
     blood_type: Optional[str] = None
-    height_cm: Optional[float] = None
-    weight_kg: Optional[float] = None
+    height_cm: Optional[float] = Field(None, ge=50, le=300)
+    weight_kg: Optional[float] = Field(None, ge=1, le=500)
     phone: Optional[str] = None
     address: Optional[str] = None
-    accent_color: Optional[str] = None
+    avatar_url: Optional[str] = Field(None, max_length=512)
     emergency_contacts: Optional[list[EmergencyContact]] = None
     medical_info: Optional[MedicalInfo] = None
-    onboarding_completed: Optional[bool] = False
+    # None = no-op (field absent); False = explicitly mark incomplete; True = mark complete
+    onboarding_completed: Optional[bool] = None
 
-    @field_validator("accent_color", mode="before")
+    @field_validator("avatar_url", mode="before")
     @classmethod
-    def normalize_accent_color(cls, v: Any) -> Any:
-        if v is None:
+    def validate_avatar_url(cls, v: object) -> object:
+        if v is None or v == "":
             return None
         if not isinstance(v, str):
-            raise ValueError("accent_color must be a hex color string like #rrggbb or null")
-        val = v.strip()
-        if not val:
-            return None
-        if not val.startswith("#") or len(val) != 7:
-            raise ValueError("accent_color must match #rrggbb")
-        hex_part = val[1:]
-        if any(c not in "0123456789abcdefABCDEF" for c in hex_part):
-            raise ValueError("accent_color must match #rrggbb")
-        return f"#{hex_part.lower()}"
+            raise ValueError("avatar_url must be a string")
+        s = v.strip()
+        if len(s) > 512:
+            raise ValueError("avatar_url exceeds maximum length")
+        lower = s.lower()
+        if not (lower.startswith("http://") or lower.startswith("https://")):
+            raise ValueError("avatar_url must be an http(s) URL")
+        return s
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v: object) -> object:
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("phone must be a string")
+        if not re.match(r"^\+?[0-9][0-9\-\s()]{4,18}[0-9]$", v):
+            raise ValueError("Invalid phone number format")
+        return v
 
     @model_validator(mode="before")
     @classmethod
@@ -234,7 +245,6 @@ class CurrentUser(BaseModel):
     weight_kg: Optional[float] = None
     phone: Optional[str] = None
     address: Optional[str] = None
-    accent_color: Optional[str] = None
     emergency_contacts: Optional[list[dict[str, Any]]] = None
     medical_info: Optional[dict[str, Any]] = None
 

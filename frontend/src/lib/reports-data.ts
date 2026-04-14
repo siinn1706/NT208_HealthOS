@@ -1,8 +1,14 @@
 import { headers } from "next/headers";
 import type {
   HealthReport,
+  HealthStatus,
   ReportPeriod,
   ReportSection,
+  ReportCategory,
+  ReportAlert,
+  SectionStats,
+  TimeseriesPoint,
+  TrendDirection,
   TrendAnalysis,
   ShareRequest,
   ShareResult,
@@ -34,9 +40,83 @@ function emptyTrend(metric: string, period: ReportPeriod): TrendAnalysis {
     anomalies: [],
     trend: "stable",
     change_percent: 0,
-    ai_summary: "Chưa có thông tin",
+    ai_summary: "",
   };
 }
+
+// ─── Normalization helpers ──────────────────────────────────────────────────
+
+const VALID_CATEGORIES = new Set<string>(["vitals", "nutrition", "activity", "sleep", "bmi", "medication"]);
+const VALID_TRENDS = new Set<string>(["improving", "stable", "declining"]);
+const VALID_STATUSES = new Set<string>(["normal", "warning", "critical"]);
+
+function normalizeTimeseriesPoint(pt: unknown): TimeseriesPoint {
+  const p = (pt && typeof pt === "object" ? pt : {}) as Record<string, unknown>;
+  return {
+    date: typeof p.date === "string" ? p.date : "",
+    value: typeof p.value === "number" ? p.value : 0,
+    ...(typeof p.value2 === "number" ? { value2: p.value2 } : {}),
+    ...(typeof p.value3 === "number" ? { value3: p.value3 } : {}),
+    ...(typeof p.label === "string" ? { label: p.label } : {}),
+  };
+}
+
+function normalizeStats(s: unknown): SectionStats {
+  const st = (s && typeof s === "object" ? s : {}) as Record<string, unknown>;
+  return {
+    average: typeof st.average === "number" ? st.average : 0,
+    min: typeof st.min === "number" ? st.min : 0,
+    max: typeof st.max === "number" ? st.max : 0,
+    trend: VALID_TRENDS.has(st.trend as string) ? (st.trend as TrendDirection) : "stable",
+    change_percent: typeof st.change_percent === "number" ? st.change_percent : 0,
+    unit: typeof st.unit === "string" ? st.unit : "",
+  };
+}
+
+function normalizeAlert(a: unknown): ReportAlert {
+  const al = (a && typeof a === "object" ? a : {}) as Record<string, unknown>;
+  return {
+    id: typeof al.id === "string" ? al.id : `alert-${Math.random().toString(36).slice(2)}`,
+    severity: al.severity === "critical" ? "critical" : "warning",
+    metric: typeof al.metric === "string" ? al.metric : "",
+    message: typeof al.message === "string" ? al.message : "",
+    value: typeof al.value === "number" ? al.value : 0,
+    threshold: typeof al.threshold === "number" ? al.threshold : 0,
+    unit: typeof al.unit === "string" ? al.unit : "",
+    timestamp: typeof al.timestamp === "string" ? al.timestamp : "",
+  };
+}
+
+function normalizeSection(sec: unknown): ReportSection {
+  const s = (sec && typeof sec === "object" ? sec : {}) as Record<string, unknown>;
+  return {
+    category: VALID_CATEGORIES.has(s.category as string)
+      ? (s.category as ReportCategory)
+      : "vitals",
+    title: typeof s.title === "string" ? s.title : "",
+    summary: typeof s.summary === "string" ? s.summary : "",
+    status: VALID_STATUSES.has(s.status as string) ? (s.status as HealthStatus) : "normal",
+    data: Array.isArray(s.data) ? s.data.map(normalizeTimeseriesPoint) : [],
+    stats: normalizeStats(s.stats),
+    alerts: Array.isArray(s.alerts) ? s.alerts.map(normalizeAlert) : [],
+  };
+}
+
+function normalizeReport(raw: unknown, period: ReportPeriod): HealthReport {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  if (!r.id && !r.generated_at) return emptyReport(period);
+  return {
+    id: typeof r.id === "string" ? r.id : `report-${period}`,
+    user_id: typeof r.user_id === "string" ? r.user_id : "",
+    period,
+    generated_at: typeof r.generated_at === "string" ? r.generated_at : "",
+    status: VALID_STATUSES.has(r.status as string) ? (r.status as HealthStatus) : "normal",
+    sections: Array.isArray(r.sections) ? r.sections.map(normalizeSection) : [],
+    alerts: Array.isArray(r.alerts) ? r.alerts.map(normalizeAlert) : [],
+  };
+}
+
+// ─── Fetch helpers ───────────────────────────────────────────────────────────
 
 async function fetchJson(path: string): Promise<unknown> {
   const reqHeaders = await headers();
@@ -51,9 +131,9 @@ async function fetchJson(path: string): Promise<unknown> {
 export async function getHealthReport(period: ReportPeriod = "7d"): Promise<HealthReport> {
   try {
     const json = await fetchJson(`/api/v1/reports?period=${period}`);
-    const data = (json as { data?: HealthReport } | null)?.data;
+    const data = (json as { data?: unknown } | null)?.data;
     if (!data) return emptyReport(period);
-    return data;
+    return normalizeReport(data, period);
   } catch {
     return emptyReport(period);
   }
@@ -82,12 +162,16 @@ export async function getTrendAnalysis(
 }
 
 export async function shareReport(request: ShareRequest): Promise<ShareResult[]> {
+  // TODO: implement actual share endpoint (POST /api/v1/reports/share) once
+  // the notification dispatch service is wired up.  Until then, return a
+  // transparent "not_implemented" status so callers can surface a clear message
+  // rather than silently reporting "failed".
   return request.recipients.flatMap((recipient) =>
     request.channels.map((channel) => ({
       recipient,
       channel,
       status: "failed" as const,
-      error_message: "Chưa có thông tin",
+      error_message: "Tính năng chia sẻ báo cáo chưa được triển khai.",
     }))
   );
 }

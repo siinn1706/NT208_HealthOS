@@ -81,7 +81,7 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
     <aside
       className={cn(
         "fixed top-0 left-0 h-screen z-40 flex flex-col",
-        "bg-[#0F2743] border-r border-[rgba(65,188,230,0.15)]",
+        "bg-[#101620] border-r border-[rgba(138,162,180,0.12)]",
         "transition-[width] duration-300 ease-in-out",
         collapsed ? "w-[64px]" : "w-[240px]"
       )}
@@ -89,12 +89,12 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
       {/* Logo */}
       <div
         className={cn(
-          "flex items-center gap-3 px-4 py-5 border-b border-[rgba(65,188,230,0.15)]",
+          "flex items-center gap-3 px-4 py-5 border-b border-[rgba(138,162,180,0.12)]",
           collapsed && "justify-center px-0"
         )}
       >
         <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#1965B3] flex items-center justify-center">
-          <HeartPulse className="w-5 h-5 text-[#6DE7F7]" />
+          <HeartPulse className="w-5 h-5 text-[#7EC8D8]" />
         </div>
         {!collapsed && (
           <span className="font-bold text-white text-lg tracking-tight">
@@ -124,14 +124,14 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
                     "transition-colors duration-200",
                     isActive
                       ? "bg-[#1965B3] text-white"
-                      : "text-[#75A2B9] hover:bg-[#1A4474] hover:text-white",
+                      : "text-[#7A8A99] hover:bg-[#1A2130] hover:text-white",
                     collapsed && "justify-center px-0"
                   )}
                 >
                   <span className="relative flex-shrink-0">
                     <Icon className="w-5 h-5" />
                     {key === "chat" && totalUnread > 0 && collapsed && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#41BCE6] rounded-full" />
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#5BA8C8] rounded-full" />
                     )}
                   </span>
                   {!collapsed && (
@@ -140,7 +140,7 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
                         {t(key as Parameters<typeof t>[0])}
                       </span>
                       {key === "chat" && totalUnread > 0 && (
-                        <span className="ml-auto flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-[#41BCE6] text-[#0F2743] text-[10px] font-bold rounded-full flex items-center justify-center">
+                        <span className="ml-auto flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-[#5BA8C8] text-[#0B0F14] text-[10px] font-bold rounded-full flex items-center justify-center">
                           {totalUnread > 99 ? "99+" : totalUnread}
                         </span>
                       )}
@@ -159,7 +159,7 @@ export function SidebarNav({ collapsed: collapsedProp, onToggle }: SidebarNavPro
         className={cn(
           "flex items-center justify-center mx-auto mb-4",
           "w-8 h-8 rounded-full",
-          "bg-[#1A4474] text-[#75A2B9] hover:text-white hover:bg-[#1965B3]",
+          "bg-[#1A2130] text-[#7A8A99] hover:text-white hover:bg-[#1965B3]",
           "transition-colors duration-200 cursor-pointer"
         )}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}

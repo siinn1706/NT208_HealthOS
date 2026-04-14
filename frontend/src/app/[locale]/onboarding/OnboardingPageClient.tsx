@@ -116,7 +116,7 @@ export default function OnboardingPageClient() {
   useEffect(() => {
     async function checkOnboardingStatus() {
       try {
-        const res = await fetch("/api/v1/auth/session", { cache: "no-store" });
+        const res = await fetch("/api/v1/auth/session", { cache: "no-store", credentials: "include" });
         if (res.ok) {
           const sessionData = await res.json();
           if (sessionData?.data?.onboarding_status === "completed") {
@@ -199,6 +199,7 @@ export default function OnboardingPageClient() {
       const response = await fetch("/api/v1/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           full_name: data.fullName,
           date_of_birth: data.dateOfBirth,

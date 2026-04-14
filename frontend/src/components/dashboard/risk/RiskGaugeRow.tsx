@@ -24,19 +24,7 @@ const IMPACT_SYMBOLS = {
   neutral: "·",
 };
 
-/** Manual lookup for API-returned Vietnamese disease names */
-const KNOWN_CONDITIONS: Record<string, string> = {
-  "Đái tháo đường type 2": "Type 2 Diabetes",
-  "Tăng huyết áp": "Hypertension",
-  "Thừa cân": "Overweight",
-  "Béo phì": "Obesity",
-  "Bệnh tim mạch": "Cardiovascular Disease",
-  "Gan nhiễu mỡ": "Fatty Liver Disease",
-};
-
-function getConditionName(viName: string): string {
-  return KNOWN_CONDITIONS[viName] ?? viName;
-}
+/** Manual lookup for API-returned Vietnamese disease names — REMOVED */
 
 export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProps) {
   const t = useTranslations("dashboard.risk");
@@ -75,7 +63,11 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
   const trendCfg = TREND_CONFIG[risk.trend];
   const TrendIcon = trendCfg.icon;
   const pct = Math.round(risk.probability * 100);
-  const conditionName = getConditionName(risk.conditionVi);
+  const conditionName = risk.conditionCode
+    ? t.has(`conditions.${risk.conditionCode}` as never)
+      ? t(`conditions.${risk.conditionCode}` as never)
+      : risk.condition
+    : risk.condition;
 
   return (
     <div
@@ -176,8 +168,16 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
                     {IMPACT_SYMBOLS[f.impact]}
                   </span>
                   <div className="min-w-0">
-                    <span className="text-xs font-medium text-foreground">{f.label}: </span>
-                    <span className="text-xs text-muted-foreground">{f.detail}</span>
+                    <span className="text-xs font-medium text-foreground">
+                      {t.has(`factorLabels.${f.label}` as never)
+                        ? t(`factorLabels.${f.label}` as never)
+                        : f.label}:{" "}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {f.detail === "NO_DATA"
+                        ? t("factorLabels.NO_DATA" as never)
+                        : f.detail}
+                    </span>
                   </div>
                 </li>
               ))}

@@ -4,6 +4,14 @@ import { headers } from "next/headers";
 import { DevicesPageClient } from "@/components/dashboard/settings/DevicesPageClient";
 import type { Device } from "@/components/dashboard/settings/DeviceConnectionCard";
 
+// Keep in sync with SUPPORTED_PROVIDERS in DevicesPageClient
+const PROVIDER_LABELS: Record<string, string> = {
+  apple_health: "Apple Health",
+  google_fit: "Google Fit",
+  garmin: "Garmin Connect",
+  fitbit: "Fitbit",
+};
+
 function normalizeDevice(raw: unknown): Device | null {
   if (!raw || typeof raw !== "object") return null;
   const candidate = raw as Record<string, unknown>;
@@ -19,7 +27,7 @@ function normalizeDevice(raw: unknown): Device | null {
   return {
     id: String(candidate.id ?? ""),
     provider,
-    name: typeof candidate.name === "string" ? candidate.name : "N/A",
+    name: typeof candidate.name === "string" ? candidate.name : (PROVIDER_LABELS[provider] ?? provider),
     model: typeof candidate.model === "string" ? candidate.model : null,
     connected: Boolean(candidate.connected),
     lastSync:
@@ -60,11 +68,11 @@ export default async function DevicesPage() {
       {/* ── Page header ── */}
       <div>
         <div className="flex items-center gap-2">
-          <Watch className="h-5 w-5 text-primary" aria-hidden />
+          <Watch className="h-5 w-5 text-muted-foreground" aria-hidden />
           <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
         </div>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Manage wearables and health tracking devices
+          {t("subtitle")}
         </p>
       </div>
 

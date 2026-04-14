@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Heart, Activity, Thermometer, Droplets, Wind, Plus } from "lucide-react";
 import { Link } from "@/navigation";
+import { formatDateTime } from "@/lib/format-utils";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { PeriodComparisonChart } from "@/components/charts/PeriodComparisonChart";
 import type { ReportPeriod } from "@/types/api";
@@ -51,17 +52,11 @@ async function fetchComparison(period: ReportPeriod) {
   return json?.data ?? [];
 }
 
-function formatLastSync(iso: string | null, noInfo: string): string {
+function formatLastSync(iso: string | null, noInfo: string, locale: string): string {
   if (!iso) return noInfo;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return noInfo;
-  return date.toLocaleString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(date, locale);
 }
 
 function VitalCard({
@@ -112,6 +107,7 @@ function VitalCard({
 
 export default function HealthPage() {
   const t = useTranslations("dashboard.health");
+  const locale = useLocale();
   const [period, setPeriod] = useState<ReportPeriod>("7d");
   const [comparisonData, setComparisonData] = useState<Array<{ date: string; values: Record<string, number | null> }>>([]);
   const [latestVital, setLatestVital] = useState<{ heartRate?: number; systolic?: number; diastolic?: number } | null>(null);
@@ -288,7 +284,7 @@ export default function HealthPage() {
                       {device.connected ? t("connected") : t("notConnected")}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                      {formatLastSync(device.last_sync, t("noDeviceInfo"))}
+                      {formatLastSync(device.last_sync, t("noDeviceInfo"), locale)}
                     </span>
                   </div>
                 </li>

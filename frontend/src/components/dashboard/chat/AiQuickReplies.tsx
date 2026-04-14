@@ -24,7 +24,7 @@ export function AiQuickReplies({ onSelect, disabled }: AiQuickRepliesProps) {
             key={reply}
             onClick={() => onSelect(reply)}
             disabled={disabled}
-            className="text-xs px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 hover:border-primary/60 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-xs px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 hover:border-primary/60 transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {reply}
           </button>

@@ -3,7 +3,8 @@
 import { cn } from "@/lib/utils";
 import type { UserGoal } from "@/data/gamification";
 import { ACTIVITY_CONFIG } from "@/data/gamification";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { getLocaleTag } from "@/lib/format-utils";
 
 interface DailyProgressRingsProps {
   goals: UserGoal[];
@@ -19,6 +20,7 @@ function GoalRing({
   size?: number;
   label: string;
 }) {
+  const locale = useLocale();
   const pct = Math.min(goal.todayProgress / goal.dailyTarget, 1);
   const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
@@ -29,11 +31,11 @@ function GoalRing({
   const displayValue =
     goal.dailyTarget >= 1000
       ? `${(goal.todayProgress / 1000).toFixed(1)}k`
-      : goal.todayProgress.toLocaleString();
+      : goal.todayProgress.toLocaleString(getLocaleTag(locale));
   const targetValue =
     goal.dailyTarget >= 1000
       ? `${(goal.dailyTarget / 1000).toFixed(0)}k`
-      : goal.dailyTarget.toLocaleString();
+      : goal.dailyTarget.toLocaleString(getLocaleTag(locale));
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -91,6 +93,9 @@ function GoalRing({
 export function DailyProgressRings({ goals }: DailyProgressRingsProps) {
   const t = useTranslations("dashboard.achievements");
   const tg = useTranslations("dashboard.goals");
+
+  if (!goals || goals.length === 0) return null;
+
   const completed = goals.filter(
     (g) => g.todayProgress >= g.dailyTarget
   ).length;

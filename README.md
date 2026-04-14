@@ -46,6 +46,17 @@ bash infra/scripts/setup.sh
 
 This copies env example files, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
 
+### Seed Test Admin (Optional)
+
+Create an initial admin user for testing (run after setup):
+
+```bash
+cd backend
+.\.venv\Scripts\python.exe scripts/seed_admin.py
+```
+
+Creates: email `admin@healthos.local` with a pre-configured password.
+
 ### Option A: Docker (recommended)
 
 ```bash
@@ -109,17 +120,45 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 2. Ensure Postgres, Redis, MinIO are running locally with ports matching `backend/.env`
 3. Open separate terminals and run: `.\start_infra.bat`, `.\start_BE.bat`, `.\start_FE.bat`
 
+**Orchestrated start (`start_ALL.bat`):**
+- `.\start_ALL.bat` picks **Docker** when Docker Desktop is running, otherwise **local** mode (Postgres/Redis/MinIO on the host).
+- Override with `-Mode docker` or `-Mode local` (also supported by `.\start_infra.bat`).
+- Preflight only (no new terminals / no `docker compose up`): `.\start_ALL.bat -CheckOnly`
+- Root `.bat` launchers forward a limited set of extra flags via `cmd` (`%3`–`9`). Typical flags fit; for long custom argument lists, run the matching script under `infra\scripts\` with PowerShell directly.
+
+**Multi-client testing (extra frontends):**
+- `.\start_client_1.bat` — Next.js on **http://localhost:3001** (logged under `infra/logs/client_*.log`).
+- `.\start_client_2.bat` — Next.js on **http://localhost:3002**.
+- Ensure `ALLOWED_ORIGINS` in `backend/.env` includes the extra origin (scripts print a CORS reminder).
+
 **Common issues:**
 - CORS errors → Check `ALLOWED_ORIGINS` in `backend/.env` is a JSON array: `["http://localhost:3000"]`
 - Import errors → Verify Python version matches 3.12 (see `.python-version`)
 - npm errors → Verify Node version matches 20 (see `.nvmrc`)
 - Missing env keys after pull → Run `.\check_env.bat` (see Phase 8 tooling)
 - Stale DB / broken migrations → Run `.\reset_docker.bat` then `.\start_ALL.bat`
+- Services fail to start → Run `.\start_ALL.bat -CheckOnly` and read the reported logs under `infra/logs/`
 
 ## Current Status
 
-- Implemented: auth/session/otp, profile, meals, reports, appointments, reminders, conversations/chat, vitals, devices, dashboard, goals/health-goals routes.
-- Stub/placeholder: AI Worker `POST /analyze`, Notification `POST /dispatch`, queue task internals, some UX paths (feature-level TODO).
+**v1.2.2 (Current)**: Data layer refactor and documentation audit.
+**v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
+**v1.2.0**: User accent color customization and theming.
+
+- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification.
+- **Stub/placeholder**: AI Worker real implementation (currently mock), Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
+
+## CI/CD Pipeline
+
+GitHub Actions workflows in `.github/workflows/`:
+- `ci-smoke.yml` — PR checks (lint, build, dependency verification)
+- `release.yml` — Production release with tag
+- `release-beta.yml` — Beta release to staging
+- `branch-protection.yml` — Enforce protection rules
+- `sync-main-to-dev.yml` — Auto-sync main → dev after release
+- `sync-dev-after-release.yml` — Auto-sync dev → feature branches
+
+See [Deployment Guide](./docs/deployment-guide.md) for workflow details and troubleshooting.
 
 ## Git Workflow
 

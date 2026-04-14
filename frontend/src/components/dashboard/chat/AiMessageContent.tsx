@@ -3,11 +3,14 @@
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import { cn } from "@/lib/utils";
 
-// Stable plugin array — avoids ReactMarkdown re-parsing on every parent render
+// Stable plugin arrays — avoids ReactMarkdown re-parsing on every parent render
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const REMARK_PLUGINS: any[] = [remarkGfm];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const REHYPE_PLUGINS: any[] = [rehypeSanitize];
 
 interface AiMessageContentProps {
   content: string;
@@ -31,7 +34,7 @@ export const AiMessageContent = memo(function AiMessageContent({ content, classN
         className
       )}
     >
-      <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS}>{content}</ReactMarkdown>
     </div>
   );
 });

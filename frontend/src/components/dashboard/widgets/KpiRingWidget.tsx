@@ -1,5 +1,6 @@
 import { KpiDonutChart } from "@/components/charts/KpiDonutChart";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { getLocaleTag } from "@/lib/format-utils";
 
 export interface KpiData {
   caloriesBurned: { current: number | null; target: number | null };
@@ -38,6 +39,7 @@ const KPI_CONFIG = [
 // Server Component — renders static KPI data as cards with client chart children
 export async function KpiRingWidget({ data }: KpiRingWidgetProps) {
   const t = await getTranslations("dashboard.kpi");
+  const locale = await getLocale();
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -58,7 +60,7 @@ export async function KpiRingWidget({ data }: KpiRingWidgetProps) {
             />
             <div className="text-center">
               <p className="text-base font-bold text-foreground">
-                {item.current == null ? "--" : item.current.toLocaleString()}
+                {item.current == null ? "--" : item.current.toLocaleString(getLocaleTag(locale))}
               </p>
               <p className="text-[11px] text-muted-foreground font-medium">
                 {t(key as Parameters<typeof t>[0])}

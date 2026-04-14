@@ -14,8 +14,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
-
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:8000";
+import { CORE_API_URL } from "@/lib/env";
 
 /** Read the Core BE JWT from the session cookie (set by /api/v1/auth on login). */
 async function getSessionToken(): Promise<string | null> {
@@ -80,18 +79,29 @@ export async function coreProxy(
     url.searchParams.set(key, value);
   });
 
-  // Build body
+  // Build body — enforce a 1 MiB limit to prevent memory exhaustion
+  const BODY_SIZE_LIMIT = 1_048_576; // 1 MiB
   let bodyStr: string | undefined;
   if (options.body !== undefined) {
     bodyStr = options.body !== null ? JSON.stringify(options.body) : undefined;
   } else if (method !== "GET" && method !== "HEAD" && method !== "DELETE") {
     try {
       const rawBody = await req.text();
+      if (rawBody && new TextEncoder().encode(rawBody).length > BODY_SIZE_LIMIT) {
+        return NextResponse.json(
+          { error: { code: "PAYLOAD_TOO_LARGE", message: "Request body exceeds maximum allowed size." } },
+          { status: 413 }
+        );
+      }
       bodyStr = rawBody || undefined;
     } catch {
       bodyStr = undefined;
     }
   }
+
+  // 30-second upstream timeout prevents indefinite BFF hangs
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
   try {
     const upstream = await fetch(url.toString(), {
@@ -99,23 +109,34 @@ export async function coreProxy(
       headers,
       body: bodyStr,
       cache: "no-store",
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const responseData = await upstream.json().catch(() => null);
 
-    return NextResponse.json(responseData ?? {}, { status: upstream.status });
-  } catch {
-    // Core BE offline
-    if (options.strictMode) {
+    // Sanitize 5xx responses — do not leak stack traces or internal paths to the browser
+    if (upstream.status >= 500) {
       return NextResponse.json(
-        { error: { code: "UPSTREAM_UNAVAILABLE", message: "Core service is temporarily unavailable." } },
-        { status: 503 }
+        { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error" } },
+        { status: upstream.status }
       );
     }
-    // Graceful: return an empty/null response so UI can fall back
+
+    return NextResponse.json(responseData ?? {}, { status: upstream.status });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const isTimeout = err instanceof Error && err.name === "AbortError";
     return NextResponse.json(
-      { error: { code: "UPSTREAM_UNAVAILABLE", message: "Core service is temporarily unavailable." } },
-      { status: 503 }
+      {
+        error: {
+          code: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
+          message: isTimeout
+            ? "Core service request timed out."
+            : "Core service is temporarily unavailable.",
+        },
+      },
+      { status: isTimeout ? 504 : 503 }
     );
   }
 }

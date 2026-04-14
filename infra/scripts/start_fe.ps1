@@ -6,51 +6,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Import-Module (Join-Path $PSScriptRoot "healthos-common.psm1") -Force
+
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $FrontendDir = Join-Path $RepoRoot "frontend"
 $LockFile = Join-Path $FrontendDir "package-lock.json"
 
-function Resolve-LogFilePath {
-    param(
-        [string]$DefaultName,
-        [string]$RequestedPath
-    )
-
-    $logsDir = Join-Path $RepoRoot "infra\logs"
-    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
-
-    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
-        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
-        return Join-Path $logsDir ("{0}_{1}.log" -f $DefaultName, $timestamp)
-    }
-
-    $resolved = if ([System.IO.Path]::IsPathRooted($RequestedPath)) {
-        $RequestedPath
-    }
-    else {
-        Join-Path $RepoRoot $RequestedPath
-    }
-
-    $parent = Split-Path -Parent $resolved
-    if ($parent -and -not (Test-Path $parent)) {
-        New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    }
-
-    return $resolved
-}
-
-function Test-CommandAvailable {
-    param([string]$CommandName)
-    return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
-}
-
-$ScriptLogFile = Resolve-LogFilePath -DefaultName "fe" -RequestedPath $LogFile
-try {
-    Start-Transcript -Path $ScriptLogFile -Append -Force | Out-Null
-}
-catch {
-    Write-Warning "[FE] Unable to start transcript at '$ScriptLogFile': $($_.Exception.Message)"
-}
+$ScriptLogFile = Resolve-LogFilePath -RepoRoot $RepoRoot -DefaultName "fe" -RequestedPath $LogFile
+Start-HealthOSTranscript -LogFilePath $ScriptLogFile
 
 Write-Host "[FE] Log file: $ScriptLogFile" -ForegroundColor DarkCyan
 
@@ -88,3 +51,4 @@ if (-not $SkipInstall) {
 
 Write-Host "[FE] Starting Next.js on http://localhost:3000 ..." -ForegroundColor Green
 npm run dev
+exit $LASTEXITCODE

@@ -1,11 +1,16 @@
 import { headers } from "next/headers";
-import { getMealCaloriesByDay, type GoalProgressPoint } from "@/lib/meals-chart-utils";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export interface DashboardSummary {
   userName: string;
-  alerts: Array<{ id: string; type: "critical" | "warning" | "info"; message: string }>;
+  alerts: Array<{
+    id: string;
+    type: "critical" | "warning" | "info";
+    message: string;
+    alert_code?: string;
+    alert_params?: Record<string, unknown>;
+  }>;
   kpis: {
     caloriesBurned: { current: number | null; target: number | null };
     sleepScore: { current: number | null; target: number | null };
@@ -39,7 +44,7 @@ export interface ReminderItem {
 
 function emptySummary(): DashboardSummary {
   return {
-    userName: "Chưa có thông tin",
+    userName: "",
     alerts: [],
     kpis: {
       caloriesBurned: { current: null, target: null },
@@ -74,8 +79,19 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       userName:
         typeof d.user_name === "string" && d.user_name.trim()
           ? d.user_name
-          : "Chưa có thông tin",
-      alerts: Array.isArray(d.alerts) ? d.alerts : [],
+          : "",
+      alerts: Array.isArray(d.alerts)
+        ? d.alerts.map((a: Record<string, unknown>) => ({
+            id: typeof a?.id === "string" ? a.id : "",
+            type:
+              a?.type === "critical" || a?.type === "warning" || a?.type === "info"
+                ? a.type as "critical" | "warning" | "info"
+                : "info",
+            message: typeof a?.message === "string" ? a.message : "",
+            ...(typeof a?.alert_code === "string" ? { alert_code: a.alert_code } : {}),
+            ...(a?.alert_params && typeof a.alert_params === "object" ? { alert_params: a.alert_params as Record<string, unknown> } : {}),
+          }))
+        : [],
       kpis: {
         caloriesBurned: {
           current: numOrNull(d.kpis?.caloriesBurned?.current),
@@ -150,12 +166,6 @@ export async function getVitalsTimeseries(days: number = 7): Promise<VitalPoint[
   }
 }
 
-export async function getCalorieProgress(days: number = 7): Promise<GoalProgressPoint[]> {
-  const to = new Date().toISOString().slice(0, 10);
-  const from = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
-  return getMealCaloriesByDay(from, to, 2000);
-}
-
 export async function getUpcomingReminders(): Promise<ReminderItem[]> {
   try {
     const reqHeaders = await headers();
@@ -180,7 +190,7 @@ export async function getUpcomingReminders(): Promise<ReminderItem[]> {
             title:
               typeof row.title === "string" && row.title.trim()
                 ? row.title
-                : "Chưa có thông tin",
+                : "",
             time: typeof row.time === "string" ? row.time : "--",
             done: Boolean(row.done),
           };

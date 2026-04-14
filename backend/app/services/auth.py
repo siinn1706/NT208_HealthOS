@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -202,21 +202,47 @@ async def check_account_lockout(user: User) -> bool:
 async def record_failed_login(db: AsyncSession, user: User) -> None:
     """Record failed login attempt and apply lockout if threshold reached.
 
-    Args:
-        db: Database session
-        user: The user who failed login
+    Uses a database-level atomic increment (UPDATE … SET failed_login_attempts =
+    failed_login_attempts + 1) to prevent a race where two concurrent failed
+    logins both read the same counter and each increment to the same value,
+    effectively losing one count.
+
+    The lockout decision is also computed in SQL (using the post-increment counter)
+    so that concurrent requests don't overwrite a lockout with a stale in-memory value.
     """
-    user.failed_login_attempts += 1
+    now = datetime.now(timezone.utc)
+    new_attempts_expr = User.failed_login_attempts + 1
 
-    if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
-        # Calculate escalating lockout duration
-        lockout_index = min(
-            len(ESCALATING_LOCKOUT) - 1,
-            (user.failed_login_attempts // MAX_FAILED_ATTEMPTS) - 1
+    # Build a SQL CASE that maps each post-increment threshold to a lockout timestamp.
+    # Thresholds: 5 → index 0, 10 → index 1, 15 → index 2, 20+ → index 3.
+    lockout_cases = []
+    for i, minutes in enumerate(ESCALATING_LOCKOUT):
+        threshold = MAX_FAILED_ATTEMPTS * (i + 1)
+        lockout_ts = now + timedelta(minutes=minutes)
+        lockout_cases.append(
+            (new_attempts_expr == threshold, literal(lockout_ts))
         )
-        lockout_minutes = ESCALATING_LOCKOUT[lockout_index]
-        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
+    # For counts above the last explicit threshold keep the most aggressive lockout.
+    max_lockout_ts = now + timedelta(minutes=ESCALATING_LOCKOUT[-1])
+    locked_until_expr = case(
+        *lockout_cases,
+        else_=case(
+            (new_attempts_expr > MAX_FAILED_ATTEMPTS * len(ESCALATING_LOCKOUT), literal(max_lockout_ts)),
+            else_=User.locked_until,
+        ),
+    )
 
+    await db.execute(
+        update(User)
+        .where(User.id == user.id)
+        .values(
+            failed_login_attempts=new_attempts_expr,
+            locked_until=locked_until_expr,
+        )
+    )
+
+    # Refresh in-memory object from DB so callers see the authoritative state.
+    await db.refresh(user)
     await db.commit()
 
 
@@ -227,6 +253,11 @@ async def reset_failed_login_attempts(db: AsyncSession, user: User) -> None:
         db: Database session
         user: The user who logged in successfully
     """
+    await db.execute(
+        update(User)
+        .where(User.id == user.id)
+        .values(failed_login_attempts=0, locked_until=None)
+    )
     user.failed_login_attempts = 0
     user.locked_until = None
     await db.commit()

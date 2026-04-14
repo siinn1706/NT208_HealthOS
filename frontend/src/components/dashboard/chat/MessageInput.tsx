@@ -109,7 +109,7 @@ export function MessageInput({
         </div>
       )}
       {editingMessage && (
-        <div className="flex items-center justify-between px-4 pt-2 text-xs text-primary">
+        <div className="flex items-center justify-between px-4 pt-2 text-xs text-muted-foreground">
           <span className="font-medium">{t("editingMessage")}</span>
           <button
             onClick={onCancelEdit}

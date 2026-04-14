@@ -22,14 +22,17 @@ export async function getMealCaloriesByDay(
   if (!res.ok) return [];
 
   const data = await res.json();
-  const meals: Array<{ recorded_at?: string; calories?: number }> = data?.data ?? [];
+  const meals: Array<{
+    logged_at?: string;
+    nutrition_result?: { calories?: number };
+  }> = data?.data ?? [];
 
   const byDate = new Map<string, number>();
   for (const meal of meals) {
-    const day = meal.recorded_at?.split("T")[0];
+    const day = meal.logged_at?.split("T")[0];
     if (!day) continue;
     const current = byDate.get(day) ?? 0;
-    const calories = meal.calories ?? 0;
+    const calories = meal.nutrition_result?.calories ?? 0;
     byDate.set(day, current + calories);
   }
 

@@ -1,8 +1,11 @@
 """Core configuration — reads from .env via pydantic-settings."""
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+_config_logger = logging.getLogger(__name__)
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,8 +31,13 @@ class Settings(BaseSettings):
     # Database
     database_url: str = ""
 
-    # Redis
+    # Redis — put credentials in REDIS_URL (e.g. redis://:secret@host:6379/0) when Redis requires AUTH.
     redis_url: str = "redis://localhost:6379/0"
+    # Accepted so .env files with a stray key do not break Settings; not applied to redis_url (local Redis often has no password).
+    redis_password: str | None = None
+
+    # Shared secret for BFF↔Core hardening (optional; reserved for future request signing).
+    bff_shared_secret: str | None = None
 
     # Object Storage (MinIO / S3)
     storage_endpoint: str = "http://localhost:9000"
@@ -58,8 +66,16 @@ class Settings(BaseSettings):
     auth_issuer: str = "healthos-core"
     auth_audience: str = "healthos-clients"
 
+    # Fernet key for symmetric encryption of TOTP secrets at rest.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    fernet_key: str = ""
+
     # CORS
     allowed_origins: list[str] = ["http://localhost:3000"]
+
+    # BFF shared secret — gates /v1/auth/token so only the BFF can mint tokens
+    # Must be a non-empty string in production; empty string disables the endpoint
+    bff_shared_secret: str = ""
 
     # Service URLs
     ai_worker_url: str = "http://localhost:8001"
@@ -73,6 +89,12 @@ class Settings(BaseSettings):
             self.smtp_password = self.smtp_pass
         if self.smtp_from is None and self.from_email is not None:
             self.smtp_from = self.from_email
+        # Warn in non-production if FERNET_KEY is unset — TOTP secrets will be stored unencrypted
+        if not _is_production() and not self.fernet_key:
+            _config_logger.warning(
+                "FERNET_KEY is not set — TOTP secrets will NOT be encrypted at rest. "
+                "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+            )
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
@@ -88,6 +110,24 @@ class Settings(BaseSettings):
                 raise ValueError("STORAGE_ACCESS_KEY must be set in production")
             if not self.storage_secret_key:
                 raise ValueError("STORAGE_SECRET_KEY must be set in production")
+            if not self.fernet_key:
+                raise ValueError(
+                    "FERNET_KEY must be set in production to encrypt TOTP secrets at rest. "
+                    "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                )
+            # H4: CORS production defaults validation
+            if self.allowed_origins == ["http://localhost:3000"]:
+                raise ValueError("ALLOWED_ORIGINS must be explicitly set in production (not localhost default)")
+            # M14: SMTP config validation for OTP email delivery
+            if not self.smtp_host or not self.smtp_user or not self.smtp_password:
+                raise ValueError("SMTP_HOST, SMTP_USER, SMTP_PASSWORD must be set in production for OTP email delivery")
+        # H5: Fernet key format validation (when set)
+        if self.fernet_key:
+            try:
+                from cryptography.fernet import Fernet
+                Fernet(self.fernet_key.encode())
+            except Exception as e:
+                raise ValueError(f"FERNET_KEY is not a valid Fernet key: {e}")
         return self
 
 

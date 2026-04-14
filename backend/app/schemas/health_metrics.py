@@ -54,7 +54,9 @@ class HealthMetricCreate(BaseModel):
 
 
 class HealthMetricUpdate(BaseModel):
-    value: Optional[float] = None
+    # ge=0 prevents negative values; full medical-range validation requires
+    # metric_type context which isn't available in a PATCH body
+    value: Optional[float] = Field(None, ge=0)
     recorded_at: Optional[datetime.datetime] = None
     source: Optional[WearableSourceEnum] = None
 

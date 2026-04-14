@@ -1,7 +1,8 @@
 import { getTranslations, getLocale } from "next-intl/server";
-import { Brain, RefreshCw, ShieldCheck } from "lucide-react";
+import { Brain, ShieldCheck } from "lucide-react";
 import { headers } from "next/headers";
 import { RiskGaugeRow } from "@/components/dashboard/risk/RiskGaugeRow";
+import { RiskRefreshButton } from "@/components/dashboard/risk/RiskRefreshButton";
 import type { RiskPredictionSummary } from "@/types/api";
 
 async function fetchRiskPredictions(): Promise<RiskPredictionSummary> {
@@ -111,7 +112,7 @@ export default async function RiskPage() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" aria-hidden />
+            <Brain className="h-5 w-5 text-muted-foreground" aria-hidden />
             <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -119,15 +120,8 @@ export default async function RiskPage() {
           </p>
         </div>
 
-        {/* Refresh – BFF TODO: POST /api/v1/health/risk-predictions/refresh */}
-        <button
-          className="flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer self-start"
-          aria-label={t("updateAria")}
-          disabled
-        >
-          <RefreshCw className="w-4 h-4" />
-          {t("update")}
-        </button>
+        {/* Refresh */}
+        <RiskRefreshButton />
       </div>
 
       {/* ── Score overview card ── */}
@@ -182,7 +176,7 @@ export default async function RiskPage() {
       {/* ── Medical disclaimer ── */}
       <div className="rounded-xl border border-border bg-muted/20 px-5 py-4 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" aria-hidden />
-        <p className="text-xs text-muted-foreground leading-relaxed">{data.disclaimer || t("noInfo")}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{t("disclaimer")}</p>
       </div>
     </div>
   );

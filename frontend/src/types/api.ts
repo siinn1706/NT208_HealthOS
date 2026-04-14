@@ -35,15 +35,19 @@ export interface PaginatedResponse<T> {
 export interface User {
   id: string;
   email: string;
+  username: string | null;
   display_name: string;
+  avatar_url: string | null;
+  onboarding_status: string;
+  onboarding_completed_at: string | null;
   created_at: string;
 }
 
 export interface EmergencyContact {
-  id?: string;
-  name: string | null;
-  relationship: string | null;
-  phone: string | null;
+  name: string;
+  relationship: string;
+  phone: string;
+  email?: string | null;
 }
 
 export interface MedicalInfo {
@@ -62,13 +66,25 @@ export interface UserProfile extends User {
   weight_kg: number | null;
   phone: string | null;
   address: string | null;
-  avatar_url: string | null;
-  accent_color: string | null;
   emergency_contacts: EmergencyContact[];
   medical_info: MedicalInfo;
 }
 
-export type UserProfileUpdate = Omit<UserProfile, "id" | "email" | "created_at">;
+/** Fields accepted by PATCH /v1/users/me — must stay in sync with BE UserProfileUpdate schema. */
+export interface UserProfileUpdate {
+  full_name?: string | null;
+  date_of_birth?: string | null;
+  gender?: "male" | "female" | "other" | null;
+  blood_type?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  phone?: string | null;
+  address?: string | null;
+  /** Public http(s) URL; omit when uploading via POST /users/me/avatar */
+  avatar_url?: string | null;
+  emergency_contacts?: EmergencyContact[] | null;
+  medical_info?: MedicalInfo | null;
+}
 
 // ─── Meals ──────────────────────────────────────────────────────────
 
@@ -138,6 +154,7 @@ export interface NutritionSuggestion {
   icon: string; // lucide icon name
   title: string;
   message: string;
+  message_params?: Record<string, number>;
   priority: number; // lower = higher priority
   cta?: { label: string; href: string };
 }
@@ -307,6 +324,7 @@ export interface RiskItem {
   id: string;
   condition: string;
   conditionVi: string;
+  conditionCode: string;
   probability: number;
   level: RiskLevel;
   trend: RiskTrend;
@@ -352,8 +370,8 @@ export interface WsEvent<T = unknown> {
 // ─── Chat ────────────────────────────────────────────────────────────
 
 export type ConversationType = "direct" | "group" | "ai";
-export type MessageType = "text" | "image" | "file" | "system";
-export type MessageStatus = "sending" | "sent" | "delivered" | "read";
+export type MessageType = "text" | "image" | "file" | "audio" | "system";
+export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 export type ConversationTab = "all" | "strangers";
 export type StrangerRequestStatus = "pending" | "accepted" | "rejected" | "blocked";
 export type ChatThemeType = "gradient" | "pattern";
@@ -373,6 +391,13 @@ export interface MessageReaction {
   user_names?: Record<string, string>;
 }
 
+export interface MessageAttachment {
+  url: string;
+  name: string;
+  size: number;
+  mime_type: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -383,6 +408,7 @@ export interface Message {
   status: MessageStatus;
   reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type" | "sender_display_name">;
   reactions: MessageReaction[];
+  attachments?: MessageAttachment[] | null;
   is_edited: boolean;
   is_recalled: boolean;
   is_pinned: boolean;
@@ -592,4 +618,11 @@ export interface AutoShareSettings {
   default_recipients: ShareRecipient[];
   default_channels: ShareChannel[];
   countdown_seconds: number; // delay before auto-sending
+}
+
+// ─── User Preferences ────────────────────────────────────────────────
+
+export interface UserPreference {
+  theme_mode: "system" | "light" | "dark";
+  accent_color: string | null;
 }
