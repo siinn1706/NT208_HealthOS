@@ -1,7 +1,10 @@
 """AI Worker — FastAPI application entry point."""
 from fastapi import FastAPI
 
+from app.api.generate import router as ai_router
+
 app = FastAPI(title="HealthOS AI Worker", version="0.1.0")
+app.include_router(ai_router)
 
 
 @app.get("/health")

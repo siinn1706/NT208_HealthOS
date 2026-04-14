@@ -58,3 +58,5 @@ infra/logs/*
 # Ignore local infrastructure data
 .data/
 .husky/commit-msg
+infra/bin/
+infra/data/

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as v1_router
+from app.api.v1.endpoints.chat import router as chat_ws_router
 from app.adapters.redis_client import close_redis
 from app.adapters.database import engine
 from app.core.config import settings
@@ -107,6 +108,7 @@ async def security_headers_middleware(request: Request, call_next):
     return response
 
 app.include_router(v1_router)
+app.include_router(chat_ws_router)
 
 
 @app.get("/health")
