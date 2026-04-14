@@ -322,6 +322,9 @@ async def request_email_otp(
     """
     from app.adapters.database import AsyncSessionLocal
 
+    # Compute cooldown key early so all purpose-specific branches can safely use it.
+    cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
+
     existing_user = None
     if body.purpose in {"reset_password", "signup", "login"}:
         async with AsyncSessionLocal() as db:
@@ -350,7 +353,6 @@ async def request_email_otp(
 
     # Per-email cooldown: same semantics as real OTP sends (incl. login probe for unknown email).
     # Enforced before expensive work; fake login success must still set cooldown to limit enumeration.
-    cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
     if await redis.exists(cooldown_key):
         from app.exceptions import RateLimitException
         raise RateLimitException(
