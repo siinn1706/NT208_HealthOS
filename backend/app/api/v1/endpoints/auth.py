@@ -350,27 +350,8 @@ async def request_email_otp(
     """
     from app.adapters.database import AsyncSessionLocal
 
-    # region agent log
-    _agent_debug_log(
-        run_id="pre-fix",
-        hypothesis_id="H1",
-        location="auth.py:request_email_otp:entry",
-        message="request_otp_entry",
-        data={
-            "purpose": body.purpose,
-            "has_username": bool(body.username),
-            "has_password": bool(body.password),
-            "password_len": len(body.password or ""),
-        },
-    )
-    # endregion
-    logger.warning(
-        "H9 request_otp_entry purpose=%s has_username=%s has_password=%s password_len=%s",
-        body.purpose,
-        bool(body.username),
-        bool(body.password),
-        len(body.password or ""),
-    )
+    # Compute cooldown key early so all purpose-specific branches can safely use it.
+    cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
 
     existing_user = None
     if body.purpose in {"reset_password", "signup", "login"}:
@@ -417,26 +398,7 @@ async def request_email_otp(
 
     # Per-email cooldown: same semantics as real OTP sends (incl. login probe for unknown email).
     # Enforced before expensive work; fake login success must still set cooldown to limit enumeration.
-    cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
-    cooldown_exists = bool(await redis.exists(cooldown_key))
-    # region agent log
-    _agent_debug_log(
-        run_id="pre-fix",
-        hypothesis_id="H3",
-        location="auth.py:request_email_otp:cooldown",
-        message="request_otp_cooldown_checked",
-        data={
-            "purpose": body.purpose,
-            "cooldown_exists": cooldown_exists,
-        },
-    )
-    # endregion
-    logger.warning(
-        "H11 request_otp_cooldown purpose=%s cooldown_exists=%s",
-        body.purpose,
-        cooldown_exists,
-    )
-    if cooldown_exists:
+    if await redis.exists(cooldown_key):
         from app.exceptions import RateLimitException
         raise RateLimitException(
             message="Vui lòng đợi 60 giây trước khi yêu cầu mã OTP mới",
