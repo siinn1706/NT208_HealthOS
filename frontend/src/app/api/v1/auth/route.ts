@@ -56,6 +56,21 @@ export async function GET() {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
+    // #region agent log
+    fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
+      body: JSON.stringify({
+        sessionId: "462cac",
+        runId: "chat-session-pre-fix",
+        hypothesisId: "H3",
+        location: "api/v1/auth/route.ts:59",
+        message: "Session request missing cookie token",
+        data: {},
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     return NextResponse.json(
       { error: { code: "AUTH_REQUIRED", message: "No active session." } },
       { status: 401 }
@@ -66,6 +81,24 @@ export async function GET() {
   if (process.env.NODE_ENV !== "production") {
     const devUser = parseDevToken(token);
     if (devUser) {
+      // #region agent log
+      fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
+        body: JSON.stringify({
+          sessionId: "462cac",
+          runId: "chat-session-pre-fix",
+          hypothesisId: "H1",
+          location: "api/v1/auth/route.ts:72",
+          message: "Session response from dev bypass",
+          data: {
+            hasUserIdField: true,
+            hasIdField: false,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       return NextResponse.json({
         data: {
           user_id: "00000000-0000-0000-0000-000000000001",
@@ -86,6 +119,27 @@ export async function GET() {
     });
 
     const data = await res.json().catch(() => null);
+    // #region agent log
+    fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
+      body: JSON.stringify({
+        sessionId: "462cac",
+        runId: "chat-session-pre-fix",
+        hypothesisId: "H1",
+        location: "api/v1/auth/route.ts:104",
+        message: "Session upstream payload shape",
+        data: {
+          upstreamOk: res.ok,
+          upstreamStatus: res.status,
+          hasData: Boolean(data?.data),
+          hasUserIdField: typeof data?.data?.user_id === "string",
+          hasIdField: typeof data?.data?.id === "string",
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     if (!res.ok) {
       // Token invalid/expired — clear both session and meta cookies
       const response = NextResponse.json(

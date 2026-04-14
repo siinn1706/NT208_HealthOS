@@ -472,6 +472,25 @@ export function useMessages(conversationId: string | null, currentUserId: string
       // loaded.  Without it the optimistic message would carry a sentinel ID
       // that breaks sender comparison and may cause duplicate rendering.
       if (!currentUserId) {
+        // #region agent log
+        fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
+          body: JSON.stringify({
+            sessionId: "462cac",
+            runId: "chat-session-pre-fix",
+            hypothesisId: "H5",
+            location: "useChat.ts:475",
+            message: "sendMessage blocked due missing currentUserId",
+            data: {
+              convId,
+              hasCurrentUserId: Boolean(currentUserId),
+              contentLength: content.length,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         throw new Error("Cannot send message: user session not loaded");
       }
       // Use crypto.randomUUID() for collision-free IDs even when multiple

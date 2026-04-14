@@ -14,6 +14,7 @@ import { ForwardMessageDialog } from "./ForwardMessageDialog";
 import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
 import type { Conversation, Message } from "@/types/api";
+import { toast } from "sonner";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
 
@@ -168,12 +169,37 @@ export function ChatWindow({
 
   const handleSend = useCallback(
     (content: string) => {
+      // #region agent log
+      fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
+        body: JSON.stringify({
+          sessionId: "462cac",
+          runId: "chat-session-pre-fix",
+          hypothesisId: "H4",
+          location: "ChatWindow.tsx:173",
+          message: "User initiated send",
+          data: {
+            convId,
+            currentUserId: currentUserId ?? null,
+            isEditing: Boolean(editingMessage),
+            hasReplyTo: Boolean(replyTo?.id),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       if (editingMessage) {
         editMessage(convId, editingMessage.id, content);
         setEditingMessage(null);
       } else {
-        const sent = sendMessage(convId, content, replyTo?.id, onMessageSent);
-        void sent;
+        void sendMessage(convId, content, replyTo?.id, onMessageSent).catch((error: unknown) => {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Cannot send message right now. Please try again.";
+          toast.error(message);
+        });
         setReplyTo(null);
         if (conversation.type === "ai") {
           simulateAIReply(convId);
