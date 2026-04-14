@@ -49,6 +49,7 @@ export const ErrorCodes = {
   TOKEN_INVALID: "TOKEN_INVALID",
   SESSION_EXPIRED: "SESSION_EXPIRED",
   UNAUTHORIZED: "UNAUTHORIZED",
+  PASSWORD_BREACHED: "PASSWORD_BREACHED",
 
   // Rate limiting
   RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
@@ -147,6 +148,8 @@ export function getErrorMessage(errorCode: string, fallbackMessage?: string): st
     [ErrorCodes.TOKEN_INVALID]: "Phiên đăng nhập không hợp lệ",
     [ErrorCodes.SESSION_EXPIRED]: "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại",
     [ErrorCodes.UNAUTHORIZED]: "Bạn cần đăng nhập để tiếp tục",
+    [ErrorCodes.PASSWORD_BREACHED]:
+      "Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu. Vui lòng chọn mật khẩu khác.",
 
     // Rate limiting
     [ErrorCodes.RATE_LIMIT_EXCEEDED]: "Thao tác quá nhanh, vui lòng thử lại sau",

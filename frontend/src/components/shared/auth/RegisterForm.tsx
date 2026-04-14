@@ -42,6 +42,30 @@ export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const agentDebugLog = (
+    hypothesisId: string,
+    location: string,
+    message: string,
+    data: Record<string, unknown>
+  ) => {
+    fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "c4384e",
+      },
+      body: JSON.stringify({
+        sessionId: "c4384e",
+        runId: "pre-fix",
+        hypothesisId,
+        location,
+        message,
+        data,
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  };
+
   // Validate email format
   const isValidEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -278,6 +302,19 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
+      // #region agent log
+      agentDebugLog(
+        "H7",
+        "RegisterForm.tsx:handleSubmit:before-request",
+        "register_request_otp_submit",
+        {
+          hasUsername: Boolean(username),
+          hasEmail: Boolean(email),
+          hasPassword: Boolean(password),
+          passwordLength: password.length,
+        }
+      );
+      // #endregion
       const res = await fetch("/api/v1/auth/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -290,9 +327,24 @@ export function RegisterForm() {
       });
 
       const data = await res.json().catch(() => null);
+      // #region agent log
+      agentDebugLog(
+        "H8",
+        "RegisterForm.tsx:handleSubmit:after-response",
+        "register_request_otp_response",
+        {
+          status: res.status,
+          ok: res.ok,
+          errorCode:
+            data && typeof data === "object" && "error" in data
+              ? (data as { error?: { code?: string } }).error?.code ?? null
+              : null,
+        }
+      );
+      // #endregion
 
       if (!res.ok) {
-        const errors = handleApiError(data, tErrors("loginFailed"));
+        const errors = handleApiError(data, tErrors("registrationFailed"));
         // Map field errors
         if (errors.email) {
           setFieldErrors((prev) => ({ ...prev, email: errors.email }));
