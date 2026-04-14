@@ -11,6 +11,7 @@ import { AiChatBadge } from "./AiChatBadge";
 import { AiMessageContent } from "./AiMessageContent";
 import { getInitials, formatChatTime } from "@/lib/chat-utils";
 import type { Message } from "@/types/api";
+import type { GroupPosition } from "@/lib/chat-utils";
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,6 +21,8 @@ interface MessageBubbleProps {
   participantNameById: Record<string, string>;
   showAvatar: boolean;
   showDateSeparator?: string;
+  groupPosition?: GroupPosition;
+  bubbleRadius?: string;
   onReply: () => void;
   onEdit: () => void;
   onRecall: () => void;
@@ -27,6 +30,7 @@ interface MessageBubbleProps {
   onPin: () => void;
   onReact: (emoji: string) => void;
   onForward?: () => void;
+  onJumpToReply?: (replyId: string) => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -37,6 +41,8 @@ export const MessageBubble = memo(function MessageBubble({
   participantNameById,
   showAvatar,
   showDateSeparator,
+  groupPosition = "solo",
+  bubbleRadius,
   onReply,
   onEdit,
   onRecall,
@@ -44,6 +50,7 @@ export const MessageBubble = memo(function MessageBubble({
   onPin,
   onReact,
   onForward,
+  onJumpToReply,
 }: MessageBubbleProps) {
   const t = useTranslations("chat");
   const locale = useLocale();
@@ -61,10 +68,35 @@ export const MessageBubble = memo(function MessageBubble({
     navigator.clipboard.writeText(message.content).catch(() => {});
   }, [message.content]);
 
+  /** Build reply-to display text. Fallback for recalled/deleted originals. */
+  function getReplyPreview(reply: NonNullable<Message["reply_to"]>) {
+    const name =
+      reply.sender_id === currentUserId
+        ? t("you")
+        : reply.sender_id === "ai"
+        ? t("aiAssistant")
+        : reply.sender_display_name ??
+          participantNameById[reply.sender_id] ??
+          "Chưa có thông tin";
+    // Empty content means recalled or deleted
+    if (!reply.content) {
+      return { name, content: null };
+    }
+    const content =
+      reply.type === "image"
+        ? t("imageMessage")
+        : reply.type === "file"
+        ? t("fileMessage")
+        : reply.content.length > 60
+        ? reply.content.slice(0, 60) + "…"
+        : reply.content;
+    return { name, content };
+  }
+
   if (message.type === "system") {
     return (
       <div className="flex justify-center my-2">
-        <span className="text-[11px] text-muted-foreground bg-secondary/60 rounded-full px-3 py-1">
+        <span className="text-[11px] text-muted-foreground bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
           {message.content}
         </span>
       </div>
@@ -73,21 +105,24 @@ export const MessageBubble = memo(function MessageBubble({
 
   return (
     <>
+      {/* Date separator — centered floating pill */}
       {showDateSeparator && (
-        <div className="flex items-center gap-3 my-4 px-4">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-[11px] text-muted-foreground flex-shrink-0">{showDateSeparator}</span>
-          <div className="flex-1 h-px bg-border" />
+        <div className="flex justify-center my-3 px-4">
+          <span className="text-[11px] text-muted-foreground bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
+            {showDateSeparator}
+          </span>
         </div>
       )}
 
       <div
         className={cn(
-          "flex items-end gap-2 px-4 py-0.5 group",
-          isOwn ? "flex-row-reverse" : "flex-row"
+          "flex items-end gap-2 px-4 group",
+          isOwn ? "flex-row-reverse" : "flex-row",
+          groupPosition === "middle" || groupPosition === "last" ? "py-0.5" : "py-1.5"
         )}
         role="listitem"
         aria-label={`${isOwn ? "You" : senderName}: ${message.is_recalled ? t("recalled") : message.content}, ${timeStr}`}
+        tabIndex={0}
       >
         {/* Avatar — only for other users */}
         {!isOwn && (
@@ -109,32 +144,8 @@ export const MessageBubble = memo(function MessageBubble({
         )}
 
         {/* Message bubble + actions */}
-        <div className={cn("relative max-w-[70%] flex flex-col", isOwn && "items-end")}>
-          {/* Reply preview */}
-          {message.reply_to && !message.is_recalled && (
-            <div className={cn(
-              "mb-1 px-2 py-1 rounded-lg border-l-2 border-primary/60 bg-secondary/60 max-w-full",
-              "text-xs text-muted-foreground truncate"
-            )}>
-                <span className="font-medium text-primary">
-                {message.reply_to.sender_id === currentUserId
-                  ? t("you")
-                  : message.reply_to.sender_id === "ai"
-                  ? t("aiAssistant")
-                  : message.reply_to.sender_display_name ??
-                    participantNameById[message.reply_to.sender_id] ??
-                    "Chưa có thông tin"}
-                </span>
-              {" · "}
-              <span className="truncate">
-                {message.reply_to.content.length > 60
-                  ? message.reply_to.content.slice(0, 60) + "…"
-                  : message.reply_to.content}
-              </span>
-            </div>
-          )}
-
-          {/* Bubble */}
+        <div className={cn("relative flex flex-col", isOwn && "items-end", isOwn ? "max-w-[85%] md:max-w-[65%]" : "max-w-[85%] md:max-w-[65%]")}>
+          {/* Bubble container — reply preview + content share the same rounded block */}
           <div className="relative">
             {/* Message actions (hover) */}
             {!message.is_recalled && (
@@ -156,13 +167,45 @@ export const MessageBubble = memo(function MessageBubble({
 
             <div
               className={cn(
-                "px-3.5 py-2 rounded-2xl text-sm leading-relaxed",
+                "px-3.5 py-2 text-sm leading-relaxed",
+                bubbleRadius ?? (isOwn ? "rounded-2xl rounded-br-sm" : "rounded-2xl rounded-bl-sm"),
                 isOwn
-                  ? "bg-primary text-primary-foreground rounded-br-sm"
-                  : "bg-secondary text-foreground rounded-bl-sm",
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-foreground",
                 message.is_recalled && "opacity-60 italic"
               )}
             >
+              {/* Reply preview — rendered INSIDE the bubble */}
+              {message.reply_to && !message.is_recalled && (() => {
+                const reply = getReplyPreview(message.reply_to);
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onJumpToReply?.(message.reply_to!.id)}
+                    className={cn(
+                      "block w-full text-left mb-1.5 pb-1.5 -mx-1.5 -mt-0.5 px-1.5 pt-0.5 rounded",
+                      "border-l-2 cursor-pointer",
+                      isOwn
+                        ? "border-l-white/50 bg-white/10"
+                        : "border-l-primary/60 bg-black/[0.04] dark:bg-white/[0.04]"
+                    )}
+                  >
+                    <span className={cn("block text-xs font-semibold truncate", isOwn ? "text-white/80" : "text-primary")}>
+                      {reply.name}
+                    </span>
+                    {reply.content ? (
+                      <span className={cn("block text-xs truncate leading-tight", isOwn ? "text-white/70" : "text-muted-foreground")}>
+                        {reply.content}
+                      </span>
+                    ) : (
+                      <span className={cn("block text-xs italic leading-tight", isOwn ? "text-white/50" : "text-muted-foreground")}>
+                        {t("deletedMessage")}
+                      </span>
+                    )}
+                  </button>
+                );
+              })()}
+
               {message.is_recalled ? (
                 <span>{t("recalled")}</span>
               ) : isAi ? (
@@ -181,14 +224,14 @@ export const MessageBubble = memo(function MessageBubble({
             )}
           </div>
 
-          {/* Meta row */}
+          {/* Meta row — timestamp + status below bubble, tightened */}
           <div className={cn(
-            "flex items-center gap-1.5 mt-0.5",
+            "flex items-center gap-1.5 mt-px",
             isOwn ? "flex-row-reverse" : "flex-row"
           )}>
-            <span className="text-[10px] text-muted-foreground">{timeStr}</span>
+            <span className="text-[10px] text-muted-foreground/70">{timeStr}</span>
             {message.is_edited && !message.is_recalled && (
-              <span className="text-[10px] text-muted-foreground italic">({t("edited")})</span>
+              <span className="text-[10px] text-muted-foreground/70 italic">({t("edited")})</span>
             )}
             {isOwn && !message.is_recalled && (
               <MessageStatus status={message.status} />
