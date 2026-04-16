@@ -104,25 +104,70 @@ function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslati
             <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
               {/* Macros row */}
               {nr && (
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-md bg-[#41BCE6]/10 px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-muted-foreground">{tm("protein")}</p>
-                    <p className="text-xs font-bold text-[#41BCE6] tabular-nums">
-                      {nr.protein_g}g
-                    </p>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-md bg-[#41BCE6]/10 px-2 py-1.5 text-center">
+                      <p className="text-[10px] text-muted-foreground">{tm("protein")}</p>
+                      <p className="text-xs font-bold text-[#41BCE6] tabular-nums">
+                        {nr.protein_g}g
+                      </p>
+                    </div>
+                    <div className="rounded-md bg-[#E7DEA7]/20 px-2 py-1.5 text-center">
+                      <p className="text-[10px] text-muted-foreground">{tm("carbs")}</p>
+                      <p className="text-xs font-bold text-[#b5a97a] dark:text-[#E7DEA7] tabular-nums">
+                        {nr.carbs_g}g
+                      </p>
+                    </div>
+                    <div className="rounded-md bg-[#E3B79A]/20 px-2 py-1.5 text-center">
+                      <p className="text-[10px] text-muted-foreground">{tm("fat")}</p>
+                      <p className="text-xs font-bold text-[#c4825a] dark:text-[#E3B79A] tabular-nums">
+                        {nr.fat_g}g
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-md bg-[#E7DEA7]/20 px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-muted-foreground">{tm("carbs")}</p>
-                    <p className="text-xs font-bold text-[#b5a97a] dark:text-[#E7DEA7] tabular-nums">
-                      {nr.carbs_g}g
+
+                  {(nr.saturates_g !== undefined || nr.sugar_g !== undefined || nr.salt_g !== undefined) && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-md bg-rose-500/10 px-2 py-1.5 text-center">
+                        <p className="text-[10px] text-muted-foreground">{tm("saturates")}</p>
+                        <p className="text-xs font-bold text-rose-500 tabular-nums">
+                          {(nr.saturates_g ?? 0).toFixed(1)}g
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-fuchsia-500/10 px-2 py-1.5 text-center">
+                        <p className="text-[10px] text-muted-foreground">{tm("sugar")}</p>
+                        <p className="text-xs font-bold text-fuchsia-500 tabular-nums">
+                          {(nr.sugar_g ?? 0).toFixed(1)}g
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-sky-500/10 px-2 py-1.5 text-center">
+                        <p className="text-[10px] text-muted-foreground">{tm("salt")}</p>
+                        <p className="text-xs font-bold text-sky-500 tabular-nums">
+                          {(nr.salt_g ?? 0).toFixed(1)}g
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {(nr.dish_name || nr.source) && (
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      {nr.dish_name && (
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal">
+                          {nr.dish_name}
+                        </Badge>
+                      )}
+                      {nr.source && (
+                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] uppercase">
+                          {nr.source}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  {nr.serving_type && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {tm("serving")}: {nr.serving_type}
                     </p>
-                  </div>
-                  <div className="rounded-md bg-[#E3B79A]/20 px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-muted-foreground">{tm("fat")}</p>
-                    <p className="text-xs font-bold text-[#c4825a] dark:text-[#E3B79A] tabular-nums">
-                      {nr.fat_g}g
-                    </p>
-                  </div>
+                  )}
                 </div>
               )}
 

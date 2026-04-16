@@ -167,6 +167,11 @@
     "aiIdentified": "AI auto-identified",
     "ingredientsFound": "Identified Ingredients ({n})",
     "noInfo": "No information available",
+    "nutritionDetails": "Nutrition details",
+    "saturates": "Saturates",
+    "sugar": "Sugar",
+    "salt": "Salt",
+    "serving": "Serving",
     "aiDisclaimer": "AI may not be 100% accurate. You can edit ingredients in the next step.",
     "confirmEdit": "Confirm & Edit",
     "cancelCamera": "Cancel camera",
@@ -634,6 +639,10 @@
       "protein": "Protein",
       "carbs": "Carbs",
       "fat": "Fat",
+      "saturates": "Saturates",
+      "sugar": "Sugar",
+      "salt": "Salt",
+      "serving": "Serving",
       "kcalUnit": "kcal"
     },
     "reports": {

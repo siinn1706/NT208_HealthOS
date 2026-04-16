@@ -91,11 +91,17 @@ export interface UserProfileUpdate {
 export type MealStatus = "pending" | "processing" | "analyzed" | "failed";
 
 export interface NutritionResult {
+  dish_name?: string;
+  serving_type?: string;
   calories: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  saturates_g?: number;
+  sugar_g?: number;
+  salt_g?: number;
   confidence: number;
+  source?: string;
 }
 
 /** A single ingredient entry within a meal */
