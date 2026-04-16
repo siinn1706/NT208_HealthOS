@@ -150,22 +150,24 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 
 ## CI/CD Pipeline
 
-GitHub Actions workflows in `.github/workflows/`:
-- `ci-smoke.yml` — PR checks (lint, build, dependency verification)
-- `release.yml` — Production release with tag
-- `release-beta.yml` — Beta release to staging
-- `branch-protection.yml` — Enforce protection rules
-- `sync-main-to-dev.yml` — Auto-sync main → dev after release
-- `sync-dev-after-release.yml` — Auto-sync dev → feature branches
+GitHub Actions workflows (`.github/workflows/`):
+- `release.yml` — Production release triggered on `main`, creates tags and GitHub releases
+- `release-beta.yml` — Beta release pipeline (conditional, if enabled)
+- `branch-protection.yml` — Enforces main branch protection rules
+- `sync-main-to-dev.yml` — Auto-sync after releases (if develop branch exists)
+- `sync-dev-after-release.yml` — Additional sync logic (if applicable)
 
-See [Deployment Guide](./docs/deployment-guide.md) for workflow details and troubleshooting.
+**Note:** Release config is dynamic (`.releaserc.cjs`). Verify deployment platform and artifact targets before first production run.
+
+See [Deployment Guide](./docs/deployment-guide.md) for workflow setup and troubleshooting.
 
 ## Git Workflow
 
-- Base branch: `main`
-- Feature branches: `feature/<scope>/<name>`, `fix/<scope>/<name>`, `docs/<name>`
-- PR target: `main`
-- Conventional Commits required.
+- **Base/release branch:** `main` (production releases only)
+- **Development branch:** None formally configured (feature branches merge to main via PR)
+- **Feature branches:** `feature/<scope>/<name>`, `fix/<scope>/<name>`, `docs/<name>`
+- **PR target:** `main`
+- **Commits:** Conventional Commits required (`feat:`, `fix:`, `docs:`, `chore:`, etc.)
 
 ## Documentation
 
