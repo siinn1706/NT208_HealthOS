@@ -311,6 +311,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/auth/check-email:
     get:
@@ -342,6 +348,12 @@ paths:
                     example: true
         "400":
           description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
           content:
             application/json:
               schema:
@@ -392,6 +404,18 @@ paths:
                       avatar_url:
                         type: string
                         nullable: true
+        "403":
+          description: Missing or invalid BFF secret
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/auth/request-otp:
     post:
@@ -451,6 +475,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
           description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
           content:
             application/json:
               schema:
@@ -542,6 +572,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/auth/reset-password:
     post:
@@ -601,6 +637,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Email not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
           content:
             application/json:
               schema:
