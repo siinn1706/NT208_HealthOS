@@ -44,7 +44,27 @@ Browser -> Next.js BFF (/api/v1/**) -> Core BE (/v1/**) -> PostgreSQL/Redis/MinI
 bash infra/scripts/setup.sh
 ```
 
-This copies env example files, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
+This copies env example files, downloads the AI YOLO model from Google Drive, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
+
+Skip model download if needed:
+
+```powershell
+.\infra\scripts\setup.ps1 -skipModelDownload
+```
+
+```bash
+bash infra/scripts/setup.sh --skip-model-download
+```
+
+Download model manually:
+
+```powershell
+.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env
+```
+
+```bash
+bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
+```
 
 ### Seed Test Admin (Optional)
 
