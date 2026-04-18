@@ -1,12 +1,13 @@
 ---
 title: "Telegram-Inspired Chat UI Redesign"
 description: "Redesign chat UI with Telegram-inspired message bubbles, reply UX, composer, and interaction patterns"
-status: in-progress
+status: completed
 priority: P1
 effort: 16h
 branch: chat-ui
 tags: [frontend, ui-ux, chat, redesign]
 created: 2026-04-14
+completed: 2026-04-16
 ---
 
 # Telegram-Inspired Chat UI Redesign
@@ -41,7 +42,7 @@ The chat serves two use cases in this health app:
 | # | Phase | Status | Effort | Link |
 |---|-------|--------|--------|------|
 | 4 | Conversation list polish | Completed | 2h | [phase-04](./phase-04-conversation-list.md) |
-| 5 | Message actions & micro-interactions | Pending | 2.5h | [phase-05](./phase-05-actions-and-polish.md) |
+| 5 | Message actions & micro-interactions | Completed | 2h | [phase-05](./phase-05-actions-and-polish.md) |
 
 ## Dependencies
 

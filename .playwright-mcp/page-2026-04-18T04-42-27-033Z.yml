@@ -1,0 +1,91 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - img
+              - generic: Cơ bản
+          - generic:
+            - generic:
+              - generic:
+                - img
+              - generic: Sức khỏe
+          - generic:
+            - generic:
+              - generic:
+                - img
+              - generic: Liên hệ
+          - generic:
+            - generic:
+              - generic: "4"
+              - generic: Khẩn cấp
+          - generic:
+            - generic:
+              - generic: "5"
+              - generic: Y tế
+      - generic:
+        - generic:
+          - generic:
+            - heading [level=2]: Liên hệ khẩn cấp
+            - paragraph: Thêm người liên hệ khi cần thiết
+          - generic:
+            - generic:
+              - generic:
+                - generic: Liên hệ 1
+              - generic:
+                - generic:
+                  - generic:
+                    - text: Tên
+                    - generic: "*"
+                  - textbox:
+                    - /placeholder: Nguyễn Thị B
+                    - text: Nguyen Van B
+                - generic:
+                  - generic:
+                    - text: SĐT
+                    - generic: "*"
+                  - textbox:
+                    - /placeholder: +84 987 654 321
+                    - text: "+84912345678"
+                - generic:
+                  - generic:
+                    - text: Quan hệ
+                    - generic: "*"
+                  - combobox [expanded]:
+                    - generic: Chọn quan hệ
+                    - img
+                - generic:
+                  - generic: Email (tùy chọn)
+                  - textbox:
+                    - /placeholder: email@example.com
+                    - text: test@example.com
+          - button:
+            - img
+            - text: Thêm liên hệ
+      - generic:
+        - button: Quay lại
+        - button:
+          - text: Tiếp tục
+          - img
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e114] [cursor=pointer]:
+    - img [ref=e115]
+  - alert
+  - listbox [ref=e193]:
+    - option "Vợ/Chồng" [active] [ref=e194]:
+      - generic [ref=e196]: Vợ/Chồng
+    - option "Cha/Mẹ" [ref=e197]:
+      - generic [ref=e199]: Cha/Mẹ
+    - option "Anh/Chị em" [ref=e200]:
+      - generic [ref=e202]: Anh/Chị em
+    - option "Con cái" [ref=e203]:
+      - generic [ref=e205]: Con cái
+    - option "Bạn bè" [ref=e206]:
+      - generic [ref=e208]: Bạn bè
+    - option "Đồng nghiệp" [ref=e209]:
+      - generic [ref=e211]: Đồng nghiệp
+    - option "Khác" [ref=e212]:
+      - generic [ref=e214]: Khác

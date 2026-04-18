@@ -1,0 +1,41 @@
+- generic [ref=e1]:
+  - generic [ref=e64]:
+    - generic [ref=e66]:
+      - generic [ref=e68]:
+        - img [ref=e128]
+        - generic [ref=e70]: Cơ bản
+      - generic [ref=e73]:
+        - img [ref=e152]
+        - generic [ref=e75]: Sức khỏe
+      - generic [ref=e78]:
+        - generic [ref=e79]: "3"
+        - generic [ref=e80]: Liên hệ
+      - generic [ref=e83]:
+        - generic [ref=e84]: "4"
+        - generic [ref=e85]: Khẩn cấp
+      - generic [ref=e88]:
+        - generic [ref=e89]: "5"
+        - generic [ref=e90]: Y tế
+    - generic [ref=e154]:
+      - generic [ref=e155]:
+        - heading "Contact Information" [level=2] [ref=e156]
+        - paragraph [ref=e157]: We need this to contact you
+      - generic [ref=e158]:
+        - generic [ref=e159]:
+          - text: Phone Number
+          - generic [ref=e160]: "*"
+        - textbox "Phone Number *" [ref=e161]:
+          - /placeholder: +84 987 654 321
+      - generic [ref=e162]:
+        - generic [ref=e163]: Address
+        - textbox "Address" [ref=e164]:
+          - /placeholder: 123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh
+    - generic [ref=e112]:
+      - button "Quay lại" [ref=e145]
+      - button "Tiếp theo" [active] [ref=e113]:
+        - text: Tiếp theo
+        - img
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e114] [cursor=pointer]:
+    - img [ref=e115]
+  - alert [ref=e62]

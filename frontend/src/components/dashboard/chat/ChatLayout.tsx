@@ -60,7 +60,7 @@ export function ChatLayout() {
     createConversation,
   } = useConversations();
 
-  const { requests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
+  const { pendingRequests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId),
@@ -143,7 +143,7 @@ export function ChatLayout() {
           conversations={conversations}
           currentUserId={currentUserId}
           activeId={activeId}
-          strangerRequests={requests}
+          strangerRequests={pendingRequests}
           isLoading={isLoading}
           onSelectConversation={handleSelectConversation}
           onPinConversation={pinConversation}

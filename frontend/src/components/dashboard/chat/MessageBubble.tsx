@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -9,9 +9,10 @@ import { MessageActions } from "./MessageActions";
 import { MessageReactions } from "./MessageReactions";
 import { AiChatBadge } from "./AiChatBadge";
 import { AiMessageContent } from "./AiMessageContent";
-import { getInitials, formatChatTime } from "@/lib/chat-utils";
+import { getInitials, formatChatTime, truncateChatPreview } from "@/lib/chat-utils";
 import type { Message } from "@/types/api";
 import type { GroupPosition } from "@/lib/chat-utils";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface MessageBubbleProps {
   message: Message;
@@ -23,14 +24,19 @@ interface MessageBubbleProps {
   showDateSeparator?: string;
   groupPosition?: GroupPosition;
   bubbleRadius?: string;
-  onReply: () => void;
-  onEdit: () => void;
-  onRecall: () => void;
-  onDelete: () => void;
-  onPin: () => void;
-  onReact: (emoji: string) => void;
-  onForward?: () => void;
+  /** Controls whether the timestamp/meta row is shown for this message.
+   *  False = message is part of a consecutive cluster and timestamp is suppressed. */
+  showTime?: boolean;
+  onReply: (msg: Message) => void;
+  onEdit: (msg: Message) => void;
+  onRecall: (msgId: string) => void;
+  onDelete: (msgId: string) => void;
+  onPin: (msgId: string) => void;
+  onReact: (msgId: string, emoji: string) => void;
+  onForward?: (msg: Message) => void;
   onJumpToReply?: (replyId: string) => void;
+  /** Open history date picker pre-focused on this message's date. */
+  onDateClick?: (date: Date) => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -43,6 +49,7 @@ export const MessageBubble = memo(function MessageBubble({
   showDateSeparator,
   groupPosition = "solo",
   bubbleRadius,
+  showTime = true,
   onReply,
   onEdit,
   onRecall,
@@ -51,34 +58,33 @@ export const MessageBubble = memo(function MessageBubble({
   onReact,
   onForward,
   onJumpToReply,
+  onDateClick,
 }: MessageBubbleProps) {
   const t = useTranslations("chat");
   const locale = useLocale();
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const unknown = t("unknownUser");
 
   const senderName =
     isAi
-      ? "HealthOS AI"
-      : message.sender_display_name ??
-        participantNameById[message.sender_id] ??
-        "Chưa có thông tin";
+      ? t("aiAssistant")
+      : message.sender_display_name ?? participantNameById[message.sender_id] ?? unknown;
   const timeStr = formatChatTime(message.created_at, locale);
 
-  // Must be declared before any early returns (React Hooks rules)
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(message.content).catch(() => {});
   }, [message.content]);
 
-  /** Build reply-to display text. Fallback for recalled/deleted originals. */
   function getReplyPreview(reply: NonNullable<Message["reply_to"]>) {
     const name =
       reply.sender_id === currentUserId
         ? t("you")
         : reply.sender_id === "ai"
-        ? t("aiAssistant")
-        : reply.sender_display_name ??
-          participantNameById[reply.sender_id] ??
-          "Chưa có thông tin";
-    // Empty content means recalled or deleted
+          ? t("aiAssistant")
+          : reply.sender_display_name ?? participantNameById[reply.sender_id] ?? unknown;
     if (!reply.content) {
       return { name, content: null };
     }
@@ -86,12 +92,54 @@ export const MessageBubble = memo(function MessageBubble({
       reply.type === "image"
         ? t("imageMessage")
         : reply.type === "file"
-        ? t("fileMessage")
-        : reply.content.length > 60
-        ? reply.content.slice(0, 60) + "…"
-        : reply.content;
+          ? t("fileMessage")
+          : truncateChatPreview(reply.content);
     return { name, content };
   }
+
+  const handleReply = useCallback(() => onReply(message), [onReply, message]);
+  const handleEdit = useCallback(() => onEdit(message), [onEdit, message]);
+  const handleRecall = useCallback(() => onRecall(message.id), [onRecall, message.id]);
+  const handleDelete = useCallback(() => onDelete(message.id), [onDelete, message.id]);
+  const handlePin = useCallback(() => onPin(message.id), [onPin, message.id]);
+  const handleReact = useCallback((emoji: string) => onReact(message.id, emoji), [onReact, message.id]);
+  const handleForward = useCallback(() => {
+    onForward?.(message);
+  }, [onForward, message]);
+
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    pointerStartRef.current = null;
+  }, []);
+
+  const onBubblePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (message.is_recalled || message.type === "system") return;
+      if (!window.matchMedia("(max-width: 767px)").matches) return;
+      if (e.pointerType === "mouse") return;
+      pointerStartRef.current = { x: e.clientX, y: e.clientY };
+      longPressTimerRef.current = setTimeout(() => {
+        setMobileActionsOpen(true);
+        longPressTimerRef.current = null;
+      }, 480);
+    },
+    [message.is_recalled, message.type]
+  );
+
+  const onBubblePointerMove = useCallback((e: React.PointerEvent) => {
+    const start = pointerStartRef.current;
+    if (!start || !longPressTimerRef.current) return;
+    if (Math.abs(e.clientX - start.x) > 12 || Math.abs(e.clientY - start.y) > 12) {
+      clearLongPressTimer();
+    }
+  }, [clearLongPressTimer]);
+
+  const onBubblePointerEnd = useCallback(() => {
+    clearLongPressTimer();
+  }, [clearLongPressTimer]);
 
   if (message.type === "system") {
     return (
@@ -105,26 +153,38 @@ export const MessageBubble = memo(function MessageBubble({
 
   return (
     <>
-      {/* Date separator — centered floating pill */}
       {showDateSeparator && (
         <div className="flex justify-center my-3 px-4">
-          <span className="text-[11px] text-muted-foreground bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
-            {showDateSeparator}
-          </span>
+          {onDateClick ? (
+            <button
+              type="button"
+              onClick={() => onDateClick(new Date(message.created_at))}
+              aria-label={t("jumpToDateAria", { label: showDateSeparator })}
+              className="text-[11px] text-muted-foreground bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm cursor-pointer hover:bg-background hover:text-foreground transition-colors"
+            >
+              {showDateSeparator}
+            </button>
+          ) : (
+            <span className="text-[11px] text-muted-foreground bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
+              {showDateSeparator}
+            </span>
+          )}
         </div>
       )}
 
       <div
         className={cn(
-          "flex items-end gap-2 px-4 group",
+          "relative flex items-end gap-2 px-4 group",
           isOwn ? "flex-row-reverse" : "flex-row",
           groupPosition === "middle" || groupPosition === "last" ? "py-0.5" : "py-1.5"
         )}
-        role="listitem"
-        aria-label={`${isOwn ? "You" : senderName}: ${message.is_recalled ? t("recalled") : message.content}, ${timeStr}`}
-        tabIndex={0}
+        aria-label={`${isOwn ? t("you") : senderName}: ${message.is_recalled ? t("recalled") : message.content}, ${timeStr}`}
+        tabIndex={-1}
+        onPointerDown={onBubblePointerDown}
+        onPointerMove={onBubblePointerMove}
+        onPointerUp={onBubblePointerEnd}
+        onPointerCancel={onBubblePointerEnd}
       >
-        {/* Avatar — only for other users */}
         {!isOwn && (
           <div className="w-8 flex-shrink-0 self-end mb-1">
             {showAvatar ? (
@@ -143,31 +203,48 @@ export const MessageBubble = memo(function MessageBubble({
           </div>
         )}
 
-        {/* Message bubble + actions */}
-        <div className={cn("relative flex flex-col", isOwn && "items-end", isOwn ? "max-w-[85%] md:max-w-[65%]" : "max-w-[85%] md:max-w-[65%]")}>
-          {/* Bubble container — reply preview + content share the same rounded block */}
-          <div className="relative">
-            {/* Message actions (hover) */}
-            {!message.is_recalled && (
-              <MessageActions
-                message={message}
-                isOwn={isOwn}
-                isAi={isAi}
-                onReply={onReply}
-                onEdit={onEdit}
-                onRecall={onRecall}
-                onDelete={onDelete}
-                onPin={onPin}
-                onReact={onReact}
-                onCopy={handleCopy}
-                onForward={onForward}
-                align={isOwn ? "right" : "left"}
-              />
-            )}
+        <div
+          className={cn(
+            "relative overflow-visible flex flex-col",
+            isOwn ? "items-end" : "items-start",
+            "max-w-[85%] md:max-w-[65%]"
+          )}
+        >
+          {!message.is_recalled && (
+            <>
+              {/* Desktop / hover: toolbar beside bubble, vertically centered */}
+              <div
+                className={cn(
+                  "hidden md:flex absolute top-1/2 -translate-y-1/2 z-20 opacity-0 pointer-events-none",
+                  "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                  "transition-opacity duration-150",
+                  "bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-md px-1 py-1",
+                  isOwn ? "right-full mr-2 flex-row-reverse" : "left-full ml-2"
+                )}
+              >
+                <MessageActions
+                  message={message}
+                  isOwn={isOwn}
+                  isAi={isAi}
+                  onReply={handleReply}
+                  onEdit={handleEdit}
+                  onRecall={handleRecall}
+                  onDelete={handleDelete}
+                  onPin={handlePin}
+                  onReact={handleReact}
+                  onCopy={handleCopy}
+                  onForward={onForward ? handleForward : undefined}
+                  side={isOwn ? "right" : "left"}
+                  layout="horizontal"
+                />
+              </div>
+            </>
+          )}
 
+          <div className="relative overflow-visible">
             <div
               className={cn(
-                "px-3.5 py-2 text-sm leading-relaxed",
+                "px-3.5 py-2 text-sm leading-relaxed overflow-hidden",
                 bubbleRadius ?? (isOwn ? "rounded-2xl rounded-br-sm" : "rounded-2xl rounded-bl-sm"),
                 isOwn
                   ? "bg-primary text-primary-foreground"
@@ -175,13 +252,16 @@ export const MessageBubble = memo(function MessageBubble({
                 message.is_recalled && "opacity-60 italic"
               )}
             >
-              {/* Reply preview — rendered INSIDE the bubble */}
               {message.reply_to && !message.is_recalled && (() => {
                 const reply = getReplyPreview(message.reply_to);
                 return (
                   <button
                     type="button"
-                    onClick={() => onJumpToReply?.(message.reply_to!.id)}
+                    role="link"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onJumpToReply?.(message.reply_to!.id);
+                    }}
                     className={cn(
                       "block w-full text-left mb-1.5 pb-1.5 -mx-1.5 -mt-0.5 px-1.5 pt-0.5 rounded",
                       "border-l-2 cursor-pointer",
@@ -190,15 +270,30 @@ export const MessageBubble = memo(function MessageBubble({
                         : "border-l-primary/60 bg-black/[0.04] dark:bg-white/[0.04]"
                     )}
                   >
-                    <span className={cn("block text-xs font-semibold truncate", isOwn ? "text-white/80" : "text-primary")}>
+                    <span
+                      className={cn(
+                        "block text-xs font-semibold truncate",
+                        isOwn ? "text-white/80" : "text-primary"
+                      )}
+                    >
                       {reply.name}
                     </span>
                     {reply.content ? (
-                      <span className={cn("block text-xs truncate leading-tight", isOwn ? "text-white/70" : "text-muted-foreground")}>
+                      <span
+                        className={cn(
+                          "block text-xs truncate leading-tight",
+                          isOwn ? "text-white/70" : "text-muted-foreground"
+                        )}
+                      >
                         {reply.content}
                       </span>
                     ) : (
-                      <span className={cn("block text-xs italic leading-tight", isOwn ? "text-white/50" : "text-muted-foreground")}>
+                      <span
+                        className={cn(
+                          "block text-xs italic leading-tight",
+                          isOwn ? "text-white/50" : "text-muted-foreground"
+                        )}
+                      >
                         {t("deletedMessage")}
                       </span>
                     )}
@@ -211,47 +306,119 @@ export const MessageBubble = memo(function MessageBubble({
               ) : isAi ? (
                 <AiMessageContent content={message.content} />
               ) : (
-                <span className="whitespace-pre-wrap break-words">{message.content}</span>
+                <span
+                  className="whitespace-pre-wrap break-words overflow-wrap-anywhere"
+                  style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                >
+                  {message.content}
+                </span>
               )}
             </div>
 
-            {/* Pinned indicator */}
             {message.is_pinned && (
-              <Pin className={cn(
-                "absolute -top-2 w-3 h-3 text-primary",
-                isOwn ? "-left-1" : "-right-1"
-              )} />
+              <Pin
+                className={cn(
+                  "absolute -top-2 w-3 h-3 text-primary",
+                  isOwn ? "-left-1" : "-right-1"
+                )}
+              />
             )}
           </div>
 
-          {/* Meta row — timestamp + status below bubble, tightened */}
-          <div className={cn(
-            "flex items-center gap-1.5 mt-px",
-            isOwn ? "flex-row-reverse" : "flex-row"
-          )}>
-            <span className="text-[10px] text-muted-foreground/70">{timeStr}</span>
-            {message.is_edited && !message.is_recalled && (
-              <span className="text-[10px] text-muted-foreground/70 italic">({t("edited")})</span>
-            )}
-            {isOwn && !message.is_recalled && (
-              <MessageStatus status={message.status} />
-            )}
-            {isAi && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 italic">
-                {t("ai.disclaimer")}
-              </span>
-            )}
-          </div>
+          {showTime && (
+            <div
+              className={cn(
+                "flex items-center gap-1.5 mt-px",
+                isOwn ? "flex-row-reverse" : "flex-row"
+              )}
+            >
+              {onDateClick ? (
+                <button
+                  type="button"
+                  onClick={() => onDateClick(new Date(message.created_at))}
+                  aria-label={t("jumpToDateAria", { label: timeStr })}
+                  className="text-[10px] text-muted-foreground/70 cursor-pointer hover:text-foreground hover:underline underline-offset-2 transition-colors"
+                >
+                  {timeStr}
+                </button>
+              ) : (
+                <span className="text-[10px] text-muted-foreground/70">{timeStr}</span>
+              )}
+              {message.is_edited && !message.is_recalled && (
+                <span className="text-[10px] text-muted-foreground/70 italic">({t("edited")})</span>
+              )}
+              {isOwn && !message.is_recalled && <MessageStatus status={message.status} />}
+              {isAi && (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 italic">
+                  {t("ai.disclaimer")}
+                </span>
+              )}
+            </div>
+          )}
 
-          {/* Reactions */}
           <MessageReactions
             reactions={message.reactions}
-            onReact={onReact}
+            onReact={handleReact}
             align={isOwn ? "right" : "left"}
             currentUserId={currentUserId}
           />
         </div>
       </div>
+
+      {!message.is_recalled && (
+        <Sheet open={mobileActionsOpen} onOpenChange={setMobileActionsOpen}>
+          <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+            <SheetHeader>
+              <SheetTitle>{t("messageActions")}</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 px-1">
+              <MessageActions
+                message={message}
+                isOwn={isOwn}
+                isAi={isAi}
+                onReply={() => {
+                  handleReply();
+                  setMobileActionsOpen(false);
+                }}
+                onEdit={() => {
+                  handleEdit();
+                  setMobileActionsOpen(false);
+                }}
+                onRecall={() => {
+                  handleRecall();
+                  setMobileActionsOpen(false);
+                }}
+                onDelete={() => {
+                  handleDelete();
+                  setMobileActionsOpen(false);
+                }}
+                onPin={() => {
+                  handlePin();
+                  setMobileActionsOpen(false);
+                }}
+                onReact={(emoji) => {
+                  handleReact(emoji);
+                  setMobileActionsOpen(false);
+                }}
+                onCopy={() => {
+                  handleCopy();
+                  setMobileActionsOpen(false);
+                }}
+                onForward={
+                  onForward
+                    ? () => {
+                        handleForward();
+                        setMobileActionsOpen(false);
+                      }
+                    : undefined
+                }
+                side={isOwn ? "right" : "left"}
+                layout="vertical"
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </>
   );
 });

@@ -1,6 +1,34 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.2 | **Last Updated**: 2026-04-06
+> **Version**: 1.2 | **Last Updated**: 2026-04-16
+
+---
+
+## [Unreleased]
+
+### Changed
+
+#### Frontend
+
+- **Chat end-to-end review implementation** (2026-04-18):
+  - Virtuoso: `scrollToIndex('LAST')`, `firstItemIndex` + `startReached` / `loadMore`, stable footer, `rangeChanged` for date chip, `conversationId` reset, new-message badge on scroll-to-end
+  - `MessageBubble`: stable action callbacks, toolbar above bubble on desktop, long-press sheet on touch, `SheetTitle` i18n
+  - `useChat`: removed debug ingest fetch; `pinMessage` uses functional state; `loadMore` returns prepend count; `simulateAIReply` takes translated text; `useMessages` optional `selfReactionLabel`
+  - Deleted unused `useChatScroll.ts`; `ChatLayout` uses `pendingRequests` from `useStrangerRequests`
+  - i18n: date jump sheet, scroll chip aria, unknown user, pinned expand/collapse, header more menu, `truncateChatPreview` shared constant
+
+- **Chat UI redesign — Phase 5 complete** (`chat-ui` branch):
+  - MessageActions toolbar repositioned above bubble with pill styling
+  - Inline 6-emoji quick reactions replacing Popover (one-tap react)
+  - Reply icon button in toolbar, Reply removed from More dropdown
+  - PinnedMessages compact styling (py-1.5, text-[11px], w-3 icon)
+  - Keyboard accessibility fix: `group-focus-within:opacity-100`
+  - `overflow-visible` on bubble container so toolbar renders above bubble
+
+- **Duplicate chat message race fix** (`hooks/useChat.ts`):
+  - Prevented duplicate renders by deduplicating by message ID when merging WebSocket upserts and optimistic-send confirmations
+  - Prevented duplicate unread increments for repeated same-message WS events
+  - Forwarded cross-conversation incoming updates only for real new-message events (`msg:new`, `chat.message.sent`)
 
 ---
 

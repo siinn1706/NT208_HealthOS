@@ -206,7 +206,7 @@ class AuthToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user_id: str
-    email: EmailStr
+    email: str
     username: Optional[str] = None
     display_name: str
     avatar_url: Optional[str] = None
@@ -228,7 +228,7 @@ class WsTicketResponse(DataResponse[WsTicket]):
 
 class CurrentUser(BaseModel):
     id: str
-    email: EmailStr
+    email: str
     username: Optional[str] = None
     display_name: str
     avatar_url: Optional[str] = None

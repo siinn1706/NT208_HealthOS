@@ -15,6 +15,7 @@ import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
 import type { Conversation, Message } from "@/types/api";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
 
@@ -45,10 +46,13 @@ export function ChatWindow({
   onIncomingMessage,
   onConversationUpdate,
 }: ChatWindowProps) {
+  const t = useTranslations("chat");
   const {
     messages,
     isLoading: isLoadingMessages,
     isTyping,
+    hasMore,
+    loadMore,
     sendMessage,
     editMessage,
     recallMessage,
@@ -59,7 +63,7 @@ export function ChatWindow({
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
-  } = useMessages(conversation.id, currentUserId);
+  } = useMessages(conversation.id, currentUserId, { selfReactionLabel: t("you") });
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -92,7 +96,9 @@ export function ChatWindow({
       frame.event === "chat.message.read";
 
     if (isMessageEvent && payloadConvId && payloadConvId !== convId) {
-      onIncomingMessage?.(payload);
+      if (frame.event === "msg:new" || frame.event === "chat.message.sent") {
+        onIncomingMessage?.(payload);
+      }
       return;
     }
 
@@ -181,12 +187,23 @@ export function ChatWindow({
           toast.error(message);
         });
         setReplyTo(null);
+        messageListRef.current?.scrollToBottom();
         if (conversation.type === "ai") {
-          simulateAIReply(convId);
+          simulateAIReply(convId, t("aiIntegrationNote"));
         }
       }
     },
-    [editingMessage, replyTo, conversation.type, convId, sendMessage, editMessage, simulateAIReply, onMessageSent]
+    [
+      editingMessage,
+      replyTo,
+      conversation.type,
+      convId,
+      sendMessage,
+      editMessage,
+      simulateAIReply,
+      onMessageSent,
+      t,
+    ]
   );
 
   const handleReply = useCallback((msg: Message) => {
@@ -238,7 +255,10 @@ export function ChatWindow({
     [sendMessage]
   );
 
-  const pinnedMessages = useMemo(() => messages.filter((m) => m.is_pinned), [messages]);
+  const pinnedMessages = useMemo(
+    () => messages.filter((m) => m.is_pinned && !m.is_recalled),
+    [messages]
+  );
   const participantNameById = useMemo(
     () =>
       conversation.participants.reduce<Record<string, string>>((acc, participant) => {
@@ -301,10 +321,13 @@ export function ChatWindow({
         ) : (
           <MessageList
             ref={messageListRef}
+            conversationId={conversation.id}
             messages={messages}
             currentUserId={currentUserId}
             participantNameById={participantNameById}
             isTyping={isTyping}
+            hasMore={hasMore}
+            loadMore={loadMore}
             onReply={handleReply}
             onEdit={handleEdit}
             onRecall={handleRecall}
