@@ -294,8 +294,54 @@ paths:
                       token_type:
                         type: string
                         example: bearer
+                        user_id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                        format: email
+                      display_name:
+                        type: string
+                      avatar_url:
+                        type: string
+                        nullable: true
         "400":
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/check-email:
+    get:
+      tags: [Auth]
+      summary: Check email availability
+      description: |
+        Returns whether an email can be used for signup.
+        - `available: true` => email is not registered
+        - `available: false` => email is invalid or already taken
+      security: []
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Availability result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [available]
+                properties:
+                  available:
+                    type: boolean
+                    example: true
+        "400":
+          description: Invalid query parameter
           content:
             application/json:
               schema:
@@ -322,6 +368,30 @@ paths:
       responses:
         "200":
           description: OAuth login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      token_type:
+                        type: string
+                        example: bearer
+                      user_id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                        format: email
+                      display_name:
+                        type: string
+                      avatar_url:
+                        type: string
+                        nullable: true
 
   /v1/auth/request-otp:
     post:
@@ -586,7 +656,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-/v1/meals:
+  /v1/meals:
     get:
       tags: [Meals]
       summary: List meal logs
@@ -672,7 +742,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-/v1/meals/{meal_id}:
+  /v1/meals/{meal_id}:
     get:
       tags: [Meals]
       summary: Get single meal with nutrition result
@@ -698,7 +768,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-/v1/health-metrics:
+  /v1/health-metrics:
     get:
       tags: [Health Metrics]
       summary: List health metrics
@@ -752,7 +822,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   # ── Chat ──────────────────────────────────────────────────────────────────
-/v1/conversations:
+  /v1/conversations:
     get:
       tags: [Chat]
       summary: List conversations for the current user
@@ -801,7 +871,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/ConversationDTO"
 
-/v1/conversations/direct:
+  /v1/conversations/direct:
     post:
       tags: [Chat]
       summary: Create or return an existing direct conversation
@@ -836,7 +906,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/ConversationDTO"
 
-/v1/conversations/pending:
+  /v1/conversations/pending:
     get:
       tags: [Chat]
       summary: List pending (stranger) conversation requests
@@ -854,7 +924,7 @@ paths:
                     items:
                       $ref: "#/components/schemas/ConversationDTO"
 
-/v1/conversations/{conversation_id}:
+  /v1/conversations/{conversation_id}:
     get:
       tags: [Chat]
       summary: Get a single conversation
@@ -885,35 +955,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-    patch:
-      tags: [Chat]
-      summary: Update group conversation (title / avatar)
-      parameters:
-        - name: conversation_id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title: { type: string, maxLength: 255 }
-                avatar_url: { type: string, format: uri }
-      responses:
-        "200":
-          description: Updated conversation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ConversationDTO"
 
-/v1/conversations/{conversation_id}/accept:
+  /v1/conversations/{conversation_id}/accept:
     post:
       tags: [Chat]
       summary: Accept a stranger conversation request
@@ -926,7 +969,7 @@ paths:
         "204":
           description: Request accepted
 
-/v1/conversations/{conversation_id}/reject:
+  /v1/conversations/{conversation_id}/reject:
     post:
       tags: [Chat]
       summary: Reject a stranger conversation request
@@ -939,7 +982,7 @@ paths:
         "204":
           description: Request rejected
 
-/v1/conversations/{conversation_id}/messages:
+  /v1/conversations/{conversation_id}/messages:
     get:
       tags: [Chat]
       summary: List messages (cursor pagination — newest first)
@@ -1012,7 +1055,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/MessageDTO"
 
-/v1/conversations/{conversation_id}/messages/{message_id}:
+  /v1/conversations/{conversation_id}/messages/{message_id}:
     patch:
       tags: [Chat]
       summary: Edit message content (sender only, within 15 min)
@@ -1073,7 +1116,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/MessageDTO"
 
-/v1/conversations/{conversation_id}/messages/{message_id}/reactions:
+  /v1/conversations/{conversation_id}/messages/{message_id}/reactions:
     post:
       tags: [Chat]
       summary: Toggle emoji reaction on a message
@@ -1106,7 +1149,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/MessageDTO"
 
-/v1/conversations/{conversation_id}/read:
+  /v1/conversations/{conversation_id}/read:
     post:
       tags: [Chat]
       summary: Mark current user's last read position in a conversation
@@ -1131,7 +1174,7 @@ paths:
         "204":
           description: Read receipt updated
 
-/v1/conversations/{conversation_id}/pinned:
+  /v1/conversations/{conversation_id}/pinned:
     get:
       tags: [Chat]
       summary: List pinned messages in a conversation
@@ -1153,7 +1196,7 @@ paths:
                     items:
                       $ref: "#/components/schemas/MessageDTO"
 
-/v1/conversations/{conversation_id}/pinned/{message_id}:
+  /v1/conversations/{conversation_id}/pinned/{message_id}:
     post:
       tags: [Chat]
       summary: Pin a message
@@ -1185,7 +1228,7 @@ paths:
         "204":
           description: Message unpinned
 
-/v1/users/lookup:
+  /v1/users/lookup:
     get:
       tags: [Chat]
       summary: Search users by display name or email (for starting new conversations)
@@ -1208,7 +1251,7 @@ paths:
                       $ref: "#/components/schemas/ParticipantDTO"
 
   # ── WebSocket ─────────────────────────────────────────────────────────────
-/ws:
+  /ws:
     get:
       tags: [WebSocket]
       summary: Open a persistent WebSocket connection

@@ -3,12 +3,13 @@ import Link from "next/link";
 import { getLocale } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import { Target } from "lucide-react";
+import { getLocaleTag, getUnitLabel } from "@/lib/format-utils";
 
 export interface Goal {
   id: string;
   key: "water" | "steps" | "calories";
-  current: number;
-  target: number;
+  current: number | null;
+  target: number | null;
   unit: string;
 }
 
@@ -35,11 +36,13 @@ export async function GoalProgressWidget({ goals }: GoalProgressWidgetProps) {
       </div>
 
       <div className="px-5 py-4 space-y-5">
+        {goals.length === 0 && (
+          <p className="text-xs text-muted-foreground">{t("noInfo")}</p>
+        )}
         {goals.map((goal) => {
-          const pct = Math.min(
-            Math.round((goal.current / goal.target) * 100),
-            100
-          );
+          const safeCurrent = goal.current ?? 0;
+          const safeTarget = goal.target && goal.target > 0 ? goal.target : null;
+          const pct = safeTarget ? Math.min(Math.round((safeCurrent / safeTarget) * 100), 100) : 0;
           const color = GOAL_COLORS[goal.key];
           return (
             <div key={goal.id}>
@@ -48,7 +51,7 @@ export async function GoalProgressWidget({ goals }: GoalProgressWidgetProps) {
                   {t(goal.key as Parameters<typeof t>[0])}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {goal.current.toLocaleString()} / {goal.target.toLocaleString()} {goal.unit}
+                  {goal.current == null ? "--" : goal.current.toLocaleString(getLocaleTag(locale))}{" / "}{goal.target == null ? "--" : goal.target.toLocaleString(getLocaleTag(locale))} {goal.unit ? getUnitLabel(goal.unit, locale) : "--"}
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">

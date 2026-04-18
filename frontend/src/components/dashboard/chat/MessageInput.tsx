@@ -2,15 +2,15 @@
 
 import { useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useTranslations } from "next-intl";
-import { Send, Smile, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
+import { Send, Smile, Paperclip, X, Image as ImageIcon, FileText, Pencil } from "lucide-react";
 import { MessageReplyPreview } from "./MessageReplyPreview";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { AnimatePresence, motion } from "framer-motion";
 import type { Message } from "@/types/api";
 
 // Lazy load emoji picker to reduce initial bundle
@@ -21,7 +21,8 @@ const EmojiPicker = dynamic(
 // @emoji-mart/data is imported asynchronously inside the picker itself
 
 interface MessageInputProps {
-  replyTo?: Pick<Message, "id" | "content" | "sender_id" | "type"> | null;
+  replyTo?: Pick<Message, "id" | "content" | "sender_id" | "sender_display_name" | "type"> | null;
+  currentUserId: string | null;
   editingMessage?: Message | null;
   onSend: (content: string) => void;
   onCancelReply: () => void;
@@ -32,6 +33,7 @@ interface MessageInputProps {
 
 export function MessageInput({
   replyTo,
+  currentUserId,
   editingMessage,
   onSend,
   onCancelReply,
@@ -40,6 +42,7 @@ export function MessageInput({
   disabled,
 }: MessageInputProps) {
   const t = useTranslations("chat");
+  const locale = useLocale();
   const [value, setValue] = useState(editingMessage?.content ?? "");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -53,20 +56,33 @@ export function MessageInput({
     }
   }, [emojiOpen, emojiData]);
 
-  // Sync value when editingMessage changes
-  const prevEditRef = useRef<string | undefined>(editingMessage?.id);
-  if (prevEditRef.current !== editingMessage?.id) {
-    prevEditRef.current = editingMessage?.id;
-    // Synchronously pre-fill textarea with the message content being edited
+  // Sync value when the active edit target changes; reset textarea height
+  /* eslint-disable react-hooks/exhaustive-deps -- only reset on edit *target* change, not every content poll */
+  useEffect(() => {
     setValue(editingMessage?.content ?? "");
-  }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [editingMessage?.id]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  // Auto-focus textarea when reply or edit is activated
+  useEffect(() => {
+    if (replyTo || editingMessage) {
+      textareaRef.current?.focus();
+    }
+  }, [replyTo, editingMessage]);
 
   function handleSend() {
     const trimmed = value.trim();
     if (!trimmed) return;
     onSend(trimmed);
     setValue("");
-    textareaRef.current?.focus();
+    // Reset textarea height back to 1-row default after clearing
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.focus();
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -82,7 +98,7 @@ export function MessageInput({
     // Auto-resize
     const el = e.target;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    el.style.height = Math.min(el.scrollHeight, 144) + "px";
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,25 +109,49 @@ export function MessageInput({
     textareaRef.current?.focus();
   }
 
+  const hasReplyOrEdit = !!replyTo || !!editingMessage;
+
   return (
     <div className="border-t border-border bg-background/80 backdrop-blur-sm">
-      {/* Reply / Edit indicator */}
-      {replyTo && (
-        <div className="px-4 pt-2">
-          <MessageReplyPreview replyTo={replyTo} onCancel={onCancelReply} />
-        </div>
-      )}
-      {editingMessage && (
-        <div className="flex items-center justify-between px-4 pt-2 text-xs text-primary">
-          <span className="font-medium">{t("editingMessage")}</span>
-          <button
-            onClick={onCancelEdit}
-            className="text-muted-foreground hover:text-foreground cursor-pointer"
+      {/* Animated reply / edit indicator */}
+      <AnimatePresence>
+        {hasReplyOrEdit && (
+          <motion.div
+            className="overflow-hidden px-4 pt-2"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
           >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
+            {editingMessage ? (
+              /* Edit bar — amber accent, pencil icon */
+              <div className="flex items-center justify-between px-3 py-2 bg-secondary/60 border-l-2 border-amber-500 rounded-r-md text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Pencil className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                  <span className="font-medium text-amber-600 dark:text-amber-400">
+                    {t("editingMessage")}
+                  </span>
+                </div>
+                <button
+                  onClick={onCancelEdit}
+                  aria-label={t("cancelEdit")}
+                  className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : replyTo ? (
+              /* Reply bar — blue accent, reply icon */
+              <MessageReplyPreview
+                replyTo={replyTo}
+                currentUserId={currentUserId}
+                onCancel={onCancelReply}
+                mode="input"
+              />
+            ) : null}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Input row */}
       <div className="flex items-end gap-2 px-4 py-3">
@@ -145,7 +185,7 @@ export function MessageInput({
           </PopoverContent>
         </Popover>
 
-        {/* Textarea */}
+        {/* Textarea — no border, bg transition on focus */}
         <div className="flex-1 relative">
           <Textarea
             ref={textareaRef}
@@ -156,11 +196,13 @@ export function MessageInput({
             rows={1}
             disabled={disabled}
             className={cn(
-              "resize-none min-h-[40px] max-h-[120px] rounded-2xl bg-secondary border-secondary",
-              "focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background",
-              "text-sm pr-4 py-2.5 transition-[background-color,border-color,box-shadow] duration-150 ease-out",
-              editingMessage && "border-primary/50 bg-primary/5"
+              "resize-none min-h-[40px] max-h-[144px] rounded-2xl border-0",
+              "bg-secondary/80 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-primary",
+              "text-sm pr-4 py-2.5 transition-[background-color,ring] duration-150 ease-out",
+              "overflow-wrap-anywhere break-words max-w-full",
+              editingMessage && "bg-primary/5 ring-1 ring-primary/50"
             )}
+            style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
             aria-label={t("typeMessage")}
           />
         </div>
@@ -184,25 +226,31 @@ export function MessageInput({
                 theme="auto"
                 previewPosition="none"
                 skinTonePosition="none"
-                locale="vi"
+                locale={locale}
               />
             )}
           </PopoverContent>
         </Popover>
 
-        {/* Send button */}
-        <Button
-          size="icon"
+        {/* Send button — disabled state + press animation */}
+        <motion.button
+          type="button"
           onClick={handleSend}
           disabled={!value.trim() || disabled}
           aria-label={t("send")}
+          whileTap={!disabled ? { scale: 0.85 } : {}}
+          transition={{ duration: 0.1 }}
           className={cn(
-            "flex-shrink-0 w-9 h-9 rounded-full transition-[background-color,color,opacity] duration-150 ease-out",
-            editingMessage && "bg-amber-500 hover:bg-amber-600"
+            "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center",
+            "transition-all duration-150 ease-out cursor-pointer",
+            value.trim()
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+              : "bg-secondary text-muted-foreground/40 pointer-events-none",
+            editingMessage && "bg-amber-500 hover:bg-amber-600 text-white"
           )}
         >
           <Send className="w-4 h-4" />
-        </Button>
+        </motion.button>
       </div>
     </div>
   );

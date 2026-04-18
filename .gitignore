@@ -1,11 +1,24 @@
 # Scratch
 scratch/
 .claude/
+.claude-archived/
 .cursor/
 .agent/
+.agents/
 CLAUDE.md
+GEMINI.md
 .github/
-# Node/Next.js
+docs/*
+!docs/sync-env-secrets.ps1
+docs/FoodDetector/
+docs/FoodDetector/.git/
+plans/
+guide/
+AGENTS.md
+scripts/
+
+
+Node/Next.js
 node_modules/
 .next/
 frontend/.next/
@@ -27,18 +40,25 @@ venv/
 # Env files
 .env
 .env.*
+!infra/docker/.env.dev.example
+!infra/docker/.env.prod.example
 backend/.env
+
+# Internal env backup (docs/sync-env-secrets.ps1)
+docs/secret/
 
 # OS / Editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-infra/env/backend.env
-infra/env/frontend.env
-infra/env/worker.env
-*.loginfra/logs/
+!infra/scripts/
 *.log
+infra/logs/*
+!infra/logs/.gitkeep
 
 # Ignore local infrastructure data
 .data/
+.husky/commit-msg
+infra/bin/
+infra/data/

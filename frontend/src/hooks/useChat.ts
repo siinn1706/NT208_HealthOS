@@ -19,15 +19,19 @@ import type {
   ChatParticipant,
 } from "@/types/api";
 
-// Keep mock data as dev fallback only
-import {
-  MOCK_CONVERSATIONS,
-  MOCK_MESSAGES,
-  MOCK_STRANGER_REQUESTS,
-  CURRENT_USER_ID,
-} from "@/data/chat";
-
-const AI_CONVERSATION = MOCK_CONVERSATIONS.find((conversation) => conversation.type === "ai")!;
+const FALLBACK_AI_CONVERSATION: Conversation = {
+  id: "ai-assistant",
+  type: "ai",
+  name: "HealthOS AI",
+  avatar_url: null,
+  participants: [],
+  is_pinned: false,
+  is_muted: false,
+  unread_count: 0,
+  theme_id: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // API response → frontend type adapters
@@ -36,8 +40,9 @@ const AI_CONVERSATION = MOCK_CONVERSATIONS.find((conversation) => conversation.t
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptParticipant(p: any): ChatParticipant {
+  const rawId = p.id ?? p.user_id;
   return {
-    user_id: String(p.id ?? p.user_id ?? ""),
+    user_id: rawId != null ? String(rawId) : "",
     display_name: p.display_name ?? "",
     avatar_url: p.avatar_url ?? null,
     email: p.email ?? "",
@@ -50,22 +55,35 @@ function adaptParticipant(p: any): ChatParticipant {
 function adaptReactions(reactions: any[]): MessageReaction[] {
   if (!reactions?.length) return [];
   // Backend: [{emoji, user_id, user_display_name}]
-  // Frontend: [{emoji, user_ids: string[]}]
-  const map = new Map<string, string[]>();
+  // Frontend: [{emoji, user_ids: string[], user_names?: Record<string,string>}]
+  const map = new Map<string, { user_ids: string[]; user_names: Record<string, string> }>();
   for (const r of reactions) {
     const uid = String(r.user_id ?? "");
-    if (!map.has(r.emoji)) map.set(r.emoji, []);
-    map.get(r.emoji)!.push(uid);
+    if (!map.has(r.emoji)) map.set(r.emoji, { user_ids: [], user_names: {} });
+    const entry = map.get(r.emoji)!;
+    entry.user_ids.push(uid);
+    if (r.user_display_name) {
+      entry.user_names[uid] = String(r.user_display_name);
+    }
   }
-  return Array.from(map.entries()).map(([emoji, user_ids]) => ({ emoji, user_ids }));
+  return Array.from(map.entries()).map(([emoji, value]) => ({
+    emoji,
+    user_ids: value.user_ids,
+    user_names: Object.keys(value.user_names).length > 0 ? value.user_names : undefined,
+  }));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptMessage(m: any): Message {
+  // sender_id is the authoritative source — never infer identity from display_name
+  // to prevent AI message spoofing by a user setting their name to contain "ai".
+  const senderId = m.sender_id != null ? String(m.sender_id) : "";
   return {
     id: String(m.id),
     conversation_id: String(m.conversation_id),
-    sender_id: String(m.sender_id ?? ""),
+    sender_id: senderId,
+    sender_display_name:
+      typeof m.sender_display_name === "string" ? m.sender_display_name : undefined,
     content: m.content ?? "",
     type: (m.content_type ?? m.type ?? "text") as Message["type"],
     status: (m.status ?? "read") as Message["status"],
@@ -74,6 +92,10 @@ function adaptMessage(m: any): Message {
           id: String(m.reply_to.id),
           content: m.reply_to.content ?? "",
           sender_id: String(m.reply_to.sender_id ?? ""),
+          sender_display_name:
+            typeof m.reply_to.sender_display_name === "string"
+              ? m.reply_to.sender_display_name
+              : undefined,
           type: (m.reply_to.content_type ?? m.reply_to.type ?? "text") as Message["type"],
         }
       : undefined,
@@ -121,7 +143,7 @@ function adaptConversation(c: any): Conversation {
 // useConversations
 // ──────────────────────────────────────────────────────────────────────────────
 export function useConversations() {
-  const [conversations, setConversations] = useState<Conversation[]>([AI_CONVERSATION]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Initial load
@@ -139,14 +161,23 @@ export function useConversations() {
           const nonAiConversations = apiConversations.filter(
             (conversation) => conversation.type !== "ai"
           );
+          const aiConv = apiAiConversation
+            ?? (process.env.NODE_ENV === "development" ? FALLBACK_AI_CONVERSATION : undefined);
           setConversations([
-            apiAiConversation ?? AI_CONVERSATION,
+            ...(aiConv ? [aiConv] : []),
             ...nonAiConversations,
           ]);
         }
       })
       .catch(() => {
-        if (!cancelled) setConversations([AI_CONVERSATION]);
+        if (!cancelled) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[useChat] Failed to fetch conversations — using AI fallback for dev");
+            setConversations([FALLBACK_AI_CONVERSATION]);
+          } else {
+            setConversations([]);
+          }
+        }
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
@@ -281,6 +312,7 @@ export function useConversations() {
         prev.map((conversation) => {
           if (conversation.id !== message.conversation_id) return conversation;
           const shouldIncreaseUnread = activeConversationId !== conversation.id;
+          const isNewLastMessage = conversation.last_message?.id !== message.id;
           return {
             ...conversation,
             last_message: {
@@ -292,7 +324,7 @@ export function useConversations() {
               is_recalled: message.is_recalled,
             },
             updated_at: message.created_at,
-            unread_count: shouldIncreaseUnread
+            unread_count: shouldIncreaseUnread && isNewLastMessage
               ? conversation.unread_count + 1
               : conversation.unread_count,
           };
@@ -337,7 +369,17 @@ export function useConversations() {
 // ──────────────────────────────────────────────────────────────────────────────
 // useMessages
 // ──────────────────────────────────────────────────────────────────────────────
-export function useMessages(conversationId: string | null) {
+export interface UseMessagesOptions {
+  /** Shown in optimistic reaction payloads (e.g. translated "You") */
+  selfReactionLabel?: string;
+}
+
+export function useMessages(
+  conversationId: string | null,
+  currentUserId: string | null = null,
+  options: UseMessagesOptions = {}
+) {
+  const { selfReactionLabel = "You" } = options;
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -354,8 +396,8 @@ export function useMessages(conversationId: string | null) {
       return;
     }
 
-    if (conversationId === "conv-ai") {
-      setMessages(MOCK_MESSAGES["conv-ai"] ?? []);
+    if (conversationId === FALLBACK_AI_CONVERSATION.id) {
+      setMessages([]);
       setHasMore(false);
       lastCursorRef.current = null;
       setIsLoading(false);
@@ -386,22 +428,46 @@ export function useMessages(conversationId: string | null) {
   }, [conversationId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  /** Load older messages (scroll-up pagination). */
-  const loadMore = useCallback(async () => {
-    if (!conversationId || !hasMore || !lastCursorRef.current) return;
-    try {
-      const { data, has_more, next_cursor } = await bffFetch<{
-        data: unknown[];
-        has_more: boolean;
-        next_cursor: string | null;
-      }>(`/api/v1/conversations/${conversationId}/messages?limit=50&before=${encodeURIComponent(lastCursorRef.current)}`);
-      const older = data.map(adaptMessage).reverse();
-      setMessages((prev) => [...older, ...prev]);
-      setHasMore(has_more);
-      lastCursorRef.current = next_cursor ?? null;
-    } catch {
-      // ignore
-    }
+  const loadMoreInFlightRef = useRef<Promise<number> | null>(null);
+
+  /** Load older messages (scroll-up pagination). Returns count prepended, or 0. */
+  const loadMore = useCallback(async (): Promise<number> => {
+    const beforeCursor = lastCursorRef.current;
+    if (!conversationId || !hasMore || !beforeCursor) return 0;
+    if (loadMoreInFlightRef.current) return loadMoreInFlightRef.current;
+
+    const request = (async (): Promise<number> => {
+      try {
+        const { data, has_more, next_cursor } = await bffFetch<{
+          data: unknown[];
+          has_more: boolean;
+          next_cursor: string | null;
+        }>(`/api/v1/conversations/${conversationId}/messages?limit=50&before=${encodeURIComponent(beforeCursor)}`);
+        const older = data.map(adaptMessage).reverse();
+        if (older.length === 0) {
+          setHasMore(has_more);
+          lastCursorRef.current = next_cursor ?? null;
+          return 0;
+        }
+        let prepended = 0;
+        setMessages((prev) => {
+          const existing = new Set(prev.map((m) => m.id));
+          const mergedOlder = older.filter((m) => !existing.has(m.id));
+          prepended = mergedOlder.length;
+          return [...mergedOlder, ...prev];
+        });
+        setHasMore(has_more);
+        lastCursorRef.current = next_cursor ?? null;
+        return prepended;
+      } catch {
+        return 0;
+      } finally {
+        loadMoreInFlightRef.current = null;
+      }
+    })();
+
+    loadMoreInFlightRef.current = request;
+    return request;
   }, [conversationId, hasMore]);
 
   /** Called by WS event handler to upsert a message into state. */
@@ -412,10 +478,17 @@ export function useMessages(conversationId: string | null) {
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = msg;
-        return next;
+        return next.filter((m, i) => m.id !== msg.id || i === idx);
       }
       return [...prev, msg];
     });
+  }, []);
+
+  /** Called by WS pin/unpin events — toggles is_pinned on a message already in state. */
+  const setPinnedState = useCallback((msgId: string, isPinned: boolean) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, is_pinned: isPinned } : m))
+    );
   }, []);
 
   /** Called by WS typing event. */
@@ -430,12 +503,23 @@ export function useMessages(conversationId: string | null) {
       replyToId?: string,
       onMessageSent?: (msg: Message) => void
     ): Promise<Message> => {
-      // Optimistic message (shows immediately while request is in-flight)
-      const optimisticId = `optimistic-${Date.now()}`;
+      // Require a valid currentUserId before sending — the session must be
+      // loaded.  Without it the optimistic message would carry a sentinel ID
+      // that breaks sender comparison and may cause duplicate rendering.
+      if (!currentUserId) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[useChat] sendMessage blocked: user session not loaded");
+        }
+        throw new Error("Cannot send message: user session not loaded");
+      }
+      // Use crypto.randomUUID() for collision-free IDs even when multiple
+      // messages are sent in the same millisecond.
+      const optimisticId = `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
       const optimistic: Message = {
         id: optimisticId,
         conversation_id: convId,
-        sender_id: CURRENT_USER_ID,
+        sender_id: currentUserId,
+        sender_display_name: undefined,
         content,
         type: "text",
         status: "sending",
@@ -463,28 +547,33 @@ export function useMessages(conversationId: string | null) {
           }
         );
         const confirmed = adaptMessage(result.data);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticId ? confirmed : m))
-        );
+        setMessages((prev) => {
+          const next = prev.map((m) => (m.id === optimisticId ? confirmed : m));
+          const firstConfirmedIdx = next.findIndex((m) => m.id === confirmed.id);
+          if (firstConfirmedIdx < 0) return next;
+          return next.filter((m, idx) => m.id !== confirmed.id || idx === firstConfirmedIdx);
+        });
         return confirmed;
       } catch {
-        // Mark as failed (keep in list with sending status for retry UX)
+        // Mark as failed so UI shows a failed indicator instead of a checkmark
         setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticId ? { ...m, status: "sent" as const } : m))
+          prev.map((m) => (m.id === optimisticId ? { ...m, status: "failed" as const } : m))
         );
         return optimistic;
       }
     },
-    []
+    [currentUserId]
   );
 
   const editMessage = useCallback(async (convId: string, messageId: string, content: string) => {
-    // Optimistic
-    setMessages((prev) =>
-      prev.map((m) =>
+    // Capture state for rollback before applying optimistic update
+    let prevMessages: Message[] | null = null;
+    setMessages((prev) => {
+      prevMessages = prev;
+      return prev.map((m) =>
         m.id === messageId ? { ...m, content, is_edited: true, edited_at: new Date().toISOString() } : m
-      )
-    );
+      );
+    });
     try {
       const result = await bffFetch<{ data: unknown }>(
         `/api/v1/conversations/${convId}/messages/${messageId}`,
@@ -494,44 +583,54 @@ export function useMessages(conversationId: string | null) {
         prev.map((m) => (m.id === messageId ? adaptMessage(result.data) : m))
       );
     } catch {
-      // Optimistic stays; could show toast error in production
+      // Rollback to state before optimistic update
+      if (prevMessages) setMessages(prevMessages);
     }
   }, []);
 
   const recallMessage = useCallback(async (convId: string, messageId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, content: "", is_recalled: true } : m))
-    );
+    let prevMessages: Message[] | null = null;
+    setMessages((prev) => {
+      prevMessages = prev;
+      return prev.map((m) => (m.id === messageId ? { ...m, content: "", is_recalled: true } : m));
+    });
     try {
       await bffFetch(
         `/api/v1/conversations/${convId}/messages/${messageId}`,
         { method: "DELETE" }
       );
     } catch {
-      // optimistic stays
+      // Rollback — message was not actually recalled
+      if (prevMessages) setMessages(prevMessages);
     }
   }, []);
 
   const deleteMessage = useCallback(async (convId: string, messageId: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    let prevMessages: Message[] | null = null;
+    setMessages((prev) => {
+      prevMessages = prev;
+      return prev.filter((m) => m.id !== messageId);
+    });
     try {
       await bffFetch(
         `/api/v1/conversations/${convId}/messages/${messageId}?for_everyone=false`,
         { method: "DELETE" }
       );
     } catch {
-      // optimistic stays
+      // Rollback — message was not actually deleted
+      if (prevMessages) setMessages(prevMessages);
     }
   }, []);
 
   const pinMessage = useCallback(async (convId: string, messageId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, is_pinned: !m.is_pinned } : m))
-    );
-    const msg = messages.find((m) => m.id === messageId);
-    const isCurrentlyPinned = msg?.is_pinned ?? false;
+    let wasPinned = false;
+    setMessages((prev) => {
+      const msg = prev.find((m) => m.id === messageId);
+      wasPinned = Boolean(msg?.is_pinned);
+      return prev.map((m) => (m.id === messageId ? { ...m, is_pinned: !m.is_pinned } : m));
+    });
     try {
-      if (isCurrentlyPinned) {
+      if (wasPinned) {
         await bffFetch(`/api/v1/conversations/${convId}/pinned/${messageId}`, { method: "DELETE" });
       } else {
         await bffFetch(`/api/v1/conversations/${convId}/pinned/${messageId}`, { method: "POST" });
@@ -539,34 +638,60 @@ export function useMessages(conversationId: string | null) {
     } catch {
       // optimistic stays
     }
-  }, [messages]);
+  }, []);
 
   const reactToMessage = useCallback(
     async (convId: string, messageId: string, emoji: string) => {
-      // Optimistic toggle
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id !== messageId) return m;
-          const existing = m.reactions.find((r) => r.emoji === emoji);
-          let newReactions: MessageReaction[];
-          if (existing) {
-            const hasReacted = existing.user_ids.includes(CURRENT_USER_ID);
-            if (hasReacted) {
-              const filtered = existing.user_ids.filter((id) => id !== CURRENT_USER_ID);
-              newReactions = filtered.length === 0
-                ? m.reactions.filter((r) => r.emoji !== emoji)
-                : m.reactions.map((r) => r.emoji === emoji ? { ...r, user_ids: filtered } : r);
+      const selfDisplayName = selfReactionLabel;
+      // Optimistic toggle — only update local state when userId is known
+      if (currentUserId) {
+        const selfUserId = currentUserId;
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== messageId) return m;
+            const existing = m.reactions.find((r) => r.emoji === emoji);
+            let newReactions: MessageReaction[];
+            if (existing) {
+              const hasReacted = existing.user_ids.includes(selfUserId);
+              if (hasReacted) {
+                const filtered = existing.user_ids.filter((id) => id !== selfUserId);
+                const userNames = { ...(existing.user_names ?? {}) };
+                delete userNames[selfUserId];
+                newReactions = filtered.length === 0
+                  ? m.reactions.filter((r) => r.emoji !== emoji)
+                  : m.reactions.map((r) =>
+                      r.emoji === emoji
+                        ? {
+                            ...r,
+                            user_ids: filtered,
+                            user_names: Object.keys(userNames).length > 0 ? userNames : undefined,
+                          }
+                        : r
+                    );
+              } else {
+                newReactions = m.reactions.map((r) =>
+                  r.emoji === emoji
+                    ? {
+                        ...r,
+                        user_ids: [...r.user_ids, selfUserId],
+                        user_names: {
+                          ...(r.user_names ?? {}),
+                          [selfUserId]: selfDisplayName,
+                        },
+                      }
+                    : r
+                );
+              }
             } else {
-              newReactions = m.reactions.map((r) =>
-                r.emoji === emoji ? { ...r, user_ids: [...r.user_ids, CURRENT_USER_ID] } : r
-              );
+              newReactions = [
+                ...m.reactions,
+                { emoji, user_ids: [selfUserId], user_names: { [selfUserId]: selfDisplayName } },
+              ];
             }
-          } else {
-            newReactions = [...m.reactions, { emoji, user_ids: [CURRENT_USER_ID] }];
-          }
-          return { ...m, reactions: newReactions };
-        })
-      );
+            return { ...m, reactions: newReactions };
+          })
+        );
+      }
       try {
         await bffFetch(`/api/v1/conversations/${convId}/messages/${messageId}/reactions`, {
           method: "POST",
@@ -576,35 +701,31 @@ export function useMessages(conversationId: string | null) {
         // optimistic stays
       }
     },
-    []
+    [currentUserId, selfReactionLabel]
   );
 
   // Simulate AI typing + canned response (fallback when AI worker is not yet connected)
-  const simulateAIReply = useCallback(
-    (convId: string) => {
-      setIsTyping(true);
-      const delay = 1000 + Math.random() * 1500;
-      const timeoutId = setTimeout(() => {
-        setIsTyping(false);
-        const aiMsg: Message = {
-          id: `ai-${Date.now()}`,
-          conversation_id: convId,
-          sender_id: "ai",
-          content: "Tôi đã nhận được tin nhắn của bạn! Tính năng AI đang được tích hợp với AI Worker.",
-          type: "text",
-          status: "read",
-          reactions: [],
-          is_edited: false,
-          is_recalled: false,
-          is_pinned: false,
-          created_at: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-      }, delay);
-      return () => clearTimeout(timeoutId);
-    },
-    []
-  );
+  const simulateAIReply = useCallback((convId: string, replyText: string) => {
+    setIsTyping(true);
+    const delay = 1000 + Math.random() * 1500;
+    setTimeout(() => {
+      setIsTyping(false);
+      const aiMsg: Message = {
+        id: `ai-${Date.now()}`,
+        conversation_id: convId,
+        sender_id: "ai",
+        content: replyText,
+        type: "text",
+        status: "read",
+        reactions: [],
+        is_edited: false,
+        is_recalled: false,
+        is_pinned: false,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    }, delay);
+  }, []);
 
   return {
     messages,
@@ -613,6 +734,7 @@ export function useMessages(conversationId: string | null) {
     isTyping,
     loadMore,
     upsertMessage,
+    setPinnedState,
     setRemoteTyping,
     sendMessage,
     editMessage,
@@ -628,7 +750,7 @@ export function useMessages(conversationId: string | null) {
 // useStrangerRequests
 // ──────────────────────────────────────────────────────────────────────────────
 export function useStrangerRequests() {
-  const [requests, setRequests] = useState<StrangerRequest[]>(MOCK_STRANGER_REQUESTS);
+  const [requests, setRequests] = useState<StrangerRequest[]>([]);
 
   // Load pending conversations from API
   useEffect(() => {
@@ -651,9 +773,7 @@ export function useStrangerRequests() {
           setRequests(adapted);
         }
       })
-      .catch(() => {
-        // Keep mock data as fallback
-      });
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -694,7 +814,10 @@ export function useStrangerRequests() {
 // ──────────────────────────────────────────────────────────────────────────────
 // useChatSearch — searches conversations in local state + real user lookup
 // ──────────────────────────────────────────────────────────────────────────────
-export function useChatSearch(conversations: Conversation[] = []) {
+export function useChatSearch(
+  conversations: Conversation[] = [],
+  currentUserId: string | null = null
+) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -706,11 +829,12 @@ export function useChatSearch(conversations: Conversation[] = []) {
           ? "healthos ai assistant"
           : c.type === "group"
           ? (c.name ?? "").toLowerCase()
-          : (c.participants.find((p) => p.user_id !== CURRENT_USER_ID)?.display_name ?? "").toLowerCase();
+          : (c.participants.find((p) => p.user_id !== currentUserId)?.display_name ?? "")
+              .toLowerCase();
       const lastMsg = c.last_message?.content.toLowerCase() ?? "";
       return name.includes(q) || lastMsg.includes(q);
     });
-  }, [query, conversations]);
+  }, [query, conversations, currentUserId]);
 
   return { query, setQuery, filtered };
 }

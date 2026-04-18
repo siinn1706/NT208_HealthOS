@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from typing import Any
-
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -48,7 +46,7 @@ def _build_reaction_dtos(reactions: list[MessageReaction]) -> list[ReactionDTO]:
         ReactionDTO(
             emoji=r.emoji,
             user_id=r.user_id,
-            user_display_name=r.user.display_name if r.user else "Unknown",
+            user_display_name=r.user.display_name if r.user else None,
         )
         for r in reactions
     ]
@@ -63,7 +61,7 @@ def _build_message_dto(
         reply_preview = ReplyPreviewDTO(
             id=msg.reply_to.id,
             sender_display_name=(
-                msg.reply_to.sender.display_name if msg.reply_to.sender else "Unknown"
+                msg.reply_to.sender.display_name if msg.reply_to.sender else None
             ),
             content=msg.reply_to.content,
             content_type=msg.reply_to.content_type.value,  # type: ignore[arg-type]
@@ -84,7 +82,7 @@ def _build_message_dto(
             else None
         ),
         client_message_id=msg.client_message_id,
-        content=msg.content if not msg.is_recalled else "Tin nhắn đã bị thu hồi",
+        content=msg.content if not msg.is_recalled else "",
         content_type=msg.content_type.value,  # type: ignore[arg-type]
         attachments=attachments,
         reply_to_id=msg.reply_to_id,
@@ -134,6 +132,9 @@ async def _build_conversation_dto(
     conv: Conversation,
     current_user_id: uuid.UUID,
     presence_map: dict[str, bool] | None = None,
+    preloaded_last_message: Message | None = None,
+    preloaded_unread_count: int | None = None,
+    skip_db_lookups: bool = False,
 ) -> ConversationDTO:
     """Enrich a Conversation ORM object into a full ConversationDTO."""
     # Participants
@@ -156,28 +157,38 @@ async def _build_conversation_dto(
             )
 
     # Last message
-    last_msg_result = await db.execute(
-        select(Message)
-        .options(
-            selectinload(Message.sender).selectinload(User.profile),
-            selectinload(Message.reactions).selectinload(MessageReaction.user),
-        )
-        .where(
-            and_(
-                Message.conversation_id == conv.id,
-                Message.deleted_at.is_(None),
+    if skip_db_lookups:
+        last_msg_orm = preloaded_last_message
+    else:
+        last_msg_result = await db.execute(
+            select(Message)
+            .options(
+                selectinload(Message.sender).selectinload(User.profile),
+                selectinload(Message.reactions).selectinload(MessageReaction.user),
+                selectinload(Message.reply_to)
+                .selectinload(Message.sender)
+                .selectinload(User.profile),
             )
+            .where(
+                and_(
+                    Message.conversation_id == conv.id,
+                    Message.deleted_at.is_(None),
+                )
+            )
+            .order_by(Message.created_at.desc())
+            .limit(1)
         )
-        .order_by(Message.created_at.desc())
-        .limit(1)
-    )
-    last_msg_orm = last_msg_result.scalar_one_or_none()
+        last_msg_orm = last_msg_result.scalar_one_or_none()
+        
     last_message = _build_message_dto(last_msg_orm) if last_msg_orm else None
 
     # Unread count
-    unread = 0
-    if current_member:
-        unread = await _get_unread_count(db, conv.id, current_user_id, current_member)
+    if skip_db_lookups:
+        unread = preloaded_unread_count or 0
+    else:
+        unread = 0
+        if current_member:
+            unread = await _get_unread_count(db, conv.id, current_user_id, current_member)
 
     return ConversationDTO(
         id=conv.id,
@@ -246,6 +257,71 @@ async def _ensure_ai_conversation(
 # Conversation operations
 # ──────────────────────────────────────────────────────────────────────────────
 
+async def _get_bulk_conversation_data(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    conversation_ids: list[uuid.UUID]
+) -> tuple[dict[uuid.UUID, Message], dict[uuid.UUID, int]]:
+    """Batch fetch last_messages and unread_counts for a list of conversations to prevent N+1."""
+    if not conversation_ids:
+        return {}, {}
+    unread_query = (
+        select(Message.conversation_id, func.count(Message.id))
+        .join(
+            ConversationMember,
+            and_(
+                ConversationMember.conversation_id == Message.conversation_id,
+                ConversationMember.user_id == user_id,
+            ),
+        )
+        .where(
+            and_(
+                Message.conversation_id.in_(conversation_ids),
+                Message.sender_id != user_id,
+                Message.deleted_at.is_(None),
+                or_(
+                    ConversationMember.last_read_at.is_(None),
+                    Message.created_at > ConversationMember.last_read_at,
+                ),
+            )
+        )
+        .group_by(Message.conversation_id)
+    )
+    unread_result = await db.execute(unread_query)
+    unread_counts = {row[0]: row[1] for row in unread_result.all()}
+    subq = (
+        select(
+            Message.id,
+            func.row_number().over(
+                partition_by=Message.conversation_id,
+                order_by=Message.created_at.desc()
+            ).label("rn")
+        )
+        .where(
+            and_(
+                Message.conversation_id.in_(conversation_ids),
+                Message.deleted_at.is_(None),
+            )
+        )
+        .subquery()
+    )
+
+    last_msg_query = (
+        select(Message)
+        .options(
+            selectinload(Message.sender).selectinload(User.profile),
+            selectinload(Message.reactions).selectinload(MessageReaction.user),
+            selectinload(Message.reply_to)
+            .selectinload(Message.sender)
+            .selectinload(User.profile),
+        )
+        .join(subq, and_(Message.id == subq.c.id, subq.c.rn == 1))
+    )
+    last_msg_result = await db.execute(last_msg_query)
+    last_messages = {msg.conversation_id: msg for msg in last_msg_result.scalars().all()}
+
+    return last_messages, unread_counts
+
 async def get_conversations(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -253,7 +329,6 @@ async def get_conversations(
 ) -> list[ConversationDTO]:
     """Return accepted conversations for a user, sorted by latest message."""
     await _ensure_ai_conversation(db, user_id)
-
     result = await db.execute(
         select(Conversation)
         .join(
@@ -269,11 +344,50 @@ async def get_conversations(
         )
         .order_by(Conversation.updated_at.desc())
     )
-    convs = result.scalars().unique().all()
+    convs = list(result.scalars().unique().all())
+    conv_ids = [c.id for c in convs]
+    last_messages, unread_counts = await _get_bulk_conversation_data(db, user_id, conv_ids)
+
     dtos = []
     for conv in convs:
-        dtos.append(await _build_conversation_dto(db, conv, user_id, presence_map))
+        dtos.append(
+            await _build_conversation_dto(
+                db, 
+                conv, 
+                user_id, 
+                presence_map,
+                preloaded_last_message=last_messages.get(conv.id),
+                preloaded_unread_count=unread_counts.get(conv.id, 0),
+                skip_db_lookups=True,
+            )
+        )
     return dtos
+
+
+async def get_conversation_by_id(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> Conversation | None:
+    """Return one accepted conversation for a user, or None if inaccessible."""
+    result = await db.execute(
+        select(Conversation)
+        .join(
+            ConversationMember,
+            and_(
+                ConversationMember.conversation_id == Conversation.id,
+                ConversationMember.user_id == user_id,
+                ConversationMember.is_accepted.is_(True),
+            ),
+        )
+        .where(Conversation.id == conversation_id)
+        .options(
+            selectinload(Conversation.members)
+            .selectinload(ConversationMember.user)
+            .selectinload(User.profile),
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_pending_conversations(
@@ -296,34 +410,23 @@ async def get_pending_conversations(
         )
         .order_by(Conversation.created_at.desc())
     )
-    convs = result.scalars().unique().all()
+    convs = list(result.scalars().unique().all())
+    conv_ids = [c.id for c in convs]
+    last_messages, unread_counts = await _get_bulk_conversation_data(db, user_id, conv_ids)
+
     dtos = []
     for conv in convs:
-        dtos.append(await _build_conversation_dto(db, conv, user_id))
+        dtos.append(
+            await _build_conversation_dto(
+                db, 
+                conv, 
+                user_id,
+                preloaded_last_message=last_messages.get(conv.id),
+                preloaded_unread_count=unread_counts.get(conv.id, 0),
+                skip_db_lookups=True,
+            )
+        )
     return dtos
-
-
-async def get_conversation_by_id(
-    db: AsyncSession,
-    conversation_id: uuid.UUID,
-    user_id: uuid.UUID,
-) -> Conversation | None:
-    """Return a single Conversation the user is a member of, or None."""
-    result = await db.execute(
-        select(Conversation)
-        .join(
-            ConversationMember,
-            and_(
-                ConversationMember.conversation_id == Conversation.id,
-                ConversationMember.user_id == user_id,
-            ),
-        )
-        .options(
-            selectinload(Conversation.members).selectinload(ConversationMember.user).selectinload(User.profile),
-        )
-        .where(Conversation.id == conversation_id)
-    )
-    return result.scalar_one_or_none()
 
 
 async def create_direct_conversation(
@@ -743,7 +846,7 @@ async def recall_message(
 
     if delete_for_everyone:
         msg.is_recalled = True
-        msg.content = "Tin nhắn đã bị thu hồi"
+        msg.content = ""
     else:
         msg.deleted_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()

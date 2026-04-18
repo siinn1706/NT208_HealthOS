@@ -1,7 +1,9 @@
 "use client";
 
+import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { LeaderboardEntry } from "@/data/gamification";
+import { getUnitLabel, getLocaleTag } from "@/lib/format-utils";
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -28,6 +30,8 @@ function ChangeIndicator({ change }: { change: number }) {
 }
 
 export function LeaderboardTable({ entries }: LeaderboardTableProps) {
+  const t = useTranslations("achievements.leaderboard");
+  const locale = useLocale();
   const currentUserEntry = entries.find((e) => e.isCurrentUser);
 
   return (
@@ -36,10 +40,10 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
       <div className="px-5 py-3 border-b border-border bg-muted/20">
         <div className="grid grid-cols-[40px_1fr_80px_70px_60px] gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           <span>#</span>
-          <span>Người dùng</span>
-          <span className="text-right">Điểm</span>
+          <span>{t("user")}</span>
+          <span className="text-right">{t("score")}</span>
           <span className="text-right hidden sm:block">Streak</span>
-          <span className="text-right hidden sm:block">Thay đổi</span>
+          <span className="text-right hidden sm:block">{t("change")}</span>
         </div>
       </div>
 
@@ -97,12 +101,12 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
                     {entry.displayName}
                     {entry.isCurrentUser && (
                       <span className="ml-1.5 text-[9px] font-semibold text-[#41BCE6] bg-[#41BCE6]/10 px-1.5 py-0.5 rounded-full">
-                        Bạn
+                        {t("you")}
                       </span>
                     )}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    {entry.achievementsCount} huy hiệu
+                    {entry.achievementsCount} {getUnitLabel("badges", locale)}
                   </p>
                 </div>
               </div>
@@ -115,9 +119,9 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
                     entry.isCurrentUser ? "text-[#41BCE6]" : "text-foreground"
                   )}
                 >
-                  {entry.totalScore.toLocaleString()}
+                  {entry.totalScore.toLocaleString(getLocaleTag(locale))}
                 </p>
-                <p className="text-[10px] text-muted-foreground">điểm</p>
+                <p className="text-[10px] text-muted-foreground">{getUnitLabel("points", locale)}</p>
               </div>
 
               {/* Streak */}
@@ -125,7 +129,7 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
                 <p className="text-sm font-semibold text-orange-400">
                   🔥 {entry.currentStreak}
                 </p>
-                <p className="text-[10px] text-muted-foreground">ngày</p>
+                <p className="text-[10px] text-muted-foreground">{getUnitLabel("days", locale)}</p>
               </div>
 
               {/* Weekly change */}
@@ -142,13 +146,13 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
         <div className="px-5 py-3 border-t-2 border-[#41BCE6]/30 bg-[#1965B3]/10">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              Xếp hạng của bạn:{" "}
+              {t("yourRank")}{" "}
               <span className="font-bold text-[#41BCE6]">
                 #{currentUserEntry.rank}
               </span>
             </p>
             <p className="text-xs font-bold text-[#41BCE6]">
-              {currentUserEntry.totalScore.toLocaleString()} điểm
+              {currentUserEntry.totalScore.toLocaleString(getLocaleTag(locale))} {getUnitLabel("points", locale)}
             </p>
           </div>
         </div>

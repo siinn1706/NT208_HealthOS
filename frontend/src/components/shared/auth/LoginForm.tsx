@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -17,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { useNotification, ValidationMessages } from "@/hooks/use-notification";
+import { getSafePostLoginRedirectPath } from "@/lib/safe-post-login-redirect";
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -47,22 +50,18 @@ function GoogleIcon() {
   );
 }
 
-// ─── Facebook SVG Icon ────────────────────────────────────────────────────────
-function FacebookIcon() {
+// ─── GitHub SVG Icon ──────────────────────────────────────────────────────────
+function GitHubIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 48 48"
+      viewBox="0 0 24 24"
       className="size-4"
       aria-hidden="true"
     >
       <path
-        fill="#3F51B5"
-        d="M42 37a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V11a5 5 0 0 1 5-5h26a5 5 0 0 1 5 5z"
-      />
-      <path
-        fill="#fff"
-        d="M34.368 25H31v13h-5V25h-3v-4h3v-2.41c.002-3.508 1.459-5.59 5.592-5.59H35v4h-2.287C31.104 17 31 17.6 31 18.723V21h4z"
+        fill="currentColor"
+        d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
       />
     </svg>
   );
@@ -71,58 +70,137 @@ function FacebookIcon() {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function LoginForm() {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { handleApiError, success, handleError } = useNotification();
+  const identifierRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const oauthErrorBanner = useMemo(() => {
+    const raw = searchParams.get("oauth_error");
+    if (!raw) return null;
+    const known: Record<string, string> = {
+      core_unreachable: t("oauthErrorCoreUnreachable"),
+      server_error: t("oauthErrorServerError"),
+      missing_code: t("oauthErrorMissingCode"),
+      invalid_state: t("oauthErrorInvalidState"),
+      missing_verifier: t("oauthErrorMissingVerifier"),
+      nonce_mismatch: t("oauthErrorNonceMismatch"),
+      unverified_email: t("oauthErrorUnverifiedEmail"),
+    };
+    if (known[raw]) return known[raw];
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return t("oauthErrorServerError");
+    }
+  }, [searchParams, t]);
+
+  // Client-side validation
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!identifier.trim()) {
+      errors.identifier = ValidationMessages.required(t("loginIdentifier"));
+      identifierRef.current?.focus();
+    }
+
+    if (!password) {
+      errors.password = ValidationMessages.required(t("password"));
+      if (!errors.identifier) {
+        passwordRef.current?.focus();
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return false;
+    }
+
+    setFieldErrors({});
+    return true;
+  };
 
   // ─── Submit ─────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
+
+    // Client-side validation
+    if (!validate()) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const res = await fetch("/api/v1/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
       });
 
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const msg = data?.error?.message ?? data?.detail?.message ?? t("loginButton");
-        setError(
-          res.status === 401 || res.status === 404
-            ? "Email hoặc mật khẩu không đúng."
-            : msg ?? "Đăng nhập thất bại. Vui lòng thử lại."
-        );
+        const errors = handleApiError(data, tErrors("loginFailed"));
+        // Map field errors
+        if (errors.identifier || errors.password) {
+          setFieldErrors(errors);
+        }
         return;
       }
 
-      router.push("/dashboard");
-    } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      // Success - show toast and redirect
+      success(tErrors("loginSuccess"));
+
+      const onboardingStatus = data?.data?.onboarding_status;
+      const fromRaw = searchParams.get("from");
+      const fromSafe = getSafePostLoginRedirectPath(fromRaw);
+
+      if (onboardingStatus === "completed" && fromSafe) {
+        router.push(fromSafe);
+      } else if (onboardingStatus === "completed") {
+        router.push("/dashboard");
+      } else {
+        router.push("/onboarding");
+      }
+    } catch (err) {
+      const errors = handleError(err, tErrors("genericTryAgain"));
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+      }
     } finally {
       setIsLoading(false);
     }
   }
 
+  // Clear field error on change
+  function handleIdentifierChange(value: string) {
+    setIdentifier(value);
+    if (fieldErrors.identifier) {
+      setFieldErrors((prev) => ({ ...prev, identifier: "" }));
+    }
+  }
+
+  function handlePasswordChange(value: string) {
+    setPassword(value);
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => ({ ...prev, password: "" }));
+    }
+  }
+
   // ─── OAuth ──────────────────────────────────────────────────────────────────
-  async function handleOAuth(provider: "google" | "facebook") {
-    /**
-     * TODO: Implement OAuth via Auth.js
-     *
-     * EXAMPLE:
-     * import { signIn } from "next-auth/react";
-     * await signIn(provider, { callbackUrl: "/" });
-     */
-    console.log(`OAuth with ${provider} — not implemented yet`);
+  function handleOAuth(provider: "google" | "github") {
+    // Redirect to BFF OAuth initiation route
+    window.location.href = `/api/v1/auth/oauth/${provider}`;
   }
 
   return (
@@ -130,7 +208,6 @@ export function LoginForm() {
       {/* Header */}
       <CardHeader className="space-y-1 pb-4">
         <div className="flex items-center gap-2 mb-2">
-          {/* Logo / Brand mark */}
           <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">H</span>
           </div>
@@ -146,30 +223,35 @@ export function LoginForm() {
 
       {/* Form */}
       <CardContent>
+        {oauthErrorBanner && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {oauthErrorBanner}
+          </div>
+        )}
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {/* Error banner */}
-          {error && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {error}
-            </div>
-          )}
-
           {/* Username or Email */}
           <div className="space-y-1.5">
-            <Label htmlFor="login-email">{t("loginIdentifier")}</Label>
+            <Label htmlFor="login-identifier">{t("loginIdentifier")}</Label>
             <Input
-              id="login-email"
+              ref={identifierRef}
+              id="login-identifier"
               type="text"
               placeholder={t("loginIdentifierPlaceholder")}
               autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={identifier}
+              onChange={(e) => handleIdentifierChange(e.target.value)}
               required
               disabled={isLoading}
+              aria-invalid={!!fieldErrors.identifier}
             />
+            {fieldErrors.identifier && (
+              <p className="text-xs text-destructive" role="alert">
+                {fieldErrors.identifier}
+              </p>
+            )}
           </div>
 
           {/* Password */}
@@ -185,14 +267,16 @@ export function LoginForm() {
             </div>
             <div className="relative">
               <Input
+                ref={passwordRef}
                 id="login-password"
                 type={showPassword ? "text" : "password"}
                 placeholder={t("passwordPlaceholder")}
                 autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handlePasswordChange(e.target.value)}
                 required
                 disabled={isLoading}
+                aria-invalid={!!fieldErrors.password}
                 className="pr-10"
               />
               <button
@@ -208,6 +292,11 @@ export function LoginForm() {
                 )}
               </button>
             </div>
+            {fieldErrors.password && (
+              <p className="text-xs text-destructive" role="alert">
+                {fieldErrors.password}
+              </p>
+            )}
           </div>
 
           {/* Remember me */}
@@ -267,11 +356,11 @@ export function LoginForm() {
             variant="outline"
             size="lg"
             className="w-full"
-            onClick={() => handleOAuth("facebook")}
+            onClick={() => handleOAuth("github")}
             disabled={isLoading}
           >
-            <FacebookIcon />
-            Facebook
+            <GitHubIcon />
+            GitHub
           </Button>
         </div>
       </CardContent>

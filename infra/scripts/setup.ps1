@@ -33,6 +33,7 @@ Copy-EnvFile "$Root\infra\env\backend.env.example" "$Root\backend\.env"
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\ai-worker\.env"
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\queue-worker\.env"
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\notification\.env"
+Copy-EnvFile "$Root\infra\docker\.env.dev.example" "$Root\infra\docker\.env.dev"
 
 if ($docker) {
     Write-Host "[DOCKER] Starting full stack..." -ForegroundColor Cyan
@@ -80,6 +81,12 @@ else {
 
         if ($LASTEXITCODE -ne 0) {
             throw "[BE] pip install failed."
+        }
+
+        Write-Host "[BE] Running database migrations..." -ForegroundColor Cyan
+        & $PyExe -m alembic upgrade head
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[BE] Migration failed. DB may need manual setup or Postgres may not be running."
         }
 
         Write-Host "[BE] Done." -ForegroundColor Green

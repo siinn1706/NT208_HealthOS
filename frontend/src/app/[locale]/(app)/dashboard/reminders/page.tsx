@@ -12,76 +12,24 @@ import {
   Clock,
   Repeat,
   Trash2,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddReminderDialog, type Reminder } from "@/components/dashboard/reminders/AddReminderDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const INITIAL_REMINDERS: Reminder[] = [
-  {
-    id: "r-1",
-    type: "medicine",
-    title: "Metformin 500mg",
-    time: "08:00",
-    repeat: "daily",
-    done: false,
-    note: "Uống sau bữa sáng",
-  },
-  {
-    id: "r-2",
-    type: "appointment",
-    title: "Khám định kỳ - BS. Nguyễn Minh",
-    time: "10:30",
-    repeat: "once",
-    done: false,
-    note: "Phòng khám 3, tầng 2",
-  },
-  {
-    id: "r-3",
-    type: "exercise",
-    title: "Bài tập cardio 30 phút",
-    time: "17:00",
-    repeat: "daily",
-    done: false,
-  },
-  {
-    id: "r-4",
-    type: "medicine",
-    title: "Vitamin D3 1000IU",
-    time: "20:00",
-    repeat: "daily",
-    done: false,
-    note: "Uống sau bữa tối",
-  },
-  {
-    id: "r-5",
-    type: "appointment",
-    title: "Xét nghiệm máu định kỳ",
-    time: "09:00",
-    repeat: "once",
-    done: true,
-    note: "Nhịn ăn 8 tiếng trước",
-  },
-];
-
 // BFF TODO: GET /api/v1/reminders
 //   Trigger: Client-side load on /dashboard/reminders
 //   Request: { type?: "medicine" | "appointment" | "exercise" }
 //   Response: { data: Reminder[] }
-//   Fallback: INITIAL_REMINDERS hardcoded array
-
 async function fetchReminders(): Promise<Reminder[]> {
   try {
     const res = await fetch("/api/v1/reminders");
     if (res.ok) {
       const json = await res.json();
-      return json.data ?? json;
+      if (Array.isArray(json?.data)) return json.data;
     }
-  } catch {
-    console.warn("[BFF] /api/v1/reminders unavailable, using mock data");
-  }
-  return INITIAL_REMINDERS;
+  } catch {}
+  return [];
 }
 
 type FilterType = "all" | "medicine" | "appointment" | "exercise";
@@ -110,6 +58,7 @@ export default function RemindersPage() {
     const reminder = reminders.find((r) => r.id === id);
     if (!reminder) return;
 
+    const previous = reminders;
     // Optimistic update
     setReminders((prev) =>
       prev.map((r) => (r.id === id ? { ...r, done: !r.done } : r))
@@ -124,8 +73,7 @@ export default function RemindersPage() {
       });
       if (!res.ok) throw new Error("BFF failed");
     } catch {
-      // BFF unavailable - optimistic already applied
-      console.warn("[BFF] PATCH /api/v1/reminders/:id failed, using optimistic update");
+      setReminders(previous);
     }
   };
 
@@ -134,6 +82,7 @@ export default function RemindersPage() {
   //   Response: 204
   //   Fallback: Optimistic remove from local state
   const deleteReminder = async (id: string) => {
+    const previous = reminders;
     // Optimistic remove
     setReminders((prev) => prev.filter((r) => r.id !== id));
 
@@ -142,8 +91,7 @@ export default function RemindersPage() {
       const res = await fetch(`/api/v1/reminders/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("BFF failed");
     } catch {
-      // BFF unavailable - optimistic already applied
-      console.warn("[BFF] DELETE /api/v1/reminders/:id failed, using optimistic update");
+      setReminders(previous);
     }
   };
 

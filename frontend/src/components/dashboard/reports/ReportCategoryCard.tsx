@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import type { ReportSection } from "@/types/api";
 import { statusColor, statusBadgeVariant, trendColor } from "@/lib/report-utils";
+import { getLocaleTag } from "@/lib/format-utils";
 
 // ─── Icon map ────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,7 @@ export async function ReportCategoryCard({
       {/* Main stat */}
       <div>
         <p className={`text-2xl font-bold tabular-nums ${statusColor(section.status)}`}>
-          {section.stats.average.toLocaleString()}
+          {section.stats.average.toLocaleString(getLocaleTag(locale))}
           <span className="text-xs font-normal text-muted-foreground ml-1">
             {section.stats.unit}
           </span>

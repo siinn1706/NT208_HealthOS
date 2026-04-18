@@ -10,81 +10,26 @@ param(
     [string]$LogFile
 )
 
-$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).
-    IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-if (-not $IsAdmin) {
-    $HostExe = if ($PSVersionTable.PSEdition -eq "Core") { "pwsh.exe" } else { "powershell.exe" }
-
-    $RelaunchArgs = @(
-        "-ExecutionPolicy", "Bypass",
-        "-File", "`"$PSCommandPath`""
-    )
-
-    if ($Mode) { $RelaunchArgs += @("-Mode", $Mode) }
-    if ($SkipInstall) { $RelaunchArgs += "-SkipInstall" }
-    if ($Only) { $RelaunchArgs += @("-Only", $Only) }
-    if ($CheckOnly) { $RelaunchArgs += "-CheckOnly" }
-    if ($InstallPolicy) { $RelaunchArgs += @("-InstallPolicy", $InstallPolicy) }
-    if ($LogFile) { $RelaunchArgs += @("-LogFile", "`"$LogFile`"") }
-
-    Start-Process -FilePath $HostExe -ArgumentList $RelaunchArgs -Verb RunAs
-    exit
-}
-
 $ErrorActionPreference = "Stop"
 
+Import-Module (Join-Path $PSScriptRoot "healthos-common.psm1") -Force
+
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+Invoke-LogCleanup -LogDir (Join-Path $RepoRoot "infra\logs")
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
-$PowerShellExe = Join-Path $PSHOME "powershell.exe"
-if (-not (Test-Path $PowerShellExe)) {
-    $PowerShellExe = "powershell"
-}
+$ComposeEnvFile = Join-Path $RepoRoot "infra\docker\.env.dev"
+$PowerShellExe = Resolve-PowerShellExe
 $StatusRows = New-Object System.Collections.Generic.List[object]
 $ConflictRows = New-Object System.Collections.Generic.List[object]
 $HasFailure = $false
 
-function Resolve-LogFilePath {
-    param(
-        [string]$DefaultName,
-        [string]$RequestedPath
-    )
-
-    $logsDir = Join-Path $RepoRoot "infra\logs"
-    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
-
-    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
-        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
-        return Join-Path $logsDir ("{0}_{1}.log" -f $DefaultName, $timestamp)
-    }
-
-    $resolved = if ([System.IO.Path]::IsPathRooted($RequestedPath)) {
-        $RequestedPath
-    }
-    else {
-        Join-Path $RepoRoot $RequestedPath
-    }
-
-    $parent = Split-Path -Parent $resolved
-    if ($parent -and -not (Test-Path $parent)) {
-        New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    }
-
-    return $resolved
-}
-
 function New-ComponentLogFile {
     param([string]$Component)
-    return Resolve-LogFilePath -DefaultName $Component -RequestedPath $null
+    return Resolve-LogFilePath -RepoRoot $RepoRoot -DefaultName $Component -RequestedPath $null
 }
 
-$ScriptLogFile = Resolve-LogFilePath -DefaultName "start_all" -RequestedPath $LogFile
-try {
-    Start-Transcript -Path $ScriptLogFile -Append -Force | Out-Null
-}
-catch {
-    Write-Warning "[ALL] Unable to start transcript at '$ScriptLogFile': $($_.Exception.Message)"
-}
+$ScriptLogFile = Resolve-LogFilePath -RepoRoot $RepoRoot -DefaultName "start_all" -RequestedPath $LogFile
+Start-HealthOSTranscript -LogFilePath $ScriptLogFile
 
 function Add-Status {
     param(
@@ -111,72 +56,6 @@ function Add-Conflict {
             Suggestion = $Suggestion
             Reason = $Reason
         })
-}
-
-function Test-CommandAvailable {
-    param([string]$CommandName)
-    return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
-}
-
-function Test-DockerComposeAvailable {
-    if (-not (Test-CommandAvailable "docker")) {
-        return $false
-    }
-
-    try {
-        docker compose version | Out-Null
-        return ($LASTEXITCODE -eq 0)
-    }
-    catch {
-        return $false
-    }
-}
-
-function Test-DockerDaemonReachable {
-    if (-not (Test-CommandAvailable "docker")) {
-        return $false
-    }
-
-    try {
-        docker info | Out-Null
-        return ($LASTEXITCODE -eq 0)
-    }
-    catch {
-        return $false
-    }
-}
-
-function Resolve-EffectiveMode {
-    if ($Mode -eq "docker") {
-        if (-not (Test-CommandAvailable "docker")) {
-            throw "[ALL] Docker CLI not found. Install Docker Desktop or rerun with -Mode local."
-        }
-        if (-not (Test-DockerComposeAvailable)) {
-            throw "[ALL] docker compose is unavailable. Check Docker Desktop installation."
-        }
-        if (-not (Test-DockerDaemonReachable)) {
-            throw "[ALL] Docker daemon is not reachable. Start Docker Desktop or rerun with -Mode local."
-        }
-        return "docker"
-    }
-
-    if ($Mode -eq "local") {
-        return "local"
-    }
-
-    if (Test-CommandAvailable "docker") {
-        if (Test-DockerComposeAvailable) {
-            if (Test-DockerDaemonReachable) {
-                return "docker"
-            }
-            Write-Host "[ALL] Docker CLI detected but daemon is unavailable. Falling back to local mode." -ForegroundColor Yellow
-        }
-        else {
-            Write-Host "[ALL] Docker CLI detected but docker compose is unavailable. Falling back to local mode." -ForegroundColor Yellow
-        }
-    }
-
-    return "local"
 }
 
 function Get-SelectedComponents {
@@ -268,8 +147,10 @@ function Invoke-DockerComponents {
         return
     }
 
+    $composeArgs = Get-ComposeArgs -ComposeFile $ComposeFile -ComposeEnvFile $ComposeEnvFile
+
     if ($CheckOnly) {
-        docker compose -f $ComposeFile ps $serviceList
+        docker compose @composeArgs ps $serviceList
         if ($LASTEXITCODE -ne 0) {
             throw "docker compose ps failed."
         }
@@ -278,7 +159,7 @@ function Invoke-DockerComponents {
     }
 
     Write-Host "[ALL] Starting docker services: $($serviceList -join ', ')" -ForegroundColor Cyan
-    docker compose -f $ComposeFile up -d $serviceList
+    docker compose @composeArgs up -d $serviceList
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose up failed."
     }
@@ -390,14 +271,19 @@ function Print-Reports {
 $selected = Get-SelectedComponents
 
 Write-Host "[ALL] Log file: $ScriptLogFile" -ForegroundColor DarkCyan
-$effectiveMode = Resolve-EffectiveMode
+$effectiveMode = Resolve-EffectiveMode -Mode $Mode -LogPrefix "[ALL]"
 Write-Host "[ALL] Mode requested: $Mode" -ForegroundColor DarkCyan
 Write-Host "[ALL] Mode effective: $effectiveMode" -ForegroundColor DarkCyan
 Write-Host "[ALL] Selected components: $($selected -join ', ')" -ForegroundColor DarkCyan
 Write-Host "[ALL] Install policy: $InstallPolicy" -ForegroundColor DarkCyan
 
+# Sync .env files from examples (add new keys, preserve existing values)
+Write-Host "[ALL] Syncing env files..." -ForegroundColor Cyan
+& (Join-Path $PSScriptRoot "sync-env.ps1")
+
 try {
     if ($effectiveMode -eq "docker") {
+        Invoke-DockerReadinessValidation -ScriptsRoot $PSScriptRoot -Scope all -CheckOnly:$CheckOnly -ErrorPrefix "[ALL]"
         Invoke-DockerComponents -Components $selected
     }
     else {

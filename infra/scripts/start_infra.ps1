@@ -10,70 +10,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Import-Module (Join-Path $PSScriptRoot "healthos-common.psm1") -Force
+
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $ComposeFile = Join-Path $RepoRoot "infra\docker\docker-compose.dev.yml"
-
-function Resolve-LogFilePath {
-    param(
-        [string]$DefaultName,
-        [string]$RequestedPath
-    )
-
-    $logsDir = Join-Path $RepoRoot "infra\logs"
-    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
-
-    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
-        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
-        return Join-Path $logsDir ("{0}_{1}.log" -f $DefaultName, $timestamp)
-    }
-
-    $resolved = if ([System.IO.Path]::IsPathRooted($RequestedPath)) {
-        $RequestedPath
-    }
-    else {
-        Join-Path $RepoRoot $RequestedPath
-    }
-
-    $parent = Split-Path -Parent $resolved
-    if ($parent -and -not (Test-Path $parent)) {
-        New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    }
-
-    return $resolved
-}
-
-function Test-CommandAvailable {
-    param([string]$CommandName)
-    return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
-}
-
-function Test-DockerComposeAvailable {
-    if (-not (Test-CommandAvailable "docker")) {
-        return $false
-    }
-
-    try {
-        docker compose version | Out-Null
-        return ($LASTEXITCODE -eq 0)
-    }
-    catch {
-        return $false
-    }
-}
-
-function Test-DockerDaemonReachable {
-    if (-not (Test-CommandAvailable "docker")) {
-        return $false
-    }
-
-    try {
-        docker info | Out-Null
-        return ($LASTEXITCODE -eq 0)
-    }
-    catch {
-        return $false
-    }
-}
+$ComposeEnvFile = Join-Path $RepoRoot "infra\docker\.env.dev"
 
 function Test-IsAdmin {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -88,39 +29,6 @@ function Test-IsCiContext {
 
     $normalized = "$($env:CI)".Trim().ToLowerInvariant()
     return ($normalized -eq "true" -or $normalized -eq "1")
-}
-
-function Resolve-EffectiveMode {
-    if ($Mode -eq "docker") {
-        if (-not (Test-CommandAvailable "docker")) {
-            throw "[Infra] Docker CLI not found. Install Docker Desktop or rerun with -Mode local."
-        }
-        if (-not (Test-DockerComposeAvailable)) {
-            throw "[Infra] docker compose is unavailable. Check Docker Desktop installation."
-        }
-        if (-not (Test-DockerDaemonReachable)) {
-            throw "[Infra] Docker daemon is not reachable. Start Docker Desktop or rerun with -Mode local."
-        }
-        return "docker"
-    }
-
-    if ($Mode -eq "local") {
-        return "local"
-    }
-
-    if (Test-CommandAvailable "docker") {
-        if (Test-DockerComposeAvailable) {
-            if (Test-DockerDaemonReachable) {
-                return "docker"
-            }
-            Write-Host "[Infra] Docker CLI detected but daemon is unavailable. Falling back to local mode." -ForegroundColor Yellow
-        }
-        else {
-            Write-Host "[Infra] Docker CLI detected but docker compose is unavailable. Falling back to local mode." -ForegroundColor Yellow
-        }
-    }
-
-    return "local"
 }
 
 function Test-TcpPort {
@@ -152,10 +60,20 @@ function Resolve-RedisPaths {
     $redisServer = $null
     $redisConf = $null
 
+    $cliCmd = Get-Command redis-cli -ErrorAction SilentlyContinue
+    $serverCmd = Get-Command redis-server -ErrorAction SilentlyContinue
+    if ($cliCmd -and $serverCmd) {
+        return [pscustomobject]@{
+            Cli = $cliCmd.Source
+            Server = $serverCmd.Source
+            Conf = $null
+        }
+    }
+
     $knownRoots = @(
-        "C:\Program Files\Redis",
+        (Join-Path $env:ProgramFiles "Redis"),
         "C:\Redis"
-    )
+    ) | Where-Object { $_ -and (Test-Path $_) }
 
     foreach ($root in $knownRoots) {
         $candidateCli = Join-Path $root "redis-cli.exe"
@@ -171,15 +89,6 @@ function Resolve-RedisPaths {
         }
     }
 
-    if (-not $redisCli) {
-        $cliCmd = Get-Command redis-cli -ErrorAction SilentlyContinue
-        $serverCmd = Get-Command redis-server -ErrorAction SilentlyContinue
-        if ($cliCmd -and $serverCmd) {
-            $redisCli = $cliCmd.Source
-            $redisServer = $serverCmd.Source
-        }
-    }
-
     return [pscustomobject]@{
         Cli = $redisCli
         Server = $redisServer
@@ -188,17 +97,16 @@ function Resolve-RedisPaths {
 }
 
 function Resolve-PsqlPath {
-    $psqlCmd = Get-Command psql -ErrorAction SilentlyContinue
-    if ($psqlCmd) {
-        return $psqlCmd.Source
+    $cmd = Get-Command psql -ErrorAction SilentlyContinue
+    if ($cmd) {
+        return $cmd.Source
     }
 
-    $candidates = @(
-        "C:\Program Files\PostgreSQL\17\bin\psql.exe",
-        "C:\Program Files\PostgreSQL\16\bin\psql.exe",
-        "C:\Program Files\PostgreSQL\15\bin\psql.exe"
-    )
-    foreach ($candidate in $candidates) {
+    $pgRoot = Join-Path ${env:ProgramFiles} "PostgreSQL"
+    $pgDirs = Get-ChildItem $pgRoot -Directory -ErrorAction SilentlyContinue |
+        Sort-Object { try { [int]$_.Name } catch { 0 } } -Descending
+    foreach ($dir in $pgDirs) {
+        $candidate = Join-Path $dir.FullName "bin\psql.exe"
         if (Test-Path $candidate) {
             return $candidate
         }
@@ -207,17 +115,28 @@ function Resolve-PsqlPath {
 }
 
 function Resolve-PostgresService {
-    $candidates = @(
-        "postgresql-x64-17",
-        "postgresql-x64-16",
-        "postgresql-x64-15",
-        "postgresql"
-    )
+    try {
+        $best = Get-Service -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "postgresql*" } |
+            ForEach-Object {
+                $ver = 0
+                if ($_.Name -match '-(\d+)$') {
+                    $ver = [int]$Matches[1]
+                }
+                [pscustomobject]@{ Name = $_.Name; Ver = $ver }
+            } |
+            Sort-Object Ver -Descending |
+            Select-Object -First 1
+        if ($best) {
+            return $best.Name
+        }
+    }
+    catch { }
 
-    foreach ($service in $candidates) {
-        sc.exe query $service > $null 2>&1
+    foreach ($name in @("postgresql-x64-17", "postgresql-x64-16", "postgresql-x64-15", "postgresql")) {
+        sc.exe query $name > $null 2>&1
         if ($LASTEXITCODE -eq 0) {
-            return $service
+            return $name
         }
     }
 
@@ -579,39 +498,39 @@ function Ensure-MinioLocal {
         ":9001"
     ) | Out-Null
 
-    Start-Sleep -Seconds 3
-    if (-not (Test-TcpPort -Port 9000)) {
-        throw "[MinIO] Failed to start local MinIO."
-    }
+Start-Sleep -Seconds 3
+
+if (-not $minioStarted) {
+    throw "[MinIO] Failed to start local MinIO. Please check port 9000."
+}
 
     Write-Host "[MinIO] Started (api=http://localhost:9000, console=http://localhost:9001)" -ForegroundColor Green
 }
 
-$ScriptLogFile = Resolve-LogFilePath -DefaultName "infra" -RequestedPath $LogFile
-try {
-    Start-Transcript -Path $ScriptLogFile -Append -Force | Out-Null
-}
-catch {
-    Write-Warning "[Infra] Unable to start transcript at '$ScriptLogFile': $($_.Exception.Message)"
-}
+$ScriptLogFile = Resolve-LogFilePath -RepoRoot $RepoRoot -DefaultName "infra" -RequestedPath $LogFile
+Start-HealthOSTranscript -LogFilePath $ScriptLogFile
 
 Write-Host "[Infra] Log file: $ScriptLogFile" -ForegroundColor Cyan
-$effectiveMode = Resolve-EffectiveMode
+$effectiveMode = Resolve-EffectiveMode -Mode $Mode -LogPrefix "[Infra]"
 Write-Host "[Infra] Effective mode: $effectiveMode" -ForegroundColor Cyan
 Write-Host "[Infra] Install policy: $InstallPolicy" -ForegroundColor Cyan
 
 if ($effectiveMode -eq "docker") {
+    Invoke-DockerReadinessValidation -ScriptsRoot $PSScriptRoot -Scope infra -CheckOnly:$CheckOnly -ErrorPrefix "[Infra]"
+
     if (-not (Test-Path $ComposeFile)) {
         throw "[Infra] Compose file not found: $ComposeFile"
     }
 
+    $composeArgs = Get-ComposeArgs -ComposeFile $ComposeFile -ComposeEnvFile $ComposeEnvFile
+
     if ($CheckOnly) {
-        docker compose -f $ComposeFile ps postgres redis minio
+        docker compose @composeArgs ps postgres redis minio
         exit $LASTEXITCODE
     }
 
     Write-Host "[Infra] Starting postgres + redis + minio via Docker..." -ForegroundColor Cyan
-    docker compose -f $ComposeFile up -d postgres redis minio
+    docker compose @composeArgs up -d postgres redis minio
     if ($LASTEXITCODE -ne 0) {
         throw "[Infra] Failed to start docker infrastructure services."
     }
@@ -632,3 +551,5 @@ Write-Host "   Postgres : localhost:5432  db=healthos user=healthos"
 Write-Host "   MinIO    : localhost:9000  console=localhost:9001"
 Write-Host "   Log file : $ScriptLogFile"
 Write-Host "=======================================================" -ForegroundColor DarkGray
+
+exit 0

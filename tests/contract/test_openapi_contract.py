@@ -11,18 +11,26 @@ Or with pytest:
 import pytest
 import schemathesis
 
-if hasattr(schemathesis, "from_file"):
-    schema = schemathesis.from_file(
-        "contracts/openapi/core-api.yaml",
-        base_url="http://localhost:8000",
-    )
+if hasattr(schemathesis.openapi, "from_path"):
+    schema = schemathesis.openapi.from_path("contracts/openapi/core-api.yaml")
+elif hasattr(schemathesis, "from_file"):
+    with open("contracts/openapi/core-api.yaml", encoding="utf-8") as f:
+        schema = schemathesis.from_file(
+            f,
+            base_url="http://localhost:8000",
+        )
 else:
-    schema = schemathesis.openapi.from_file("contracts/openapi/core-api.yaml")
+    with open("contracts/openapi/core-api.yaml", encoding="utf-8") as f:
+        schema = schemathesis.openapi.from_file(f)
 
 
 @schema.parametrize()
 def test_api_matches_spec(case):
     """Each operation in OpenAPI spec must return a valid response."""
     # Skip endpoints requiring auth for now
+    security_params = getattr(case.operation.security, "_parameters", [])
+    if security_params:
+        pytest.skip("Auth-protected endpoint is skipped in anonymous contract run")
+
     response = case.call(base_url="http://localhost:8000")
     case.validate_response(response)

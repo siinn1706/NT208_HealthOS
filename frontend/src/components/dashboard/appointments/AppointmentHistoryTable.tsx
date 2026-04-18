@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Calendar,
   Stethoscope,
@@ -13,51 +14,51 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Appointment, AppointmentStatus } from "@/data/appointments";
-import { MOCK_PRESCRIPTIONS } from "@/data/appointments";
+import type { Appointment, AppointmentStatus, Prescription } from "@/types/api";
 import { PrescriptionViewerDialog } from "./PrescriptionViewerDialog";
-
-// BFF TODO: GET /api/v1/appointments
-// Trigger: page load; Request: { page: number; limit: number }
-// Response: { data: Appointment[]; meta: { total; page; per_page } }
-// Fallback: use MOCK_APPOINTMENTS from @/data/appointments
 
 interface AppointmentHistoryTableProps {
   appointments: Appointment[];
 }
 
-const STATUS_CONFIG: Record<AppointmentStatus, { icon: React.ElementType; label: string; color: string; bg: string }> = {
-  completed: {
-    icon: CheckCircle2,
-    label: "Đã khám",
-    color: "text-green-500",
-    bg: "bg-green-500/10",
-  },
-  upcoming: {
-    icon: Clock,
-    label: "Sắp tới",
-    color: "text-[#41BCE6]",
-    bg: "bg-[#41BCE6]/10",
-  },
-  cancelled: {
-    icon: XCircle,
-    label: "Đã hủy",
-    color: "text-muted-foreground",
-    bg: "bg-muted",
-  },
-};
-
-const ALL_FILTERS: { key: "all" | AppointmentStatus; label: string }[] = [
-  { key: "all", label: "Tất cả" },
-  { key: "upcoming", label: "Sắp tới" },
-  { key: "completed", label: "Đã khám" },
-  { key: "cancelled", label: "Đã hủy" },
-];
-
 export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTableProps) {
+  const t = useTranslations("dashboard.appointments");
+  const tStatus = useTranslations("dashboard.appointments.status");
+  const locale = useLocale();
   const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
   const [search, setSearch] = useState("");
-  const [openPrescriptionId, setOpenPrescriptionId] = useState<string | null>(null);
+  const [openPrescription, setOpenPrescription] = useState<Prescription | null>(null);
+
+  const STATUS_CONFIG: Record<
+    AppointmentStatus,
+    { icon: React.ElementType; labelKey: string; color: string; bg: string }
+  > = {
+    completed: {
+      icon: CheckCircle2,
+      labelKey: "completed",
+      color: "text-green-500",
+      bg: "bg-green-500/10",
+    },
+    upcoming: {
+      icon: Clock,
+      labelKey: "upcoming",
+      color: "text-[#41BCE6]",
+      bg: "bg-[#41BCE6]/10",
+    },
+    cancelled: {
+      icon: XCircle,
+      labelKey: "cancelled",
+      color: "text-muted-foreground",
+      bg: "bg-muted",
+    },
+  };
+
+  const ALL_FILTERS: { key: "all" | AppointmentStatus; labelKey: string }[] = [
+    { key: "all", labelKey: "filter.all" },
+    { key: "upcoming", labelKey: "upcoming" },
+    { key: "completed", labelKey: "completed" },
+    { key: "cancelled", labelKey: "cancelled" },
+  ];
 
   // Filter + Search
   const filtered = appointments.filter((a) => {
@@ -72,10 +73,6 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
     return matchStatus && matchSearch;
   });
 
-  const prescription = openPrescriptionId
-    ? MOCK_PRESCRIPTIONS[openPrescriptionId] ?? null
-    : null;
-
   return (
     <>
       {/* Toolbar */}
@@ -85,7 +82,7 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
             type="search"
-            placeholder="Tìm kiếm bác sĩ, chẩn đoán..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={cn(
@@ -100,7 +97,7 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
         {/* Status filter chips */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <SlidersHorizontal className="w-4 h-4 text-muted-foreground mr-1" aria-hidden />
-          {ALL_FILTERS.map(({ key, label }) => (
+          {ALL_FILTERS.map(({ key, labelKey }) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
@@ -111,7 +108,7 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
-              {label}
+              {labelKey === "filter.all" ? t(labelKey) : tStatus(labelKey as "upcoming" | "completed" | "cancelled")}
             </button>
           ))}
         </div>
@@ -124,9 +121,9 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
               <Stethoscope className="w-6 h-6 text-muted-foreground" />
             </div>
-            <p className="text-sm font-medium text-foreground">Không tìm thấy lịch khám</p>
+            <p className="text-sm font-medium text-foreground">{t("emptyTitle")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {search ? "Thử lại với từ khóa khác" : "Chưa có lịch sử khám nào"}
+              {search ? t("emptyRetry") : t("emptyList")}
             </p>
           </div>
         ) : (
@@ -135,15 +132,20 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
               const cfg = STATUS_CONFIG[appt.status];
               const StatusIcon = cfg.icon;
               const date = new Date(appt.date);
-              const dateStr = date.toLocaleDateString("vi-VN", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              });
-              const timeStr = date.toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+              const isValidDate = !Number.isNaN(date.getTime());
+              const dateStr = isValidDate
+                ? date.toLocaleDateString(locale, {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })
+                : "--";
+              const timeStr = isValidDate
+                ? date.toLocaleTimeString(locale, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "--";
 
               return (
                 <li
@@ -156,10 +158,12 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                   {/* Date column */}
                   <div className="flex-shrink-0 w-12 text-center hidden sm:block">
                     <p className="text-lg font-bold text-foreground leading-none">
-                      {date.getDate().toString().padStart(2, "0")}
+                      {isValidDate ? date.getDate().toString().padStart(2, "0") : "--"}
                     </p>
                     <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
-                      {date.toLocaleString("vi-VN", { month: "short" })} {date.getFullYear()}
+                      {isValidDate
+                        ? `${date.toLocaleString(locale, { month: "short" })} ${date.getFullYear()}`
+                        : "N/A"}
                     </p>
                   </div>
 
@@ -187,7 +191,7 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                         )}
                       >
                         <StatusIcon className="w-3 h-3" />
-                        {cfg.label}
+                        {tStatus(cfg.labelKey)}
                       </span>
                     </div>
 
@@ -205,18 +209,18 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                           {appt.notes}
                         </span>
                       )}
-                      {appt.hasPrescription && appt.prescriptionId && (
+                      {appt.hasPrescription && appt.prescription && (
                         <button
-                          onClick={() => setOpenPrescriptionId(appt.prescriptionId!)}
+                          onClick={() => setOpenPrescription(appt.prescription ?? null)}
                           className={cn(
                             "ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5",
                             "text-[11px] font-medium text-[#41BCE6] bg-[#41BCE6]/10",
                             "hover:bg-[#41BCE6]/20 transition-colors cursor-pointer"
                           )}
-                          aria-label={`Xem toa thuốc của ${appt.doctorName}`}
+                          aria-label={t("prescriptionAria", { name: appt.doctorName })}
                         >
                           <FileText className="w-3.5 h-3.5" />
-                          Xem toa thuốc
+                          {t("viewPrescription")}
                           <ChevronRight className="w-3 h-3" />
                         </button>
                       )}
@@ -230,10 +234,10 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
       </div>
 
       {/* Prescription dialog */}
-      {openPrescriptionId && (
+      {openPrescription && (
         <PrescriptionViewerDialog
-          prescription={prescription}
-          onClose={() => setOpenPrescriptionId(null)}
+          prescription={openPrescription}
+          onClose={() => setOpenPrescription(null)}
         />
       )}
     </>

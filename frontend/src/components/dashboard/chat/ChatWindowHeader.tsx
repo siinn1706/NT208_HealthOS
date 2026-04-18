@@ -9,7 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatTime } from "@/lib/format-utils";
 import {
   ArrowLeft,
   MoreVertical,
@@ -33,6 +34,7 @@ import { cn } from "@/lib/utils";
 
 interface ChatWindowHeaderProps {
   conversation: Conversation;
+  currentUserId: string | null;
   onBack?: () => void;
   onPin: () => void;
   onMute: () => void;
@@ -44,6 +46,7 @@ interface ChatWindowHeaderProps {
 
 export function ChatWindowHeader({
   conversation,
+  currentUserId,
   onBack,
   onPin,
   onMute,
@@ -53,10 +56,11 @@ export function ChatWindowHeader({
   onInfoOpen,
 }: ChatWindowHeaderProps) {
   const t = useTranslations("chat");
+  const locale = useLocale();
   const [showThemePicker, setShowThemePicker] = useState(false);
 
-  const name = getConversationName(conversation);
-  const other = getOtherParticipant(conversation);
+  const name = getConversationName(conversation, currentUserId);
+  const other = getOtherParticipant(conversation, currentUserId);
   const isAi = conversation.type === "ai";
   const isGroup = conversation.type === "group";
 
@@ -110,7 +114,7 @@ export function ChatWindowHeader({
                 {t("online")}
               </span>
             ) : other?.last_seen ? (
-              `${t("lastSeen")} ${new Date(other.last_seen).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+              `${t("lastSeen")} ${formatTime(other.last_seen, locale)}`
             ) : (
               t("offline")
             )}
@@ -138,43 +142,45 @@ export function ChatWindowHeader({
             </button>
           )}
           <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              aria-label="More options"
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
-            >
-              <MoreVertical className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuItem onClick={() => setShowThemePicker(true)} className="gap-2 cursor-pointer">
-              <Palette className="w-4 h-4" />
-              {t("changeTheme")}
-            </DropdownMenuItem>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label={t("moreOptions")}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
+              >
+                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => setShowThemePicker(true)} className="gap-2 cursor-pointer">
+                <Palette className="w-4 h-4" />
+                {t("changeTheme")}
+              </DropdownMenuItem>
 
-            {!isAi && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onPin} className="gap-2 cursor-pointer">
-                  {conversation.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                  {conversation.is_pinned ? t("unpinChat") : t("pinChat")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onMute} className="gap-2 cursor-pointer">
-                  {conversation.is_muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
-                  {conversation.is_muted ? t("unmuteChat") : t("muteChat")}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={onDelete}
-                  className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {t("deleteChat")}
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>        </div>      </div>
+              {!isAi && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onPin} className="gap-2 cursor-pointer">
+                    {conversation.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                    {conversation.is_pinned ? t("unpinChat") : t("pinChat")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onMute} className="gap-2 cursor-pointer">
+                    {conversation.is_muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                    {conversation.is_muted ? t("unmuteChat") : t("muteChat")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {t("deleteChat")}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       <ChatThemePicker
         open={showThemePicker}

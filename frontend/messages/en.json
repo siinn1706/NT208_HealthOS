@@ -23,7 +23,217 @@
     "all": "All",
     "search": "Search...",
     "sort": "Sort",
-    "submit": "Submit"
+    "submit": "Submit",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "noData": "No data available",
+    "loading": "Loading...",
+    "tryAgain": "Try Again",
+    "manualEntry": "Manual Entry",
+    "confirm": "Confirm",
+    "perDay": "{v}/day",
+    "dailyTarget": "{pct}% daily target",
+    "vitamins": "Vitamins",
+    "mealTypeLabels": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snack": "Snack"
+    },
+    "timeRange": {
+      "days7": "7 days",
+      "days30": "30 days",
+      "days90": "90 days",
+      "custom": "Custom",
+      "fromDate": "From date",
+      "toDate": "To date",
+      "apply": "Apply"
+    }
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Basic Information",
+      "subtitle": "Tell us a bit about yourself",
+      "fullName": "Full Name",
+      "fullNameRequired": "Full Name is required",
+      "dateOfBirth": "Date of Birth",
+      "dateOfBirthRequired": "Date of Birth is required",
+      "gender": "Gender",
+      "genderRequired": "Gender is required",
+      "selectGender": "Select gender",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "bloodType": "Blood Type",
+      "selectBloodType": "Select blood type"
+    },
+    "step2": {
+      "title": "Height & Weight",
+      "subtitle": "This helps us calculate your BMI",
+      "height": "Height (cm)",
+      "weight": "Weight (kg)",
+      "bmiLabel": "Your BMI",
+      "bmiPlaceholder": "Enter height and weight to calculate BMI"
+    },
+    "bmi": {
+      "underweight": "Underweight",
+      "normal": "Normal",
+      "overweight": "Overweight",
+      "obese": "Obese",
+      "advice": {
+        "underweight": "You should gain weight for better health.",
+        "normal": "You have a normal weight. Keep it up!",
+        "overweight": "You should lose weight for better health.",
+        "obese": "Consult a doctor about weight management."
+      }
+    },
+    "step3": {
+      "title": "Contact Information",
+      "subtitle": "We need this to contact you",
+      "phone": "Phone Number",
+      "address": "Address"
+    },
+    "step5": {
+      "title": "Medical Information",
+      "subtitle": "This helps us care for your health better",
+      "allergies": "Allergies",
+      "allergiesPlaceholder": "e.g. Shellfish, penicillin...",
+      "chronicConditions": "Chronic Conditions",
+      "chronicConditionsPlaceholder": "e.g. Diabetes, hypertension...",
+      "currentMedications": "Current Medications",
+      "currentMedicationsPlaceholder": "e.g. Aspirin 100mg daily...",
+      "notes": "Additional Notes",
+      "complete": "Complete Registration",
+      "completeHint": "Press \"Complete\" to save your info and start using HealthOS"
+    },
+    "emergencyContactRequired": "Please add at least 1 emergency contact",
+    "saveError": "Could not save information",
+    "saveSuccess": "Information saved successfully!",
+    "saveGenericError": "An error occurred. Please try again."
+  },
+  "errors": {
+    "unknown": "An unknown error occurred",
+    "generic": "An error occurred",
+    "networkError": "Network error. Please check your connection.",
+    "serverError": "Server error. Please try again later.",
+    "invalidEmail": "Invalid email address",
+    "invalidPhone": "Invalid phone number",
+    "required": "{field} is required",
+    "loginFailed": "Login failed",
+    "loginSuccess": "Login successful!",
+    "emailTaken": "Email already in use. Please use a different email.",
+    "genericTryAgain": "An error occurred. Please try again.",
+    "sessionExpired": "Session expired",
+    "accountNotFoundEmail": "No account found for this email address",
+    "accountNotFoundUsername": "No account found for this username",
+    "accountLocked": "Account locked. Please try again in {minutes} minutes.",
+    "invalidCredentials": "Incorrect username or password",
+    "otpLocked": "Too many invalid OTP attempts. Please wait before trying again.",
+    "otpInvalid": "Invalid OTP code",
+    "otpExpired": "OTP code has expired",
+    "passwordBreached": "This password has appeared in a data breach. Please choose a different password.",
+    "otpRequired": "OTP verification is required",
+    "otpSendFailed": "Failed to send OTP. Please try again.",
+    "accountCreateFailed": "Account creation failed. Please try again.",
+    "alerts": {
+      "heartRateHigh": "Heart rate {value} {unit} exceeds the safe threshold of {threshold} {unit}",
+      "bpSystolicHigh": "Systolic blood pressure {value} {unit} exceeds the safe threshold of {threshold} {unit}",
+      "bpDiastolicHigh": "Diastolic blood pressure {value} {unit} exceeds the safe threshold of {threshold} {unit}",
+      "calorieHigh": "Today's calorie intake {value} {unit} is above the recommended {threshold} {unit}",
+      "calorieLow": "Today's calorie intake {value} {unit} is below the recommended minimum",
+      "calorieNormal": "Calorie intake is within the healthy range",
+      "activityGood": "Great job! You've reached your activity goal today",
+      "stepsLow": "Only {value} {unit} today — try to reach {threshold} {unit}",
+      "sleepLow": "Sleep duration {value} {unit} is below the recommended {threshold} {unit}",
+      "bmiOverweight": "BMI {value} {unit} indicates overweight (threshold: {threshold} {unit})",
+      "medicationAdherenceLow": "Medication adherence {value} {unit} is below the target of {threshold} {unit}"
+    }
+  },
+  "camera": {
+    "title": "Capture or Upload Meal Photo",
+    "aiSubtitle": "AI will identify ingredients and estimate nutrition automatically",
+    "openCamera": "Open camera",
+    "capture": "Take Photo",
+    "upload": "Upload Photo",
+    "takenAlt": "Captured meal photo",
+    "deletePhoto": "Delete photo",
+    "retake": "Retake",
+    "analyzeAria": "Analyze meal with AI",
+    "analyze": "AI Analysis",
+    "analyzing": "Analyzing photo...",
+    "analyzingAlt": "Analyzing",
+    "analyzeComplete": "Analysis complete! Review and confirm results.",
+    "mealPhotoAlt": "Meal photo",
+    "aiIdentified": "AI auto-identified",
+    "ingredientsFound": "Identified Ingredients ({n})",
+    "noInfo": "No information available",
+    "aiDisclaimer": "AI may not be 100% accurate. You can edit ingredients in the next step.",
+    "confirmEdit": "Confirm & Edit",
+    "cancelCamera": "Cancel camera",
+    "capturePhoto": "Capture photo",
+    "analyzeError": "Could not analyze photo. Please try again or enter manually.",
+    "retry": "Try Again",
+    "manualEntry": "Manual Entry"
+  },
+  "quickMeal": {
+    "title": "Quick Meal Log",
+    "searchPlaceholder": "e.g. Pho bo, Fried rice...",
+    "ingredientPlaceholder": "Ingredient name",
+    "saving": "Saving...",
+    "save": "Quick Save"
+  },
+  "addMeal": {
+    "title": "Add Meal Manually",
+    "subtitle": "Enter dish name, add ingredients and grams — system will auto-calculate calories, protein, carbs, fat.",
+    "sectionGeneral": "General Information",
+    "dishNameTitle": "Dish Information",
+    "dishNameSubtitle": "Name the dish and select meal type",
+    "dishName": "Dish Name",
+    "dishNameRequired": "Dish Name is required",
+    "dishNamePlaceholder": "e.g. Pho bo tai, Grilled pork rice, Bun rieu...",
+    "mealType": "Meal Type",
+    "notesLabel": "Log feelings, food origin, or additional info",
+    "saving": "Saving...",
+    "submit": "Log to Diary"
+  },
+  "validation": {
+    "componentNameRequired": "Component name cannot be empty.",
+    "componentNameTooLong": "Component name cannot exceed 100 characters.",
+    "gramInvalid": "Invalid gram value.",
+    "gramNegative": "Gram value cannot be negative.",
+    "mealNameRequired": "Meal name is required.",
+    "mealNameTooShort": "Meal name must have at least 2 characters.",
+    "selectTime": "Please select a time.",
+    "addIngredient": "Please add at least 1 ingredient.",
+    "phoneInvalid": "Invalid phone number.",
+    "heightInvalid": "Invalid height.",
+    "heightMin": "Height must be at least 50 cm.",
+    "weightInvalid": "Invalid weight.",
+    "weightMin": "Weight must be at least 10 kg.",
+    "fullNameRequired": "Full name is required.",
+    "fullNameTooShort": "Full name must be at least 2 characters.",
+    "fullNameTooLong": "Full name cannot exceed 100 characters.",
+    "addressTooLong": "Address cannot exceed 512 characters.",
+    "ecNameRequired": "Contact name is required.",
+    "ecPhoneRequired": "Contact phone number is required.",
+    "ecRelationshipRequired": "Relationship is required."
+  },
+  "system": {
+    "noServerData": "Server returned no data for goal",
+    "dailyGoalCompleted": "Daily goal completed",
+    "shareSuccess": "Report sent to {n} recipients successfully.",
+    "sharePartial": "Sent to {sent}/{total} recipients.",
+    "shareUnknownError": "Unknown error.",
+    "shareCancelled": "Auto-send cancelled."
+  },
+  "goalDialog": {
+    "saveSuccess": "Goal updated",
+    "saveNewSuccess": "Goal saved",
+    "saveFailed": "Could not save health goal"
+  },
+  "main": {
+    "exploreMore": "Learn More",
+    "viewPlans": "View All Plans"
   },
   "footer": {
     "tagline": "Your Virtual Personal Doctor",
@@ -100,7 +310,8 @@
     "contact": {
       "title": "Start Your Health Journey Today",
       "description": "Fill in your information below and we'll reach out to support you right away."
-    }
+    },
+    "exploreMore": "Learn More"
   },
   "about": {
     "meta": {
@@ -263,6 +474,49 @@
       "loading": "Loading chart...",
       "noData": "No vitals data yet"
     },
+    "calorieChart": {
+      "title": "Calories per Day",
+      "subtitle": "Last {n} days",
+      "noData": "No information available",
+      "target": "Target: {n} kcal",
+      "tooltipTarget": "Target:",
+      "tooltipCalories": "Calories:",
+      "legend": "Calories",
+      "loading": "Loading..."
+    },
+    "nutrition": {
+      "title": "Nutrition Suggestions",
+      "subtitle": "Based on today's meal log",
+      "noData": "No information available",
+      "types": {
+        "warning": "Warning",
+        "tip": "Tip",
+        "goal": "Goal",
+        "success": "Achieved"
+      },
+      "suggestions": {
+        "nutrition-no-data": {
+          "title": "No meal data",
+          "message": "No meal data logged today for analysis."
+        },
+        "nutrition-protein-low": {
+          "title": "Low protein intake",
+          "message": "Add more protein sources to balance your diet."
+        },
+        "nutrition-calories-high": {
+          "title": "Calorie intake exceeded",
+          "message": "Today's calorie count is higher than recommended."
+        },
+        "nutrition-calories-low": {
+          "title": "Low energy intake",
+          "message": "Total calories today are low, consider adding a snack."
+        },
+        "nutrition-balanced": {
+          "title": "Balanced nutrition",
+          "message": "Protein {protein}g, carbs {carbs}g, fat {fat}g."
+        }
+      }
+    },
     "reminders": {
       "title": "Today's Schedule",
       "pageTitle": "Reminders & Schedule",
@@ -291,25 +545,394 @@
         "repeat": "Repeat",
         "note": "Note (optional)",
         "cancel": "Cancel"
-      }
+      },
+      "createFailed": "Failed to create reminder"
     },
     "health": {
-      "subtitle": "Track your vitals and connected devices",
-      "addVital": "Add Vital",
+      "title": "Vitals & Devices",
+      "subtitle": "Track your health metrics",
+      "addMetric": "Add Metric",
+      "addMetricAria": "Add a health metric",
+      "heartRate": "Heart Rate",
+      "systolic": "Systolic BP",
+      "diastolic": "Diastolic BP",
+      "temperature": "Temperature",
+      "compareTitle": "Compare by Period",
+      "compareChartTitle": "Heart Rate & Blood Pressure over Time",
+      "loading": "Loading...",
+      "noData": "No data available",
       "connectedDevices": "Connected Devices",
+      "noDeviceInfo": "No device information available",
+      "connected": "Connected",
+      "notConnected": "Not Connected",
+      "addDevice": "Add Device",
+      "addVital": "Add Vital",
       "deviceConnected": "Connected",
       "deviceDisconnected": "Disconnected",
-      "addDevice": "+ Add Device",
       "manualEntry": "Manual Entry",
-      "manualEntryDesc": "Want to log vitals without a device? Use the \"Add Vital\" button above to manually enter heart rate, blood pressure, SpO\u2082, and temperature.",
+      "manualEntryHint": "You can manually enter health metrics if you don't have a wearable device.",
+      "manualEntryDesc": "Want to log vitals without a device? Use the \"Add Vital\" button above to manually enter heart rate, blood pressure, SpO₂, and temperature.",
       "vitalLabels": {
         "heartRate": "Heart Rate",
         "systolic": "Systolic BP",
         "diastolic": "Diastolic BP",
         "temperature": "Body Temperature",
-        "spo2": "SpO\u2082"
+        "spo2": "SpO₂"
       },
       "trendVsYesterday": "vs yesterday"
+    },
+    "appointments": {
+      "status": {
+        "completed": "Completed",
+        "upcoming": "Upcoming",
+        "cancelled": "Cancelled"
+      },
+      "filter": {
+        "all": "All"
+      },
+      "searchPlaceholder": "Search doctor, diagnosis...",
+      "addNew": "Add New Appointment",
+      "addNewAria": "Add a new appointment",
+      "doctor": "Doctor",
+      "pageTitle": "Medical History",
+      "pageSubtitle": "View your appointment history and prescribed medications",
+      "hasPrescription": "Has Prescription",
+      "emptyTitle": "No appointments found",
+      "emptyRetry": "Try a different keyword",
+      "emptyList": "No appointment history yet",
+      "noData": "No information available",
+      "disclaimer": "⚕️ Note: Appointment history is for reference only. Medications must be used as directed by your doctor. Do not change dosage or stop medication on your own.",
+      "viewPrescription": "View prescription",
+      "prescriptionAria": "View prescription from {name}",
+      "facility": "Facility",
+      "prescriptionDate": "Prescription Date",
+      "close": "Close"
+    },
+    "meals": {
+      "subtitle": "Track your diet and nutrition goals",
+      "today": "Today",
+      "noMealsToday": "No meals logged today",
+      "addMeal": "Add meal",
+      "addMealPage": "Add Meal",
+      "snapPage": "Snap Meal Photo",
+      "mealTypes": {
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "snack": "Snack"
+      },
+      "saveSuccess": "Meal logged successfully!",
+      "viewDiary": "View Diary",
+      "saveFailed": "Save failed. Please try again.",
+      "diary": "Nutrition Diary",
+      "dailyTarget": "{pct}% daily target",
+      "noMealsLogged": "No meals logged",
+      "mealsLogged": "{count} meals · {cal} kcal",
+      "noMealsTodayMsg": "Log meals to track your nutrition",
+      "addFirst": "Add first meal",
+      "ingredients": "Ingredients",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "kcalUnit": "kcal"
+    },
+    "reports": {
+      "title": "Health Reports",
+      "subtitle": "Overview of your health metrics",
+      "detailedInDev": "Detailed report content is under development",
+      "kpiOverview": "KPI Overview",
+      "heartRateAvg": "Avg Heart Rate",
+      "stepsAvg": "Avg Steps",
+      "sleepAvg": "Avg Sleep",
+      "weightAvg": "Avg Weight",
+      "sleepChart": {
+        "hours": "Hours",
+        "qualityPercent": "Quality (%)"
+      },
+      "exportPdf": {
+        "warning": "Needs attention",
+        "activity": "Activity",
+        "sleep": "Sleep"
+      },
+      "shareStatus": {
+        "normal": "Normal",
+        "warning": "Needs attention",
+        "critical": "Needs intervention"
+      }
+    },
+    "achievements": {
+      "tracking": "Track your progress and streaks",
+      "activeGoals": "Active Goals",
+      "activeGoalsCount": "{n} active goals",
+      "noGoals": "No active goals yet",
+      "pageTitle": "Achievements",
+      "pageSubtitle": "Track your progress and streaks",
+      "streakHistory": "Streak History",
+      "last8Weeks": "Last 8 weeks",
+      "currentStreak": "Current Streak",
+      "longestStreak": "Longest Streak",
+      "totalScore": "Total Score",
+      "recentAchievements": "Recent Achievements",
+      "unlocked": "Unlocked",
+      "noStreakData": "No streak data yet",
+      "recentUnlocked": "Recent Achievements",
+      "tierLabels": {
+        "bronze": "Bronze",
+        "silver": "Silver",
+        "gold": "Gold",
+        "platinum": "Platinum",
+        "diamond": "Diamond"
+      },
+      "badgeCard": {
+        "points": "points",
+        "achieved": "Achieved",
+        "daysCompleted": "{n}/20 days completed",
+        "weekProgress": "Week {week}/4 — Day {day}/5 this week",
+        "notStarted": "Not started"
+      },
+      "dailyProgress": {
+        "title": "Today's Progress",
+        "goalsCompleted": "{done}/{total} goals completed",
+        "perfect": "Perfect!"
+      },
+      "milestoneLabels": {
+        "daily-goal": "Daily Goal Completed",
+        "run-100": "Run 100m daily",
+        "run-200": "Run 200m daily",
+        "run-300": "Run 300m daily",
+        "run-400": "Run 400m daily",
+        "run-500": "Run 500m daily",
+        "cycle-5": "Cycle 5km daily",
+        "cycle-10": "Cycle 10km daily",
+        "cycle-15": "Cycle 15km daily",
+        "cycle-20": "Cycle 20km daily",
+        "cycle-25": "Cycle 25km daily",
+        "swim-100": "Swim 100m daily",
+        "swim-200": "Swim 200m daily",
+        "swim-400": "Swim 400m daily",
+        "swim-500": "Swim 500m daily",
+        "swim-1000": "Swim 1km daily",
+        "steps-5000": "5,000 steps daily",
+        "steps-7000": "7,000 steps daily",
+        "steps-8000": "8,000 steps daily",
+        "steps-10000": "10,000 steps daily",
+        "steps-15000": "15,000 steps daily"
+      },
+      "leaderboard": {
+        "user": "User",
+        "score": "Score",
+        "change": "Change",
+        "you": "You",
+        "yourRank": "Your rank:"
+      },
+      "completed": "Completed",
+      "notCompleted": "Incomplete"
+    },
+    "risk": {
+      "title": "Health Risk Prediction",
+      "updateAria": "Generate new prediction",
+      "subtitle": "AI analysis based on your biometrics and behavior",
+      "scoreGood": "Good",
+      "scoreAverage": "Average",
+      "scoreNeedsWork": "Needs Improvement",
+      "monitoredConditions": "Monitored Conditions",
+      "highLevel": "High Level",
+      "moderateLevel": "Moderate",
+      "lastUpdated": "Last updated",
+      "monitoredRisks": "Monitored Risks",
+      "noInfo": "No information available",
+      "factors": "Contributing Factors",
+      "tips": "Prevention Tips ({n})",
+      "level": {
+        "low": "Low",
+        "moderate": "Moderate",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "trend": {
+        "improving": "Improving",
+        "stable": "Stable",
+        "worsening": "Worsening"
+      },
+      "priority": {
+        "high": "High Priority",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "category": {
+        "diet": "Diet",
+        "exercise": "Exercise",
+        "medication": "Medication",
+        "monitoring": "Monitoring",
+        "lifestyle": "Lifestyle"
+      },
+      "update": "Update",
+      "conditionLabels": {
+        "obesity": "Obesity",
+        "fatty_liver": "Fatty Liver Disease"
+      },
+      "conditions": {
+        "DIABETES_T2": "Type 2 Diabetes",
+        "HYPERTENSION": "Hypertension",
+        "OVERWEIGHT": "Overweight",
+        "OBESITY": "Obesity",
+        "CARDIOVASCULAR": "Cardiovascular Disease",
+        "FATTY_LIVER": "Fatty Liver Disease"
+      },
+      "factorLabels": {
+        "STEPS": "Step Count",
+        "SYSTOLIC_BP": "Systolic Blood Pressure",
+        "DIASTOLIC_BP": "Diastolic Blood Pressure",
+        "PHYSICAL_ACTIVITY": "Physical Activity",
+        "BMI": "BMI",
+        "HEART_RATE": "Heart Rate",
+        "SLEEP": "Sleep",
+        "WEIGHT": "Weight",
+        "CALORIES": "Calories",
+        "NO_DATA": "No data"
+      },
+      "tipTitles": {
+        "tip-diabetes-activity": "Increase Physical Activity",
+        "tip-hypertension-diet": "Reduce Sodium Intake",
+        "tip-obesity-goal": "Maintain Caloric Deficit"
+      },
+      "tipDescriptions": {
+        "tip-diabetes-activity": "Aim for at least 150 minutes of moderate-intensity aerobic activity per week to improve insulin sensitivity.",
+        "tip-hypertension-diet": "Limit sodium intake to less than 2,300 mg per day. Choose low-sodium foods and avoid adding salt.",
+        "tip-obesity-goal": "Create a moderate caloric deficit of 300–500 kcal per day through diet and exercise for sustainable weight loss."
+      },
+      "disclaimer": "⚕️ Results are for reference only and do not replace medical advice. Please consult a healthcare professional for proper diagnosis and treatment.",
+      "alerts": {
+        "HEART_RATE_HIGH": "Heart rate is currently {value} bpm, exceeding the recommended threshold.",
+        "BP_SYSTOLIC_HIGH": "Systolic blood pressure {value} mmHg is at a high level.",
+        "BP_DIASTOLIC_HIGH": "Diastolic blood pressure {value} mmHg is at a high level.",
+        "CALORIE_HIGH": "Calorie intake today exceeds the recommended level.",
+        "STEPS_LOW": "Step count today is below the recommended {threshold} steps.",
+        "SLEEP_LOW": "Sleep duration today is below the recommended {threshold} hours.",
+        "BMI_OVERWEIGHT": "Current BMI is in the overweight range. Consider diet and exercise adjustments.",
+        "MEDICATION_ADHERENCE_LOW": "Medication adherence is low. Please follow your prescribed schedule."
+      },
+      "insights": {
+        "CALORIE_LOW": "You are eating below your daily energy needs.",
+        "CALORIE_HIGH": "Calorie intake today is above the recommended level.",
+        "CALORIE_NORMAL": "Energy intake today is close to your target.",
+        "ACTIVITY_GOOD": "You have activity data — keep it up to improve your health."
+      },
+      "sections": {
+        "VITALS": {
+          "title": "Vital Signs",
+          "summary": "Review of your key vital sign measurements over the period."
+        },
+        "NUTRITION": {
+          "title": "Nutrition",
+          "summary": "Overview of your nutritional intake and caloric balance."
+        },
+        "ACTIVITY": {
+          "title": "Physical Activity",
+          "summary": "Summary of your physical activity and exercise patterns."
+        },
+        "SLEEP": {
+          "title": "Sleep",
+          "summary": "Analysis of your sleep duration and quality."
+        },
+        "BMI": {
+          "title": "BMI & Weight",
+          "summary": "Body mass index and weight trend assessment."
+        },
+        "MEDICATION": {
+          "title": "Medication",
+          "summary": "Medication adherence and compliance overview."
+        }
+      },
+      "trendSummary": {
+        "TREND_SUMMARY": "{metric} over {period} is {trend}, changing {change}% from the start of the period.",
+        "TREND_NO_DATA": "Insufficient data to analyze trends."
+      }
+    },
+    "goals": {
+      "title": "Goal Progress",
+      "water": "Water Intake",
+      "steps": "Daily Steps",
+      "calories": "Calorie Goal",
+      "viewAll": "View All Goals",
+      "addGoal": "Add Goal",
+      "addGoalDisabled": "Activity goals coming soon",
+      "newGoal": "Set New Goal",
+      "step1": "Choose Activity",
+      "step2": "Choose Target Level",
+      "step3": "Confirm",
+      "hint": "Maintain ≥ 5 days/week for 4 weeks to earn achievement badge.",
+      "dailyUnit": "{v}/day",
+      "setSuccess": "Goal has been set!",
+      "pointsHint": "Earn bonus points for each completed day",
+      "completedCount": "{n}/{total} goals completed",
+      "everyday": "every day",
+      "maintainReq": "Maintain requirement:",
+      "perWeek": "days/week × 4 weeks",
+      "reward": "Reward:",
+      "badgePoints": "Achievement badge + ranking points",
+      "streak": "Streak:",
+      "streakAccumulate": "Earn bonus points for each completed day",
+      "back": "Back",
+      "startNow": "Start Now",
+      "activityLabels": {
+        "running": "Running",
+        "cycling": "Cycling",
+        "swimming": "Swimming",
+        "steps": "Steps"
+      },
+      "milestoneLabels": {
+        "daily-goal": "Daily Goal Completed",
+        "run-100": "Run 100m daily",
+        "run-200": "Run 200m daily",
+        "run-300": "Run 300m daily",
+        "run-400": "Run 400m daily",
+        "run-500": "Run 500m daily",
+        "cycle-5": "Cycle 5km daily",
+        "cycle-10": "Cycle 10km daily",
+        "cycle-15": "Cycle 15km daily",
+        "cycle-20": "Cycle 20km daily",
+        "cycle-25": "Cycle 25km daily",
+        "swim-100": "Swim 100m daily",
+        "swim-200": "Swim 200m daily",
+        "swim-400": "Swim 400m daily",
+        "swim-500": "Swim 500m daily",
+        "swim-1000": "Swim 1km daily",
+        "steps-5000": "5,000 steps daily",
+        "steps-7000": "7,000 steps daily",
+        "steps-8000": "8,000 steps daily",
+        "steps-10000": "10,000 steps daily",
+        "steps-15000": "15,000 steps daily"
+      },
+      "noInfo": "No information available"
+    },
+    "services": {
+      "pageTitle": "Start Your Health Journey"
+    },
+    "devices": {
+      "title": "Connected Devices",
+      "subtitle": "Manage your wearables and health monitors",
+      "syncSuccess": "Sync successful",
+      "syncing": "Syncing...",
+      "syncFailed": "Sync failed",
+      "lastSync": "Last sync:",
+      "noSyncInfo": "No sync info",
+      "justNow": "Just now",
+      "minutesAgo": "{n} min ago",
+      "hoursAgo": "{n} hr ago",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "syncNow": "Sync now",
+      "disconnect": "Disconnect",
+      "connect": "Connect",
+      "battery": "Battery",
+      "yourDevicesSection": "Your devices ({n})",
+      "connectedSection": "Connected ({n})",
+      "availableSection": "Available ({n})",
+      "connecting": "Connecting...",
+      "tapToConnect": "Tap to connect",
+      "connectFailed": "Failed to connect",
+      "privacyNote": "Device data is encrypted and only used to improve your health experience. You can disconnect at any time."
     },
     "settingsPage": {
       "pageTitle": "Settings",
@@ -336,7 +959,13 @@
         "themeDesc": "Choose how HealthOS looks",
         "themeSystem": "System",
         "themeLight": "Light",
-        "themeDark": "Dark"
+        "themeDark": "Dark",
+        "accentColor": "Accent Color",
+        "accentColorDesc": "Personalise your app's look",
+        "saveAccent": "Save",
+        "accentSaved": "Accent color saved",
+        "accentSaveFailed": "Failed to save accent color",
+        "resetDefault": "Reset to Default"
       },
       "notifications": {
         "healthAlerts": "Health Alerts",
@@ -361,18 +990,12 @@
       "logout": "Sign Out",
       "logoutDesc": "Sign out of your account on this device"
     },
-    "goals": {
-      "title": "Goal Progress",
-      "water": "Water Intake",
-      "steps": "Daily Steps",
-      "calories": "Calorie Goal",
-      "viewAll": "View All Goals"
-    },
     "ai": {
       "title": "AI Insight",
       "subtitle": "Based on your data today",
       "askAI": "Ask AI Assistant",
-      "loading": "Analyzing your health data..."
+      "loading": "Analyzing your health data...",
+      "noInfo": "No information available"
     },
     "nav": {
       "overview": "Overview",
@@ -410,6 +1033,7 @@
       "notSpecified": "Not specified",
       "saveSuccess": "Profile updated successfully!",
       "saveError": "Save failed. Please try again.",
+      "loadError": "Could not load your profile. Please try again.",
       "addContact": "Add Contact",
       "removeContact": "Remove",
       "contactN": "Contact {n}",
@@ -467,6 +1091,48 @@
         "chronicConditions": "e.g. Type 2 diabetes, gastritis...",
         "currentMedications": "e.g. Metformin 500mg twice daily...",
         "notes": "Additional health notes..."
+      }
+    },
+    "progress": {
+      "bmiProgress": "BMI Progress",
+      "bmiChart": "BMI Chart",
+      "chartSubtitle": "BMI history over time",
+      "chartNoData": "No BMI data yet",
+      "bmiInfo": "BMI Information",
+      "classification": "Classification",
+      "achievedGoals": "{n} achieved",
+      "streakCalendar": {
+        "title": "Streak Calendar",
+        "active": "Active",
+        "rest": "Rest",
+        "currentStreak": "Current Streak",
+        "longestStreak": "Longest Streak",
+        "pastWeeks": "Last 8 weeks",
+        "days": "days",
+        "activitiesCount": "{n} activities",
+        "requirement": "Need ≥ 5 days/week × 4 weeks to earn badge"
+      },
+      "bmiLabels": {
+        "underweight": "Underweight",
+        "normal": "Normal",
+        "overweight": "Overweight",
+        "obese": "Obese"
+      },
+      "bmiLabel": "BMI Index",
+      "bmiContribution": "Ranking contribution",
+      "rankingPoints": "ranking points",
+      "targetLabel": "Target:",
+      "needToLose": "need to lose",
+      "needToGain": "need to gain",
+      "chartHighest": "Highest",
+      "chartLowest": "Lowest",
+      "chartTarget": "Target"
+    },
+    "gamification": {
+      "tabs": {
+        "goals": "Goals",
+        "achievements": "Achievements",
+        "leaderboard": "Leaderboard"
       }
     }
   },
@@ -526,7 +1192,20 @@
     "otpInvalid": "Invalid or expired OTP code.",
     "resendFailed": "Could not resend code. Please try again.",
     "sendCodeFailed": "Could not send verification code. Please try again.",
-    "resetPasswordFailed": "Failed to reset password. Please try again."
+    "resetPasswordFailed": "Failed to reset password. Please try again.",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "you123",
+    "usernameTooShort": "Username must be at least 3 characters",
+    "usernameTaken": "Username already taken",
+    "passwordRequirements": "Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special character",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "oauthErrorCoreUnreachable": "Cannot reach the Core API. Start the backend (port 8000 by default), or set CORE_API_URL in frontend/.env.local to match where the API runs.",
+    "oauthErrorServerError": "Sign-in with this provider failed. Please try again.",
+    "oauthErrorMissingCode": "OAuth response was incomplete. Please try signing in again.",
+    "oauthErrorInvalidState": "Sign-in session expired or was invalid. Please try again.",
+    "oauthErrorMissingVerifier": "OAuth security data was missing. Please try signing in again.",
+    "oauthErrorNonceMismatch": "OAuth security check failed. Please try signing in again.",
+    "oauthErrorUnverifiedEmail": "This account's email is not verified with the provider."
   },
   "chat": {
     "title": "Messages",
@@ -548,6 +1227,9 @@
     "typing": "is typing...",
     "edited": "Edited",
     "recalled": "Message was recalled",
+    "deletedMessage": "Deleted message",
+    "imageMessage": "Image",
+    "fileMessage": "File",
     "pinned": "Pinned",
     "pinChat": "Pin conversation",
     "unpinChat": "Unpin conversation",
@@ -574,6 +1256,7 @@
     "cancelReply": "Cancel reply",
     "editingMessage": "Editing message",
     "cancelEdit": "Cancel",
+    "scrollToBottom": "New messages",
     "saveEdit": "Save",
     "changeTheme": "Change theme",
     "themeGradients": "Background color",
@@ -613,7 +1296,24 @@
     "noSearchResults": "No messages found",
     "attachFile": "Attach file",
     "attachImage": "Attach image",
-    "uploadComingSoon": "Upload feature coming soon"
+    "uploadComingSoon": "Upload feature coming soon",
+    "typingAria": "User is typing",
+    "healthQuestion": "Ask about health",
+    "aiIntegrationNote": "I've received your message! AI feature is being integrated with AI Worker.",
+    "unknownUser": "Unknown",
+    "messageActions": "Message actions",
+    "moreActions": "More actions",
+    "moreOptions": "More options",
+    "jumpToDateAria": "Jump to {label}",
+    "newMessagesBadge": "{count} new messages",
+    "dateJumpTitle": "Jump to date",
+    "dateJumpTodaySubtitle": "Go to the latest message",
+    "dateJumpMonthCount": "{count} messages",
+    "dateJumpNoMessages": "No messages yet",
+    "dateJumpNotFound": "No messages found for that date yet",
+    "pinnedMore": "+{count} more",
+    "collapsePinned": "Collapse pinned messages",
+    "expandPinned": "Expand pinned messages"
   },
   "reports": {
     "title": "Health Report",
@@ -675,6 +1375,9 @@
         "warning": "Warning",
         "info": "Info"
       }
+    },
+    "export": {
+      "createdAt": "Created at:"
     }
   },
   "trends": {
@@ -746,7 +1449,47 @@
       "saved": "Saved!"
     },
     "noEmergencyContacts": "No emergency contacts added. Add them in your Profile.",
+    "alertsWord": "alerts",
     "goToProfile": "Go to Profile"
+  },
+  "progress": {
+    "setGoal": "Set BMI Goal",
+    "editGoal": "Edit Goal",
+    "deadline": "Deadline",
+    "daysRemaining": "X days left",
+    "overdue": "Overdue",
+    "height": "Height",
+    "targetHeight": "Target Height",
+    "currentWeight": "Current Weight",
+    "targetWeight": "Target Weight",
+    "targetBmi": "Target BMI",
+    "bmi": "BMI",
+    "bmiAutoHint": "BMI is auto-calculated from target weight and height",
+    "save": "Save",
+    "cancel": "Cancel",
+    "currentBmi": "Current BMI",
+    "bmiScore": "BMI Score",
+    "recWeight": "Suggested weight: {weight} kg (BMI=22)",
+    "recHeight": "Suggested height: {height} cm (BMI=22)",
+    "legendCurrent": "Current",
+    "legendTarget": "Target",
+    "cardWeight": "Weight",
+    "cardHeight": "Height",
+    "bmiProgress": "BMI Progress",
+    "bmiChart": "BMI Chart",
+    "chartSubtitle": "BMI history over time",
+    "chartNoData": "No BMI data yet",
+    "bmiInfo": "BMI Information",
+    "classification": "Classification",
+    "achievedGoals": "{n} achieved",
+    "pageTitle": "BMI Progress",
+    "pageSubtitle": "Track your BMI and weight metrics",
+    "bmiCategory": {
+      "underweight": "Underweight",
+      "normal": "Normal",
+      "overweight": "Overweight",
+      "obese": "Obese"
+    }
   },
   "comingSoon": {
     "title": "Feature Under Development",

@@ -277,6 +277,17 @@ function buildMedicationOption(section: ReportSection): EChartsOption {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export function DetailChart({ section, height = 340 }: DetailChartProps) {
+  if (!section.data?.length) {
+    return (
+      <div
+        className="flex items-center justify-center rounded-xl border border-border bg-card text-sm text-muted-foreground"
+        style={{ height }}
+      >
+        No data available
+      </div>
+    );
+  }
+
   const option = useMemo<EChartsOption>(() => {
     switch (section.category) {
       case "vitals":     return buildVitalsOption(section);

@@ -6,52 +6,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Import-Module (Join-Path $PSScriptRoot "healthos-common.psm1") -Force
+
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $BackendDir = Join-Path $RepoRoot "backend"
 $VenvDir = Join-Path $BackendDir ".venv"
 $PythonExe = Join-Path $VenvDir "Scripts\python.exe"
 
-function Resolve-LogFilePath {
-    param(
-        [string]$DefaultName,
-        [string]$RequestedPath
-    )
-
-    $logsDir = Join-Path $RepoRoot "infra\logs"
-    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
-
-    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
-        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
-        return Join-Path $logsDir ("{0}_{1}.log" -f $DefaultName, $timestamp)
-    }
-
-    $resolved = if ([System.IO.Path]::IsPathRooted($RequestedPath)) {
-        $RequestedPath
-    }
-    else {
-        Join-Path $RepoRoot $RequestedPath
-    }
-
-    $parent = Split-Path -Parent $resolved
-    if ($parent -and -not (Test-Path $parent)) {
-        New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    }
-
-    return $resolved
-}
-
-function Test-CommandAvailable {
-    param([string]$CommandName)
-    return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
-}
-
-$ScriptLogFile = Resolve-LogFilePath -DefaultName "be" -RequestedPath $LogFile
-try {
-    Start-Transcript -Path $ScriptLogFile -Append -Force | Out-Null
-}
-catch {
-    Write-Warning "[BE] Unable to start transcript at '$ScriptLogFile': $($_.Exception.Message)"
-}
+$ScriptLogFile = Resolve-LogFilePath -RepoRoot $RepoRoot -DefaultName "be" -RequestedPath $LogFile
+Start-HealthOSTranscript -LogFilePath $ScriptLogFile
 
 Write-Host "[BE] Log file: $ScriptLogFile" -ForegroundColor DarkCyan
 
@@ -87,6 +50,17 @@ if (-not (Test-Path $PythonExe)) {
     throw "[BE] Python executable not found at $PythonExe"
 }
 
+$ActivateScript = Join-Path $VenvDir "Scripts\Activate.ps1"
+if (Test-Path $ActivateScript) {
+    Write-Host "[BE] Activating virtual environment..." -ForegroundColor Cyan
+    & $ActivateScript
+}
+
+$pyVer = & python --version 2>&1
+if ($pyVer -notmatch "3\.12") {
+    Write-Warning "[BE] Expected Python 3.12 (see .python-version). Got: $pyVer"
+}
+
 if (-not $SkipInstall) {
     Write-Host "[BE] Installing dependencies (deterministic mode)..." -ForegroundColor Cyan
     & $PythonExe -m pip install --upgrade pip setuptools wheel
@@ -104,3 +78,4 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "[BE] Starting FastAPI on http://localhost:8000 ..." -ForegroundColor Green
 & $PythonExe -m uvicorn app.main:app --reload
+exit $LASTEXITCODE

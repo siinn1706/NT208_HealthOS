@@ -3,11 +3,14 @@ from __future__ import annotations
 import datetime
 import uuid
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+if TYPE_CHECKING:
+    from app.models.health_goal import HealthGoal  # noqa: F401
 
 
 class Base(DeclarativeBase):
@@ -51,6 +54,36 @@ class WearableProviderEnum(str, Enum):
     FITBIT = "fitbit"
 
 
+class AppointmentStatusEnum(str, Enum):
+    COMPLETED = "completed"
+    UPCOMING = "upcoming"
+    CANCELLED = "cancelled"
+
+
+class ReminderTypeEnum(str, Enum):
+    MEDICINE = "medicine"
+    APPOINTMENT = "appointment"
+    EXERCISE = "exercise"
+
+
+class ReminderRepeatEnum(str, Enum):
+    ONCE = "once"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+
+
+class OnboardingStatusEnum(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    """Persist Enum `.value` to PostgreSQL enum columns (not Enum member names)."""
+    return [member.value for member in enum_cls]
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -60,8 +93,22 @@ class User(Base):
         default=uuid.uuid4,
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    onboarding_status: Mapped[str] = mapped_column(
+        String(20),
+        default=OnboardingStatusEnum.PENDING.value,
+        nullable=False,
+    )
+    onboarding_completed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    email_verified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -72,6 +119,32 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    # Account lockout fields
+    failed_login_attempts: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+    locked_until: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # MFA fields
+    mfa_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    mfa_secret: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    mfa_recovery_codes: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
     )
 
     profile: Mapped[UserProfile | None] = relationship(
@@ -93,6 +166,22 @@ class User(Base):
     notifications: Mapped[list[Notification]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
+    )
+    appointments: Mapped[list[Appointment]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    reminders: Mapped[list[Reminder]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    health_goal: Mapped["HealthGoal | None"] = relationship(
+        "HealthGoal",
+        back_populates="user",
+        uselist=False,
+    )
+    preferences: Mapped["UserPreference | None"] = relationship(
+        "UserPreference", back_populates="user", uselist=False,
     )
 
 
@@ -153,7 +242,7 @@ class UserProfile(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     date_of_birth: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[GenderEnum | None] = mapped_column(
-        SAEnum(GenderEnum, name="gender_enum"),
+        SAEnum(GenderEnum, name="gender_enum", values_callable=_enum_values),
         nullable=True,
     )
     blood_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -191,7 +280,7 @@ class Meal(Base):
     image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[MealStatusEnum] = mapped_column(
-        SAEnum(MealStatusEnum, name="meal_status_enum"),
+        SAEnum(MealStatusEnum, name="meal_status_enum", values_callable=_enum_values),
         nullable=False,
     )
     nutrition_result: Mapped[dict[str, Any] | None] = mapped_column(
@@ -231,7 +320,7 @@ class HealthMetric(Base):
         nullable=False,
     )
     metric_type: Mapped[MetricTypeEnum] = mapped_column(
-        SAEnum(MetricTypeEnum, name="metric_type_enum"),
+        SAEnum(MetricTypeEnum, name="metric_type_enum", values_callable=_enum_values),
         nullable=False,
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
@@ -241,7 +330,7 @@ class HealthMetric(Base):
         nullable=False,
     )
     source: Mapped[WearableSourceEnum] = mapped_column(
-        SAEnum(WearableSourceEnum, name="wearable_source_enum"),
+        SAEnum(WearableSourceEnum, name="wearable_source_enum", values_callable=_enum_values),
         nullable=False,
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
@@ -267,7 +356,7 @@ class ConnectedDevice(Base):
         nullable=False,
     )
     provider: Mapped[WearableProviderEnum] = mapped_column(
-        SAEnum(WearableProviderEnum, name="wearable_provider_enum"),
+        SAEnum(WearableProviderEnum, name="wearable_provider_enum", values_callable=_enum_values),
         nullable=False,
     )
     connected_at: Mapped[datetime.datetime] = mapped_column(
@@ -312,6 +401,109 @@ class Notification(Base):
     user: Mapped[User] = relationship(back_populates="notifications")
 
 
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    appointment_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    doctor_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    specialty: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    clinic: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    diagnosis: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[AppointmentStatusEnum] = mapped_column(
+        SAEnum(
+            AppointmentStatusEnum,
+            name="appointment_status_enum",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        default=AppointmentStatusEnum.UPCOMING,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prescription: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="appointments")
+
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    type: Mapped[ReminderTypeEnum] = mapped_column(
+        SAEnum(
+            ReminderTypeEnum,
+            name="reminder_type_enum",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    remind_time: Mapped[str] = mapped_column(String(16), nullable=False)
+    repeat: Mapped[ReminderRepeatEnum] = mapped_column(
+        SAEnum(
+            ReminderRepeatEnum,
+            name="reminder_repeat_enum",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        default=ReminderRepeatEnum.ONCE,
+    )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    done: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="reminders")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CHAT MODELS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -339,7 +531,7 @@ class Conversation(Base):
         default=uuid.uuid4,
     )
     type: Mapped[ConversationTypeEnum] = mapped_column(
-        SAEnum(ConversationTypeEnum, name="conversation_type_enum"),
+        SAEnum(ConversationTypeEnum, name="conversation_type_enum", values_callable=_enum_values),
         nullable=False,
         default=ConversationTypeEnum.DIRECT,
     )
@@ -460,7 +652,11 @@ class Message(Base):
     client_message_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     content_type: Mapped[MessageContentTypeEnum] = mapped_column(
-        SAEnum(MessageContentTypeEnum, name="message_content_type_enum"),
+        SAEnum(
+            MessageContentTypeEnum,
+            name="message_content_type_enum",
+            values_callable=_enum_values,
+        ),
         nullable=False,
         default=MessageContentTypeEnum.TEXT,
     )
@@ -619,3 +815,24 @@ class PinnedMessage(Base):
     conversation: Mapped[Conversation] = relationship(back_populates="pinned_messages")
     message: Mapped[Message] = relationship()
     pinner: Mapped[User] = relationship(foreign_keys=[pinned_by])
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True, nullable=False,
+    )
+    theme_mode: Mapped[str] = mapped_column(String(10), default="system", nullable=False)
+    accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    appearance: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=dict, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
+    )
+    user: Mapped["User"] = relationship(back_populates="preferences")

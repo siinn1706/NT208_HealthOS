@@ -1,0 +1,56 @@
+- generic [ref=e1]:
+  - generic [ref=e64]:
+    - generic [ref=e66]:
+      - generic [ref=e68]:
+        - generic [ref=e69]: "1"
+        - generic [ref=e70]: Cơ bản
+      - generic [ref=e73]:
+        - generic [ref=e74]: "2"
+        - generic [ref=e75]: Sức khỏe
+      - generic [ref=e78]:
+        - generic [ref=e79]: "3"
+        - generic [ref=e80]: Liên hệ
+      - generic [ref=e83]:
+        - generic [ref=e84]: "4"
+        - generic [ref=e85]: Khẩn cấp
+      - generic [ref=e88]:
+        - generic [ref=e89]: "5"
+        - generic [ref=e90]: Y tế
+    - generic [ref=e92]:
+      - generic [ref=e93]:
+        - heading "Basic Information" [level=2] [ref=e94]
+        - paragraph [ref=e95]: Tell us a bit about yourself
+      - generic [ref=e96]:
+        - generic [ref=e97]:
+          - text: Full Name
+          - generic [ref=e98]: "*"
+        - textbox "Full Name *" [ref=e99]:
+          - /placeholder: Full Name
+          - text: Admin Test
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - text: Date of Birth
+          - generic [ref=e102]: "*"
+        - textbox "Date of Birth *" [ref=e103]: 2000-01-01
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - generic [ref=e106]:
+            - text: Gender
+            - generic [ref=e107]: "*"
+          - combobox "Gender *" [active] [ref=e108]:
+            - generic: Male
+            - img
+        - generic [ref=e109]:
+          - generic [ref=e110]: Blood Type
+          - combobox "Blood Type" [ref=e111]:
+            - generic: Select blood type
+            - img
+    - generic [ref=e112]:
+      - button "Quay lại" [disabled]
+      - button "Tiếp theo" [ref=e113]:
+        - text: Tiếp theo
+        - img
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e114] [cursor=pointer]:
+    - img [ref=e115]
+  - alert [ref=e62]

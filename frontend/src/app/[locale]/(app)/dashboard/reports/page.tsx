@@ -1,68 +1,120 @@
-import { getTranslations } from "next-intl/server";
-import { Suspense } from "react";
+"use client";
+
+import { useState, useTransition, useEffect } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { getUnitLabel } from "@/lib/format-utils";
 import { FileBarChart2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-
-import { getHealthReport } from "@/lib/reports-data";
-import { ReportCategoryGrid } from "@/components/dashboard/reports/ReportCategoryGrid";
-import { RecentReportsList } from "@/components/dashboard/reports/RecentReportsList";
-import { ReportPeriodSelector } from "@/components/dashboard/reports/ReportPeriodSelector";
-import { ReportHubWrapper } from "@/components/dashboard/reports/ReportHubWrapper";
+import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
+import { KpiDonutChart } from "@/components/charts/KpiDonutChart";
 import type { ReportPeriod } from "@/types/api";
-import { getProfileData } from "@/lib/profile-data";
 
-interface ReportsPageProps {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ period?: string }>;
-}
-
-function GridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-48 rounded-xl" />
-      ))}
-    </div>
+async function fetchAggregatedKpi(metric: string, period: ReportPeriod) {
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+  const res = await fetch(
+    `/api/v1/analytics/aggregated?metric_type=${metric}&period=daily&date_from=${getDateFrom(days)}&date_to=${getDateTo()}`,
+    { credentials: "include" }
   );
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json?.data ?? [];
 }
 
-function ListSkeleton() {
+function getDateFrom(days: number): string {
+  return new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+}
+
+function getDateTo(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+interface KpiData {
+  heartRate: { avg: number; target: number };
+  steps: { avg: number; target: number };
+  sleep: { avg: number; target: number };
+  weight: { avg: number; target: number };
+}
+
+function KpiCard({
+  label,
+  value,
+  unit,
+  target,
+  color,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  target: number;
+  color: string;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-5 py-3 border-b border-border">
-        <Skeleton className="h-4 w-32" />
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col items-center gap-2">
+      <KpiDonutChart value={value} target={target} color={color} size={80} />
+      <div className="text-center">
+        <p className="text-sm font-semibold text-foreground">
+          {value.toFixed(0)} <span className="text-xs font-normal text-muted-foreground">{unit}</span>
+        </p>
+        <p className="text-xs text-muted-foreground">{label}</p>
       </div>
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="px-5 py-3 flex items-center gap-3">
-          <Skeleton className="h-8 w-8 rounded-lg" />
-          <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-3.5 w-40" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
 
-export default async function ReportsPage(props: ReportsPageProps) {
-  const params = await props.params;
-  const searchParams = await props.searchParams;
-  const { locale } = params;
+export default function ReportsPage() {
+  const t = useTranslations("dashboard.reports");
+  const locale = useLocale();
+  const [period, setPeriod] = useState<ReportPeriod>("7d");
 
-  const t = await getTranslations("reports");
+  const KPI_CONFIGS = [
+    { key: "heartRate" as const, label: t("heartRateAvg"), unit: "bpm",                            target: 80,   color: "#EF4444" },
+    { key: "steps"    as const, label: t("stepsAvg"),    unit: getUnitLabel("steps", locale),   target: 8000, color: "#41BCE6" },
+    { key: "sleep"    as const, label: t("sleepAvg"),    unit: getUnitLabel("hours", locale),   target: 8,    color: "#A78BFA" },
+    { key: "weight"   as const, label: t("weightAvg"),   unit: "kg",                             target: 70,   color: "#16A34A" },
+  ] as const;
+  const [kpiData, setKpiData] = useState<KpiData | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const period: ReportPeriod = (["7d", "30d", "90d"].includes(searchParams.period ?? "")
-    ? searchParams.period
-    : "7d") as ReportPeriod;
+  const loadKpis = (p: ReportPeriod) => {
+    startTransition(async () => {
+      const [hrData, stepsData, sleepData, weightData] = await Promise.all([
+        fetchAggregatedKpi("heart_rate", p),
+        fetchAggregatedKpi("steps", p),
+        fetchAggregatedKpi("sleep_minutes", p),
+        fetchAggregatedKpi("weight_kg", p),
+      ]);
 
-  // Parallel data fetch
-  const [report, profile] = await Promise.all([
-    getHealthReport(period),
-    getProfileData(),
-  ]);
+      const avg = (arr: Array<{ avg_value?: number }>) => {
+        const vals = arr.filter((a) => typeof a.avg_value === "number").map((a) => a.avg_value!);
+        if (vals.length === 0) return 0;
+        return vals.reduce((a, b) => a + b, 0) / vals.length;
+      };
 
-  const emergencyContacts = profile?.emergency_contacts ?? [];
+      const hrAvg = avg(Array.isArray(hrData) ? hrData : []);
+      const stepsAvg = avg(Array.isArray(stepsData) ? stepsData : []);
+      // sleep is in minutes, convert to hours
+      const sleepAvg = avg(Array.isArray(sleepData) ? sleepData : []) / 60;
+      const weightAvg = avg(Array.isArray(weightData) ? weightData : []);
+
+      setKpiData({
+        heartRate: { avg: hrAvg, target: 80 },
+        steps: { avg: stepsAvg, target: 8000 },
+        sleep: { avg: sleepAvg, target: 8 },
+        weight: { avg: weightAvg, target: 70 },
+      });
+    });
+  };
+
+  // Initial load — must be useEffect, NOT useState, to avoid calling startTransition during render
+  useEffect(() => {
+    loadKpis("7d");
+  }, []);
+
+  const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
+    if (newPeriod === "custom") return;
+    setPeriod(newPeriod);
+    loadKpis(newPeriod);
+  };
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-5">
@@ -70,41 +122,43 @@ export default async function ReportsPage(props: ReportsPageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <FileBarChart2 className="h-5 w-5 text-primary" aria-hidden />
+            <FileBarChart2 className="h-5 w-5 text-muted-foreground" aria-hidden />
             <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
         </div>
-
-        {/* Period selector */}
-        <Suspense fallback={<Skeleton className="h-9 w-48" />}>
-          <ReportPeriodSelector value={period} />
-        </Suspense>
+        <TimeRangeSelector value={period} onChange={handlePeriodChange} />
       </div>
 
-      {/* ── Client wrapper: auto-share banner + quick actions + dialogs ── */}
-      <ReportHubWrapper
-        report={report}
-        emergencyContacts={emergencyContacts}
-        locale={locale}
-      />
-
-      {/* ── Category cards grid ── */}
+      {/* ── KPI Summary Charts ── */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3">Tổng quan theo danh mục</h2>
-        <Suspense fallback={<GridSkeleton />}>
-          <ReportCategoryGrid
-            sections={report.sections}
-            locale={locale}
-            period={period}
-          />
-        </Suspense>
+        <h2 className="text-sm font-semibold text-foreground mb-3">{t("kpiOverview")}</h2>
+        {isPending && !kpiData ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-36 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {KPI_CONFIGS.map((cfg) => (
+              <KpiCard
+                key={cfg.key}
+                label={cfg.label}
+                value={kpiData ? kpiData[cfg.key].avg : 0}
+                unit={cfg.unit}
+                target={cfg.target}
+                color={cfg.color}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Recent reports ── */}
-      <Suspense fallback={<ListSkeleton />}>
-        <RecentReportsList locale={locale} />
-      </Suspense>
+      {/* ── Placeholder for existing report content ── */}
+      <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+        {t("detailedInDev")}
+      </div>
     </div>
   );
 }

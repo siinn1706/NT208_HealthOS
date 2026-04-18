@@ -1,25 +1,27 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useMessages, useTypingState } from "@/hooks/useChat";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
 import { PinnedMessages } from "./PinnedMessages";
-import { MessageList } from "./MessageList";
+import { MessageList, type MessageListHandle } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ConversationInfoPanel } from "./ConversationInfoPanel";
 import { ForwardMessageDialog } from "./ForwardMessageDialog";
 import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
-import { CURRENT_USER_ID } from "@/data/chat";
 import type { Conversation, Message } from "@/types/api";
+import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
 
 interface ChatWindowProps {
   conversation: Conversation;
+  currentUserId: string | null;
   conversations?: Conversation[];
   onBack?: () => void;
   onPin: () => void;
@@ -28,10 +30,12 @@ interface ChatWindowProps {
   onThemeChange: (themeId: string | null) => void;
   onMessageSent?: (msg: Message) => void;
   onIncomingMessage?: (raw: unknown) => void;
+  onConversationUpdate?: (raw: unknown) => void;
 }
 
 export function ChatWindow({
   conversation,
+  currentUserId,
   conversations = EMPTY_CONVERSATIONS,
   onBack,
   onPin,
@@ -40,11 +44,15 @@ export function ChatWindow({
   onThemeChange,
   onMessageSent,
   onIncomingMessage,
+  onConversationUpdate,
 }: ChatWindowProps) {
+  const t = useTranslations("chat");
   const {
     messages,
     isLoading: isLoadingMessages,
     isTyping,
+    hasMore,
+    loadMore,
     sendMessage,
     editMessage,
     recallMessage,
@@ -53,14 +61,16 @@ export function ChatWindow({
     pinMessage,
     simulateAIReply,
     upsertMessage,
+    setPinnedState,
     setRemoteTyping,
-  } = useMessages(conversation.id);
+  } = useMessages(conversation.id, currentUserId, { selfReactionLabel: t("you") });
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
+  const messageListRef = useRef<MessageListHandle>(null);
 
   const convId = conversation.id;
   const wsEnabled = conversation.type !== "ai";
@@ -77,10 +87,18 @@ export function ChatWindow({
       frame.event === "msg:delete" ||
       frame.event === "chat.message.recalled" ||
       frame.event === "msg:react" ||
-      frame.event === "chat.message.reacted";
+      frame.event === "chat.message.reacted" ||
+      frame.event === "msg:pinned" ||
+      frame.event === "chat.message.pinned" ||
+      frame.event === "msg:unpinned" ||
+      frame.event === "chat.message.unpinned" ||
+      frame.event === "msg:read" ||
+      frame.event === "chat.message.read";
 
     if (isMessageEvent && payloadConvId && payloadConvId !== convId) {
-      onIncomingMessage?.(payload);
+      if (frame.event === "msg:new" || frame.event === "chat.message.sent") {
+        onIncomingMessage?.(payload);
+      }
       return;
     }
 
@@ -104,14 +122,35 @@ export function ChatWindow({
       return;
     }
 
+    if (frame.event === "msg:pinned" || frame.event === "chat.message.pinned") {
+      const msgId = typeof payload.message_id === "string" ? payload.message_id : null;
+      if (msgId) setPinnedState(msgId, true);
+      return;
+    }
+
+    if (frame.event === "msg:unpinned" || frame.event === "chat.message.unpinned") {
+      const msgId = typeof payload.message_id === "string" ? payload.message_id : null;
+      if (msgId) setPinnedState(msgId, false);
+      return;
+    }
+
+    if (frame.event === "msg:read" || frame.event === "chat.message.read") {
+      // No-op: read receipts don't require visual message state changes currently
+      return;
+    }
+
     if (frame.event === "typing" || frame.event === "chat.typing") {
       if (payloadConvId && payloadConvId !== convId) return;
       const senderId = typeof payload.user_id === "string" ? payload.user_id : null;
-      if (!senderId || senderId === CURRENT_USER_ID) return;
+      if (!senderId || senderId === currentUserId) return;
       const typing = Boolean(payload.is_typing);
       setRemoteTyping(typing);
     }
-  }, [convId, upsertMessage, setRemoteTyping, onIncomingMessage]);
+
+    if (frame.event === "conversation.updated") {
+      onConversationUpdate?.(payload);
+    }
+  }, [convId, upsertMessage, setPinnedState, setRemoteTyping, onIncomingMessage, onConversationUpdate, currentUserId]);
 
   const { sendEvent, isConnected } = useChatWs({
     onEvent: handleWsEvent,
@@ -140,15 +179,31 @@ export function ChatWindow({
         editMessage(convId, editingMessage.id, content);
         setEditingMessage(null);
       } else {
-        const sent = sendMessage(convId, content, replyTo?.id, onMessageSent);
-        void sent;
+        void sendMessage(convId, content, replyTo?.id, onMessageSent).catch((error: unknown) => {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Cannot send message right now. Please try again.";
+          toast.error(message);
+        });
         setReplyTo(null);
+        messageListRef.current?.scrollToBottom();
         if (conversation.type === "ai") {
-          simulateAIReply(convId);
+          simulateAIReply(convId, t("aiIntegrationNote"));
         }
       }
     },
-    [editingMessage, replyTo, conversation.type, convId, sendMessage, editMessage, simulateAIReply, onMessageSent]
+    [
+      editingMessage,
+      replyTo,
+      conversation.type,
+      convId,
+      sendMessage,
+      editMessage,
+      simulateAIReply,
+      onMessageSent,
+      t,
+    ]
   );
 
   const handleReply = useCallback((msg: Message) => {
@@ -164,6 +219,21 @@ export function ChatWindow({
   const handleCancelReply = useCallback(() => setReplyTo(null), []);
   const handleCancelEdit = useCallback(() => setEditingMessage(null), []);
 
+  // Keyboard shortcut: Escape cancels reply/edit mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (editingMessage) {
+          handleCancelEdit();
+        } else if (replyTo) {
+          handleCancelReply();
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editingMessage, replyTo, handleCancelEdit, handleCancelReply]);
+
   // Bind conversationId so MessageList/PinnedMessages get simple (msgId) callbacks
   const handleRecall = useCallback((msgId: string) => recallMessage(convId, msgId), [convId, recallMessage]);
   const handleDelete = useCallback((msgId: string) => deleteMessage(convId, msgId), [convId, deleteMessage]);
@@ -171,8 +241,7 @@ export function ChatWindow({
   const handleReact = useCallback((msgId: string, emoji: string) => reactToMessage(convId, msgId, emoji), [convId, reactToMessage]);
 
   const handleJump = useCallback((msgId: string) => {
-    const el = document.getElementById(`msg-${msgId}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    messageListRef.current?.jumpToMessage(msgId);
   }, []);
 
   const handleForward = useCallback((msg: Message) => {
@@ -186,7 +255,18 @@ export function ChatWindow({
     [sendMessage]
   );
 
-  const pinnedMessages = useMemo(() => messages.filter((m) => m.is_pinned), [messages]);
+  const pinnedMessages = useMemo(
+    () => messages.filter((m) => m.is_pinned && !m.is_recalled),
+    [messages]
+  );
+  const participantNameById = useMemo(
+    () =>
+      conversation.participants.reduce<Record<string, string>>((acc, participant) => {
+        acc[participant.user_id] = participant.display_name;
+        return acc;
+      }, {}),
+    [conversation.participants]
+  );
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
@@ -195,6 +275,7 @@ export function ChatWindow({
       <div className="relative z-10 flex flex-col h-full">
         <ChatWindowHeader
           conversation={conversation}
+          currentUserId={currentUserId}
           onBack={onBack}
           onPin={onPin}
           onMute={onMute}
@@ -214,7 +295,12 @@ export function ChatWindow({
         )}
 
         {pinnedMessages.length > 0 && (
-          <PinnedMessages messages={pinnedMessages} onJump={handleJump} />
+          <PinnedMessages
+            messages={pinnedMessages}
+            currentUserId={currentUserId}
+            participantNameById={participantNameById}
+            onJump={handleJump}
+          />
         )}
 
         {isLoadingMessages ? (
@@ -234,8 +320,14 @@ export function ChatWindow({
           </div>
         ) : (
           <MessageList
+            ref={messageListRef}
+            conversationId={conversation.id}
             messages={messages}
+            currentUserId={currentUserId}
+            participantNameById={participantNameById}
             isTyping={isTyping}
+            hasMore={hasMore}
+            loadMore={loadMore}
             onReply={handleReply}
             onEdit={handleEdit}
             onRecall={handleRecall}
@@ -243,6 +335,7 @@ export function ChatWindow({
             onReact={handleReact}
             onPin={handlePin}
             onForward={handleForward}
+            onJumpToReply={handleJump}
           />
         )}
 
@@ -253,6 +346,7 @@ export function ChatWindow({
 
         <MessageInput
           replyTo={replyTo}
+          currentUserId={currentUserId}
           editingMessage={editingMessage}
           onSend={handleSend}
           onCancelReply={handleCancelReply}
@@ -268,6 +362,7 @@ export function ChatWindow({
           open={showInfo}
           onOpenChange={setShowInfo}
           conversation={conversation}
+          currentUserId={currentUserId}
           messages={messages}
         />
       )}

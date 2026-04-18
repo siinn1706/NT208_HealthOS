@@ -61,6 +61,7 @@ function StepIndicator({ current }: { current: Step }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function ForgotPasswordForm() {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("email");
@@ -97,18 +98,12 @@ export function ForgotPasswordForm() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const errorCode = data?.error?.code;
-        if (errorCode === "EMAIL_NOT_FOUND") {
-          // Email not registered — redirect to signup
-          router.push("/register");
-          return;
-        }
         setError(data?.error?.message || t("sendCodeFailed"));
         return;
       }
       setStep("otp");
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +128,7 @@ export function ForgotPasswordForm() {
       }
       setStep("reset");
     } catch {
-      setError("Mã xác minh không hợp lệ. Vui lòng thử lại.");
+      setError(tErrors("otpInvalid"));
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +151,7 @@ export function ForgotPasswordForm() {
       }
       setOtp("");
     } catch {
-      setError("Không thể gửi lại mã. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsResending(false);
     }
@@ -165,10 +160,17 @@ export function ForgotPasswordForm() {
   // ─── Step 3: Reset password ──────────────────────────────────────────────────
   async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (newPassword !== confirmNewPassword) {
-      setError(t("passwordMismatch"));
+
+    if (newPassword.length < 8) {
+      setError(t("passwordMinLength"));
       return;
     }
+
+    if (newPassword !== confirmNewPassword) {
+      setError(t("passwordMismatch")); 
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
 
@@ -183,13 +185,11 @@ export function ForgotPasswordForm() {
         setError(data?.error?.message || t("resetPasswordFailed"));
         return;
       }
-      if (data?.data?.access_token) {
-        localStorage.setItem("healthos_token", data.data.access_token);
-      }
+      // BFF sets the httpOnly cookie — do NOT store token in localStorage.
       setSuccess(t("resetPasswordSuccess"));
       setTimeout(() => router.push("/login"), 2000);
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -444,6 +444,9 @@ export function ForgotPasswordForm() {
                     )}
                   </button>
                 </div>
+                {newPassword && newPassword.length < 8 && (
+                  <p className="text-xs text-destructive mt-1">{t("passwordMinLength")}</p>
+                )}
               </div>
 
               {/* Confirm new password */}
@@ -488,6 +491,7 @@ export function ForgotPasswordForm() {
                   isLoading ||
                   !!success ||
                   !newPassword ||
+                  newPassword.length < 8 ||
                   newPassword !== confirmNewPassword
                 }
               >

@@ -5,8 +5,9 @@
 ```text
 tests/
 |- integration/    # Pytest tests against API behavior
-|- contract/       # OpenAPI contract checks (schemathesis)
-`- e2e/            # Playwright browser tests
+`- contract/       # OpenAPI contract checks (schemathesis)
+
+frontend/e2e/       # Playwright browser tests (run via `cd frontend && npm run test:e2e`)
 ```
 
 ## Install Test Dependencies
@@ -14,8 +15,9 @@ tests/
 ```bash
 cd backend
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-cd ..
-npm install --save-dev @playwright/test
+cd ..\frontend
+npm ci
+npx playwright install chromium
 ```
 
 ## Run Tests
@@ -27,8 +29,9 @@ npm install --save-dev @playwright/test
 # Contract
 .\backend\.venv\Scripts\python.exe -m schemathesis run contracts/openapi/core-api.yaml --base-url=http://localhost:8000
 
-# E2E
-npx playwright test tests/e2e/
+# E2E (starts Next dev server automatically; use admin/admin dev bypass on login tests)
+cd frontend
+npm run test:e2e
 ```
 
 ## Rules

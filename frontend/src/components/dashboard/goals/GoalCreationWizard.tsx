@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
+import { getLocaleTag } from "@/lib/format-utils";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +31,8 @@ export function GoalCreationWizard({
   onOpenChange,
   onGoalCreated,
 }: GoalCreationWizardProps) {
+  const t = useTranslations("dashboard.goals");
+  const locale = useLocale();
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedActivity, setSelectedActivity] = useState<ActivityType | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<{
@@ -73,18 +77,18 @@ export function GoalCreationWizard({
   ][];
 
   const stepLabels: Record<WizardStep, string> = {
-    1: "Chọn hoạt động",
-    2: "Chọn mức mục tiêu",
-    3: "Xác nhận",
+    1: t("step1"),
+    2: t("step2"),
+    3: t("step3"),
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Đặt mục tiêu mới</DialogTitle>
+          <DialogTitle>{t("newGoal")}</DialogTitle>
           <DialogDescription>
-            Duy trì ≥ 5 ngày/tuần trong 4 tuần để nhận huy hiệu thành tựu.
+            {t("hint")}
           </DialogDescription>
         </DialogHeader>
 
@@ -135,7 +139,7 @@ export function GoalCreationWizard({
                 >
                   <span className="text-3xl">{config.emoji}</span>
                   <span className="text-xs font-medium text-foreground">
-                    {config.labelVi}
+                    {t(`dashboard.goals.activityLabels.${type}` as Parameters<typeof t>[0])}
                   </span>
                 </button>
               ))}
@@ -150,7 +154,7 @@ export function GoalCreationWizard({
                   {ACTIVITY_CONFIG[selectedActivity].emoji}
                 </span>
                 <p className="text-sm font-semibold text-foreground">
-                  {ACTIVITY_CONFIG[selectedActivity].labelVi}
+                  {t(`dashboard.goals.activityLabels.${selectedActivity}` as Parameters<typeof t>[0])}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -168,10 +172,10 @@ export function GoalCreationWizard({
                     )}
                   >
                     <span className="text-lg font-bold text-foreground">
-                      {m.value.toLocaleString()}
+                      {m.value.toLocaleString(getLocaleTag(locale))}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                      {m.unit}/ngày
+                      {t("dailyUnit", { u: m.unit })}
                     </span>
                   </button>
                 ))}
@@ -186,7 +190,7 @@ export function GoalCreationWizard({
                 <div className="flex flex-col items-center gap-3 py-8">
                   <CheckCircle2 className="w-14 h-14 text-green-400" />
                   <p className="text-sm font-semibold text-foreground">
-                    Mục tiêu đã được thiết lập!
+                    {t("setSuccess")}
                   </p>
                 </div>
               ) : (
@@ -198,12 +202,12 @@ export function GoalCreationWizard({
                       </span>
                       <div>
                         <p className="text-sm font-bold text-foreground">
-                          {ACTIVITY_CONFIG[selectedActivity].labelVi}{" "}
-                          {selectedMilestone.value.toLocaleString()}{" "}
+                          {t(`dashboard.goals.activityLabels.${selectedActivity}` as Parameters<typeof t>[0])}{" "}
+                          {selectedMilestone.value.toLocaleString(getLocaleTag(locale))}{" "}
                           {selectedMilestone.unit}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          mỗi ngày
+                          {t("everyday")}
                         </p>
                       </div>
                     </div>
@@ -211,23 +215,23 @@ export function GoalCreationWizard({
                       <p>
                         📅{" "}
                         <span className="text-foreground font-medium">
-                          Yêu cầu duy trì:
+                          {t("maintainReq")}
                         </span>{" "}
-                        ≥ 5 ngày/tuần × 4 tuần liên tiếp
+                        ≥ 5 {t("perWeek")}
                       </p>
                       <p>
                         🏆{" "}
                         <span className="text-foreground font-medium">
-                          Phần thưởng:
+                          {t("reward")}
                         </span>{" "}
-                        Huy hiệu thành tựu + điểm xếp hạng
+                        {t("badgePoints")}
                       </p>
                       <p>
                         🔥{" "}
                         <span className="text-foreground font-medium">
-                          Streak:
+                          {t("streak")}
                         </span>{" "}
-                        Tích lũy điểm thưởng mỗi ngày hoàn thành
+                        {t("streakAccumulate")}
                       </p>
                     </div>
                   </div>
@@ -247,7 +251,7 @@ export function GoalCreationWizard({
                 onClick={() => setStep((s) => (s - 1) as WizardStep)}
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
-                Quay lại
+                {t("back")}
               </Button>
             ) : (
               <div />
@@ -258,7 +262,7 @@ export function GoalCreationWizard({
                 className="bg-[#1965B3] hover:bg-[#1965B3]/90"
                 onClick={handleConfirm}
               >
-                Bắt đầu ngay
+                {t("startNow")}
               </Button>
             )}
           </div>

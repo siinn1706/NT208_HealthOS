@@ -2,23 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Target, Trophy, Medal } from "lucide-react";
 
-const TABS = [
-  { key: "progress", href: "/dashboard/progress", icon: Target, label: "Mục tiêu" },
-  { key: "achievements", href: "/dashboard/achievements", icon: Trophy, label: "Thành tựu" },
-  { key: "leaderboard", href: "/dashboard/leaderboard", icon: Medal, label: "Xếp hạng" },
+const TAB_KEYS = [
+  { key: "progress", href: "/dashboard/progress", icon: Target, labelKey: "goals" },
+  { key: "achievements", href: "/dashboard/achievements", icon: Trophy, labelKey: "achievements" },
+  { key: "leaderboard", href: "/dashboard/leaderboard", icon: Medal, labelKey: "leaderboard" },
 ] as const;
 
 export function GamificationSubNav() {
   const locale = useLocale();
   const pathname = usePathname();
+  const t = useTranslations("dashboard.gamification.tabs");
 
   return (
     <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border w-fit">
-      {TABS.map(({ key, href, icon: Icon, label }) => {
+      {TAB_KEYS.map(({ key, href, icon: Icon, labelKey }) => {
         const fullHref = `/${locale}${href}`;
         const isActive = pathname.startsWith(fullHref);
         return (
@@ -33,7 +34,7 @@ export function GamificationSubNav() {
             )}
           >
             <Icon className="w-4 h-4 flex-shrink-0" />
-            <span className="hidden sm:inline">{label}</span>
+            <span className="hidden sm:inline">{t(labelKey)}</span>
           </Link>
         );
       })}

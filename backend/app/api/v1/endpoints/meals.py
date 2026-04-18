@@ -6,7 +6,7 @@ import io
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,18 +15,29 @@ from app.adapters.storage import upload_file
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.core import Meal, MealStatusEnum, User
-from app.schemas.common import ErrorResponse, PaginationMeta
+from app.schemas.common import DataResponse, ErrorResponse, PaginationMeta
 from app.schemas.meals import MealDataResponse, MealListResponse, MealResponse
 from app.services import meals as meal_svc
 from app.tasks.meal_analysis import analyze_meal_image
 
 router = APIRouter(prefix="/meals", tags=["Meals"])
 
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+# Magic-byte signatures: first N bytes → detected type (imghdr names)
+_ALLOWED_MAGIC_TYPES = {"jpeg", "png", "gif", "webp"}
+
 
 class _MealCreateJsonBody(BaseModel):
     name: str = Field(min_length=1)
     notes: str | None = None
     logged_at: datetime.datetime | None = None
+
+
+def _detect_image_type(header: bytes) -> str | None:
+    """Return imghdr-style type string from the first bytes of a file, or None."""
+    import imghdr
+    return imghdr.what(None, h=header)
 
 
 def _bad_request(message: str) -> HTTPException:
@@ -48,13 +59,11 @@ def _bad_request(message: str) -> HTTPException:
 async def list_meals(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    page: int = 1,
-    per_page: int = 20,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
     date_from: datetime.date | None = None,
     date_to: datetime.date | None = None,
 ) -> MealListResponse:
-    if page < 1 or per_page < 1:
-        raise _bad_request("page and per_page must be >= 1")
 
     meals, total = await meal_svc.list_meals(
         db=db,
@@ -113,9 +122,20 @@ async def create_meal(
     # Handle image upload
     if image and image.filename:
         image_bytes = await image.read()
+        if len(image_bytes) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
+
+        # Validate magic bytes — reject files that lie about their Content-Type
+        detected = _detect_image_type(image_bytes[:32])
+        if detected not in _ALLOWED_MAGIC_TYPES:
+            raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
+
+        content_type = image.content_type or "image/jpeg"
+        if content_type not in _ALLOWED_IMAGE_TYPES:
+            raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
+
         file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
         key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
-        content_type = image.content_type or "image/jpeg"
         image_url = upload_file(
             bucket=settings.storage_bucket_meals,
             key=key,
@@ -193,9 +213,20 @@ async def analyze_meal_photo(
 
     # Upload image to storage
     image_bytes = await image.read()
+    if len(image_bytes) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
+
+    # Validate magic bytes — reject files that lie about their Content-Type
+    detected = _detect_image_type(image_bytes[:32])
+    if detected not in _ALLOWED_MAGIC_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
+
+    content_type = image.content_type or "image/jpeg"
+    if content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
+    
     file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
     key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
-    content_type = image.content_type or "image/jpeg"
     image_url = upload_file(
         bucket=settings.storage_bucket_meals,
         key=key,
@@ -271,3 +302,53 @@ async def get_meal_analysis_status(
             detail={"code": "NOT_FOUND", "message": "Meal not found."},
         )
     return status_info
+
+
+class CalorieSummaryPoint(BaseModel):
+    date: str
+    total_calories: float
+
+
+@router.get(
+    "/calories-summary",
+    response_model=DataResponse[list[CalorieSummaryPoint]],
+    responses={401: {"model": ErrorResponse}},
+    summary="Get daily calorie totals for a date range",
+)
+async def get_calories_summary(
+    date_from: datetime.date,
+    date_to: datetime.date,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DataResponse[list[CalorieSummaryPoint]]:
+    """Returns daily calorie totals for a date range."""
+    from sqlalchemy import and_
+
+    start_dt = datetime.datetime.combine(date_from, datetime.time.min, tzinfo=datetime.timezone.utc)
+    end_dt = datetime.datetime.combine(date_to, datetime.time.max, tzinfo=datetime.timezone.utc)
+
+    stmt = (
+        select(
+            func.date(Meal.logged_at).label("d"),
+            func.coalesce(func.sum(Meal.nutrition_result["calories"]), 0).label("total_calories"),
+        )
+        .where(
+            and_(
+                Meal.user_id == current_user.id,
+                Meal.logged_at >= start_dt,
+                Meal.logged_at <= end_dt,
+            )
+        )
+        .group_by(func.date(Meal.logged_at))
+        .order_by("d")
+    )
+    rows = (await db.execute(stmt)).mappings().all()
+    return DataResponse(
+        data=[
+            CalorieSummaryPoint(
+                date=r.d.isoformat() if hasattr(r.d, "isoformat") else str(r.d),
+                total_calories=float(r.total_calories),
+            )
+            for r in rows
+        ]
+    )

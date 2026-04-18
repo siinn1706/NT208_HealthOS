@@ -18,6 +18,7 @@ This guide maps old startup workflows to the current standardized scripts.
 | `start_notification.bat` | `infra/scripts/start_notification.ps1` | Starts notification service on port 8002 |
 | `start_infra.bat` | `infra/scripts/start_infra.ps1` | Starts infra (Postgres, Redis, MinIO) |
 | `start_ALL.bat` | `infra/scripts/start_all.ps1` | Orchestrates full stack: infra + BE + FE + AI + queue + notification |
+| _(n/a)_ | `infra/scripts/validate_docker_ready.ps1` | Preflight checker for Docker CLI/daemon, required files, and compose config rendering |
 | _(n/a)_ | `infra/scripts/db.ps1` | DB utilities: status, up/stop, psql, migrate, dump/restore |
 
 ### `start_all.ps1` public interface
@@ -33,6 +34,17 @@ This guide maps old startup workflows to the current standardized scripts.
 - `-Only`: Start/check a subset of components.
 - `-CheckOnly`: Run dependency/service checks only (no npm/pip install side effects).
 - `-LogFile`: Optional explicit log path. Default logs go to `infra/logs/<component>_<timestamp>.log`.
+- In Docker mode, `start_all.ps1` now runs `validate_docker_ready.ps1` first and fails fast on missing prerequisites.
+
+### `validate_docker_ready.ps1` public interface
+
+```powershell
+.\infra\scripts\validate_docker_ready.ps1 [-Scope all|infra] [-ComposeFile <path>] [-CheckOnly]
+```
+
+- `-Scope all`: Validate full app stack prerequisites (Dockerfiles + service env files + compose).
+- `-Scope infra`: Validate infra-only startup prerequisites (compose + daemon + infra-level checks).
+- `-CheckOnly`: Same validations, explicit check mode for CI or manual preflight.
 
 ---
 

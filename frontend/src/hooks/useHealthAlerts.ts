@@ -14,7 +14,7 @@
  *   - Receive real-time notifications for abnormal vitals
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useChatWs, type WsFrame, type WsStatus } from "./useChatWs";
 
 export interface HealthAlert {
@@ -29,12 +29,16 @@ type UseHealthAlertsResult = {
   status: WsStatus;
   dismissAlert: (id: string) => void;
   clearAll: () => void;
+  /** Most recent raw WebSocket frame, useful for realtime chart updates */
+  lastMessage: WsFrame | null;
 };
 
 export function useHealthAlerts(): UseHealthAlertsResult {
   const [alerts, setAlerts] = useState<HealthAlert[]>([]);
+  const [lastMessage, setLastMessage] = useState<WsFrame | null>(null);
 
   const handleEvent = useCallback((frame: WsFrame) => {
+    setLastMessage(frame);
     if (frame.event === "health_alert") {
       const payload = frame.payload as {
         id: string;
@@ -66,5 +70,6 @@ export function useHealthAlerts(): UseHealthAlertsResult {
     status,
     dismissAlert,
     clearAll,
+    lastMessage,
   };
 }

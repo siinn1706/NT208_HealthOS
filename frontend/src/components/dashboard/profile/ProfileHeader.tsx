@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import { Camera, Pencil, X, Check, CalendarDays } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile } from "@/types/api";
+import { getLocaleTag } from "@/lib/format-utils";
 
 interface ProfileHeaderProps {
   profile: UserProfile;
@@ -30,7 +31,7 @@ function getInitials(name: string): string {
 }
 
 function formatMemberSince(isoDate: string, locale: string): string {
-  return new Date(isoDate).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US", {
+  return new Date(isoDate).toLocaleDateString(getLocaleTag(locale), {
     month: "long",
     year: "numeric",
   });
@@ -47,6 +48,7 @@ export function ProfileHeader({
   onAvatarChange,
 }: ProfileHeaderProps) {
   const t = useTranslations("dashboard.profile");
+  const locale = useLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -115,7 +117,7 @@ export function ProfileHeader({
             <div className="mt-1.5 flex items-center gap-1.5">
               <CalendarDays className="size-3 text-muted-foreground" />
               <Badge variant="secondary" className="h-5 text-xs font-normal px-1.5">
-                {t("memberSince")} {formatMemberSince(profile.created_at, "vi")}
+                {t("memberSince")} {formatMemberSince(profile.created_at, locale)}
               </Badge>
             </div>
           </div>

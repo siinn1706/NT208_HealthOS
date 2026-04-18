@@ -1,55 +1,102 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import type { EChartsOption } from "echarts";
 import type { WeeklyCaloriePoint } from "@/types/api";
+import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
+import type { ReportPeriod } from "@/types/api";
 
 const EChartWrapper = dynamic(
-  () =>
-    import("@/components/charts/EChartWrapper").then((m) => m.EChartWrapper),
+  () => import("@/components/charts/EChartWrapper").then((m) => m.EChartWrapper),
   { ssr: false, loading: () => <div className="h-48 animate-pulse rounded-lg bg-muted" /> }
 );
 
 const DAILY_CALORIE_TARGET = 2000;
 
-interface WeeklyCalorieChartWidgetProps {
-  data: WeeklyCaloriePoint[];
+async function fetchMealCalories(days: number): Promise<WeeklyCaloriePoint[]> {
+  const res = await fetch(`/api/v1/analytics/meal-calories?days=${days}&target=${DAILY_CALORIE_TARGET}`, {
+    credentials: "include",
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  const data: Array<{ date: string; value: number; target: number; progress_percent?: number }> = json?.data ?? [];
+  return data.map((d) => {
+    const dateObj = new Date(d.date);
+    return {
+      date: `${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`,
+      full_date: d.date,
+      calories: d.value,
+      protein_g: 0,
+      carbs_g: 0,
+      fat_g: 0,
+      target: d.target,
+    };
+  });
 }
 
-export function WeeklyCalorieChartWidget({ data }: WeeklyCalorieChartWidgetProps) {
-  const days = data.map((d) => {
-    const date = new Date(d.date);
-    return date.toLocaleDateString("vi-VN", { weekday: "short", day: "numeric" });
-  });
+interface WeeklyCalorieChartWidgetProps {
+  /** Pre-fetched data (used by meals page) */
+  data?: WeeklyCaloriePoint[];
+  /** Initial data with period (used by dashboard page) */
+  initialData?: WeeklyCaloriePoint[];
+  initialPeriod?: ReportPeriod;
+}
+
+export function WeeklyCalorieChartWidget({
+  data: staticData,
+  initialData = [],
+  initialPeriod = "7d",
+}: WeeklyCalorieChartWidgetProps) {
+  const t = useTranslations("dashboard.calorieChart");
+  const [period, setPeriod] = useState<ReportPeriod>(initialPeriod);
+  const [chartData, setChartData] = useState<WeeklyCaloriePoint[]>(staticData ?? initialData);
+  const [isPending, startTransition] = useTransition();
+
+  const periodDays = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+
+  const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
+    if (newPeriod === "custom") return;
+    setPeriod(newPeriod);
+    const d = newPeriod === "7d" ? 7 : newPeriod === "30d" ? 30 : 90;
+    startTransition(async () => {
+      const fresh = await fetchMealCalories(d);
+      setChartData(fresh);
+    });
+  };
+
+  const displayData = staticData ?? chartData;
+  const hasData = displayData.some((d) => d.calories > 0);
 
   const option: EChartsOption = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "shadow" },
-      backgroundColor: "rgba(15,39,67,0.9)",
-      borderColor: "rgba(65,188,230,0.3)",
+      backgroundColor: "var(--color-card)",
+      borderColor: "var(--color-border)",
       borderWidth: 1,
-      textStyle: { color: "#e2e8f0", fontSize: 12 },
+      textStyle: { color: "var(--color-foreground)", fontSize: 12 },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       formatter: (params: any) => {
         const p = params as Array<{ value: number; seriesName: string; name: string }>;
-        const total = p.reduce((s, x) => s + (x.value ?? 0), 0);
+        const calories = p.find((x) => x.seriesName === t("legend"))?.value ?? 0;
         return `
           <div style="padding:4px 6px">
             <div style="font-weight:600;margin-bottom:4px">${p[0]?.name ?? ""}</div>
-            ${p.map((x) => `<div>${x.seriesName}: <b>${x.value}g</b></div>`).join("")}
+            <div>${t("tooltipCalories")} <b>${calories} kcal</b></div>
             <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px">
-              Tổng: <b>${total} kcal</b>
+              ${t("tooltipTarget")} <b>${DAILY_CALORIE_TARGET} kcal</b>
             </div>
           </div>
         `;
       },
     },
     legend: {
-      data: ["Protein", "Carbs", "Chất béo"],
+      data: [t("legend")],
       bottom: 0,
-      textStyle: { color: "#94a3b8", fontSize: 11 },
+      textStyle: { color: "var(--color-muted-foreground)", fontSize: 11 },
       itemWidth: 10,
       itemHeight: 10,
       icon: "roundRect",
@@ -62,52 +109,35 @@ export function WeeklyCalorieChartWidget({ data }: WeeklyCalorieChartWidgetProps
     },
     xAxis: {
       type: "category",
-      data: days,
-      axisLine: { lineStyle: { color: "rgba(148,163,184,0.3)" } },
+      data: displayData.map((d) => d.date),
+      axisLine: { lineStyle: { color: "var(--color-border)" } },
       splitLine: { show: false },
-      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      axisLabel: { color: "var(--color-muted-foreground)", fontSize: 11 },
       axisTick: { show: false },
     },
     yAxis: {
       type: "value",
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "rgba(148,163,184,0.12)", type: "dashed" } },
-      axisLabel: { color: "#94a3b8", fontSize: 10 },
+      splitLine: { lineStyle: { color: "var(--color-border)", type: "dashed" } },
+      axisLabel: { color: "var(--color-muted-foreground)", fontSize: 10 },
       min: 0,
     },
     series: [
       {
-        name: "Protein",
+        name: t("legend"),
         type: "bar",
-        stack: "nutrition",
         barMaxWidth: 32,
         itemStyle: {
-          color: "#41BCE6",
-          borderRadius: [0, 0, 0, 0],
+          color: "var(--color-primary)",
+          borderRadius: [4, 4, 0, 0],
         },
-        data: data.map((d) => d.protein_g),
+        data: displayData.map((d) => d.calories),
         emphasis: { focus: "series" },
       },
       {
-        name: "Carbs",
-        type: "bar",
-        stack: "nutrition",
-        itemStyle: { color: "#E7DEA7", borderRadius: [0, 0, 0, 0] },
-        data: data.map((d) => d.carbs_g),
-        emphasis: { focus: "series" },
-      },
-      {
-        name: "Chất béo",
-        type: "bar",
-        stack: "nutrition",
-        itemStyle: { color: "#E3B79A", borderRadius: [4, 4, 0, 0] },
-        data: data.map((d) => d.fat_g),
-        emphasis: { focus: "series" },
-      },
-      {
-        name: "Mục tiêu",
+        name: t("tooltipTarget").replace(":", "").trim(),
         type: "line",
-        data: data.map(() => DAILY_CALORIE_TARGET),
+        data: displayData.map(() => DAILY_CALORIE_TARGET),
         symbol: "none",
         lineStyle: { type: "dashed", color: "#f59e0b", width: 1.5 },
         itemStyle: { color: "#f59e0b" },
@@ -121,15 +151,30 @@ export function WeeklyCalorieChartWidget({ data }: WeeklyCalorieChartWidgetProps
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">7 ngày qua</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Lượng dinh dưỡng theo ngày</p>
+          <h2 className="text-sm font-semibold text-foreground">{t("title")}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("subtitle", { n: periodDays })}</p>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
-          <span className="inline-block w-5 border-t-2 border-dashed border-amber-500" />
-          Mục tiêu 2000 kcal
+        <div className="flex items-center gap-3">
+          {staticData === undefined && (
+            <TimeRangeSelector value={period} onChange={handlePeriodChange} />
+          )}
+          <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
+            <span className="inline-block w-5 border-t-2 border-dashed border-amber-500" />
+            {t("target", { n: DAILY_CALORIE_TARGET })}
+          </div>
         </div>
       </div>
-      <EChartWrapper option={option} style={{ height: "220px" }} />
+      {isPending ? (
+        <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+          {t("loading")}
+        </div>
+      ) : !hasData ? (
+        <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+          {t("noData")}
+        </div>
+      ) : (
+        <EChartWrapper option={option} height="220px" />
+      )}
     </div>
   );
 }

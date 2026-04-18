@@ -82,6 +82,9 @@ export function useReportShare() {
         return [];
       }
 
+      // Guard against double-click / concurrent calls
+      if (sharing) return [];
+
       setSharing(true);
       setError(null);
       cancelledRef.current = false;
@@ -127,7 +130,7 @@ export function useReportShare() {
         setSharing(false);
       }
     },
-    []
+    [sharing]
   );
 
   /** Checks if a report should trigger auto-share based on severity threshold */

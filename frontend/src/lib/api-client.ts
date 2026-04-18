@@ -20,23 +20,43 @@ type BffFetchOptions = {
   revalidate?: number | false;
 };
 
+/** Default client-side BFF request timeout in milliseconds. */
+const BFF_FETCH_TIMEOUT_MS = 30_000;
+
 export async function bffFetch<T = unknown>(
   path: string,
   options: BffFetchOptions = {}
 ): Promise<T> {
   const { method = "GET", body, headers = {}, revalidate = 0 } = options;
 
+  // Only apply AbortController timeout in browser contexts; Node RSC fetch
+  // uses the `next` cache option which handles its own lifecycle.
+  const controller = typeof window !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), BFF_FETCH_TIMEOUT_MS)
+    : null;
+
   const res = await fetch(path, {
     method,
     headers: { ...DEFAULT_HEADERS, ...headers },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     next: revalidate !== false ? { revalidate } : undefined,
+    signal: controller?.signal,
   });
+  if (timeoutId !== null) clearTimeout(timeoutId);
 
   if (!res.ok) {
+    // Redirect to login on session expiry (client-side only)
+    if (res.status === 401 && typeof window !== "undefined") {
+      const from = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?from=${from}`;
+      return new Promise<T>(() => {});
+    }
     const error = await res.json().catch(() => ({ error: { code: "UNKNOWN", message: res.statusText } }));
     throw new BffError(res.status, error?.error?.code ?? "UNKNOWN", error?.error?.message ?? res.statusText);
   }
+
+  if (res.status === 204) return undefined as T;
 
   return res.json() as Promise<T>;
 }
@@ -50,4 +70,34 @@ export class BffError extends Error {
     super(message);
     this.name = "BffError";
   }
+}
+
+/**
+ * Client-safe BFF fetch utility for "use client" components.
+ * Uses credentials: "include" to send session cookies.
+ * Returns { data, error } instead of throwing.
+ */
+export async function bffFetchClient(
+  path: string,
+  options: RequestInit = {}
+): Promise<{ data?: unknown; error?: unknown }> {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      const from = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?from=${from}`;
+      return { error: { code: "SESSION_EXPIRED" } };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { error: err };
+  }
+  return { data: await res.json() };
 }

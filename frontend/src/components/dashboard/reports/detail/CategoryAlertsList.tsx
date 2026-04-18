@@ -1,5 +1,6 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { AlertTriangle, AlertCircle, Info, CheckCircle2 } from "lucide-react";
+import { getLocaleTag } from "@/lib/format-utils";
 import { Badge } from "@/components/ui/badge";
 import type { ReportAlert } from "@/types/api";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ function severityBg(severity: ReportAlert["severity"]) {
 
 export async function CategoryAlertsList({ alerts }: CategoryAlertsListProps) {
   const t = await getTranslations("reports");
+  const locale = await getLocale();
 
   if (alerts.length === 0) {
     return (
@@ -66,21 +68,26 @@ export async function CategoryAlertsList({ alerts }: CategoryAlertsListProps) {
               <p className="text-xs text-muted-foreground leading-relaxed">{alert.message}</p>
               <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground/70">
                 <span>
-                  {t("detail.alertValue")}: <strong className="text-foreground">{alert.value} {alert.unit}</strong>
+                  {t("detail.alertValue")}:{" "}
+                  <strong className="text-foreground">
+                    {typeof alert.value === "number" ? alert.value : "—"} {alert.unit}
+                  </strong>
                 </span>
-                {alert.threshold && (
+                {typeof alert.threshold === "number" && alert.threshold > 0 && (
                   <span>
                     {t("detail.alertThreshold")}: {alert.threshold} {alert.unit}
                   </span>
                 )}
-                <time dateTime={alert.timestamp}>
-                  {new Date(alert.timestamp).toLocaleString("vi-VN", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </time>
+                {alert.timestamp ? (
+                  <time dateTime={alert.timestamp}>
+                    {new Date(alert.timestamp).toLocaleString(getLocaleTag(locale), {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                ) : null}
               </div>
             </div>
           </li>

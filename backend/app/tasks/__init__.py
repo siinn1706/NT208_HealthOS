@@ -19,4 +19,12 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    # Expire task results after 1 hour to prevent unbounded Redis growth
+    result_expires=3600,
+)
+
+celery_app.conf.update(
+    broker_connection_retry_on_startup=True,
+    broker_connection_retry=True,
+    broker_connection_max_retries=10,
 )

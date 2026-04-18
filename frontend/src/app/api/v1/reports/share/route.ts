@@ -25,13 +25,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // TODO V1: proxy to Core BE
-  // const coreRes = await fetch(`${process.env.CORE_API_URL}/v1/reports/share`, {
-  //   method: "POST",
-  //   headers: { "Content-Type": "application/json", Authorization: req.headers.get("Authorization") ?? "" },
-  //   body: JSON.stringify(body),
-  // });
-
+  // TODO: proxy to Core BE once /v1/reports/share is implemented.
+  // For now, shareReport() is a local stub that simulates delivery results.
+  // Replace with:
+  //   const coreRes = await coreProxy(req, "/v1/reports/share");
+  //   return new NextResponse(coreRes.body, { status: coreRes.status, headers: coreRes.headers });
   const results = await shareReport(body);
   return NextResponse.json({ data: results });
 }

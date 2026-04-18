@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+import datetime
+import re
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.schemas.common import DataResponse
+from app.services.password_validator import validate_password
 
 
 class OAuthProfile(BaseModel):
@@ -23,6 +26,17 @@ class RequestOtpBody(BaseModel):
     email: EmailStr
     purpose: Literal["signup", "reset_password", "login"] = "signup"
     name: Optional[str] = None
+    username: Optional[str] = Field(None, description="Username for signup")
+    password: Optional[str] = Field(None, description="Password for signup")
+
+    @field_validator('password', mode='before')
+    @classmethod
+    def validate_password(cls, v):
+        if v is not None:
+            is_valid, errors = validate_password(v)
+            if not is_valid:
+                raise ValueError('; '.join(errors))
+        return v
 
 
 class VerifyOtpBody(BaseModel):
@@ -30,14 +44,25 @@ class VerifyOtpBody(BaseModel):
 
     email: EmailStr
     purpose: Literal["signup", "reset_password", "login"] = "signup"
-    code: str = Field(min_length=4, max_length=12)
-    @field_validator('code')
+    code: str = Field(
+        min_length=6,
+        max_length=6,
+        pattern=r'^\d{6}$',
+        description="6-digit OTP code",
+        json_schema_extra={"example": "482193"}
+    )
+
+    password: str | None = Field(default=None, description="Password when Signing up")
+
+    @field_validator('password', mode='before')
     @classmethod
-    def validate_strict_otp_length(cls, value: str) -> str:
-        # Ép chuẩn: Phải là số và đúng 6 ký tự để khớp với OpenAPI
-        if not re.match(r'^\d{6}$', value):
-            raise ValueError("OTP code must be exactly 6 digits")
-        return value     
+    def validate_password(cls, v):
+        if v is not None:
+            is_valid, errors = validate_password(v)
+            if not is_valid:
+                raise ValueError('; '.join(errors))
+        return v
+
     @field_validator('purpose', mode='before')
     @classmethod
     def sync_purpose_format(cls, value: str) -> str:
@@ -73,23 +98,119 @@ class ResetPasswordBody(BaseModel):
     """Request body to complete password reset after OTP is verified."""
 
     email: EmailStr
-    new_password: str = Field(min_length=8)
+    new_password: str = Field(description="New password")
+
+    @field_validator('new_password', mode='before')
+    @classmethod
+    def validate_password(cls, v):
+        if v is not None:
+            is_valid, errors = validate_password(v)
+            if not is_valid:
+                raise ValueError('; '.join(errors))
+        return v
 
 
 class LoginBody(BaseModel):
-    """Request body for email + password login."""
+    """Request body for identifier (email or username) + password login."""
 
-    email: EmailStr
+    identifier: str = Field(min_length=1, description="Email or username")
     password: str = Field(min_length=1)
+
+
+class CheckUsernameResponse(BaseModel):
+    """Response for username availability check."""
+
+    available: bool
+
+
+class CheckEmailResponse(BaseModel):
+    """Response for email availability check."""
+
+    available: bool
+
+
+class EmergencyContact(BaseModel):
+    """Emergency contact information."""
+
+    name: str
+    email: Optional[EmailStr] = None
+    phone: str
+    relationship: str
+
+
+class MedicalInfo(BaseModel):
+    """Medical information."""
+
+    allergies: Optional[str] = Field(None, max_length=2000)
+    chronic_conditions: Optional[str] = Field(None, max_length=2000)
+    current_medications: Optional[str] = Field(None, max_length=2000)
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+class UserProfileUpdate(BaseModel):
+    """Request body for updating user profile."""
+
+    full_name: Optional[str] = None
+    date_of_birth: Optional[datetime.date] = None
+    gender: Optional[Literal["male", "female", "other"]] = None
+    blood_type: Optional[str] = None
+    height_cm: Optional[float] = Field(None, ge=50, le=300)
+    weight_kg: Optional[float] = Field(None, ge=1, le=500)
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    avatar_url: Optional[str] = Field(None, max_length=512)
+    emergency_contacts: Optional[list[EmergencyContact]] = None
+    medical_info: Optional[MedicalInfo] = None
+    # None = no-op (field absent); False = explicitly mark incomplete; True = mark complete
+    onboarding_completed: Optional[bool] = None
+
+    @field_validator("avatar_url", mode="before")
+    @classmethod
+    def validate_avatar_url(cls, v: object) -> object:
+        if v is None or v == "":
+            return None
+        if not isinstance(v, str):
+            raise ValueError("avatar_url must be a string")
+        s = v.strip()
+        if len(s) > 512:
+            raise ValueError("avatar_url exceeds maximum length")
+        lower = s.lower()
+        if not (lower.startswith("http://") or lower.startswith("https://")):
+            raise ValueError("avatar_url must be an http(s) URL")
+        return s
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v: object) -> object:
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("phone must be a string")
+        if not re.match(r"^\+?[0-9][0-9\-\s()]{4,18}[0-9]$", v):
+            raise ValueError("Invalid phone number format")
+        return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        """Normalize gender to lowercase and blood_type to uppercase."""
+        if isinstance(data, dict):
+            if "gender" in data and data["gender"]:
+                data["gender"] = data["gender"].lower()
+            if "blood_type" in data and data["blood_type"]:
+                data["blood_type"] = data["blood_type"].upper()
+        return data
 
 
 class AuthToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user_id: str
-    email: EmailStr
+    email: str
+    username: Optional[str] = None
     display_name: str
     avatar_url: Optional[str] = None
+    onboarding_status: str = "pending"
 
 
 class AuthTokenResponse(DataResponse[AuthToken]):
@@ -107,9 +228,25 @@ class WsTicketResponse(DataResponse[WsTicket]):
 
 class CurrentUser(BaseModel):
     id: str
-    email: EmailStr
+    email: str
+    username: Optional[str] = None
     display_name: str
     avatar_url: Optional[str] = None
+    onboarding_status: str = "pending"
+    onboarding_completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+    # Optional profile fields (used by /v1/users/me)
+    full_name: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[Literal["male", "female", "other"]] = None
+    blood_type: Optional[str] = None
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    emergency_contacts: Optional[list[dict[str, Any]]] = None
+    medical_info: Optional[dict[str, Any]] = None
 
 
 class CurrentUserResponse(DataResponse[CurrentUser]):

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-import { profileSchema, type ProfileFormValues } from "@/lib/validators/profile-schema";
-import { bffFetch } from "@/lib/api-client";
-import type { UserProfile } from "@/types/api";
+import { getProfileSchema, type ProfileFormValues } from "@/lib/validators/profile-schema";
+import { bffFetchClient } from "@/lib/api-client";
+import { normalizeProfile } from "@/lib/user-profile-normalize";
+import type { UserProfile, UserProfileUpdate } from "@/types/api";
 
 import { ProfileHeader } from "./ProfileHeader";
 import { BasicInfoSection } from "./BasicInfoSection";
@@ -22,36 +24,74 @@ interface ProfileFormProviderProps {
 }
 
 function profileToFormValues(profile: UserProfile): ProfileFormValues {
+  const emergencyContacts = Array.isArray(profile.emergency_contacts)
+    ? profile.emergency_contacts
+    : [];
+  const medicalInfo = profile.medical_info ?? {
+    allergies: null,
+    chronic_conditions: null,
+    current_medications: null,
+    notes: null,
+  };
+
   return {
-    full_name: profile.full_name,
-    date_of_birth: profile.date_of_birth,
-    gender: profile.gender,
-    blood_type: profile.blood_type,
-    height_cm: profile.height_cm,
-    weight_kg: profile.weight_kg,
-    phone: profile.phone,
-    address: profile.address,
-    emergency_contacts: profile.emergency_contacts.map((ec) => ({
-      id: ec.id,
-      name: ec.name,
-      relationship: ec.relationship,
-      phone: ec.phone,
+    full_name: profile.full_name ?? profile.display_name ?? "",
+    date_of_birth: profile.date_of_birth ?? null,
+    gender: profile.gender ?? null,
+    blood_type: profile.blood_type ?? null,
+    height_cm: profile.height_cm ?? null,
+    weight_kg: profile.weight_kg ?? null,
+    phone: profile.phone ?? null,
+    address: profile.address ?? null,
+    emergency_contacts: emergencyContacts.map((ec) => ({
+      name: ec.name ?? "",
+      relationship: ec.relationship ?? "",
+      phone: ec.phone ?? null,
     })),
     medical_info: {
-      allergies: profile.medical_info.allergies,
-      chronic_conditions: profile.medical_info.chronic_conditions,
-      current_medications: profile.medical_info.current_medications,
-      notes: profile.medical_info.notes,
+      allergies: medicalInfo.allergies ?? null,
+      chronic_conditions: medicalInfo.chronic_conditions ?? null,
+      current_medications: medicalInfo.current_medications ?? null,
+      notes: medicalInfo.notes ?? null,
+    },
+  };
+}
+
+function formValuesToUpdate(values: ProfileFormValues): UserProfileUpdate {
+  return {
+    full_name: values.full_name,
+    date_of_birth: values.date_of_birth ?? null,
+    gender: values.gender ?? null,
+    blood_type: values.blood_type ?? null,
+    height_cm: values.height_cm ?? null,
+    weight_kg: values.weight_kg ?? null,
+    phone: values.phone ?? null,
+    address: values.address ?? null,
+    emergency_contacts: values.emergency_contacts.map((ec) => ({
+      name: ec.name,
+      relationship: ec.relationship,
+      phone: ec.phone ?? "",
+    })),
+    medical_info: {
+      allergies: values.medical_info?.allergies ?? null,
+      chronic_conditions: values.medical_info?.chronic_conditions ?? null,
+      current_medications: values.medical_info?.current_medications ?? null,
+      notes: values.medical_info?.notes ?? null,
     },
   };
 }
 
 export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
   const t = useTranslations("dashboard.profile");
+  const tv = useTranslations();
+  const profileSchema = useMemo(() => getProfileSchema(tv), [tv]);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const router = useRouter();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema) as Resolver<ProfileFormValues>,
@@ -65,14 +105,21 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
 
   const handleCancel = useCallback(() => {
     form.reset(profileToFormValues(profile));
-    setAvatarPreview(null);
+    setAvatarPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPendingAvatarFile(null);
     setIsEditing(false);
     setSaveStatus("idle");
   }, [form, profile]);
 
   const handleAvatarChange = useCallback((file: File) => {
-    const url = URL.createObjectURL(file);
-    setAvatarPreview(url);
+    setAvatarPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setPendingAvatarFile(file);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -82,26 +129,59 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
     const values = form.getValues();
     setIsSaving(true);
     setSaveStatus("idle");
+    setSaveError(null);
 
-    try {
-      // BFF: PATCH /api/v1/users
-      const res = await bffFetch("/api/v1/users", {
-        method: "PATCH",
-        body: JSON.stringify(values),
+    if (pendingAvatarFile) {
+      const fd = new FormData();
+      fd.append("file", pendingAvatarFile);
+      const uploadRes = await fetch("/api/v1/users/me/avatar", {
+        method: "POST",
+        body: fd,
+        credentials: "include",
       });
-      void res; // BFF returns updated user, can be used to sync local state
-
-      form.reset(values); // set new defaults to prevent stale "dirty" state
-      setIsEditing(false);
-      setSaveStatus("success");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (err) {
-      console.error("[ProfileFormProvider] Save failed:", err);
-      setSaveStatus("error");
-    } finally {
-      setIsSaving(false);
+      const uploadJson = await uploadRes.json().catch(() => null);
+      if (!uploadRes.ok) {
+        setIsSaving(false);
+        const detail = uploadJson?.error ?? uploadJson?.detail;
+        const msg =
+          (typeof detail?.message === "string" && detail.message) ||
+          (typeof uploadJson?.detail === "string" && uploadJson.detail) ||
+          null;
+        setSaveError(msg ?? t("saveError"));
+        setSaveStatus("error");
+        return;
+      }
     }
-  }, [form]);
+
+    const { data, error } = await bffFetchClient("/api/v1/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(formValuesToUpdate(values)),
+    });
+
+    setIsSaving(false);
+
+    if (error) {
+      const errObj = error as Record<string, unknown>;
+      const msg = (errObj?.error as Record<string, unknown>)?.message ?? errObj?.detail ?? null;
+      setSaveError(typeof msg === "string" ? msg : null);
+      setSaveStatus("error");
+      return;
+    }
+
+    const resBody = data as { data?: unknown } | undefined;
+    const nextProfile =
+      resBody?.data != null ? normalizeProfile(resBody.data) : profile;
+    form.reset(profileToFormValues(nextProfile));
+    setAvatarPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPendingAvatarFile(null);
+    router.refresh();
+    setIsEditing(false);
+    setSaveStatus("success");
+    setTimeout(() => setSaveStatus("idle"), 3000);
+  }, [form, router, pendingAvatarFile, t, profile]);
 
   return (
     <TooltipProvider>
@@ -133,7 +213,7 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
               role="alert"
               className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
-              ✕ {t("saveError")}
+              ✕ {saveError ?? t("saveError")}
             </div>
           )}
 

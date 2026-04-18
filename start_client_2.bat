@@ -1,7 +1,3 @@
 @echo off
-setlocal
-cd /d "%~dp0frontend"
-if not exist node_modules (
-  npm install
-)
-npm run dev -- --port 3002
+call "%~dp0infra\scripts\run-service.bat" start_client.ps1 client -Port 3002 %*
+exit /b %ERRORLEVEL%

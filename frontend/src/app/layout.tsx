@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { getLocale } from "next-intl/server";
+import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -10,15 +12,7 @@ const beVietnamPro = Be_Vietnam_Pro({
   display: "swap",
 });
 
-// Default metadata — overridden per locale in [locale]/layout
-export const metadata: Metadata = {
-  title: {
-    default: "HealthOS | Bác sĩ cá nhân ảo của bạn",
-    template: "%s | HealthOS",
-  },
-  description:
-    "HealthOS — hệ thống bác sĩ cá nhân ảo: quản lý hồ sơ y tế, nhật ký dinh dưỡng, phân tích bữa ăn AI, kết nối wearable và cảnh báo realtime.",
-};
+// Default metadata — removed; locale-aware metadata defined in [locale]/layout.tsx
 
 export default async function RootLayout({
   children,
@@ -29,9 +23,16 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={beVietnamPro.variable}>
+    <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
+      <head>
+        {/* Full 5-token early hydration lives in /accent-early.js (~2KB) — keeps layout HTML small. */}
+        <script src="/accent-early.js" />
+      </head>
       <body className="overflow-x-hidden font-[family-name:var(--font-be-vietnam-pro)]">
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {children}
+          <Toaster position="top-right" richColors closeButton />
+        </ThemeProvider>
       </body>
     </html>
   );

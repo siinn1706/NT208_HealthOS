@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { MailCheck, Loader2 } from "lucide-react";
-import { useRouter } from "@/navigation";
+import { Link, useRouter } from "@/navigation";
 import {
   Card,
   CardContent,
@@ -32,6 +32,7 @@ interface VerifyOTPFormProps {
 
 export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps) {
   const t = useTranslations("auth");
+  const tErrors = useTranslations("errors");
   const router = useRouter();
 
   const [otp, setOtp] = useState("");
@@ -60,16 +61,17 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
       // BFF now sets the httpOnly cookie — do NOT store token in localStorage.
       setSuccess(t("verificationSuccess"));
       if (purpose === "signup") {
-        // Signup complete: go directly to dashboard
-        setTimeout(() => router.push("/dashboard"), 1200);
+        // Signup complete: go to onboarding to complete profile
+        setTimeout(() => router.push("/onboarding"), 1200);
       } else if (purpose === "reset_password") {
-        // Need to proceed with password reset
-        setTimeout(() => router.push("/forgot-password?step=reset&email=" + encodeURIComponent(email ?? "")), 1200);
+        // Reset password flow is self-contained in ForgotPasswordForm;
+        // redirect to login so the user can sign in with the new password.
+        setTimeout(() => router.push("/login"), 1200);
       } else {
         setTimeout(() => router.push("/dashboard"), 1200);
       }
     } catch {
-      setError("Có lỗi xảy ra. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +95,7 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
       }
       setOtp("");
     } catch {
-      setError("Không thể gửi lại mã. Vui lòng thử lại.");
+      setError(tErrors("genericTryAgain"));
     } finally {
       setIsResending(false);
     }
@@ -191,16 +193,12 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
 
       {/* Footer */}
       <CardFooter className="justify-center pt-0">
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            router.push("/login");
-          }}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+        <Link
+          href="/login"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
         >
           ← {t("backToLogin")}
-        </a>
+        </Link>
       </CardFooter>
     </Card>
   );

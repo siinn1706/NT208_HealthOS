@@ -1,8 +1,12 @@
 """Object Storage adapter — MinIO / AWS S3 via boto3."""
+import logging
+
 import boto3
 from botocore.client import Config
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def get_storage_client():
@@ -20,7 +24,11 @@ def get_storage_client():
 def upload_file(bucket: str, key: str, file_bytes: bytes, content_type: str = "image/jpeg") -> str:
     """Upload bytes to object storage. Returns public URL."""
     client = get_storage_client()
-    client.put_object(Bucket=bucket, Key=key, Body=file_bytes, ContentType=content_type)
+    try:
+        client.put_object(Bucket=bucket, Key=key, Body=file_bytes, ContentType=content_type)
+    except Exception as exc:
+        logger.exception("Failed to upload file to %s/%s", bucket, key)
+        raise RuntimeError(f"File upload failed: {exc}") from exc
     return f"{settings.storage_endpoint}/{bucket}/{key}"
 
 

@@ -9,12 +9,14 @@ import { cn } from "@/lib/utils";
 interface DashboardShellProps {
   children: React.ReactNode;
   userName?: string;
+  userAvatar?: string;
   alertCount?: number;
 }
 
 export function DashboardShell({
   children,
   userName,
+  userAvatar,
   alertCount = 0,
 }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -28,6 +30,7 @@ export function DashboardShell({
       <TopNav
         sidebarCollapsed={collapsed}
         userName={userName}
+        userAvatar={userAvatar}
         alertCount={alertCount}
       />
       <main
