@@ -18,7 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   MoreHorizontal,
   Reply,
@@ -47,7 +46,10 @@ interface MessageActionsProps {
   onReact: (emoji: string) => void;
   onCopy: () => void;
   onForward?: () => void;
-  align?: "left" | "right";
+  /** Whether this actions bar should align to the right (own) or left (others). */
+  side?: "left" | "right";
+  /** `horizontal` = hover bar above bubble; `vertical` = touch sheet (full-width rows). */
+  layout?: "horizontal" | "vertical";
 }
 
 export function MessageActions({
@@ -62,68 +64,47 @@ export function MessageActions({
   onReact,
   onCopy,
   onForward,
-  align = "left",
+  side = "right",
+  layout = "horizontal",
 }: MessageActionsProps) {
   const t = useTranslations("chat");
   const [showRecallDialog, setShowRecallDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showReactions, setShowReactions] = useState(false);
 
   if (message.is_recalled) return null;
+
+  // Dropdown aligns to the bubble edge
+  const align = side === "right" ? "end" : "start";
+
+  const isVertical = layout === "vertical";
 
   return (
     <>
       <div
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 z-10 flex items-center gap-1",
-          "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
-          align === "right" ? "-left-24" : "-right-24"
+          "flex flex-shrink-0",
+          isVertical
+            ? "flex-col gap-2 w-full opacity-100"
+            : "flex-row items-center gap-0.5 self-center"
         )}
+        aria-label={t("messageActions")}
       >
-        {/* Quick reactions */}
-        <Popover open={showReactions} onOpenChange={setShowReactions}>
-          <PopoverTrigger asChild>
-            <button
-              aria-label={t("react")}
-              className="w-7 h-7 rounded-full bg-background border border-border shadow-sm flex items-center justify-center text-sm cursor-pointer hover:bg-secondary transition-colors"
-            >
-              😊
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            side="top"
-            className="w-auto p-1.5 flex gap-1"
-            sideOffset={4}
-          >
-            {REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => { onReact(emoji); setShowReactions(false); }}
-                className="text-xl hover:scale-125 transition-transform cursor-pointer p-0.5"
-                aria-label={`React with ${emoji}`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
-
         {/* More actions dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              aria-label="Message actions"
-              className="w-7 h-7 rounded-full bg-background border border-border shadow-sm flex items-center justify-center cursor-pointer hover:bg-secondary transition-colors"
+              aria-label={t("messageActions")}
+              className={cn(
+                "rounded-lg flex items-center justify-center cursor-pointer hover:bg-accent transition-colors",
+                isVertical ? "w-full h-11 px-3 justify-start gap-2 text-sm font-medium" : "w-7 h-7 rounded-full"
+              )}
+              title={t("moreActions")}
             >
-              <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+              <MoreHorizontal className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              {isVertical && <span>{t("moreActions")}</span>}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align={align === "right" ? "end" : "start"} className="w-44">
-            <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer" aria-label={t("replyTo")}>
-              <Reply className="w-4 h-4" />
-              {t("replyTo")}
-            </DropdownMenuItem>
-
+          <DropdownMenuContent align={align} className="w-44">
             <DropdownMenuItem onClick={onCopy} className="gap-2 cursor-pointer" aria-label={t("copyMessage")}>
               <Copy className="w-4 h-4" />
               {t("copyMessage")}
@@ -168,6 +149,51 @@ export function MessageActions({
               <Trash2 className="w-4 h-4" />
               {t("deleteMessage")}
             </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Reply button */}
+        <button
+          onClick={onReply}
+          aria-label={t("replyTo")}
+          className={cn(
+            "flex items-center justify-center cursor-pointer hover:bg-accent transition-colors",
+            isVertical ? "w-full h-11 px-3 rounded-lg justify-start gap-2 text-sm font-medium" : "w-7 h-7 rounded-full"
+          )}
+          title={t("replyTo")}
+        >
+          <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          {isVertical && <span>{t("replyTo")}</span>}
+        </button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={t("react")}
+              className={cn(
+                "flex items-center justify-center cursor-pointer hover:bg-accent transition-colors",
+                isVertical ? "w-full h-11 px-3 rounded-lg justify-start gap-2 text-sm font-medium" : "w-7 h-7 rounded-full"
+              )}
+              title={t("react")}
+            >
+              <span className="text-sm leading-none">😊</span>
+              {isVertical && <span>{t("react")}</span>}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align={align} className="p-1.5">
+            <div className="flex items-center gap-0.5 flex-wrap justify-center">
+              {REACTION_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => onReact(emoji)}
+                  className="text-lg hover:scale-125 transition-transform cursor-pointer p-1 rounded-full hover:bg-accent"
+                  aria-label={`${t("react")} ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

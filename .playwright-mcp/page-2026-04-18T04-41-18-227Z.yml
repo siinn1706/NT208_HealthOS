@@ -1,0 +1,71 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic: "1"
+              - generic: Cơ bản
+          - generic:
+            - generic:
+              - generic: "2"
+              - generic: Sức khỏe
+          - generic:
+            - generic:
+              - generic: "3"
+              - generic: Liên hệ
+          - generic:
+            - generic:
+              - generic: "4"
+              - generic: Khẩn cấp
+          - generic:
+            - generic:
+              - generic: "5"
+              - generic: Y tế
+      - generic:
+        - generic:
+          - generic:
+            - heading [level=2]: Basic Information
+            - paragraph: Tell us a bit about yourself
+          - generic:
+            - generic:
+              - text: Full Name
+              - generic: "*"
+            - textbox:
+              - /placeholder: Full Name
+              - text: Admin Test
+          - generic:
+            - generic:
+              - text: Date of Birth
+              - generic: "*"
+            - textbox: 2000-01-01
+          - generic:
+            - generic:
+              - generic:
+                - text: Gender
+                - generic: "*"
+              - combobox [expanded]:
+                - generic: Select gender
+                - img
+            - generic:
+              - generic: Blood Type
+              - combobox:
+                - generic: Select blood type
+                - img
+      - generic:
+        - button [disabled]: Quay lại
+        - button:
+          - text: Tiếp theo
+          - img
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e114] [cursor=pointer]:
+    - img [ref=e115]
+  - alert
+  - listbox [ref=e118]:
+    - option "Male" [active] [ref=e119]:
+      - generic [ref=e121]: Male
+    - option "Female" [ref=e122]:
+      - generic [ref=e124]: Female
+    - option "Other" [ref=e125]:
+      - generic [ref=e127]: Other

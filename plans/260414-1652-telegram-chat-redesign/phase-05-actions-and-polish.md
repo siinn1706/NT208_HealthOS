@@ -130,13 +130,14 @@ Apply via Virtuoso's item wrapper — only on new messages (not on initial load 
 **Trade-off:** This is tricky with Virtuoso — may skip if too complex. Mark as stretch goal.
 
 ## Todo List
-- [ ] Reposition action toolbar above bubble
-- [ ] Inline quick reactions in action bar
-- [ ] Reduce "more" dropdown to essential actions only
-- [ ] Compact pinned message bar styling
-- [ ] Typing indicator with avatar placeholder
-- [ ] Add message appear CSS animations (stretch)
-- [ ] Verify action toolbar doesn't overflow on first/last message
+- [x] Reposition action toolbar above bubble
+- [x] Inline quick reactions in action bar
+- [x] Reduce "more" dropdown to essential actions only (Reply moved to direct button)
+- [x] Compact pinned message bar styling
+- [x] Keyboard accessibility: `group-focus-within:opacity-100` on toolbar
+- [x] Fix overflow-visible on bubble container so toolbar renders above bubble
+- [ ] Typing indicator with avatar placeholder (deferred — stretch goal)
+- [ ] Add message appear CSS animations (deferred — stretch per plan)
 
 ## Success Criteria
 - Action toolbar appears above bubble on hover

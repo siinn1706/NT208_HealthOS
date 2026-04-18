@@ -100,6 +100,15 @@ export function formatDateSeparator(
   });
 }
 
+/** Max characters for inline reply previews (composer + bubble). */
+export const CHAT_PREVIEW_MAX_LEN = 60;
+
+/** Truncate long chat text with an ellipsis (Unicode …). */
+export function truncateChatPreview(text: string, maxLen = CHAT_PREVIEW_MAX_LEN): string {
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen)}…`;
+}
+
 /** Should messages be grouped? (same sender, within 60s) */
 export function shouldGroup(a: { sender_id: string; created_at: string }, b: { sender_id: string; created_at: string }): boolean {
   if (a.sender_id !== b.sender_id) return false;
@@ -159,13 +168,46 @@ export function getBubbleRadius(
   }
 }
 
+/**
+ * Messenger-style timestamp visibility.
+ * Returns true when the timestamp should be shown for this message.
+ * Timestamps are hidden for consecutive same-sender messages within 5 minutes,
+ * only shown at: sender change, >5min gap, group boundary, or first-of-day.
+ */
+export function shouldShowTimestamp(
+  prev: { sender_id: string; created_at: string } | null,
+  next: { sender_id: string; created_at: string } | null,
+  currentSender: string,
+  currentTime: string
+): boolean {
+  // Always show on solo / first-of-day (no previous message)
+  if (!prev) return true;
+
+  const prevTime = new Date(prev.created_at).getTime();
+  const curTime  = new Date(currentTime).getTime();
+  const diffMs   = curTime - prevTime;
+
+  // Show if sender changed
+  if (prev.sender_id !== currentSender) return true;
+
+  // Show if gap > 5 minutes
+  if (diffMs > 5 * 60 * 1000) return true;
+
+  // Show on last message of a group (has next && different sender, or next further away)
+  if (!next) return true;
+  if (next.sender_id !== currentSender) return true;
+  if (Math.abs(new Date(next.created_at).getTime() - curTime) > 5 * 60 * 1000) return true;
+
+  return false;
+}
+
 /** Preview text for a message in the conversation list */
 export interface MessagePreviewLabels {
   recalled?: string;    // "Message recalled"
   imageSelf?: string;   // "You sent an image"
   imageOther?: string;  // "Sent an image"
   fileSelf?: string;    // "You sent a file"
-  fileOther?: string;   // "Sent a file"
+  fileOther?: string;    // "Sent a file"
   you?: string;         // "You: " prefix
 }
 

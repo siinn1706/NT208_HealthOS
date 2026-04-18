@@ -1,8 +1,13 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 export function TypingIndicator() {
+  const t = useTranslations("chat");
   return (
     <div
       aria-live="polite"
-      aria-label="Người dùng đang nhập"
+      aria-label={t("typingAria")}
       className="flex items-end gap-1 px-4 py-2"
     >
       <div className="flex items-center gap-1 bg-secondary rounded-2xl rounded-bl-sm px-4 py-3">

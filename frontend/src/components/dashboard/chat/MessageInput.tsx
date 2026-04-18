@@ -2,11 +2,10 @@
 
 import { useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslations, useLocale } from "next-intl";
-import { Send, Smile, Paperclip, X, Image as ImageIcon, FileText, Reply, Pencil } from "lucide-react";
+import { Send, Smile, Paperclip, X, Image as ImageIcon, FileText, Pencil } from "lucide-react";
 import { MessageReplyPreview } from "./MessageReplyPreview";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -57,12 +56,15 @@ export function MessageInput({
     }
   }, [emojiOpen, emojiData]);
 
-  // Sync value when editingMessage changes
-  const prevEditRef = useRef<string | undefined>(editingMessage?.id);
-  if (prevEditRef.current !== editingMessage?.id) {
-    prevEditRef.current = editingMessage?.id;
+  // Sync value when the active edit target changes; reset textarea height
+  /* eslint-disable react-hooks/exhaustive-deps -- only reset on edit *target* change, not every content poll */
+  useEffect(() => {
     setValue(editingMessage?.content ?? "");
-  }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [editingMessage?.id]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Auto-focus textarea when reply or edit is activated
   useEffect(() => {
@@ -76,7 +78,11 @@ export function MessageInput({
     if (!trimmed) return;
     onSend(trimmed);
     setValue("");
-    textareaRef.current?.focus();
+    // Reset textarea height back to 1-row default after clearing
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.focus();
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -193,8 +199,10 @@ export function MessageInput({
               "resize-none min-h-[40px] max-h-[144px] rounded-2xl border-0",
               "bg-secondary/80 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-primary",
               "text-sm pr-4 py-2.5 transition-[background-color,ring] duration-150 ease-out",
+              "overflow-wrap-anywhere break-words max-w-full",
               editingMessage && "bg-primary/5 ring-1 ring-primary/50"
             )}
+            style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
             aria-label={t("typeMessage")}
           />
         </div>
