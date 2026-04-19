@@ -51,10 +51,16 @@ async def _latest_metrics(
     db: AsyncSession,
     user_id: uuid.UUID,
 ) -> list[HealthMetric]:
+    # `is_deleted=false` hides Health Connect tombstones (HC reported a
+    # deletion via getChanges → service flips the row). Without this the
+    # KPI tiles + alerts keep using values the user already removed.
     rows = (
         await db.execute(
             select(HealthMetric)
-            .where(HealthMetric.user_id == user_id)
+            .where(
+                HealthMetric.user_id == user_id,
+                HealthMetric.is_deleted.is_(False),
+            )
             .order_by(HealthMetric.recorded_at.desc())
             .limit(500)
         )
@@ -224,6 +230,7 @@ async def get_vitals_timeseries(
                     HealthMetric.user_id == user_id,
                     HealthMetric.metric_type.in_(metric_types),
                     HealthMetric.recorded_at >= start,
+                    HealthMetric.is_deleted.is_(False),
                 )
             )
             .order_by(HealthMetric.recorded_at.asc())

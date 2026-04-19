@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Stethoscope, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ClipboardCheck, Plus, Stethoscope } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/navigation";
 
 import { AppointmentCreateSheet } from "@/components/dashboard/appointments/AppointmentCreateSheet";
 import { AppointmentHistoryTable } from "@/components/dashboard/appointments/AppointmentHistoryTable";
@@ -16,8 +18,25 @@ interface Props {
 export function AppointmentsPageClient({ appointments: initial }: Props) {
   const t = useTranslations("dashboard.appointments");
   const tStatus = useTranslations("dashboard.appointments.status");
+  const tVp = useTranslations("dashboard.visitPrep");
   const [appointments, setAppointments] = useState<Appointment[]>(initial);
   const [createOpen, setCreateOpen] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Review fix U3: deep-link from a routing-card "Book an appointment" CTA
+  // (or any other surface) auto-opens the create sheet via `?create=1`.
+  // Strips the param after opening so back-nav doesn't re-trigger the sheet.
+  useEffect(() => {
+    if (searchParams.get("create") === "1") {
+      setCreateOpen(true);
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("create");
+      const qs = next.toString();
+      router.replace(qs ? `?${qs}` : "?", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totalCompleted = appointments.filter((a) => a.status === "completed").length;
   const totalUpcoming = appointments.filter((a) => a.status === "upcoming").length;
@@ -85,6 +104,23 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
           </div>
         ))}
       </div>
+
+      {/* ── Visit-prep CTA ── */}
+      <Link
+        href="/dashboard/visit-prep"
+        className="group flex items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 transition-colors hover:bg-primary/10"
+      >
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+          <ClipboardCheck className="h-5 w-5" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">{tVp("pageTitle")}</p>
+          <p className="text-xs text-muted-foreground">{tVp("pageSubtitle")}</p>
+        </div>
+        <span className="text-xs font-medium text-primary">
+          {tVp("list.startCta")} →
+        </span>
+      </Link>
 
       {/* ── Table ── */}
       <AppointmentHistoryTable appointments={appointments} />

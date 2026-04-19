@@ -28,6 +28,13 @@ const RESEND_COOLDOWN = 60;
 
 type Step = "request" | "verify" | "reset";
 
+const VALID_STEPS = new Set<Step>(["request", "verify", "reset"]);
+
+function parseStep(input: string | undefined): Step | null {
+  if (!input) return null;
+  return VALID_STEPS.has(input as Step) ? (input as Step) : null;
+}
+
 const requestSchema = z.object({
   email: z.string().email({ message: "Enter a valid email." }),
 });
@@ -49,9 +56,12 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const toast = useToast();
   const { colors, fontWeights, typography, spacing } = useTheme();
-  const params = useLocalSearchParams<{ step?: Step; email?: string }>();
+  const params = useLocalSearchParams<{ step?: string; email?: string }>();
 
-  const [step, setStep] = useState<Step>((params.step as Step) ?? "request");
+  // Validate the URL-supplied step rather than blindly casting — a
+  // malformed deep-link `?step=foo` would otherwise leave the screen
+  // in an unrenderable state with no graceful fallback.
+  const [step, setStep] = useState<Step>(parseStep(params.step) ?? "request");
   const [email, setEmail] = useState<string>(params.email ?? "");
   const [code, setCode] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);

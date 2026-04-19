@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Smartphone, Watch, Activity, HeartPulse, Hand } from "lucide-react";
+import { Smartphone, Watch, Activity, HeartPulse, Hand, Heart } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { ProviderId } from "@/types/data-slice";
@@ -15,13 +15,18 @@ interface ProviderTheme {
 }
 
 const PROVIDER_THEMES: Record<ProviderId, ProviderTheme> = {
-  apple_health:    { label: "Apple Health",  color: "#FF2D55", bg: "bg-[#FF2D55]/10", Icon: HeartPulse },
-  google_fit:      { label: "Google Fit",    color: "#4285F4", bg: "bg-[#4285F4]/10", Icon: Activity },
-  fitbit:          { label: "Fitbit",        color: "#00B0B9", bg: "bg-[#00B0B9]/10", Icon: Watch },
-  garmin:          { label: "Garmin",        color: "#009CDE", bg: "bg-[#009CDE]/10", Icon: Watch },
-  withings:        { label: "Withings",      color: "#1A8FBF", bg: "bg-[#1A8FBF]/10", Icon: HeartPulse },
+  apple_health:    { label: "Apple Health",   color: "#FF2D55", bg: "bg-[#FF2D55]/10", Icon: HeartPulse },
+  google_fit:      { label: "Google Fit",     color: "#4285F4", bg: "bg-[#4285F4]/10", Icon: Activity },
+  fitbit:          { label: "Fitbit",         color: "#00B0B9", bg: "bg-[#00B0B9]/10", Icon: Watch },
+  garmin:          { label: "Garmin",         color: "#009CDE", bg: "bg-[#009CDE]/10", Icon: Watch },
+  withings:        { label: "Withings",       color: "#1A8FBF", bg: "bg-[#1A8FBF]/10", Icon: HeartPulse },
   samsung_health:  { label: "Samsung Health", color: "#1428A0", bg: "bg-[#1428A0]/10", Icon: Smartphone },
-  manual:          { label: "Manual entry",  color: "#6B7280", bg: "bg-muted",         Icon: Hand },
+  // Distinct from the HealthOS brand green so the badge actually reads
+  // as "from Android" rather than blending into chrome (code-review
+  // §L8). #3DDC84 is the official Android brand green used across the
+  // Play Store and the Health Connect logo itself.
+  health_connect:  { label: "Health Connect", color: "#3DDC84", bg: "bg-[#3DDC84]/10", Icon: Heart },
+  manual:          { label: "Manual entry",   color: "#6B7280", bg: "bg-muted",        Icon: Hand },
 };
 
 export interface SourceBadgeProps {

@@ -6,6 +6,7 @@ import { Stack } from "expo-router";
 import { ScreenScroll } from "@/components/ScreenScroll";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { SegmentGroup } from "@/components/ui/SegmentGroup";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { useT } from "@/i18n";
@@ -23,13 +24,20 @@ const THEME_OPTIONS: { value: ThemeMode; labelKey: string }[] = [
   { value: "system", labelKey: "settings.themeSystem" },
 ];
 
-const ACCENT_OPTIONS = [
-  "#0E7C66",
-  "#2563EB",
-  "#9333EA",
-  "#DC2626",
-  "#D97706",
-  "#0891B2",
+/**
+ * Accent palette + a screen-reader-friendly name per swatch. The
+ * picker renders pure color circles, so without the per-swatch label
+ * VoiceOver/TalkBack would announce "button" with no clue what color
+ * the user is selecting — a hard accessibility regression for users
+ * who can't perceive the color directly.
+ */
+const ACCENT_OPTIONS: { value: string; label: string }[] = [
+  { value: "#0E7C66", label: "Teal" },
+  { value: "#2563EB", label: "Blue" },
+  { value: "#9333EA", label: "Purple" },
+  { value: "#DC2626", label: "Red" },
+  { value: "#D97706", label: "Amber" },
+  { value: "#0891B2", label: "Cyan" },
 ];
 
 const LOCALE_OPTIONS: { value: Locale; label: string }[] = [
@@ -105,51 +113,40 @@ export default function PreferencesScreen() {
         <Text style={{ color: colors.text, fontWeight: fontWeights.semibold, fontSize: typography.lg.fontSize, marginBottom: spacing.sm }}>
           {t("settings.themeMode")}
         </Text>
-        <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          {THEME_OPTIONS.map((opt) => {
-            const active = mode === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => onPickMode(opt.value)}
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.sm,
-                  borderRadius: radius.md,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                  }}
-                >
-                  {t(opt.labelKey)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SegmentGroup<ThemeMode>
+          accessibilityLabel={t("settings.themeMode")}
+          value={mode}
+          onChange={onPickMode}
+          options={THEME_OPTIONS.map((opt) => ({
+            value: opt.value,
+            label: t(opt.labelKey),
+          }))}
+        />
       </Card>
 
       <Card>
         <Text style={{ color: colors.text, fontWeight: fontWeights.semibold, fontSize: typography.lg.fontSize, marginBottom: spacing.sm }}>
           {t("settings.accentColor")}
         </Text>
-        <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
-          {ACCENT_OPTIONS.map((c) => {
-            const active = c.toLowerCase() === accentColor.toLowerCase();
+        <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t("settings.accentColor")}
+          style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}
+        >
+          {ACCENT_OPTIONS.map((opt) => {
+            const active = opt.value.toLowerCase() === accentColor.toLowerCase();
             return (
               <Pressable
-                key={c}
-                onPress={() => onPickAccent(c)}
+                key={opt.value}
+                onPress={() => onPickAccent(opt.value)}
+                accessibilityRole="radio"
+                accessibilityLabel={opt.label}
+                accessibilityState={{ selected: active }}
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: radius.pill,
-                  backgroundColor: c,
+                  backgroundColor: opt.value,
                   borderWidth: active ? 3 : 1,
                   borderColor: active ? colors.text : colors.border,
                 }}
@@ -163,33 +160,12 @@ export default function PreferencesScreen() {
         <Text style={{ color: colors.text, fontWeight: fontWeights.semibold, fontSize: typography.lg.fontSize, marginBottom: spacing.sm }}>
           {t("settings.language")}
         </Text>
-        <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          {LOCALE_OPTIONS.map((opt) => {
-            const active = locale === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => setLocale(opt.value)}
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.sm,
-                  borderRadius: radius.md,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                  }}
-                >
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SegmentGroup<Locale>
+          accessibilityLabel={t("settings.language")}
+          value={locale}
+          onChange={setLocale}
+          options={LOCALE_OPTIONS}
+        />
       </Card>
     </ScreenScroll>
   );

@@ -55,6 +55,29 @@ class AuditEventTypeEnum(str, Enum):
     REPORT_PDF_DOWNLOADED = "report_pdf_downloaded"
     # Breach events
     PASSWORD_BREACHED = "password_breached"
+    # Health Connect sync — see migration 024 for the matching enum entries.
+    # `details` payload limited to {device_id, scopes, count, error_code} —
+    # never raw values.
+    HEALTH_DATA_SYNC_STARTED = "health_data_sync_started"
+    HEALTH_DATA_SYNC_COMPLETED = "health_data_sync_completed"
+    HEALTH_DATA_SYNC_FAILED = "health_data_sync_failed"
+    HEALTH_CONNECT_PERMISSION_GRANTED = "health_connect_permission_granted"
+    HEALTH_CONNECT_PERMISSION_REVOKED = "health_connect_permission_revoked"
+    HEALTH_CONNECT_DISCONNECTED = "health_connect_disconnected"
+    # Medication Hub — plan lifecycle + refill + appointment import + summary export.
+    MEDICATION_PLAN_CREATED = "medication_plan_created"
+    MEDICATION_PLAN_UPDATED = "medication_plan_updated"
+    MEDICATION_PLAN_PAUSED = "medication_plan_paused"
+    MEDICATION_PLAN_RESUMED = "medication_plan_resumed"
+    MEDICATION_PLAN_DELETED = "medication_plan_deleted"
+    MEDICATION_REFILL_LOGGED = "medication_refill_logged"
+    MEDICATION_IMPORTED_FROM_APPOINTMENT = "medication_imported_from_appointment"
+    MEDICATION_SUMMARY_EXPORTED = "medication_summary_exported"
+    # Emergency Health Card — token lifecycle + first-from-IP public reads.
+    EMERGENCY_TOKEN_CREATED = "emergency_token_created"
+    EMERGENCY_TOKEN_REVOKED = "emergency_token_revoked"
+    EMERGENCY_PUBLIC_ACCESS_FIRST = "emergency_public_access_first"
+    EMERGENCY_PROFILE_UPDATED = "emergency_profile_updated"
 
 
 class AuditLog(Base):

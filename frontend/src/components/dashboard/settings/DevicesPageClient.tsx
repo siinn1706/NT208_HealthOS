@@ -5,7 +5,18 @@ import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import { DeviceConnectionCard, type Device, type DeviceProvider } from "./DeviceConnectionCard";
 
-const SUPPORTED_PROVIDERS: Array<{ provider: DeviceProvider; label: string }> = [
+// Health Connect leads the picker because it's the only provider with
+// real ingestion. Connecting from the web is intentionally a soft action —
+// it shows guidance to open the Android app rather than POST /v1/devices
+// directly, because the connect flow needs the system permission dialog.
+const SUPPORTED_PROVIDERS: Array<{
+  provider: DeviceProvider;
+  label: string;
+  /** When true, the connect flow opens an explainer modal rather than
+   *  immediately posting to Core BE. */
+  webRequiresMobile?: boolean;
+}> = [
+  { provider: "health_connect", label: "Health Connect", webRequiresMobile: true },
   { provider: "apple_health", label: "Apple Health" },
   { provider: "google_fit", label: "Google Fit" },
   { provider: "garmin", label: "Garmin Connect" },
@@ -20,15 +31,28 @@ function normalizeDevice(raw: unknown): Device | null {
     provider !== "apple_health" &&
     provider !== "google_fit" &&
     provider !== "garmin" &&
-    provider !== "fitbit"
+    provider !== "fitbit" &&
+    provider !== "health_connect"
   ) {
     return null;
   }
   const providerLabel = SUPPORTED_PROVIDERS.find((item) => item.provider === provider)?.label ?? "N/A";
+  const lastSyncStatus =
+    candidate.last_sync_status === "ok" ||
+    candidate.last_sync_status === "partial" ||
+    candidate.last_sync_status === "permission_denied" ||
+    candidate.last_sync_status === "error"
+      ? candidate.last_sync_status
+      : null;
   return {
     id: String(candidate.id ?? ""),
     provider,
-    name: typeof candidate.name === "string" ? candidate.name : providerLabel,
+    name:
+      typeof candidate.name === "string"
+        ? candidate.name
+        : typeof candidate.device_label === "string"
+          ? candidate.device_label
+          : providerLabel,
     model: typeof candidate.model === "string" ? candidate.model : null,
     connected: Boolean(candidate.connected),
     lastSync:
@@ -39,6 +63,20 @@ function normalizeDevice(raw: unknown): Device | null {
         ? candidate.battery_pct
         : typeof candidate.batteryPct === "number"
         ? candidate.batteryPct
+        : null,
+    lastSyncStatus,
+    lastSyncCount:
+      typeof candidate.last_sync_count === "number"
+        ? candidate.last_sync_count
+        : null,
+    scopes: Array.isArray(candidate.scopes)
+      ? (candidate.scopes as unknown[]).filter(
+          (s): s is string => typeof s === "string"
+        )
+      : null,
+    deviceLabel:
+      typeof candidate.device_label === "string"
+        ? candidate.device_label
         : null,
   };
 }
@@ -52,6 +90,7 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [connectingProvider, setConnectingProvider] = useState<DeviceProvider | null>(null);
   const [connectErrorProvider, setConnectErrorProvider] = useState<DeviceProvider | null>(null);
+  const [hcExplainerOpen, setHcExplainerOpen] = useState(false);
 
   // P0 truth fix (UX plan §E): handleSync MUST throw on non-2xx so the
   // DeviceConnectionCard can transition into its error state. Previously a
@@ -88,6 +127,15 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
   };
 
   const handleConnect = async (provider: DeviceProvider) => {
+    // Health Connect can't be connected from the web — the system
+    // permission dialog only renders inside the Android app. Surface a
+    // modal explainer with the install path instead of POSTing.
+    const config = SUPPORTED_PROVIDERS.find((p) => p.provider === provider);
+    if (config?.webRequiresMobile) {
+      setHcExplainerOpen(true);
+      return;
+    }
+
     setConnectingProvider(provider);
     setConnectErrorProvider(null);
     try {
@@ -180,6 +228,42 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
       <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
         {t("privacyNote")}
       </p>
+
+      {hcExplainerOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="hc-explainer-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setHcExplainerOpen(false)}
+        >
+          <div
+            className="max-w-md w-full rounded-2xl border border-border bg-card p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="hc-explainer-title" className="text-lg font-semibold">
+              {t("hc.modalTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("hc.modalBody")}
+            </p>
+            <ol className="text-sm space-y-2 list-decimal list-inside text-foreground">
+              <li>{t("hc.step1")}</li>
+              <li>{t("hc.step2")}</li>
+              <li>{t("hc.step3")}</li>
+            </ol>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setHcExplainerOpen(false)}
+                className="h-9 px-4 rounded-lg text-sm font-medium text-foreground hover:bg-muted cursor-pointer"
+              >
+                {t("hc.modalClose")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

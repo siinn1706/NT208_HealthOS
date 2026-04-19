@@ -106,15 +106,25 @@ def fire_due_occurrences() -> dict:
         # `WHERE id IN (subselect FOR UPDATE SKIP LOCKED)` matches the
         # standard Postgres "queue" pattern: concurrent workers skip rows
         # already locked by a peer rather than waiting on them.
+        #
+        # Defense-in-depth (Medication Hub review H5): join `Reminder` and
+        # require `is_active=True`. Pause already cancels pending occurrences
+        # to SKIPPED before commit, but any drift between a reminder's state
+        # and its occurrences (partial failure, manual DB edit, race against
+        # a long-running pause transaction) would otherwise let a "paused"
+        # medication still send a notification. Materializer already filters
+        # `is_active`; the firing query now matches.
         claim_subquery = (
             select(ReminderOccurrence.id)
+            .join(Reminder, Reminder.id == ReminderOccurrence.reminder_id)
             .where(
+                Reminder.is_active.is_(True),
                 ReminderOccurrence.scheduled_at <= now,
                 ReminderOccurrence.status.in_(pending_statuses),
             )
             .order_by(ReminderOccurrence.scheduled_at.asc())
             .limit(500)
-            .with_for_update(skip_locked=True)
+            .with_for_update(of=ReminderOccurrence, skip_locked=True)
         )
         claimed_ids = [row[0] for row in db.execute(claim_subquery).all()]
         if not claimed_ids:

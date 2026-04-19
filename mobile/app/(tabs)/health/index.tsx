@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import { RefreshControl, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
@@ -7,6 +7,7 @@ import { ScreenScroll } from "@/components/ScreenScroll";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { PillGroup } from "@/components/ui/PillGroup";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { VitalsLineChart } from "@/components/charts/VitalsLineChart";
@@ -24,7 +25,7 @@ const RANGES = [
 export default function HealthScreen() {
   const t = useT();
   const router = useRouter();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
+  const { colors, fontWeights, typography, spacing } = useTheme();
   const [days, setDays] = useState<7 | 30 | 90>(7);
 
   const vitals = useQuery({
@@ -64,33 +65,13 @@ export default function HealthScreen() {
       />
 
       <Card>
-        <View style={{ flexDirection: "row", gap: spacing.xs, marginBottom: spacing.md }}>
-          {RANGES.map((r) => {
-            const active = days === r.value;
-            return (
-              <Pressable
-                key={r.value}
-                onPress={() => setDays(r.value as 7 | 30 | 90)}
-                style={{
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: 6,
-                  borderRadius: radius.pill,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                    fontSize: typography.xs.fontSize,
-                  }}
-                >
-                  {t(r.key)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <PillGroup<7 | 30 | 90>
+          accessibilityLabel="Range"
+          value={days}
+          onChange={setDays}
+          options={RANGES.map((r) => ({ value: r.value, label: t(r.key) }))}
+          style={{ marginBottom: spacing.md }}
+        />
         <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize, marginBottom: 4 }}>
           {t("healthMetrics.heartRate")}
         </Text>

@@ -1,4 +1,5 @@
 import { apiFetch, apiUpload } from "../client";
+import { appendFilePart, type FilePart } from "../formdata";
 
 export type MealStatus = "pending" | "analyzing" | "analyzed" | "failed";
 
@@ -61,18 +62,14 @@ export async function createMealMultipart(input: {
   name: string;
   notes?: string;
   logged_at?: string;
-  image?: { uri: string; name: string; type: string };
+  image?: FilePart;
 }): Promise<MealResponse> {
   const fd = new FormData();
   fd.append("name_form", input.name);
   if (input.notes) fd.append("notes_form", input.notes);
   if (input.logged_at) fd.append("logged_at_form", input.logged_at);
   if (input.image) {
-    fd.append("image", {
-      uri: input.image.uri,
-      name: input.image.name,
-      type: input.image.type,
-    } as unknown as Blob);
+    appendFilePart(fd, "image", input.image);
   }
   const res = await apiUpload<{ data: MealResponse }>("/v1/meals", fd);
   return res.data;
@@ -85,15 +82,11 @@ export interface AnalyzePhotoResponse {
 
 export async function analyzePhoto(input: {
   name: string;
-  image: { uri: string; name: string; type: string };
+  image: FilePart;
 }): Promise<AnalyzePhotoResponse> {
   const fd = new FormData();
   fd.append("name", input.name);
-  fd.append("image", {
-    uri: input.image.uri,
-    name: input.image.name,
-    type: input.image.type,
-  } as unknown as Blob);
+  appendFilePart(fd, "image", input.image);
   return apiUpload<AnalyzePhotoResponse>("/v1/meals/analyze-photo", fd);
 }
 

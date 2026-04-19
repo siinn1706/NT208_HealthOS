@@ -86,6 +86,9 @@ async def _metrics_in_period(
     period: str,
 ) -> list[HealthMetric]:
     start = _period_start(period)
+    # Exclude Health Connect tombstones (`is_deleted=true`) so risk
+    # predictions, reports, and trend analyses don't keep using values
+    # the user already removed at the source.
     rows = (
         await db.execute(
             select(HealthMetric)
@@ -93,6 +96,7 @@ async def _metrics_in_period(
                 and_(
                     HealthMetric.user_id == user_id,
                     HealthMetric.recorded_at >= start,
+                    HealthMetric.is_deleted.is_(False),
                 )
             )
             .order_by(HealthMetric.recorded_at.asc())

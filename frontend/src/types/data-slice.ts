@@ -36,7 +36,11 @@ export type ProviderId =
   | "fitbit"
   | "garmin"
   | "withings"
-  | "samsung_health";
+  | "samsung_health"
+  // Android Health Connect aggregator. Distinct from the per-app providers
+  // because HC itself rebroadcasts data from many sources; the row's
+  // `source_app` carries the originating package.
+  | "health_connect";
 
 export interface DataSliceError {
   code: string;

@@ -52,7 +52,7 @@ function alertTone(type: string): "danger" | "warning" | "info" | "neutral" {
 
 export default function HomeScreen() {
   const t = useT();
-  const { colors, fontWeights, typography, spacing } = useTheme();
+  const { colors, fontWeights, typography, spacing, radius } = useTheme();
   const user = sessionStore((s) => s.user);
 
   const summary = useQuery({
@@ -148,8 +148,8 @@ export default function HomeScreen() {
                         flexBasis: "47%",
                         backgroundColor: colors.surfaceMuted,
                         padding: spacing.md,
-                        borderRadius: 12,
-                        gap: 4,
+                        borderRadius: radius.md,
+                        gap: spacing.xs,
                       }}
                     >
                       <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>

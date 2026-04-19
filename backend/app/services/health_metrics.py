@@ -14,6 +14,15 @@ from app.schemas.health_metrics import (
 )
 
 
+# Re-usable predicate that hides Health Connect tombstones (and any future
+# soft-deleted rows) from analytics. A row goes `is_deleted=true` when HC
+# reports a deletion via getChanges; without this filter, dashboards keep
+# showing values the user already removed at the source. The column is
+# NOT NULL with default false (migration 024), so this also matches manual
+# rows that have never been touched by sync.
+_NOT_DELETED = HealthMetric.is_deleted.is_(False)
+
+
 def _resolve_range_to_dates(
     range_value: str | None,
 ) -> tuple[datetime.date | None, datetime.date | None]:
@@ -40,6 +49,9 @@ def _apply_filters(
     date_from: datetime.date | None,
     date_to: datetime.date | None,
 ) -> Select[tuple[HealthMetric]]:
+    # Always hide tombstones — every list/aggregate flow funnels through here.
+    stmt = stmt.where(_NOT_DELETED)
+
     if metric_type is not None:
         stmt = stmt.where(HealthMetric.metric_type == metric_type)
 
@@ -123,9 +135,16 @@ async def aggregate_by_period(
     start_dt = datetime.datetime.combine(date_from, datetime.time.min, tzinfo=datetime.timezone.utc)
     end_dt = datetime.datetime.combine(date_to, datetime.time.max, tzinfo=datetime.timezone.utc)
 
+    # Bind the date_trunc once and reuse the SAME labeled expression in
+    # SELECT, GROUP BY, and ORDER BY. Without sharing the expression,
+    # SQLAlchemy emits two bind parameters for `trunc_unit` and
+    # PostgreSQL refuses to treat them as the same GROUP BY target
+    # ("column ... must appear in GROUP BY").
+    period_expr = func.date_trunc(trunc_unit, HealthMetric.recorded_at).label("period_start")
+
     stmt = (
         select(
-            func.date_trunc(trunc_unit, HealthMetric.recorded_at).label("period_start"),
+            period_expr,
             func.avg(HealthMetric.value).label("avg_value"),
             func.min(HealthMetric.value).label("min_value"),
             func.max(HealthMetric.value).label("max_value"),
@@ -137,10 +156,11 @@ async def aggregate_by_period(
                 HealthMetric.metric_type == metric_type,
                 HealthMetric.recorded_at >= start_dt,
                 HealthMetric.recorded_at <= end_dt,
+                _NOT_DELETED,
             )
         )
-        .group_by(func.date_trunc(trunc_unit, HealthMetric.recorded_at))
-        .order_by("period_start")
+        .group_by(period_expr)
+        .order_by(period_expr)
     )
     rows = (await db.execute(stmt)).mappings().all()
     return [
@@ -187,6 +207,7 @@ async def compare_metrics(
                     HealthMetric.metric_type == metric,
                     HealthMetric.recorded_at >= start_dt,
                     HealthMetric.recorded_at <= end_dt,
+                    _NOT_DELETED,
                 )
             )
             .group_by(func.date(HealthMetric.recorded_at))
@@ -239,6 +260,7 @@ async def calculate_goal_progress(
                 HealthMetric.metric_type == metric_type,
                 HealthMetric.recorded_at >= start_dt,
                 HealthMetric.recorded_at <= end_dt,
+                _NOT_DELETED,
             )
         )
         .group_by(func.date(HealthMetric.recorded_at))
@@ -296,6 +318,7 @@ async def compare_periods(
                     HealthMetric.metric_type == metric_type,
                     HealthMetric.recorded_at >= start_dt,
                     HealthMetric.recorded_at <= end_dt,
+                    _NOT_DELETED,
                 )
             )
         )

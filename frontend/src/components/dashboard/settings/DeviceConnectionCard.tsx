@@ -17,7 +17,12 @@ import type { ProviderId } from "@/types/data-slice";
 
 type SyncStatus = "idle" | "syncing" | "success" | "error";
 
-export type DeviceProvider = "apple_health" | "garmin" | "fitbit" | "google_fit";
+export type DeviceProvider =
+  | "apple_health"
+  | "garmin"
+  | "fitbit"
+  | "google_fit"
+  | "health_connect";
 
 export interface Device {
   id: string;
@@ -27,6 +32,12 @@ export interface Device {
   connected: boolean;
   lastSync: string | null;
   batteryPct: number | null;
+  // Health Connect — populated by the BFF after migration 024 lands.
+  // Render the live status badge + count when present.
+  lastSyncStatus?: "ok" | "partial" | "permission_denied" | "error" | null;
+  lastSyncCount?: number | null;
+  scopes?: string[] | null;
+  deviceLabel?: string | null;
 }
 
 const PROVIDER_META: Record<DeviceProvider, { label: string; color: string; bg: string; logoPath: string }> = {
@@ -52,6 +63,14 @@ const PROVIDER_META: Record<DeviceProvider, { label: string; color: string; bg: 
     label: "Google Fit",
     color: "#4285F4",
     bg: "bg-[#4285F4]/10",
+    logoPath: "",
+  },
+  health_connect: {
+    label: "Health Connect",
+    // Android brand green — distinct from the HealthOS chrome colour so
+    // the device card reads as "Android system" attribution at a glance.
+    color: "#3DDC84",
+    bg: "bg-[#3DDC84]/10",
     logoPath: "",
   },
 };
@@ -175,26 +194,80 @@ export function DeviceConnectionCard({
             ? t("syncFailed")
             : `${t("lastSync")} ${formatSyncTime(device.lastSync, syncLabels, locale)}`}
         </span>
+        {device.provider === "health_connect" && typeof device.lastSyncCount === "number" && device.lastSyncCount > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-foreground">
+            {t("hcCount", { n: device.lastSyncCount })}
+          </span>
+        )}
       </div>
+
+      {/* Health Connect — surface granted scopes and any explicit
+          permission_denied / error state so the user understands what
+          to do next without opening the Android Settings app. */}
+      {device.provider === "health_connect" && (
+        <>
+          {device.lastSyncStatus === "permission_denied" && (
+            <div className="text-xs px-2 py-1.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
+              {t("hcPermissionDenied")}
+            </div>
+          )}
+          {device.lastSyncStatus === "error" && (
+            <div className="text-xs px-2 py-1.5 rounded-lg bg-red-500/10 text-red-700 dark:text-red-400">
+              {t("hcSyncError")}
+            </div>
+          )}
+          {device.scopes && device.scopes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {device.scopes.map((s) => (
+                <span
+                  key={s}
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1">
         {device.connected ? (
           <>
-            <button
-              type="button"
-              onClick={handleSync}
-              disabled={syncStatus === "syncing"}
-              className={cn(
-                "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer",
-                "bg-primary/10 text-primary hover:bg-primary/20",
-                syncStatus === "syncing" && "opacity-60 cursor-not-allowed"
-              )}
-              aria-label={`${t("syncNow")} ${meta.label}`}
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === "syncing" && "animate-spin")} />
-              {t("syncNow")}
-            </button>
+            {device.provider === "health_connect" ? (
+              // Health Connect requires the on-device SDK + the system
+              // permission dialog. The web has neither; the legacy
+              // `/sync` endpoint only bumps a timestamp, so a "Sync now"
+              // button here would be deceptive theatre. Surface a
+              // disabled button + tooltip pointing the user to the
+              // mobile app instead. (Code review §H4.)
+              <button
+                type="button"
+                disabled
+                title={t("hcSyncFromMobile")}
+                aria-label={t("hcSyncFromMobile")}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-muted text-muted-foreground cursor-not-allowed"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {t("hcSyncFromMobileShort")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSync}
+                disabled={syncStatus === "syncing"}
+                className={cn(
+                  "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                  "bg-primary/10 text-primary hover:bg-primary/20",
+                  syncStatus === "syncing" && "opacity-60 cursor-not-allowed"
+                )}
+                aria-label={`${t("syncNow")} ${meta.label}`}
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === "syncing" && "animate-spin")} />
+                {t("syncNow")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onDisconnect(device.id)}

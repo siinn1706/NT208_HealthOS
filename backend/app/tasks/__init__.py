@@ -11,6 +11,7 @@ celery_app = Celery(
     include=[
         "app.tasks.meal_analysis",
         "app.tasks.reminders",
+        "app.tasks.medications",
         "app.tasks.data_export",
         "app.tasks.account_purge",
         "app.tasks.report_pdf",
@@ -65,5 +66,20 @@ celery_app.conf.beat_schedule = {
     "expire_report_pdf_blobs": {
         "task": "app.tasks.maintenance.expire_report_pdf_blobs",
         "schedule": crontab(hour=4, minute=15),
+    },
+    # Emergency Card — purge old public access logs (180-day retention) and
+    # auto-revoke any active token belonging to a soft-deleted user.
+    "purge_old_emergency_access_logs": {
+        "task": "app.tasks.maintenance.purge_old_emergency_access_logs",
+        "schedule": crontab(hour=4, minute=30),
+    },
+    "revoke_tokens_for_soft_deleted_users": {
+        "task": "app.tasks.maintenance.revoke_tokens_for_soft_deleted_users",
+        "schedule": crontab(hour=4, minute=45),
+    },
+    # Medication Hub — daily refill / review signals.
+    "compute_medication_signals": {
+        "task": "app.tasks.medications.compute_medication_signals",
+        "schedule": crontab(hour=6, minute=0),  # daily at 06:00 UTC
     },
 }

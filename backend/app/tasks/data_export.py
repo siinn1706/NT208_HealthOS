@@ -37,6 +37,7 @@ from app.models.core import (
     DataExportStatusEnum,
     HealthMetric,
     Meal,
+    MedicationPlan,
     Notification,
     NotificationKindEnum,
     Reminder,
@@ -184,10 +185,34 @@ def build_user_export(self, user_id: str, request_id: str) -> dict:
                                 "id", "type", "title", "remind_time", "repeat", "note",
                                 "tzid", "weekday_mask", "day_of_month",
                                 "start_date", "end_date", "is_active",
+                                "medication_plan_id",
                                 "created_at",
                             ],
                         )
                         for r in reminders
+                    ),
+                )
+
+                medication_plans = db.execute(
+                    select(MedicationPlan).where(MedicationPlan.user_id == user_uuid)
+                ).scalars().all()
+                _add_to_tar(
+                    tar,
+                    "medication_plans.jsonl",
+                    _jsonl(
+                        _row_to_dict(
+                            p,
+                            [
+                                "id", "appointment_id", "name", "generic_name",
+                                "strength", "form", "instructions", "prescriber",
+                                "clinic", "start_date", "end_date", "status", "tzid",
+                                "refill_supply_units", "refill_cadence_days",
+                                "last_refill_at", "next_refill_estimated_at",
+                                "review_due_at", "notes",
+                                "created_at", "updated_at",
+                            ],
+                        )
+                        for p in medication_plans
                     ),
                 )
 
@@ -232,6 +257,9 @@ def build_user_export(self, user_id: str, request_id: str) -> dict:
                         "\nThis archive contains every record HealthOS holds about you.\n"
                         "Each `.jsonl` file is one record per line (JSON Lines format).\n"
                         "user.json is your profile root.\n"
+                        "medication_plans.jsonl lists each tracked medication. The dose\n"
+                        "schedule for each plan lives in reminders.jsonl, joined by the\n"
+                        "`medication_plan_id` column.\n"
                         "\nIf you no longer need this archive, delete it locally — the\n"
                         "download link will also expire automatically after 24h.\n"
                     ).encode("utf-8"),

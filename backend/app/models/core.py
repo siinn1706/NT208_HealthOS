@@ -45,6 +45,11 @@ class WearableSourceEnum(str, Enum):
     GOOGLE_FIT = "google_fit"
     GARMIN = "garmin"
     FITBIT = "fitbit"
+    # Android Health Connect — distinct from `google_fit` (which is being
+    # deprecated). HC is a multi-source aggregator on the device; the
+    # `source_app` column on health_metrics records which app inside HC
+    # produced each row (Samsung Health, Pixel, Strava, etc.).
+    HEALTH_CONNECT = "health_connect"
 
 
 class WearableProviderEnum(str, Enum):
@@ -52,6 +57,7 @@ class WearableProviderEnum(str, Enum):
     GOOGLE_FIT = "google_fit"
     GARMIN = "garmin"
     FITBIT = "fitbit"
+    HEALTH_CONNECT = "health_connect"
 
 
 class AppointmentStatusEnum(str, Enum):
@@ -89,6 +95,32 @@ class ReminderRepeatEnum(str, Enum):
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
+
+
+class MedicationPlanStatusEnum(str, Enum):
+    """Lifecycle of a user's medication plan.
+
+    active     → user is actively taking the medication; child reminders fire.
+    paused     → user temporarily stopped (side effects, doctor instruction);
+                 child reminders are deactivated and pending occurrences
+                 are bulk-cancelled. Resumable.
+    completed  → course finished naturally (e.g., 5-day antibiotic).
+    cancelled  → user archived the plan; kept for adherence history.
+    """
+
+    ACTIVE = "active"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class MedicationFormEnum(str, Enum):
+    TABLET = "tablet"
+    CAPSULE = "capsule"
+    LIQUID = "liquid"
+    INJECTION = "injection"
+    DROPS = "drops"
+    OTHER = "other"
 
 
 class OnboardingStatusEnum(str, Enum):
@@ -364,6 +396,9 @@ class Meal(Base):
 
 class HealthMetric(Base):
     __tablename__ = "health_metrics"
+    # Migration 024 — partial unique index `uq_health_metrics_external_id`
+    # on (user_id, source, external_id) WHERE external_id IS NOT NULL is
+    # the dedupe key. Manual rows (external_id=NULL) are exempt.
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -389,6 +424,35 @@ class HealthMetric(Base):
         SAEnum(WearableSourceEnum, name="wearable_source_enum", values_callable=_enum_values),
         nullable=False,
     )
+    # Health Connect identity tuple. `external_id` is the HC record's
+    # `clientRecordId` (when HealthOS owns the row) or `metadata.id` (when
+    # HealthOS just observes it). `external_version` mirrors HC's
+    # `clientRecordVersion` / `lastModifiedTime` epoch ms — the upsert
+    # only overwrites when the incoming version is strictly higher.
+    external_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    external_version: Mapped[int | None] = mapped_column(nullable=True)
+    device_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("connected_devices.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Source app's Android package name (e.g. com.sec.android.app.shealth).
+    # Renders as a "Synced from Samsung Health" pill in the UI.
+    source_app: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # HC `Metadata.recordingMethod` — automatic / manual / active / unknown.
+    recording_method: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # Tombstone fields — HC can report deletions via getChanges; we keep the
+    # row for audit and so UI can render "removed at the source" states.
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -396,10 +460,26 @@ class HealthMetric(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="health_metrics")
+    device: Mapped["ConnectedDevice | None"] = relationship(
+        "ConnectedDevice",
+        foreign_keys=[device_id],
+    )
 
 
 class ConnectedDevice(Base):
     __tablename__ = "connected_devices"
+    # Migration 024 — uniqueness on (user_id, provider, external_account_id)
+    # gives us "one row per (user, provider, source app)". external_account_id
+    # is nullable so legacy stub providers (Apple Health / Garmin / Fitbit)
+    # still satisfy the constraint via NULL distinctness.
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "provider",
+            "external_account_id",
+            name="uq_connected_devices_user_provider_account",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -415,6 +495,26 @@ class ConnectedDevice(Base):
         SAEnum(WearableProviderEnum, name="wearable_provider_enum", values_callable=_enum_values),
         nullable=False,
     )
+    # For Health Connect: the source-app package name (Pixel app, Samsung
+    # Health, etc.). NULL for legacy stub providers that did not capture it.
+    external_account_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    device_label: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # JSON list of HC record types the user granted permission for, e.g.
+    # ["Steps","HeartRate","SleepSession","Weight"]. Used by the sync
+    # orchestrator to know what to ask for and by the UI to render the
+    # "X of N permissions granted" banner.
+    scopes: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    # Most recent sync result — surfaces directly in the UI without needing
+    # to crack open the audit log. Status is one of
+    # ok | partial | permission_denied | error. Error string is a short
+    # human-readable code, never PHI or raw exception detail.
+    last_sync_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    last_sync_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_sync_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_attempted_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     connected_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -426,6 +526,74 @@ class ConnectedDevice(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="connected_devices")
+    sync_states: Mapped[list["DeviceSyncState"]] = relationship(
+        "DeviceSyncState",
+        back_populates="device",
+        cascade="all, delete-orphan",
+    )
+
+
+class DeviceSyncState(Base):
+    """Per-(device, record_type) Health Connect sync cursor.
+
+    The `changes_token` is opaque to HealthOS — Android's HC SDK issues it
+    and we just round-trip it. Storing it server-side (rather than on the
+    device) means a reinstall doesn't lose history and two devices on one
+    user can share one logical sync state per record type.
+
+    `consecutive_failures` powers the "you might need to reconnect"
+    banner — after 5 in a row we mark the device's `last_sync_status`
+    as `error` and surface a CTA in the settings UI.
+    """
+
+    __tablename__ = "device_sync_state"
+    __table_args__ = (
+        UniqueConstraint(
+            "device_id",
+            "record_type",
+            name="uq_device_sync_state_device_record",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    device_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("connected_devices.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    record_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    changes_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_synced_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_attempted_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    consecutive_failures: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    device: Mapped[ConnectedDevice] = relationship(back_populates="sync_states")
 
 
 class NotificationKindEnum(str, Enum):
@@ -602,6 +770,14 @@ class ReminderOccurrenceStatusEnum(str, Enum):
 
     pending → fired → done | skipped | snoozed
     pending → missed (catch-up sweep when an occurrence wasn't fired in time)
+    pending|snoozed → cancelled (medication paused / archived; review M5 — kept
+        separate from `skipped` so adherence math doesn't penalize the user
+        for *system*-cancelled doses they never opted to skip).
+
+    The DB column is `String(16)` with no CHECK, so adding a new enum member
+    is migration-free — existing reminder logic that only knew the original
+    six states continues to work; readers that don't recognize `cancelled`
+    fall through their pattern matches harmlessly.
     """
 
     PENDING = "pending"
@@ -610,6 +786,7 @@ class ReminderOccurrenceStatusEnum(str, Enum):
     SKIPPED = "skipped"
     SNOOZED = "snoozed"
     MISSED = "missed"
+    CANCELLED = "cancelled"
 
 
 class Reminder(Base):
@@ -693,6 +870,18 @@ class Reminder(Base):
         nullable=False,
         server_default=text("true"),
     )
+    # Medication Hub — nullable FK linking this reminder to a `MedicationPlan`.
+    # Reminders that pre-date the hub (or that the user creates ad-hoc on the
+    # reminders page) keep `medication_plan_id IS NULL` and behave exactly as
+    # before. Plan-owned reminders are always `type='medicine'` (enforced in
+    # the medication service, not at the DB level — keeps the FK strictly
+    # additive).
+    medication_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("medication_plans.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
@@ -710,6 +899,10 @@ class Reminder(Base):
     occurrences: Mapped[list["ReminderOccurrence"]] = relationship(
         back_populates="reminder",
         cascade="all, delete-orphan",
+    )
+    medication_plan: Mapped["MedicationPlan | None"] = relationship(
+        back_populates="reminders",
+        foreign_keys=[medication_plan_id],
     )
 
 
@@ -759,6 +952,116 @@ class ReminderOccurrence(Base):
     )
 
     reminder: Mapped[Reminder] = relationship(back_populates="occurrences")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MEDICATION HUB
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class MedicationPlan(Base):
+    """A drug a user is currently (or was previously) taking.
+
+    Owns one or more child `Reminder` rows — one per dose-time-of-day. Multi-dose
+    schedules are represented as N child reminders sharing the same plan_id and
+    `type='medicine'`. The recurrence engine, occurrence materializer, fire-due
+    Celery beat, and notification pipeline are all reused from the existing
+    reminders subsystem; this table only adds drug metadata + refill state +
+    appointment provenance + lifecycle status.
+
+    Adherence is computed by joining `reminder_occurrences` to plan-owning
+    reminders — no separate adherence storage.
+
+    Provenance: when imported from `appointment.prescription`, `appointment_id`
+    is set and `dedupe_key` carries `sha256("{appointment_id}:{idx}:{name}")`
+    so that re-imports are idempotent.
+    """
+
+    __tablename__ = "medication_plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    appointment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("appointments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    generic_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    strength: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    form: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prescriber: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    clinic: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    start_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        server_default=text("'active'"),
+    )
+    tzid: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        server_default=text("'Asia/Ho_Chi_Minh'"),
+    )
+    refill_supply_units: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    refill_cadence_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_refill_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    next_refill_estimated_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    # Refill-alert crossing-detection (review H6). Stores the lowest threshold
+    # we've already notified the user about *for the current supply cycle*.
+    # Reset to NULL on `log_refill`. The daily beat fires whenever
+    # `days_remaining <= ALERT_THRESHOLDS[i]` AND
+    # `(last_refill_alert_threshold IS NULL OR last_refill_alert_threshold > ALERT_THRESHOLDS[i])`,
+    # so a supply that drops 8→5 still triggers the 7-day alert.
+    last_refill_alert_threshold: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    review_due_at: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "dedupe_key", name="uq_medication_plan_dedupe"),
+    )
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    appointment: Mapped["Appointment | None"] = relationship(foreign_keys=[appointment_id])
+    reminders: Mapped[list["Reminder"]] = relationship(
+        back_populates="medication_plan",
+        cascade="all, delete-orphan",
+        foreign_keys="Reminder.medication_plan_id",
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

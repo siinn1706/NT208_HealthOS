@@ -1,0 +1,557 @@
+# Safety regression suite for the Pre-Visit Brief triage engine.
+#
+# Format:
+#   - id: stable identifier (kebab-case)
+#     description: one-liner — what real-world situation this captures
+#     locale: "en" | "vi"
+#     expected_bucket: emergency_now | urgent_same_day | routine_gp |
+#                      self_care_with_monitoring | insufficient_info
+#     expected_rule_ids: [optional] list of rule ids that MUST fire
+#     forbidden_rule_ids: [optional] list of rule ids that MUST NOT fire
+#     symptoms:
+#       - concern_text: ...
+#         concern_category: pain|fever|gi|resp|mental|skin|neuro|cardio|other
+#         severity_0_10: 0..10
+#         duration_value: int
+#         duration_unit: hours|days|weeks|months
+#         triggers / better_with / worse_with / meds_taken / prior_care: text
+#         context: { ... structured flags like is_infant_under_3mo: true }
+#
+# Adding a new red-flag rule REQUIRES a positive scenario here. CI fails
+# loudly if the registry has rule ids without coverage.
+
+# ─── Red flags (emergency_now) ──────────────────────────────────────────────
+
+- id: stroke-face-droop-en
+  description: User reports sudden facial droop in plain English.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-face]
+  symptoms:
+    - concern_text: "My face feels droopy on the left side, started 1 hour ago"
+      concern_category: neuro
+      severity_0_10: 8
+      duration_value: 1
+      duration_unit: hours
+
+- id: stroke-face-droop-vi
+  description: User reports sudden facial droop in Vietnamese.
+  locale: vi
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-face]
+  symptoms:
+    - concern_text: "Mặt tôi bị méo miệng đột ngột"
+      concern_category: neuro
+      duration_value: 30
+      duration_unit: hours
+
+- id: stroke-arm-weakness
+  description: Sudden arm weakness on one side.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-arm]
+  symptoms:
+    - concern_text: "My left arm feels weak, can't raise it"
+      concern_category: neuro
+      severity_0_10: 7
+
+- id: stroke-arm-weakness-vi
+  description: Vietnamese — yếu tay đột ngột.
+  locale: vi
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-arm]
+  symptoms:
+    - concern_text: "Tự nhiên thấy yếu tay phải, không nhấc lên được"
+      concern_category: neuro
+
+- id: stroke-slurred-speech
+  description: Sudden slurred speech.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-speech]
+  symptoms:
+    - concern_text: "I have slurred speech all of a sudden"
+      concern_category: neuro
+
+- id: stroke-slurred-speech-vi
+  description: Vietnamese — nói lắp đột ngột.
+  locale: vi
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-speech]
+  symptoms:
+    - concern_text: "Tôi đột ngột bị nói lắp, nói khó hiểu"
+      concern_category: neuro
+
+- id: cardiac-chest-sob-combined
+  description: Chest pain with shortness of breath — classic cardiac.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-cardiac-chest-sob]
+  symptoms:
+    - concern_text: "Crushing chest pain that started 1 hour ago, also shortness of breath"
+      concern_category: cardio
+      severity_0_10: 9
+      duration_value: 1
+      duration_unit: hours
+
+- id: cardiac-chest-sob-combined-vi
+  description: Vietnamese — đau ngực kèm khó thở.
+  locale: vi
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-cardiac-chest-sob]
+  symptoms:
+    - concern_text: "Đau ngực dữ dội kèm khó thở, mới xảy ra"
+      concern_category: cardio
+      severity_0_10: 9
+      duration_value: 1
+      duration_unit: hours
+
+- id: cardiac-chest-radiating-arm
+  description: Chest pain radiating to the arm.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-cardiac-chest-radiating]
+  symptoms:
+    - concern_text: "Chest pain radiating to arm, started 30 minutes ago"
+      concern_category: cardio
+      severity_0_10: 8
+
+- id: sob-at-rest
+  description: Severe shortness of breath at rest.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-sob-at-rest]
+  symptoms:
+    - concern_text: "Cannot catch my breath even sitting still"
+      concern_category: resp
+      severity_0_10: 9
+
+- id: anaphylaxis-lip-throat
+  description: Lip + tongue swelling with breathing difficulty after eating peanuts.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-anaphylaxis]
+  symptoms:
+    - concern_text: "Lip swelling and throat swelling, having shortness of breath after eating"
+      concern_category: skin
+      severity_0_10: 9
+
+- id: uncontrolled-bleeding
+  description: Wound that won't stop bleeding.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-uncontrolled-bleeding]
+  symptoms:
+    - concern_text: "Cut my hand badly and the bleeding won't stop bleeding for 20 min"
+      concern_category: other
+      severity_0_10: 8
+
+- id: thunderclap-headache
+  description: Worst headache of life — thunderclap pattern.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-thunderclap-headache]
+  symptoms:
+    - concern_text: "Worst headache of my life — came on suddenly"
+      concern_category: neuro
+      severity_0_10: 10
+
+- id: suicidal-ideation
+  description: Active suicidal ideation — must escalate.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-suicidal-ideation]
+  symptoms:
+    - concern_text: "Feeling overwhelmed, want to end my life"
+      concern_category: mental
+      severity_0_10: 10
+
+- id: suicidal-ideation-vi
+  description: Vietnamese — ý nghĩ tự sát.
+  locale: vi
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-suicidal-ideation]
+  symptoms:
+    - concern_text: "Tôi cảm thấy quá tải và muốn tự tử"
+      concern_category: mental
+
+- id: focal-neuro-vision-loss
+  description: Sudden vision loss on one eye.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-focal-neuro]
+  symptoms:
+    - concern_text: "Sudden vision loss in my right eye, came on in minutes"
+      concern_category: neuro
+      severity_0_10: 9
+
+- id: loss-of-consciousness
+  description: Patient passed out and came around with confusion.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-loss-consciousness]
+  symptoms:
+    - concern_text: "I passed out for 2 minutes, woke up confused"
+      concern_category: neuro
+      severity_0_10: 8
+
+- id: infant-fever
+  description: Caregiver brief — infant under 3 months with fever.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-infant-fever]
+  symptoms:
+    - concern_text: "My 6-week-old baby has a fever of 38.5"
+      concern_category: fever
+      context: { is_infant_under_3mo: true }
+
+# ─── Urgent (urgent_same_day) ───────────────────────────────────────────────
+
+- id: urgent-cardio-high-severity
+  description: Cardio category high-severity but no red-flag combination.
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-cardio-high-severity]
+  forbidden_rule_ids: [rf-cardiac-chest-sob, rf-cardiac-chest-radiating]
+  symptoms:
+    - concern_text: "Heart skipping beats, feels strong"
+      concern_category: cardio
+      severity_0_10: 8
+      duration_value: 4
+      duration_unit: hours
+
+- id: urgent-resp-high-severity
+  description: Respiratory category, severity 7, but no SOB-at-rest red flag.
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-resp-high-severity]
+  forbidden_rule_ids: [rf-sob-at-rest]
+  symptoms:
+    - concern_text: "Wheezing and tight chest with effort"
+      concern_category: resp
+      severity_0_10: 7
+      duration_value: 5
+      duration_unit: hours
+
+- id: urgent-acute-severe-pain
+  description: Severe pain (8/10), started in the last 24 hours.
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-acute-severe-pain]
+  symptoms:
+    - concern_text: "Sudden severe abdominal pain in the last few hours"
+      concern_category: pain
+      severity_0_10: 9
+      duration_value: 6
+      duration_unit: hours
+
+- id: urgent-high-fever-adult
+  description: Adult with explicit "high fever".
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-high-fever]
+  symptoms:
+    - concern_text: "I have a high fever, around 39 degrees"
+      concern_category: fever
+      severity_0_10: 6
+      duration_value: 12
+      duration_unit: hours
+
+- id: urgent-mental-crisis-passive
+  description: Mental health concern with hopelessness language but no plan.
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-mental-crisis-passive]
+  forbidden_rule_ids: [rf-suicidal-ideation]
+  symptoms:
+    - concern_text: "I feel hopeless and can't cope with anything"
+      concern_category: mental
+      severity_0_10: 7
+
+- id: urgent-gi-bleeding
+  description: Black tarry stool — clear GI bleed signal.
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-gi-bleeding]
+  symptoms:
+    - concern_text: "Black stool for the last 2 days, also nauseous"
+      concern_category: gi
+      severity_0_10: 6
+      duration_value: 2
+      duration_unit: days
+
+# ─── Routine (routine_gp) ───────────────────────────────────────────────────
+
+- id: routine-back-pain-5d
+  description: Back pain, severity 6, 5 days — routine GP visit.
+  locale: en
+  expected_bucket: routine_gp
+  expected_rule_ids: [rt-persistent-moderate]
+  symptoms:
+    - concern_text: "Lower back pain that started after gardening"
+      concern_category: pain
+      severity_0_10: 6
+      duration_value: 5
+      duration_unit: days
+
+- id: urgent-mental-default
+  description: Generic mental health concern — must escalate to urgent_same_day
+    after review fix S1 (defense-in-depth for crisis language that slips
+    past the explicit suicidal-ideation token list).
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-mental-default-anything]
+  symptoms:
+    - concern_text: "Feeling low for a while, finding it hard to enjoy things"
+      concern_category: mental
+      severity_0_10: 4
+      duration_value: 3
+      duration_unit: weeks
+
+- id: routine-long-duration-skin
+  description: Skin rash for 10 days — should be seen even if not severe.
+  locale: en
+  expected_bucket: routine_gp
+  expected_rule_ids: [rt-long-duration]
+  symptoms:
+    - concern_text: "Rash on my forearm hasn't gone away"
+      concern_category: skin
+      severity_0_10: 2
+      duration_value: 10
+      duration_unit: days
+
+# ─── Self care (self_care_with_monitoring) ──────────────────────────────────
+
+- id: selfcare-mild-headache
+  description: Mild headache today — self-care with monitoring.
+  locale: en
+  expected_bucket: self_care_with_monitoring
+  expected_rule_ids: [sc-mild-short-pain]
+  symptoms:
+    - concern_text: "Mild headache today, no other symptoms"
+      concern_category: pain
+      severity_0_10: 2
+      duration_value: 8
+      duration_unit: hours
+
+- id: selfcare-mild-stomach
+  description: Mild upset stomach for a day.
+  locale: en
+  expected_bucket: self_care_with_monitoring
+  expected_rule_ids: [sc-mild-short-gi]
+  symptoms:
+    - concern_text: "Bit of an upset stomach, no fever"
+      concern_category: gi
+      severity_0_10: 2
+      duration_value: 1
+      duration_unit: days
+
+- id: selfcare-mild-fever
+  description: Mild low-grade fever, day 1.
+  locale: en
+  expected_bucket: self_care_with_monitoring
+  expected_rule_ids: [sc-mild-short-fever]
+  symptoms:
+    - concern_text: "Slight fever today, otherwise feel okay"
+      concern_category: fever
+      severity_0_10: 2
+      duration_value: 12
+      duration_unit: hours
+
+- id: selfcare-mild-skin
+  description: Small bug bite, mild itch, today.
+  locale: en
+  expected_bucket: self_care_with_monitoring
+  expected_rule_ids: [sc-mild-short-skin]
+  symptoms:
+    - concern_text: "Small itchy bug bite on my arm"
+      concern_category: skin
+      severity_0_10: 1
+      duration_value: 6
+      duration_unit: hours
+
+# ─── Insufficient info ──────────────────────────────────────────────────────
+
+- id: insufficient-empty-other
+  description: Vague concern with no severity / duration / category trigger.
+  locale: en
+  expected_bucket: insufficient_info
+  symptoms:
+    - concern_text: "Just feeling a bit off"
+      concern_category: other
+
+# ─── Safety pivots — multi-symptom with one red-flag ────────────────────────
+
+- id: pivot-back-pain-then-chest
+  description: User starts with mild back pain then adds chest pain + SOB —
+    must escalate to emergency_now and not be diluted by the mild concern.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-cardiac-chest-sob]
+  symptoms:
+    - concern_text: "Mild back pain"
+      concern_category: pain
+      severity_0_10: 3
+      duration_value: 2
+      duration_unit: days
+    - concern_text: "Now also crushing chest pain with shortness of breath"
+      concern_category: cardio
+      severity_0_10: 9
+      duration_value: 1
+      duration_unit: hours
+
+# ─── Review fix S1 — passive suicidal ideation must escalate ────────────────
+
+- id: passive-ideation-dont-want-to-be-alive
+  description: User in distress writes "I don't want to be alive any more" —
+    must hit emergency_now via the expanded suicidal-ideation tokens, NOT
+    fall through to routine via the old mental-default path.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-suicidal-ideation]
+  forbidden_rule_ids: [ur-mental-default-anything]
+  symptoms:
+    - concern_text: "I don't want to be alive any more, no point any more"
+      concern_category: mental
+      severity_0_10: 8
+
+- id: passive-ideation-better-off-dead
+  description: '"Better off dead" phrasing must escalate.'
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-suicidal-ideation]
+  symptoms:
+    - concern_text: "Everyone would be better off dead than dealing with me"
+      concern_category: mental
+
+- id: passive-ideation-vi
+  description: Vietnamese passive ideation must escalate.
+  locale: vi
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-suicidal-ideation]
+  symptoms:
+    - concern_text: "Tôi không muốn sống nữa"
+      concern_category: mental
+
+# ─── Review fix S2 — chest pain typos + paraphrases must trigger ────────────
+
+- id: chest-typo-cant-breath
+  description: '"im havin chest pain n cant breath" — typo-tolerant cardiac rule.'
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-cardiac-chest-sob]
+  symptoms:
+    - concern_text: "im havin chest pain n cant breath"
+      concern_category: cardio
+      severity_0_10: 9
+
+- id: chest-paraphrase-tight-hard-to-breathe
+  description: Tight chest + hard to breathe — paraphrase variant.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-cardiac-chest-sob]
+  symptoms:
+    - concern_text: "Tight chest and it's hard to breathe right now"
+      concern_category: cardio
+      severity_0_10: 8
+
+- id: chest-paraphrase-squeezing-breathless
+  description: Squeezing chest + breathless paraphrase.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-cardiac-chest-sob]
+  symptoms:
+    - concern_text: "Squeezing in my chest and feeling breathless"
+      concern_category: cardio
+      severity_0_10: 8
+
+# ─── Review fix S4 — colloquial stroke FAST phrasing ────────────────────────
+
+- id: stroke-colloquial-crooked-smile
+  description: Lay phrasing for facial droop ("smile is crooked") must trigger.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-face]
+  symptoms:
+    - concern_text: "I noticed my smile is crooked all of a sudden"
+      concern_category: neuro
+
+- id: stroke-colloquial-cant-find-words
+  description: Lay phrasing for aphasia must trigger.
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-speech]
+  symptoms:
+    - concern_text: "I can't find my words this morning"
+      concern_category: neuro
+
+- id: stroke-colloquial-arm-doesnt-work
+  description: '"Arm doesn''t work right" must trigger arm-weakness rule.'
+  locale: en
+  expected_bucket: emergency_now
+  expected_rule_ids: [rf-stroke-arm]
+  symptoms:
+    - concern_text: "My right arm doesnt work, can't grip"
+      concern_category: neuro
+
+# ─── Review fix T2 — medication overuse must escalate ───────────────────────
+
+- id: meds-overuse-ibuprofen
+  description: User reports taking 6 ibuprofen — must escalate to urgent.
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-meds-overuse]
+  symptoms:
+    - concern_text: "Stomach hurts a bit"
+      concern_category: gi
+      severity_0_10: 3
+      duration_value: 1
+      duration_unit: days
+      meds_taken: "I took 6 ibuprofen today"
+
+- id: meds-overuse-paracetamol-vi
+  description: Vietnamese — uống quá liều must escalate.
+  locale: vi
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-meds-overuse]
+  symptoms:
+    - concern_text: "Đau đầu nhẹ"
+      concern_category: pain
+      severity_0_10: 2
+      meds_taken: "Tôi đã uống quá liều paracetamol"
+
+# ─── Review fix M3 — combined rule must NOT fire across unrelated symptoms ──
+
+- id: combined-rule-cross-symptom-no-false-emergency
+  description: Symptom 1 mentions "history of chest pain" (no current cardiac
+    issue), symptom 2 is asthma "khó thở at night". Old combined_rule fired
+    emergency by ANDing across the brief; the per-symptom fix means neither
+    symptom has BOTH chest+breathing tokens, so emergency must NOT fire.
+  locale: en
+  expected_bucket: urgent_same_day
+  expected_rule_ids: [ur-resp-high-severity]
+  forbidden_rule_ids: [rf-cardiac-chest-sob, rf-cardiac-chest-radiating]
+  symptoms:
+    - concern_text: "I have a history of chest pain, no current issue"
+      concern_category: cardio
+      severity_0_10: 1
+      duration_value: 5
+      duration_unit: years
+    - concern_text: "Asthma flaring up — khó thở at night"
+      concern_category: resp
+      severity_0_10: 7
+      duration_value: 2
+      duration_unit: days
+
+# ─── Review fix T3 — null severity must not trip moderate rule ──────────────
+
+- id: severity-default-null-stays-insufficient
+  description: User describes a vague concern but never sets severity. The
+    severity-null fix means the engine should NOT auto-classify as moderate
+    persistent and route to routine_gp without explicit user input.
+  locale: en
+  expected_bucket: insufficient_info
+  forbidden_rule_ids: [rt-persistent-moderate]
+  symptoms:
+    - concern_text: "Just a general concern, hard to describe"
+      concern_category: other

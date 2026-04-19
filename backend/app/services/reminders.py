@@ -65,6 +65,7 @@ def _to_dto(item: Reminder) -> ReminderDTO:
         weekday_mask=item.weekday_mask,
         day_of_month=item.day_of_month,
         next_occurrence_at=item.next_occurrence_at,
+        medication_plan_id=item.medication_plan_id,
     )
 
 

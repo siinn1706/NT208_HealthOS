@@ -47,12 +47,19 @@ async def audit(
     user_id: Optional[uuid.UUID],
     request: Optional[Request] = None,
     details: Optional[dict[str, Any]] = None,
+    *,
+    commit: bool = True,
 ) -> AuditLog:
     """Record a security/privacy/destructive event.
 
     `details` should be small and PHI-free (job ids, target resource id,
     coarse failure reason). The audit log is **not** the place to store
     bodies, tokens, signed URLs, or any user-supplied free text.
+
+    Pass ``commit=False`` from endpoints that own a multi-step
+    transaction and want to defer the commit to a single point at the
+    end — e.g. the HC ingest path that writes audit + sync rows + token
+    state and wants them all in one commit boundary.
     """
     return await log_security_event(
         db=db,
@@ -61,4 +68,5 @@ async def audit(
         ip_address=_client_ip(request),
         user_agent=_user_agent(request),
         details=details,
+        commit=commit,
     )

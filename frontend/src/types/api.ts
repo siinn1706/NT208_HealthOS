@@ -302,6 +302,93 @@ export interface Appointment {
   notes?: string;
 }
 
+// ─── Medications ─────────────────────────────────────────────────────
+//
+// Mirrors `backend/app/schemas/medications.py`. Hub UI consumes these
+// directly from BFF responses (`/api/v1/medications/**`); any rename here
+// MUST land alongside a Pydantic schema update.
+
+export type MedicationStatus = "active" | "paused" | "completed" | "cancelled";
+
+export type MedicationForm =
+  | "tablet"
+  | "capsule"
+  | "liquid"
+  | "injection"
+  | "drops"
+  | "other";
+
+export interface MedicationDoseSummary {
+  reminder_id: string;
+  time: string;
+  repeat: "once" | "daily" | "weekly" | "monthly";
+  weekday_mask: number | null;
+  day_of_month: number | null;
+  next_occurrence_at: string | null;
+  is_active: boolean;
+}
+
+export interface MedicationPlan {
+  id: string;
+  name: string;
+  generic_name: string | null;
+  strength: string | null;
+  form: MedicationForm | null;
+  instructions: string | null;
+  prescriber: string | null;
+  clinic: string | null;
+  start_date: string;
+  end_date: string | null;
+  status: MedicationStatus;
+  tzid: string;
+  refill_supply_units: number | null;
+  refill_cadence_days: number | null;
+  last_refill_at: string | null;
+  next_refill_estimated_at: string | null;
+  review_due_at: string | null;
+  appointment_id: string | null;
+  notes: string | null;
+  dose_count: number;
+  next_dose_at: string | null;
+}
+
+export interface MedicationPlanDetail extends MedicationPlan {
+  doses: MedicationDoseSummary[];
+}
+
+export interface MedicationDose {
+  occurrence_id: string;
+  reminder_id: string;
+  medication_plan_id: string;
+  plan_name: string;
+  strength: string | null;
+  scheduled_at: string;
+  status: string;
+}
+
+export interface Adherence {
+  period_days: number;
+  scheduled: number;
+  taken: number;
+  skipped: number;
+  missed: number;
+  snoozed_pending: number;
+  pending: number;
+  percent: number;
+}
+
+export interface MedicationImportSkipped {
+  medicine_index: number;
+  name: string;
+  reason: string;
+  existing_plan_id: string | null;
+}
+
+export interface MedicationImportResult {
+  created: MedicationPlan[];
+  skipped: MedicationImportSkipped[];
+}
+
 // ─── Risk Predictions ────────────────────────────────────────────────
 
 export type RiskLevel = "low" | "moderate" | "high" | "critical";
@@ -650,4 +737,130 @@ export interface AutoShareSettings {
 export interface UserPreference {
   theme_mode: "system" | "light" | "dark";
   accent_color: string | null;
+}
+
+// ─── Pre-Visit Brief (Visit Prep) ──────────────────────────────────────
+
+export type VisitType =
+  | "gp_routine"
+  | "specialist"
+  | "follow_up"
+  | "mental_health"
+  | "urgent_walkin"
+  | "pediatric_caregiver";
+
+export type VisitBriefStatus = "draft" | "finalized" | "archived";
+
+export type ConcernCategory =
+  | "pain"
+  | "fever"
+  | "gi"
+  | "resp"
+  | "mental"
+  | "skin"
+  | "neuro"
+  | "cardio"
+  | "other";
+
+export type DurationUnit = "hours" | "days" | "weeks" | "months";
+
+export type TriageBucket =
+  | "emergency_now"
+  | "urgent_same_day"
+  | "routine_gp"
+  | "self_care_with_monitoring"
+  | "insufficient_info";
+
+export interface SymptomEntry {
+  id: string;
+  visit_brief_id: string;
+  concern_text: string;
+  concern_category: ConcernCategory;
+  onset_date: string | null;
+  duration_value: number | null;
+  duration_unit: DurationUnit | null;
+  severity_0_10: number | null;
+  triggers: string | null;
+  better_with: string | null;
+  worse_with: string | null;
+  meds_taken: string | null;
+  prior_care: string | null;
+  context: Record<string, unknown> | null;
+  order_index: number;
+}
+
+export interface MatchedSignal {
+  rule_id: string;
+  signal: string;
+  severity: number;
+  copy_key: string;
+  bucket: TriageBucket;
+}
+
+export interface TriageOutcome {
+  id: string;
+  visit_brief_id: string;
+  ruleset_version: string;
+  bucket: TriageBucket;
+  matched_signals: MatchedSignal[];
+  inputs_hash: string;
+  disclaimer_version: string;
+  next_action_copy_key: string | null;
+  computed_at: string;
+}
+
+export interface QuestionItem {
+  id: string;
+  source: "template" | "custom";
+  text_vi: string;
+  text_en: string;
+  order: number;
+  locked: boolean;
+}
+
+export interface QuestionSet {
+  id: string;
+  visit_brief_id: string;
+  questions: QuestionItem[];
+  updated_at: string;
+}
+
+export interface QuestionTemplate {
+  id: string;
+  slug: string;
+  visit_type: VisitType | null;
+  concern_category: ConcernCategory | null;
+  text_vi: string;
+  text_en: string;
+  default_order: number;
+  is_canonical: boolean;
+}
+
+export interface AppointmentBriefLink {
+  id: string;
+  visit_brief_id: string;
+  appointment_id: string;
+  is_active: boolean;
+  attached_at: string;
+  detached_at: string | null;
+}
+
+export interface VisitBrief {
+  id: string;
+  user_id: string;
+  visit_type: VisitType;
+  status: VisitBriefStatus;
+  revision: number;
+  title: string | null;
+  finalized_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VisitBriefDetail extends VisitBrief {
+  symptoms: SymptomEntry[];
+  latest_triage: TriageOutcome | null;
+  question_set: QuestionSet | null;
+  appointment_links: AppointmentBriefLink[];
 }

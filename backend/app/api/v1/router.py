@@ -7,12 +7,15 @@ from app.api.v1.endpoints import (
     conversations,
     dashboard,
     devices,
+    emergency,
+    emergency_public,
     goals,
     health,
     health_goals,
     health_insights,
     health_metrics,
     meals,
+    medications,
     mfa,
     notifications,
     nutrition,
@@ -22,6 +25,7 @@ from app.api.v1.endpoints import (
     reports,
     security_logs,
     users,
+    visit_briefs,
     vitals,
     chat,
 )
@@ -49,4 +53,8 @@ router.include_router(security_logs.router)
 router.include_router(preferences.router)
 router.include_router(notifications.router)
 router.include_router(prescriptions.router)
+router.include_router(medications.router)
+router.include_router(visit_briefs.router)
 router.include_router(chat.router)
+router.include_router(emergency.router)
+router.include_router(emergency_public.router)

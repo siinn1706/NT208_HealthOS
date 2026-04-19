@@ -30,7 +30,9 @@ from app.models.core import (
     DataExportRequest,
     DataExportStatusEnum,
     ReportExportRequest,
+    User,
 )
+from app.models.emergency import EmergencyAccessLog, EmergencyShareToken
 from app.tasks import celery_app
 
 logger = logging.getLogger(__name__)
@@ -76,6 +78,71 @@ def expire_export_blobs() -> dict:
             req.key = None
             db.flush()
     return {"deleted": deleted}
+
+
+@celery_app.task(name="app.tasks.maintenance.purge_old_emergency_access_logs")
+def purge_old_emergency_access_logs() -> dict:
+    """Hard-delete emergency-card public access log rows older than 180 days.
+
+    Retention rationale: 180d is enough for a user to spot a leaked-token
+    scrape pattern and revoke; longer retention is gratuitous PHI-adjacent
+    storage. The token row itself (and its `access_count` total) survives.
+    """
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=180)
+    deleted = 0
+    with get_sync_db_context() as db:
+        # Page through deletes to keep the lock window small on heavy days.
+        while True:
+            rows = db.execute(
+                select(EmergencyAccessLog.id)
+                .where(EmergencyAccessLog.accessed_at < cutoff)
+                .limit(500)
+            ).scalars().all()
+            if not rows:
+                break
+            db.execute(
+                EmergencyAccessLog.__table__.delete().where(
+                    EmergencyAccessLog.id.in_(rows)
+                )
+            )
+            db.commit()
+            deleted += len(rows)
+            if len(rows) < 500:
+                break
+    return {"deleted": deleted}
+
+
+@celery_app.task(name="app.tasks.maintenance.revoke_tokens_for_soft_deleted_users")
+def revoke_tokens_for_soft_deleted_users() -> dict:
+    """Belt-and-braces — auto-revoke any active emergency token belonging to a
+    user with `deleted_at IS NOT NULL`.
+
+    The public endpoint already returns 410 for soft-deleted users
+    (services/emergency_profile.load_card_source_data filters them), but we
+    also want the audit picture to reflect the revocation explicitly so the
+    owner-side `last_accessed_at` / `revoked_at` fields stay coherent if the
+    user is restored.
+
+    Idempotent — safe to run on every beat cycle.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    revoked = 0
+    with get_sync_db_context() as db:
+        rows = db.execute(
+            select(EmergencyShareToken)
+            .join(User, User.id == EmergencyShareToken.user_id)
+            .where(
+                User.deleted_at.is_not(None),
+                EmergencyShareToken.revoked_at.is_(None),
+            )
+            .limit(500)
+        ).scalars().all()
+        for token in rows:
+            token.revoked_at = now
+            revoked += 1
+        if revoked:
+            db.commit()
+    return {"revoked": revoked}
 
 
 @celery_app.task(name="app.tasks.maintenance.expire_report_pdf_blobs")

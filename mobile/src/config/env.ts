@@ -70,6 +70,14 @@ if (isProd && coreWsUrl.startsWith("ws://")) {
   );
 }
 
+// Read the actual Android bundle id from the running config — varies by
+// channel (com.healthos.app.dev vs .staging vs production). Used as the
+// `external_account_id` when registering a Health Connect device so a
+// user with both a dev and prod APK installed gets two distinct device
+// rows instead of colliding on the unique constraint.
+const androidPackage =
+  Constants.expoConfig?.android?.package ?? "com.healthos.app";
+
 export const env = {
   coreApiUrl,
   coreWsUrl,
@@ -77,6 +85,7 @@ export const env = {
   aiFeaturesEnabled: extra.aiFeaturesEnabled ?? false,
   isDev: channel === "dev",
   isProd,
+  androidPackage,
 };
 
 export type Env = typeof env;

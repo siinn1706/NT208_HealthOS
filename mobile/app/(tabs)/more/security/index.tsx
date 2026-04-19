@@ -147,7 +147,15 @@ export default function SecurityScreen() {
         <View style={{ paddingHorizontal: spacing.base }}>
           <Pressable
             onPress={() => router.push("/(tabs)/more/security/export")}
-            style={{ paddingVertical: spacing.md, flexDirection: "row", alignItems: "center" }}
+            accessibilityRole="button"
+            accessibilityLabel="Export account data"
+            accessibilityHint="Receive a downloadable archive of everything we have on you"
+            style={{
+              minHeight: 48,
+              paddingVertical: spacing.md,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
             android_ripple={{ color: colors.surfaceMuted }}
           >
             <View style={{ flex: 1 }}>
@@ -158,12 +166,26 @@ export default function SecurityScreen() {
                 Receive a downloadable archive of everything we have on you.
               </Text>
             </View>
-            <Text style={{ color: colors.textMuted }}>›</Text>
+            <Text
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{ color: colors.textMuted }}
+            >
+              ›
+            </Text>
           </Pressable>
           <View style={{ height: 1, backgroundColor: colors.border }} />
           <Pressable
             onPress={() => router.push("/(tabs)/more/security/delete-account")}
-            style={{ paddingVertical: spacing.md, flexDirection: "row", alignItems: "center" }}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+            accessibilityHint="Soft-delete with a 30-day grace period for restore"
+            style={{
+              minHeight: 48,
+              paddingVertical: spacing.md,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
             android_ripple={{ color: colors.surfaceMuted }}
           >
             <View style={{ flex: 1 }}>
@@ -174,7 +196,13 @@ export default function SecurityScreen() {
                 Soft-delete with a 30-day grace period for restore.
               </Text>
             </View>
-            <Text style={{ color: colors.textMuted }}>›</Text>
+            <Text
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{ color: colors.textMuted }}
+            >
+              ›
+            </Text>
           </Pressable>
         </View>
       </Card>

@@ -12,6 +12,7 @@ import {
   Eye,
   Trash2,
   Upload,
+  PlusSquare,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImportFromAppointmentDialog } from "@/components/dashboard/medications/ImportFromAppointmentDialog";
 import type { Prescription } from "@/types/api";
 
 /**
@@ -63,9 +65,18 @@ export function PrescriptionViewerDialog({
 }: PrescriptionViewerDialogProps) {
   const t = useTranslations("dashboard.appointments");
   const tAttach = useTranslations("dashboard.appointments.attachments");
+  const tMedImport = useTranslations("dashboard.medications.import");
   const locale = useLocale();
+  const [importOpen, setImportOpen] = React.useState(false);
 
   const open = prescription !== null;
+  // Only offer the import CTA when there is at least one medicine to act on.
+  // When the user fires it, we render the import dialog OUTSIDE the parent
+  // Dialog so the two modals don't fight for focus / portal layering.
+  const canImport =
+    Boolean(appointmentId) &&
+    prescription !== null &&
+    prescription.medicines.length > 0;
 
   const handleOpenChange = (next: boolean) => {
     if (!next) onClose();
@@ -157,6 +168,18 @@ export function PrescriptionViewerDialog({
                 </div>
               )}
 
+              {canImport && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-center gap-2"
+                  onClick={() => setImportOpen(true)}
+                >
+                  <PlusSquare className="w-4 h-4" />
+                  {tMedImport("submit")}
+                </Button>
+              )}
+
               {appointmentId && (
                 <AttachmentsPanel
                   appointmentId={appointmentId}
@@ -174,6 +197,24 @@ export function PrescriptionViewerDialog({
           </>
         )}
       </DialogContent>
+      {canImport && appointmentId && prescription && (
+        <ImportFromAppointmentDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          appointmentId={appointmentId}
+          medicines={prescription.medicines}
+          onImported={(result) => {
+            if (result.created.length > 0) {
+              toast.success(
+                tMedImport("result", {
+                  created: result.created.length,
+                  skipped: result.skipped.length,
+                }),
+              );
+            }
+          }}
+        />
+      )}
     </Dialog>
   );
 }

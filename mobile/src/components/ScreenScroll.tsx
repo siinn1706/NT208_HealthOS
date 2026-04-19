@@ -50,7 +50,14 @@ export function ScreenScroll({
       {keyboardAvoiding ? (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          // iOS gets `padding` to lift the bottom of the scroll view
+          // when the soft keyboard appears. Android uses `undefined`
+          // (not `"height"`) because we already set
+          // `softwareKeyboardLayoutMode: "resize"` in app.config.ts —
+          // the OS resizes the window for us, and stacking
+          // `behavior="height"` on top causes a double-resize that
+          // makes the chat composer / form fields jump.
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           {inner}
         </KeyboardAvoidingView>

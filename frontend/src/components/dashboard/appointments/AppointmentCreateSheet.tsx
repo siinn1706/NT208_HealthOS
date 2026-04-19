@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,6 +62,9 @@ export function AppointmentCreateSheet({
   onCreated,
 }: AppointmentCreateSheetProps) {
   const t = useTranslations("dashboard.appointments.create");
+  const tVp = useTranslations("dashboard.visitPrep");
+  const locale = useLocale();
+  const router = useRouter();
   const [step, setStep] = useState<StepKey>("who");
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -117,6 +121,24 @@ export function AppointmentCreateSheet({
       if (created) onCreated?.(created);
       toast.success(t("saved"));
       handleOpenChange(false);
+
+      // Visit-prep CTA — non-blocking. Lets the user continue into the brief
+      // flow with the new appointment id pre-attached. Skipped silently if
+      // the BE didn't echo back a usable id.
+      if (created?.id) {
+        toast(tVp("newBrief"), {
+          description: tVp("pageSubtitle"),
+          action: {
+            label: tVp("list.startCta"),
+            onClick: () => {
+              router.push(
+                `/${locale}/dashboard/visit-prep/new?attach=${encodeURIComponent(created.id)}`,
+              );
+            },
+          },
+          duration: 10_000,
+        });
+      }
     } catch {
       toast.error(t("saveFailed"));
     } finally {

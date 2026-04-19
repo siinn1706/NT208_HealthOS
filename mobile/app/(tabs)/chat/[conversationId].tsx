@@ -326,7 +326,7 @@ export default function ConversationRoomScreen() {
               style={{
                 width: 8,
                 height: 8,
-                borderRadius: 4,
+                borderRadius: radius.xs,
                 backgroundColor: ws.connected ? colors.success : colors.warning,
               }}
             />
@@ -398,13 +398,31 @@ export default function ConversationRoomScreen() {
                   >
                     {item.is_recalled ? `[${t("chat.deleted")}]` : item.content}
                   </Text>
-                  <View style={{ flexDirection: "row", gap: 4, marginTop: 4 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: spacing.xs,
+                      marginTop: spacing.xs,
+                    }}
+                  >
                     {item.edited_at ? (
-                      <Text style={{ color: isMine ? colors.brandText : colors.textMuted, fontSize: 10 }}>
+                      <Text
+                        style={{
+                          color: isMine ? colors.brandText : colors.textMuted,
+                          fontSize: typography["2xs"].fontSize,
+                          lineHeight: typography["2xs"].lineHeight,
+                        }}
+                      >
                         {t("chat.edited")}
                       </Text>
                     ) : null}
-                    <Text style={{ color: isMine ? colors.brandText : colors.textMuted, fontSize: 10 }}>
+                    <Text
+                      style={{
+                        color: isMine ? colors.brandText : colors.textMuted,
+                        fontSize: typography["2xs"].fontSize,
+                        lineHeight: typography["2xs"].lineHeight,
+                      }}
+                    >
                       {relative(item.created_at)}
                     </Text>
                   </View>

@@ -22,7 +22,7 @@ export default function MfaEnrollScreen() {
   const toast = useToast();
   const router = useRouter();
   const qc = useQueryClient();
-  const { colors, fontWeights, spacing, typography } = useTheme();
+  const { colors, fontWeights, spacing, typography, radius } = useTheme();
 
   const [data, setData] = useState<MfaSetupResult | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -103,7 +103,7 @@ export default function MfaEnrollScreen() {
             alignItems: "center",
             backgroundColor: colors.surfaceMuted,
             padding: spacing.base,
-            borderRadius: 12,
+            borderRadius: radius.md,
           }}
         >
           <Image

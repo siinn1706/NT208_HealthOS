@@ -112,14 +112,14 @@ export default function MealDetailScreen() {
 }
 
 function Stat({ label, value, unit }: { label: string; value?: number; unit: string }) {
-  const { colors, spacing, fontWeights, typography } = useTheme();
+  const { colors, spacing, fontWeights, typography, radius } = useTheme();
   return (
     <View
       style={{
         flexBasis: "47%",
         padding: spacing.md,
         backgroundColor: colors.surfaceMuted,
-        borderRadius: 12,
+        borderRadius: radius.md,
       }}
     >
       <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>{label}</Text>

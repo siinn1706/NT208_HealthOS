@@ -663,7 +663,9 @@
       "logMedicine": "Ghi uống thuốc",
       "logMedicineDesc": "Xác nhận đã uống",
       "viewReports": "Xem báo cáo",
-      "viewReportsDesc": "Phân tích sức khỏe"
+      "viewReportsDesc": "Phân tích sức khỏe",
+      "visitPrep": "Chuẩn bị khám",
+      "visitPrepDesc": "Triệu chứng + câu hỏi"
     },
     "kpi": {
       "caloriesBurned": "Calo tiêu thụ",
@@ -782,6 +784,7 @@
         "all": "Tất cả"
       },
       "appointmentLinked": "Lịch khám",
+      "medicationLinked": "Thuốc",
       "snooze": {
         "label": "Hoãn",
         "tenMin": "10 phút",
@@ -937,6 +940,176 @@
         "saveFailed": "Không thể lưu lịch khám. Vui lòng thử lại.",
         "missingRequired": "Vui lòng điền các trường bắt buộc."
       }
+    },
+    "medications": {
+      "pageTitle": "Thuốc",
+      "pageSubtitle": "Theo dõi thuốc và uống đúng giờ.",
+      "add": "Thêm thuốc",
+      "addAria": "Thêm một loại thuốc mới",
+      "today": "Liều hôm nay",
+      "todayEmpty": "Hôm nay chưa có liều nào.",
+      "todayDone": "Đã uống {n}",
+      "todayPending": "Còn {n}",
+      "todayLoadError": "Không tải được liều hôm nay.",
+      "todayMarkAria": "Đánh dấu đã uống",
+      "todayMarkedAria": "Đã uống",
+      "todayMarkError": "Không thể đánh dấu liều này đã uống.",
+      "todayViewAll": "Xem tất cả",
+      "noPlans": "Chưa có thuốc nào",
+      "noPlansDesc": "Thêm thuốc thủ công hoặc nhập từ một lịch khám gần đây để bắt đầu theo dõi.",
+      "importFromAppointment": "Nhập từ lịch khám",
+      "summary": {
+        "active": "Đang dùng",
+        "todayProgress": "Hôm nay",
+        "refillSoon": "Sắp hết"
+      },
+      "filter": {
+        "active": "Đang dùng",
+        "paused": "Tạm dừng",
+        "all": "Tất cả"
+      },
+      "card": {
+        "nextDose": "Liều tiếp theo",
+        "noNext": "Chưa có liều sắp tới",
+        "doses": "{n} liều/lịch",
+        "refillIn": "Hết sau {days} ngày",
+        "refillOverdue": "Đã quá hạn nạp lại",
+        "paused": "Tạm dừng",
+        "completed": "Hoàn tất",
+        "cancelled": "Đã lưu trữ"
+      },
+      "form": {
+        "name": "Tên thuốc",
+        "namePlaceholder": "VD: Amoxicillin",
+        "genericName": "Tên hoạt chất (tuỳ chọn)",
+        "strength": "Hàm lượng",
+        "strengthPlaceholder": "VD: 500 mg",
+        "form": "Dạng bào chế",
+        "formOptions": {
+          "tablet": "Viên nén",
+          "capsule": "Viên nang",
+          "liquid": "Dung dịch",
+          "injection": "Tiêm",
+          "drops": "Nhỏ giọt",
+          "other": "Khác"
+        },
+        "doseTimes": "Giờ uống",
+        "doseTimesHint": "Mỗi chip là một mốc giờ trong ngày.",
+        "doseAria": "Liều {index}",
+        "addTime": "Thêm giờ",
+        "removeTime": "Bỏ giờ",
+        "repeat": "Lặp",
+        "repeatOptions": {
+          "daily": "Mỗi ngày",
+          "weekly": "Mỗi tuần",
+          "monthly": "Mỗi tháng",
+          "once": "Một lần"
+        },
+        "weekdays": "Các ngày trong tuần",
+        "weekdayRequired": "Chọn ít nhất một ngày cho lịch hàng tuần.",
+        "dayOfMonth": "Ngày trong tháng",
+        "startDate": "Ngày bắt đầu",
+        "endDate": "Ngày kết thúc (tuỳ chọn)",
+        "reviewDueAt": "Khám lại với bác sĩ trước (tuỳ chọn)",
+        "instructions": "Chỉ dẫn (tuỳ chọn)",
+        "instructionsPlaceholder": "VD: Uống sau ăn",
+        "prescriber": "Bác sĩ kê đơn (tuỳ chọn)",
+        "clinic": "Cơ sở khám (tuỳ chọn)",
+        "refillSection": "Theo dõi nạp thuốc (tuỳ chọn)",
+        "supplyUnits": "Số lượng còn lại",
+        "supplyUnitsHint": "Số đơn vị (viên, ml...) bạn đang có.",
+        "refillCadenceDays": "Chu kỳ nạp thuốc (ngày)",
+        "tzid": "Múi giờ",
+        "notes": "Ghi chú (tuỳ chọn)",
+        "submit": "Lưu thuốc",
+        "submitting": "Đang lưu…",
+        "cancel": "Huỷ",
+        "validationError": "Vui lòng kiểm tra lại các trường được đánh dấu.",
+        "saveError": "Không thể lưu thuốc. Vui lòng thử lại.",
+        "scheduleRebuildWarning": "Sửa lịch sẽ xoá lịch sử tuân thủ của thuốc này. Tiếp tục?"
+      },
+      "weekdayShort": {
+        "mon": "T2",
+        "tue": "T3",
+        "wed": "T4",
+        "thu": "T5",
+        "fri": "T6",
+        "sat": "T7",
+        "sun": "CN"
+      },
+      "detail": {
+        "title": "Chi tiết thuốc",
+        "edit": "Sửa",
+        "pause": "Tạm dừng",
+        "resume": "Tiếp tục",
+        "archive": "Lưu trữ",
+        "archiveConfirmTitle": "Lưu trữ thuốc này?",
+        "archiveConfirmBody": "Các liều trong tương lai sẽ không được nhắc nữa. Lịch sử vẫn được giữ để báo cáo tuân thủ.",
+        "archiveCancel": "Huỷ",
+        "archiveConfirm": "Lưu trữ",
+        "schedule": "Lịch uống",
+        "instructions": "Chỉ dẫn",
+        "prescriber": "Bác sĩ kê đơn",
+        "clinic": "Cơ sở khám",
+        "linkedAppointment": "Lịch khám liên kết",
+        "openAppointment": "Mở lịch khám",
+        "reviewDue": "Khám lại với bác sĩ trước {date}",
+        "adherence": {
+          "title": "Mức tuân thủ",
+          "ariaLabel": "Tuân thủ: {percent}% — đã uống {taken} trong {scheduled}",
+          "ariaEmpty": "Tuân thủ: chưa có dữ liệu",
+          "period": {
+            "7d": "7 ngày qua",
+            "30d": "30 ngày qua",
+            "90d": "90 ngày qua"
+          },
+          "scheduled": "Theo lịch",
+          "taken": "Đã uống",
+          "missed": "Bỏ lỡ",
+          "skipped": "Bỏ qua",
+          "snoozed": "Hoãn",
+          "empty": "Chưa có dữ liệu cho khoảng thời gian này."
+        },
+        "refill": {
+          "title": "Nạp thuốc",
+          "supply": "Còn {n} đơn vị",
+          "estimated": "Dự kiến hết vào {date}",
+          "overdue": "Đã quá hạn nạp lại",
+          "log": "Ghi nạp thuốc",
+          "saving": "Đang lưu…",
+          "cancel": "Huỷ",
+          "logError": "Không thể lưu lần nạp. Vui lòng thử lại.",
+          "supplyAfter": "Số lượng mới (đơn vị)",
+          "supplyHint": "Đặt số lượng bạn đang có sau khi nạp."
+        },
+        "loadError": "Không tải được thông tin thuốc.",
+        "actions": {
+          "saveError": "Không thể cập nhật thuốc.",
+          "pauseError": "Không thể tạm dừng thuốc.",
+          "resumeError": "Không thể tiếp tục thuốc.",
+          "archiveError": "Không thể lưu trữ thuốc."
+        }
+      },
+      "import": {
+        "title": "Nhập từ lịch khám",
+        "subtitle": "Chọn các thuốc cần thêm vào danh sách theo dõi. Có thể nhập lại an toàn — các bản trùng sẽ bị bỏ qua.",
+        "selectAll": "Chọn tất cả",
+        "deselectAll": "Bỏ chọn tất cả",
+        "doseTimesLabel": "Giờ uống mặc định",
+        "submit": "Thêm vào danh sách thuốc",
+        "submitting": "Đang nhập…",
+        "cancel": "Huỷ",
+        "result": "Đã thêm {created} · Bỏ qua {skipped}",
+        "alreadyImported": "Đã nhập trước đó",
+        "missingName": "Thiếu tên",
+        "createFailed": "Không tạo được",
+        "noMedicines": "Lịch khám này chưa có thuốc trong đơn.",
+        "disclaimer": "Thông tin bạn nhập chỉ phục vụ theo dõi cá nhân. Hãy đối chiếu với nhãn đơn thuốc."
+      },
+      "hubLoadError": "Không tải được danh sách thuốc.",
+      "hubLoadRetry": "Thử lại",
+      "disclaimer": "HealthOS giúp bạn nhớ và theo dõi. Đây không phải là tư vấn y khoa thay thế bác sĩ kê đơn. Hãy luôn làm theo chỉ dẫn của bác sĩ.",
+      "addDisclaimer": "Thông tin bạn nhập chỉ phục vụ theo dõi cá nhân. Hãy đối chiếu với nhãn đơn thuốc."
     },
     "meals": {
       "subtitle": "Theo dõi chế độ ăn và mục tiêu dinh dưỡng",
@@ -1276,7 +1449,20 @@
       "connecting": "Đang kết nối...",
       "tapToConnect": "Nhấn để kết nối",
       "connectFailed": "Kết nối thất bại",
-      "privacyNote": "Dữ liệu từ thiết bị đeo được mã hóa và chỉ dùng để cải thiện trải nghiệm sức khỏe của bạn. Bạn có thể ngắt kết nối bất cứ lúc nào."
+      "privacyNote": "Dữ liệu từ thiết bị đeo được mã hóa và chỉ dùng để cải thiện trải nghiệm sức khỏe của bạn. Bạn có thể ngắt kết nối bất cứ lúc nào.",
+      "hcCount": "{n} bản ghi mới",
+      "hcPermissionDenied": "Quyền đã bị thu hồi. Mở ứng dụng HealthOS trên Android và cấp lại quyền trong Health Connect.",
+      "hcSyncError": "Đồng bộ gần nhất thất bại. Mở ứng dụng HealthOS trên Android và bấm Đồng bộ ngay để thử lại.",
+      "hcSyncFromMobile": "Health Connect chỉ có thể đồng bộ từ ứng dụng HealthOS Android. Mở ứng dụng trên điện thoại và bấm Đồng bộ ngay.",
+      "hcSyncFromMobileShort": "Đồng bộ từ di động",
+      "hc": {
+        "modalTitle": "Kết nối Health Connect trên Android",
+        "modalBody": "Health Connect là ứng dụng hệ thống chỉ có trên Android. Để kết nối, hãy hoàn tất thiết lập trong ứng dụng HealthOS trên di động — bạn sẽ được yêu cầu cấp quyền truy cập Bước chân, Nhịp tim, Giấc ngủ và Cân nặng.",
+        "step1": "Mở ứng dụng HealthOS trên điện thoại Android.",
+        "step2": "Vào Cài đặt → Thiết bị kết nối → Kết nối Health Connect.",
+        "step3": "Phê duyệt quyền hệ thống, sau đó quay lại đây để xem dữ liệu đã đồng bộ.",
+        "modalClose": "Đã hiểu"
+      }
     },
     "settingsPage": {
       "pageTitle": "Cài đặt",
@@ -1362,7 +1548,9 @@
           "deleting": "Đang xoá…",
           "requested": "Đã gửi yêu cầu xoá tài khoản. Chúng tôi sẽ gửi email khi hoàn tất.",
           "requestFailed": "Không gửi được yêu cầu xoá. Vui lòng thử lại sau."
-        }
+        },
+        "emergencyCard": "Thẻ y tế khẩn cấp",
+        "emergencyCardDesc": "Tạo bản tóm tắt y tế chia sẻ qua QR cho nhân viên cứu thương."
       },
       "dialogClose": "Đóng",
       "logout": "Đăng xuất",
@@ -1382,6 +1570,7 @@
       "nutrition": "Dinh dưỡng",
       "vitalsDevices": "Chỉ số & Thiết bị",
       "reminders": "Nhắc nhở",
+      "medications": "Thuốc",
       "appointments": "Lịch sử khám",
       "risk": "Dự đoán rủi ro",
       "goals": "Mục tiêu",
@@ -1397,7 +1586,9 @@
         "grow": "Phát triển",
         "you": "Cá nhân"
       },
-      "mainNavAriaLabel": "Điều hướng chính"
+      "mainNavAriaLabel": "Điều hướng chính",
+      "visitPrep": "Chuẩn bị khám",
+      "emergencyCard": "Thẻ khẩn cấp"
     },
     "topnav": {
       "searchPlaceholder": "Tìm hồ sơ, thuốc...",
@@ -1528,7 +1719,8 @@
         "chronicConditions": "VD: Tiểu đường loại 2, viêm dạ dày...",
         "currentMedications": "VD: Metformin 500mg 2 lần/ngày...",
         "notes": "Ghi chú thêm về sức khoẻ..."
-      }
+      },
+      "manageEmergencyCard": "Dùng các liên hệ này trong thẻ khẩn cấp"
     },
     "progress": {
       "bmiProgress": "Tiến độ BMI",
@@ -1571,6 +1763,412 @@
         "achievements": "Thành tựu",
         "leaderboard": "Xếp hạng"
       }
+    },
+    "visitPrep": {
+      "pageTitle": "Chuẩn bị khám",
+      "pageSubtitle": "Chuẩn bị cho buổi khám bằng cách ghi lại các triệu chứng và câu hỏi bạn muốn hỏi bác sĩ.",
+      "newBrief": "Tạo bản chuẩn bị mới",
+      "newBriefAria": "Bắt đầu bản chuẩn bị khám mới",
+      "list": {
+        "empty": "Chưa có bản chuẩn bị nào — hãy bắt đầu để ghi lại triệu chứng và câu hỏi trước khi đi khám.",
+        "startCta": "Chuẩn bị cho buổi khám",
+        "filterAll": "Tất cả",
+        "filterDraft": "Bản nháp",
+        "filterFinalized": "Đã hoàn tất",
+        "filterArchived": "Đã lưu trữ",
+        "updatedAt": "Cập nhật {when}",
+        "attachedTo": "Đã đính kèm cuộc hẹn {when}",
+        "unattached": "Chưa đính kèm cuộc hẹn nào"
+      },
+      "status": {
+        "draft": "Bản nháp",
+        "finalized": "Đã hoàn tất",
+        "archived": "Đã lưu trữ"
+      },
+      "visitTypes": {
+        "gp_routine": "Khám tổng quát định kỳ",
+        "gp_routineHelp": "Khám sức khỏe thông thường với bác sĩ gia đình.",
+        "specialist": "Khám chuyên khoa",
+        "specialistHelp": "Được chuyển khám hoặc tái khám với bác sĩ chuyên khoa.",
+        "follow_up": "Tái khám",
+        "follow_upHelp": "Tiếp tục theo dõi một tình trạng đã có.",
+        "mental_health": "Sức khỏe tâm thần",
+        "mental_healthHelp": "Tham vấn tâm lý hoặc khám chuyên khoa tâm thần.",
+        "urgent_walkin": "Khám gấp / không hẹn",
+        "urgent_walkinHelp": "Khám trong ngày hoặc khám tại phòng cấp cứu nhẹ.",
+        "pediatric_caregiver": "Chăm sóc trẻ em",
+        "pediatric_caregiverHelp": "Bản chuẩn bị thay cho trẻ em hoặc trẻ sơ sinh."
+      },
+      "concernCategories": {
+        "pain": "Đau",
+        "fever": "Sốt",
+        "gi": "Tiêu hóa",
+        "resp": "Hô hấp",
+        "mental": "Tâm lý / sức khỏe tâm thần",
+        "skin": "Da liễu",
+        "neuro": "Thần kinh",
+        "cardio": "Tim mạch / ngực",
+        "other": "Khác"
+      },
+      "wizard": {
+        "autoSaving": "Đang lưu nháp…",
+        "savedAt": "Đã lưu {when}",
+        "next": "Tiếp",
+        "back": "Quay lại",
+        "finalize": "Hoàn tất bản chuẩn bị",
+        "finalizing": "Đang hoàn tất…",
+        "addAnother": "Thêm vấn đề khác",
+        "doneAddingConcerns": "Không còn vấn đề nào nữa",
+        "maxConcernsHelp": "Tối đa {max} vấn đề trong một bản chuẩn bị.",
+        "cannotEdit": "Bản chuẩn bị này đã hoàn tất. Tạo bản mới để chỉnh sửa.",
+        "newRevision": "Tạo bản mới",
+        "steps": {
+          "visitType": "Loại khám",
+          "concern": "Vấn đề",
+          "whenHow": "Khi nào & ra sao",
+          "triggers": "Yếu tố",
+          "tried": "Đã thử gì",
+          "review": "Xem lại",
+          "routing": "Gợi ý bước tiếp theo",
+          "questions": "Câu hỏi",
+          "attach": "Đính kèm",
+          "finalize": "Hoàn tất"
+        },
+        "unsavedBadge": "Chưa lưu"
+      },
+      "concernForm": {
+        "concernText": "Vấn đề chính (theo cách bạn diễn đạt)",
+        "concernTextPlaceholder": "VD: Đau lưng dưới sau khi làm vườn",
+        "category": "Thuộc nhóm nào?",
+        "onsetDate": "Bắt đầu khi nào?",
+        "duration": "Kéo dài bao lâu?",
+        "durationValue": "Số",
+        "durationUnit": "Đơn vị",
+        "severity": "Mức độ hiện tại ({value}/10)",
+        "severityAnchorLow": "Hầu như không cảm thấy",
+        "severityAnchorMid": "Khá khó chịu",
+        "severityAnchorHigh": "Tệ nhất có thể",
+        "triggers": "Yếu tố khởi phát (không bắt buộc)",
+        "triggersPlaceholder": "VD: Sau khi ăn, khi đứng",
+        "betterWith": "Điều gì làm dễ chịu hơn? (không bắt buộc)",
+        "betterWithPlaceholder": "VD: Nghỉ ngơi, paracetamol",
+        "worseWith": "Điều gì làm tệ hơn? (không bắt buộc)",
+        "worseWithPlaceholder": "VD: Cúi người",
+        "medsTaken": "Thuốc đã dùng cho vấn đề này (không bắt buộc)",
+        "medsTakenPlaceholder": "VD: Ibuprofen 400mg, hai lần hôm nay",
+        "priorCare": "Đã được chăm sóc gì cho vấn đề này (không bắt buộc)",
+        "priorCarePlaceholder": "VD: Khám bác sĩ tuần trước, được kê kháng sinh",
+        "severityNotSet": "Kéo để chọn mức độ",
+        "severityHint": "Chỉ đặt mức độ khi bạn có thể đánh giá"
+      },
+      "durationUnits": {
+        "hours": "giờ",
+        "days": "ngày",
+        "weeks": "tuần",
+        "months": "tháng"
+      },
+      "routing": {
+        "rulesetVersion": "Bộ quy tắc {version}",
+        "computedAt": "Tính lại {when}",
+        "matchedSignals": "Những chi tiết bạn mô tả gợi ý điều này:",
+        "noMatches": "Không có dấu hiệu khớp — bạn nên cân nhắc đặt một cuộc hẹn thường quy.",
+        "recompute": "Tính lại",
+        "emergency_now": {
+          "title": "Có thể cần cấp cứu ngay",
+          "body": "Dựa trên những gì bạn mô tả, hãy liên hệ ngay với dịch vụ cấp cứu tại địa phương. Công cụ này không phải bác sĩ và không thể chẩn đoán, nhưng các triệu chứng bạn báo là dấu hiệu cảnh báo cần được giúp đỡ khẩn cấp.",
+          "next_action": "Gọi cấp cứu",
+          "emergencyHint": "Việt Nam: 115 · Anh: 999 · Mỹ: 911 · hoặc số cấp cứu địa phương",
+          "secondary": "Vẫn lưu bản chuẩn bị"
+        },
+        "urgent_same_day": {
+          "title": "Cố gắng được khám ngay trong ngày",
+          "body": "Những triệu chứng bạn mô tả thường cần được khám trong ngày. Hãy liên hệ bác sĩ, phòng khám cấp cứu nhẹ, hoặc đường dây y tế địa phương ngay hôm nay. Nếu có bất kỳ dấu hiệu nào xấu đi đột ngột, hãy coi là cấp cứu.",
+          "next_action": "Tìm nơi khám trong ngày",
+          "secondary": "Đặt cuộc hẹn thường quy",
+          "urgentHint": "Việt Nam: 115 · Anh: 111 · Mỹ: 911 · hoặc đường dây cấp cứu nhẹ địa phương"
+        },
+        "routine_gp": {
+          "title": "Đặt cuộc hẹn thường quy",
+          "body": "Triệu chứng của bạn kéo dài hoặc ở mức trung bình — một cuộc hẹn khám thường quy là bước hợp lý tiếp theo. Dùng danh sách câu hỏi bên dưới để tận dụng tối đa cuộc trò chuyện. Nếu triệu chứng xấu đi đột ngột trước cuộc hẹn, hãy liên hệ phòng khám cấp cứu nhẹ hoặc dịch vụ cấp cứu địa phương.",
+          "next_action": "Đặt cuộc hẹn",
+          "secondary": "Lưu bản chuẩn bị để dùng sau"
+        },
+        "self_care_with_monitoring": {
+          "title": "Tự chăm sóc, nhưng theo dõi sát",
+          "body": "Những gì bạn mô tả có vẻ nhẹ và ngắn ngày. Hãy nghỉ ngơi, uống đủ nước, và theo dõi diễn biến. Đặt cuộc hẹn nếu nặng hơn, kéo dài hơn dự kiến, hoặc xuất hiện triệu chứng mới.",
+          "next_action": "Lưu bản chuẩn bị phòng khi kéo dài",
+          "watchTitle": "Khi nào cần tìm trợ giúp",
+          "watchItems": [
+            "Triệu chứng nặng hơn hoặc xuất hiện triệu chứng mới",
+            "Triệu chứng kéo dài quá vài ngày mà không cải thiện",
+            "Bạn bị sốt, đau dữ dội, hoặc khó thở"
+          ]
+        },
+        "insufficient_info": {
+          "title": "Cần thêm thông tin",
+          "body": "Hiện chưa đủ thông tin để đề xuất một hướng đi cụ thể. Bạn nên cân nhắc đặt một cuộc hẹn thường quy để được bác sĩ trực tiếp tư vấn. Nếu triệu chứng có vẻ nặng, đang xấu đi nhanh, hoặc có dấu hiệu cảnh báo như đau ngực, khó thở, yếu một bên người đột ngột, hoặc ý nghĩ tự làm hại bản thân, hãy liên hệ phòng khám cấp cứu nhẹ hoặc số cấp cứu địa phương.",
+          "next_action": "Đặt cuộc hẹn thường quy",
+          "urgentSecondary": "Tìm nơi khám gấp"
+        },
+        "signals": {
+          "stroke_face": "Bạn mô tả mặt đột ngột bị méo / lệch — cần được khám khẩn.",
+          "stroke_arm": "Bạn mô tả yếu một bên người đột ngột — cần được khám khẩn.",
+          "stroke_speech": "Bạn mô tả nói khó / nói lắp đột ngột — cần được khám khẩn.",
+          "cardiac_chest_sob": "Bạn mô tả đau ngực kèm khó thở — cần được khám khẩn.",
+          "cardiac_chest_radiating": "Bạn mô tả đau ngực lan ra tay hoặc hàm — cần được khám khẩn.",
+          "sob_at_rest": "Bạn mô tả khó thở khi nghỉ ngơi — cần được khám khẩn.",
+          "anaphylaxis": "Bạn mô tả sưng môi, lưỡi hoặc họng kèm khó thở — cần được khám khẩn.",
+          "uncontrolled_bleeding": "Bạn mô tả chảy máu không cầm được — cần được chăm sóc khẩn.",
+          "thunderclap_headache": "Bạn mô tả cơn đau đầu dữ dội đột ngột — cần được khám khẩn.",
+          "suicidal_ideation": "Bạn mô tả ý nghĩ tự làm hại bản thân hoặc không muốn sống — hãy tìm trợ giúp ngay bây giờ.",
+          "focal_neuro": "Bạn mô tả tê một bên người mới xuất hiện hoặc mất thị lực đột ngột — cần được khám khẩn.",
+          "loss_consciousness": "Bạn mô tả mất ý thức — cần được khám khẩn.",
+          "infant_fever": "Sốt ở trẻ dưới 3 tháng — luôn được xem là cấp.",
+          "cardio_high_severity": "Bạn mô tả triệu chứng nặng ở vùng này — nên được khám trong ngày.",
+          "resp_high_severity": "Bạn mô tả triệu chứng hô hấp nặng — nên được khám trong ngày.",
+          "acute_severe_pain": "Bạn mô tả đau dữ dội mới khởi phát — nên được khám trong ngày.",
+          "high_fever": "Bạn báo có sốt cao — nên được khám trong ngày.",
+          "mental_crisis_passive": "Bạn mô tả đang căng thẳng tâm lý — hãy tìm trợ giúp ngay hôm nay.",
+          "gi_bleeding": "Bạn mô tả nôn ra máu hoặc đi ngoài ra máu — nên được khám trong ngày.",
+          "persistent_moderate": "Triệu chứng vừa phải kéo dài hơn vài ngày.",
+          "long_duration": "Triệu chứng kéo dài hơn một tuần.",
+          "mental_default": "Mối quan tâm về sức khỏe tâm thần đáng được trao đổi với bác sĩ trong ngày.",
+          "mild_short_pain": "Đau nhẹ và ngắn ngày.",
+          "mild_short_gi": "Khó chịu tiêu hóa nhẹ và ngắn ngày.",
+          "mild_short_fever": "Sốt nhẹ và ngắn ngày.",
+          "mild_short_skin": "Vấn đề da liễu nhẹ và ngắn ngày.",
+          "meds_overuse": "Bạn mô tả đã uống thuốc quá liều khuyến cáo — hãy được khám trong ngày."
+        }
+      },
+      "questions": {
+        "title": "Câu hỏi để hỏi bác sĩ",
+        "subtitle": "Chọn từ gợi ý hoặc thêm câu của riêng bạn. Tối đa {max} câu hỏi.",
+        "suggested": "Gợi ý cho bạn",
+        "yourList": "Danh sách của bạn ({count}/{max})",
+        "addCustom": "Thêm câu hỏi của riêng bạn",
+        "addCustomPlaceholder": "VD: Tôi có cần chụp X-quang không?",
+        "add": "Thêm",
+        "remove": "Xóa",
+        "lockedHint": "Luôn được giữ",
+        "tooManyHint": "Đã đạt giới hạn. Hãy xóa một câu để thêm câu mới.",
+        "empty": "Chưa có câu hỏi nào — chọn một gợi ý hoặc viết câu của bạn."
+      },
+      "review": {
+        "title": "Xem lại bản chuẩn bị",
+        "concernsHeader": "Vấn đề của bạn",
+        "questionsHeader": "Câu hỏi của bạn",
+        "routingHeader": "Gợi ý bước tiếp theo",
+        "attachHeader": "Cuộc hẹn đã đính kèm",
+        "attachNone": "Chưa đính kèm",
+        "edit": "Sửa",
+        "print": "In hoặc lưu"
+      },
+      "attach": {
+        "title": "Đính kèm vào một cuộc hẹn",
+        "subtitle": "Chọn một cuộc hẹn sắp tới để bản chuẩn bị này hiển thị cùng cuộc hẹn đó.",
+        "noUpcoming": "Chưa có cuộc hẹn sắp tới.",
+        "createAppointment": "Tạo cuộc hẹn",
+        "attachAction": "Đính kèm",
+        "detach": "Bỏ đính kèm",
+        "attached": "Đã đính kèm vào {label}",
+        "replacedActive": "Thay cho bản chuẩn bị đã đính kèm trước đó."
+      },
+      "disclaimer": "Công cụ này giúp bạn chuẩn bị cho buổi khám — không thay thế việc chẩn đoán. Nếu triệu chứng có vẻ nặng hoặc đang xấu đi, hãy liên hệ bác sĩ hoặc dịch vụ cấp cứu địa phương.",
+      "finalized": {
+        "title": "Bản chuẩn bị đã hoàn tất",
+        "body": "Hãy mang theo trong buổi khám tới. Bạn có thể in hoặc đính kèm vào một cuộc hẹn."
+      },
+      "errors": {
+        "loadFailed": "Không tải được bản chuẩn bị này. Vui lòng thử lại.",
+        "saveFailed": "Không lưu được. Vui lòng thử lại.",
+        "finalizeRequirements": "Thêm ít nhất một vấn đề và giữ ít nhất một câu hỏi trước khi hoàn tất."
+      }
+    },
+    "emergencyCard": {
+      "pageTitle": "Thẻ y tế khẩn cấp",
+      "pageSubtitle": "Chia sẻ thông tin y tế quan trọng với nhân viên cứu thương qua mã QR có thể thu hồi.",
+      "publishedTitle": "Thẻ đã công khai",
+      "publishedSubtitle": "{count} thẻ QR đang hoạt động. Người quét có thể đọc thông tin tối thiểu của bạn.",
+      "unpublishedTitle": "Thẻ đang riêng tư",
+      "unpublishedSubtitle": "Không ai có thể quét thẻ này cho đến khi bạn công khai.",
+      "publishSwitch": "Công khai thẻ",
+      "publishedToast": "Đã công khai thẻ.",
+      "unpublishedToast": "Đã ngừng công khai — mọi lần quét QR sẽ hiển thị 'không khả dụng'.",
+      "togglePublishFailed": "Không thể đổi trạng thái. Vui lòng thử lại.",
+      "previewTitle": "Người ứng cứu sẽ thấy",
+      "previewMutedNote": "Chỉ là xem trước — hãy công khai để thẻ có thể quét được.",
+      "print": "In thẻ",
+      "tabs": {
+        "qr": "Thẻ QR",
+        "edit": "Chỉnh sửa",
+        "logs": "Nhật ký",
+        "editDirtyAria": "Có thay đổi chưa lưu"
+      },
+      "provenance": {
+        "publishedAt": "Công khai từ {date}"
+      },
+      "consent": {
+        "title": "Tạo thẻ y tế khẩn cấp",
+        "subtitle": "Giúp bác sĩ cấp cứu xử lý nhanh hơn — kể cả khi bạn không thể nói.",
+        "feature1Title": "Chỉ hiển thị thông tin cần thiết",
+        "feature1Body": "Họ tên, nhóm máu, dị ứng, bệnh nền, thuốc, liên hệ ICE. Không có gì khác.",
+        "feature2Title": "Mặc định ẩn",
+        "feature2Body": "Chúng tôi không bao giờ tiết lộ email, địa chỉ, ngày sinh đầy đủ, lịch dùng thuốc hay ghi chú riêng.",
+        "feature3Title": "Thu hồi tức thì",
+        "feature3Body": "Mất ví? Thu hồi QR trong vài giây — thẻ cũ ngừng hoạt động ngay lập tức.",
+        "exposedTitle": "Thẻ của bạn sẽ hiển thị",
+        "exposed1": "Họ tên, tuổi, nhóm máu",
+        "exposed2": "Dị ứng và bệnh mạn tính",
+        "exposed3": "Thuốc đang dùng (chỉ tên thuốc + hàm lượng)",
+        "exposed4": "Tối đa 3 liên hệ khẩn cấp (tên, số điện thoại)",
+        "hiddenTitle": "Chúng tôi không bao giờ hiển thị",
+        "hidden1": "Email, địa chỉ, ngày sinh đầy đủ, ảnh đại diện",
+        "hidden2": "Lịch dùng thuốc, bác sĩ kê đơn, phòng khám",
+        "hidden3": "Ghi chú y tế riêng tư",
+        "incompleteProfileWarning": "Hãy thêm họ tên, nhóm máu và liên hệ khẩn cấp trong Hồ sơ trước để có thẻ hữu ích nhất.",
+        "revocableNote": "Bạn có thể thu hồi hoặc ngừng công khai bất cứ lúc nào.",
+        "createCta": "Tạo thẻ khẩn cấp",
+        "publishing": "Đang công khai…",
+        "published": "Đã tạo thẻ — hãy tạo mã QR tiếp theo.",
+        "publishFailed": "Không thể tạo thẻ. Vui lòng thử lại."
+      },
+      "nudges": {
+        "complete": "Hồ sơ đã sẵn sàng để công khai.",
+        "completeBody": "Mức độ đầy đủ {score}/100 — bạn có thể tạo mã QR.",
+        "criticalHeader": "{n} mục quan trọng cần sửa trước khi công khai",
+        "recommendedHeader": "{n} mục nên bổ sung để thẻ hữu ích hơn",
+        "fixInProfile": "Sửa trong hồ sơ",
+        "messages": {
+          "missingEmergencyContacts": "Thêm ít nhất một liên hệ khẩn cấp",
+          "missingBloodType": "Thêm nhóm máu",
+          "missingAllergies": "Xác nhận dị ứng (hoặc đánh dấu 'Không có dị ứng')",
+          "missingConditions": "Liệt kê các bệnh mạn tính",
+          "missingMedications": "Liệt kê thuốc đang dùng"
+        }
+      },
+      "fields": {
+        "blood_type": "Nhóm máu",
+        "age": "Tuổi",
+        "gender": "Giới tính",
+        "allergies": "Dị ứng",
+        "conditions": "Bệnh mạn tính",
+        "medications": "Thuốc",
+        "contacts": "Liên hệ khẩn cấp",
+        "assistance": "Hỗ trợ cần thiết",
+        "equipment": "Thiết bị y tế",
+        "communication": "Giao tiếp",
+        "preferred_language": "Ngôn ngữ ưa thích"
+      },
+      "edit": {
+        "allergiesTitle": "Dị ứng",
+        "nkdaTitle": "Tôi không có dị ứng thuốc đã biết",
+        "nkdaDesc": "Khi chọn, thẻ sẽ hiển thị 'NKDA — Không có dị ứng thuốc đã biết' để người ứng cứu thấy xác nhận rõ ràng, không phải dữ liệu trống.",
+        "assistanceTitle": "Hỗ trợ cần thiết",
+        "assistanceDesc": "Chọn tất cả phù hợp — các nhãn này sẽ xuất hiện trên thẻ công khai.",
+        "assistance": {
+          "walking": "Hỗ trợ di chuyển",
+          "communication": "Hỗ trợ giao tiếp",
+          "dietary": "Chế độ ăn đặc biệt",
+          "hearing": "Khiếm thính",
+          "vision": "Khiếm thị",
+          "cognitive": "Hỗ trợ nhận thức"
+        },
+        "equipmentTitle": "Thiết bị y tế",
+        "equipmentDesc": "Máy tạo nhịp, bơm insulin, oxy, v.v.",
+        "equipmentPlaceholder": "VD: Máy tạo nhịp (2024), bơm insulin",
+        "communicationTitle": "Ghi chú giao tiếp",
+        "communicationDesc": "Ngôn ngữ ký hiệu, thiết bị AAC, ngôn ngữ ưa thích.",
+        "communicationPlaceholder": "VD: Chỉ nói tiếng Việt, dùng ASL",
+        "languageTitle": "Ngôn ngữ ưa thích",
+        "languageDesc": "Mã ISO (vi / en / fr). Hiển thị ở góc trên-phải thẻ.",
+        "visibilityTitle": "Hiển thị từng trường",
+        "visibilityDesc": "Tắt bất kỳ phần nào bạn không muốn người ứng cứu thấy.",
+        "save": "Lưu thay đổi",
+        "saving": "Đang lưu…",
+        "saved": "Đã lưu",
+        "saveFailed": "Không thể lưu. Vui lòng thử lại.",
+        "reset": "Hoàn tác"
+      },
+      "tokens": {
+        "title": "Thẻ QR của bạn",
+        "activeCount": "{active}/{max} đang hoạt động",
+        "mint": "Tạo QR",
+        "revokeAll": "Thu hồi tất cả",
+        "mintDisabledNotPublished": "Hãy công khai thẻ trước khi tạo QR.",
+        "mintDisabledCap": "Bạn đã đạt giới hạn thẻ đang hoạt động. Hãy thu hồi một thẻ để tạo mới.",
+        "emptyTitle": "Chưa có thẻ QR",
+        "emptyBody": "Tạo một thẻ để in lên thẻ ví hoặc ép plastic làm vòng đeo tay.",
+        "active": "Đang hoạt động",
+        "revoked": "Đã thu hồi",
+        "createdAt": "Tạo {date}",
+        "lastSeen": "Quét gần nhất {date}",
+        "neverScanned": "Chưa quét lần nào",
+        "hits": "{count} lần quét",
+        "revoke": "Thu hồi",
+        "revokedToast": "Đã thu hồi token — QR không còn quét được.",
+        "revokeFailed": "Không thể thu hồi token. Vui lòng thử lại.",
+        "revokeAllConfirmTitle": "Thu hồi tất cả QR đang hoạt động?",
+        "revokeAllConfirmBody": "Tất cả QR đã in sẽ ngừng hoạt động ngay lập tức. Bạn có thể tạo mới sau đó.",
+        "revokeAllConfirmCta": "Thu hồi tất cả",
+        "revokedAllToast": "Đã thu hồi tất cả token.",
+        "revokeAllFailed": "Không thể thu hồi tất cả. Vui lòng thử lại.",
+        "cancel": "Huỷ"
+      },
+      "mint": {
+        "title": "Tạo thẻ QR mới",
+        "description": "Liên kết bên dưới chỉ hiển thị một lần. Hãy lưu ảnh QR trước khi đóng hộp thoại này.",
+        "defaultLabel": "Thẻ ví",
+        "labelInput": "Nhãn",
+        "labelPlaceholder": "VD: Ví, Vòng đeo tay, Tủ lạnh",
+        "exposedTitle": "Khi quét, QR này sẽ hiển thị:",
+        "exposed1": "Họ tên, tuổi, nhóm máu",
+        "exposed2": "Dị ứng và bệnh mạn tính",
+        "exposed3": "Thuốc đang dùng (chỉ tên + hàm lượng)",
+        "exposed4": "Tối đa 3 số điện thoại khẩn cấp",
+        "acknowledge": "Tôi hiểu thẻ này có thể đọc được bởi bất kỳ ai có QR cho đến khi tôi thu hồi.",
+        "lowCompletenessTitle": "Hồ sơ dưới mức hoàn thành khuyến nghị ({score}/100)",
+        "lowCompletenessBody": "Tôi hiểu thẻ này sẽ ít hữu ích trong tình huống khẩn cấp.",
+        "cancel": "Huỷ",
+        "mint": "Tạo thẻ QR",
+        "minting": "Đang tạo…",
+        "mintFailed": "Không thể tạo thẻ. Vui lòng thử lại.",
+        "tooMany": "Bạn đã có số thẻ QR tối đa. Hãy thu hồi một thẻ trước.",
+        "notPublished": "Hãy công khai thẻ trước khi tạo QR.",
+        "insufficient": "Hồ sơ chưa đủ thông tin. Hãy bổ sung các mục quan trọng hoặc đánh dấu xác nhận.",
+        "labelRequired": "Vui lòng nhập nhãn.",
+        "ackRequired": "Vui lòng xác nhận thông tin sẽ hiển thị.",
+        "ackLowCompletenessRequired": "Vui lòng xác nhận hồ sơ dưới mức khuyến nghị.",
+        "exposedNamePersonalized": "Tên: {name}",
+        "exposedBloodPersonalized": "Nhóm máu: {blood}",
+        "exposedAllergiesPersonalized": "Dị ứng: {list}{more}",
+        "exposedMedsPersonalized": "{count} thuốc đang dùng",
+        "exposedContactsPersonalized": "{count} liên hệ khẩn cấp (số điện thoại)"
+      },
+      "mintResult": {
+        "title": "Đã tạo {label}",
+        "description": "Lưu ảnh QR, sao chép URL hoặc in ngay. Bạn sẽ không thấy token này lần nữa.",
+        "warningTitle": "Chỉ hiển thị một lần",
+        "warningBody": "Nếu đóng hộp thoại mà chưa lưu, bạn cần tạo QR mới — nhưng thẻ hiện tại vẫn có thể thu hồi trong tab Thẻ QR.",
+        "qrAlt": "Mã QR cho {label}",
+        "downloadQr": "Tải QR (PNG)",
+        "urlLabel": "URL chia sẻ",
+        "copyUrl": "Sao chép",
+        "copied": "Đã sao chép",
+        "copiedToast": "Đã sao chép URL vào clipboard.",
+        "copyFailed": "Không thể sao chép. Vui lòng sao chép thủ công.",
+        "done": "Xong",
+        "downloadWalletPdf": "PDF thẻ ví",
+        "autoCloseIn": "Hộp thoại sẽ tự đóng sau {minutes} phút {seconds} giây"
+      },
+      "accessLog": {
+        "title": "Lượt quét gần đây",
+        "subtitle": "Hiển thị {count} mục gần nhất. IP được rút gọn về /24 (IPv4) hoặc /64 (IPv6).",
+        "refresh": "Làm mới",
+        "refreshFailed": "Không thể làm mới nhật ký. Vui lòng thử lại.",
+        "emptyTitle": "Chưa có lượt quét nào",
+        "emptyBody": "Khi có người quét QR, mục đó sẽ xuất hiện ở đây."
+      },
+      "previewTitleDraft": "Người ứng cứu sẽ thấy (chưa lưu)"
     }
   },
   "auth": {
@@ -1742,7 +2340,8 @@
       "quickReply2": "Gợi ý nguyên tắc ăn uống lành mạnh",
       "quickReply3": "Làm sao để duy trì thói quen tập luyện?",
       "quickReply4": "Giải thích chỉ số BMI và giới hạn của nó",
-      "quickReply5": "Mẹo để nhớ uống thuốc đều đặn"
+      "quickReply5": "Mẹo để nhớ uống thuốc đều đặn",
+      "quickReply6": "Giúp tôi chuẩn bị cho buổi khám"
     },
     "muted": "Đã tắt thông báo",
     "unread": "chưa đọc",
@@ -2056,7 +2655,8 @@
       "fitbit": "Fitbit",
       "garmin": "Garmin",
       "withings": "Withings",
-      "samsung_health": "Samsung Health"
+      "samsung_health": "Samsung Health",
+      "health_connect": "Health Connect"
     },
     "freshness": {
       "live": "Tức thời",
@@ -2209,6 +2809,64 @@
         }
       },
       "draftNote": "Trang này là bản tạm trong khi chính sách đầy đủ và bảng thời hạn lưu trữ đang được pháp lý xem xét."
+    },
+    "healthData": {
+      "meta": {
+        "title": "Chính sách dữ liệu sức khỏe",
+        "description": "Những gì HealthOS đọc từ Health Connect, cách lưu trữ và cách thu hồi quyền."
+      },
+      "title": "Chính sách dữ liệu sức khỏe",
+      "subtitle": "Trang này nói về dữ liệu chúng tôi đọc từ Android Health Connect. Xem chính sách bảo mật chung qua liên kết ở cuối trang.",
+      "lastUpdated": "Cập nhật cuối: tháng 4, 2026",
+      "sections": {
+        "what": {
+          "title": "Chúng tôi đọc gì",
+          "body": "Khi bạn kết nối Health Connect từ ứng dụng HealthOS Android, chúng tôi xin quyền chỉ-đọc cho bốn loại bản ghi: Bước chân, Nhịp tim, Giấc ngủ (chỉ thời lượng) và Cân nặng. Bạn có thể cấp một phần bất kỳ; chúng tôi chỉ xin những gì bảng điều khiển cần."
+        },
+        "how": {
+          "title": "Chúng tôi dùng dữ liệu thế nào",
+          "body": "Chúng tôi hiển thị bản ghi trên bảng điều khiển, biểu đồ xu hướng và báo cáo định kỳ. Các phép tổng hợp (trung bình, tổng theo ngày) chạy trên backend để cùng một con số xuất hiện trên web và di động. Chúng tôi không dùng dữ liệu sức khỏe của bạn để huấn luyện mô hình."
+        },
+        "storage": {
+          "title": "Chúng tôi lưu gì",
+          "body": "Chúng tôi lưu chỉ số dẫn xuất (giá trị, đơn vị, thời điểm ghi nhận), tên gói (package name) của ứng dụng nguồn trên Android (ví dụ: Samsung Health), và nhãn phương pháp ghi của Health Connect (tự động vs. thủ công). Chúng tôi không sao lưu dữ liệu thô như sóng tim, dấu vết GPS hoặc mẫu nhịp tim dưới giây."
+        },
+        "sharing": {
+          "title": "Chúng tôi chia sẻ với ai",
+          "body": "Chúng tôi không chia sẻ dữ liệu Health Connect của bạn với bên thứ ba. Cách dữ liệu rời hệ thống duy nhất là luồng chia sẻ báo cáo do bạn tự kích hoạt từ trang Báo cáo."
+        },
+        "revocation": {
+          "title": "Cách thu hồi quyền",
+          "body": "Mở ứng dụng Android Health Connect → Ứng dụng → HealthOS → Gỡ quyền truy cập. Các lần đồng bộ tiếp theo sẽ thất bại nhẹ nhàng và bạn sẽ thấy banner 'Quyền đã bị thu hồi' trong HealthOS. Dữ liệu chúng tôi đã nhập trước đó không bị ảnh hưởng; xem mục Xóa dưới đây."
+        },
+        "deletion": {
+          "title": "Cách xóa dữ liệu đã nhập",
+          "body": "Trong ứng dụng HealthOS hoặc trên web: Cài đặt → Thiết bị kết nối → Health Connect → Ngắt kết nối — sẽ dừng đồng bộ tiếp và xóa trạng thái sync. Để xóa các bản ghi đã nhập, dùng Cài đặt → Quyền riêng tư → Xóa tài khoản, sẽ xóa toàn bộ dữ liệu chúng tôi nắm giữ về bạn."
+        },
+        "contact": {
+          "title": "Câu hỏi",
+          "body": "Email privacy@healthos.vn — phản hồi trong vòng 5 ngày làm việc."
+        }
+      },
+      "footer": {
+        "see": "Xem thêm",
+        "generalPolicy": "chính sách bảo mật chung"
+      }
     }
+  },
+  "publicEmergency": {
+    "meta": {
+      "title": "Thẻ y tế khẩn cấp — HealthOS",
+      "description": "Thông tin y tế quan trọng do bệnh nhân chia sẻ cho nhân viên cứu thương. Không tìm thấy qua công cụ tìm kiếm."
+    },
+    "trustNote": "Lưu trữ bởi HealthOS. Bệnh nhân kiểm soát, có thể thu hồi.",
+    "rateLimitedTitle": "Quá nhiều yêu cầu",
+    "rateLimitedBody": "Vui lòng chậm lại. Hãy thử lại sau {seconds} giây.",
+    "goneTitle": "Thẻ khẩn cấp này không còn hoạt động.",
+    "goneBody": "Vui lòng liên hệ bệnh nhân hoặc dùng giấy tờ tuỳ thân khác.",
+    "provenance": {
+      "updatedAt": "Cập nhật {date}"
+    },
+    "emergencyNumberHint": "Trong tình huống cấp cứu, hãy gọi số cấp cứu tại địa phương (115 ở Việt Nam, 911 ở Mỹ, 112 ở châu Âu)."
   }
 }

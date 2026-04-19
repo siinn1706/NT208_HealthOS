@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ labels.title }} · {{ brief.id[:8] }}</title>
+  <style>
+    @page { size: A4; margin: 18mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Helvetica", "Arial", sans-serif;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: #111;
+      margin: 0;
+    }
+    h1 { font-size: 18pt; margin: 0 0 4pt; }
+    h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: 0.05em; margin: 18pt 0 6pt; }
+    p, li { font-size: 10.5pt; }
+    .meta { color: #666; font-size: 9pt; }
+    .disclaimer {
+      border: 1px solid #ddd; background: #fafafa;
+      padding: 8pt; font-size: 9pt; color: #555; font-style: italic;
+      margin: 6pt 0 16pt;
+    }
+    .concern { margin-bottom: 10pt; }
+    .concern .head { font-weight: 600; }
+    .tag { color: #666; font-size: 9pt; margin-left: 4pt; }
+    ol { padding-left: 16pt; }
+    .routing {
+      border: 1px solid #ddd; padding: 8pt; margin-top: 8pt;
+      page-break-inside: avoid;
+    }
+    .routing .bucket {
+      font-weight: 600; text-transform: capitalize;
+    }
+    .routing.emergency_now { border-color: #b45309; background: #fffaf3; }
+    .routing.urgent_same_day { border-color: #b45309; }
+    .footer {
+      border-top: 1px solid #ddd; margin-top: 18pt; padding-top: 6pt;
+      font-size: 8pt; color: #888;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ labels.title }}</h1>
+    <p class="meta">
+      {{ visit_type_label }} · #{{ brief.id[:8] }}
+      {% if brief.finalized_at %} · {{ labels.finalized_at }}: {{ brief.finalized_at }}{% endif %}
+    </p>
+  </header>
+
+  <p class="disclaimer">{{ labels.disclaimer }}</p>
+
+  <h2>{{ labels.concerns_header }}</h2>
+  {% if brief.symptoms %}
+    {% for s in brief.symptoms %}
+      <div class="concern">
+        <div class="head">
+          {{ s.concern_text }}
+          <span class="tag">
+            · {{ category_labels[s.concern_category] }}
+            {% if s.severity_0_10 is not none %} · {{ s.severity_0_10 }}/10{% endif %}
+            {% if s.duration_value is not none and s.duration_unit %}
+              · {{ s.duration_value }} {{ s.duration_unit }}
+            {% endif %}
+          </span>
+        </div>
+        {% if s.triggers or s.better_with or s.worse_with %}
+          <div class="meta">
+            {% if s.triggers %}{{ labels.triggers }}: {{ s.triggers }}. {% endif %}
+            {% if s.better_with %}{{ labels.better_with }}: {{ s.better_with }}. {% endif %}
+            {% if s.worse_with %}{{ labels.worse_with }}: {{ s.worse_with }}.{% endif %}
+          </div>
+        {% endif %}
+        {% if s.meds_taken %}
+          <div class="meta">{{ labels.meds_taken }}: {{ s.meds_taken }}</div>
+        {% endif %}
+        {% if s.prior_care %}
+          <div class="meta">{{ labels.prior_care }}: {{ s.prior_care }}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="meta">—</p>
+  {% endif %}
+
+  <h2>{{ labels.questions_header }}</h2>
+  {% if questions %}
+    <ol>
+      {% for q in questions %}
+        <li>{{ q.text_vi if locale == 'vi' else q.text_en }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="meta">—</p>
+  {% endif %}
+
+  {% if triage %}
+    <div class="routing {{ triage.bucket }}">
+      <h2 style="margin-top:0">{{ labels.routing_header }}</h2>
+      <p class="bucket">{{ triage.bucket.replace('_', ' ') }}</p>
+      {% if triage.matched_signals %}
+        <ul>
+          {% for sig in triage.matched_signals %}
+            <li class="meta">{{ sig.signal }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <p class="meta">
+        {{ labels.ruleset_version }}: {{ triage.ruleset_version }}
+        · {{ triage.computed_at }}
+      </p>
+    </div>
+  {% endif %}
+
+  <div class="footer">
+    {{ labels.footer_note }}
+  </div>
+</body>
+</html>

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { SegmentGroup } from "@/components/ui/SegmentGroup";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { EmptyState } from "@/components/states/EmptyState";
@@ -34,7 +35,7 @@ export default function RemindersScreen() {
   const router = useRouter();
   const toast = useToast();
   const qc = useQueryClient();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
+  const { colors, fontWeights, typography, spacing } = useTheme();
   const [tab, setTab] = useState<Tab>("today");
 
   const reminders = useQuery({
@@ -148,32 +149,16 @@ export default function RemindersScreen() {
         }
       />
 
-      <View style={{ flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.base }}>
-        {(["today", "all"] as Tab[]).map((value) => {
-          const active = tab === value;
-          return (
-            <Pressable
-              key={value}
-              onPress={() => setTab(value)}
-              style={{
-                flex: 1,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.md,
-                backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: active ? colors.brandText : colors.text,
-                  fontWeight: fontWeights.semibold,
-                }}
-              >
-                {value === "today" ? t("reminders.upcoming") : t("reminders.all")}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={{ paddingHorizontal: spacing.base }}>
+        <SegmentGroup<Tab>
+          accessibilityLabel={t("reminders.title")}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "today", label: t("reminders.upcoming") },
+            { value: "all", label: t("reminders.all") },
+          ]}
+        />
       </View>
 
       {tab === "today" ? (
@@ -314,8 +299,17 @@ export default function RemindersScreen() {
               <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
                 <Pressable
                   onPress={() => toggleDone.mutate({ id: r.id, done: !r.done })}
-                  hitSlop={6}
-                  style={{ paddingVertical: 6, paddingHorizontal: 10 }}
+                  // 44dp tap target via minHeight; the visible padding
+                  // stays compact so the row doesn't grow taller.
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    r.done ? t("reminders.markIncomplete") : t("reminders.markDone")
+                  }
+                  style={{
+                    minHeight: 44,
+                    justifyContent: "center",
+                    paddingHorizontal: 10,
+                  }}
                 >
                   <Text style={{ color: colors.brand, fontWeight: fontWeights.semibold }}>
                     {r.done ? t("reminders.markIncomplete") : t("reminders.markDone")}
@@ -323,8 +317,14 @@ export default function RemindersScreen() {
                 </Pressable>
                 <Pressable
                   onPress={() => remove.mutate(r.id)}
-                  hitSlop={6}
-                  style={{ paddingVertical: 6, paddingHorizontal: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("common.delete")} ${r.title}`}
+                  accessibilityHint="Removes this reminder"
+                  style={{
+                    minHeight: 44,
+                    justifyContent: "center",
+                    paddingHorizontal: 10,
+                  }}
                 >
                   <Text style={{ color: colors.danger, fontWeight: fontWeights.semibold }}>
                     {t("common.delete")}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import { RefreshControl, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 
@@ -7,6 +7,7 @@ import { ScreenScroll } from "@/components/ScreenScroll";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { PillGroup } from "@/components/ui/PillGroup";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { EmptyState } from "@/components/states/EmptyState";
@@ -23,7 +24,7 @@ const PERIODS: { value: ReportPeriod; key: string }[] = [
 export default function ReportsScreen() {
   const t = useT();
   const router = useRouter();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
+  const { colors, fontWeights, typography, spacing } = useTheme();
   const [period, setPeriod] = useState<ReportPeriod>("7d");
 
   const report = useQuery({
@@ -51,7 +52,7 @@ export default function ReportsScreen() {
       <PageHeader
         title={t("reports.title")}
         action={
-          <View style={{ flexDirection: "row", gap: 8 }}>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <Button
               size="sm"
               variant="secondary"
@@ -70,33 +71,15 @@ export default function ReportsScreen() {
       />
 
       <Card>
-        <View style={{ flexDirection: "row", gap: spacing.xs, flexWrap: "wrap" }}>
-          {PERIODS.map((opt) => {
-            const active = period === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => setPeriod(opt.value)}
-                style={{
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: 6,
-                  borderRadius: radius.pill,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                    fontSize: typography.xs.fontSize,
-                  }}
-                >
-                  {t(opt.key)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <PillGroup
+          accessibilityLabel={t("reports.title")}
+          value={period}
+          onChange={setPeriod}
+          options={PERIODS.map((opt) => ({
+            value: opt.value,
+            label: t(opt.key),
+          }))}
+        />
       </Card>
 
       {report.isPending ? (

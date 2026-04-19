@@ -3,12 +3,25 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/navigation";
-import { Camera, Plus, Pill, UtensilsCrossed, FileBarChart2 } from "lucide-react";
+import {
+  Camera,
+  ClipboardCheck,
+  FileBarChart2,
+  Pill,
+  Plus,
+  UtensilsCrossed,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickMealSheet } from "@/components/dashboard/meals/QuickMealSheet";
 
 interface QuickAction {
-  key: "logMeal" | "scanMeal" | "addVital" | "logMedicine" | "viewReports";
+  key:
+    | "logMeal"
+    | "scanMeal"
+    | "addVital"
+    | "logMedicine"
+    | "viewReports"
+    | "visitPrep";
   icon: React.ElementType;
   color: string;
   bg: string;
@@ -40,6 +53,12 @@ const ACTIONS: QuickAction[] = [
     bg: "bg-[#E7DEA7]/10 hover:bg-[#E7DEA7]/20",
   },
   {
+    key: "visitPrep",
+    icon: ClipboardCheck,
+    color: "text-[#A78BFA]",
+    bg: "bg-[#A78BFA]/10 hover:bg-[#A78BFA]/20",
+  },
+  {
     key: "viewReports",
     icon: FileBarChart2,
     color: "text-emerald-400",
@@ -61,6 +80,8 @@ export function QuickActionsWidget() {
       router.push("/dashboard/reports");
     } else if (key === "logMedicine") {
       router.push("/dashboard/reminders");
+    } else if (key === "visitPrep") {
+      router.push("/dashboard/visit-prep/new");
     }
     // TODO: handler for addVital
   }

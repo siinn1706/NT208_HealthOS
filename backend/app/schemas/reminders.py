@@ -24,6 +24,10 @@ class ReminderDTO(BaseModel):
     weekday_mask: Optional[int] = None
     day_of_month: Optional[int] = None
     next_occurrence_at: Optional[datetime.datetime] = None
+    # Medication Hub (review P3-linked-chip) — exposes the FK so the FE can
+    # render a "Linked to medication" chip and route the user to the plan
+    # detail page. Always None for ad-hoc reminders.
+    medication_plan_id: Optional[uuid.UUID] = None
 
 
 class ReminderCreateBody(BaseModel):

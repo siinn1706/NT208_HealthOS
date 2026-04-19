@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PillGroup } from "@/components/ui/PillGroup";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { useT } from "@/i18n";
@@ -135,33 +136,15 @@ export default function ExportReportScreen() {
             >
               Period
             </Text>
-            <View style={{ flexDirection: "row", gap: spacing.xs, flexWrap: "wrap" }}>
-              {PERIODS.map((opt) => {
-                const active = period === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setPeriod(opt.value)}
-                    style={{
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: 6,
-                      borderRadius: radius.pill,
-                      backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: active ? colors.brandText : colors.text,
-                        fontWeight: fontWeights.semibold,
-                        fontSize: typography.xs.fontSize,
-                      }}
-                    >
-                      {t(opt.key)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <PillGroup<ReportPeriod>
+              accessibilityLabel="Period"
+              value={period}
+              onChange={setPeriod}
+              options={PERIODS.map((opt) => ({
+                value: opt.value,
+                label: t(opt.key),
+              }))}
+            />
           </Card>
 
           <Card>
@@ -175,16 +158,29 @@ export default function ExportReportScreen() {
             >
               Sections
             </Text>
-            <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
+            {/* Multi-select chip group — distinct from PillGroup
+                (which is single-select). Each chip is a `checkbox`
+                with `accessibilityState.checked` so screen readers
+                read out which sections are included in the export. */}
+            <View
+              accessibilityLabel="Sections"
+              style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}
+            >
               {SECTION_OPTIONS.map((opt) => {
                 const active = sections.has(opt.value);
                 return (
                   <Pressable
                     key={opt.value}
                     onPress={() => toggle(opt.value)}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={opt.label}
+                    accessibilityState={{ checked: active }}
                     style={{
                       paddingHorizontal: spacing.md,
-                      paddingVertical: 6,
+                      // Match the chat send button's 44dp tap target so
+                      // chips don't fail WCAG 2.1 AA touch-target checks.
+                      minHeight: 44,
+                      justifyContent: "center",
                       borderRadius: radius.pill,
                       backgroundColor: active ? colors.brand : colors.surfaceMuted,
                     }}
