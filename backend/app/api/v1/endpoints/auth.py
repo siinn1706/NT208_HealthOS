@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -942,16 +943,21 @@ async def reset_password(
 
 @router.post(
     "/check-password-breach",
-    responses={200: {"model": dict}, 400: {"model": ErrorResponse}},
+    responses={200: {"model": dict}, 400: {"model": ErrorResponse}, 410: {"model": ErrorResponse}},
+    deprecated=True,
 )
 async def check_password_breach_endpoint(
     body: dict,
 ) -> dict:
     """
-    Check if a password appears in known data breaches via HaveIBeenPwned API.
+    DEPRECATED — sends the raw password to the server.
 
-    Uses k-anonymity so the full password is never sent.
-    Returns { breached: true, count: N } if found, { breached: false } otherwise.
+    Use ``GET /auth/check-password-breach/range/{prefix}`` instead, which only
+    accepts the first 5 hex characters of the SHA-1 hash so the password
+    itself never leaves the browser (HIBP k-anonymity).
+
+    Kept for one release for backwards compatibility with older clients; new
+    clients SHOULD migrate to the range endpoint.
     """
     password = body.get("password", "")
     if not password:
@@ -959,6 +965,58 @@ async def check_password_breach_endpoint(
 
     is_breached, count = await check_password_breach(password)
     return {"breached": is_breached, "count": count}
+
+
+@router.get(
+    "/check-password-breach/range/{prefix}",
+    response_class=PlainTextResponse,
+    responses={
+        200: {"content": {"text/plain": {}}},
+        400: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+    },
+)
+async def check_password_breach_range_endpoint(prefix: str) -> PlainTextResponse:
+    """
+    Proxy to the HaveIBeenPwned range API for client-side k-anonymity.
+
+    The browser computes ``SHA1(password).upper()`` locally, sends only the
+    first 5 hex characters, and matches the suffix against the returned list
+    in-process. This guarantees the plaintext password never leaves the
+    browser, transits the BFF, or appears in a backend log.
+    """
+    import re
+    import httpx
+
+    if not re.fullmatch(r"[0-9A-Fa-f]{5}", prefix):
+        raise ApiException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="INVALID_PREFIX",
+            message="Prefix must be exactly 5 hexadecimal characters.",
+        )
+
+    upstream_url = f"https://api.pwnedpasswords.com/range/{prefix.upper()}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            upstream = await client.get(
+                upstream_url,
+                headers={"User-Agent": "HealthOS-Auth"},
+            )
+    except Exception:
+        raise ApiException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            code="UPSTREAM_ERROR",
+            message="HIBP service unavailable.",
+        )
+
+    if upstream.status_code != 200:
+        raise ApiException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            code="UPSTREAM_ERROR",
+            message="HIBP service returned an unexpected status.",
+        )
+
+    return PlainTextResponse(content=upstream.text)
 
 
 @router.get(

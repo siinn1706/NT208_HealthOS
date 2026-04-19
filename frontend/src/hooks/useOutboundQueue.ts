@@ -26,11 +26,23 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { resolveAuthUserId } from "@/lib/user-scoped-storage";
 
-const DB_NAME = "healthos-chat";
+const DB_NAME_BASE = "healthos-chat";
 const DB_VERSION = 1;
 const STORE = "outbound_messages";
 const PER_CONVERSATION_CAP = 200;
+
+/**
+ * Per-user IndexedDB name. Scoping the database (rather than the records
+ * inside) means user-A's queue is physically separate from user-B's, and a
+ * single `deleteDatabase("healthos-chat-<uid>")` call on logout cleans it
+ * fully without enumerating records. The `purgeAllUserScoped` helper drops
+ * the DB enumeration variant via the chat IDB list.
+ */
+function dbNameFor(userId: string | null): string {
+  return `${DB_NAME_BASE}-${userId ?? "anon"}`;
+}
 
 export interface OutboundItem {
   /** Stable client-generated id (also used as the optimistic message id). */
@@ -48,30 +60,48 @@ export interface OutboundItem {
 // Low-level IndexedDB helpers (Promise-wrapped, no external deps)
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Resolve the per-user DB once per session. Until it resolves the queue
+ * presents as empty so we never accidentally write under the wrong scope.
+ */
+let _dbNamePromise: Promise<string | null> | null = null;
+async function resolveDbName(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  if (_dbNamePromise) return _dbNamePromise;
+  _dbNamePromise = resolveAuthUserId().then((uid) => dbNameFor(uid));
+  return _dbNamePromise;
+}
+
 function openDb(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
     if (typeof indexedDB === "undefined") {
       resolve(null);
       return;
     }
-    let req: IDBOpenDBRequest;
-    try {
-      req = indexedDB.open(DB_NAME, DB_VERSION);
-    } catch {
-      resolve(null);
-      return;
-    }
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        const store = db.createObjectStore(STORE, { keyPath: "client_message_id" });
-        store.createIndex("by_conversation", "conversation_id", { unique: false });
-        store.createIndex("by_enqueued_at", "enqueued_at", { unique: false });
+    void resolveDbName().then((dbName) => {
+      if (!dbName) {
+        resolve(null);
+        return;
       }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => resolve(null);
-    req.onblocked = () => resolve(null);
+      let req: IDBOpenDBRequest;
+      try {
+        req = indexedDB.open(dbName, DB_VERSION);
+      } catch {
+        resolve(null);
+        return;
+      }
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          const store = db.createObjectStore(STORE, { keyPath: "client_message_id" });
+          store.createIndex("by_conversation", "conversation_id", { unique: false });
+          store.createIndex("by_enqueued_at", "enqueued_at", { unique: false });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    });
   });
 }
 

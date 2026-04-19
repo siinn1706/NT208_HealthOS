@@ -19,10 +19,32 @@
  *     entry is dropped and `onDrop("max-attempts")` is fired so the FE can
  *     surface a "View failed uploads" banner.
  */
-const DB_NAME = "healthos.offline-queue.v1";
+const DB_NAME_BASE = "healthos-multipart";
+const LEGACY_DB_NAME = "healthos.offline-queue.v1";
 const STORE = "multipart-entries";
 const SCHEMA_VERSION = 1;
 const MAX_ATTEMPTS = 5;
+
+/**
+ * Per-user IndexedDB name. Scoping the database (rather than the records
+ * inside) means user-A's queued meal photos cannot be replayed under user-B's
+ * session after a logout/login on a shared device. The `purgeAllUserScoped`
+ * helper enumerates every `healthos-multipart-*` database via
+ * `indexedDB.databases()` on logout.
+ */
+function dbNameFor(userId: string | null): string {
+  return `${DB_NAME_BASE}-${userId ?? "anon"}`;
+}
+
+let _scopePromise: Promise<string> | null = null;
+async function resolveDbName(): Promise<string> {
+  if (_scopePromise) return _scopePromise;
+  // Lazy import keeps this module React-free.
+  _scopePromise = import("@/lib/user-scoped-storage").then(
+    async ({ resolveAuthUserId }) => dbNameFor(await resolveAuthUserId()),
+  );
+  return _scopePromise;
+}
 
 export type MultipartFieldValue = Blob | File | string;
 
@@ -53,13 +75,13 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof window.indexedDB !== "undefined";
 }
 
-function openDb(): Promise<IDBDatabase> {
+async function openDb(): Promise<IDBDatabase> {
+  if (!isBrowser()) {
+    throw new Error("IndexedDB unavailable");
+  }
+  const dbName = await resolveDbName();
   return new Promise((resolve, reject) => {
-    if (!isBrowser()) {
-      reject(new Error("IndexedDB unavailable"));
-      return;
-    }
-    const req = window.indexedDB.open(DB_NAME, SCHEMA_VERSION);
+    const req = window.indexedDB.open(dbName, SCHEMA_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
@@ -69,6 +91,14 @@ function openDb(): Promise<IDBDatabase> {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error("IndexedDB open failed"));
   });
+}
+
+/**
+ * Drop the cached scope so the next `openDb` resolves fresh — used by tests
+ * and by `purgeAllUserScoped` once it has finished deleting the per-user DB.
+ */
+export function __resetMultipartScope(): void {
+  _scopePromise = null;
 }
 
 async function withStore<T>(
@@ -284,7 +314,8 @@ async function bumpAttempts(
 }
 
 export const __MULTIPART_QUEUE_TESTING__ = {
-  DB_NAME,
+  DB_NAME_BASE,
+  LEGACY_DB_NAME,
   STORE,
   SCHEMA_VERSION,
   MAX_ATTEMPTS,
