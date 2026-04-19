@@ -29,6 +29,8 @@ class ParticipantDTO(BaseModel):
     avatar_url: str | None = None
     is_online: bool = False
     last_seen_at: datetime.datetime | None = None
+    role: str = "member"
+    is_system: bool = False
 
 
 class AttachmentDTO(BaseModel):

@@ -165,8 +165,8 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 **v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
 **v1.2.0**: User accent color customization and theming.
 
-- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification.
-- **Stub/placeholder**: AI Worker real implementation (currently mock), Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
+- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, **AI Worker chat (Gemini, streaming)**.
+- **Stub/placeholder**: Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
 
 ## CI/CD Pipeline
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useMessages, useTypingState } from "@/hooks/useChat";
+import { useMessages, useTypingState, findAiBotUserId } from "@/hooks/useChat";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
@@ -54,10 +54,12 @@ export function ChatWindow({
     deleteMessage,
     reactToMessage,
     pinMessage,
-    simulateAIReply,
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
+    onAiStreamStarted,
+    onAiStreamChunk,
+    onAiStreamCompleted,
   } = useMessages(conversation.id, currentUserId);
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -68,7 +70,10 @@ export function ChatWindow({
   const messageListRef = useRef<MessageListHandle>(null);
 
   const convId = conversation.id;
-  const wsEnabled = conversation.type !== "ai";
+  // AI conversations now flow through the same WS pipeline as human chat —
+  // the BE orchestrator persists + broadcasts the bot's reply, including
+  // streaming chunks (ai:* / chat.message.ai_* events).
+  const wsEnabled = true;
 
   const handleWsEvent = useCallback((frame: WsFrame) => {
     const payload = frame.payload as Record<string, unknown>;
@@ -132,6 +137,32 @@ export function ChatWindow({
       return;
     }
 
+    // ── AI streaming events ────────────────────────────────────────────────
+    if (frame.event === "ai:started" || frame.event === "chat.message.ai_started") {
+      if (payloadConvId && payloadConvId !== convId) return;
+      onAiStreamStarted({
+        message_id: typeof payload.message_id === "string" ? payload.message_id : undefined,
+        conversation_id: payloadConvId,
+        sender_id: typeof payload.sender_id === "string" ? payload.sender_id : undefined,
+      });
+      return;
+    }
+
+    if (frame.event === "ai:chunk" || frame.event === "chat.message.ai_chunk") {
+      if (payloadConvId && payloadConvId !== convId) return;
+      onAiStreamChunk({
+        message_id: typeof payload.message_id === "string" ? payload.message_id : undefined,
+        delta: typeof payload.delta === "string" ? payload.delta : undefined,
+      });
+      return;
+    }
+
+    if (frame.event === "ai:completed" || frame.event === "chat.message.ai_completed") {
+      if (payloadConvId && payloadConvId !== convId) return;
+      onAiStreamCompleted(payload);
+      return;
+    }
+
     if (frame.event === "typing" || frame.event === "chat.typing") {
       if (payloadConvId && payloadConvId !== convId) return;
       const senderId = typeof payload.user_id === "string" ? payload.user_id : null;
@@ -143,7 +174,18 @@ export function ChatWindow({
     if (frame.event === "conversation.updated") {
       onConversationUpdate?.(payload);
     }
-  }, [convId, upsertMessage, setPinnedState, setRemoteTyping, onIncomingMessage, onConversationUpdate, currentUserId]);
+  }, [
+    convId,
+    upsertMessage,
+    setPinnedState,
+    setRemoteTyping,
+    onIncomingMessage,
+    onConversationUpdate,
+    currentUserId,
+    onAiStreamStarted,
+    onAiStreamChunk,
+    onAiStreamCompleted,
+  ]);
 
   const { sendEvent, isConnected } = useChatWs({
     onEvent: handleWsEvent,
@@ -175,12 +217,9 @@ export function ChatWindow({
         const sent = sendMessage(convId, content, replyTo?.id, onMessageSent);
         void sent;
         setReplyTo(null);
-        if (conversation.type === "ai") {
-          simulateAIReply(convId);
-        }
       }
     },
-    [editingMessage, replyTo, conversation.type, convId, sendMessage, editMessage, simulateAIReply, onMessageSent]
+    [editingMessage, replyTo, convId, sendMessage, editMessage, onMessageSent]
   );
 
   const handleReply = useCallback((msg: Message) => {
@@ -224,6 +263,10 @@ export function ChatWindow({
         acc[participant.user_id] = participant.display_name;
         return acc;
       }, {}),
+    [conversation.participants]
+  );
+  const aiBotUserId = useMemo(
+    () => findAiBotUserId(conversation.participants),
     [conversation.participants]
   );
 
@@ -283,6 +326,7 @@ export function ChatWindow({
             messages={messages}
             currentUserId={currentUserId}
             participantNameById={participantNameById}
+            aiBotUserId={aiBotUserId}
             isTyping={isTyping}
             onReply={handleReply}
             onEdit={handleEdit}

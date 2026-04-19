@@ -377,7 +377,7 @@ export interface WsEvent<T = unknown> {
 
 export type ConversationType = "direct" | "group" | "ai";
 export type MessageType = "text" | "image" | "file" | "audio" | "system";
-export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
+export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed" | "streaming";
 export type ConversationTab = "all" | "strangers";
 export type StrangerRequestStatus = "pending" | "accepted" | "rejected" | "blocked";
 export type ChatThemeType = "gradient" | "pattern";
@@ -389,6 +389,10 @@ export interface ChatParticipant {
   email: string;
   is_online: boolean;
   last_seen: string | null;
+  /** Backend conversation_member role: "owner" | "member" | "admin" | "assistant". */
+  role?: string;
+  /** True for system bot accounts (e.g. HealthOS AI Assistant). */
+  is_system?: boolean;
 }
 
 export interface MessageReaction {

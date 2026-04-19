@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from app.api.generate import router as ai_router
 from app.core.config import settings
 from app.schemas.analysis import AnalyzeMealRequest, AnalyzeMealResponse
+from app.services import gemini_chat_service
 from app.services.food_detector_service import detect_food_nutrition, get_detector_runtime_status
 from app.services.image_loader import ImageLoadError, load_image_from_url
 from app.services.nutrition_mapper import map_to_healthos_nutrition
@@ -42,6 +43,8 @@ async def health() -> dict:
         "service": "ai-worker",
         "debug": settings.debug,
         "detector": detector_status,
+        "gemini_chat": "configured" if gemini_chat_service.is_configured() else "missing_key",
+        "gemini_chat_model": settings.gemini_chat_model,
     }
 
 

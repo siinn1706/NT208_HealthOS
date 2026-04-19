@@ -1285,7 +1285,12 @@
       "subtitle": "Sức khỏe 24/7",
       "disclaimer": "Gợi ý của AI không thay thế tư vấn y khoa.",
       "thinking": "Đang suy nghĩ...",
-      "quickReplies": "Câu hỏi nhanh"
+      "quickReplies": "Câu hỏi nhanh",
+      "streaming": "AI đang trả lời...",
+      "error": "Trợ lý AI gặp lỗi tạm thời. Vui lòng thử lại.",
+      "busy": "Trợ lý AI đang trả lời tin nhắn trước, vui lòng đợi.",
+      "rate_limited": "Bạn nhắn quá nhanh. Vui lòng đợi một chút rồi thử lại.",
+      "botLabel": "Bot"
     },
     "muted": "Đã tắt thông báo",
     "unread": "chưa đọc",

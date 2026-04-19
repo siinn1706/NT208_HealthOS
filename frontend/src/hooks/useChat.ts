@@ -48,7 +48,18 @@ function adaptParticipant(p: any): ChatParticipant {
     email: p.email ?? "",
     is_online: p.is_online ?? false,
     last_seen: p.last_seen_at ?? p.last_seen ?? null,
+    role: typeof p.role === "string" ? p.role : undefined,
+    is_system: Boolean(p.is_system),
   };
+}
+
+/** Pick the AI bot's user_id from a conversation's participants list, if present. */
+export function findAiBotUserId(participants: ChatParticipant[] | undefined | null): string | null {
+  if (!participants?.length) return null;
+  const bot = participants.find(
+    (p) => p.is_system === true || p.role === "assistant"
+  );
+  return bot?.user_id ?? null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -461,6 +472,69 @@ export function useMessages(conversationId: string | null, currentUserId: string
     setIsTyping(typing);
   }, []);
 
+  // ── AI streaming reducers ────────────────────────────────────────────────
+  // Each handler is keyed by the placeholder message_id the BE sends in the
+  // ai:started event so multiple in-flight streams (rare but possible across
+  // tabs) don't collide.
+
+  /** Insert a placeholder bubble when the BE signals the AI started replying. */
+  const onAiStreamStarted = useCallback(
+    (raw: { message_id?: string; conversation_id?: string; sender_id?: string }) => {
+      const msgId = raw.message_id;
+      const convId = raw.conversation_id;
+      const senderId = raw.sender_id;
+      if (!msgId || !convId || !senderId) return;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msgId)) return prev;
+        const placeholder: Message = {
+          id: msgId,
+          conversation_id: convId,
+          sender_id: senderId,
+          sender_display_name: "HealthOS AI Assistant",
+          content: "",
+          type: "text",
+          status: "streaming",
+          reactions: [],
+          is_edited: false,
+          is_recalled: false,
+          is_pinned: false,
+          created_at: new Date().toISOString(),
+        };
+        return [...prev, placeholder];
+      });
+    },
+    []
+  );
+
+  /** Append a delta to the streaming bubble identified by message_id. */
+  const onAiStreamChunk = useCallback(
+    (raw: { message_id?: string; delta?: string }) => {
+      const msgId = raw.message_id;
+      const delta = raw.delta;
+      if (!msgId || !delta) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId
+            ? { ...m, content: m.content + delta, status: "streaming" }
+            : m
+        )
+      );
+    },
+    []
+  );
+
+  /** Replace the placeholder content with the final MessageDTO from the BE. */
+  const onAiStreamCompleted = useCallback((raw: unknown) => {
+    const msg = adaptMessage(raw);
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === msg.id);
+      if (idx < 0) return [...prev, { ...msg, status: "read" }];
+      const next = [...prev];
+      next[idx] = { ...msg, status: "read" };
+      return next;
+    });
+  }, []);
+
   const sendMessage = useCallback(
     async (
       convId: string,
@@ -662,32 +736,15 @@ export function useMessages(conversationId: string | null, currentUserId: string
     [currentUserId]
   );
 
-  // Simulate AI typing + canned response (fallback when AI worker is not yet connected)
-  const simulateAIReply = useCallback(
-    (convId: string) => {
-      setIsTyping(true);
-      const delay = 1000 + Math.random() * 1500;
-      const timeoutId = setTimeout(() => {
-        setIsTyping(false);
-        const aiMsg: Message = {
-          id: `ai-${Date.now()}`,
-          conversation_id: convId,
-          sender_id: "ai",
-          content: "Tôi đã nhận được tin nhắn của bạn! Tính năng AI đang được tích hợp với AI Worker.",
-          type: "text",
-          status: "read",
-          reactions: [],
-          is_edited: false,
-          is_recalled: false,
-          is_pinned: false,
-          created_at: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-      }, delay);
-      return () => clearTimeout(timeoutId);
-    },
-    []
-  );
+  /**
+   * @deprecated AI replies now arrive via the real WS stream (events
+   * ``ai:started``, ``ai:chunk``, ``ai:completed``). Kept as a no-op so older
+   * callers (storybook, tests) that import the symbol don't crash. Will be
+   * removed once all FE imports are scrubbed.
+   */
+  const simulateAIReply = useCallback((_convId: string) => {
+    return () => {};
+  }, []);
 
   return {
     messages,
@@ -705,6 +762,9 @@ export function useMessages(conversationId: string | null, currentUserId: string
     pinMessage,
     reactToMessage,
     simulateAIReply,
+    onAiStreamStarted,
+    onAiStreamChunk,
+    onAiStreamCompleted,
   };
 }
 

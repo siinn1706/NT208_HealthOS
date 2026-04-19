@@ -153,6 +153,8 @@ async def _build_conversation_dto(
                     display_name=m.user.display_name,
                     avatar_url=m.user.profile.avatar_url if m.user.profile else None,
                     is_online=is_online,
+                    role=m.role or "member",
+                    is_system=bool(getattr(m.user, "is_system", False)),
                 )
             )
 
@@ -246,6 +248,15 @@ async def _ensure_ai_conversation(
         )
     )
     await db.flush()
+
+    # Auto-add the AI bot as an "assistant" member so the FE participants list
+    # surfaces the bot identity (avatar, display name) without extra lookups.
+    # Tolerated to fail in tests where the migration may not have run.
+    try:
+        from app.services.ai_bot import ensure_ai_bot_member
+        await ensure_ai_bot_member(db, conv.id)
+    except RuntimeError:
+        pass
 
     return await _reload_conversation(db, conv.id)
 

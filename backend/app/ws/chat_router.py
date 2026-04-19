@@ -34,18 +34,24 @@ Event Envelope (canonical format):
 """
 from __future__ import annotations
 
+import asyncio
 import datetime
+import logging
 import uuid
 from typing import Any, Callable
 
 from fastapi import WebSocket
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services import chat as chat_svc
+from app.adapters.database import AsyncSessionLocal
+from app.models.core import Conversation, ConversationTypeEnum
+from app.services import ai_chat_orchestrator, chat as chat_svc
 from app.services.events import EventEmitter
 from app.ws.handlers import ConnectionManager
 
 event_emitter = EventEmitter()
+_LOGGER = logging.getLogger("healthos.ws.chat")
 
 
 async def handle_ws_event(
@@ -186,6 +192,18 @@ async def handle_ws_event(
         # Broadcast to room (excluding sender's socket — they already got ack)
         room = f"conv:{conv_id}"
         await broadcast_dual(room, msg_data, "msg:new", "chat.message.sent", exclude=ws)
+
+        # ── AI conversation: kick off Gemini reply in the background ────────
+        await _maybe_trigger_ai_reply(
+            db=db,
+            ws=ws,
+            conversation_id=conv_id,
+            user_id=user_id,
+            user_id_str=user_id_str,
+            user_message_content=content,
+            manager=manager,
+            ts_now=ts_now,
+        )
 
     # ── Edit message ───────────────────────────────────────────────────────────
     elif event_type in {"msg:edit", "chat.message.edit"}:
@@ -410,3 +428,124 @@ async def handle_ws_event(
 
     else:
         await ack_error("UNKNOWN_EVENT", f"Unknown event type: '{event_type}'")
+
+
+# ── AI conversation hook ─────────────────────────────────────────────────────
+
+async def _maybe_trigger_ai_reply(
+    *,
+    db: AsyncSession,
+    ws: WebSocket,
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+    user_id_str: str,
+    user_message_content: str,
+    manager: ConnectionManager,
+    ts_now: Callable[[], str],
+) -> None:
+    """Spawn a background task to fetch + broadcast an AI reply when the
+    just-persisted user message belongs to an AI conversation.
+
+    The orchestrator runs in its own ``AsyncSessionLocal`` because the WS
+    request session is short-lived. We use ``asyncio.create_task`` so the
+    user's ``msg:ack`` is not delayed by the LLM round-trip.
+    """
+    if not user_message_content.strip():
+        return
+
+    type_result = await db.execute(
+        select(Conversation.type).where(Conversation.id == conversation_id)
+    )
+    conv_type = type_result.scalar_one_or_none()
+    if conv_type != ConversationTypeEnum.AI:
+        return
+
+    from app.core.config import settings as _settings
+    if len(user_message_content) > _settings.ai_chat_max_user_message_chars:
+        await manager.send_to_ws(ws, {
+            "event": "error",
+            "payload": {
+                "code": "AI_MESSAGE_TOO_LONG",
+                "message": (
+                    f"Tin nhắn AI tối đa {_settings.ai_chat_max_user_message_chars} ký tự."
+                ),
+            },
+            "timestamp": ts_now(),
+        })
+        return
+
+    # Per-user AI rate limit (separate from the chat-wide 5/s token bucket).
+    if not ai_chat_orchestrator.get_rate_limiter().allow(
+        user_id_str, max_per_minute=_settings.ai_chat_user_rate_per_minute
+    ):
+        await manager.send_to_ws(ws, {
+            "event": "error",
+            "payload": {
+                "code": "AI_RATE_LIMITED",
+                "message": (
+                    f"Bạn nhắn AI quá nhanh. Tối đa "
+                    f"{_settings.ai_chat_user_rate_per_minute} tin nhắn/phút."
+                ),
+            },
+            "timestamp": ts_now(),
+        })
+        return
+
+    room = f"conv:{conversation_id}"
+
+    async def broadcast_event(target_room: str, payload: dict[str, Any], event_name: str) -> None:
+        legacy = {"event": event_name, "payload": payload, "timestamp": ts_now()}
+        await manager.broadcast(target_room, legacy)
+        contract_event = {
+            "msg:new": "chat.message.sent",
+            "msg:edit": "chat.message.edited",
+            "ai:started": "chat.message.ai_started",
+            "ai:chunk": "chat.message.ai_chunk",
+            "ai:completed": "chat.message.ai_completed",
+        }.get(event_name)
+        if contract_event:
+            canonical = event_emitter.emit_to_ws(contract_event, payload, user_id)
+            await manager.broadcast(target_room, canonical)
+
+    async def emit_typing(is_typing: bool) -> None:
+        # The bot's user_id_str isn't known here — use a sentinel so the FE
+        # can pick it up. The real id lives in the persisted message's sender_id.
+        from app.services.ai_bot import get_ai_bot_user_id
+        try:
+            async with AsyncSessionLocal() as inner_db:
+                bot_id = await get_ai_bot_user_id(inner_db)
+            bot_id_str = str(bot_id)
+        except RuntimeError:
+            bot_id_str = "ai-bot"
+        await manager.broadcast(room, {
+            "event": "typing",
+            "payload": {
+                "user_id": bot_id_str,
+                "conversation_id": str(conversation_id),
+                "is_typing": is_typing,
+            },
+            "timestamp": ts_now(),
+        })
+
+    async def runner() -> None:
+        try:
+            await ai_chat_orchestrator.trigger_ai_reply(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                user_id_str=user_id_str,
+                broadcast=broadcast_event,
+                typing_broadcast=emit_typing,
+            )
+        except ai_chat_orchestrator.AiBusyError:
+            await manager.send_to_ws(ws, {
+                "event": "error",
+                "payload": {
+                    "code": "AI_BUSY",
+                    "message": "Trợ lý AI đang trả lời tin nhắn trước. Vui lòng đợi.",
+                },
+                "timestamp": ts_now(),
+            })
+        except Exception as exc:  # noqa: BLE001 - background task safety net
+            _LOGGER.exception("ai_reply_runner_failed reason=%s", exc)
+
+    asyncio.create_task(runner())

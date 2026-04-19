@@ -147,6 +147,13 @@ class User(Base):
         nullable=True,
     )
 
+    is_system: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+
     profile: Mapped[UserProfile | None] = relationship(
         back_populates="user",
         uselist=False,
@@ -662,6 +669,11 @@ class Message(Base):
     )
     # Attachments: [{url, name, size, mime_type}]
     attachments: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
+    # AI metadata for messages produced by the AI bot:
+    #   {model, prompt_tokens, completion_tokens, total_tokens, latency_ms,
+    #    finish_reason, is_first}
+    # NULL for human messages.
+    ai_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Reply-to: stores the replied message id
     reply_to_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
 
+    gemini_chat_model: str = "gemini-2.0-flash"
+    ai_chat_max_tokens: int = 1024
+    ai_chat_temperature: float = 0.6
+    ai_chat_timeout_seconds: float = 30.0
+    ai_chat_stream_chunk_min_chars: int = 1
+
     @property
     def yolo_model_path(self) -> Path:
         return Path(self.ai_yolo_model_path).expanduser()

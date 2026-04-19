@@ -12,6 +12,13 @@ interface MessageListProps {
   messages: Message[];
   currentUserId: string | null;
   participantNameById: Record<string, string>;
+  /**
+   * UUID of the AI bot participant for this conversation, derived from
+   * ``conversation.participants`` (role === "assistant" or is_system).
+   * When a message's ``sender_id`` matches this id we render the AI bubble.
+   * Falls back to the legacy display-name heuristic when null (dev fallback).
+   */
+  aiBotUserId?: string | null;
   isTyping: boolean;
   backgroundUrl?: string | null;
   onReply: (msg: Message) => void;
@@ -31,6 +38,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   messages,
   currentUserId,
   participantNameById,
+  aiBotUserId,
   isTyping,
   backgroundUrl,
   onReply,
@@ -57,9 +65,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     (index: number) => {
       const msg = messages[index];
       const isOwn = !!currentUserId && msg.sender_id === currentUserId;
-      const isAi =
-        msg.sender_id === "ai" ||
-        (msg.sender_display_name?.toLowerCase().includes("ai") ?? false);
+      // Prefer authoritative UUID match (set from conversation.participants).
+      // Fall back to legacy heuristic only for the dev FALLBACK_AI_CONVERSATION
+      // (when participants list is empty and sender_id == "ai" sentinel).
+      const isAi = aiBotUserId
+        ? msg.sender_id === aiBotUserId
+        : msg.sender_id === "ai" ||
+          (msg.sender_display_name?.toLowerCase().includes("ai") ?? false);
       const prev  = messages[index - 1];
 
       const grouped    = prev ? shouldGroup(prev, msg) : false;
@@ -113,6 +125,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       onForward,
       currentUserId,
       participantNameById,
+      aiBotUserId,
     ]
   );
 
