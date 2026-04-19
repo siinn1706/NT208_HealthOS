@@ -5,6 +5,8 @@ from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 
 from app.adapters.redis_client import get_redis
+from app.core.security import get_current_user
+from app.models.core import User
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +68,52 @@ def ip_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
             )
 
     return _check_rate_limit
+
+
+def user_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
+    """Same fixed-window logic as `ip_rate_limiter`, but keyed by the
+    authenticated user's id rather than the source IP. Used for routes
+    where IP-based throttling would unfairly contend across users behind
+    shared NAT (e.g. school wifi, mobile carriers) and where the request
+    is unambiguously authenticated."""
+
+    async def _check(
+        current_user: User = Depends(get_current_user),
+        redis: Redis = Depends(get_redis),
+    ) -> None:
+        key = f"rate:{route_key}:user:{current_user.id}"
+        try:
+            count = int(
+                await redis.eval(
+                    _INCR_WITH_WINDOW_TTL_LUA,
+                    1,
+                    key,
+                    str(window_seconds),
+                )
+            )
+            if count > max_requests:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail={
+                        "code": "RATE_LIMIT_EXCEEDED",
+                        "message": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
+                    },
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            logger.error(
+                "Rate limit Redis check failed for %s — denying request (fail-closed)", key
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "SERVICE_UNAVAILABLE",
+                    "message": "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau.",
+                },
+            )
+
+    return _check
 
 
 # Pre-built dependencies used in auth endpoints

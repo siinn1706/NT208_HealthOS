@@ -88,6 +88,15 @@ B7_EXPORT_BLOB_BYTES = Counter(
     labelnames=("source",),  # data_export | report_pdf | account_purge
 )
 
+# Health Connect ingest outcome distribution. `outcome` ∈ {ok, partial,
+# error, replay}. Lets ops spot a sudden spike in `partial` (a misbehaving
+# source app sending bad data) or `error` (Core BE / DB pressure).
+B7_HEALTH_SYNC_OUTCOMES = Counter(
+    "b7_health_sync_outcomes_total",
+    "Health Connect ingest outcomes by record-type and result.",
+    labelnames=("provider", "outcome"),
+)
+
 
 # ── Histograms ────────────────────────────────────────────────────────────
 
@@ -134,6 +143,14 @@ def record_export_blob_bytes(source: str, bytes_deleted: int) -> None:
         B7_EXPORT_BLOB_BYTES.labels(source=source).inc(bytes_deleted)
     except Exception:  # pragma: no cover
         logger.debug("Failed to record export blob bytes", exc_info=True)
+
+
+def record_health_sync_outcome(provider: str, outcome: str) -> None:
+    """`outcome` should be one of: ok | partial | error | replay."""
+    try:
+        B7_HEALTH_SYNC_OUTCOMES.labels(provider=provider, outcome=outcome).inc()
+    except Exception:  # pragma: no cover
+        logger.debug("Failed to record health sync outcome", exc_info=True)
 
 
 @contextmanager

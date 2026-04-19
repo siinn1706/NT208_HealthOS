@@ -15,6 +15,7 @@ import { NetworkProvider } from "@/hooks/useNetworkStatus";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { createQueryClient } from "@/api/queryClient";
 import { PreferencesGate, useInitialPreferences } from "@/preferences/PreferencesGate";
+import { useHealthConnectForegroundSync } from "@/healthconnect/useForegroundSync";
 
 const queryClient = createQueryClient();
 
@@ -62,6 +63,11 @@ function SeededProviders() {
 
 function ThemedShell() {
   const { scheme, colors } = useTheme();
+  // Health Connect foreground auto-sync — runs once on cold start (after
+  // auth is established) and on every foreground transition. Debounced
+  // server-side via expo-secure-store so we don't hammer the SDK or BE.
+  // Lives at the shell level so it survives screen navigation.
+  useHealthConnectForegroundSync();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />

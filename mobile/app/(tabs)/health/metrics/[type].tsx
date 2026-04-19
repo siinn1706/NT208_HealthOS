@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { RefreshControl, Text, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { PillGroup } from "@/components/ui/PillGroup";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { EmptyState } from "@/components/states/EmptyState";
@@ -65,7 +66,7 @@ export default function MetricDetailScreen() {
   const t = useT();
   const toast = useToast();
   const qc = useQueryClient();
-  const { colors, spacing, fontWeights, typography, radius } = useTheme();
+  const { colors, spacing, fontWeights, typography } = useTheme();
   const params = useLocalSearchParams<{ type: MetricType }>();
   const metric = (params.type ?? "heart_rate") as MetricType;
   const unit = UNITS[metric];
@@ -121,7 +122,12 @@ export default function MetricDetailScreen() {
     },
   });
 
-  const allRows = list.data?.pages.flatMap((p) => p.data) ?? [];
+  // Memoized so unrelated re-renders (e.g. period flip, toast tick)
+  // don't re-allocate the full history array.
+  const allRows = useMemo(
+    () => list.data?.pages.flatMap((p) => p.data) ?? [],
+    [list.data]
+  );
 
   return (
     <ScreenScroll
@@ -173,33 +179,13 @@ export default function MetricDetailScreen() {
       </Card>
 
       <Card>
-        <View style={{ flexDirection: "row", gap: spacing.xs, marginBottom: spacing.md }}>
-          {PERIODS.map((p) => {
-            const active = period === p;
-            return (
-              <Pressable
-                key={p}
-                onPress={() => setPeriod(p)}
-                style={{
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: 6,
-                  borderRadius: radius.pill,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                    fontSize: typography.xs.fontSize,
-                  }}
-                >
-                  {p}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <PillGroup<MetricPeriod>
+          accessibilityLabel="Period"
+          value={period}
+          onChange={setPeriod}
+          options={PERIODS.map((p) => ({ value: p, label: p }))}
+          style={{ marginBottom: spacing.md }}
+        />
         <Text
           style={{
             color: colors.text,

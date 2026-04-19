@@ -92,7 +92,7 @@ export default function ChatListScreen() {
                 key={c.id}
                 style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
               >
-                <Avatar name={titleFor(c, meId)} colors={colors} radius={radius} />
+                <Avatar name={titleFor(c, meId)} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: fontWeights.medium }}>
                     {titleFor(c, meId)}
@@ -160,7 +160,7 @@ export default function ChatListScreen() {
               >
                 <Card>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                    <Avatar name={title} colors={colors} radius={radius} />
+                    <Avatar name={title} />
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
                         <Text style={{ color: colors.text, fontWeight: fontWeights.semibold, flex: 1 }}>
@@ -191,7 +191,14 @@ export default function ChatListScreen() {
                             alignItems: "center",
                           }}
                         >
-                          <Text style={{ color: colors.brandText, fontSize: 11, fontWeight: fontWeights.bold }}>
+                          <Text
+                            style={{
+                              color: colors.brandText,
+                              fontSize: typography["2xs"].fontSize,
+                              lineHeight: typography["2xs"].lineHeight,
+                              fontWeight: fontWeights.bold,
+                            }}
+                          >
                             {c.unread_count}
                           </Text>
                         </View>
@@ -219,15 +226,12 @@ function titleFor(c: import("@/api/endpoints/conversations").ConversationDTO, me
   return other?.display_name ?? "Direct chat";
 }
 
-function Avatar({
-  name,
-  colors,
-  radius,
-}: {
-  name: string;
-  colors: ReturnType<typeof useTheme>["colors"];
-  radius: ReturnType<typeof useTheme>["radius"];
-}) {
+function Avatar({ name }: { name: string }) {
+  // Pull theme tokens from context inside the component instead of
+  // threading `colors` + `radius` through props. The previous
+  // ReturnType<typeof useTheme>["colors"] prop typing was both
+  // verbose and forced consumers to re-pass tokens on every render.
+  const { colors, radius, fontWeights } = useTheme();
   return (
     <View
       style={{
@@ -239,7 +243,7 @@ function Avatar({
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: colors.brand, fontWeight: "700" }}>
+      <Text style={{ color: colors.brand, fontWeight: fontWeights.bold }}>
         {(name ?? "?").charAt(0).toUpperCase()}
       </Text>
     </View>

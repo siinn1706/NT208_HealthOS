@@ -28,9 +28,18 @@ function Row({ label, onPress, hint }: RowProps) {
   return (
     <Pressable
       onPress={onPress}
+      // Every navigation row in the More tab needed an explicit a11y
+      // identity. Without these, TalkBack / VoiceOver announced
+      // "double tap to activate" with no hint at WHERE you'd land.
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={hint}
       style={{
         flexDirection: "row",
         alignItems: "center",
+        // Material guideline minimum touch target is 48dp; the wrapper
+        // padding alone wasn't getting us there on tightly-packed rows.
+        minHeight: 48,
         paddingVertical: spacing.md,
       }}
       android_ripple={{ color: colors.surfaceMuted }}
@@ -43,7 +52,15 @@ function Row({ label, onPress, hint }: RowProps) {
           </Text>
         ) : null}
       </View>
-      <Text style={{ color: colors.textMuted }}>›</Text>
+      {/* Decorative chevron — hidden from screen readers since the row
+          itself already announces "button". */}
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ color: colors.textMuted }}
+      >
+        ›
+      </Text>
     </Pressable>
   );
 }
@@ -52,7 +69,7 @@ export default function MoreScreen() {
   const t = useT();
   const router = useRouter();
   const toast = useToast();
-  const { colors, fontWeights, spacing, typography } = useTheme();
+  const { colors, fontWeights, spacing, typography, radius } = useTheme();
   const user = sessionStore((s) => s.user);
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -84,7 +101,7 @@ export default function MoreScreen() {
             style={{
               width: 56,
               height: 56,
-              borderRadius: 999,
+              borderRadius: radius.pill,
               backgroundColor: colors.brandMuted,
               alignItems: "center",
               justifyContent: "center",

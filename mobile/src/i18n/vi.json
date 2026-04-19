@@ -267,15 +267,41 @@
     "title": "Thiết bị kết nối",
     "noDevices": "Chưa có thiết bị nào.",
     "connect": "Kết nối",
-    "syncing": "Đang đồng bộ...",
-    "syncedAt": "Lần kết nối cuối: {{when}}",
+    "syncing": "Đồng bộ ngay",
+    "syncedAt": "Đồng bộ cuối: {{when}}",
     "disconnect": "Ngắt kết nối",
-    "syncNotice": "Hiện tại đồng bộ chỉ cập nhật thời gian. Đồng bộ dữ liệu thật sẽ bổ sung sau.",
+    "syncNotice": "Health Connect nhập số bước, nhịp tim, giấc ngủ và cân nặng từ các ứng dụng sức khỏe khác trên Android. Các nhà cung cấp khác bên dưới hiện chỉ cập nhật thời gian.",
     "providers": {
       "apple_health": "Apple Health",
       "google_fit": "Google Fit",
       "garmin": "Garmin",
-      "fitbit": "Fitbit"
+      "fitbit": "Fitbit",
+      "health_connect": "Health Connect"
+    },
+    "healthConnect": {
+      "title": "Kết nối Health Connect",
+      "pickerSubtitle": "Khuyến nghị — đồng bộ dữ liệu thật từ Samsung Health, Pixel và nhiều ứng dụng khác.",
+      "explainerTitle": "Chúng tôi sẽ nhập",
+      "explainerBody": "Chúng tôi sẽ đọc các bản ghi gần đây từ Health Connect và lưu một bản sao trong HealthOS để hiển thị trên bảng điều khiển và báo cáo. Bạn có thể ngắt kết nối bất kỳ lúc nào.",
+      "continue": "Tiếp tục",
+      "requesting": "Đang chờ cấp quyền…",
+      "syncing": "Đang nhập dữ liệu…",
+      "firstSyncRunning": "Đang lấy dữ liệu 14 ngày gần nhất từ Health Connect.",
+      "allSetTitle": "Đã sẵn sàng",
+      "firstSyncSummary": "Đã nhập {{n}} bản ghi trong lần đồng bộ đầu tiên.",
+      "permissionDeniedTitle": "Cần cấp quyền để nhập dữ liệu",
+      "partialGrantTitle": "Một số quyền chưa được cấp",
+      "partialGrantBody": "Chúng tôi chưa truy cập được: {{missing}}. Bạn có thể cấp lại trong Health Connect → Quyền ứng dụng.",
+      "notInstalledTitle": "Health Connect chưa được cài đặt",
+      "notInstalledBody": "Health Connect là ứng dụng hệ thống lưu dữ liệu sức khỏe. Hãy cài đặt từ Play Store rồi quay lại để hoàn tất kết nối.",
+      "openPlayStore": "Mở Play Store",
+      "status": {
+        "ok": "Đã đồng bộ",
+        "partial": "Đồng bộ có cảnh báo",
+        "pending": "Đã kết nối — chờ lần đồng bộ đầu tiên",
+        "permission_denied": "Đã từ chối quyền",
+        "error": "Đồng bộ gần nhất thất bại"
+      }
     }
   }
 }

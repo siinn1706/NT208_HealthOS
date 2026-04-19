@@ -668,7 +668,9 @@
       "logMedicine": "Log Medicine",
       "logMedicineDesc": "Record dose taken",
       "viewReports": "View Reports",
-      "viewReportsDesc": "Health analysis"
+      "viewReportsDesc": "Health analysis",
+      "visitPrep": "Prepare for Visit",
+      "visitPrepDesc": "Symptoms + questions"
     },
     "kpi": {
       "caloriesBurned": "Calories Burned",
@@ -787,6 +789,7 @@
         "all": "All"
       },
       "appointmentLinked": "Appointment",
+      "medicationLinked": "Medication",
       "snooze": {
         "label": "Snooze",
         "tenMin": "10 minutes",
@@ -942,6 +945,176 @@
         "saveFailed": "Couldn't save the appointment. Please try again.",
         "missingRequired": "Please fill in the required fields."
       }
+    },
+    "medications": {
+      "pageTitle": "Medications",
+      "pageSubtitle": "Track your medications and stay on schedule.",
+      "add": "Add medication",
+      "addAria": "Add a new medication",
+      "today": "Today's doses",
+      "todayEmpty": "Nothing scheduled for today.",
+      "todayDone": "{n, plural, one {# done} other {# done}}",
+      "todayPending": "{n, plural, one {# pending} other {# pending}}",
+      "todayLoadError": "Couldn't load today's doses.",
+      "todayMarkAria": "Mark as taken",
+      "todayMarkedAria": "Already taken",
+      "todayMarkError": "Couldn't mark this dose as taken.",
+      "todayViewAll": "View all",
+      "noPlans": "No medications yet",
+      "noPlansDesc": "Add a medication or import one from a recent appointment to start tracking.",
+      "importFromAppointment": "Import from an appointment",
+      "summary": {
+        "active": "Active",
+        "todayProgress": "Today",
+        "refillSoon": "Refill due"
+      },
+      "filter": {
+        "active": "Active",
+        "paused": "Paused",
+        "all": "All"
+      },
+      "card": {
+        "nextDose": "Next dose",
+        "noNext": "No upcoming dose",
+        "doses": "{n, plural, one {# dose/schedule} other {# doses/schedules}}",
+        "refillIn": "Refill in {days, plural, one {# day} other {# days}}",
+        "refillOverdue": "Refill overdue",
+        "paused": "Paused",
+        "completed": "Completed",
+        "cancelled": "Archived"
+      },
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "e.g. Amoxicillin",
+        "genericName": "Generic name (optional)",
+        "strength": "Strength",
+        "strengthPlaceholder": "e.g. 500 mg",
+        "form": "Form",
+        "formOptions": {
+          "tablet": "Tablet",
+          "capsule": "Capsule",
+          "liquid": "Liquid",
+          "injection": "Injection",
+          "drops": "Drops",
+          "other": "Other"
+        },
+        "doseTimes": "Dose times",
+        "doseTimesHint": "Add one chip per fire-time per day.",
+        "doseAria": "Dose {index}",
+        "addTime": "Add time",
+        "removeTime": "Remove time",
+        "repeat": "Repeat",
+        "repeatOptions": {
+          "daily": "Every day",
+          "weekly": "Weekly",
+          "monthly": "Monthly",
+          "once": "Once"
+        },
+        "weekdays": "Days of the week",
+        "weekdayRequired": "Pick at least one day for a weekly schedule.",
+        "dayOfMonth": "Day of month",
+        "startDate": "Start date",
+        "endDate": "End date (optional)",
+        "reviewDueAt": "Doctor review due (optional)",
+        "instructions": "Instructions (optional)",
+        "instructionsPlaceholder": "e.g. Take with food",
+        "prescriber": "Prescriber (optional)",
+        "clinic": "Clinic (optional)",
+        "refillSection": "Refill tracking (optional)",
+        "supplyUnits": "Supply remaining",
+        "supplyUnitsHint": "How many units (tablets, ml, etc.) you have on hand.",
+        "refillCadenceDays": "Typical refill cadence (days)",
+        "tzid": "Timezone",
+        "notes": "Notes (optional)",
+        "submit": "Save medication",
+        "submitting": "Saving…",
+        "cancel": "Cancel",
+        "validationError": "Please fix the highlighted fields.",
+        "saveError": "Couldn't save the medication. Please try again.",
+        "scheduleRebuildWarning": "Editing the schedule clears this medication's adherence history. Continue?"
+      },
+      "weekdayShort": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "detail": {
+        "title": "Medication detail",
+        "edit": "Edit",
+        "pause": "Pause",
+        "resume": "Resume",
+        "archive": "Archive",
+        "archiveConfirmTitle": "Archive this medication?",
+        "archiveConfirmBody": "Future doses won't fire. History stays for adherence reporting.",
+        "archiveCancel": "Cancel",
+        "archiveConfirm": "Archive",
+        "schedule": "Schedule",
+        "instructions": "Instructions",
+        "prescriber": "Prescriber",
+        "clinic": "Clinic",
+        "linkedAppointment": "Linked appointment",
+        "openAppointment": "Open appointment",
+        "reviewDue": "Review with your doctor by {date}",
+        "adherence": {
+          "title": "Adherence",
+          "ariaLabel": "Adherence: {percent}% — {taken} of {scheduled} taken",
+          "ariaEmpty": "Adherence: no data",
+          "period": {
+            "7d": "Last 7 days",
+            "30d": "Last 30 days",
+            "90d": "Last 90 days"
+          },
+          "scheduled": "Scheduled",
+          "taken": "Taken",
+          "missed": "Missed",
+          "skipped": "Skipped",
+          "snoozed": "Snoozed",
+          "empty": "No history yet for this period."
+        },
+        "refill": {
+          "title": "Refill",
+          "supply": "{n} units in supply",
+          "estimated": "Estimated refill on {date}",
+          "overdue": "Refill overdue",
+          "log": "Log refill",
+          "saving": "Saving…",
+          "cancel": "Cancel",
+          "logError": "Couldn't save the refill. Please try again.",
+          "supplyAfter": "New supply (units)",
+          "supplyHint": "Set the supply you now have on hand."
+        },
+        "loadError": "Couldn't load this medication.",
+        "actions": {
+          "saveError": "Couldn't update this medication.",
+          "pauseError": "Couldn't pause this medication.",
+          "resumeError": "Couldn't resume this medication.",
+          "archiveError": "Couldn't archive this medication."
+        }
+      },
+      "import": {
+        "title": "Import from appointment",
+        "subtitle": "Pick which medicines to add as trackable plans. Re-imports are safe — duplicates are skipped.",
+        "selectAll": "Select all",
+        "deselectAll": "Deselect all",
+        "doseTimesLabel": "Default dose times",
+        "submit": "Add to my medications",
+        "submitting": "Importing…",
+        "cancel": "Cancel",
+        "result": "Added {created} · Skipped {skipped}",
+        "alreadyImported": "Already imported",
+        "missingName": "Missing name",
+        "createFailed": "Couldn't create",
+        "noMedicines": "This appointment has no prescription medicines.",
+        "disclaimer": "Information you enter is for your own tracking. Verify with your prescription label."
+      },
+      "hubLoadError": "Couldn't load your medications.",
+      "hubLoadRetry": "Retry",
+      "disclaimer": "HealthOS helps you remember and track. It is not a substitute for your prescribing clinician. Always follow your doctor's instructions.",
+      "addDisclaimer": "Information you enter is for your own tracking. Verify with your prescription label."
     },
     "meals": {
       "subtitle": "Track your diet and nutrition goals",
@@ -1285,7 +1458,20 @@
       "connecting": "Connecting...",
       "tapToConnect": "Tap to connect",
       "connectFailed": "Failed to connect",
-      "privacyNote": "Device data is encrypted and only used to improve your health experience. You can disconnect at any time."
+      "privacyNote": "Device data is encrypted and only used to improve your health experience. You can disconnect at any time.",
+      "hcCount": "{n} new",
+      "hcPermissionDenied": "Permission was revoked. Open the HealthOS Android app and re-grant access in Health Connect.",
+      "hcSyncError": "Last sync failed. Open the HealthOS Android app and tap Sync now to retry.",
+      "hcSyncFromMobile": "Health Connect can only sync from the HealthOS Android app. Open it on your phone and tap Sync now.",
+      "hcSyncFromMobileShort": "Sync from mobile",
+      "hc": {
+        "modalTitle": "Connect Health Connect on Android",
+        "modalBody": "Health Connect is an Android-only system app. To connect it, finish the setup in the HealthOS mobile app — you'll be prompted to grant Steps, Heart rate, Sleep, and Weight access.",
+        "step1": "Open the HealthOS app on your Android phone.",
+        "step2": "Go to Settings → Connected devices → Connect Health Connect.",
+        "step3": "Approve the system permissions, then come back here to see your synced data.",
+        "modalClose": "Got it"
+      }
     },
     "settingsPage": {
       "pageTitle": "Settings",
@@ -1371,7 +1557,9 @@
           "deleting": "Deleting…",
           "requested": "Account deletion requested. We'll email you when it's done.",
           "requestFailed": "Couldn't request account deletion. Please try again later."
-        }
+        },
+        "emergencyCard": "Emergency health card",
+        "emergencyCardDesc": "Set up a QR-shareable summary for first responders."
       },
       "dialogClose": "Close",
       "logout": "Sign Out",
@@ -1428,6 +1616,7 @@
       "nutrition": "Nutrition",
       "vitalsDevices": "Vitals & Devices",
       "reminders": "Reminders",
+      "medications": "Medications",
       "appointments": "Medical History",
       "risk": "Risk Predictions",
       "goals": "Goals",
@@ -1443,7 +1632,9 @@
         "grow": "Grow",
         "you": "You"
       },
-      "mainNavAriaLabel": "Main navigation"
+      "mainNavAriaLabel": "Main navigation",
+      "visitPrep": "Visit Prep",
+      "emergencyCard": "Emergency card"
     },
     "profile": {
       "title": "My Profile",
@@ -1537,7 +1728,8 @@
         "chronicConditions": "e.g. Type 2 diabetes, gastritis...",
         "currentMedications": "e.g. Metformin 500mg twice daily...",
         "notes": "Additional health notes..."
-      }
+      },
+      "manageEmergencyCard": "Use these contacts in your emergency card"
     },
     "progress": {
       "bmiProgress": "BMI Progress",
@@ -1580,6 +1772,412 @@
         "achievements": "Achievements",
         "leaderboard": "Leaderboard"
       }
+    },
+    "visitPrep": {
+      "pageTitle": "Visit Prep",
+      "pageSubtitle": "Prepare for a doctor visit by writing down your concerns and the questions you want to ask.",
+      "newBrief": "New brief",
+      "newBriefAria": "Start a new visit brief",
+      "list": {
+        "empty": "No briefs yet — start one to gather your symptoms and questions before a visit.",
+        "startCta": "Prepare for a visit",
+        "filterAll": "All",
+        "filterDraft": "Drafts",
+        "filterFinalized": "Finalized",
+        "filterArchived": "Archived",
+        "updatedAt": "Updated {when}",
+        "attachedTo": "Attached to your {when} appointment",
+        "unattached": "Not attached to an appointment"
+      },
+      "status": {
+        "draft": "Draft",
+        "finalized": "Finalized",
+        "archived": "Archived"
+      },
+      "visitTypes": {
+        "gp_routine": "Routine GP visit",
+        "gp_routineHelp": "A general check-in with your family doctor.",
+        "specialist": "Specialist",
+        "specialistHelp": "Referral or follow-up with a specialist.",
+        "follow_up": "Follow-up",
+        "follow_upHelp": "Continuing care for an existing condition.",
+        "mental_health": "Mental health",
+        "mental_healthHelp": "Talking therapy or psychiatric review.",
+        "urgent_walkin": "Urgent / walk-in",
+        "urgent_walkinHelp": "Same-day walk-in or urgent care visit.",
+        "pediatric_caregiver": "Caring for a child",
+        "pediatric_caregiverHelp": "Caregiver brief for a child or infant."
+      },
+      "concernCategories": {
+        "pain": "Pain",
+        "fever": "Fever",
+        "gi": "Stomach / digestion",
+        "resp": "Breathing",
+        "mental": "Mood / mental health",
+        "skin": "Skin",
+        "neuro": "Brain / nerves",
+        "cardio": "Heart / chest",
+        "other": "Other"
+      },
+      "wizard": {
+        "autoSaving": "Saving draft…",
+        "savedAt": "Saved {when}",
+        "next": "Next",
+        "back": "Back",
+        "finalize": "Finalize brief",
+        "finalizing": "Finalizing…",
+        "addAnother": "Add another concern",
+        "doneAddingConcerns": "No more concerns",
+        "maxConcernsHelp": "Up to {max} concerns per brief.",
+        "cannotEdit": "This brief is finalized. Create a new revision to edit.",
+        "newRevision": "Start a new revision",
+        "steps": {
+          "visitType": "Visit type",
+          "concern": "Concern",
+          "whenHow": "When & how",
+          "triggers": "Triggers",
+          "tried": "What you tried",
+          "review": "Review",
+          "routing": "Suggested next step",
+          "questions": "Questions",
+          "attach": "Attach",
+          "finalize": "Finalize"
+        },
+        "unsavedBadge": "Unsaved"
+      },
+      "concernForm": {
+        "concernText": "Main concern (in your own words)",
+        "concernTextPlaceholder": "e.g. Lower back pain after gardening",
+        "category": "What kind of concern?",
+        "onsetDate": "When did it start?",
+        "duration": "How long?",
+        "durationValue": "Number",
+        "durationUnit": "Unit",
+        "severity": "How severe right now? ({value}/10)",
+        "severityAnchorLow": "Barely there",
+        "severityAnchorMid": "Bothers me",
+        "severityAnchorHigh": "Worst possible",
+        "triggers": "Triggers (optional)",
+        "triggersPlaceholder": "e.g. After eating, when standing",
+        "betterWith": "What makes it better? (optional)",
+        "betterWithPlaceholder": "e.g. Rest, paracetamol",
+        "worseWith": "What makes it worse? (optional)",
+        "worseWithPlaceholder": "e.g. Bending forward",
+        "medsTaken": "Medicines you took for this (optional)",
+        "medsTakenPlaceholder": "e.g. Ibuprofen 400mg twice today",
+        "priorCare": "Care you already had for this (optional)",
+        "priorCarePlaceholder": "e.g. Saw GP last week, prescribed antibiotics",
+        "severityNotSet": "Drag to set severity",
+        "severityHint": "Set severity only when you can rate it"
+      },
+      "durationUnits": {
+        "hours": "hours",
+        "days": "days",
+        "weeks": "weeks",
+        "months": "months"
+      },
+      "routing": {
+        "rulesetVersion": "Ruleset {version}",
+        "computedAt": "Recomputed {when}",
+        "matchedSignals": "What you described that suggests this:",
+        "noMatches": "No matching signals — please consider booking a routine appointment.",
+        "recompute": "Recompute",
+        "emergency_now": {
+          "title": "This may need emergency care now",
+          "body": "Based on what you described, please contact your local emergency service straight away. This tool is not a doctor and cannot diagnose, but the symptoms you reported are common warning signs that need urgent help.",
+          "next_action": "Call emergency services",
+          "emergencyHint": "Vietnam: 115 · UK: 999 · US: 911 · or your local emergency number",
+          "secondary": "Save brief anyway"
+        },
+        "urgent_same_day": {
+          "title": "Try to be seen the same day",
+          "body": "What you described usually needs same-day care. Please contact a clinician today, an urgent care clinic, or your local health line. If anything gets suddenly worse, treat it as an emergency.",
+          "next_action": "Find same-day care",
+          "secondary": "Book a routine appointment",
+          "urgentHint": "Vietnam: 115 · UK: 111 · US: 911 · or your local urgent-care line"
+        },
+        "routine_gp": {
+          "title": "Book a routine appointment",
+          "body": "Your symptoms are persistent or moderate — a routine doctor visit is the right next step. Use the question list below to make the most of the conversation. If your symptoms get suddenly worse before your appointment, contact urgent care or your local emergency service.",
+          "next_action": "Book an appointment",
+          "secondary": "Save brief for later"
+        },
+        "self_care_with_monitoring": {
+          "title": "Self-care, but keep an eye on it",
+          "body": "What you described looks mild and short-lived. Rest, stay hydrated, and watch for changes. Book an appointment if it gets worse, lasts longer than expected, or new symptoms appear.",
+          "next_action": "Save brief in case it persists",
+          "watchTitle": "When to seek help",
+          "watchItems": [
+            "Symptoms get worse or new symptoms appear",
+            "Symptoms last more than a few days without improvement",
+            "You develop a fever, severe pain, or breathing difficulty"
+          ]
+        },
+        "insufficient_info": {
+          "title": "We need more information",
+          "body": "There is not enough detail yet to suggest a path. Please consider booking a routine appointment so a clinician can help you in person. If your symptoms feel severe, are getting worse quickly, or include warning signs like chest pain, difficulty breathing, sudden weakness, or thoughts of self-harm, please contact urgent care or your local emergency number.",
+          "next_action": "Book a routine appointment",
+          "urgentSecondary": "Find urgent care"
+        },
+        "signals": {
+          "stroke_face": "You mentioned sudden facial droop or asymmetry — needs urgent assessment.",
+          "stroke_arm": "You mentioned sudden weakness on one side of the body — needs urgent assessment.",
+          "stroke_speech": "You mentioned sudden difficulty speaking — needs urgent assessment.",
+          "cardiac_chest_sob": "You mentioned chest pain together with shortness of breath — needs urgent assessment.",
+          "cardiac_chest_radiating": "You mentioned chest pain radiating to the arm or jaw — needs urgent assessment.",
+          "sob_at_rest": "You mentioned shortness of breath at rest — needs urgent assessment.",
+          "anaphylaxis": "You mentioned lip, tongue or throat swelling with breathing difficulty — needs urgent assessment.",
+          "uncontrolled_bleeding": "You mentioned bleeding that is not stopping — needs urgent care.",
+          "thunderclap_headache": "You mentioned a sudden, severe headache — needs urgent assessment.",
+          "suicidal_ideation": "You described thoughts of self-harm or not wanting to be alive — please reach out for help right now.",
+          "focal_neuro": "You mentioned new one-sided numbness or sudden vision loss — needs urgent assessment.",
+          "loss_consciousness": "You mentioned losing consciousness — needs urgent assessment.",
+          "infant_fever": "Fever in an infant under 3 months — always treated as urgent.",
+          "cardio_high_severity": "You described severe symptoms in this area — same-day care recommended.",
+          "resp_high_severity": "You described severe breathing symptoms — same-day care recommended.",
+          "acute_severe_pain": "You described severe pain that started suddenly — same-day care recommended.",
+          "high_fever": "You reported a high fever — same-day care recommended.",
+          "mental_crisis_passive": "You described mental health distress — please reach out for help today.",
+          "gi_bleeding": "You mentioned vomiting blood or blood in stool — same-day care recommended.",
+          "persistent_moderate": "Moderate symptoms persisting more than a few days.",
+          "long_duration": "Symptoms lasting longer than a week.",
+          "mental_default": "Mental health concern that is worth talking through with a clinician today.",
+          "mild_short_pain": "Mild and short-lived pain.",
+          "mild_short_gi": "Mild and short-lived stomach upset.",
+          "mild_short_fever": "Mild and short-lived fever.",
+          "mild_short_skin": "Mild and short-lived skin concern.",
+          "meds_overuse": "You described taking more medication than recommended — please be seen today."
+        }
+      },
+      "questions": {
+        "title": "Questions to ask the doctor",
+        "subtitle": "Pick from suggestions or add your own. Up to {max} questions.",
+        "suggested": "Suggested for you",
+        "yourList": "Your list ({count}/{max})",
+        "addCustom": "Add a custom question",
+        "addCustomPlaceholder": "e.g. Should I get an X-ray?",
+        "add": "Add",
+        "remove": "Remove",
+        "lockedHint": "Always included",
+        "tooManyHint": "Maximum reached. Remove one to add another.",
+        "empty": "No questions yet — pick a suggestion or write your own."
+      },
+      "review": {
+        "title": "Review your brief",
+        "concernsHeader": "Your concerns",
+        "questionsHeader": "Your questions",
+        "routingHeader": "Suggested next step",
+        "attachHeader": "Attached appointment",
+        "attachNone": "Not attached",
+        "edit": "Edit",
+        "print": "Print or save"
+      },
+      "attach": {
+        "title": "Attach to an appointment",
+        "subtitle": "Pick an upcoming appointment so this brief shows up alongside it.",
+        "noUpcoming": "No upcoming appointments yet.",
+        "createAppointment": "Create an appointment",
+        "attachAction": "Attach",
+        "detach": "Detach",
+        "attached": "Attached to {label}",
+        "replacedActive": "Replaces the previously attached brief."
+      },
+      "disclaimer": "This tool helps you prepare for a doctor visit — it does not diagnose. If your symptoms feel severe or are getting worse, contact a clinician or your local emergency service.",
+      "finalized": {
+        "title": "Brief finalized",
+        "body": "Bring this with you to your next visit. You can print it or attach it to an appointment."
+      },
+      "errors": {
+        "loadFailed": "Could not load this brief. Please try again.",
+        "saveFailed": "Could not save. Please try again.",
+        "finalizeRequirements": "Add at least one concern and keep at least one question before finalizing."
+      }
+    },
+    "emergencyCard": {
+      "pageTitle": "Emergency Health Card",
+      "pageSubtitle": "Share critical medical info with first responders via a revocable QR.",
+      "publishedTitle": "Card is published",
+      "publishedSubtitle": "{count} active QR card(s). Scanners can read your minimal info now.",
+      "unpublishedTitle": "Card is private",
+      "unpublishedSubtitle": "No one can scan this card until you publish it.",
+      "publishSwitch": "Publish emergency card",
+      "publishedToast": "Card published.",
+      "unpublishedToast": "Card unpublished — all QR scans will now show 'unavailable'.",
+      "togglePublishFailed": "Couldn't change publish state. Please try again.",
+      "previewTitle": "What responders see",
+      "previewMutedNote": "Preview only — publish to make this card scannable.",
+      "print": "Print card",
+      "tabs": {
+        "qr": "QR cards",
+        "edit": "Edit",
+        "logs": "Access log",
+        "editDirtyAria": "Unsaved changes"
+      },
+      "provenance": {
+        "publishedAt": "Published {date}"
+      },
+      "consent": {
+        "title": "Create your emergency card",
+        "subtitle": "Help paramedics and ER staff treat you faster — even when you can't speak.",
+        "feature1Title": "Show only what's needed",
+        "feature1Body": "Name, blood type, allergies, conditions, meds, ICE contacts. Nothing else.",
+        "feature2Title": "Hidden by default",
+        "feature2Body": "We never expose your email, address, DOB, dosing schedule, or notes.",
+        "feature3Title": "One-tap revocation",
+        "feature3Body": "Lost your wallet? Revoke the QR in seconds — old cards stop working immediately.",
+        "exposedTitle": "What appears on your card",
+        "exposed1": "Name, age, blood type",
+        "exposed2": "Allergies and chronic conditions",
+        "exposed3": "Active medications (drug name + strength only)",
+        "exposed4": "Up to 3 emergency contacts (name, phone)",
+        "hiddenTitle": "What we never expose",
+        "hidden1": "Your email, address, full date of birth, avatar",
+        "hidden2": "Medication dosage schedules, prescriber, clinic",
+        "hidden3": "Private medical notes",
+        "incompleteProfileWarning": "Add your name, blood type, and an emergency contact in Profile first for the most useful card.",
+        "revocableNote": "You can revoke or unpublish at any time.",
+        "createCta": "Create my emergency card",
+        "publishing": "Publishing…",
+        "published": "Card created — generate a QR next.",
+        "publishFailed": "Couldn't create your card. Please try again."
+      },
+      "nudges": {
+        "complete": "Profile is publish-ready.",
+        "completeBody": "Completeness {score}/100 — you can mint QR cards.",
+        "criticalHeader": "{n} critical item(s) to fix before publishing",
+        "recommendedHeader": "{n} recommended item(s) to make your card more useful",
+        "fixInProfile": "Fix in profile",
+        "messages": {
+          "missingEmergencyContacts": "Add at least one emergency contact",
+          "missingBloodType": "Add your blood type",
+          "missingAllergies": "Confirm allergies (or check 'No known allergies')",
+          "missingConditions": "List any chronic conditions",
+          "missingMedications": "List your current medications"
+        }
+      },
+      "fields": {
+        "blood_type": "Blood type",
+        "age": "Age",
+        "gender": "Gender",
+        "allergies": "Allergies",
+        "conditions": "Chronic conditions",
+        "medications": "Medications",
+        "contacts": "Emergency contacts",
+        "assistance": "Assistance needed",
+        "equipment": "Medical equipment",
+        "communication": "Communication",
+        "preferred_language": "Preferred language"
+      },
+      "edit": {
+        "allergiesTitle": "Allergies",
+        "nkdaTitle": "I have no known drug allergies",
+        "nkdaDesc": "When checked, the card displays 'NKDA — No known drug allergies' so responders see explicit confirmation, not absence of data.",
+        "assistanceTitle": "Assistance needed",
+        "assistanceDesc": "Pick all that apply — these chips show up on the public card.",
+        "assistance": {
+          "walking": "Walking aid",
+          "communication": "Communication aid",
+          "dietary": "Dietary needs",
+          "hearing": "Hearing impaired",
+          "vision": "Vision impaired",
+          "cognitive": "Cognitive support"
+        },
+        "equipmentTitle": "Medical equipment",
+        "equipmentDesc": "Pacemaker, insulin pump, oxygen, etc.",
+        "equipmentPlaceholder": "e.g. Pacemaker (2024), insulin pump",
+        "communicationTitle": "Communication notes",
+        "communicationDesc": "Sign language, AAC device, language preferences.",
+        "communicationPlaceholder": "e.g. Speaks Vietnamese only, uses ASL",
+        "languageTitle": "Preferred language",
+        "languageDesc": "ISO code (vi / en / fr). Shown on the card top-right.",
+        "visibilityTitle": "Per-field visibility",
+        "visibilityDesc": "Toggle off any section you don't want responders to see.",
+        "save": "Save changes",
+        "saving": "Saving…",
+        "saved": "Saved",
+        "saveFailed": "Couldn't save. Please try again.",
+        "reset": "Reset"
+      },
+      "tokens": {
+        "title": "Your QR cards",
+        "activeCount": "{active}/{max} active",
+        "mint": "Create QR",
+        "revokeAll": "Revoke all",
+        "mintDisabledNotPublished": "Publish your card before minting a QR.",
+        "mintDisabledCap": "You've reached the active-card limit. Revoke one to create a new one.",
+        "emptyTitle": "No QR cards yet",
+        "emptyBody": "Create one to print on a wallet card or laminate as a wristband tag.",
+        "active": "Active",
+        "revoked": "Revoked",
+        "createdAt": "Created {date}",
+        "lastSeen": "Last scanned {date}",
+        "neverScanned": "Never scanned",
+        "hits": "{count} scan(s)",
+        "revoke": "Revoke",
+        "revokedToast": "Token revoked — the QR is no longer scannable.",
+        "revokeFailed": "Couldn't revoke that token. Please try again.",
+        "revokeAllConfirmTitle": "Revoke every active QR?",
+        "revokeAllConfirmBody": "All currently-printed QR codes will stop working immediately. You can mint new ones afterwards.",
+        "revokeAllConfirmCta": "Revoke all",
+        "revokedAllToast": "All tokens revoked.",
+        "revokeAllFailed": "Couldn't revoke all tokens. Please try again.",
+        "cancel": "Cancel"
+      },
+      "mint": {
+        "title": "Create a new QR card",
+        "description": "The link below will be shown only once. Save the QR image before closing this dialog.",
+        "defaultLabel": "Wallet card",
+        "labelInput": "Label",
+        "labelPlaceholder": "e.g. Wallet, Wristband, Fridge magnet",
+        "exposedTitle": "When scanned, this QR will show:",
+        "exposed1": "Your name, age, blood type",
+        "exposed2": "Allergies and chronic conditions",
+        "exposed3": "Active medications (name + strength only)",
+        "exposed4": "Up to 3 emergency contact phones",
+        "acknowledge": "I understand this card is readable by anyone with the QR until I revoke it.",
+        "lowCompletenessTitle": "Profile is below recommended completeness ({score}/100)",
+        "lowCompletenessBody": "I understand this card has limited usefulness in an emergency.",
+        "cancel": "Cancel",
+        "mint": "Create QR card",
+        "minting": "Creating…",
+        "mintFailed": "Couldn't create the card. Please try again.",
+        "tooMany": "You already have the maximum number of active QR cards. Revoke one first.",
+        "notPublished": "Publish your card before creating a QR.",
+        "insufficient": "Profile is too incomplete. Resolve the critical nudges or check the override.",
+        "labelRequired": "Please enter a label.",
+        "ackRequired": "Please acknowledge what this card exposes.",
+        "ackLowCompletenessRequired": "Please acknowledge the low completeness override.",
+        "exposedNamePersonalized": "Name: {name}",
+        "exposedBloodPersonalized": "Blood type: {blood}",
+        "exposedAllergiesPersonalized": "Allergies: {list}{more}",
+        "exposedMedsPersonalized": "{count} active medication(s)",
+        "exposedContactsPersonalized": "{count} emergency contact(s) with phone"
+      },
+      "mintResult": {
+        "title": "{label} created",
+        "description": "Save the QR image, copy the URL, or print it now. You won't see this token again.",
+        "warningTitle": "Show only once",
+        "warningBody": "If you close this dialog without saving, you'll need to mint a new QR — but your existing card stays revocable in the QR cards tab.",
+        "qrAlt": "QR code for {label}",
+        "downloadQr": "Download QR (PNG)",
+        "urlLabel": "Share URL",
+        "copyUrl": "Copy",
+        "copied": "Copied",
+        "copiedToast": "URL copied to clipboard.",
+        "copyFailed": "Couldn't copy. Please copy manually.",
+        "done": "Done",
+        "downloadWalletPdf": "Wallet PDF",
+        "autoCloseIn": "This dialog will auto-close in {minutes}m {seconds}s"
+      },
+      "accessLog": {
+        "title": "Recent scans",
+        "subtitle": "Showing last {count} entries. IPs are truncated to /24 (IPv4) or /64 (IPv6).",
+        "refresh": "Refresh",
+        "refreshFailed": "Couldn't refresh the log. Please try again.",
+        "emptyTitle": "No scans yet",
+        "emptyBody": "When someone scans your QR, the entry appears here."
+      },
+      "previewTitleDraft": "What responders see (draft)"
     }
   },
   "auth": {
@@ -1756,7 +2354,8 @@
       "quickReply2": "Suggest general healthy eating principles",
       "quickReply3": "How can I build a sustainable exercise routine?",
       "quickReply4": "Explain what BMI measures (and its limits)",
-      "quickReply5": "Tips for remembering to take my medication"
+      "quickReply5": "Tips for remembering to take my medication",
+      "quickReply6": "Help me prepare for a doctor visit"
     },
     "muted": "Muted",
     "unread": "unread",
@@ -2070,7 +2669,8 @@
       "fitbit": "Fitbit",
       "garmin": "Garmin",
       "withings": "Withings",
-      "samsung_health": "Samsung Health"
+      "samsung_health": "Samsung Health",
+      "health_connect": "Health Connect"
     },
     "freshness": {
       "live": "Live",
@@ -2139,20 +2739,20 @@
       "hrAgo": "Updated {n} hr ago",
       "dayAgo": "Updated {n} d ago"
     },
-      "errors": {
-        "title": "Something went wrong.",
-        "description": "Please try again. If the problem persists, contact support.",
-        "retry": "Try again",
-        "copyDetails": "Copy details",
-        "detailsCopied": "Copied!",
-        "goHome": "Back to dashboard",
-        "notFoundTitle": "Page not found",
-        "notFoundDescription": "We couldn't find the page you were looking for.",
-        "permissionTitle": "Access denied",
-        "permissionDescription": "You don't have permission to view this page.",
-        "offlineTitle": "You're offline",
-        "offlineDescription": "Reconnect to the internet to continue."
-      },
+    "errors": {
+      "title": "Something went wrong.",
+      "description": "Please try again. If the problem persists, contact support.",
+      "retry": "Try again",
+      "copyDetails": "Copy details",
+      "detailsCopied": "Copied!",
+      "goHome": "Back to dashboard",
+      "notFoundTitle": "Page not found",
+      "notFoundDescription": "We couldn't find the page you were looking for.",
+      "permissionTitle": "Access denied",
+      "permissionDescription": "You don't have permission to view this page.",
+      "offlineTitle": "You're offline",
+      "offlineDescription": "Reconnect to the internet to continue."
+    },
     "empty": {
       "noResults": "No results match your filters.",
       "noData": "Nothing to show yet.",
@@ -2223,6 +2823,64 @@
         }
       },
       "draftNote": "This page is a placeholder while the full policy and retention table are reviewed by counsel."
+    },
+    "healthData": {
+      "meta": {
+        "title": "Health data policy",
+        "description": "What HealthOS reads from Health Connect, how we store it, and how to revoke access."
+      },
+      "title": "Health data policy",
+      "subtitle": "This page covers data we read from Android Health Connect. For our overall privacy policy see the link at the bottom.",
+      "lastUpdated": "Last updated: April 2026",
+      "sections": {
+        "what": {
+          "title": "What we read",
+          "body": "When you connect Health Connect from the HealthOS Android app, we ask for read-only access to four record types: Steps, Heart rate, Sleep sessions (duration only), and Weight. You can grant any subset; we only request what your dashboard needs."
+        },
+        "how": {
+          "title": "How we use it",
+          "body": "We render the records on your dashboard, in trend charts, and in periodic reports. Aggregations (averages, daily totals) are computed on our backend so the same numbers appear on web and mobile. We do not use your health data to train models."
+        },
+        "storage": {
+          "title": "What we store",
+          "body": "We store the derived metric (the value, the unit, when it was recorded), the originating Android source app's package name (e.g. Samsung Health), and Health Connect's recording method tag (automatic vs. manual). We do not mirror raw waveform data, GPS traces, or sub-second heart-rate samples."
+        },
+        "sharing": {
+          "title": "Who we share with",
+          "body": "We do not share your Health Connect data with third parties. The only egress is the optional report-share flow you trigger yourself from the Reports page."
+        },
+        "revocation": {
+          "title": "How to revoke",
+          "body": "Open the Android Health Connect app → Apps → HealthOS → Remove access. Future sync attempts will fail gracefully and you'll see a 'Permission was revoked' banner in HealthOS. The data we already imported is unaffected; see Deletion below."
+        },
+        "deletion": {
+          "title": "How to delete imported data",
+          "body": "From the HealthOS app or website: Settings → Connected devices → Health Connect → Disconnect — this stops future ingestion and clears the sync state. To delete the records we already imported, use Settings → Privacy → Delete account, which removes everything we hold for you."
+        },
+        "contact": {
+          "title": "Questions",
+          "body": "Email privacy@healthos.vn — replies within 5 business days."
+        }
+      },
+      "footer": {
+        "see": "See also our",
+        "generalPolicy": "general privacy policy"
+      }
     }
+  },
+  "publicEmergency": {
+    "meta": {
+      "title": "Emergency health card — HealthOS",
+      "description": "Critical medical information shared by the patient for first responders. Not searchable."
+    },
+    "trustNote": "Hosted by HealthOS. Patient-controlled, revocable.",
+    "rateLimitedTitle": "Too many requests",
+    "rateLimitedBody": "Please slow down. Try again in {seconds} seconds.",
+    "goneTitle": "This emergency card is no longer active.",
+    "goneBody": "Please contact the patient or use other identification.",
+    "provenance": {
+      "updatedAt": "Updated {date}"
+    },
+    "emergencyNumberHint": "In a medical emergency, call your local emergency number now (e.g. 115 in Vietnam, 911 in the US, 112 in the EU)."
   }
 }

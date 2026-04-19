@@ -11,6 +11,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   google_fit: "Google Fit",
   garmin: "Garmin Connect",
   fitbit: "Fitbit",
+  health_connect: "Health Connect",
 };
 
 function normalizeDevice(raw: unknown): Device | null {
@@ -21,14 +22,27 @@ function normalizeDevice(raw: unknown): Device | null {
     provider !== "apple_health" &&
     provider !== "google_fit" &&
     provider !== "garmin" &&
-    provider !== "fitbit"
+    provider !== "fitbit" &&
+    provider !== "health_connect"
   ) {
     return null;
   }
+  const lastSyncStatus =
+    candidate.last_sync_status === "ok" ||
+    candidate.last_sync_status === "partial" ||
+    candidate.last_sync_status === "permission_denied" ||
+    candidate.last_sync_status === "error"
+      ? candidate.last_sync_status
+      : null;
   return {
     id: String(candidate.id ?? ""),
     provider,
-    name: typeof candidate.name === "string" ? candidate.name : (PROVIDER_LABELS[provider] ?? provider),
+    name:
+      typeof candidate.name === "string"
+        ? candidate.name
+        : typeof candidate.device_label === "string"
+          ? candidate.device_label
+          : (PROVIDER_LABELS[provider] ?? provider),
     model: typeof candidate.model === "string" ? candidate.model : null,
     connected: Boolean(candidate.connected),
     lastSync:
@@ -39,6 +53,20 @@ function normalizeDevice(raw: unknown): Device | null {
         ? candidate.battery_pct
         : typeof candidate.batteryPct === "number"
         ? candidate.batteryPct
+        : null,
+    lastSyncStatus,
+    lastSyncCount:
+      typeof candidate.last_sync_count === "number"
+        ? candidate.last_sync_count
+        : null,
+    scopes: Array.isArray(candidate.scopes)
+      ? (candidate.scopes as unknown[]).filter(
+          (s): s is string => typeof s === "string"
+        )
+      : null,
+    deviceLabel:
+      typeof candidate.device_label === "string"
+        ? candidate.device_label
         : null,
   };
 }

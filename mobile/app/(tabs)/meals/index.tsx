@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { Image, Pressable, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -21,6 +21,13 @@ import {
 } from "@/api/endpoints/meals";
 import { ApiError } from "@/api/errors";
 import { formatTime, todayBounds } from "@/utils/date";
+import { spacing } from "@/theme/tokens";
+
+// Hoisted style constants — reuse the same object across every list
+// row instead of allocating fresh ones per render. spacing.base = 16,
+// spacing.md = 12 (matches the previous inline magic numbers).
+const ROW_WRAP = { paddingHorizontal: spacing.base, paddingBottom: spacing.md };
+const EMPTY_PAD = { padding: spacing.base };
 
 /**
  * Meals list is the most likely-to-grow page in the app — a power user can
@@ -74,12 +81,19 @@ export default function MealsScreen() {
     retry: false,
   });
 
-  const allMeals = list.data?.pages.flatMap((p) => p.data) ?? [];
+  // Memoize the flattened list so FlashList's `data` prop reference is
+  // stable across re-renders triggered by anything other than a real
+  // pagination/refetch. Without this, every parent render recomputes
+  // the whole array and FlashList re-runs layout for every cell.
+  const allMeals = useMemo(
+    () => list.data?.pages.flatMap((p) => p.data) ?? [],
+    [list.data]
+  );
   const todayCalories = calories.data?.[0]?.total_calories ?? 0;
 
   const renderItem = useCallback<ListRenderItem<MealResponse>>(
     ({ item }) => (
-      <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+      <View style={ROW_WRAP}>
         <MealRow
           meal={item}
           onPress={() =>
@@ -131,19 +145,19 @@ export default function MealsScreen() {
         }
         ListEmptyComponent={
           list.isPending ? (
-            <View style={{ padding: 16 }}>
+            <View style={EMPTY_PAD}>
               <Card>
                 <LoadingState />
               </Card>
             </View>
           ) : list.isError ? (
-            <View style={{ padding: 16 }}>
+            <View style={EMPTY_PAD}>
               <Card>
                 <ErrorState error={list.error} onRetry={() => list.refetch()} />
               </Card>
             </View>
           ) : (
-            <View style={{ padding: 16 }}>
+            <View style={EMPTY_PAD}>
               <EmptyState
                 title={t("meals.noMeals")}
                 action={
@@ -157,7 +171,7 @@ export default function MealsScreen() {
         }
         ListFooterComponent={
           list.hasNextPage ? (
-            <View style={{ padding: 16 }}>
+            <View style={EMPTY_PAD}>
               <Button
                 onPress={() => list.fetchNextPage()}
                 loading={list.isFetchingNextPage}
@@ -197,7 +211,7 @@ function HeaderImpl({
             color: colors.text,
             fontSize: typography["3xl"].fontSize,
             fontWeight: fontWeights.bold,
-            marginTop: 4,
+            marginTop: spacing.xs,
           }}
         >
           {Math.round(todayCalories)}

@@ -4,10 +4,14 @@ class EventBus<TEvents extends Record<string, unknown>> {
   private listeners: { [K in keyof TEvents]?: Set<Listener<TEvents[K]>> } = {};
 
   on<K extends keyof TEvents>(event: K, listener: Listener<TEvents[K]>): () => void {
+    // Local-bind the set so TypeScript can narrow it without needing a
+    // non-null assertion. Initializes-on-first-use; the same Set instance
+    // is reused across subsequent listeners for the same event.
+    const set = this.listeners[event] ?? new Set<Listener<TEvents[K]>>();
     if (!this.listeners[event]) {
-      this.listeners[event] = new Set();
+      this.listeners[event] = set;
     }
-    this.listeners[event]!.add(listener);
+    set.add(listener);
     return () => {
       this.listeners[event]?.delete(listener);
     };

@@ -1,8 +1,9 @@
 "use client";
 
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { useTranslations } from "next-intl";
-import { AlertCircle, Plus, Trash2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { AlertCircle, HeartPulse, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 import {
   FormField,
@@ -80,12 +81,23 @@ export function EmergencyContactSection({
   isEditing,
 }: EmergencyContactSectionProps) {
   const t = useTranslations("dashboard.profile");
+  const locale = useLocale();
   const form = useFormContext<ProfileFormValues>();
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "emergency_contacts",
   });
+
+  const emergencyCardLink = (
+    <Link
+      href={`/${locale}/dashboard/emergency-card`}
+      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <HeartPulse className="size-3" aria-hidden />
+      {t("manageEmergencyCard")}
+    </Link>
+  );
 
   // ── View mode ──────────────────────────────────────────────────────────────
   if (!isEditing) {
@@ -97,6 +109,7 @@ export function EmergencyContactSection({
           <p className="text-sm italic text-muted-foreground/60">
             {t("noContacts")}
           </p>
+          {emergencyCardLink}
         </ProfileSection>
       );
     }
@@ -134,6 +147,7 @@ export function EmergencyContactSection({
             );
           })}
         </div>
+        {emergencyCardLink}
       </ProfileSection>
     );
   }

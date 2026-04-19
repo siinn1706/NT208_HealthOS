@@ -22,6 +22,7 @@ import {
   Download,
   Trash2,
   Palette,
+  HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/page";
@@ -477,6 +478,12 @@ export default function SettingsPage() {
 
       {/* Privacy & Security */}
       <SettingGroup title={t("settingsPage.sections.privacy")}>
+        <SettingRow
+          icon={HeartPulse}
+          label={t("settingsPage.privacy.emergencyCard")}
+          description={t("settingsPage.privacy.emergencyCardDesc")}
+          onClick={() => router.push(`/${locale}/dashboard/emergency-card`)}
+        />
         <SettingRow
           icon={Shield}
           label={t("settingsPage.privacy.policy")}

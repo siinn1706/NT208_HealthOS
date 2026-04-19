@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Appearance } from "react-native";
 import { darkPalette, lightPalette, type ThemeColors } from "./colors";
 import { elevation, fontWeights, radius, spacing, typography } from "./tokens";
@@ -49,18 +56,28 @@ export function ThemeProvider({
     normalizeAccent(initialAccent) ?? lightPalette.brand
   );
 
-  const setMode = (next: ThemeMode) => {
+  // useCallback so the setters keep a stable identity across renders.
+  // Without this, the `useMemo<ThemeContextValue>` below captures a
+  // FRESH closure on its first render and never updates them — which
+  // happens to work today (both setters only reference module-level
+  // helpers + React's stable `setState` family) but is fragile and
+  // breaks loudly the moment a setter starts depending on local
+  // state. Make the closure explicitly stable instead.
+  const setMode = useCallback((next: ThemeMode) => {
     setModeState(next);
     void savePreferencesCache({ theme_mode: next });
-  };
+  }, []);
 
-  const setAccentColor = (input: string | null | undefined) => {
-    const next = normalizeAccent(input);
-    if (next) {
-      setAccentColorState(next);
-      void savePreferencesCache({ accent_color: next });
-    }
-  };
+  const setAccentColor = useCallback(
+    (input: string | null | undefined) => {
+      const next = normalizeAccent(input);
+      if (next) {
+        setAccentColorState(next);
+        void savePreferencesCache({ accent_color: next });
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const sub = Appearance.addChangeListener(({ colorScheme }) => {
@@ -87,7 +104,7 @@ export function ThemeProvider({
       setMode,
       setAccentColor,
     };
-  }, [mode, scheme, accentColor]);
+  }, [mode, scheme, accentColor, setMode, setAccentColor]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

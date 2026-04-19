@@ -276,4 +276,15 @@ export const AI_QUICK_REPLY_KEYS = [
   "quickReply3",
   "quickReply4",
   "quickReply5",
+  "quickReply6",
 ] as const;
+
+/**
+ * Quick replies that should NOT be sent to the AI — instead they intercept
+ * the click and route the user elsewhere. Keeps anything safety-sensitive
+ * out of the AI's hands while still letting the chat surface drive
+ * discovery of the rule-based features.
+ */
+export const AI_QUICK_REPLY_INTERCEPTS: Partial<Record<(typeof AI_QUICK_REPLY_KEYS)[number], string>> = {
+  quickReply6: "/dashboard/visit-prep/new",
+};

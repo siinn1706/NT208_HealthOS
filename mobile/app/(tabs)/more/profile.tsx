@@ -46,7 +46,7 @@ export default function ProfileScreen() {
   const toast = useToast();
   const qc = useQueryClient();
   const { colors, spacing, fontWeights, typography, radius } = useTheme();
-  const user = sessionStore((s) => s.user) as SessionUser | null;
+  const user = sessionStore((s) => s.user);
   const [draft, setDraft] = useState<ProfileDraft>(() => userToDraft(user));
   const [uploading, setUploading] = useState(false);
 

@@ -254,8 +254,49 @@ Test setup uses `jest-expo`. Add tests under `__tests__/` adjacent to the file u
 ### Versioning
 
 1. Bump `version` in `app.config.ts` (semver string).
-2. Bump `versionCode` in the Android section (must be a strictly-increasing integer for every Play Store submission).
+2. The Android `versionCode` is **derived at build time** from
+   `ANDROID_VERSION_CODE` (preferred — set in CI from
+   `git rev-list --count HEAD` or similar monotonic source) or
+   `EAS_BUILD_NUMBER` (auto-injected by EAS Build when
+   `eas.json:cli.appVersionSource = "remote"`). Defaults to `1` for
+   local prebuilds. NEVER hard-code a value in `app.config.ts` — Play
+   Console rejects duplicate versionCodes.
 3. Tag the release once the AAB is uploaded.
+
+### APK / AAB readiness checklist
+
+Before each Play Store upload, verify:
+
+- [ ] `npm run verify` is green (typecheck, jest, expo-doctor).
+- [ ] `npx expo prebuild --platform android --no-install --clean`
+      regenerates `android/` without warnings.
+- [ ] Inspect `android/app/src/main/AndroidManifest.xml` for:
+  - The Health Connect intent filter is the unmangled
+    `<action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>`.
+  - `<queries><package android:name="com.google.android.apps.healthdata"/></queries>` is present.
+  - `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` are marked
+    `tools:node="remove"` (they will be stripped from the merged
+    release manifest by gradle's manifest merger).
+  - `<application android:allowBackup="false">`.
+  - `<uses-feature android:name="android.hardware.camera" android:required="false"/>` (and `.autofocus`, `.front`).
+- [ ] `versionCode` resolves to a **strictly higher** integer than the
+      previous Play Store upload (`adb shell dumpsys package
+      com.healthos.app | grep versionCode` on the previously-installed
+      build).
+- [ ] EAS profile env vars (`eas.json`) point at the right backend host
+      for the channel. Production must be `https://`/`wss://` (the
+      `env.ts` runtime guard refuses to ship otherwise).
+- [ ] Privacy policy URL is reachable and matches the one wired into
+      the in-app `androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE`
+      handler.
+- [ ] Installed and smoke-tested on at least one physical Android
+      device (the emulator misses Health Connect, biometric, and
+      hardware-backed Keystore behavior).
+
+The local config plugin at `plugins/withAndroidHardening.js` enforces
+the manifest invariants above on every prebuild; the test suite at
+`__tests__/config/app-config.test.ts` locks them in at CI time so a
+regression is caught before someone burns an EAS build slot.
 
 ### Build artefacts
 

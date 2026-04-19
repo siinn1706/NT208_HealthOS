@@ -346,15 +346,41 @@
     "title": "Connected devices",
     "noDevices": "No devices connected.",
     "connect": "Connect",
-    "syncing": "Syncing...",
-    "syncedAt": "Last connected at {{when}}",
+    "syncing": "Sync now",
+    "syncedAt": "Last sync {{when}}",
     "disconnect": "Disconnect",
-    "syncNotice": "Currently sync only updates the timestamp. Real wearable data sync is on the roadmap.",
+    "syncNotice": "Health Connect imports steps, heart rate, sleep, and weight from your other Android health apps. Other providers below currently only update the timestamp.",
     "providers": {
       "apple_health": "Apple Health",
       "google_fit": "Google Fit",
       "garmin": "Garmin",
-      "fitbit": "Fitbit"
+      "fitbit": "Fitbit",
+      "health_connect": "Health Connect"
+    },
+    "healthConnect": {
+      "title": "Connect Health Connect",
+      "pickerSubtitle": "Recommended — imports real data from Samsung Health, Pixel, and more.",
+      "explainerTitle": "What we'll import",
+      "explainerBody": "We'll read recent records from Health Connect and store a copy in HealthOS so it appears on your dashboard and reports. You can disconnect at any time.",
+      "continue": "Continue",
+      "requesting": "Waiting for permission…",
+      "syncing": "Importing your data…",
+      "firstSyncRunning": "Pulling the last 14 days from Health Connect.",
+      "allSetTitle": "You're all set",
+      "firstSyncSummary": "Imported {{n}} record(s) on the first sync.",
+      "permissionDeniedTitle": "We can't import without permission",
+      "partialGrantTitle": "Some permissions weren't granted",
+      "partialGrantBody": "We couldn't access: {{missing}}. You can re-grant in Health Connect → App permissions.",
+      "notInstalledTitle": "Health Connect isn't installed",
+      "notInstalledBody": "Health Connect is the system app that holds your health data. Install it from the Play Store, then come back to finish connecting.",
+      "openPlayStore": "Open Play Store",
+      "status": {
+        "ok": "Synced",
+        "partial": "Synced with warnings",
+        "pending": "Connected — waiting on first sync",
+        "permission_denied": "Permission denied",
+        "error": "Last sync failed"
+      }
     }
   }
 }

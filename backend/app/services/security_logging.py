@@ -17,6 +17,8 @@ async def log_security_event(
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
     details: Optional[dict] = None,
+    *,
+    commit: bool = True,
 ) -> AuditLog:
     """Record a security audit event.
 
@@ -27,6 +29,11 @@ async def log_security_event(
         ip_address: Client IP address
         user_agent: Client User-Agent string
         details: Additional event details (failure reason, lockout duration, etc.)
+        commit: When True (default) commits the surrounding transaction
+            so the audit row is durable even if the caller crashes
+            afterward. Pass False from endpoints that own a multi-step
+            transaction (e.g. the HC ingest path) and want to issue a
+            single commit at the end — see code-review §M4.
 
     Returns:
         Created AuditLog entry
@@ -39,7 +46,13 @@ async def log_security_event(
         details=details,
     )
     db.add(entry)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        # Caller owns the transaction; flush so the row gets an `id`
+        # and any constraint violations surface here rather than at the
+        # surrounding commit.
+        await db.flush()
     return entry
 
 

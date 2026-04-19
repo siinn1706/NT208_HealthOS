@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { RefreshControl, Text, View } from "react-native";
 import {
   useInfiniteQuery,
@@ -61,9 +61,23 @@ export default function AppointmentsScreen() {
     },
   });
 
-  const allRows = list.data?.pages.flatMap((p) => p.data) ?? [];
-  const upcoming = allRows.filter((a) => a.status === "upcoming");
-  const past = allRows.filter((a) => a.status !== "upcoming");
+  // Memoize the flattened list and the two derived buckets so a
+  // cosmetic re-render (e.g. `useToast()` consumer firing, theme tick,
+  // unrelated state change) doesn't recompute and re-allocate three
+  // arrays per render. Each `Card` below depends on identity equality
+  // for `React.memo` to skip work.
+  const allRows = useMemo(
+    () => list.data?.pages.flatMap((p) => p.data) ?? [],
+    [list.data]
+  );
+  const upcoming = useMemo(
+    () => allRows.filter((a) => a.status === "upcoming"),
+    [allRows]
+  );
+  const past = useMemo(
+    () => allRows.filter((a) => a.status !== "upcoming"),
+    [allRows]
+  );
 
   return (
     <ScreenScroll

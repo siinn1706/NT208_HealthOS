@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
 import { onlineManager } from "@tanstack/react-query";
 
@@ -44,8 +50,15 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
+  // Memoize the context value so consumers don't re-render when this
+  // Provider re-renders for unrelated reasons (e.g. parent state
+  // changes). The shape is just two primitives, so the comparison is
+  // cheap and the win is real: every screen reads `useNetworkStatus`
+  // through `<OfflineBanner>` and various offline-aware controls.
+  const value = useMemo(() => ({ isOnline, type }), [isOnline, type]);
+
   return (
-    <NetworkContext.Provider value={{ isOnline, type }}>
+    <NetworkContext.Provider value={value}>
       {children}
     </NetworkContext.Provider>
   );

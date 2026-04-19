@@ -10,6 +10,12 @@ export const spacing = {
 } as const;
 
 export const radius = {
+  /**
+   * `xs` (4 dp) is for "thin micro chrome" — connection-status dots,
+   * progress bars, fine-grained badge corners. Anything bigger jumps
+   * to `sm` (6 dp) and starts feeling like a chip.
+   */
+  xs: 4,
   sm: 6,
   md: 10,
   lg: 16,
@@ -17,6 +23,13 @@ export const radius = {
 } as const;
 
 export const typography = {
+  /**
+   * `2xs` (11 dp) is the floor for legible mobile text per Material's
+   * "label-small" spec. Used for unread-count badges, "edited"
+   * timestamps, and other micro-labels that previously hard-coded
+   * `fontSize: 10` or `fontSize: 11` inline.
+   */
+  "2xs": { fontSize: 11, lineHeight: 14 },
   xs: { fontSize: 12, lineHeight: 16 },
   sm: { fontSize: 14, lineHeight: 20 },
   base: { fontSize: 16, lineHeight: 24 },

@@ -1,4 +1,11 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "@/theme";
 
@@ -37,12 +44,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [dismiss]
   );
 
-  const value: ToastContextValue = {
-    show,
-    success: (message, title) => show({ tone: "success", message, title }),
-    error: (message, title) => show({ tone: "error", message, title }),
-    info: (message, title) => show({ tone: "info", message, title }),
-  };
+  // Memoize the context value so calling `toast.success(...)` (which
+  // calls `setToasts`, re-renders this Provider) does NOT re-render
+  // every screen that just reads `useToast()`. Without this, the value
+  // was a fresh object on every render and the four method bindings
+  // were all fresh closures, defeating React's `useContext` change
+  // detection. With it, only `show` is rebuilt (whenever `dismiss`
+  // changes — which is never; `dismiss` is stable), so consumers
+  // subscribe to a stable reference.
+  const value = useMemo<ToastContextValue>(
+    () => ({
+      show,
+      success: (message, title) => show({ tone: "success", message, title }),
+      error: (message, title) => show({ tone: "error", message, title }),
+      info: (message, title) => show({ tone: "info", message, title }),
+    }),
+    [show]
+  );
 
   return (
     <ToastContext.Provider value={value}>

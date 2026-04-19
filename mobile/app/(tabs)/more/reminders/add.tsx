@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { PillGroup } from "@/components/ui/PillGroup";
 import {
   DateTimeField,
   dateToHHmm,
@@ -46,7 +47,7 @@ export default function AddReminderScreen() {
   const router = useRouter();
   const toast = useToast();
   const qc = useQueryClient();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
+  const { colors, fontWeights, spacing } = useTheme();
 
   const [type, setType] = useState<ReminderType>("medicine");
   const [title, setTitle] = useState("");
@@ -97,33 +98,12 @@ export default function AddReminderScreen() {
         >
           {t("reminders.type")}
         </Text>
-        <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
-          {TYPES.map((opt) => {
-            const active = type === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => setType(opt.value)}
-                style={{
-                  paddingVertical: 6,
-                  paddingHorizontal: 12,
-                  borderRadius: radius.pill,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                    fontSize: typography.xs.fontSize,
-                  }}
-                >
-                  {t(opt.key)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <PillGroup<ReminderType>
+          accessibilityLabel={t("reminders.type")}
+          value={type}
+          onChange={setType}
+          options={TYPES.map((opt) => ({ value: opt.value, label: t(opt.key) }))}
+        />
       </Card>
 
       <Card>
@@ -150,33 +130,15 @@ export default function AddReminderScreen() {
             >
               {t("reminders.repeat")}
             </Text>
-            <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
-              {REPEATS.map((opt) => {
-                const active = repeat === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setRepeat(opt.value)}
-                    style={{
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      borderRadius: radius.pill,
-                      backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: active ? colors.brandText : colors.text,
-                        fontWeight: fontWeights.semibold,
-                        fontSize: typography.xs.fontSize,
-                      }}
-                    >
-                      {t(opt.key)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <PillGroup<ReminderRepeat>
+              accessibilityLabel={t("reminders.repeat")}
+              value={repeat}
+              onChange={setRepeat}
+              options={REPEATS.map((opt) => ({
+                value: opt.value,
+                label: t(opt.key),
+              }))}
+            />
           </View>
 
           <Input

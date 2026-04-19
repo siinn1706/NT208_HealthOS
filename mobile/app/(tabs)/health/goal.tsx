@@ -66,7 +66,11 @@ export default function HealthGoalScreen() {
   });
 
   const remove = useMutation({
-    mutationFn: () => deleteHealthGoal(goal.data!.id),
+    // Take the goal id as a mutation variable instead of reaching back
+    // into the query state. Caller passes `goal.data.id` from a render
+    // path where it's already narrowed to non-nullable, which gives us
+    // type safety without a non-null assertion.
+    mutationFn: (id: string) => deleteHealthGoal(id),
     onSuccess() {
       qc.setQueryData(["health-goal"], null);
       toast.success(t("common.saved"));
@@ -84,6 +88,12 @@ export default function HealthGoalScreen() {
       fetchGoalProgress({ metric: "weight_kg", target: targetNum, period: "30d" }),
     enabled: !!targetNum && !Number.isNaN(targetNum) && targetNum > 0,
   });
+
+  // Snapshot the goal id once per render so the delete-button click
+  // closure doesn't have to re-narrow `goal.data` (TypeScript can't
+  // follow the narrow across the lambda boundary, which would otherwise
+  // force us back to a `goal.data!.id` non-null assertion).
+  const existingGoalId = goal.data?.id ?? null;
 
   return (
     <ScreenScroll>
@@ -113,10 +123,10 @@ export default function HealthGoalScreen() {
             <Button onPress={() => save.mutate()} loading={save.isPending} fullWidth>
               {t("common.save")}
             </Button>
-            {goal.data ? (
+            {existingGoalId ? (
               <Button
                 variant="destructive"
-                onPress={() => remove.mutate()}
+                onPress={() => remove.mutate(existingGoalId)}
                 loading={remove.isPending}
                 fullWidth
               >

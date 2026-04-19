@@ -372,6 +372,16 @@ export default function RemindersPage() {
                 const cfg = getTypeConfig(r.type);
                 const Icon = cfg.icon;
                 const isAppointmentLinked = Boolean(r.appointment_id);
+                // Plan-owned reminders surface a small chip linking to the
+                // medication detail (review P3-linked-chip). The DTO field
+                // arrives in either camelCase or snake_case depending on
+                // where the row was hydrated; check both for safety.
+                const linkedPlanId =
+                  (r as unknown as { medication_plan_id?: string | null })
+                    .medication_plan_id ??
+                  (r as unknown as { medicationPlanId?: string | null })
+                    .medicationPlanId ??
+                  null;
                 return (
                   <li
                     key={r.id}
@@ -410,6 +420,15 @@ export default function RemindersPage() {
                             <Stethoscope className="w-2.5 h-2.5" />
                             {t("reminders.appointmentLinked")}
                           </span>
+                        )}
+                        {linkedPlanId && (
+                          <a
+                            href={`/dashboard/medications/${linkedPlanId}`}
+                            className="text-[10px] px-1.5 py-0.5 rounded-full border border-warm-gold/40 text-warm-gold inline-flex items-center gap-1 hover:bg-warm-gold/10 transition-colors"
+                          >
+                            <Pill className="w-2.5 h-2.5" />
+                            {t("reminders.medicationLinked")}
+                          </a>
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">

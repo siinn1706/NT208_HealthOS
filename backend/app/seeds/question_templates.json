@@ -1,0 +1,358 @@
+[
+  {
+    "slug": "canon-benefits",
+    "visit_type": null,
+    "concern_category": null,
+    "text_vi": "Lợi ích chính của phương pháp điều trị này là gì?",
+    "text_en": "What are the main benefits of this treatment?",
+    "default_order": 1,
+    "is_canonical": true
+  },
+  {
+    "slug": "canon-risks",
+    "visit_type": null,
+    "concern_category": null,
+    "text_vi": "Có những rủi ro hoặc tác dụng phụ nào tôi cần lưu ý?",
+    "text_en": "What are the risks or side effects I should watch for?",
+    "default_order": 2,
+    "is_canonical": true
+  },
+  {
+    "slug": "canon-alternatives",
+    "visit_type": null,
+    "concern_category": null,
+    "text_vi": "Có những lựa chọn thay thế nào khác?",
+    "text_en": "Are there any alternatives I could consider?",
+    "default_order": 3,
+    "is_canonical": true
+  },
+  {
+    "slug": "canon-do-nothing",
+    "visit_type": null,
+    "concern_category": null,
+    "text_vi": "Điều gì sẽ xảy ra nếu tôi không làm gì cả?",
+    "text_en": "What might happen if I do nothing?",
+    "default_order": 4,
+    "is_canonical": true
+  },
+
+  {
+    "slug": "gp-routine-tests",
+    "visit_type": "gp_routine",
+    "concern_category": null,
+    "text_vi": "Tôi có cần làm xét nghiệm hay không?",
+    "text_en": "Do I need any tests, and if so, what do they check for?",
+    "default_order": 10,
+    "is_canonical": false
+  },
+  {
+    "slug": "gp-routine-followup",
+    "visit_type": "gp_routine",
+    "concern_category": null,
+    "text_vi": "Khi nào tôi cần quay lại tái khám?",
+    "text_en": "When should I come back for a follow-up?",
+    "default_order": 11,
+    "is_canonical": false
+  },
+  {
+    "slug": "gp-routine-lifestyle",
+    "visit_type": "gp_routine",
+    "concern_category": null,
+    "text_vi": "Có thay đổi nào về lối sống tôi nên thực hiện không?",
+    "text_en": "Are there lifestyle changes you would suggest?",
+    "default_order": 12,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "specialist-why-referral",
+    "visit_type": "specialist",
+    "concern_category": null,
+    "text_vi": "Vì sao tôi được giới thiệu đến chuyên khoa này?",
+    "text_en": "Why was I referred to this specialty?",
+    "default_order": 10,
+    "is_canonical": false
+  },
+  {
+    "slug": "specialist-prep",
+    "visit_type": "specialist",
+    "concern_category": null,
+    "text_vi": "Bác sĩ chuyên khoa cần biết những thông tin nào về tôi?",
+    "text_en": "What information from my history is most useful for the specialist?",
+    "default_order": 11,
+    "is_canonical": false
+  },
+  {
+    "slug": "specialist-coordinate",
+    "visit_type": "specialist",
+    "concern_category": null,
+    "text_vi": "Sau khi khám xong, ai sẽ thông báo lại cho bác sĩ gia đình của tôi?",
+    "text_en": "Who will share results back with my regular GP?",
+    "default_order": 12,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "follow-up-progress",
+    "visit_type": "follow_up",
+    "concern_category": null,
+    "text_vi": "Tình trạng của tôi đang tiến triển như thế nào?",
+    "text_en": "How am I progressing compared to last visit?",
+    "default_order": 10,
+    "is_canonical": false
+  },
+  {
+    "slug": "follow-up-adjustments",
+    "visit_type": "follow_up",
+    "concern_category": null,
+    "text_vi": "Có cần điều chỉnh thuốc hay liều lượng không?",
+    "text_en": "Do we need to adjust any medications or dosages?",
+    "default_order": 11,
+    "is_canonical": false
+  },
+  {
+    "slug": "follow-up-warning-signs",
+    "visit_type": "follow_up",
+    "concern_category": null,
+    "text_vi": "Tôi nên để ý đến những dấu hiệu nào nếu tình trạng xấu đi?",
+    "text_en": "What warning signs should I look out for between now and the next visit?",
+    "default_order": 12,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "mental-talk-vs-meds",
+    "visit_type": "mental_health",
+    "concern_category": null,
+    "text_vi": "Lựa chọn giữa trị liệu tâm lý và dùng thuốc khác nhau như thế nào?",
+    "text_en": "How do talk therapy and medication options compare for me?",
+    "default_order": 10,
+    "is_canonical": false
+  },
+  {
+    "slug": "mental-support-resources",
+    "visit_type": "mental_health",
+    "concern_category": null,
+    "text_vi": "Có nguồn hỗ trợ nào tôi có thể sử dụng giữa các lần khám không?",
+    "text_en": "Are there support resources I can use between appointments?",
+    "default_order": 11,
+    "is_canonical": false
+  },
+  {
+    "slug": "mental-crisis-plan",
+    "visit_type": "mental_health",
+    "concern_category": null,
+    "text_vi": "Tôi nên làm gì nếu tôi cảm thấy khủng hoảng giữa hai lần khám?",
+    "text_en": "What should I do if I feel in crisis before our next visit?",
+    "default_order": 12,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "urgent-when-er",
+    "visit_type": "urgent_walkin",
+    "concern_category": null,
+    "text_vi": "Triệu chứng nào cho thấy tôi cần đi cấp cứu thay vì chờ?",
+    "text_en": "Which symptoms would mean I should go to the emergency room instead of waiting?",
+    "default_order": 10,
+    "is_canonical": false
+  },
+  {
+    "slug": "urgent-recheck",
+    "visit_type": "urgent_walkin",
+    "concern_category": null,
+    "text_vi": "Khi nào tôi cần khám lại nếu tình trạng không cải thiện?",
+    "text_en": "When should I be re-checked if I don't improve?",
+    "default_order": 11,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "ped-fever-threshold",
+    "visit_type": "pediatric_caregiver",
+    "concern_category": null,
+    "text_vi": "Mức nhiệt độ nào cần đưa con đi khám hoặc cấp cứu?",
+    "text_en": "At what temperature should I bring my child back in or to emergency care?",
+    "default_order": 10,
+    "is_canonical": false
+  },
+  {
+    "slug": "ped-feeding",
+    "visit_type": "pediatric_caregiver",
+    "concern_category": null,
+    "text_vi": "Cách cho ăn uống và bù nước phù hợp khi con bị bệnh là gì?",
+    "text_en": "How should I handle feeding and hydration while my child is unwell?",
+    "default_order": 11,
+    "is_canonical": false
+  },
+  {
+    "slug": "ped-when-call",
+    "visit_type": "pediatric_caregiver",
+    "concern_category": null,
+    "text_vi": "Tôi nên gọi điện cho bác sĩ vào lúc nào trước lần khám tiếp theo?",
+    "text_en": "When should I phone you before the next scheduled visit?",
+    "default_order": 12,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "pain-cause",
+    "visit_type": null,
+    "concern_category": "pain",
+    "text_vi": "Cơn đau này có thể do nguyên nhân nào gây ra?",
+    "text_en": "What kinds of things can cause this type of pain?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "pain-relief",
+    "visit_type": null,
+    "concern_category": "pain",
+    "text_vi": "Tôi có thể làm gì tại nhà để giảm đau một cách an toàn?",
+    "text_en": "What can I safely do at home to ease the pain?",
+    "default_order": 21,
+    "is_canonical": false
+  },
+  {
+    "slug": "pain-watch",
+    "visit_type": null,
+    "concern_category": "pain",
+    "text_vi": "Khi nào cơn đau nghiêm trọng đến mức tôi cần đi khám lại ngay?",
+    "text_en": "When is the pain serious enough that I should come back urgently?",
+    "default_order": 22,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "fever-monitor",
+    "visit_type": null,
+    "concern_category": "fever",
+    "text_vi": "Tôi cần theo dõi nhiệt độ trong bao lâu trước khi lo lắng?",
+    "text_en": "How long should I monitor the fever before becoming concerned?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "fever-hydration",
+    "visit_type": null,
+    "concern_category": "fever",
+    "text_vi": "Cách bù nước phù hợp khi sốt là gì?",
+    "text_en": "What's the right way to stay hydrated while feverish?",
+    "default_order": 21,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "gi-diet",
+    "visit_type": null,
+    "concern_category": "gi",
+    "text_vi": "Tôi nên ăn uống thế nào để hệ tiêu hóa hồi phục?",
+    "text_en": "What should I eat or avoid while my stomach settles?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "gi-redflag",
+    "visit_type": null,
+    "concern_category": "gi",
+    "text_vi": "Khi nào dấu hiệu tiêu hóa cần được xem là khẩn cấp?",
+    "text_en": "Which gut symptoms should be treated as urgent?",
+    "default_order": 21,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "resp-improve",
+    "visit_type": null,
+    "concern_category": "resp",
+    "text_vi": "Tôi cần thấy cải thiện trong bao lâu, và khi nào cần khám lại?",
+    "text_en": "How quickly should I expect improvement, and when should I come back?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "resp-trigger",
+    "visit_type": null,
+    "concern_category": "resp",
+    "text_vi": "Tôi có thể tránh những yếu tố nào để giảm khó thở?",
+    "text_en": "What triggers can I avoid to ease my breathing?",
+    "default_order": 21,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "mental-coping",
+    "visit_type": null,
+    "concern_category": "mental",
+    "text_vi": "Có những cách đối phó nào tôi có thể bắt đầu áp dụng ngay?",
+    "text_en": "Are there coping strategies I can start using right away?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "mental-when-help",
+    "visit_type": null,
+    "concern_category": "mental",
+    "text_vi": "Tôi nên tìm kiếm sự giúp đỡ thêm vào lúc nào?",
+    "text_en": "When should I reach out for extra support before our next visit?",
+    "default_order": 21,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "skin-care",
+    "visit_type": null,
+    "concern_category": "skin",
+    "text_vi": "Tôi nên chăm sóc vùng da bị ảnh hưởng như thế nào?",
+    "text_en": "How should I care for the affected area at home?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "skin-watch",
+    "visit_type": null,
+    "concern_category": "skin",
+    "text_vi": "Những thay đổi nào trên da cần được khám lại sớm?",
+    "text_en": "Which skin changes mean I should be seen again sooner?",
+    "default_order": 21,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "neuro-watch",
+    "visit_type": null,
+    "concern_category": "neuro",
+    "text_vi": "Những dấu hiệu thần kinh nào cần được xử lý cấp cứu?",
+    "text_en": "Which neurological signs should be treated as an emergency?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "neuro-tracking",
+    "visit_type": null,
+    "concern_category": "neuro",
+    "text_vi": "Tôi nên ghi chép theo dõi triệu chứng như thế nào để hỗ trợ chẩn đoán?",
+    "text_en": "How should I track symptoms to help with diagnosis?",
+    "default_order": 21,
+    "is_canonical": false
+  },
+
+  {
+    "slug": "cardio-when-er",
+    "visit_type": null,
+    "concern_category": "cardio",
+    "text_vi": "Triệu chứng nào về tim mạch cần đi cấp cứu ngay?",
+    "text_en": "Which heart-related symptoms should mean an immediate trip to emergency?",
+    "default_order": 20,
+    "is_canonical": false
+  },
+  {
+    "slug": "cardio-monitor",
+    "visit_type": null,
+    "concern_category": "cardio",
+    "text_vi": "Tôi nên theo dõi mạch và huyết áp như thế nào tại nhà?",
+    "text_en": "How should I keep track of my heart rate or blood pressure at home?",
+    "default_order": 21,
+    "is_canonical": false
+  }
+]

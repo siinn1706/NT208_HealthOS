@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import { RefreshControl, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 
@@ -7,6 +7,7 @@ import { ScreenScroll } from "@/components/ScreenScroll";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { PillGroup } from "@/components/ui/PillGroup";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { EmptyState } from "@/components/states/EmptyState";
@@ -15,12 +16,13 @@ import { useTheme } from "@/theme";
 import { fetchTrend, type ReportPeriod } from "@/api/endpoints/reports";
 
 const METRICS = ["heart_rate", "steps", "weight_kg", "sleep_minutes"] as const;
+type MetricKey = (typeof METRICS)[number];
 const PERIODS: ReportPeriod[] = ["7d", "30d", "90d"];
 
 export default function TrendsScreen() {
   const t = useT();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
-  const [metric, setMetric] = useState<(typeof METRICS)[number]>("heart_rate");
+  const { colors, fontWeights, typography, spacing } = useTheme();
+  const [metric, setMetric] = useState<MetricKey>("heart_rate");
   const [period, setPeriod] = useState<ReportPeriod>("30d");
 
   const trend = useQuery({
@@ -42,60 +44,23 @@ export default function TrendsScreen() {
       <PageHeader title={t("reports.trends")} />
 
       <Card>
-        <View style={{ flexDirection: "row", gap: spacing.xs, flexWrap: "wrap", marginBottom: spacing.md }}>
-          {METRICS.map((m) => {
-            const active = metric === m;
-            return (
-              <Pressable
-                key={m}
-                onPress={() => setMetric(m)}
-                style={{
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: 6,
-                  borderRadius: radius.pill,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                    fontSize: typography.xs.fontSize,
-                  }}
-                >
-                  {m.replace(/_/g, " ")}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <View style={{ flexDirection: "row", gap: spacing.xs }}>
-          {PERIODS.map((p) => {
-            const active = period === p;
-            return (
-              <Pressable
-                key={p}
-                onPress={() => setPeriod(p)}
-                style={{
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: 6,
-                  borderRadius: radius.pill,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                    fontSize: typography.xs.fontSize,
-                  }}
-                >
-                  {p}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <PillGroup<MetricKey>
+          accessibilityLabel="Metric"
+          value={metric}
+          onChange={setMetric}
+          options={METRICS.map((m) => ({
+            value: m,
+            label: m.replace(/_/g, " "),
+          }))}
+          style={{ marginBottom: spacing.md }}
+        />
+        <PillGroup<ReportPeriod>
+          accessibilityLabel="Period"
+          value={period}
+          onChange={setPeriod}
+          wrap={false}
+          options={PERIODS.map((p) => ({ value: p, label: p }))}
+        />
       </Card>
 
       {trend.isPending ? (

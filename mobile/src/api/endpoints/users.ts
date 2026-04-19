@@ -1,4 +1,5 @@
 import { apiFetch, apiUpload, unwrapData } from "../client";
+import { appendFilePart, type FilePart } from "../formdata";
 import type { SessionUser } from "@/auth/session";
 
 /**
@@ -53,17 +54,9 @@ export async function patchCurrentUser(
   return unwrapData(res);
 }
 
-export async function uploadAvatar(file: {
-  uri: string;
-  name: string;
-  type: string;
-}): Promise<SessionUser> {
+export async function uploadAvatar(file: FilePart): Promise<SessionUser> {
   const formData = new FormData();
-  formData.append("file", {
-    uri: file.uri,
-    name: file.name,
-    type: file.type,
-  } as unknown as Blob);
+  appendFilePart(formData, "file", file);
   const res = await apiUpload<{ data: SessionUser }>(
     "/v1/users/me/avatar",
     formData

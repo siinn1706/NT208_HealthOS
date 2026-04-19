@@ -19,6 +19,17 @@ import { ApiError } from "@/api/errors";
 
 const RESEND_COOLDOWN = 60;
 
+const VALID_OTP_PURPOSES = new Set<OtpPurpose>([
+  "signup",
+  "login",
+  "reset_password",
+]);
+
+function parseOtpPurpose(input: string | undefined): OtpPurpose | null {
+  if (!input) return null;
+  return VALID_OTP_PURPOSES.has(input as OtpPurpose) ? (input as OtpPurpose) : null;
+}
+
 export default function VerifyScreen() {
   const t = useT();
   const router = useRouter();
@@ -26,9 +37,14 @@ export default function VerifyScreen() {
   const { colors, fontWeights, typography, spacing } = useTheme();
   const params = useLocalSearchParams<{
     email: string;
-    purpose?: OtpPurpose;
+    purpose?: string;
   }>();
-  const purpose: OtpPurpose = (params.purpose as OtpPurpose) ?? "signup";
+  // Validate the URL-supplied purpose against the known set rather than
+  // blindly casting — a malformed deep-link `?purpose=evil` would
+  // otherwise propagate a bogus value into `requestOtp` and the backend
+  // would reject it with a confusing 422 instead of the screen falling
+  // back gracefully.
+  const purpose: OtpPurpose = parseOtpPurpose(params.purpose) ?? "signup";
 
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);

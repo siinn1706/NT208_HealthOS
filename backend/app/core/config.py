@@ -81,6 +81,11 @@ class Settings(BaseSettings):
     ai_worker_url: str = "http://localhost:8001"
     celery_broker_url: str = "redis://localhost:6379/2"
 
+    # Public-facing FE URL — used to build emergency-card share URLs (the
+    # QR code encodes "{app_url}/e/<token>"). Defaults to dev port; in
+    # production this MUST be the canonical https origin so paramedics
+    # don't end up with broken http:// QRs.
+    app_url: str = "http://localhost:3000"
     # ── AI chat orchestrator ──────────────────────────────────────────────
     ai_worker_timeout_seconds: float = 30.0
     ai_context_max_messages: int = 20

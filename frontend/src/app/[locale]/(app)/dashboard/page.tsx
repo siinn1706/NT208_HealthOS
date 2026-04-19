@@ -9,6 +9,7 @@ import { UpcomingRemindersWidget } from "@/components/dashboard/widgets/Upcoming
 import { GoalProgressWidget } from "@/components/dashboard/widgets/GoalProgressWidget";
 import { AiInsightWidget } from "@/components/dashboard/widgets/AiInsightWidget";
 import { WeeklyCalorieChartWidget } from "@/components/dashboard/widgets/WeeklyCalorieChartWidget";
+import { TodayDosesPanel } from "@/components/dashboard/medications/TodayDosesPanel";
 import { PageHeader } from "@/components/shared/page";
 
 import {
@@ -78,9 +79,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </Suspense>
         </div>
 
-        {/* Upcoming reminders — 1 column */}
-        <div className="min-h-[320px]">
+        {/* Upcoming reminders + Today's doses — 1 column */}
+        <div className="min-h-[320px] space-y-5">
           <UpcomingRemindersWidget reminders={reminders} />
+          <TodayDosesPanel limit={3} variant="card" />
         </div>
       </div>
 

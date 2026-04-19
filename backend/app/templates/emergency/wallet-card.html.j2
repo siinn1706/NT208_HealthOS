@@ -1,0 +1,266 @@
+{# WeasyPrint-rendered emergency wallet card.
+
+Inputs:
+  * `card`     — PublicEmergencyCardDTO (model_dump)
+  * `qr_data_url` — `data:image/png;base64,…`
+  * `i18n`     — strings dict from `templates/emergency/i18n.py::i18n_for`
+  * `card_short_id` — first 8 chars of the token id
+
+CR80 wallet-card geometry — 85.6mm × 53.98mm landscape, no margin. The
+@page rule below sets the physical page size; `body` fills it edge to
+edge so the card looks identical whether printed at home or via a
+plastic-card service.
+#}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ i18n.title }}</title>
+  <style>
+    @page {
+      size: 85.6mm 53.98mm landscape;
+      margin: 0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 85.6mm; height: 53.98mm; }
+    body {
+      font-family: "Noto Sans", "Be Vietnam Pro", sans-serif;
+      color: #0F2743;
+      font-size: 7.5pt;
+      line-height: 1.25;
+      background: #FFFFFF;
+      padding: 2.5mm 3mm;
+      display: grid;
+      grid-template-columns: 1fr 24mm;
+      grid-template-rows: 5mm 1fr 4mm;
+      gap: 1.5mm 2.5mm;
+    }
+
+    /* Top banner */
+    .banner {
+      grid-column: 1 / 3;
+      background: #C81E1E;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 7pt;
+      letter-spacing: 0.6pt;
+      padding: 0 3mm;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 0.5mm;
+    }
+    .banner .lang {
+      font-size: 6pt;
+      opacity: 0.85;
+      letter-spacing: 0;
+      font-weight: 600;
+    }
+
+    .info { min-width: 0; }
+    .name {
+      font-size: 11pt;
+      font-weight: 800;
+      color: #0F2743;
+      line-height: 1.05;
+    }
+    .meta {
+      color: #4B5563;
+      font-size: 6pt;
+      margin-top: 0.5mm;
+    }
+    .blood-row {
+      display: flex;
+      align-items: center;
+      gap: 2mm;
+      margin-top: 1mm;
+    }
+    .blood-chip {
+      background: #FEE2E2;
+      color: #991B1B;
+      border-radius: 1mm;
+      padding: 0.5mm 1.5mm;
+      font-weight: 800;
+      font-size: 9pt;
+      line-height: 1;
+      border: 0.4pt solid #FCA5A5;
+    }
+    .blood-na {
+      font-size: 6pt;
+      color: #6B7280;
+      font-style: italic;
+    }
+    .blood-label {
+      font-size: 5pt;
+      color: #6B7280;
+      text-transform: uppercase;
+      letter-spacing: 0.4pt;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1mm 2mm;
+      margin-top: 1mm;
+      font-size: 6pt;
+    }
+    .section h3 {
+      font-size: 5.5pt;
+      font-weight: 700;
+      color: #6B7280;
+      text-transform: uppercase;
+      letter-spacing: 0.3pt;
+      margin-bottom: 0.3mm;
+    }
+    .section p, .section li { line-height: 1.2; }
+    .section ul { padding-left: 2.5mm; }
+    .nkda { color: #047857; font-weight: 600; }
+
+    .ice {
+      grid-column: 1 / 2;
+      grid-row: 2 / 3;
+    }
+    .ice-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 1mm;
+      font-size: 6pt;
+      padding: 0.2mm 0;
+    }
+    .ice-line .name-rel { min-width: 0; }
+    .ice-line .name-rel strong { font-weight: 700; }
+    .ice-line .phone {
+      font-family: "Noto Mono", "DejaVu Sans Mono", monospace;
+      font-feature-settings: "tnum" 1;
+      white-space: nowrap;
+    }
+
+    /* QR side panel */
+    .qr-panel {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.8mm;
+      padding-left: 1mm;
+      border-left: 0.3pt solid #E5E7EB;
+    }
+    .qr-img {
+      width: 22mm;
+      height: 22mm;
+    }
+    .qr-caption {
+      font-size: 5pt;
+      color: #6B7280;
+      text-align: center;
+      line-height: 1.15;
+    }
+
+    /* Footer strip */
+    .footer {
+      grid-column: 1 / 3;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 5pt;
+      color: #6B7280;
+      border-top: 0.3pt solid #E5E7EB;
+      padding-top: 0.5mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <span>{{ i18n.title }}</span>
+    {% if card.preferred_language %}
+      <span class="lang">{{ card.preferred_language }}</span>
+    {% endif %}
+  </div>
+
+  <div class="info">
+    <div class="name">{{ card.full_name or "—" }}</div>
+    <div class="meta">
+      {%- set parts = [] -%}
+      {%- if card.age_years is not none -%}
+        {%- set _ = parts.append((i18n.age ~ " " ~ card.age_years)) -%}
+      {%- endif -%}
+      {%- if card.gender -%}
+        {%- set _ = parts.append(card.gender|capitalize) -%}
+      {%- endif -%}
+      {{ parts | join(" · ") }}
+    </div>
+    <div class="blood-row">
+      <span class="blood-label">{{ i18n.blood }}</span>
+      {% if card.blood_type %}
+        <span class="blood-chip">{{ card.blood_type }}</span>
+      {% else %}
+        <span class="blood-na">{{ i18n.blood_na }}</span>
+      {% endif %}
+    </div>
+
+    <div class="section-grid">
+      {% if card.allergies or card.nkda_confirmed %}
+      <div class="section">
+        <h3>{{ i18n.allergies }}</h3>
+        {% if card.allergies %}
+          <ul>{% for a in card.allergies %}<li>{{ a }}</li>{% endfor %}</ul>
+        {% else %}
+          <p class="nkda">{{ i18n.nkda }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if card.chronic_conditions %}
+      <div class="section">
+        <h3>{{ i18n.conditions }}</h3>
+        <ul>{% for c in card.chronic_conditions %}<li>{{ c }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+
+      {% if card.medications %}
+      <div class="section" style="grid-column: 1 / 3">
+        <h3>{{ i18n.medications }}</h3>
+        <p>
+          {%- for m in card.medications -%}
+            {{ m.name }}{% if m.strength %} {{ m.strength }}{% endif %}{% if not loop.last %} · {% endif %}
+          {%- endfor -%}
+        </p>
+      </div>
+      {% endif %}
+
+      {% if card.equipment_notes %}
+      <div class="section" style="grid-column: 1 / 3">
+        <h3>{{ i18n.equipment }}</h3>
+        <p>{{ card.equipment_notes }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="ice">
+    {% if card.emergency_contacts %}
+      <div class="section">
+        <h3>{{ i18n.ice }}</h3>
+        {% for c in card.emergency_contacts %}
+          <div class="ice-line">
+            <span class="name-rel"><strong>{{ c.name }}</strong>{% if c.relationship %} · {{ c.relationship }}{% endif %}</span>
+            <span class="phone">{{ c.phone }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="qr-panel">
+    <img src="{{ qr_data_url }}" class="qr-img" alt="QR" />
+    <div class="qr-caption">{{ i18n.scan_to_view }}</div>
+  </div>
+
+  <div class="footer">
+    <span>{{ i18n.host }}{% if card_short_id %} · {{ i18n.card_id_label }} #{{ card_short_id }}{% endif %}</span>
+    <span>{{ i18n.footer }}</span>
+  </div>
+</body>
+</html>
