@@ -4,7 +4,7 @@ import { memo, useCallback, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
-import { Pin, CheckCheck, Check, Clock } from "lucide-react";
+import { Pin, CheckCheck, Check, Clock, AlertCircle, CloudOff, RefreshCw, X } from "lucide-react";
 import { MessageActions } from "./MessageActions";
 import { MessageReactions } from "./MessageReactions";
 import { AiChatBadge } from "./AiChatBadge";
@@ -37,6 +37,10 @@ interface MessageBubbleProps {
   onJumpToReply?: (replyId: string) => void;
   /** Open history date picker pre-focused on this message's date. */
   onDateClick?: (date: Date) => void;
+  /** Retry sending a failed/queued outgoing message. */
+  onRetry?: (msgId: string) => void;
+  /** Discard a failed/queued outgoing message from the local outbox. */
+  onDiscard?: (msgId: string) => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -59,6 +63,8 @@ export const MessageBubble = memo(function MessageBubble({
   onForward,
   onJumpToReply,
   onDateClick,
+  onRetry,
+  onDiscard,
 }: MessageBubbleProps) {
   const t = useTranslations("chat");
   const locale = useLocale();
@@ -347,13 +353,23 @@ export const MessageBubble = memo(function MessageBubble({
               {message.is_edited && !message.is_recalled && (
                 <span className="text-[10px] text-muted-foreground/70 italic">({t("edited")})</span>
               )}
-              {isOwn && !message.is_recalled && <MessageStatus status={message.status} />}
+              {isOwn && !message.is_recalled && <MessageStatus status={message.status} t={t} />}
               {isAi && (
                 <span className="text-[10px] text-amber-600 dark:text-amber-400 italic">
                   {t("ai.disclaimer")}
                 </span>
               )}
             </div>
+          )}
+
+          {isOwn && message.status === "failed" && (
+            <RetryRow
+              messageId={message.id}
+              errorCode={message.error_code}
+              onRetry={onRetry}
+              onDiscard={onDiscard}
+              t={t}
+            />
           )}
 
           <MessageReactions
@@ -423,10 +439,112 @@ export const MessageBubble = memo(function MessageBubble({
   );
 });
 
-function MessageStatus({ status }: { status: Message["status"] }) {
-  if (status === "sending") return <Clock className="w-3 h-3 text-muted-foreground" />;
-  if (status === "sent") return <Check className="w-3 h-3 text-muted-foreground" />;
-  if (status === "delivered") return <CheckCheck className="w-3 h-3 text-muted-foreground" />;
-  if (status === "read") return <CheckCheck className="w-3 h-3 text-primary" />;
+function MessageStatus({
+  status,
+  t,
+}: {
+  status: Message["status"];
+  t: ReturnType<typeof useTranslations>;
+}) {
+  if (status === "queued") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+        aria-label={t("status.queued")}
+        title={t("status.queued")}
+      >
+        <CloudOff className="w-3 h-3" aria-hidden />
+      </span>
+    );
+  }
+  if (status === "sending") {
+    return (
+      <Clock
+        className="w-3 h-3 text-muted-foreground"
+        aria-label={t("status.sending")}
+      />
+    );
+  }
+  if (status === "sent") {
+    return (
+      <Check
+        className="w-3 h-3 text-muted-foreground"
+        aria-label={t("status.sent")}
+      />
+    );
+  }
+  if (status === "delivered") {
+    return (
+      <CheckCheck
+        className="w-3 h-3 text-muted-foreground"
+        aria-label={t("status.delivered")}
+      />
+    );
+  }
+  if (status === "read") {
+    return (
+      <CheckCheck className="w-3 h-3 text-primary" aria-label={t("status.read")} />
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[10px] text-destructive"
+        aria-label={t("status.failed")}
+        title={t("status.failed")}
+      >
+        <AlertCircle className="w-3 h-3" aria-hidden />
+      </span>
+    );
+  }
   return null;
+}
+
+function RetryRow({
+  messageId,
+  errorCode,
+  onRetry,
+  onDiscard,
+  t,
+}: {
+  messageId: string;
+  errorCode?: Message["error_code"];
+  onRetry?: (id: string) => void;
+  onDiscard?: (id: string) => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const reasonKey =
+    errorCode === "rate_limited"
+      ? "status.failedReasonRateLimited"
+      : errorCode === "validation"
+        ? "status.failedReasonValidation"
+        : "status.failedReasonNetwork";
+  return (
+    <div
+      className="mt-1 flex items-center gap-2 text-[11px] text-destructive"
+      role="alert"
+    >
+      <span>{t(reasonKey)}</span>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={() => onRetry(messageId)}
+          className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+        >
+          <RefreshCw className="w-3 h-3" aria-hidden />
+          {t("status.retry")}
+        </button>
+      )}
+      {onDiscard && (
+        <button
+          type="button"
+          onClick={() => onDiscard(messageId)}
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="w-3 h-3" aria-hidden />
+          {t("status.discard")}
+        </button>
+      )}
+    </div>
+  );
 }

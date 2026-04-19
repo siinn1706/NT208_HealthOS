@@ -42,6 +42,16 @@ type UseChatWsResult = {
   sendEvent: (event: string, payload?: Record<string, unknown>) => void;
   /** Manually close and stop reconnecting. */
   disconnect: () => void;
+  /**
+   * True after the server closed the socket with code 4001 (token expired or
+   * session ended). The UI must surface a re-auth banner instead of pretending
+   * the connection is just flaky.
+   */
+  sessionExpired: boolean;
+  /** True while we are actively retrying after a drop. */
+  isReconnecting: boolean;
+  /** Trigger a manual reconnect (resets the backoff counter). */
+  reconnectNow: () => void;
 };
 
 export function useChatWs({
@@ -49,6 +59,8 @@ export function useChatWs({
   enabled = true,
 }: UseChatWsOptions): UseChatWsResult {
   const [status, setStatus] = useState<WsStatus>("disconnected");
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const tokenRef = useRef<string | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -103,6 +115,8 @@ export function useChatWs({
 
     ws.onopen = () => {
       setStatus("connected");
+      setSessionExpired(false);
+      setIsReconnecting(false);
       reconnectAttemptsRef.current = 0;
 
       // Send handshake
@@ -135,9 +149,15 @@ export function useChatWs({
 
       if (intentionalCloseRef.current) return;
 
-      // Token expired (4001) — clear and re-fetch on next attempt
+      // 4001 — token expired or session ended. Surface a re-auth banner via
+      // `sessionExpired` and STOP retrying; the user must explicitly sign in
+      // again. Auto-reconnecting here would either spam the server or silently
+      // hide the auth issue.
       if (evt.code === 4001) {
         tokenRef.current = null;
+        setSessionExpired(true);
+        setIsReconnecting(false);
+        return;
       }
 
       // Reconnect with exponential backoff
@@ -147,7 +167,10 @@ export function useChatWs({
           RECONNECT_MAX_MS
         );
         reconnectAttemptsRef.current += 1;
+        setIsReconnecting(true);
         reconnectTimerRef.current = setTimeout(() => connectRef.current?.(), delay);
+      } else {
+        setIsReconnecting(false);
       }
     };
   }, [enabled, fetchToken]);  
@@ -170,6 +193,16 @@ export function useChatWs({
     wsRef.current?.close();
     wsRef.current = null;
     setStatus("disconnected");
+    setIsReconnecting(false);
+  }, [clearReconnectTimer]);
+
+  const reconnectNow = useCallback(() => {
+    clearReconnectTimer();
+    reconnectAttemptsRef.current = 0;
+    setSessionExpired(false);
+    setIsReconnecting(true);
+    tokenRef.current = null;
+    void connectRef.current?.();
   }, [clearReconnectTimer]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -191,5 +224,8 @@ export function useChatWs({
     isConnected: status === "connected",
     sendEvent,
     disconnect,
+    sessionExpired,
+    isReconnecting,
+    reconnectNow,
   };
 }

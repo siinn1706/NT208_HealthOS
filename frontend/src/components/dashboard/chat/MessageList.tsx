@@ -68,6 +68,8 @@ interface MessageListProps {
   onReact: (msgId: string, emoji: string) => void;
   onForward?: (msg: Message) => void;
   onJumpToReply?: (replyId: string) => void;
+  onRetry?: (msgId: string) => void;
+  onDiscard?: (msgId: string) => void;
 }
 
 export interface MessageListHandle {
@@ -94,6 +96,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     onReact,
     onForward,
     onJumpToReply,
+    onRetry,
+    onDiscard,
   },
   ref
 ) {
@@ -386,9 +390,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       const msg = messages[dataIndex];
       if (!msg) return null;
       const isOwn = !!currentUserId && msg.sender_id === currentUserId;
-      const isAi =
-        msg.sender_id === "ai" ||
-        (msg.sender_display_name?.toLowerCase().includes("ai") ?? false);
+      // Authoritative: derive AI affordance from sender_kind (set by the BFF
+      // adapter); never infer from display name to prevent spoofing.
+      const isAi = msg.sender_kind === "ai" || msg.sender_id === "ai";
       const prev = messages[dataIndex - 1];
       const next = messages[dataIndex + 1];
 
@@ -453,6 +457,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             onForward={onForward}
             onJumpToReply={onJumpToReply}
             onDateClick={handleDateClick}
+            onRetry={onRetry}
+            onDiscard={onDiscard}
           />
         </div>
       );
@@ -472,6 +478,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       onReact,
       onForward,
       onJumpToReply,
+      onRetry,
+      onDiscard,
       handleDateClick,
     ]
   );

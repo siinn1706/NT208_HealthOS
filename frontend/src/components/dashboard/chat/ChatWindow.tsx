@@ -13,6 +13,8 @@ import { ConversationInfoPanel } from "./ConversationInfoPanel";
 import { ForwardMessageDialog } from "./ForwardMessageDialog";
 import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
+import { ConnectionStatusBanner } from "./ConnectionStatusBanner";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import type { Conversation, Message } from "@/types/api";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -54,12 +56,13 @@ export function ChatWindow({
     hasMore,
     loadMore,
     sendMessage,
+    retryMessage,
+    discardMessage,
     editMessage,
     recallMessage,
     deleteMessage,
     reactToMessage,
     pinMessage,
-    simulateAIReply,
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
@@ -152,10 +155,18 @@ export function ChatWindow({
     }
   }, [convId, upsertMessage, setPinnedState, setRemoteTyping, onIncomingMessage, onConversationUpdate, currentUserId]);
 
-  const { sendEvent, isConnected } = useChatWs({
+  const {
+    sendEvent,
+    isConnected,
+    sessionExpired,
+    isReconnecting,
+    reconnectNow,
+  } = useChatWs({
     onEvent: handleWsEvent,
     enabled: wsEnabled,
   });
+
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     if (!wsEnabled || !isConnected) return;
@@ -188,23 +199,28 @@ export function ChatWindow({
         });
         setReplyTo(null);
         messageListRef.current?.scrollToBottom();
-        if (conversation.type === "ai") {
-          simulateAIReply(convId, t("aiIntegrationNote"));
-        }
+        // P0 — AI replies must come from the AI worker via the BFF; no client-
+        // side simulation. The AI conversation surface still shows a typing
+        // indicator and disclaimer once a real `chat.message.sent` arrives.
       }
     },
     [
       editingMessage,
       replyTo,
-      conversation.type,
       convId,
       sendMessage,
       editMessage,
-      simulateAIReply,
       onMessageSent,
-      t,
     ]
   );
+
+  const handleRetry = useCallback((msgId: string) => {
+    void retryMessage(msgId);
+  }, [retryMessage]);
+
+  const handleDiscard = useCallback((msgId: string) => {
+    discardMessage(msgId);
+  }, [discardMessage]);
 
   const handleReply = useCallback((msg: Message) => {
     setEditingMessage(null);
@@ -285,6 +301,15 @@ export function ChatWindow({
           onInfoOpen={() => setShowInfo(true)}
         />
 
+        {wsEnabled && (
+          <ConnectionStatusBanner
+            isOnline={isOnline}
+            isReconnecting={isReconnecting}
+            sessionExpired={sessionExpired}
+            onReconnect={reconnectNow}
+          />
+        )}
+
         {/* In-conversation search bar */}
         {showSearch && (
           <ChatSearchBar
@@ -336,6 +361,8 @@ export function ChatWindow({
             onPin={handlePin}
             onForward={handleForward}
             onJumpToReply={handleJump}
+            onRetry={handleRetry}
+            onDiscard={handleDiscard}
           />
         )}
 
@@ -345,6 +372,7 @@ export function ChatWindow({
         )}
 
         <MessageInput
+          conversationId={convId}
           replyTo={replyTo}
           currentUserId={currentUserId}
           editingMessage={editingMessage}

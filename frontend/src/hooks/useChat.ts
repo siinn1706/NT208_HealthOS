@@ -78,12 +78,25 @@ function adaptMessage(m: any): Message {
   // sender_id is the authoritative source — never infer identity from display_name
   // to prevent AI message spoofing by a user setting their name to contain "ai".
   const senderId = m.sender_id != null ? String(m.sender_id) : "";
+  // Authoritative origin: prefer explicit `sender_kind` from BE (or `sender_role`),
+  // fall back to legacy `"ai"` literal sender_id, then default to "user". Never
+  // derive this from display name.
+  const rawKind = (m.sender_kind ?? m.sender_role ?? null) as string | null;
+  const senderKind: Message["sender_kind"] =
+    rawKind === "ai" || rawKind === "system" || rawKind === "user"
+      ? rawKind
+      : senderId === "ai"
+        ? "ai"
+        : senderId === "system"
+          ? "system"
+          : "user";
   return {
     id: String(m.id),
     conversation_id: String(m.conversation_id),
     sender_id: senderId,
     sender_display_name:
       typeof m.sender_display_name === "string" ? m.sender_display_name : undefined,
+    sender_kind: senderKind,
     content: m.content ?? "",
     type: (m.content_type ?? m.type ?? "text") as Message["type"],
     status: (m.status ?? "read") as Message["status"],
@@ -520,6 +533,7 @@ export function useMessages(
         conversation_id: convId,
         sender_id: currentUserId,
         sender_display_name: undefined,
+        sender_kind: "user",
         content,
         type: "text",
         status: "sending",
@@ -554,16 +568,55 @@ export function useMessages(
           return next.filter((m, idx) => m.id !== confirmed.id || idx === firstConfirmedIdx);
         });
         return confirmed;
-      } catch {
-        // Mark as failed so UI shows a failed indicator instead of a checkmark
+      } catch (err) {
+        const errorCode: NonNullable<Message["error_code"]> = (() => {
+          const status = (err as { status?: number } | null)?.status;
+          if (status === 429) return "rate_limited";
+          if (status === 400 || status === 422) return "validation";
+          if (status && status >= 400) return "unknown";
+          return "network";
+        })();
         setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticId ? { ...m, status: "failed" as const } : m))
+          prev.map((m) =>
+            m.id === optimisticId
+              ? { ...m, status: "failed" as const, error_code: errorCode }
+              : m
+          )
         );
-        return optimistic;
+        return { ...optimistic, status: "failed" as const, error_code: errorCode };
       }
     },
     [currentUserId]
   );
+
+  /**
+   * Re-send a previously failed outgoing message. The original optimistic row
+   * is removed first so `sendMessage` can produce a fresh optimistic+confirmed
+   * pair (and emit the WS event again). No-op for messages that aren't owned
+   * by the current user or aren't in a failed/queued state.
+   */
+  const retryMessage = useCallback(
+    async (messageId: string): Promise<Message | null> => {
+      const target = messages.find((m) => m.id === messageId);
+      if (!target) return null;
+      if (target.status !== "failed" && target.status !== "queued") return null;
+      if (currentUserId && target.sender_id !== currentUserId) return null;
+      const replyToId = target.reply_to?.id;
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      return sendMessage(target.conversation_id, target.content, replyToId);
+    },
+    [messages, currentUserId, sendMessage]
+  );
+
+  /** Discard a failed/queued outgoing message from the local outbox. */
+  const discardMessage = useCallback((messageId: string) => {
+    setMessages((prev) => {
+      const target = prev.find((m) => m.id === messageId);
+      if (!target) return prev;
+      if (target.status !== "failed" && target.status !== "queued") return prev;
+      return prev.filter((m) => m.id !== messageId);
+    });
+  }, []);
 
   const editMessage = useCallback(async (convId: string, messageId: string, content: string) => {
     // Capture state for rollback before applying optimistic update
@@ -704,28 +757,10 @@ export function useMessages(
     [currentUserId, selfReactionLabel]
   );
 
-  // Simulate AI typing + canned response (fallback when AI worker is not yet connected)
-  const simulateAIReply = useCallback((convId: string, replyText: string) => {
-    setIsTyping(true);
-    const delay = 1000 + Math.random() * 1500;
-    setTimeout(() => {
-      setIsTyping(false);
-      const aiMsg: Message = {
-        id: `ai-${Date.now()}`,
-        conversation_id: convId,
-        sender_id: "ai",
-        content: replyText,
-        type: "text",
-        status: "read",
-        reactions: [],
-        is_edited: false,
-        is_recalled: false,
-        is_pinned: false,
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    }, delay);
-  }, []);
+  // P0 — `simulateAIReply` was removed. Faking AI replies in the UI without an
+  // explicit `sender_kind:"ai"` from the server bypasses every safety guard on
+  // the AI surface (disclaimer, rate-limits, audit logs, content filters). All
+  // AI replies must originate from the AI worker via the BFF.
 
   return {
     messages,
@@ -737,12 +772,13 @@ export function useMessages(
     setPinnedState,
     setRemoteTyping,
     sendMessage,
+    retryMessage,
+    discardMessage,
     editMessage,
     recallMessage,
     deleteMessage,
     pinMessage,
     reactToMessage,
-    simulateAIReply,
   };
 }
 

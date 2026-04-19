@@ -5,15 +5,9 @@
 
 // ─── Common ────────────────────────────────────────────────────────
 
-export interface ApiError {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-}
-
-export interface ErrorResponse {
-  error: ApiError;
-}
+// Canonical ApiError contract lives in `./api-error.ts`. We re-export here
+// so existing `@/types/api` imports keep working without duplicate shapes.
+export type { ApiError, ApiFieldError, ApiErrorResponse as ErrorResponse } from "./api-error";
 
 export interface PaginationMeta {
   page: number;
@@ -371,7 +365,22 @@ export interface WsEvent<T = unknown> {
 
 export type ConversationType = "direct" | "group" | "ai";
 export type MessageType = "text" | "image" | "file" | "audio" | "system";
-export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
+/**
+ * Message lifecycle status.
+ * - `queued`  — composed offline, waiting in the outbound queue for reconnect.
+ * - `sending` — handed to the WS layer, no ACK yet.
+ * - `sent`    — server stored the message.
+ * - `delivered` / `read` — recipient-side ACKs.
+ * - `failed`  — terminal, requires explicit user retry.
+ */
+export type MessageStatus = "queued" | "sending" | "sent" | "delivered" | "read" | "failed";
+
+/**
+ * Authoritative origin of a chat message.
+ * Always derive AI/system/user UI affordances from this field — NEVER from
+ * `sender_display_name` (a user could spoof their name to contain "ai").
+ */
+export type MessageSenderKind = "user" | "ai" | "system";
 export type ConversationTab = "all" | "strangers";
 export type StrangerRequestStatus = "pending" | "accepted" | "rejected" | "blocked";
 export type ChatThemeType = "gradient" | "pattern";
@@ -403,9 +412,17 @@ export interface Message {
   conversation_id: string;
   sender_id: string;
   sender_display_name?: string;
+  /**
+   * Authoritative sender origin. Defaults to `"user"` for legacy payloads.
+   * Use this — never display name — to drive AI bubble styling, badges, and
+   * disclaimers.
+   */
+  sender_kind?: MessageSenderKind;
   content: string;
   type: MessageType;
   status: MessageStatus;
+  /** Local-only error tag used by the chat UI to render retry affordances. */
+  error_code?: "network" | "rate_limited" | "validation" | "unknown";
   reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type" | "sender_display_name">;
   reactions: MessageReaction[];
   attachments?: MessageAttachment[] | null;
