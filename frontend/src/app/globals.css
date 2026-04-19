@@ -204,10 +204,53 @@ html {
   animation: float-delayed 5s ease-in-out infinite;
 }
 
+/* Ambient drift for hero atmosphere glow blooms. Pure transform, GPU-only. */
+@keyframes glow-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(8px, -6px, 0);
+  }
+}
+
+@utility animate-glow-drift {
+  animation: glow-drift 30s ease-in-out infinite;
+}
+
 /* Chat: highlight animation for jump-to-original-message (reply feature) */
 @keyframes msg-highlight {
   0% { background-color: hsl(var(--primary) / 0.12); }
   100% { background-color: transparent; }
+}
+
+/* Indeterminate bar sweep used by the shared <Progress indeterminate /> primitive. */
+@keyframes progress-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Utility class consumed by MessageList when highlightedId matches a row.
+   Without this, the @keyframes block above never fires and the jump-to-reply
+   affordance silently does nothing. */
+.animate-msg-highlight {
+  animation: msg-highlight 1.6s ease-out 1;
+}
+
+/* Motion design tokens — single source of truth for chat / progress /
+   achievement micro-interactions. Components must reference these tokens
+   instead of inlining magic ms / cubic-bezier values so we can globally tune
+   the system feel. */
+:root {
+  --motion-duration-instant: 90ms;
+  --motion-duration-fast: 160ms;
+  --motion-duration-base: 240ms;
+  --motion-duration-slow: 360ms;
+  --motion-duration-celebrate: 600ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-emphasized: cubic-bezier(0.2, 0, 0.2, 1.4);
+  --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
 }
 
 /* Accessibility: Disable animations for users who prefer reduced motion */

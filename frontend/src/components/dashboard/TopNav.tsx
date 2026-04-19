@@ -61,7 +61,7 @@ export function TopNav({
               "w-full h-9 pl-9 pr-4 text-sm rounded-lg",
               "bg-muted text-foreground placeholder:text-muted-foreground",
               "border border-border",
-              "focus:outline-none focus:ring-2 focus:ring-ring",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               "transition-colors duration-200"
             )}
           />
