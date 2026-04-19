@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useRouter } from "@/navigation";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -160,7 +160,7 @@ export default function OnboardingPageClient() {
     const next = String(currentStep);
     if (params.get("step") !== next) {
       params.set("step", next);
-      router.replace(`${pathname}?${params.toString()}` as never, { scroll: false });
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
   }, [currentStep, draft.hydrated, pathname, router, searchParams]);
 

@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useRouter, usePathname } from "@/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useConversations, useStrangerRequests } from "@/hooks/useChat";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -15,7 +14,6 @@ import { cn } from "@/lib/utils";
 export function ChatLayout() {
   const router = useRouter();
   const pathname = usePathname();
-  const locale = useLocale();
   const prefersReduced = useReducedMotion();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -39,8 +37,9 @@ export function ChatLayout() {
     };
   }, []);
 
-  /* Derive activeId from URL: /{locale}/dashboard/chat/{conversationId} */
-  const basePath = `/${locale}/dashboard/chat`;
+  /* Derive activeId from URL: /dashboard/chat/{conversationId}
+     (next-intl's usePathname strips the locale prefix for us). */
+  const basePath = "/dashboard/chat";
   const activeId = pathname.startsWith(basePath + "/")
     ? pathname.slice(basePath.length + 1).split("/")[0] || null
     : null;

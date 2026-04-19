@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   Bell,
@@ -148,6 +149,7 @@ function classifyClientSide(reminders: Reminder[], tab: StateTab): Reminder[] {
 export default function RemindersPage() {
   const t = useTranslations("dashboard");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const initialState = (searchParams.get("state") as StateTab) ?? "today";
@@ -188,7 +190,8 @@ export default function RemindersPage() {
     if (filter === "all") next.delete("type");
     else next.set("type", filter);
     const qs = next.toString();
-    router.replace(qs ? `?${qs}` : "?", { scroll: false });
+    const target = qs ? `${pathname}?${qs}` : pathname;
+    router.replace(target, { scroll: false });
   }, [filter, stateTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleDone = async (id: string) => {

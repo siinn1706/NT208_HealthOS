@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, StateView } from "@/components/shared/state";
 import { track } from "@/lib/analytics";
 import { useRouter } from "@/navigation";
+import { stripLocalePrefix } from "@/lib/locale-path";
+import { isSafeNotificationDest } from "@/lib/safe-notification-dest";
 
 const MAX_ITEMS = 20;
 
@@ -67,38 +69,6 @@ function readUnreadCount(json: unknown): number | null {
  * Blocks `javascript:`, `data:`, `vbscript:`, scheme-relative `//evil.com`,
  * and any cross-origin URL.
  */
-function isSafeNotificationDest(dest: string): boolean {
-  if (typeof dest !== "string" || dest.length === 0) return false;
-  // Reject scheme-relative URLs ("//evil.com") and obvious dangerous schemes
-  // before parsing — `new URL("javascript:alert(1)", origin)` happily resolves
-  // to the javascript URL with the host set to the page origin, which is the
-  // exact case we need to defeat.
-  const trimmed = dest.trim();
-  if (trimmed.startsWith("//")) return false;
-  const lowered = trimmed.toLowerCase();
-  if (
-    lowered.startsWith("javascript:") ||
-    lowered.startsWith("data:") ||
-    lowered.startsWith("vbscript:") ||
-    lowered.startsWith("file:")
-  ) {
-    return false;
-  }
-
-  // Path-relative (starts with `/` but not `//`) is always same-origin.
-  if (trimmed.startsWith("/")) return true;
-
-  // Absolute URL: require same-origin http(s).
-  if (typeof window === "undefined") return false;
-  try {
-    const url = new URL(trimmed, window.location.origin);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-    return url.origin === window.location.origin;
-  } catch {
-    return false;
-  }
-}
-
 function readHasMore(json: unknown): boolean {
   if (!json || typeof json !== "object") return false;
   const meta = (json as { meta?: unknown }).meta;
@@ -267,8 +237,11 @@ export function NotificationsPopover({ locale }: { locale: string }) {
       }
 
       // Same-origin path → SPA navigation; same-origin absolute URL → hard link.
+      // Strip any leading locale prefix from `dest` because next-intl's router
+      // re-prefixes the active locale; otherwise `/vi/dashboard/...` becomes
+      // `/vi/vi/dashboard/...` → 404. See plans/post-login-double-locale-redirect/plan.md.
       if (dest.startsWith("/")) {
-        router.push(dest);
+        router.push(stripLocalePrefix(dest));
       } else {
         window.location.assign(dest);
       }

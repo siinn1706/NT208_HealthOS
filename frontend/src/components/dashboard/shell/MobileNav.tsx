@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
-import { Link } from "@/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { Link, usePathname } from "@/navigation";
+import { useTranslations } from "next-intl";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,16 +21,14 @@ interface MobileNavProps {
 export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
   const t = useTranslations("dashboard.nav");
   const tShell = useTranslations("dashboard.shell");
-  const locale = useLocale();
   const pathname = usePathname();
   const unread = useUnreadConversations();
 
+  // next-intl's usePathname returns the path WITHOUT the locale prefix,
+  // matching the unprefixed link `href` values used in nav-config.
   const isActive = (href: string) => {
-    const fullHref = `/${locale}${href}`;
-    if (href === "/dashboard") {
-      return pathname === fullHref || pathname === `/${locale}/dashboard`;
-    }
-    return pathname.startsWith(fullHref);
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(href);
   };
 
   return (

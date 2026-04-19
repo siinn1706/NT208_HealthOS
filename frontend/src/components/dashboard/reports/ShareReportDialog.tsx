@@ -173,7 +173,7 @@ export function ShareReportDialog({
                     variant="link"
                     size="sm"
                     className="h-7 text-xs mt-1 gap-1"
-                    onClick={() => router.push(`/${locale}/dashboard/profile`)}
+                    onClick={() => router.push("/dashboard/profile")}
                   >
                     <ExternalLink className="h-3 w-3" aria-hidden />
                     {t("goToProfile")}

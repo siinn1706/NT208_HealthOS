@@ -4,7 +4,12 @@
 import type { NextRequest } from "next/server";
 import { routing } from "@/i18n/routing";
 
-export const LOCALE_PREFIX_RE = new RegExp(`^/(${routing.locales.join("|")})`);
+// Matches `/<locale>` only when followed by `/` or end-of-string, so paths like
+// `/vienna` (begins with a locale code as a literal segment) are NOT mis-stripped
+// to `nna`.
+export const LOCALE_PREFIX_RE = new RegExp(
+  `^/(${routing.locales.join("|")})(?=/|$)`,
+);
 
 export function getLocaleFromPathname(pathname: string): string {
   return LOCALE_PREFIX_RE.exec(pathname)?.[1] ?? routing.defaultLocale;

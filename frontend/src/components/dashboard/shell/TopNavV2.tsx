@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/navigation";
+import { stripLocalePrefix } from "@/lib/locale-path";
 import {
   ChevronDown,
   Globe,
@@ -41,7 +42,7 @@ interface TopNavV2Props {
   onOpenMobileNav?: () => void;
 }
 
-const LOCALES = [
+const LOCALES: Array<{ code: (typeof routing.locales)[number]; label: string }> = [
   { code: "vi", label: "Tiếng Việt" },
   { code: "en", label: "English" },
 ];
@@ -78,12 +79,12 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const switchLocale = (newLocale: string) => {
+  const switchLocale = (newLocale: (typeof routing.locales)[number]) => {
     if (newLocale === locale) return;
-    const localePattern = routing.locales.join("|");
-    const path = window.location.pathname.replace(new RegExp(`^\\/(${localePattern})`), "");
+    const path = stripLocalePrefix(window.location.pathname);
     const search = window.location.search ?? "";
-    router.push(`/${newLocale}${path}${search}`);
+    const hash = window.location.hash ?? "";
+    router.push(`${path}${search}${hash}`, { locale: newLocale });
   };
 
   const onLogout = async () => {
@@ -99,7 +100,7 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
       } catch {
         /* never block logout on storage cleanup */
       }
-      router.push(`/${locale}/login`);
+      router.push("/login");
     }
   };
 
@@ -241,10 +242,10 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem asChild>
-                <a href={`/${locale}/dashboard/profile`} className="flex items-center gap-2">
+                <Link href="/dashboard/profile" className="flex items-center gap-2">
                   <User className="size-4" aria-hidden="true" />
                   {t("profile")}
-                </a>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onLogout} className="text-destructive">

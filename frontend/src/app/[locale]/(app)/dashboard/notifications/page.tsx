@@ -6,6 +6,9 @@ import { Bell } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useRouter } from "@/navigation";
+import { stripLocalePrefix } from "@/lib/locale-path";
+import { isSafeNotificationDest } from "@/lib/safe-notification-dest";
+import { track } from "@/lib/analytics";
 import { PageHeader } from "@/components/shared/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -108,8 +111,18 @@ export default function NotificationsAllPage({
         }
       }
       const dest = n.link;
-      if (dest && dest.startsWith("/")) router.push(dest);
-      else if (dest) window.location.assign(dest);
+      if (!dest) return;
+      // Validate before navigating. A compromised/malformed notification could
+      // carry `javascript:`, `data:`, or a cross-origin URL — drop silently and
+      // log for ops visibility. Same gate as NotificationsPopover.
+      if (!isSafeNotificationDest(dest)) {
+        track("shell.notifications.unsafe_href_blocked", { url_origin: "invalid" });
+        return;
+      }
+      // Strip locale prefix — next-intl router re-prefixes the active locale.
+      // See plans/post-login-double-locale-redirect/plan.md.
+      if (dest.startsWith("/")) router.push(stripLocalePrefix(dest));
+      else window.location.assign(dest);
     },
     [router],
   );

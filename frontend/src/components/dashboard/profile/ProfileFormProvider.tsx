@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { getProfileSchema, type ProfileFormValues } from "@/lib/validators/profile-schema";

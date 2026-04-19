@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState, useTransition } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { TrendingUp, Scale, Ruler } from "lucide-react";
 import { BmiProgressChart } from "@/components/charts/BmiProgressChart";

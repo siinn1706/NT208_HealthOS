@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
-import { Link } from "@/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { Link, usePathname } from "@/navigation";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, HeartPulse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS, type NavLink } from "./nav-config";
@@ -95,7 +94,6 @@ export function SidebarNavGrouped({
 }: SidebarNavGroupedProps) {
   const t = useTranslations("dashboard.nav");
   const tGroups = useTranslations("dashboard.nav.groups");
-  const locale = useLocale();
   const pathname = usePathname();
   const [internalCollapsed, setInternalCollapsed] = React.useState(false);
 
@@ -105,15 +103,14 @@ export function SidebarNavGrouped({
   const handleToggle = onToggle ?? (() => setInternalCollapsed((c) => !c));
   const unread = useUnreadConversations();
 
+  // next-intl's usePathname returns the path WITHOUT the locale prefix,
+  // matching the unprefixed link `href` values used in nav-config.
   const isLinkActive = React.useCallback(
     (href: string) => {
-      const fullHref = `/${locale}${href}`;
-      if (href === "/dashboard") {
-        return pathname === fullHref || pathname === `/${locale}/dashboard`;
-      }
-      return pathname.startsWith(fullHref);
+      if (href === "/dashboard") return pathname === "/dashboard";
+      return pathname.startsWith(href);
     },
-    [pathname, locale],
+    [pathname],
   );
 
   return (

@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "@/navigation";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -226,7 +227,7 @@ export default function SettingsPage() {
       }
       await fetch("/api/v1/auth/session", { method: "DELETE" });
     } finally {
-      router.push(`/${locale}/login`);
+      router.push("/login");
     }
   };
 
@@ -278,10 +279,11 @@ export default function SettingsPage() {
         toast.error(t("settingsPage.privacy.downloadDialog.downloadFailed"));
       } finally {
         // Scrub the deep-link query param so re-mounts don't re-fire.
+        // Use unprefixed path because next-intl's router auto-prepends locale.
         const next = new URLSearchParams(searchParams.toString());
         next.delete("export");
         const qs = next.toString();
-        const target = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+        const target = qs ? `/dashboard/settings?${qs}` : "/dashboard/settings";
         router.replace(target);
       }
     })();
@@ -314,7 +316,7 @@ export default function SettingsPage() {
       setDeleteEmail("");
       setDeletePassword("");
       // After soft-delete, the BFF cleared the cookie — kick the user back to login.
-      router.push(`/${locale}/login?from=/dashboard/settings`);
+      router.push("/login?from=/dashboard/settings");
     } catch {
       toast.error(t("settingsPage.privacy.deleteDialog.requestFailed"));
     } finally {
@@ -341,19 +343,19 @@ export default function SettingsPage() {
           icon={User}
           label={t("settingsPage.account.profile")}
           description={t("settingsPage.account.profileDesc")}
-          onClick={() => router.push(`/${locale}/dashboard/profile`)}
+          onClick={() => router.push("/dashboard/profile")}
         />
         <SettingRow
           icon={Lock}
           label={t("settingsPage.account.security")}
           description={t("settingsPage.account.securityDesc")}
-          onClick={() => router.push(`/${locale}/forgot-password`)}
+          onClick={() => router.push("/forgot-password")}
         />
         <SettingRow
           icon={Smartphone}
           label={t("settingsPage.account.devices")}
           description={t("settingsPage.account.devicesDesc")}
-          onClick={() => router.push(`/${locale}/dashboard/settings/devices`)}
+          onClick={() => router.push("/dashboard/settings/devices")}
         />
       </SettingGroup>
 
@@ -364,7 +366,7 @@ export default function SettingsPage() {
             {(["vi", "en"] as const).map((l) => (
               <button
                 key={l}
-                onClick={() => router.push(`/${l}/dashboard/settings`)}
+                onClick={() => router.push("/dashboard/settings", { locale: l })}
                 className={cn(
                   "px-2.5 py-1 text-xs font-medium rounded-md border transition-colors cursor-pointer",
                   locale === l
@@ -481,7 +483,7 @@ export default function SettingsPage() {
           icon={Shield}
           label={t("settingsPage.privacy.policy")}
           description={t("settingsPage.privacy.policyDesc")}
-          onClick={() => router.push(`/${locale}/legal/privacy`)}
+          onClick={() => router.push("/legal/privacy")}
         />
         <SettingRow
           icon={Download}

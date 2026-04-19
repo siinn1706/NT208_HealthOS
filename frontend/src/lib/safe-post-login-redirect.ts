@@ -1,18 +1,13 @@
 /**
  * Validates `from` query param after login to prevent open redirects.
  * Only same-origin relative paths under /dashboard (with optional locale prefix) are allowed.
+ *
+ * Returns the **locale-stripped** path so callers can hand it to next-intl's
+ * `router.push(...)` (which auto-prefixes the active locale). Returning the raw
+ * `/vi/dashboard/...` would double-prefix into `/vi/vi/dashboard/...` → 404.
+ * See plans/post-login-double-locale-redirect/plan.md.
  */
-const APP_LOCALES = ["vi", "en"] as const;
-
-function stripLocalePrefix(pathname: string): string {
-  for (const loc of APP_LOCALES) {
-    if (pathname === `/${loc}`) return "/";
-    if (pathname.startsWith(`/${loc}/`)) {
-      return pathname.slice(`/${loc}`.length);
-    }
-  }
-  return pathname;
-}
+import { stripLocalePrefix } from "./locale-path";
 
 function isSafeDashboardPath(pathWithoutLocaleLeadingSlash: string): boolean {
   if (
@@ -31,7 +26,7 @@ function isSafeDashboardPath(pathWithoutLocaleLeadingSlash: string): boolean {
   return true;
 }
 
-/** Returns the original pathname if safe, otherwise null. */
+/** Returns the locale-stripped pathname if safe, otherwise null. */
 export function getSafePostLoginRedirectPath(raw: string | null): string | null {
   if (raw == null || raw === "") return null;
   if (raw.includes("\u0000") || raw.includes("\\")) return null;
@@ -42,5 +37,5 @@ export function getSafePostLoginRedirectPath(raw: string | null): string | null 
   if (!normalized.startsWith("/")) return null;
   if (!isSafeDashboardPath(normalized)) return null;
 
-  return raw;
+  return normalized;
 }
