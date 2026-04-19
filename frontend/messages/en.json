@@ -308,7 +308,8 @@
       "catFree": "Free",
       "catPersonal": "Personal",
       "catFamily": "Family",
-      "catPro": "Professional"
+      "catPro": "Professional",
+      "viewPlans": "View All Plans"
     },
     "testimonials": {
       "badge": "What Users Say",
@@ -396,6 +397,7 @@
     "badge": "Services",
     "title": "All the Tools You Need",
     "subtitle": "Explore the HealthOS ecosystem with full smart personal health management services.",
+    "contactTitle": "Start Your Health Journey",
     "contactSubtitle": "Fill in your information below to receive a free consultation.",
     "overviewBadge": "At a glance",
     "overviewTitle": "Services at a glance",
@@ -599,6 +601,7 @@
       "repeatLabels": {
         "daily": "Daily",
         "weekly": "Weekly",
+        "monthly": "Monthly",
         "once": "Once"
       },
       "filterAll": "All",
@@ -615,7 +618,40 @@
         "note": "Note (optional)",
         "cancel": "Cancel"
       },
-      "createFailed": "Failed to create reminder"
+      "createFailed": "Failed to create reminder",
+      "tabs": {
+        "today": "Today",
+        "upcoming": "Upcoming",
+        "missed": "Missed",
+        "completed": "Completed",
+        "all": "All"
+      },
+      "appointmentLinked": "Appointment",
+      "snooze": {
+        "label": "Snooze",
+        "tenMin": "10 minutes",
+        "thirtyMin": "30 minutes",
+        "oneHour": "1 hour",
+        "untilTomorrow": "Until tomorrow",
+        "snoozedUntil": "Snoozed until {time}",
+        "failed": "Couldn't snooze. Try again."
+      },
+      "skip": "Skip",
+      "skipped": "Skipped",
+      "skipFailed": "Couldn't skip. Try again.",
+      "permission": {
+        "title": "Notifications are off",
+        "body": "Turn on notifications so HealthOS can ping you when something is due.",
+        "deniedHint": "Notifications were blocked. Open your browser site settings to allow them again.",
+        "enable": "Enable",
+        "dismiss": "Not now"
+      },
+      "explain": {
+        "everyDayAt": "Every day at {time}",
+        "everyWeekAt": "Every week at {time}",
+        "everyMonthAt": "Every month at {time}",
+        "onceAt": "Once at {time}"
+      }
     },
     "health": {
       "title": "Vitals & Devices",
@@ -1281,6 +1317,7 @@
     "orDivider": "Or continue with",
     "continueWithGoogle": "Continue with Google",
     "continueWithFacebook": "Continue with Facebook",
+    "continueWithGitHub": "Continue with GitHub",
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "registerLink": "Sign up",

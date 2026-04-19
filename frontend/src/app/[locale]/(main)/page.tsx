@@ -21,6 +21,9 @@ import { stats } from "@/data/stats";
 import { pickLocale } from "@/types";
 import type { Locale } from "@/types";
 import { LeftDecoration, RightDecoration } from "@/components/shared/Decorations";
+import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
+import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
+import { Reveal } from "@/components/shared/Reveal";
 
 export default function HomePage() {
   const t = useTranslations("home");
@@ -37,11 +40,11 @@ export default function HomePage() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-night-900 via-night-800 to-night-900 py-20 md:py-28">
-        {/* Nebula blobs */}
+        <AtmosphereGrid />
+        <AtmosphereGlow />
+        {/* Nebula blobs (kept: warm top-right + cool bottom-left; mid-plane blobs replaced by mesh-glow) */}
         <div className="absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full bg-warm-peach/15 blur-[120px]" />
         <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-night-400/20 blur-[100px]" />
-        <div className="absolute top-1/3 left-1/4 h-64 w-64 rounded-full bg-night-300/10 blur-[80px]" />
-        <div className="absolute bottom-1/4 right-1/4 h-48 w-48 rounded-full bg-warm-rose/10 blur-[70px]" />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
@@ -128,7 +131,7 @@ export default function HomePage() {
                 entranceDelay="delay-150"
               />
             </div>
-            <div>
+            <Reveal>
               <Badge className="mb-3 border-0 bg-gradient-to-r from-night-700/20 to-night-400/20 text-night-700 dark:text-night-300 hover:from-night-700/30 hover:to-night-400/30">
                 {t("about.badge")}
               </Badge>
@@ -140,10 +143,10 @@ export default function HomePage() {
               </p>
               <Link href="/about">
                 <Button className="rounded-full bg-gradient-to-r from-night-700 to-night-500 text-white shadow-md shadow-night-600/20 transition-all hover:brightness-110 hover:shadow-night-500/30">
-                  Tìm hiểu thêm <ArrowRight className="ml-2 h-4 w-4" />
+                  {t("exploreMore")} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -213,7 +216,7 @@ export default function HomePage() {
           <div className="mt-10 text-center">
             <Link href="/plans">
               <Button variant="outline" className="rounded-full border-night-600/50 text-night-700 dark:text-night-300 transition-all hover:bg-gradient-to-r hover:from-night-700 hover:to-night-500 hover:text-white hover:border-transparent">
-                Xem tất cả gói <ArrowRight className="ml-2 h-4 w-4" />
+                {t("plans.viewPlans")} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>

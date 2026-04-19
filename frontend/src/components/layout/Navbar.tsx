@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const NAV_KEYS = [
   { key: "home", href: "/" },
   { key: "about", href: "/about" },
-  { key: "features", href: "/services" },
+  { key: "services", href: "/services" },
   { key: "plans", href: "/plans" },
   { key: "articles", href: "/articles" },
 ] as const;

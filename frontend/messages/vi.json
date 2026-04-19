@@ -308,7 +308,8 @@
       "catFree": "Miễn phí",
       "catPersonal": "Cá nhân",
       "catFamily": "Gia đình",
-      "catPro": "Chuyên nghiệp"
+      "catPro": "Chuyên nghiệp",
+      "viewPlans": "Xem tất cả gói"
     },
     "testimonials": {
       "badge": "Người dùng nói gì",
@@ -396,6 +397,7 @@
     "badge": "Dịch vụ",
     "title": "Tất cả những công cụ bạn cần",
     "subtitle": "Khám phá hệ sinh thái HealthOS với đầy đủ dịch vụ quản lý sức khỏe cá nhân thông minh.",
+    "contactTitle": "Bắt đầu hành trình sức khỏe của bạn",
     "contactSubtitle": "Điền thông tin bên dưới để nhận tư vấn miễn phí.",
     "overviewBadge": "Tổng quan",
     "overviewTitle": "Tổng quan dịch vụ",
@@ -599,6 +601,7 @@
       "repeatLabels": {
         "daily": "Hàng ngày",
         "weekly": "Hàng tuần",
+        "monthly": "Hàng tháng",
         "once": "Một lần"
       },
       "filterAll": "Tất cả",
@@ -615,7 +618,40 @@
         "note": "Ghi chú (tuỳ chọn)",
         "cancel": "Hủy"
       },
-      "createFailed": "Không thể tạo nhắc nhở"
+      "createFailed": "Không thể tạo nhắc nhở",
+      "tabs": {
+        "today": "Hôm nay",
+        "upcoming": "Sắp tới",
+        "missed": "Đã lỡ",
+        "completed": "Đã xong",
+        "all": "Tất cả"
+      },
+      "appointmentLinked": "Lịch khám",
+      "snooze": {
+        "label": "Hoãn",
+        "tenMin": "10 phút",
+        "thirtyMin": "30 phút",
+        "oneHour": "1 giờ",
+        "untilTomorrow": "Đến mai",
+        "snoozedUntil": "Hoãn đến {time}",
+        "failed": "Không thể hoãn. Vui lòng thử lại."
+      },
+      "skip": "Bỏ qua",
+      "skipped": "Đã bỏ qua",
+      "skipFailed": "Không thể bỏ qua. Vui lòng thử lại.",
+      "permission": {
+        "title": "Bạn đang tắt thông báo",
+        "body": "Bật thông báo để HealthOS nhắc bạn khi đến giờ.",
+        "deniedHint": "Trình duyệt đã chặn thông báo. Mở phần cài đặt của trang web để cho phép lại.",
+        "enable": "Bật",
+        "dismiss": "Để sau"
+      },
+      "explain": {
+        "everyDayAt": "Mỗi ngày lúc {time}",
+        "everyWeekAt": "Mỗi tuần lúc {time}",
+        "everyMonthAt": "Mỗi tháng lúc {time}",
+        "onceAt": "Một lần lúc {time}"
+      }
     },
     "health": {
       "title": "Chỉ số & Thiết bị",
@@ -1281,6 +1317,7 @@
     "orDivider": "Hoặc tiếp tục với",
     "continueWithGoogle": "Tiếp tục với Google",
     "continueWithFacebook": "Tiếp tục với Facebook",
+    "continueWithGitHub": "Tiếp tục với GitHub",
     "noAccount": "Chưa có tài khoản?",
     "hasAccount": "Đã có tài khoản?",
     "registerLink": "Đăng ký ngay",

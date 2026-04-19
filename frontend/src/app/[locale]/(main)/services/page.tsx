@@ -7,32 +7,62 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServiceCard } from "@/components/shared/ServiceCard";
 import { ContactForm } from "@/components/shared/ContactForm";
 import { coreFeatures, aiFeatures, realtimeFeatures, gamificationFeatures } from "@/data/services";
-import { LeftDecoration, RightDecoration } from "@/components/shared/Decorations";
 import { AnimatedIllustration } from "@/components/shared/AnimatedIllustration";
-import { Button } from "@/components/ui/button";
+import { Section } from "@/components/shared/Section";
+import { SectionHeader } from "@/components/shared/SectionHeader";
+import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
+import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
+import { Link } from "@/navigation";
+import { Database, Sparkles, Activity, Trophy } from "lucide-react";
+
+const TAB_KEYS = ["core", "ai", "realtime", "goals"] as const;
+type TabKey = (typeof TAB_KEYS)[number];
+
+const TAB_META: Record<TabKey, { labelKey: string; promiseKey: string; descKey: string; icon: React.ElementType; relatedPlanId: string }> = {
+  core: { labelKey: "tab1Label", promiseKey: "tab1Promise", descKey: "tab1Desc", icon: Database, relatedPlanId: "plan-free" },
+  ai: { labelKey: "tab2Label", promiseKey: "tab2Promise", descKey: "tab2Desc", icon: Sparkles, relatedPlanId: "plan-basic" },
+  realtime: { labelKey: "tab3Label", promiseKey: "tab3Promise", descKey: "tab3Desc", icon: Activity, relatedPlanId: "plan-family" },
+  goals: { labelKey: "tab4Label", promiseKey: "tab4Promise", descKey: "tab4Desc", icon: Trophy, relatedPlanId: "plan-pro" },
+};
+
+const TAB_DATA: Record<TabKey, typeof coreFeatures> = {
+  core: coreFeatures,
+  ai: aiFeatures,
+  realtime: realtimeFeatures,
+  goals: gamificationFeatures,
+};
 
 export default function ServicesPage() {
   const t = useTranslations("services");
-  const [activeTab, setActiveTab] = useState("core");
+  const [activeTab, setActiveTab] = useState<TabKey>("core");
 
   return (
     <div className="pt-16 md:pt-20">
-
       {/* ── HERO ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-night-900 via-night-800 to-night-900 py-20">
+      <Section
+        tone="dark"
+        padding="lg"
+        contained={false}
+        aria-labelledby="services-hero-title"
+      >
+        <AtmosphereGrid />
+        <AtmosphereGlow variant="soft" />
         <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-warm-peach/10 blur-[100px]" />
         <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-night-400/15 blur-[80px]" />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
-            {/* Text column */}
             <div>
               <Badge className="mb-4 border-0 bg-gradient-to-r from-warm-rose/80 to-warm-peach/80 text-night-900 font-bold shadow-sm shadow-warm-rose/20 hover:brightness-105">
                 {t("badge")}
               </Badge>
-              <h1 className="mb-4 text-4xl font-extrabold text-white sm:text-5xl">{t("title")}</h1>
-              <p className="text-lg text-night-100/70">{t("subtitle")}</p>
+              <h1
+                id="services-hero-title"
+                className="mb-4 text-4xl font-extrabold text-white sm:text-5xl"
+              >
+                {t("title")}
+              </h1>
+              <p className="text-lg text-night-100/80">{t("subtitle")}</p>
             </div>
-            {/* Robot Doctor — priority since this is the page hero */}
             <div className="flex items-center justify-center">
               <AnimatedIllustration
                 src="/illustrations/robot_doctor.svg"
@@ -46,72 +76,114 @@ export default function ServicesPage() {
             </div>
           </div>
         </div>
-      </section>
+      </Section>
+
+      {/* ── SERVICES AT A GLANCE ────────────────────────────── */}
+      <Section
+        tone="muted"
+        padding="md"
+        overflow="visible"
+        aria-labelledby="services-overview-title"
+      >
+        <SectionHeader
+          id="services-overview-title"
+          eyebrow={t("overviewBadge")}
+          title={t("overviewTitle")}
+          subtitle={t("overviewSubtitle")}
+          align="center"
+        />
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {TAB_KEYS.map((key) => {
+            const meta = TAB_META[key];
+            const Icon = meta.icon;
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(key);
+                    document
+                      .getElementById("services-tabs")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="group flex h-full w-full flex-col rounded-2xl border border-border/60 bg-card p-5 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-night-400/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-night-400 focus-visible:ring-offset-2"
+                >
+                  <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-night-700/15 to-night-400/15 text-night-700 dark:text-night-300">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="mb-1 text-base font-semibold text-foreground">
+                    {t(meta.labelKey)}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {t(meta.promiseKey)}
+                  </p>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Section>
 
       {/* ── FEATURE TABS ─────────────────────────────────────── */}
-      <section className="relative overflow-hidden py-20">
-        <LeftDecoration className="top-10 hidden lg:block" />
-        <RightDecoration className="top-10 hidden lg:block" />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mx-auto mb-4 flex h-auto w-fit flex-wrap gap-2 bg-background/50">
-              <TabsTrigger value="core">{t("tab1Label")}</TabsTrigger>
-              <TabsTrigger value="ai">{t("tab2Label")}</TabsTrigger>
-              <TabsTrigger value="realtime">{t("tab3Label")}</TabsTrigger>
-              <TabsTrigger value="goals">{t("tab4Label")}</TabsTrigger>
-            </TabsList>
+      <Section
+        id="services-tabs"
+        tone="default"
+        padding="md"
+        aria-labelledby="services-tabs-title"
+      >
+        <h2 id="services-tabs-title" className="sr-only">
+          {t("title")}
+        </h2>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as TabKey)}
+          className="w-full"
+        >
+          <TabsList className="mx-auto mb-4 flex h-auto w-fit flex-wrap gap-2 bg-background/50">
+            {TAB_KEYS.map((key) => (
+              <TabsTrigger key={key} value={key}>
+                {t(TAB_META[key].labelKey)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-            {/* Tab descriptions */}
-            <div className="mb-10 text-center">
-              {activeTab === "core" && (
-                <p className="text-sm text-muted-foreground">{t("tab1Desc")}</p>
-              )}
-              {activeTab === "ai" && (
-                <p className="text-sm text-muted-foreground">{t("tab2Desc")}</p>
-              )}
-              {activeTab === "realtime" && (
-                <p className="text-sm text-muted-foreground">{t("tab3Desc")}</p>
-              )}
-              {activeTab === "goals" && (
-                <p className="text-sm text-muted-foreground">{t("tab4Desc")}</p>
-              )}
-            </div>
+          {/* Tab promise + related plan */}
+          <div className="mb-10 flex flex-col items-center gap-2 text-center">
+            <p className="text-sm text-muted-foreground">
+              {t(TAB_META[activeTab].descKey)}
+            </p>
+            <Link
+              href={`/plans#${TAB_META[activeTab].relatedPlanId}`}
+              className="text-sm font-semibold text-night-700 underline-offset-4 hover:underline dark:text-night-300"
+            >
+              {t("seeRelatedPlan")}
+            </Link>
+          </div>
 
-            <TabsContent value="core">
+          {TAB_KEYS.map((key) => (
+            <TabsContent key={key} value={key}>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {coreFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
+                {TAB_DATA[key].map((svc) => (
+                  <ServiceCard key={svc.id} service={svc} />
+                ))}
               </div>
             </TabsContent>
-            <TabsContent value="ai">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {aiFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
-              </div>
-            </TabsContent>
-            <TabsContent value="realtime">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {realtimeFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
-              </div>
-            </TabsContent>
-            <TabsContent value="goals">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {gamificationFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </section>
+          ))}
+        </Tabs>
+      </Section>
 
       {/* ── CONTACT ──────────────────────────────────────────── */}
-      <section className="bg-night-900 py-20 text-white">
+      <Section tone="dark" padding="md" contained={false}>
         <div className="mx-auto max-w-lg px-4 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
-            <h2 className="mb-3 text-3xl font-extrabold">{t("pageTitle")}</h2>
-            <p className="text-night-100/70">Fill in your information below to receive free consultation.</p>
+            <h2 className="mb-3 text-3xl font-extrabold text-white">
+              {t("contactTitle")}
+            </h2>
+            <p className="text-night-100/80">{t("contactSubtitle")}</p>
           </div>
           <ContactForm />
         </div>
-      </section>
-
+      </Section>
     </div>
   );
 }
