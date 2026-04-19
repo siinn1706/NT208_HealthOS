@@ -76,6 +76,7 @@ export function ChatWindow({
     onAiStreamStarted,
     onAiStreamChunk,
     onAiStreamCompleted,
+    refetchActiveConversation,
   } = useMessages(conversation.id, currentUserId, { selfReactionLabel: t("you") });
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -214,6 +215,10 @@ export function ChatWindow({
   } = useChatWs({
     onEvent: handleWsEvent,
     enabled: wsEnabled,
+    // After a transient WS drop, refetch the active conversation so any AI
+    // bot reply that completed while we were offline replaces the stuck
+    // `streaming` placeholder with the final DB row (FE review C6).
+    onReconnect: refetchActiveConversation,
   });
 
   const isOnline = useOnlineStatus();
