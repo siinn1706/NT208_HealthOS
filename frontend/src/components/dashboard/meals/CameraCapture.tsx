@@ -49,6 +49,14 @@ interface AnalysisResult {
   meal_type: "breakfast" | "lunch" | "dinner" | "snack";
   ingredients: AnalysisIngredient[];
   estimatedCalories: number | null;
+  nutrition?: {
+    dish_name?: string;
+    serving_type?: string;
+    saturates_g?: number;
+    sugar_g?: number;
+    salt_g?: number;
+    source?: string;
+  };
   confidence: number | null;
   imageDataUrl?: string | null;
 }
@@ -191,6 +199,12 @@ export function CameraCapture() {
         | {
             calories?: number | null;
             confidence?: number | null;
+            dish_name?: string;
+            serving_type?: string;
+            saturates_g?: number;
+            sugar_g?: number;
+            salt_g?: number;
+            source?: string;
           }
         | null;
 
@@ -223,6 +237,26 @@ export function CameraCapture() {
           typeof nutrition?.confidence === "number"
             ? nutrition.confidence
             : null,
+        nutrition: nutrition
+          ? {
+              dish_name:
+                typeof nutrition.dish_name === "string" ? nutrition.dish_name : undefined,
+              serving_type:
+                typeof nutrition.serving_type === "string"
+                  ? nutrition.serving_type
+                  : undefined,
+              saturates_g:
+                typeof nutrition.saturates_g === "number"
+                  ? nutrition.saturates_g
+                  : undefined,
+              sugar_g:
+                typeof nutrition.sugar_g === "number" ? nutrition.sugar_g : undefined,
+              salt_g:
+                typeof nutrition.salt_g === "number" ? nutrition.salt_g : undefined,
+              source:
+                typeof nutrition.source === "string" ? nutrition.source : undefined,
+            }
+          : undefined,
         imageDataUrl: imageDataUrl ?? null,
       };
     },
@@ -641,6 +675,50 @@ export function CameraCapture() {
             )}
           </div>
 
+          {analysisResult.nutrition && (
+            <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {t("nutritionDetails")}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-md bg-rose-500/10 px-2 py-1.5 text-center">
+                  <p className="text-[10px] text-muted-foreground">{t("saturates")}</p>
+                  <p className="text-xs font-bold text-rose-500 tabular-nums">
+                    {(analysisResult.nutrition.saturates_g ?? 0).toFixed(1)}g
+                  </p>
+                </div>
+                <div className="rounded-md bg-fuchsia-500/10 px-2 py-1.5 text-center">
+                  <p className="text-[10px] text-muted-foreground">{t("sugar")}</p>
+                  <p className="text-xs font-bold text-fuchsia-500 tabular-nums">
+                    {(analysisResult.nutrition.sugar_g ?? 0).toFixed(1)}g
+                  </p>
+                </div>
+                <div className="rounded-md bg-sky-500/10 px-2 py-1.5 text-center">
+                  <p className="text-[10px] text-muted-foreground">{t("salt")}</p>
+                  <p className="text-xs font-bold text-sky-500 tabular-nums">
+                    {(analysisResult.nutrition.salt_g ?? 0).toFixed(1)}g
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                {analysisResult.nutrition.dish_name && (
+                  <span className="rounded border border-border px-2 py-0.5">
+                    {analysisResult.nutrition.dish_name}
+                  </span>
+                )}
+                {analysisResult.nutrition.source && (
+                  <span className="rounded bg-muted px-2 py-0.5 uppercase">
+                    {analysisResult.nutrition.source}
+                  </span>
+                )}
+                {analysisResult.nutrition.serving_type && (
+                  <span>{t("serving")}: {analysisResult.nutrition.serving_type}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Accuracy notice */}
           <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-xl px-4 py-3">
             {t("aiDisclaimer")}
           </p>

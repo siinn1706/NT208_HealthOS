@@ -56,6 +56,13 @@ interface MessageListProps {
   messages: Message[];
   currentUserId: string | null;
   participantNameById: Record<string, string>;
+  /**
+   * UUID of the AI bot participant for this conversation, derived from
+   * ``conversation.participants`` (role === "assistant" or is_system).
+   * When a message's ``sender_id`` matches this id we render the AI bubble.
+   * Falls back to the legacy display-name heuristic when null (dev fallback).
+   */
+  aiBotUserId?: string | null;
   isTyping: boolean;
   backgroundUrl?: string | null;
   hasMore?: boolean;
@@ -84,6 +91,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     messages,
     currentUserId,
     participantNameById,
+    aiBotUserId,
     isTyping,
     backgroundUrl,
     hasMore = false,
@@ -390,9 +398,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       const msg = messages[dataIndex];
       if (!msg) return null;
       const isOwn = !!currentUserId && msg.sender_id === currentUserId;
-      // Authoritative: derive AI affordance from sender_kind (set by the BFF
-      // adapter); never infer from display name to prevent spoofing.
-      const isAi = msg.sender_kind === "ai" || msg.sender_id === "ai";
+      // Authoritative AI detection — prefer the explicit `sender_kind` field
+      // sent by the BE (single source of truth, no spoofing). Fall back to a
+      // UUID match against the bot participant when the BE hasn't been
+      // updated yet, and to the legacy `"ai"` sentinel only for the dev
+      // FALLBACK_AI_CONVERSATION (no real participants list).
+      const isAi =
+        msg.sender_kind === "ai" ||
+        (aiBotUserId ? msg.sender_id === aiBotUserId : msg.sender_id === "ai");
       const prev = messages[dataIndex - 1];
       const next = messages[dataIndex + 1];
 
@@ -481,6 +494,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       onRetry,
       onDiscard,
       handleDateClick,
+      aiBotUserId,
     ]
   );
 

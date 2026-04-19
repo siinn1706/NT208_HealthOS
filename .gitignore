@@ -36,6 +36,8 @@ backend/app/core/__pycache__/
 venv/
 .pytest_cache/
 .hypothesis/
+.coverage
+coverage/
 
 # Env files
 .env
@@ -56,6 +58,13 @@ Thumbs.db
 *.log
 infra/logs/*
 !infra/logs/.gitkeep
+
+# Runtime/test artifacts
+frontend/test-results/
+TEST-MANIFEST.md
+
+# AI local model cache (model is distributed via Google Drive)
+services/ai-worker/models/
 
 # Ignore local infrastructure data
 .data/

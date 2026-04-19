@@ -58,6 +58,47 @@ function readUnreadCount(json: unknown): number | null {
   return null;
 }
 
+/**
+ * Validate a notification destination supplied by the server. Notifications
+ * persist server-side and could carry hostile values either through a server
+ * compromise or a malicious actor; we therefore refuse anything that is not
+ * a same-origin path or a same-origin http(s) URL.
+ *
+ * Blocks `javascript:`, `data:`, `vbscript:`, scheme-relative `//evil.com`,
+ * and any cross-origin URL.
+ */
+function isSafeNotificationDest(dest: string): boolean {
+  if (typeof dest !== "string" || dest.length === 0) return false;
+  // Reject scheme-relative URLs ("//evil.com") and obvious dangerous schemes
+  // before parsing — `new URL("javascript:alert(1)", origin)` happily resolves
+  // to the javascript URL with the host set to the page origin, which is the
+  // exact case we need to defeat.
+  const trimmed = dest.trim();
+  if (trimmed.startsWith("//")) return false;
+  const lowered = trimmed.toLowerCase();
+  if (
+    lowered.startsWith("javascript:") ||
+    lowered.startsWith("data:") ||
+    lowered.startsWith("vbscript:") ||
+    lowered.startsWith("file:")
+  ) {
+    return false;
+  }
+
+  // Path-relative (starts with `/` but not `//`) is always same-origin.
+  if (trimmed.startsWith("/")) return true;
+
+  // Absolute URL: require same-origin http(s).
+  if (typeof window === "undefined") return false;
+  try {
+    const url = new URL(trimmed, window.location.origin);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    return url.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 function readHasMore(json: unknown): boolean {
   if (!json || typeof json !== "object") return false;
   const meta = (json as { meta?: unknown }).meta;
@@ -205,15 +246,33 @@ export function NotificationsPopover({ locale }: { locale: string }) {
       const unread = !(n.is_read || n.read_at);
       if (unread) markRead(n.id);
       const dest = n.link ?? n.href;
-      if (dest) {
-        // Prefer SPA navigation; absolute URLs fall through to a hard link.
-        if (dest.startsWith("/")) {
-          router.push(dest);
-        } else {
-          window.location.assign(dest);
+      if (!dest) return;
+
+      // P0: validate before navigating. A compromised notification could carry
+      // `javascript:`, `data:`, or a cross-origin URL. Reject silently and log
+      // for ops visibility.
+      if (!isSafeNotificationDest(dest)) {
+        let originForLog = "invalid";
+        try {
+          originForLog =
+            typeof window !== "undefined"
+              ? new URL(dest, window.location.origin).origin
+              : "unknown";
+        } catch {
+          /* keep "invalid" */
         }
+        track("shell.notifications.unsafe_href_blocked", { url_origin: originForLog });
         setOpen(false);
+        return;
       }
+
+      // Same-origin path → SPA navigation; same-origin absolute URL → hard link.
+      if (dest.startsWith("/")) {
+        router.push(dest);
+      } else {
+        window.location.assign(dest);
+      }
+      setOpen(false);
     },
     [markRead, router],
   );

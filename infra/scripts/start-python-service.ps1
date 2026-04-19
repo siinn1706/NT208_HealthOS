@@ -15,6 +15,49 @@ $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $VenvDir = Join-Path $ServiceDir ".venv"
 $PythonExe = Join-Path $VenvDir "Scripts\python.exe"
 
+function Resolve-BootstrapPython {
+    $candidates = @(
+        [pscustomobject]@{
+            Command    = "python"
+            VersionArgs = @("--version")
+            PrefixArgs  = @()
+            Label       = "python"
+        },
+        [pscustomobject]@{
+            Command    = "py"
+            VersionArgs = @("-3.12", "--version")
+            PrefixArgs  = @("-3.12")
+            Label       = "py -3.12"
+        },
+        [pscustomobject]@{
+            Command    = "py"
+            VersionArgs = @("-3", "--version")
+            PrefixArgs  = @("-3")
+            Label       = "py -3"
+        }
+    )
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-CommandAvailable $candidate.Command)) {
+            continue
+        }
+
+        try {
+            & $candidate.Command @($candidate.VersionArgs) > $null 2>&1
+            $candidateExitCode = $LASTEXITCODE
+        }
+        catch {
+            $candidateExitCode = 1
+        }
+
+        if ($candidateExitCode -eq 0) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 $ScriptLogFile = Resolve-LogFilePath -RepoRoot $RepoRoot -DefaultName $LogPrefix -RequestedPath $LogFile
 Start-HealthOSTranscript -LogFilePath $ScriptLogFile
 
@@ -30,9 +73,17 @@ if ($CheckOnly) {
 }
 
 if (-not (Test-Path $VenvDir)) {
-    if (-not (Test-CommandAvailable "python")) { throw "$tag Python command not found. Install Python and ensure it is on PATH." }
-    Write-Host "$tag Creating virtual environment..." -ForegroundColor Cyan
-    python -m venv .venv
+    $bootstrapPython = Resolve-BootstrapPython
+    if (-not $bootstrapPython) {
+        throw "$tag No usable Python launcher found. If pyenv is installed, run `pyenv global 3.12.x` or `pyenv local 3.12.x`, then retry."
+    }
+
+    Write-Host "$tag Creating virtual environment (via $($bootstrapPython.Label))..." -ForegroundColor Cyan
+    $venvArgs = @() + $bootstrapPython.PrefixArgs + @("-m", "venv", ".venv")
+    & $bootstrapPython.Command @venvArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "$tag Failed to create virtual environment using $($bootstrapPython.Label)."
+    }
 }
 
 if (-not (Test-Path $PythonExe)) { throw "$tag Python executable not found at $PythonExe" }

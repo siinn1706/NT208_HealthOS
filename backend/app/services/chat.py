@@ -52,6 +52,20 @@ def _build_reaction_dtos(reactions: list[MessageReaction]) -> list[ReactionDTO]:
     ]
 
 
+def _resolve_sender_kind(msg: Message) -> str:
+    """
+    Authoritative origin for the FE — `"ai"` when the sender is the system AI
+    bot, `"system"` when the message has no sender (server-issued banner), and
+    `"user"` for everything else. Computed server-side so the FE can never
+    misclassify a real user as the AI bot (or vice-versa).
+    """
+    if msg.sender is None:
+        return "system"
+    if getattr(msg.sender, "is_system", False):
+        return "ai"
+    return "user"
+
+
 def _build_message_dto(
     msg: Message,
     pinned_ids: set[uuid.UUID] | None = None,
@@ -81,6 +95,7 @@ def _build_message_dto(
             if msg.sender and msg.sender.profile
             else None
         ),
+        sender_kind=_resolve_sender_kind(msg),  # type: ignore[arg-type]
         client_message_id=msg.client_message_id,
         content=msg.content if not msg.is_recalled else "",
         content_type=msg.content_type.value,  # type: ignore[arg-type]
@@ -90,6 +105,7 @@ def _build_message_dto(
         is_recalled=msg.is_recalled,
         reactions=_build_reaction_dtos(msg.reactions),
         is_pinned=bool(pinned_ids and msg.id in pinned_ids),
+        ai_metadata=getattr(msg, "ai_metadata", None),
         created_at=msg.created_at,
         edited_at=msg.edited_at,
     )
@@ -153,6 +169,8 @@ async def _build_conversation_dto(
                     display_name=m.user.display_name,
                     avatar_url=m.user.profile.avatar_url if m.user.profile else None,
                     is_online=is_online,
+                    role=m.role or "member",
+                    is_system=bool(getattr(m.user, "is_system", False)),
                 )
             )
 
@@ -249,6 +267,15 @@ async def _ensure_ai_conversation(
         )
     )
     await db.flush()
+
+    # Auto-add the AI bot as an "assistant" member so the FE participants list
+    # surfaces the bot identity (avatar, display name) without extra lookups.
+    # Tolerated to fail in tests where the migration may not have run.
+    try:
+        from app.services.ai_bot import ensure_ai_bot_member
+        await ensure_ai_bot_member(db, conv.id)
+    except RuntimeError:
+        pass
 
     return await _reload_conversation(db, conv.id)
 

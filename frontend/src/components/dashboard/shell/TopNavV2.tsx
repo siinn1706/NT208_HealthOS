@@ -33,6 +33,7 @@ import { CommandPalette } from "./CommandPalette";
 import { NotificationsPopover } from "./NotificationsPopover";
 import { routing } from "@/i18n/routing";
 import { track } from "@/lib/analytics";
+import { purgeAllUserScoped } from "@/lib/user-scoped-storage";
 
 interface TopNavV2Props {
   userName?: string;
@@ -90,6 +91,14 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
       await fetch("/api/v1/auth/session", { method: "DELETE" });
       track("auth.logout.completed");
     } finally {
+      // P0: wipe every `healthos.*` localStorage key + `healthos-chat-*`
+      // IndexedDB so user-A's drafts/queues/cooldowns don't leak to user-B
+      // on a shared device. Best-effort, capped at ~1.5s per IDB delete.
+      try {
+        await purgeAllUserScoped();
+      } catch {
+        /* never block logout on storage cleanup */
+      }
       router.push(`/${locale}/login`);
     }
   };

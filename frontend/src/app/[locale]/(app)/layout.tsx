@@ -2,6 +2,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { AppShell } from "@/components/dashboard/shell";
 import { AccentColorProvider } from "@/components/providers/accent-color-provider";
 import { ThemeModeBootstrap } from "@/components/providers/theme-mode-bootstrap";
+import { ClientStorageMigration } from "@/components/providers/client-storage-migration";
 import { headers } from "next/headers";
 
 interface SessionResponse {
@@ -93,6 +94,7 @@ export default async function AppLayout({
   return (
     <>
       <ThemeModeBootstrap serverThemeMode={initialThemeMode} />
+      <ClientStorageMigration />
       <AccentColorProvider initialAccent={initialAccent}>
         <AppShell userName={user.name} userAvatar={user.avatarUrl ?? undefined}>
           {children}

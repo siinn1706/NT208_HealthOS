@@ -33,6 +33,15 @@ type UseChatWsOptions = {
   onEvent: (frame: WsFrame) => void;
   /** Whether the hook should attempt to connect at all. */
   enabled?: boolean;
+  /**
+   * Fired the first time the socket opens AFTER a transient drop (i.e. once
+   * `reconnectAttemptsRef` was non-zero on the previous open). Consumers
+   * use this to refetch any state that may have changed while the WS was
+   * offline — e.g. the active conversation's messages so a stuck "streaming"
+   * AI bubble gets replaced with the final DB row (CRITICAL C6 in the FE
+   * review). Does NOT fire on the initial connect.
+   */
+  onReconnect?: () => void;
 };
 
 type UseChatWsResult = {
@@ -57,6 +66,7 @@ type UseChatWsResult = {
 export function useChatWs({
   onEvent,
   enabled = true,
+  onReconnect,
 }: UseChatWsOptions): UseChatWsResult {
   const [status, setStatus] = useState<WsStatus>("disconnected");
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -67,13 +77,17 @@ export function useChatWs({
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intentionalCloseRef = useRef(false);
   const onEventRef = useRef(onEvent);
+  const onReconnectRef = useRef(onReconnect);
   // Ref to hold latest connect function — avoids circular useCallback dependency
   const connectRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
-  // Keep onEvent ref in sync so we don't need it as a dependency
+  // Keep callback refs in sync so we don't need them as connect() deps.
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
+  useEffect(() => {
+    onReconnectRef.current = onReconnect;
+  }, [onReconnect]);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -114,6 +128,10 @@ export function useChatWs({
     wsRef.current = ws;
 
     ws.onopen = () => {
+      // Snapshot BEFORE we reset the counter so we can tell whether this
+      // open is a fresh subscribe or a recovery from a transient drop.
+      const wasReconnect = reconnectAttemptsRef.current > 0;
+
       setStatus("connected");
       setSessionExpired(false);
       setIsReconnecting(false);
@@ -121,6 +139,19 @@ export function useChatWs({
 
       // Send handshake
       ws.send(JSON.stringify({ event: "client:hello", payload: {} }));
+
+      // Tell the consumer to refetch any state that may have changed while
+      // the WS was offline (active conversation messages, unread counts, …).
+      // Critically rescues stuck `streaming` AI bubbles: the worker may have
+      // landed `ai:completed` while we were disconnected, and the only way
+      // to get the final content is to GET the message list again.
+      if (wasReconnect) {
+        try {
+          onReconnectRef.current?.();
+        } catch {
+          /* never let consumer errors break the socket */
+        }
+      }
     };
 
     ws.onmessage = (evt) => {

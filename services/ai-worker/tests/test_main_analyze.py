@@ -10,9 +10,12 @@ client = TestClient(app)
 def test_analyze_endpoint_success(monkeypatch: Any) -> None:
     class StubRaw:
         dish_name = "Pho bo"
+        serving_type = "1 serving"
         calories = 450.0
         fat_g = 12.0
+        saturates_g = 4.0
         sugar_g = 3.0
+        salt_g = 1.1
         confidence = 0.91
         source = "yolo"
 
@@ -33,7 +36,9 @@ def test_analyze_endpoint_success(monkeypatch: Any) -> None:
     payload = response.json()
     assert payload["meal_id"] == "meal-1"
     assert payload["status"] == "analyzed"
+    assert payload["nutrition"]["dish_name"] == "Pho bo"
     assert payload["nutrition"]["calories"] == 450.0
+    assert payload["nutrition"]["saturates_g"] == 4.0
 
 
 def test_analyze_endpoint_bad_image(monkeypatch: Any) -> None:
@@ -49,3 +54,4 @@ def test_analyze_endpoint_bad_image(monkeypatch: Any) -> None:
         json={"meal_id": "meal-1", "image_url": "https://example.com/not-image"},
     )
     assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "IMAGE_LOAD_FAILED"

@@ -45,3 +45,35 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 |--------|------|--------|
 | GET | `/health` | Health check |
 | POST | `/analyze` | Phân tích ảnh bữa ăn |
+
+## FoodDetector assets
+
+- Model path (local): `services/ai-worker/models/yolov10/YOLOv10b_VietFood67_SGD_new_bigger.pt`
+- Google Drive file id: `AI_YOLO_GDRIVE_FILE_ID` in `services/ai-worker/.env`
+- Optional integrity hash: `AI_YOLO_MODEL_SHA256` (recommended for strict verification)
+- Class database: `services/ai-worker/data/class_names.py`
+- Team key: `GEMINI_API_KEY` dùng chung qua file env nội bộ, không commit
+- Khi thiếu model/class db, service sẽ tự fallback qua Gemini để vẫn trả nutrition.
+
+Download model manually:
+
+```powershell
+.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env
+```
+
+```bash
+bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
+```
+
+## Credits and attribution
+
+Tính năng nhận diện món ăn và nutrition được tích hợp từ dự án [FoodDetector](https://github.com/nvhnam/FoodDetector) với YOLOv10 trên VietFood67.
+
+- Nguyen Viet Hoang Nam - Project Lead, YOLOv10 Trainer
+- Tran Bao Tu - UI/UX Designer
+- Ton That Minh Vu - Dataset Gathering
+- Dr. Vi Chi Thanh - Research Supervisor
+
+License gốc: MIT (Copyright © 2025 Nguyen Viet Hoang Nam).
+
+Nếu sử dụng cho nghiên cứu/học thuật, cần trích dẫn đúng nguồn theo khuyến nghị của tác giả.

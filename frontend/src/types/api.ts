@@ -85,11 +85,17 @@ export interface UserProfileUpdate {
 export type MealStatus = "pending" | "processing" | "analyzed" | "failed";
 
 export interface NutritionResult {
+  dish_name?: string;
+  serving_type?: string;
   calories: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  saturates_g?: number;
+  sugar_g?: number;
+  salt_g?: number;
   confidence: number;
+  source?: string;
 }
 
 /** A single ingredient entry within a meal */
@@ -461,13 +467,21 @@ export type ConversationType = "direct" | "group" | "ai";
 export type MessageType = "text" | "image" | "file" | "audio" | "system";
 /**
  * Message lifecycle status.
- * - `queued`  — composed offline, waiting in the outbound queue for reconnect.
- * - `sending` — handed to the WS layer, no ACK yet.
- * - `sent`    — server stored the message.
+ * - `queued`    — composed offline, waiting in the outbound queue for reconnect.
+ * - `sending`   — handed to the WS layer, no ACK yet.
+ * - `streaming` — AI bot reply currently appending tokens via WS chunks.
+ * - `sent`      — server stored the message.
  * - `delivered` / `read` — recipient-side ACKs.
- * - `failed`  — terminal, requires explicit user retry.
+ * - `failed`    — terminal, requires explicit user retry.
  */
-export type MessageStatus = "queued" | "sending" | "sent" | "delivered" | "read" | "failed";
+export type MessageStatus =
+  | "queued"
+  | "sending"
+  | "streaming"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed";
 
 /**
  * Authoritative origin of a chat message.
@@ -486,6 +500,10 @@ export interface ChatParticipant {
   email: string;
   is_online: boolean;
   last_seen: string | null;
+  /** Backend conversation_member role: "owner" | "member" | "admin" | "assistant". */
+  role?: string;
+  /** True for system bot accounts (e.g. HealthOS AI Assistant). */
+  is_system?: boolean;
 }
 
 export interface MessageReaction {
