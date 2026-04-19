@@ -9,11 +9,17 @@ from app.schemas.common import DataResponse, PaginatedResponse
 
 
 class NutritionResult(BaseModel):
+    dish_name: str | None = None
+    serving_type: str | None = None
     calories: float | None = None
     protein_g: float | None = None
     carbs_g: float | None = None
     fat_g: float | None = None
+    saturates_g: float | None = None
+    sugar_g: float | None = None
+    salt_g: float | None = None
     confidence: float | None = None
+    source: str | None = None
 
 
 class MealResponse(BaseModel):

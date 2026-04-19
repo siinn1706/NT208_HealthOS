@@ -14,11 +14,17 @@ class AnalyzeMealRequest(BaseModel):
 class NutritionResult(BaseModel):
     """Normalized nutrition payload used by Core."""
 
+    dish_name: str = ""
+    serving_type: str = "1 serving"
     calories: float = 0.0
     protein_g: float = 0.0
     carbs_g: float = 0.0
     fat_g: float = 0.0
+    saturates_g: float = 0.0
+    sugar_g: float = 0.0
+    salt_g: float = 0.0
     confidence: float = 0.0
+    source: str = "yolo"
 
 
 class AnalyzeMealResponse(BaseModel):

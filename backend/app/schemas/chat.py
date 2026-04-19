@@ -29,6 +29,8 @@ class ParticipantDTO(BaseModel):
     avatar_url: str | None = None
     is_online: bool = False
     last_seen_at: datetime.datetime | None = None
+    role: str = "member"
+    is_system: bool = False
 
 
 class AttachmentDTO(BaseModel):
@@ -58,6 +60,9 @@ class ReplyPreviewDTO(BaseModel):
 # Message DTOs
 # ──────────────────────────────────────────────────────────────────────────────
 
+MessageSenderKind = Literal["user", "ai", "system"]
+
+
 class MessageDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -66,6 +71,11 @@ class MessageDTO(BaseModel):
     sender_id: uuid.UUID | None = None
     sender_display_name: str | None = None
     sender_avatar_url: str | None = None
+    # Authoritative origin of this message — drives FE AI/system/user
+    # affordances (badge, disclaimer, markdown, quick replies). Never derive
+    # this from sender_display_name on the client; spoofing the display name
+    # to contain "ai" must not be enough to impersonate the AI bot.
+    sender_kind: MessageSenderKind = "user"
     client_message_id: str | None = None
     content: str
     content_type: MessageContentType = "text"
@@ -75,6 +85,10 @@ class MessageDTO(BaseModel):
     is_recalled: bool = False
     reactions: list[ReactionDTO] = []
     is_pinned: bool = False
+    # AI-only metadata — model name, token counts, latency_ms, finish_reason,
+    # safety_blocked, streamed. Operator/cost-tracking only; never surfaced
+    # to other users in the same conversation.
+    ai_metadata: dict | None = None
     created_at: datetime.datetime
     edited_at: datetime.datetime | None = None
 

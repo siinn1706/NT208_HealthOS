@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useMessages, useTypingState } from "@/hooks/useChat";
+import { useMessages, useTypingState, findAiBotUserId } from "@/hooks/useChat";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
@@ -73,6 +73,10 @@ export function ChatWindow({
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
+    onAiStreamStarted,
+    onAiStreamChunk,
+    onAiStreamCompleted,
+    refetchActiveConversation,
   } = useMessages(conversation.id, currentUserId, { selfReactionLabel: t("you") });
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -83,7 +87,10 @@ export function ChatWindow({
   const messageListRef = useRef<MessageListHandle>(null);
 
   const convId = conversation.id;
-  const wsEnabled = conversation.type !== "ai";
+  // AI conversations now flow through the same WS pipeline as human chat —
+  // the BE orchestrator persists + broadcasts the bot's reply, including
+  // streaming chunks (ai:* / chat.message.ai_* events).
+  const wsEnabled = true;
 
   const handleWsEvent = useCallback((frame: WsFrame) => {
     const payload = frame.payload as Record<string, unknown>;
@@ -149,6 +156,32 @@ export function ChatWindow({
       return;
     }
 
+    // ── AI streaming events ────────────────────────────────────────────────
+    if (frame.event === "ai:started" || frame.event === "chat.message.ai_started") {
+      if (payloadConvId && payloadConvId !== convId) return;
+      onAiStreamStarted({
+        message_id: typeof payload.message_id === "string" ? payload.message_id : undefined,
+        conversation_id: payloadConvId,
+        sender_id: typeof payload.sender_id === "string" ? payload.sender_id : undefined,
+      });
+      return;
+    }
+
+    if (frame.event === "ai:chunk" || frame.event === "chat.message.ai_chunk") {
+      if (payloadConvId && payloadConvId !== convId) return;
+      onAiStreamChunk({
+        message_id: typeof payload.message_id === "string" ? payload.message_id : undefined,
+        delta: typeof payload.delta === "string" ? payload.delta : undefined,
+      });
+      return;
+    }
+
+    if (frame.event === "ai:completed" || frame.event === "chat.message.ai_completed") {
+      if (payloadConvId && payloadConvId !== convId) return;
+      onAiStreamCompleted(payload);
+      return;
+    }
+
     if (frame.event === "typing" || frame.event === "chat.typing") {
       if (payloadConvId && payloadConvId !== convId) return;
       const senderId = typeof payload.user_id === "string" ? payload.user_id : null;
@@ -160,7 +193,18 @@ export function ChatWindow({
     if (frame.event === "conversation.updated") {
       onConversationUpdate?.(payload);
     }
-  }, [convId, upsertMessage, setPinnedState, setRemoteTyping, onIncomingMessage, onConversationUpdate, currentUserId]);
+  }, [
+    convId,
+    upsertMessage,
+    setPinnedState,
+    setRemoteTyping,
+    onIncomingMessage,
+    onConversationUpdate,
+    currentUserId,
+    onAiStreamStarted,
+    onAiStreamChunk,
+    onAiStreamCompleted,
+  ]);
 
   const {
     sendEvent,
@@ -171,6 +215,10 @@ export function ChatWindow({
   } = useChatWs({
     onEvent: handleWsEvent,
     enabled: wsEnabled,
+    // After a transient WS drop, refetch the active conversation so any AI
+    // bot reply that completed while we were offline replaces the stuck
+    // `streaming` placeholder with the final DB row (FE review C6).
+    onReconnect: refetchActiveConversation,
   });
 
   const isOnline = useOnlineStatus();
@@ -439,6 +487,10 @@ export function ChatWindow({
       }, {}),
     [conversation.participants]
   );
+  const aiBotUserId = useMemo(
+    () => findAiBotUserId(conversation.participants),
+    [conversation.participants]
+  );
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
@@ -506,6 +558,7 @@ export function ChatWindow({
             messages={messages}
             currentUserId={currentUserId}
             participantNameById={participantNameById}
+            aiBotUserId={aiBotUserId}
             isTyping={isTyping}
             hasMore={hasMore}
             loadMore={loadMore}

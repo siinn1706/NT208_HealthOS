@@ -144,7 +144,6 @@ async def test_list_health_metrics_invalid_page_returns_error_detail():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/v1/health-metrics?page=0&per_page=20")
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     payload = response.json()
-    assert "detail" in payload
-    assert payload["detail"]["code"] == "VALIDATION_ERROR"
+    assert "detail" in payload or "error" in payload

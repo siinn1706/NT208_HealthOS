@@ -10,14 +10,31 @@ from app.models.core import Meal, MealStatusEnum
 from app.tasks import celery_app
 
 
-_NUTRITION_KEYS = {"calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "confidence"}
+_NUMERIC_NUTRITION_KEYS = {
+    "calories",
+    "protein_g",
+    "carbs_g",
+    "fat_g",
+    "saturates_g",
+    "sugar_g",
+    "salt_g",
+    "fiber_g",
+    "confidence",
+}
+_STRING_NUTRITION_KEYS = {"dish_name", "serving_type", "source"}
 
 
 def _validate_nutrition(data: dict) -> dict:
     """Sanitize AI Worker nutrition response to expected schema."""
     if not isinstance(data, dict):
         return {}
-    return {k: float(v) for k, v in data.items() if k in _NUTRITION_KEYS and isinstance(v, (int, float))}
+    normalized: dict[str, float | str] = {}
+    for key, value in data.items():
+        if key in _NUMERIC_NUTRITION_KEYS and isinstance(value, (int, float)):
+            normalized[key] = float(value)
+        elif key in _STRING_NUTRITION_KEYS and isinstance(value, str):
+            normalized[key] = value
+    return normalized
 
 
 def update_meal_status_sync(

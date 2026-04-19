@@ -83,7 +83,9 @@ export type AnalyticsEvent =
   | "achievements.tab.changed"
   | "leaderboard.viewed"
   | "leaderboard.scope_changed"
-  | "leaderboard.fairness_note_opened";
+  | "leaderboard.fairness_note_opened"
+  | "shell.notifications.unsafe_href_blocked"
+  | "storage.migration.complete";
 
 export type AnalyticsProperties = Record<string, unknown>;
 
