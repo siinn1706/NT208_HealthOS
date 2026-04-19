@@ -27,22 +27,39 @@ interface PresetEntry {
 }
 
 /**
- * Snooze action menu (10m / 30m / 1h / until tomorrow).
+ * Snooze action menu (10m / 30m / 1h / until tomorrow morning).
  *
- * UI hooks into `POST /api/v1/reminders/{id}/snooze`. The BFF/Core endpoint is
- * planned in sub-plan F §3.2; today the route returns 404, so we treat any
- * non-2xx as a soft failure and surface a toast — the menu still works as a
- * standalone control with optimistic UX once the endpoint lands.
+ * Hooks into `POST /api/v1/reminders/{id}/snooze` (B7 P5 implements both BFF
+ * and Core). The "until tomorrow" preset shows the actual wake time so the
+ * user knows what they're picking — defaults to 08:00 in the local timezone
+ * (configurable via the `wakeHour` prop or `users.preferences.wake_time`
+ * once Core exposes it).
  */
+const DEFAULT_WAKE_HOUR = 8;
+
 export function SnoozeMenu({ reminderId, onSnoozed, className }: SnoozeMenuProps) {
   const t = useTranslations("dashboard.reminders.snooze");
   const [busy, setBusy] = useState(false);
+
+  const wakeHour = DEFAULT_WAKE_HOUR;
+  const tomorrowAt = nextMorning(wakeHour);
+  const tomorrowLabel = tomorrowAt.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   const presets: PresetEntry[] = [
     { key: "tenMin", minutes: 10, label: t("tenMin") },
     { key: "thirtyMin", minutes: 30, label: t("thirtyMin") },
     { key: "oneHour", minutes: 60, label: t("oneHour") },
-    { key: "untilTomorrow", minutes: minutesUntilTomorrowMorning(), label: t("untilTomorrow") },
+    {
+      key: "untilTomorrow",
+      minutes: Math.max(
+        60,
+        Math.round((tomorrowAt.getTime() - Date.now()) / 60_000),
+      ),
+      label: t("untilTomorrowAt", { time: tomorrowLabel }),
+    },
   ];
 
   const handlePick = async (minutes: number) => {
@@ -102,10 +119,10 @@ export function SnoozeMenu({ reminderId, onSnoozed, className }: SnoozeMenuProps
   );
 }
 
-function minutesUntilTomorrowMorning(): number {
+function nextMorning(hour: number): Date {
   const now = new Date();
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(8, 0, 0, 0);
-  return Math.max(60, Math.round((tomorrow.getTime() - now.getTime()) / 60_000));
+  tomorrow.setHours(hour, 0, 0, 0);
+  return tomorrow;
 }

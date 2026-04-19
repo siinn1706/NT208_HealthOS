@@ -1,8 +1,9 @@
 "use client";
 
+import * as React from "react";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -175,17 +176,26 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const locale = useLocale();
   const t = useTranslations("dashboard");
 
   const { theme: rawTheme, setTheme } = useTheme();
   const theme = (rawTheme ?? "system") as ThemeOption;
+  const [mounted, setMounted] = useState(false);
   const [notifications, setNotifications] = useState<NotificationPrefs>(NOTIF_DEFAULTS);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [downloadSubmitting, setDownloadSubmitting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  // B7 P9 — identity-proof inputs
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetchNotificationPrefs().then((prefs) => {
@@ -206,6 +216,14 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     try {
+      // B7 P7 — scrub queued mutations (incl. PHI-bearing meal photos) before
+      // clearing the session so nothing outlives logout on a shared device.
+      try {
+        const { clearAllOfflineQueues } = await import("@/lib/offline-queue-clear");
+        await clearAllOfflineQueues();
+      } catch {
+        /* IndexedDB may be locked in private mode — proceed with logout. */
+      }
       await fetch("/api/v1/auth/session", { method: "DELETE" });
     } finally {
       router.push(`/${locale}/login`);
@@ -216,7 +234,14 @@ export default function SettingsPage() {
     setDownloadSubmitting(true);
     try {
       const res = await fetch("/api/v1/users/me/export", { method: "POST" });
+      if (res.status === 429) {
+        toast.error(t("settingsPage.privacy.downloadDialog.rateLimited"));
+        return;
+      }
       if (!res.ok) throw new Error("export-failed");
+      // Successful submission returns 202 + a job DTO. The Celery worker emits
+      // an in-app notification ("Your data export is ready") with a deep link
+      // when the tarball is uploaded; the user clicks that to download.
       toast.success(t("settingsPage.privacy.downloadDialog.requested"));
       setDownloadDialogOpen(false);
     } catch {
@@ -226,14 +251,70 @@ export default function SettingsPage() {
     }
   };
 
+  // B7 P8 — Triggered when the user clicks the in-app notification's deep link.
+  // Reads `?export=<request_id>` and immediately navigates to the signed URL.
+  // B7 review P2-1 — track handled ids in a ref + scrub the query param after
+  // the download triggers, so a refresh doesn't re-spam the toast.
+  const handledExportsRef = React.useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    const exportId = searchParams.get("export");
+    if (!exportId || handledExportsRef.current.has(exportId)) return;
+    handledExportsRef.current.add(exportId);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/v1/users/me/export/${encodeURIComponent(exportId)}/download`);
+        if (cancelled) return;
+        if (res.status === 410) {
+          toast.error(t("settingsPage.privacy.downloadDialog.expired"));
+        } else if (!res.ok) {
+          toast.error(t("settingsPage.privacy.downloadDialog.downloadFailed"));
+        } else {
+          const json = await res.json().catch(() => null);
+          const url: string | undefined = json?.data?.url;
+          if (url) window.location.assign(url);
+        }
+      } catch {
+        toast.error(t("settingsPage.privacy.downloadDialog.downloadFailed"));
+      } finally {
+        // Scrub the deep-link query param so re-mounts don't re-fire.
+        const next = new URLSearchParams(searchParams.toString());
+        next.delete("export");
+        const qs = next.toString();
+        const target = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+        router.replace(target);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, t, router]);
+
   const handleRequestDelete = async () => {
     setDeleteSubmitting(true);
     try {
-      const res = await fetch("/api/v1/users/me", { method: "DELETE" });
+      const res = await fetch("/api/v1/users/me", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmation_email: deleteEmail.trim(),
+          password: deletePassword,
+        }),
+      });
+      if (res.status === 422 || res.status === 409) {
+        const json = await res.json().catch(() => null);
+        const msg = json?.error?.message || t("settingsPage.privacy.deleteDialog.identityFailed");
+        toast.error(msg);
+        return;
+      }
       if (!res.ok) throw new Error("delete-failed");
       toast.success(t("settingsPage.privacy.deleteDialog.requested"));
       setDeleteDialogOpen(false);
       setDeleteConfirm("");
+      setDeleteEmail("");
+      setDeletePassword("");
+      // After soft-delete, the BFF cleared the cookie — kick the user back to login.
+      router.push(`/${locale}/login?from=/dashboard/settings`);
     } catch {
       toast.error(t("settingsPage.privacy.deleteDialog.requestFailed"));
     } finally {
@@ -296,14 +377,18 @@ export default function SettingsPage() {
             ))}
           </div>
         </SettingRow>
-        <SettingRow icon={theme === "dark" ? Moon : theme === "light" ? Sun : Monitor} label={t("settingsPage.appearance.theme")}>
-          <div className="flex items-center gap-1.5">
+        <SettingRow
+          icon={mounted ? (theme === "dark" ? Moon : theme === "light" ? Sun : Monitor) : Monitor}
+          label={t("settingsPage.appearance.theme")}
+        >
+          <div className="flex items-center gap-1.5" suppressHydrationWarning>
             {([
               { value: "system", icon: Monitor, labelKey: "settingsPage.appearance.themeSystem" },
               { value: "light", icon: Sun, labelKey: "settingsPage.appearance.themeLight" },
               { value: "dark", icon: Moon, labelKey: "settingsPage.appearance.themeDark" },
             ] as { value: ThemeOption; icon: React.ElementType; labelKey: string }[]).map((opt) => {
               const Ic = opt.icon;
+              const isSelected = mounted && theme === opt.value;
               return (
                 <button
                   key={opt.value}
@@ -314,7 +399,7 @@ export default function SettingsPage() {
                   title={t(opt.labelKey as Parameters<typeof t>[0])}
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer",
-                    theme === opt.value
+                    isSelected
                       ? "bg-primary text-primary-foreground border-primary"
                       : "border-border text-muted-foreground hover:bg-muted"
                   )}
@@ -491,6 +576,32 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="delete-email" className="text-xs">
+                {t("settingsPage.privacy.deleteDialog.emailPrompt")}
+              </Label>
+              <Input
+                id="delete-email"
+                type="email"
+                value={deleteEmail}
+                onChange={(e) => setDeleteEmail(e.target.value)}
+                placeholder={t("settingsPage.privacy.deleteDialog.emailPlaceholder")}
+                autoComplete="email"
+                spellCheck={false}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-password" className="text-xs">
+                {t("settingsPage.privacy.deleteDialog.passwordPrompt")}
+              </Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="delete-confirm" className="text-xs">
                 {t("settingsPage.privacy.deleteDialog.confirmPrompt", {
                   phrase: deleteConfirmPhrase,
@@ -512,7 +623,12 @@ export default function SettingsPage() {
               <Button
                 variant="destructive"
                 onClick={handleRequestDelete}
-                disabled={!deleteConfirmed || deleteSubmitting}
+                disabled={
+                  !deleteConfirmed ||
+                  deleteSubmitting ||
+                  deleteEmail.trim().length === 0 ||
+                  deletePassword.length === 0
+                }
                 className="gap-2"
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />

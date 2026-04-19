@@ -8,16 +8,21 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
+from app.adapters.redis_client import get_redis
 from app.adapters.storage import upload_file
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.core import Meal, MealStatusEnum, User
 from app.schemas.common import DataResponse, ErrorResponse, PaginationMeta
 from app.schemas.meals import MealDataResponse, MealListResponse, MealResponse
+from app.core.metrics import record_idempotency_outcome
+from app.services import idempotency as idem_svc
 from app.services import meals as meal_svc
+from app.services.idempotency import IdempotencyOutcome
 from app.tasks.meal_analysis import analyze_meal_image
 
 router = APIRouter(prefix="/meals", tags=["Meals"])
@@ -90,11 +95,37 @@ async def create_meal(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis, Depends(get_redis)],
     name_form: Annotated[str | None, Form()] = None,
     notes_form: Annotated[str | None, Form()] = None,
     logged_at_form: Annotated[datetime.datetime | None, Form()] = None,
     image: UploadFile | None = File(default=None),
 ) -> MealDataResponse:
+    # B7 P7 — Idempotency-Key replay store. The IndexedDB offline queue retries
+    # the same payload with the same key after a network blip; we want a single
+    # logical meal row per key. We use `acquire_or_wait` so two concurrent
+    # retries don't both proceed (TOCTOU race the previous code had).
+    idem_key = request.headers.get("idempotency-key") or request.headers.get("Idempotency-Key")
+    idem_scope = "meals.create"
+    if idem_key:
+        idem_result = await idem_svc.acquire_or_wait(redis, idem_key, idem_scope)
+        record_idempotency_outcome(idem_scope, idem_result.outcome.value)
+        if idem_result.outcome == IdempotencyOutcome.REPLAY and idem_result.payload is not None:
+            return MealDataResponse.model_validate(idem_result.payload)
+        if idem_result.outcome == IdempotencyOutcome.CONFLICT:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "IDEMPOTENT_INFLIGHT",
+                    "message": (
+                        "A previous request with this Idempotency-Key is still being "
+                        "processed. Retry in a moment."
+                    ),
+                },
+            )
+        # Otherwise OWN — we hold the slot; on any error path below we must
+        # release the slot so the next retry isn't permanently stuck waiting.
+
     content_type = request.headers.get("content-type", "")
 
     name: str | None = None
@@ -102,68 +133,83 @@ async def create_meal(
     image_url: str | None = None
     job_id: str | None = None
 
-    if "application/json" in content_type:
-        body = await request.json()
-        try:
-            parsed = _MealCreateJsonBody.model_validate(body)
-        except Exception as exc:  # pragma: no cover - defensive
-            raise _bad_request("Invalid JSON body for meal creation.") from exc
-        name = parsed.name
-        logged_at = parsed.logged_at
-        _ = parsed.notes
-    else:
-        name = name_form
-        logged_at = logged_at_form
-        _ = notes_form
+    try:
+        if "application/json" in content_type:
+            body = await request.json()
+            try:
+                parsed = _MealCreateJsonBody.model_validate(body)
+            except Exception as exc:  # pragma: no cover - defensive
+                raise _bad_request("Invalid JSON body for meal creation.") from exc
+            name = parsed.name
+            logged_at = parsed.logged_at
+            _ = parsed.notes
+        else:
+            name = name_form
+            logged_at = logged_at_form
+            _ = notes_form
 
-    if not name:
-        raise _bad_request("name is required")
+        if not name:
+            raise _bad_request("name is required")
 
-    # Handle image upload
-    if image and image.filename:
-        image_bytes = await image.read()
-        if len(image_bytes) > _MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
+        # Handle image upload
+        if image and image.filename:
+            image_bytes = await image.read()
+            if len(image_bytes) > _MAX_UPLOAD_BYTES:
+                raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
 
-        # Validate magic bytes — reject files that lie about their Content-Type
-        detected = _detect_image_type(image_bytes[:32])
-        if detected not in _ALLOWED_MAGIC_TYPES:
-            raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
+            # Validate magic bytes — reject files that lie about their Content-Type
+            detected = _detect_image_type(image_bytes[:32])
+            if detected not in _ALLOWED_MAGIC_TYPES:
+                raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
 
-        content_type = image.content_type or "image/jpeg"
-        if content_type not in _ALLOWED_IMAGE_TYPES:
-            raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
+            content_type = image.content_type or "image/jpeg"
+            if content_type not in _ALLOWED_IMAGE_TYPES:
+                raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
 
-        file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
-        key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
-        image_url = upload_file(
-            bucket=settings.storage_bucket_meals,
-            key=key,
-            file_bytes=image_bytes,
-            content_type=content_type,
+            file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
+            key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
+            image_url = upload_file(
+                bucket=settings.storage_bucket_meals,
+                key=key,
+                file_bytes=image_bytes,
+                content_type=content_type,
+            )
+
+        # Create meal first
+        meal = await meal_svc.create_meal(
+            db=db,
+            user_id=current_user.id,
+            name=name,
+            logged_at=logged_at,
+            image_url=image_url,
+            job_id=None,
         )
 
-    # Create meal first
-    meal = await meal_svc.create_meal(
-        db=db,
-        user_id=current_user.id,
-        name=name,
-        logged_at=logged_at,
-        image_url=image_url,
-        job_id=None,
-    )
+        # If image was uploaded, trigger async analysis after meal is created
+        if image_url:
+            job = analyze_meal_image.delay(str(meal.id), image_url)
+            from sqlalchemy import update
 
-    # If image was uploaded, trigger async analysis after meal is created
-    if image_url:
-        job = analyze_meal_image.delay(str(meal.id), image_url)
-        from sqlalchemy import update
+            stmt = update(Meal).where(Meal.id == meal.id).values(job_id=job.id)
+            await db.execute(stmt)
+            await db.commit()
+            meal.job_id = job.id
 
-        stmt = update(Meal).where(Meal.id == meal.id).values(job_id=job.id)
-        await db.execute(stmt)
-        await db.commit()
-        meal.job_id = job.id
-
-    return MealDataResponse(data=MealResponse.model_validate(meal))
+        response = MealDataResponse(data=MealResponse.model_validate(meal))
+        if idem_key:
+            # Cache the response envelope so subsequent retries with the same key
+            # (within 24h, per api-conventions.md) collapse to this exact result.
+            await idem_svc.store(redis, idem_key, idem_scope, response.model_dump(mode="json"))
+        return response
+    except Exception:
+        # Release the idempotency slot so the next retry isn't permanently
+        # stuck waiting on a pending marker that will never become an envelope.
+        if idem_key:
+            try:
+                await idem_svc.release(redis, idem_key, idem_scope)
+            except Exception:
+                pass
+        raise
 
 
 @router.get(

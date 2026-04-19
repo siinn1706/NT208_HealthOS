@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from typing import Iterable
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,16 +11,79 @@ from app.models.core import Appointment, AppointmentStatusEnum
 from app.schemas.appointments import AppointmentCreateBody, AppointmentDTO, PrescriptionPayload
 
 
+# B7 — explicit transition table.
+# Keys are the *current* status; values are the set of valid next states.
+# `RESCHEDULED` and `CANCELLED` are terminal here (rescheduling spawns a new
+# appointment row in the create flow; the old one stays as `RESCHEDULED`).
+_TRANSITIONS: dict[AppointmentStatusEnum, frozenset[AppointmentStatusEnum]] = {
+    AppointmentStatusEnum.BOOKED: frozenset({
+        AppointmentStatusEnum.SCHEDULED,
+        AppointmentStatusEnum.UPCOMING,
+        AppointmentStatusEnum.CANCELLED,
+        AppointmentStatusEnum.RESCHEDULED,
+    }),
+    AppointmentStatusEnum.SCHEDULED: frozenset({
+        AppointmentStatusEnum.UPCOMING,
+        AppointmentStatusEnum.IN_PROGRESS,
+        AppointmentStatusEnum.CANCELLED,
+        AppointmentStatusEnum.RESCHEDULED,
+    }),
+    AppointmentStatusEnum.UPCOMING: frozenset({
+        AppointmentStatusEnum.IN_PROGRESS,
+        AppointmentStatusEnum.COMPLETED,
+        AppointmentStatusEnum.NO_SHOW,
+        AppointmentStatusEnum.CANCELLED,
+        AppointmentStatusEnum.RESCHEDULED,
+    }),
+    AppointmentStatusEnum.IN_PROGRESS: frozenset({
+        AppointmentStatusEnum.COMPLETED,
+        AppointmentStatusEnum.NO_SHOW,
+        AppointmentStatusEnum.CANCELLED,
+    }),
+    AppointmentStatusEnum.COMPLETED: frozenset(),
+    AppointmentStatusEnum.CANCELLED: frozenset(),
+    AppointmentStatusEnum.NO_SHOW: frozenset(),
+    AppointmentStatusEnum.RESCHEDULED: frozenset(),
+}
+
+
+def is_valid_transition(current: AppointmentStatusEnum, target: AppointmentStatusEnum) -> bool:
+    """Return True if `current → target` is allowed by the FSM."""
+    return target in _TRANSITIONS.get(current, frozenset())
+
+
+def valid_next_statuses(current: AppointmentStatusEnum) -> Iterable[AppointmentStatusEnum]:
+    return _TRANSITIONS.get(current, frozenset())
+
+
 def _resolved_status(
     status: AppointmentStatusEnum,
     appointment_date: datetime.datetime,
 ) -> AppointmentStatusEnum:
-    if status == AppointmentStatusEnum.CANCELLED:
+    """Time-aware overlay for legacy rows.
+
+    Explicit terminal/in-progress states are preserved as-is. The coarse
+    BOOKED / SCHEDULED / UPCOMING bucket gets the time-based downgrade to
+    COMPLETED for past dates — restores the pre-B7 behavior so the FE's
+    "upcoming" filter doesn't show appointments whose date already elapsed
+    (B7 review P3-2). New code that wants the literal persisted value
+    (e.g., the audit log) should read `Appointment.status` directly.
+    """
+    if status in (
+        AppointmentStatusEnum.CANCELLED,
+        AppointmentStatusEnum.COMPLETED,
+        AppointmentStatusEnum.NO_SHOW,
+        AppointmentStatusEnum.RESCHEDULED,
+        AppointmentStatusEnum.IN_PROGRESS,
+    ):
         return status
     now = datetime.datetime.now(datetime.timezone.utc)
     if appointment_date < now:
+        # B7 review P3-2 — past-due BOOKED / SCHEDULED / UPCOMING all roll
+        # forward to COMPLETED for display. The DB row keeps its literal
+        # value; this is purely a derived view for the FE.
         return AppointmentStatusEnum.COMPLETED
-    return AppointmentStatusEnum.UPCOMING
+    return status
 
 
 def _to_dto(item: Appointment) -> AppointmentDTO:
@@ -92,4 +156,40 @@ async def create_appointment(
     await db.flush()
     await db.refresh(item)
     return _to_dto(item)
+
+
+class InvalidStatusTransition(ValueError):
+    """Raised when a caller asks for a status the FSM forbids."""
+
+    def __init__(self, current: AppointmentStatusEnum, target: AppointmentStatusEnum):
+        self.current = current
+        self.target = target
+        super().__init__(f"Cannot transition appointment from {current.value} to {target.value}.")
+
+
+async def update_appointment_status(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    appointment_id: uuid.UUID,
+    target: AppointmentStatusEnum,
+) -> AppointmentDTO | None:
+    """Apply a status transition; raises InvalidStatusTransition on bad input."""
+    stmt = select(Appointment).where(
+        Appointment.id == appointment_id,
+        Appointment.user_id == user_id,
+    )
+    result = await db.execute(stmt)
+    appt = result.scalar_one_or_none()
+    if appt is None:
+        return None
+
+    if appt.status == target:
+        # Idempotent — same status is a no-op.
+        return _to_dto(appt)
+    if not is_valid_transition(appt.status, target):
+        raise InvalidStatusTransition(appt.status, target)
+
+    appt.status = target
+    await db.flush()
+    return _to_dto(appt)
 

@@ -55,9 +55,12 @@ export function ChatWindow({
     messages,
     isLoading: isLoadingMessages,
     isTyping,
+    streamingAssistantId,
     hasMore,
     loadMore,
     sendMessage,
+    streamAiMessage,
+    stopStreaming,
     retryMessage,
     discardMessage,
     markMessageQueued,
@@ -225,6 +228,17 @@ export function ChatWindow({
         return;
       }
 
+      // B7 P6 — AI conversations stream over SSE. Skips the WS / queue paths;
+      // each "send" is a fresh request/response and AI replies arrive inline.
+      if (conversation.type === "ai") {
+        void streamAiMessage(convId, content).then((sent) => {
+          if (sent) onMessageSent?.(sent);
+        });
+        setReplyTo(null);
+        messageListRef.current?.scrollToBottom();
+        return;
+      }
+
       void sendMessage(convId, content, replyTo?.id, onMessageSent)
         .then((result) => {
           // The send already happened (and either succeeded or hit a 4xx/5xx).
@@ -258,15 +272,14 @@ export function ChatWindow({
         });
       setReplyTo(null);
       messageListRef.current?.scrollToBottom();
-      // P0 — AI replies must come from the AI worker via the BFF; no client-
-      // side simulation. The AI conversation surface still shows a typing
-      // indicator and disclaimer once a real `chat.message.sent` arrives.
     },
     [
       editingMessage,
       replyTo,
       convId,
+      conversation.type,
       sendMessage,
+      streamAiMessage,
       editMessage,
       onMessageSent,
       isOnline,
@@ -514,6 +527,21 @@ export function ChatWindow({
           <AiQuickReplies onSelect={handleSend} disabled={isTyping} />
         )}
 
+        {/* B7 P6 — Stop generation control. Surfaces while an AI stream is in flight. */}
+        {conversation.type === "ai" && streamingAssistantId && (
+          <div className="px-3 pb-2 flex justify-center">
+            <button
+              type="button"
+              onClick={stopStreaming}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              aria-label={t("stopGeneration")}
+            >
+              <span className="h-2 w-2 rounded-sm bg-foreground" aria-hidden="true" />
+              {t("stopGeneration")}
+            </button>
+          </div>
+        )}
+
         <MessageInput
           conversationId={convId}
           replyTo={replyTo}
@@ -523,7 +551,7 @@ export function ChatWindow({
           onCancelReply={handleCancelReply}
           onCancelEdit={handleCancelEdit}
           onKeyPress={onKeyPress}
-          disabled={conversation.type === "ai" && isTyping}
+          disabled={conversation.type === "ai" && Boolean(streamingAssistantId)}
         />
       </div>
 

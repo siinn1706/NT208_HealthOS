@@ -48,7 +48,7 @@
 
 ---
 
-## [1.2.2] - 2026-04-06
+## [1.2.2] - 2026-04-19
 
 ### Fixed / Security
 
@@ -235,7 +235,7 @@
   - Redis caching for analytics queries (5-min TTL)
 
 #### Testing
-- 13 backend test functions (3 test files), not 22 (backend + frontend)
+- Initial backend test scaffolding (current count as of v1.2.2: 13 backend test functions across 3 files)
 
 ---
 

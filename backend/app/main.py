@@ -111,6 +111,29 @@ app.include_router(v1_router)
 app.include_router(chat_ws_router)
 
 
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> "Response":  # type: ignore[name-defined]
+    """B7 review — Prometheus scrape endpoint.
+
+    Returns the default registry's text exposition format. Bound to `/metrics`
+    so a sidecar Prometheus scrape config can pick it up without auth (this
+    must therefore stay behind a private network — never expose via the BFF).
+    The endpoint is hidden from `/docs` because it is not part of the BFF
+    contract; ops scrape it directly from the cluster.
+    """
+    from fastapi import Response
+
+    try:
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+    except ImportError:
+        return Response(
+            content="prometheus_client is not installed",
+            status_code=503,
+            media_type="text/plain",
+        )
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/health")
 async def health() -> JSONResponse:
     from app.adapters.redis_client import get_redis

@@ -5,6 +5,7 @@ import { FileBarChart2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiOverview } from "@/components/dashboard/reports/KpiOverview";
 import { ReportHubWrapper } from "@/components/dashboard/reports/ReportHubWrapper";
+import { PdfDownloadHandler } from "@/components/dashboard/reports/PdfDownloadHandler";
 import { PageHeader } from "@/components/shared/page";
 
 import { getHealthReport } from "@/lib/reports-data";
@@ -69,6 +70,12 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         emergencyContacts={profile.emergency_contacts}
         locale={locale}
       />
+
+      {/* B7 P10 — auto-opens the signed download URL when the user clicks the
+          "Your PDF report is ready" notification (deep-link `?pdf=<id>`). */}
+      <Suspense fallback={null}>
+        <PdfDownloadHandler />
+      </Suspense>
 
       <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
         {t("detailedInDev")}

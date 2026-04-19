@@ -1308,3 +1308,310 @@ paths:
         "401":
           description: Missing or invalid token
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # B7 — backend-coupled flows (B7 review fixes covered too)
+  # ─────────────────────────────────────────────────────────────────────────
+
+  /v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications (cursor-paginated, newest first)
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: per_page, in: query, schema: { type: integer, default: 20, maximum: 50 } }
+        - { name: only_unread, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Notification list with pagination meta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { type: object } }
+                  meta:
+                    type: object
+                    properties:
+                      next_cursor: { type: string, nullable: true }
+                      has_more: { type: boolean }
+                      per_page: { type: integer }
+        "401": { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Unread notification count for the current user
+      responses:
+        "200":
+          description: Unread count envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      unread: { type: integer, minimum: 0 }
+
+  /v1/notifications/{notification_id}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark a single notification as read (idempotent)
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Notification envelope (with read_at populated) }
+        "404": { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark every unread notification read
+      responses:
+        "200": { description: '{ data: { marked: <int> } }' }
+
+  /v1/appointments/{appointment_id}/status:
+    patch:
+      tags: [Appointments]
+      summary: Update appointment status (FSM-validated)
+      parameters:
+        - { name: appointment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [booked, scheduled, upcoming, in_progress, completed, cancelled, no_show, rescheduled]
+      responses:
+        "200": { description: Updated appointment }
+        "404": { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: 'INVALID_STATUS_TRANSITION — see api-conventions §8a state machine'
+
+  /v1/nutrition/ingredients:
+    get:
+      tags: [Nutrition]
+      summary: Search bilingual ingredient catalog (matches name_vi OR name_en)
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 128 } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        "200": { description: Ingredient list }
+
+  /v1/auth/oauth/links:
+    get:
+      tags: [Auth]
+      summary: List OAuth providers linked to the current user
+      responses:
+        "200": { description: '{ data: [OAuthLinkDTO] }' }
+        "401": { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/auth/oauth/links/{link_id}:
+    delete:
+      tags: [Auth]
+      summary: Unlink an OAuth provider (refuses if it is the last sign-in method)
+      parameters:
+        - { name: link_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Unlinked }
+        "409":
+          description: 'LAST_SIGN_IN_METHOD — user must set a password before unlinking the only provider'
+
+  /v1/auth/oauth/links/attach:
+    post:
+      tags: [Auth]
+      summary: 'BFF-only: attach an OAuth provider to an existing user (requires X-BFF-Secret)'
+      responses:
+        "201": { description: Link created }
+        "409":
+          description: 'OAUTH_ACCOUNT_ALREADY_LINKED — provider account is already linked to a different user'
+
+  /v1/appointments/{appointment_id}/prescription/assets:
+    get:
+      tags: [Prescriptions]
+      summary: List prescription file metadata (no signed URLs)
+      parameters:
+        - { name: appointment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Asset metadata list }
+        "404": { $ref: "#/components/schemas/ErrorResponse" }
+    post:
+      tags: [Prescriptions]
+      summary: Upload a prescription file (PDF / PNG / JPEG / WEBP, ≤ 10 MiB)
+      parameters:
+        - { name: appointment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Asset metadata }
+        "413": { $ref: "#/components/schemas/ErrorResponse" }
+        "415": { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/appointments/{appointment_id}/prescription/assets/{asset_id}/url:
+    get:
+      tags: [Prescriptions]
+      summary: Mint a 5-minute signed download URL (re-issued on every call)
+      parameters:
+        - { name: appointment_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: asset_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: '{ data: { url, expires_in_s, mime_type, original_filename } }'
+
+  /v1/reminders/occurrences:
+    get:
+      tags: [Reminders]
+      summary: List reminder occurrences in a date range (server-driven "today" tab)
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: tzid, in: query, schema: { type: string } }
+        - { name: today, in: query, schema: { type: boolean } }
+        - { name: status, in: query, schema: { type: string, description: "comma-separated subset" } }
+      responses:
+        "200": { description: Occurrence list }
+
+  /v1/reminders/{reminder_id}/skip:
+    post:
+      tags: [Reminders]
+      summary: Skip the next (or specified) occurrence
+      parameters:
+        - { name: reminder_id, in: path, required: true, schema: { type: string, format: uuid } }
+
+  /v1/reminders/{reminder_id}/snooze:
+    post:
+      tags: [Reminders]
+      summary: 'Snooze the next (or specified) occurrence; body { until?: ISO, minutes?: int }'
+      parameters:
+        - { name: reminder_id, in: path, required: true, schema: { type: string, format: uuid } }
+
+  /v1/reminders/{reminder_id}/done:
+    post:
+      tags: [Reminders]
+      summary: Mark the next (or specified) occurrence done
+      parameters:
+        - { name: reminder_id, in: path, required: true, schema: { type: string, format: uuid } }
+
+  /v1/conversations/{conversation_id}/messages/stream:
+    post:
+      tags: [Chat]
+      summary: 'AI conversation streaming (Server-Sent Events; text/event-stream)'
+      description: |
+        Returns a `text/event-stream` body. Events: `start`, `delta`, `ping`,
+        `done`, `aborted`, `error`. Client-side abort propagates upstream
+        via `req.signal` in the BFF (review fix P1-2). Stopped streams
+        persist the assistant message with `status='stopped'`.
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream: {}
+        "400": { $ref: "#/components/schemas/ErrorResponse" }
+        "404": { $ref: "#/components/schemas/ErrorResponse" }
+
+  /v1/users/me/export:
+    post:
+      tags: [Users]
+      summary: 'Request a downloadable archive of your account data (rate-limited 1 / 24h)'
+      responses:
+        "202":
+          description: 'Export job accepted — { data: { id, status: "pending" } }'
+        "429":
+          description: 'RATE_LIMITED — { details: { retry_after_s } }'
+
+  /v1/users/me/export/{request_id}:
+    get:
+      tags: [Users]
+      summary: Poll the status of a data export job
+
+  /v1/users/me/export/{request_id}/download:
+    get:
+      tags: [Users]
+      summary: Mint a fresh 5-minute signed URL for a completed export
+      responses:
+        "200": { description: '{ data: { url, expires_in_s, bytes, expires_at } }' }
+        "410":
+          description: 'EXPORT_EXPIRED — the 24h download window has lapsed'
+
+  /v1/users/me:
+    delete:
+      tags: [Users]
+      summary: 'Soft-delete the current account (30-day grace period; B7 P9)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation_email]
+              properties:
+                confirmation_email: { type: string, format: email }
+                password: { type: string, description: 'Required when users.has_password=true' }
+                otp_code:
+                  type: string
+                  pattern: '^\d{6}$'
+                  description: 'Required for OAuth-only users (has_password=false); pre-issue via /v1/auth/request-otp purpose=delete_account'
+                reason: { type: string, maxLength: 500 }
+      responses:
+        "202": { description: '{ data: { status: "pending_deletion", purge_at } }' }
+        "409":
+          description: 'ALREADY_PENDING_DELETION'
+        "422":
+          description: 'IDENTITY_CHECK_FAILED / OTP_REQUIRED / OTP_INVALID'
+
+  /v1/users/me/restore:
+    post:
+      tags: [Users]
+      summary: 'Cancel a pending deletion (within the 30-day grace window)'
+      responses:
+        "200": { description: '{ data: { status: "active" } }' }
+        "404":
+          description: 'NOT_PENDING_DELETION'
+
+  /v1/reports/export-pdf:
+    post:
+      tags: [Reports]
+      summary: 'Request a PDF render of the current health report (rate-limited 5 / hour per user)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [period, sections]
+              properties:
+                period: { type: string, enum: [7d, 30d, 90d] }
+                sections:
+                  type: array
+                  items:
+                    type: string
+                    enum: [vitals, nutrition, activity, sleep, bmi, medication]
+                locale: { type: string, enum: [en, vi], default: en }
+                include_sensitive: { type: boolean, default: false }
+      responses:
+        "202": { description: 'Render job accepted — { data: { id, status: "pending" } }' }
+        "429":
+          description: 'RATE_LIMITED'
+
+  /v1/reports/export-pdf/{request_id}:
+    get:
+      tags: [Reports]
+      summary: Poll the PDF render job status
+
+  /v1/reports/export-pdf/{request_id}/download:
+    get:
+      tags: [Reports]
+      summary: Mint a fresh 5-minute signed URL for a completed PDF
+      responses:
+        "200": { description: '{ data: { url, expires_in_s, bytes, expires_at } }' }
+        "410":
+          description: 'EXPORT_EXPIRED'
+

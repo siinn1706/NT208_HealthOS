@@ -247,8 +247,32 @@ export function CameraCapture() {
     }, SLOW_WARNING_AFTER_MS);
 
     try {
+      const file = dataUrlToFile(imageDataUrl, "meal.jpg");
+
+      // B7 P7 — if offline, persist the photo in IndexedDB and surface a
+      // "queued" terminal state so the user can navigate away. The queue
+      // flushes automatically when the connection recovers.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        try {
+          const { enqueueMultipart } = await import("@/lib/offline-queue-multipart");
+          await enqueueMultipart({
+            url: "/api/v1/meals/analyze-photo",
+            method: "POST",
+            label: "meal-photo",
+            fields: [{ name: "image", value: file, filename: "meal.jpg" }],
+          });
+          clearInterval(interval);
+          window.clearTimeout(slowWarningTimer);
+          toast.success(t("queuedOfflineTitle"), { description: t("queuedOfflineBody") });
+          setStep("uploadedPending");
+          return;
+        } catch {
+          // Fall through to the live network attempt — we'd rather try than swallow.
+        }
+      }
+
       const formData = new FormData();
-      formData.append("image", dataUrlToFile(imageDataUrl, "meal.jpg"));
+      formData.append("image", file);
 
       const res = await fetch("/api/v1/meals/analyze-photo", {
         method: "POST",

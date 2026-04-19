@@ -35,6 +35,24 @@ class AuditEventTypeEnum(str, Enum):
     # OAuth events
     OAUTH_LOGIN_SUCCESS = "oauth_login_success"
     OAUTH_LOGIN_FAILED = "oauth_login_failed"
+    # B7 — Linked OAuth accounts (settings → linked accounts)
+    OAUTH_LINK_ADDED = "oauth_link_added"
+    OAUTH_LINK_REMOVED = "oauth_link_removed"
+    OAUTH_LINK_REJECTED_CONFLICT = "oauth_link_rejected_conflict"
+    # B7 — Prescription assets (signed-URL pipeline)
+    PRESCRIPTION_ASSET_UPLOADED = "prescription_asset_uploaded"
+    PRESCRIPTION_ASSET_DOWNLOADED = "prescription_asset_downloaded"
+    PRESCRIPTION_ASSET_DELETED = "prescription_asset_deleted"
+    # B7 — Data export (GDPR-style data download)
+    DATA_EXPORT_REQUESTED = "data_export_requested"
+    DATA_EXPORT_DOWNLOADED = "data_export_downloaded"
+    # B7 — Account deletion lifecycle
+    ACCOUNT_DELETION_REQUESTED = "account_deletion_requested"
+    ACCOUNT_DELETION_CANCELLED = "account_deletion_cancelled"
+    ACCOUNT_PURGED = "account_purged"
+    # B7 — PDF report export
+    REPORT_PDF_REQUESTED = "report_pdf_requested"
+    REPORT_PDF_DOWNLOADED = "report_pdf_downloaded"
     # Breach events
     PASSWORD_BREACHED = "password_breached"
 

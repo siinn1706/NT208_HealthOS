@@ -396,6 +396,9 @@ export function useMessages(
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  // B7 P6 — AI streaming state. `null` means no stream in flight.
+  const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const lastCursorRef = useRef<string | null>(null);
 
@@ -507,6 +510,166 @@ export function useMessages(
   /** Called by WS typing event. */
   const setRemoteTyping = useCallback((typing: boolean) => {
     setIsTyping(typing);
+  }, []);
+
+  /**
+   * B7 P6 — AI streaming send.
+   *
+   * Posts the user message to `/api/v1/conversations/{id}/messages/stream`
+   * (SSE). Inserts an optimistic user message + a placeholder assistant
+   * message; updates the assistant message in place as `delta` events
+   * arrive. `done`, `aborted`, and `error` events all terminate the stream.
+   *
+   * Returns the optimistic user `Message` so callers can update their
+   * outbox UI synchronously.
+   */
+  const streamAiMessage = useCallback(
+    async (convId: string, content: string): Promise<Message | null> => {
+      if (!currentUserId) return null;
+      // Cancel any prior stream — the user can only have one in flight per hook instance.
+      streamAbortRef.current?.abort();
+      const controller = new AbortController();
+      streamAbortRef.current = controller;
+
+      const optimisticUserId = `opt-user-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+      const optimisticAssistantId = `opt-ai-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+      const now = new Date().toISOString();
+
+      const optimisticUser: Message = {
+        id: optimisticUserId,
+        conversation_id: convId,
+        sender_id: currentUserId,
+        sender_display_name: undefined,
+        sender_kind: "user",
+        content,
+        type: "text",
+        status: "sent",
+        reply_to: undefined,
+        reactions: [],
+        is_edited: false,
+        is_recalled: false,
+        is_pinned: false,
+        created_at: now,
+      };
+      const optimisticAssistant: Message = {
+        id: optimisticAssistantId,
+        conversation_id: convId,
+        sender_id: undefined,
+        sender_display_name: undefined,
+        sender_kind: "ai",
+        content: "",
+        type: "text",
+        status: "sending",
+        reply_to: undefined,
+        reactions: [],
+        is_edited: false,
+        is_recalled: false,
+        is_pinned: false,
+        created_at: now,
+      };
+      setMessages((prev) => [...prev, optimisticUser, optimisticAssistant]);
+      setIsTyping(true);
+      setStreamingAssistantId(optimisticAssistantId);
+
+      let serverAssistantId: string | null = null;
+
+      const replaceAssistant = (mutator: (m: Message) => Message) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === (serverAssistantId ?? optimisticAssistantId) ? mutator(m) : m)),
+        );
+      };
+
+      try {
+        const res = await fetch(`/api/v1/conversations/${convId}/messages/stream`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          body: JSON.stringify({
+            content,
+            content_type: "text",
+            client_message_id: optimisticUserId,
+          }),
+          signal: controller.signal,
+        });
+        if (!res.ok || !res.body) {
+          replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+          setIsTyping(false);
+          setStreamingAssistantId(null);
+          return optimisticUser;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        // Standard SSE parser — events end on a blank line.
+        // Each event has `event: NAME\n` (optional) and `data: PAYLOAD\n` lines.
+        // Multiple `data:` lines concatenate with `\n`.
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let separator = buffer.indexOf("\n\n");
+          while (separator >= 0) {
+            const frame = buffer.slice(0, separator);
+            buffer = buffer.slice(separator + 2);
+            separator = buffer.indexOf("\n\n");
+            const lines = frame.split("\n");
+            let eventName = "message";
+            const dataParts: string[] = [];
+            for (const line of lines) {
+              if (line.startsWith("event:")) eventName = line.slice(6).trim();
+              else if (line.startsWith("data:")) dataParts.push(line.slice(5).trim());
+            }
+            if (dataParts.length === 0) continue;
+            const payload = dataParts.join("\n");
+            if (eventName === "ping") continue;
+
+            let parsed: Record<string, unknown> = {};
+            try {
+              parsed = payload ? JSON.parse(payload) : {};
+            } catch {
+              parsed = {};
+            }
+
+            if (eventName === "start") {
+              const assistantId = (parsed["assistant_message_id"] as string | undefined) ?? null;
+              if (assistantId) {
+                serverAssistantId = assistantId;
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === optimisticAssistantId ? { ...m, id: assistantId } : m)),
+                );
+                setStreamingAssistantId(assistantId);
+              }
+            } else if (eventName === "delta") {
+              const text = (parsed["text"] as string | undefined) ?? "";
+              if (text) replaceAssistant((m) => ({ ...m, content: m.content + text }));
+            } else if (eventName === "done") {
+              replaceAssistant((m) => ({ ...m, status: "sent" as const }));
+            } else if (eventName === "aborted") {
+              replaceAssistant((m) => ({ ...m, status: "sent" as const }));
+            } else if (eventName === "error") {
+              replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+            }
+          }
+        }
+      } catch (err) {
+        if ((err as { name?: string } | null)?.name === "AbortError") {
+          // Stop button — leave the partial bubble in place.
+          replaceAssistant((m) => ({ ...m, status: "sent" as const }));
+        } else {
+          replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+        }
+      } finally {
+        if (streamAbortRef.current === controller) streamAbortRef.current = null;
+        setIsTyping(false);
+        setStreamingAssistantId(null);
+      }
+      return optimisticUser;
+    },
+    [currentUserId],
+  );
+
+  const stopStreaming = useCallback(() => {
+    streamAbortRef.current?.abort();
   }, []);
 
   const sendMessage = useCallback(
@@ -816,11 +979,14 @@ export function useMessages(
     isLoading,
     hasMore,
     isTyping,
+    streamingAssistantId,
     loadMore,
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
     sendMessage,
+    streamAiMessage,
+    stopStreaming,
     retryMessage,
     discardMessage,
     markMessageQueued,

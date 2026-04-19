@@ -16,6 +16,7 @@ import {
   Activity,
   UserX,
   RefreshCw,
+  CalendarPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Appointment, AppointmentStatus, Prescription } from "@/types/api";
@@ -31,12 +32,20 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
   const locale = useLocale();
   const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
   const [search, setSearch] = useState("");
-  const [openPrescription, setOpenPrescription] = useState<Prescription | null>(null);
+  const [openPrescription, setOpenPrescription] = useState<
+    { prescription: Prescription; appointmentId: string } | null
+  >(null);
 
   const STATUS_CONFIG: Record<
     AppointmentStatus,
     { icon: React.ElementType; labelKey: string; color: string; bg: string }
   > = {
+    booked: {
+      icon: CalendarPlus,
+      labelKey: "booked",
+      color: "text-info",
+      bg: "bg-info/10",
+    },
     scheduled: {
       icon: CalendarClock,
       labelKey: "scheduled",
@@ -242,7 +251,13 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                       )}
                       {appt.hasPrescription && appt.prescription && (
                         <button
-                          onClick={() => setOpenPrescription(appt.prescription ?? null)}
+                          onClick={() =>
+                            appt.prescription &&
+                            setOpenPrescription({
+                              prescription: appt.prescription,
+                              appointmentId: appt.id,
+                            })
+                          }
                           className={cn(
                             "ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5",
                             "text-[11px] font-medium text-primary bg-primary/10",
@@ -267,7 +282,8 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
       {/* Prescription dialog */}
       {openPrescription && (
         <PrescriptionViewerDialog
-          prescription={openPrescription}
+          prescription={openPrescription.prescription}
+          appointmentId={openPrescription.appointmentId}
           onClose={() => setOpenPrescription(null)}
         />
       )}

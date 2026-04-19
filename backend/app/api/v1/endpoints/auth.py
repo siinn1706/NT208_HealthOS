@@ -3,6 +3,7 @@ import asyncio
 import hmac
 import logging
 import random
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -35,6 +36,10 @@ from app.schemas.auth import (
     CurrentUser,
     CurrentUserResponse,
     LoginBody,
+    OAuthLinkAttachBody,
+    OAuthLinkDTO,
+    OAuthLinkListResponse,
+    OAuthLinkResponse,
     OAuthProfile,
     OtpRequested,
     OtpRequestedResponse,
@@ -58,6 +63,7 @@ from app.services.otp import (
     otp_expiry_time,
 )
 from app.services.auth import (
+    UserPendingDeletion,
     check_email_availability,
     check_username_availability,
     create_user_access_token,
@@ -66,6 +72,9 @@ from app.services.auth import (
     validate_username,
 )
 from app.services.security_logging import log_security_event
+from app.services.audit import audit
+from app.services import oauth_links as oauth_link_svc
+from app.services.oauth_links import LastSignInMethodError, OAuthLinkConflict
 from app.models.audit import AuditEventTypeEnum
 from app.services.hibp import check_password_breach
 
@@ -180,6 +189,21 @@ async def login_with_password(
         raise UnauthorizedException(
             message="Tên đăng nhập hoặc mật khẩu không đúng",
             code="INVALID_CREDENTIALS",
+        )
+
+    # B7 review P0-3 — soft-deleted users get a typed 403 with the restore
+    # link instead of a fresh JWT they can't use.
+    if user.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "ACCOUNT_PENDING_DELETION",
+                "message": "Your account is pending deletion. Restore it to continue.",
+                "details": {
+                    "user_id": str(user.id),
+                    "purge_at": user.purge_at.isoformat() if user.purge_at else None,
+                },
+            },
         )
 
     # Success - reset failed attempts
@@ -299,7 +323,24 @@ async def exchange_oauth_profile_for_token(
       For the current student deployment where BFF and Core run in the same
       Docker network, this is an acceptable trade-off.
     """
-    user = await get_or_create_user_from_oauth(body, db)
+    try:
+        user = await get_or_create_user_from_oauth(body, db)
+    except UserPendingDeletion as exc:
+        # B7 review P0-3 — refuse OAuth sign-in for soft-deleted users so the
+        # BFF can route them to /login?restore=… instead of a JWT bounce.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "ACCOUNT_PENDING_DELETION",
+                "message": "Your account is pending deletion. Restore it to continue.",
+                "details": {
+                    "user_id": str(exc.user_id),
+                    "purge_at": exc.purge_at.isoformat() if exc.purge_at else None,
+                },
+            },
+        ) from exc
+    await db.commit()
     access_token = create_user_access_token(user)
 
     token = AuthToken(
@@ -311,6 +352,137 @@ async def exchange_oauth_profile_for_token(
         onboarding_status=user.onboarding_status,
     )
     return AuthTokenResponse(data=token)
+
+
+# ─── B7 P3 — Linked OAuth accounts ──────────────────────────────────────────
+
+
+@router.get(
+    "/oauth/links",
+    response_model=OAuthLinkListResponse,
+    responses={401: {"model": ErrorResponse}},
+    summary="List OAuth providers linked to the current user",
+)
+async def list_oauth_links(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OAuthLinkListResponse:
+    links = await oauth_link_svc.list_links(db=db, user_id=current_user.id)
+    return OAuthLinkListResponse(data=[OAuthLinkDTO.model_validate(link) for link in links])
+
+
+@router.post(
+    "/oauth/links/attach",
+    response_model=OAuthLinkResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+    },
+    summary="Attach an OAuth provider to a user (BFF-internal; called from settings link flow)",
+)
+async def attach_oauth_link(
+    body: OAuthLinkAttachBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _bff: None = Depends(verify_bff_secret),
+) -> OAuthLinkResponse:
+    """Server-to-server endpoint guarded by `X-BFF-Secret`.
+
+    The BFF link callback verifies the user's session, decodes the link-state
+    cookie, and posts here with the resolved `user_id` + the OAuth profile.
+    Core enforces the conflict and last-method invariants.
+    """
+    user = await db.get(User, body.user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "User not found."},
+        )
+    try:
+        link, _created = await oauth_link_svc.attach_link(
+            db=db,
+            user_id=body.user_id,
+            provider=body.profile.provider,
+            provider_account_id=body.profile.provider_account_id,
+            email=body.profile.email,
+            display_name=body.profile.name,
+            avatar_url=body.profile.avatar_url,
+        )
+    except OAuthLinkConflict as exc:
+        await audit(
+            db=db,
+            event_type=AuditEventTypeEnum.OAUTH_LINK_REJECTED_CONFLICT,
+            user_id=body.user_id,
+            request=request,
+            details={"provider": exc.provider, "owning_user_id": str(exc.owning_user_id)},
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "OAUTH_ACCOUNT_ALREADY_LINKED",
+                "message": (
+                    f"This {exc.provider} account is already linked to a different user."
+                ),
+            },
+        ) from exc
+
+    await audit(
+        db=db,
+        event_type=AuditEventTypeEnum.OAUTH_LINK_ADDED,
+        user_id=body.user_id,
+        request=request,
+        details={"provider": link.provider},
+    )
+    await db.commit()
+    return OAuthLinkResponse(data=OAuthLinkDTO.model_validate(link))
+
+
+@router.delete(
+    "/oauth/links/{link_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+    },
+    summary="Unlink an OAuth provider (refuses to remove the last sign-in method)",
+)
+async def remove_oauth_link(
+    link_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    try:
+        removed = await oauth_link_svc.unlink(db=db, user=current_user, link_id=link_id)
+    except LastSignInMethodError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "LAST_SIGN_IN_METHOD",
+                "message": (
+                    "You must set a password before unlinking your only sign-in method."
+                ),
+            },
+        ) from exc
+
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Linked account not found."},
+        )
+
+    await audit(
+        db=db,
+        event_type=AuditEventTypeEnum.OAUTH_LINK_REMOVED,
+        user_id=current_user.id,
+        request=request,
+        details={"link_id": str(link_id)},
+    )
+    await db.commit()
 
 
 @router.post(
@@ -343,7 +515,7 @@ async def request_email_otp(
     cooldown_key = f"auth:otp:cooldown:{body.purpose}:{body.email}"
 
     existing_user = None
-    if body.purpose in {"reset_password", "signup", "login"}:
+    if body.purpose in {"reset_password", "signup", "login", "delete_account"}:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(User).where(func.lower(User.email) == body.email.lower())
@@ -353,6 +525,18 @@ async def request_email_otp(
             if body.purpose == "reset_password" and existing_user is None:
                 # Return generic success to prevent email enumeration
                 await redis.setex(cooldown_key, 60, "1")  # Prevent email enumeration
+                return OtpRequestedResponse(
+                    data=OtpRequested(
+                        delivery="email",
+                        expires_in_seconds=OTP_TTL_SECONDS,
+                        otp=None,
+                    )
+                )
+
+            if body.purpose == "delete_account" and existing_user is None:
+                # Same anti-enumeration treatment as reset_password — never
+                # tell a stranger whether an email is registered.
+                await redis.setex(cooldown_key, 60, "1")
                 return OtpRequestedResponse(
                     data=OtpRequested(
                         delivery="email",
@@ -632,13 +816,16 @@ async def verify_email_otp(
             message="Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.",
         ) from exc
 
-    # Set password (already bcrypt-hashed from request-otp step) and username
+    # Set password (already bcrypt-hashed from request-otp step) and username.
+    # `has_password=True` flips the OAuth-only protection off so account
+    # deletion / unlink-last-method paths use the password identity check.
     if password:
         if password_hashed:
             user.hashed_password = password
         else:
             from app.core.security import hash_password
             user.hashed_password = hash_password(password)
+        user.has_password = True
 
     # Mark email as verified since OTP confirms ownership
     if user.email_verified_at is None:
@@ -740,6 +927,7 @@ async def reset_password(
         )
 
     user.hashed_password = hash_password(body.new_password)
+    user.has_password = True
 
     access_token = create_user_access_token(user)
     token = AuthToken(
