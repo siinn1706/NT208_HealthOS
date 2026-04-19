@@ -322,3 +322,76 @@ export async function forwardToCore(
 ): Promise<NextResponse> {
   return coreProxy(req, corePath, { method, requireAuth });
 }
+
+/**
+ * B7 P6 — streaming pass-through used by the AI chat SSE endpoint.
+ *
+ * Returns the raw upstream `Response` (no envelope normalization, body
+ * untouched) so the route handler can pipe the SSE stream straight to the
+ * browser. Adds the same Authorization header + size-limited JSON body
+ * forwarding as `coreProxy`.
+ *
+ * Headers the route handler should set on the outer Response:
+ *   - "Content-Type": "text/event-stream"
+ *   - "Cache-Control": "no-cache, no-transform"
+ *   - "X-Accel-Buffering": "no"
+ */
+export async function coreFetchStream(
+  req: NextRequest,
+  corePath: string,
+  options: { method?: string; bodySizeLimit?: number; requireAuth?: boolean } = {},
+): Promise<Response> {
+  const token = await getSessionToken();
+  const requireAuth = options.requireAuth ?? true;
+  if (requireAuth && !token) {
+    return new Response(
+      JSON.stringify({
+        error: { code: "AUTH_REQUIRED", message: "Authentication required." },
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const method = options.method ?? req.method;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const url = new URL(corePath, CORE_API_URL);
+  req.nextUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));
+
+  let body: BodyInit | undefined;
+  if (method !== "GET" && method !== "HEAD") {
+    const limit = options.bodySizeLimit ?? JSON_BODY_LIMIT;
+    try {
+      const raw = await req.text();
+      if (raw.length > limit) {
+        return new Response(
+          JSON.stringify({
+            error: { code: "PAYLOAD_TOO_LARGE", message: "Request body too large." },
+          }),
+          { status: 413, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      body = raw;
+    } catch {
+      body = undefined;
+    }
+  }
+
+  // B7 review P1-2 — propagate the inbound AbortSignal so client cancellation
+  // (Stop-generation button → AbortController.abort()) tears down the
+  // upstream Core fetch immediately. Without this, BFF kept reading SSE
+  // chunks from Core (and Core kept paying the AI worker for tokens) long
+  // after the browser closed its connection.
+  // No timeout here — SSE connections are intentionally long-lived.
+  return fetch(url.toString(), {
+    method,
+    headers,
+    body,
+    cache: "no-store",
+    signal: req.signal,
+  });
+}

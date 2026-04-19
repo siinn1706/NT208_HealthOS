@@ -88,6 +88,20 @@ export async function GET(request: NextRequest) {
 
     if (!coreRes.ok) {
       const coreError = await coreRes.json().catch(() => ({}));
+      // B7 review P0-3 — surface the pending-deletion case as a dedicated
+      // restore prompt instead of a generic OAuth failure.
+      if (
+        coreRes.status === 403 &&
+        (coreError?.detail?.code === "ACCOUNT_PENDING_DELETION" ||
+          coreError?.error?.code === "ACCOUNT_PENDING_DELETION")
+      ) {
+        return NextResponse.redirect(
+          new URL(
+            `/${locale}/login?restore=pending&provider=github`,
+            request.url,
+          ).toString(),
+        );
+      }
       console.error("Core BE token exchange failed:", coreError);
       throw new Error("Core BE authentication failed");
     }

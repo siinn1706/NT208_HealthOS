@@ -190,6 +190,92 @@ follow this contract:
 
 ---
 
+## 8a. State machines (B7)
+
+These are the canonical FSMs introduced by Batch B7. Service code rejects
+illegal transitions with `error.code = 'INVALID_STATUS_TRANSITION'`
+(HTTP 422). The FE filter buckets and chips are derived from these labels —
+do NOT introduce parallel enums on the client.
+
+### Appointment status
+
+```
+booked  → scheduled
+booked  → upcoming
+booked  → cancelled
+booked  → rescheduled
+scheduled → upcoming
+scheduled → in_progress
+scheduled → cancelled
+scheduled → rescheduled
+upcoming → in_progress
+upcoming → completed
+upcoming → no_show
+upcoming → cancelled
+upcoming → rescheduled
+in_progress → completed
+in_progress → no_show
+in_progress → cancelled
+completed | cancelled | no_show | rescheduled  (terminal)
+```
+
+### Reminder occurrence status
+
+```
+pending → fired   (Celery beat fired_due_occurrences claimed the row)
+pending → snoozed (user explicit snooze)
+pending → missed  (catch-up sweep marks past-due unfired rows)
+pending → skipped (user explicit skip)
+pending → done    (user explicit complete without firing)
+fired   → done | skipped | snoozed
+done | skipped | missed                   (terminal)
+snoozed → fired                            (re-fires at the new time)
+```
+
+The per-rule `Reminder.is_active` flips to `false` automatically when a
+`once` reminder's only occurrence transitions to `done` so the materializer
+stops generating new slots.
+
+### Account status (soft delete + grace + purge)
+
+```
+active            → pending_deletion   (DELETE /v1/users/me)
+pending_deletion  → active             (POST /v1/users/me/restore, within grace)
+pending_deletion  → purged             (Celery purge_expired_accounts daily 03:00 UTC, after purge_at)
+purged                                  (terminal — row gone)
+```
+
+`get_current_user` rejects pending-deletion users with HTTP 403 and
+`error.code = 'ACCOUNT_PENDING_DELETION'`. The OAuth callback path returns
+the same code on `POST /v1/auth/token`; BFF callbacks redirect to
+`/login?restore=pending&provider=...` so the user can sign back in via the
+restore endpoint instead of bouncing through a generic OAuth error.
+
+### Data export request status
+
+```
+pending → running → completed | failed
+completed → expired                  (24h after completed_at; janitor task)
+```
+
+### Report PDF request status
+
+Same as data export. The 5-min signed URL is minted on each download click
+and never persisted.
+
+### Message status (AI streaming)
+
+```
+pending → streaming → completed | stopped | failed
+```
+
+`stopped` is set by the streaming generator when `request.is_disconnected()`
+fires (FE clicked "Stop generation"). `failed` covers exceptions (upstream
+AI worker error, parse failure). Direct/group messages bypass the streaming
+path and are persisted as `completed` immediately.
+
+---
+
 ## 9. Testing checklist for new routes
 
 - [ ] Returns the envelope shape on every code path (use `assertEnvelope` helper).

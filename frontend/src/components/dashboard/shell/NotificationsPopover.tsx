@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, StateView } from "@/components/shared/state";
 import { track } from "@/lib/analytics";
+import { useRouter } from "@/navigation";
 
 const MAX_ITEMS = 20;
 
@@ -25,10 +26,16 @@ type NotificationItem = {
   created_at?: string | null;
   is_read?: boolean | null;
   read_at?: string | null;
+  /** Deep link from the server (`Notification.link`). */
+  link?: string | null;
+  /** Legacy alias kept for compatibility with older payloads. */
   href?: string | null;
 };
 
+// Popover refreshes every minute when open or focused; the cheaper
+// unread-count poll backs the badge itself when the popover is closed.
 const FETCH_INTERVAL_MS = 60_000;
+const UNREAD_POLL_INTERVAL_MS = 30_000;
 
 function normalize(raw: unknown): NotificationItem[] {
   if (!raw) return [];
@@ -39,6 +46,25 @@ function normalize(raw: unknown): NotificationItem[] {
     if (Array.isArray(obj.results)) return obj.results as NotificationItem[];
   }
   return [];
+}
+
+function readUnreadCount(json: unknown): number | null {
+  if (!json || typeof json !== "object") return null;
+  const data = (json as { data?: unknown }).data;
+  if (data && typeof data === "object" && "unread" in data) {
+    const value = (data as { unread?: unknown }).unread;
+    if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.floor(value));
+  }
+  return null;
+}
+
+function readHasMore(json: unknown): boolean {
+  if (!json || typeof json !== "object") return false;
+  const meta = (json as { meta?: unknown }).meta;
+  if (meta && typeof meta === "object" && "has_more" in meta) {
+    return Boolean((meta as { has_more?: unknown }).has_more);
+  }
+  return false;
 }
 
 function relativeTime(iso: string | null | undefined, locale: string): string {
@@ -57,15 +83,37 @@ function relativeTime(iso: string | null | undefined, locale: string): string {
 export function NotificationsPopover({ locale }: { locale: string }) {
   const t = useTranslations("dashboard.topnav");
   const tShell = useTranslations("dashboard.shell");
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState<NotificationItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  // Server-driven count (preferred); fall back to derived count if the
+  // dedicated endpoint is unavailable on older deployments.
+  const [serverUnreadCount, setServerUnreadCount] = React.useState<number | null>(null);
+  const [hasMoreOnServer, setHasMoreOnServer] = React.useState<boolean>(false);
+
+  const fetchUnreadCount = React.useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch("/api/v1/notifications/unread-count", {
+        cache: "no-store",
+        signal,
+      });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => null);
+      const count = readUnreadCount(json);
+      if (count !== null) setServerUnreadCount(count);
+    } catch {
+      /* Badge poll is best-effort; popover open will refresh authoritatively. */
+    }
+  }, []);
 
   const fetchAll = React.useCallback(async () => {
     try {
       setError(null);
-      const res = await fetch("/api/v1/notifications", { cache: "no-store" });
+      const res = await fetch(`/api/v1/notifications?per_page=${MAX_ITEMS}`, {
+        cache: "no-store",
+      });
       if (!res.ok) {
         // Distinguish failure from "no notifications": surface a real error
         // state so the user knows their list may be incomplete.
@@ -75,6 +123,10 @@ export function NotificationsPopover({ locale }: { locale: string }) {
       const json = await res.json().catch(() => null);
       const list = normalize(json?.data ?? json);
       setItems(list);
+      setHasMoreOnServer(readHasMore(json));
+      // Refresh unread count from list view too (cheap; no extra round-trip).
+      const unread = list.filter((n) => !(n.is_read || n.read_at)).length;
+      setServerUnreadCount((prev) => (prev === null ? unread : prev));
     } catch {
       setError(tShell("notificationsLoadError"));
     } finally {
@@ -82,19 +134,42 @@ export function NotificationsPopover({ locale }: { locale: string }) {
     }
   }, [tShell]);
 
+  // Poll the cheap unread-count endpoint while the popover is closed.
   React.useEffect(() => {
+    const controller = new AbortController();
+    fetchUnreadCount(controller.signal);
+    const id = window.setInterval(() => {
+      void fetchUnreadCount(controller.signal);
+    }, UNREAD_POLL_INTERVAL_MS);
+    const onFocus = () => {
+      void fetchUnreadCount(controller.signal);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      controller.abort();
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [fetchUnreadCount]);
+
+  // Hydrate the full list when the popover opens, then refresh on interval.
+  React.useEffect(() => {
+    if (!open) return;
     fetchAll();
     const id = window.setInterval(fetchAll, FETCH_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [fetchAll]);
+  }, [open, fetchAll]);
 
-  const unreadCount = React.useMemo(
+  const derivedUnreadCount = React.useMemo(
     () => items.filter((n) => !(n.is_read || n.read_at)).length,
     [items],
   );
+  const unreadCount = serverUnreadCount ?? derivedUnreadCount;
 
   const visibleItems = React.useMemo(() => items.slice(0, MAX_ITEMS), [items]);
-  const hasOverflow = items.length > MAX_ITEMS;
+  // The cap notice is shown when *either* the server says there are more
+  // (cursor available) or we hit the local cap on a legacy non-paginated payload.
+  const hasOverflow = hasMoreOnServer || items.length > MAX_ITEMS;
 
   const onTriggerClick = () => {
     if (!open) track("shell.notifications.opened", { unread: unreadCount });
@@ -104,12 +179,49 @@ export function NotificationsPopover({ locale }: { locale: string }) {
     setItems((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n)),
     );
+    setServerUnreadCount((prev) => (prev !== null ? Math.max(0, prev - 1) : prev));
     try {
       await fetch(`/api/v1/notifications/${id}/read`, { method: "POST" });
     } catch {
       /* keep optimistic update; server will reconcile on next poll */
     }
   }, []);
+
+  const markAllRead = React.useCallback(async () => {
+    if (unreadCount === 0) return;
+    setItems((prev) =>
+      prev.map((n) => ({ ...n, is_read: true, read_at: new Date().toISOString() })),
+    );
+    setServerUnreadCount(0);
+    try {
+      await fetch("/api/v1/notifications/read-all", { method: "POST" });
+    } catch {
+      /* optimistic update; reconciles on next poll */
+    }
+  }, [unreadCount]);
+
+  const handleNotificationClick = React.useCallback(
+    (n: NotificationItem) => {
+      const unread = !(n.is_read || n.read_at);
+      if (unread) markRead(n.id);
+      const dest = n.link ?? n.href;
+      if (dest) {
+        // Prefer SPA navigation; absolute URLs fall through to a hard link.
+        if (dest.startsWith("/")) {
+          router.push(dest);
+        } else {
+          window.location.assign(dest);
+        }
+        setOpen(false);
+      }
+    },
+    [markRead, router],
+  );
+
+  const handleSeeAll = React.useCallback(() => {
+    router.push("/dashboard/notifications");
+    setOpen(false);
+  }, [router]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -140,11 +252,22 @@ export function NotificationsPopover({ locale }: { locale: string }) {
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
           <p className="text-sm font-semibold">{t("notifications")}</p>
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            {unreadCount > 0
-              ? tShell("notificationsUnread", { n: unreadCount })
-              : tShell("notificationsAllRead")}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {unreadCount > 0
+                ? tShell("notificationsUnread", { n: unreadCount })
+                : tShell("notificationsAllRead")}
+            </span>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={markAllRead}
+                className="text-[10px] font-medium text-primary underline-offset-2 hover:underline focus-visible:underline"
+              >
+                {tShell("notificationsMarkAllRead")}
+              </button>
+            )}
+          </div>
         </div>
         <ScrollArea className="max-h-[60vh]">
           {loading ? (
@@ -185,13 +308,7 @@ export function NotificationsPopover({ locale }: { locale: string }) {
                   <li key={n.id}>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (unread) markRead(n.id);
-                        if (n.href) {
-                          window.location.assign(n.href);
-                          setOpen(false);
-                        }
-                      }}
+                      onClick={() => handleNotificationClick(n)}
                       className={cn(
                         "flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted",
                         unread && "bg-primary/5",
@@ -232,6 +349,17 @@ export function NotificationsPopover({ locale }: { locale: string }) {
             </p>
           )}
         </ScrollArea>
+        {!loading && !error && items.length > 0 && (
+          <div className="border-t border-border px-3 py-2">
+            <button
+              type="button"
+              onClick={handleSeeAll}
+              className="block w-full rounded-md px-2 py-1.5 text-center text-xs font-medium text-primary hover:bg-muted focus-visible:bg-muted"
+            >
+              {tShell("notificationsSeeAll")}
+            </button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

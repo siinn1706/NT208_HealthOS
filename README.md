@@ -52,10 +52,10 @@ Create an initial admin user for testing (run after setup):
 
 ```bash
 cd backend
-.\.venv\Scripts\python.exe scripts/seed_admin.py
+.\.venv\Scripts\python.exe seed_admin.py
 ```
 
-Creates: email `admin@healthos.local` with a pre-configured password.
+Creates: email `admin@healthos.local` with a pre-configured password. Script lives at `backend/seed_admin.py`.
 
 ### Option A: Docker (recommended)
 

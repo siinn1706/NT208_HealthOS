@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Download, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { getLocaleTag } from "@/lib/format-utils";
 import { Button } from "@/components/ui/button";
 import type { HealthReport } from "@/types/api";
 import {
@@ -18,132 +17,50 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-// ─── PDF generation (client-side, no external lib needed for MVP) ────────────
+/**
+ * B7 P10 — Real PDF export pipeline.
+ *
+ * Replaces the previous `window.print()` HTML hack with a server-rendered
+ * WeasyPrint job:
+ *   1. POST /api/v1/reports/export-pdf  → 202 + job_id
+ *   2. The Celery worker renders the PDF, uploads it to MinIO, and inserts
+ *      a "Report ready" notification — the user is free to navigate away.
+ *   3. Clicking the notification (or returning to /dashboard/reports?pdf=…)
+ *      hits GET /export-pdf/{id}/download which returns a fresh 5-min
+ *      signed URL; the browser opens it in a new tab and downloads the PDF.
+ *
+ * The PHI warning + per-section toggles + sensitive-default-off are kept
+ * on the dialog itself so the user explicitly opts in before submitting.
+ */
 
-async function generateAndDownloadPdf(
-  report: HealthReport,
-  options: {
-    includeDataTable: boolean;
-    includeAiInsights: boolean;
-    sectionsToInclude: string[];
-    locale: string;
-    createdAtLabel: string;
-    popupBlockedMessage: string;
+async function submitPdfExportJob(params: {
+  period: string;
+  sections: string[];
+  locale: string;
+  includeSensitive: boolean;
+}): Promise<{ jobId: string } | { error: string }> {
+  try {
+    const res = await fetch("/api/v1/reports/export-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        period: params.period,
+        sections: params.sections,
+        locale: params.locale.startsWith("vi") ? "vi" : "en",
+        include_sensitive: params.includeSensitive,
+      }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      return { error: json?.error?.message ?? "request-failed" };
+    }
+    const json = await res.json().catch(() => null);
+    const jobId: string | undefined = json?.data?.id;
+    if (!jobId) return { error: "missing-id" };
+    return { jobId };
+  } catch {
+    return { error: "network" };
   }
-) {
-  // Phase 1: Generate a structured HTML snapshot and use window.print()
-  // Phase 2: Use @react-pdf/renderer with a full PDF template
-  // For now: open a printable report in a new tab
-
-  const w = window.open("", "_blank");
-  if (!w) {
-    toast.error(options.popupBlockedMessage);
-    return;
-  }
-
-  const sections = report.sections.filter((s) =>
-    options.sectionsToInclude.includes(s.category)
-  );
-
-  const statusLabel = {
-    normal:   "Bình thường",
-    warning:  "Cần chú ý",
-    critical: "Cần can thiệp",
-  }[report.status];
-
-  const html = `<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <title>Báo cáo sức khoẻ HealthOS — ${report.period}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; color: #0F2743; padding: 32px; max-width: 800px; margin: 0 auto; }
-    h1 { font-size: 22px; font-weight: 700; color: #1B3A5C; }
-    h2 { font-size: 14px; font-weight: 600; color: #1B3A5C; border-bottom: 1px solid #E0F4F9; padding-bottom: 6px; margin: 20px 0 10px; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-    .badge-normal   { background: #d1fae5; color: #065f46; }
-    .badge-warning  { background: #fef3c7; color: #92400e; }
-    .badge-critical { background: #fee2e2; color: #991b1b; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #41BCE6; padding-bottom: 16px; margin-bottom: 20px; }
-    .logo { font-size: 18px; font-weight: 800; color: #41BCE6; letter-spacing: -0.5px; }
-    .meta { font-size: 11px; color: #6B7280; margin-top: 4px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0; }
-    .stat-card { border: 1px solid #E0F4F9; border-radius: 8px; padding: 10px 12px; }
-    .stat-label { font-size: 10px; color: #6B7280; }
-    .stat-value { font-size: 18px; font-weight: 700; color: #1B3A5C; }
-    .stat-unit { font-size: 10px; color: #6B7280; margin-left: 2px; }
-    .alert-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px; background: #fef3c7; border-radius: 6px; margin: 4px 0; }
-    .alert-icon { font-size: 14px; }
-    .alert-text { font-size: 11px; line-height: 1.5; }
-    .summary-text { font-size: 12px; color: #374151; line-height: 1.6; margin: 6px 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
-    th { background: #E0F4F9; padding: 6px 8px; text-align: left; font-weight: 600; }
-    td { padding: 4px 8px; border-bottom: 1px solid #F3F4F6; }
-    .footer { margin-top: 32px; font-size: 10px; color: #9CA3AF; text-align: center; border-top: 1px solid #E5E7EB; padding-top: 12px; }
-    @media print { body { padding: 16px; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <div class="logo">⚕ HealthOS</div>
-      <div class="meta">Báo cáo sức khoẻ cá nhân</div>
-    </div>
-    <div style="text-align:right">
-      <span class="badge badge-${report.status}">${statusLabel}</span>
-      <div class="meta">Kỳ: ${report.period === "7d" ? "7 ngày" : report.period === "30d" ? "30 ngày" : "90 ngày"}</div>
-      <div class="meta">${options.createdAtLabel} ${new Date(report.generated_at).toLocaleDateString(getLocaleTag(options.locale))}</div>
-    </div>
-  </div>
-
-  ${report.alerts.length > 0 ? `
-    <h2>⚠ Tổng hợp cảnh báo (${report.alerts.length})</h2>
-    ${report.alerts.map(a => `
-      <div class="alert-row">
-        <span class="alert-icon">${a.severity === "critical" ? "🔴" : "🟡"}</span>
-        <div class="alert-text"><strong>${a.metric}:</strong> ${a.message}</div>
-      </div>
-    `).join("")}
-  ` : ""}
-
-  ${sections.map((s) => {
-    const trendLabel = { improving: "Cải thiện", stable: "Ổn định", declining: "Giảm sút" }[s.stats.trend];
-    const categoryLabels: Record<string, string> = {
-      vitals: "Chỉ số sinh tồn", nutrition: "Dinh dưỡng",
-      activity: "Hoạt động", sleep: "Giấc ngủ",
-      bmi: "BMI & Cân nặng", medication: "Tuân thủ thuốc",
-    };
-    return `
-      <h2>${categoryLabels[s.category] ?? s.category}</h2>
-      ${options.includeAiInsights
-        ? `<p class="summary-text"><strong>AI:</strong> ${s.summary}</p>`
-        : ""}
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Trung bình</div><div class="stat-value">${s.stats.average.toLocaleString()}<span class="stat-unit">${s.stats.unit}</span></div></div>
-        <div class="stat-card"><div class="stat-label">Thấp nhất</div><div class="stat-value">${s.stats.min.toLocaleString()}<span class="stat-unit">${s.stats.unit}</span></div></div>
-        <div class="stat-card"><div class="stat-label">Cao nhất</div><div class="stat-value">${s.stats.max.toLocaleString()}<span class="stat-unit">${s.stats.unit}</span></div></div>
-      </div>
-      <p style="font-size:11px;color:#6B7280">Xu hướng: ${trendLabel} (${s.stats.change_percent > 0 ? "+" : ""}${s.stats.change_percent}%)</p>
-      ${s.alerts.length > 0 ? s.alerts.map(a => `<div class="alert-row"><span class="alert-icon">${a.severity === "critical" ? "🔴" : "🟡"}</span><div class="alert-text">${a.message}</div></div>`).join("") : ""}
-      ${options.includeDataTable && s.data.length > 0 ? `
-        <table>
-          <thead><tr><th>Ngày</th><th>Giá trị</th></tr></thead>
-          <tbody>${s.data.slice(0, 14).map(d => `<tr><td>${d.date}</td><td>${d.value.toLocaleString()} ${s.stats.unit}</td></tr>`).join("")}</tbody>
-        </table>
-      ` : ""}
-    `;
-  }).join("")}
-
-  <div class="footer">
-    Báo cáo được tạo tự động bởi HealthOS • Thông tin mang tính tham khảo, không thay thế tư vấn y khoa chuyên nghiệp
-  </div>
-  <script>window.onload = () => { window.print(); }</script>
-</body>
-</html>`;
-
-  w.document.write(html);
-  w.document.close();
 }
 
 // ─── Dialog Component ─────────────────────────────────────────────────────────
@@ -154,17 +71,24 @@ interface ExportPdfDialogProps {
   report: HealthReport;
 }
 
+// B7 review P1-8 — sensitive section keys mirror the BE template's
+// `i18n.sensitive_categories` list. Toggling `includeSensitive` is the only
+// way these get rendered; section checkboxes alone don't bypass the gate.
+const SENSITIVE_SECTION_KEYS: ReadonlySet<string> = new Set(["medication"]);
+
 export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogProps) {
   const t = useTranslations("reports");
   const tCat = useTranslations("reports.categories");
   const tExp = useTranslations("reports.export");
   const locale = useLocale();
   const [generating, setGenerating] = useState(false);
-  const [includeDataTable, setIncludeDataTable] = useState(true);
-  const [includeAiInsights, setIncludeAiInsights] = useState(true);
+  // B7 review P1-8 — explicit opt-in for sensitive sections (defaults off).
+  // The dead `includeDataTable` / `includeAiInsights` checkboxes that the
+  // server ignored have been removed.
+  const [includeSensitive, setIncludeSensitive] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [selectedSections, setSelectedSections] = useState<string[]>(
-    report.sections.map((s) => s.category)
+    report.sections.map((s) => s.category),
   );
 
   function toggleSection(cat: string) {
@@ -178,22 +102,27 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
       toast.error(tExp("selectAtLeastOne"));
       return;
     }
+    // If the user picked sensitive sections without enabling the toggle,
+    // be explicit instead of silently dropping them on the server.
+    const sensitiveSelected = selectedSections.some((s) => SENSITIVE_SECTION_KEYS.has(s));
+    if (sensitiveSelected && !includeSensitive) {
+      toast.error(tExp("sensitiveBlocked"));
+      return;
+    }
     setGenerating(true);
-    const exportPromise = generateAndDownloadPdf(report, {
-      includeDataTable,
-      includeAiInsights,
-      sectionsToInclude: selectedSections,
+    const result = await submitPdfExportJob({
+      period: report.period,
+      sections: selectedSections,
       locale,
-      createdAtLabel: tExp("createdAt"),
-      popupBlockedMessage: tExp("popupBlocked"),
+      includeSensitive,
     });
-    toast.promise(exportPromise, {
-      loading: t("exportPdfLoading"),
-      success: t("exportPdfSuccess"),
-      error: tExp("errorGeneric"),
-    });
-    await exportPromise;
     setGenerating(false);
+    if ("error" in result) {
+      toast.error(tExp("errorGeneric"));
+      return;
+    }
+    // Server-rendered: the user is notified when the PDF is ready.
+    toast.success(t("exportPdfSuccess"));
     onOpenChange(false);
   }
 
@@ -240,30 +169,24 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
             </div>
           </div>
 
-          {/* Options */}
+          {/* Sensitive opt-in */}
           <div>
             <p className="text-xs font-semibold text-foreground mb-2">{tExp("options")}</p>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="opt-table"
-                  checked={includeDataTable}
-                  onCheckedChange={(c) => setIncludeDataTable(!!c)}
-                />
-                <Label htmlFor="opt-table" className="text-sm font-normal cursor-pointer">
-                  {tExp("includeRawTable")}
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="opt-ai"
-                  checked={includeAiInsights}
-                  onCheckedChange={(c) => setIncludeAiInsights(!!c)}
-                />
-                <Label htmlFor="opt-ai" className="text-sm font-normal cursor-pointer">
-                  {tExp("includeAiInsights")}
-                </Label>
-              </div>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="opt-sensitive"
+                checked={includeSensitive}
+                onCheckedChange={(c) => setIncludeSensitive(!!c)}
+              />
+              <Label
+                htmlFor="opt-sensitive"
+                className="text-xs font-normal leading-relaxed cursor-pointer"
+              >
+                {tExp("includeSensitive")}
+                <span className="block text-[10px] text-muted-foreground mt-0.5">
+                  {tExp("includeSensitiveHint")}
+                </span>
+              </Label>
             </div>
           </div>
 

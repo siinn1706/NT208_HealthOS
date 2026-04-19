@@ -1,7 +1,20 @@
 "use client";
 
-import { Pill, Stethoscope, CalendarDays, Building2, FileText } from "lucide-react";
+import * as React from "react";
+import {
+  Pill,
+  Stethoscope,
+  CalendarDays,
+  Building2,
+  FileText,
+  Paperclip,
+  Download,
+  Eye,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -10,23 +23,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Prescription } from "@/types/api";
 
 /**
- * Prescription viewer (UX plan §F).
- *
- * Previously this was a hand-rolled overlay using a fixed-position div with
- * an `onClick` backdrop close. That implementation skipped focus trap, ESC
- * dismissal, and body scroll-lock — it also rendered outside the React tree
- * portal, so other modals (toasts, popovers) could obscure it. We now wrap
- * shadcn's `<Dialog>` (Radix under the hood) which gives us all of that
- * accessibility plumbing for free.
+ * Prescription viewer (UX plan §F + B7 P4 attachments).
  */
 
 interface PrescriptionViewerDialogProps {
   prescription: Prescription | null;
+  /** Appointment id — required to fetch / upload prescription assets. */
+  appointmentId?: string;
   onClose: () => void;
 }
+
+type PrescriptionAsset = {
+  id: string;
+  appointment_id: string;
+  mime_type: string;
+  size_bytes: number;
+  sha256: string;
+  original_filename: string | null;
+  uploaded_at: string;
+};
 
 // Note: dosage chip currently uses the `default` colour for every entry; the
 // language-specific category map below is kept for reference but is no longer
@@ -38,9 +58,11 @@ const CATEGORY_COLORS = {
 
 export function PrescriptionViewerDialog({
   prescription,
+  appointmentId,
   onClose,
 }: PrescriptionViewerDialogProps) {
   const t = useTranslations("dashboard.appointments");
+  const tAttach = useTranslations("dashboard.appointments.attachments");
   const locale = useLocale();
 
   const open = prescription !== null;
@@ -134,6 +156,14 @@ export function PrescriptionViewerDialog({
                   </p>
                 </div>
               )}
+
+              {appointmentId && (
+                <AttachmentsPanel
+                  appointmentId={appointmentId}
+                  t={tAttach}
+                  locale={locale}
+                />
+              )}
             </div>
 
             <div className="px-5 py-3 border-t border-border bg-muted/20">
@@ -145,6 +175,219 @@ export function PrescriptionViewerDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AttachmentsPanel({
+  appointmentId,
+  t,
+  locale,
+}: {
+  appointmentId: string;
+  t: ReturnType<typeof useTranslations>;
+  locale: string;
+}) {
+  const [assets, setAssets] = React.useState<PrescriptionAsset[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [uploading, setUploading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/appointments/${encodeURIComponent(appointmentId)}/prescription/assets`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) {
+        setError(t("loadError"));
+        return;
+      }
+      const json = await res.json().catch(() => null);
+      const list = Array.isArray(json?.data) ? (json.data as PrescriptionAsset[]) : [];
+      setAssets(list);
+    } catch {
+      setError(t("loadError"));
+    } finally {
+      setLoading(false);
+    }
+  }, [appointmentId, t]);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const handlePickFile = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // reset so the same file can be re-picked
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file, file.name);
+      const res = await fetch(
+        `/api/v1/appointments/${encodeURIComponent(appointmentId)}/prescription/assets`,
+        { method: "POST", body: fd },
+      );
+      if (res.status === 413) {
+        toast.error(t("tooLarge"));
+        return;
+      }
+      if (res.status === 415) {
+        toast.error(t("unsupportedType"));
+        return;
+      }
+      if (!res.ok) {
+        toast.error(t("uploadError"));
+        return;
+      }
+      toast.success(t("uploadSuccess"));
+      await refresh();
+    } catch {
+      toast.error(t("uploadError"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openSignedUrl = async (asset: PrescriptionAsset, asDownload: boolean) => {
+    try {
+      const res = await fetch(
+        `/api/v1/appointments/${encodeURIComponent(appointmentId)}/prescription/assets/${asset.id}/url`,
+      );
+      if (!res.ok) {
+        toast.error(t("urlError"));
+        return;
+      }
+      const json = await res.json().catch(() => null);
+      const url: string | undefined = json?.data?.url;
+      if (!url) {
+        toast.error(t("urlError"));
+        return;
+      }
+      if (asDownload) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = asset.original_filename ?? "prescription";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      toast.error(t("urlError"));
+    }
+  };
+
+  const handleDelete = async (asset: PrescriptionAsset) => {
+    if (!confirm(t("confirmDelete"))) return;
+    try {
+      const res = await fetch(
+        `/api/v1/appointments/${encodeURIComponent(appointmentId)}/prescription/assets/${asset.id}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        toast.error(t("deleteError"));
+        return;
+      }
+      toast.success(t("deleteSuccess"));
+      await refresh();
+    } catch {
+      toast.error(t("deleteError"));
+    }
+  };
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Paperclip className="w-4 h-4 text-muted-foreground" aria-hidden />
+          <p className="text-sm font-semibold text-foreground">{t("title")}</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handlePickFile}
+          disabled={uploading}
+          className="gap-2"
+        >
+          <Upload className="w-3.5 h-3.5" aria-hidden />
+          {uploading ? t("uploading") : t("upload")}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ) : error ? (
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          {error}
+        </p>
+      ) : assets.length === 0 ? (
+        <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+          {t("none")}
+        </p>
+      ) : (
+        <ul role="list" className="divide-y divide-border rounded-md border border-border">
+          {assets.map((asset) => (
+            <li key={asset.id} className="flex items-center gap-2 px-3 py-2">
+              <FileText className="size-4 text-muted-foreground" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-foreground">
+                  {asset.original_filename ?? `${asset.mime_type} · ${asset.id.slice(0, 8)}`}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {(asset.size_bytes / 1024).toFixed(0)} KB ·{" "}
+                  {new Date(asset.uploaded_at).toLocaleDateString(locale)}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("view")}
+                onClick={() => openSignedUrl(asset, false)}
+              >
+                <Eye className="size-4" aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("download")}
+                onClick={() => openSignedUrl(asset, true)}
+              >
+                <Download className="size-4" aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("delete")}
+                onClick={() => handleDelete(asset)}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

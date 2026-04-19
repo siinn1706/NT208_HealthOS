@@ -14,8 +14,10 @@ from app.api.v1.endpoints import (
     health_metrics,
     meals,
     mfa,
+    notifications,
     nutrition,
     preferences,
+    prescriptions,
     reminders,
     reports,
     security_logs,
@@ -45,4 +47,6 @@ router.include_router(reports.router)
 router.include_router(mfa.router)
 router.include_router(security_logs.router)
 router.include_router(preferences.router)
+router.include_router(notifications.router)
+router.include_router(prescriptions.router)
 router.include_router(chat.router)

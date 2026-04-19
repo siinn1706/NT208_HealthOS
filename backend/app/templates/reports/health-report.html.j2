@@ -1,0 +1,164 @@
+{# B7 P10 — WeasyPrint-rendered health report template.
+
+Inputs:
+  * `report` — dict { period, status, generated_at, sections: [...], alerts: [...] }
+  * `params` — dict { locale, include_sensitive, sections (selected), audit_id }
+  * `i18n`   — dict of label → translated string for `params.locale`
+
+`@page`-driven CSS gives WeasyPrint a real paginated layout (A4, margins,
+running header / footer with page numbers).
+#}
+<!DOCTYPE html>
+<html lang="{{ params.locale }}">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ i18n.title }} — {{ report.period }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 22mm 18mm 24mm 18mm;
+      @top-right {
+        content: "{{ i18n.footer_brand }}";
+        font: 9pt "Noto Sans", sans-serif;
+        color: #6B7280;
+      }
+      @bottom-right {
+        content: "{{ i18n.page }} " counter(page) " / " counter(pages);
+        font: 9pt "Noto Sans", sans-serif;
+        color: #6B7280;
+      }
+      @bottom-left {
+        content: "{{ i18n.audit_label }}: {{ params.audit_id }}";
+        font: 8pt "Noto Sans", sans-serif;
+        color: #9CA3AF;
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Noto Sans", "Be Vietnam Pro", sans-serif;
+      color: #0F2743;
+      font-size: 10pt;
+      line-height: 1.5;
+    }
+    h1 { font-size: 18pt; font-weight: 700; color: #1B3A5C; }
+    h2 {
+      font-size: 12pt; font-weight: 600; color: #1B3A5C;
+      border-bottom: 1px solid #E0F4F9; padding-bottom: 4pt;
+      margin: 16pt 0 8pt; page-break-after: avoid;
+    }
+    h3 { font-size: 10pt; font-weight: 600; color: #374151; margin-top: 8pt; }
+
+    .header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 2pt solid #41BCE6; padding-bottom: 12pt; margin-bottom: 12pt;
+    }
+    .meta { font-size: 8pt; color: #6B7280; margin-top: 2pt; }
+    .badge {
+      display: inline-block; padding: 2pt 8pt; border-radius: 999px;
+      font-size: 8pt; font-weight: 600;
+    }
+    .badge-normal   { background: #D1FAE5; color: #065F46; }
+    .badge-warning  { background: #FEF3C7; color: #92400E; }
+    .badge-critical { background: #FEE2E2; color: #991B1B; }
+
+    .phi-warning {
+      border: 1pt solid #92400E; background: #FEF3C7; color: #92400E;
+      padding: 8pt 10pt; border-radius: 4pt; margin: 12pt 0;
+      font-size: 9pt; line-height: 1.45;
+    }
+    .phi-warning strong { display: block; margin-bottom: 2pt; }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8pt; margin: 8pt 0;
+    }
+    .stat-card {
+      border: 0.5pt solid #E0F4F9; border-radius: 4pt; padding: 6pt 8pt;
+    }
+    .stat-label { font-size: 7pt; color: #6B7280; text-transform: uppercase; }
+    .stat-value { font-size: 14pt; font-weight: 700; color: #1B3A5C; }
+    .stat-unit { font-size: 8pt; color: #6B7280; margin-left: 2pt; }
+
+    .alert-row {
+      display: flex; gap: 6pt; align-items: flex-start;
+      padding: 6pt 8pt; background: #FEF3C7; border-radius: 4pt;
+      margin: 4pt 0; page-break-inside: avoid;
+    }
+    .alert-text { font-size: 9pt; line-height: 1.5; }
+    .alert-critical { background: #FEE2E2; }
+
+    .summary-text { font-size: 9pt; color: #374151; line-height: 1.55; margin: 4pt 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-top: 6pt; }
+    th { background: #E0F4F9; padding: 4pt 6pt; text-align: left; font-weight: 600; }
+    td { padding: 3pt 6pt; border-bottom: 0.25pt solid #F3F4F6; }
+
+    .section { page-break-inside: avoid; margin-bottom: 14pt; }
+    .footer-disclaimer {
+      margin-top: 18pt; padding-top: 10pt; border-top: 0.5pt solid #E5E7EB;
+      font-size: 7.5pt; color: #6B7280; text-align: center; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>{{ i18n.title }}</h1>
+      <p class="meta">{{ i18n.subtitle }}</p>
+      <p class="meta">{{ i18n.generated_at }}: {{ report.generated_at }}</p>
+    </div>
+    <div style="text-align:right">
+      <span class="badge badge-{{ report.status }}">{{ i18n.status_labels[report.status] }}</span>
+      <p class="meta" style="margin-top:6pt">{{ i18n.period_label }}: {{ i18n.period_labels[report.period] }}</p>
+    </div>
+  </div>
+
+  <div class="phi-warning">
+    <strong>{{ i18n.phi_title }}</strong>
+    {{ i18n.phi_body }}
+  </div>
+
+  {% if report.alerts %}
+    <h2>{{ i18n.alerts_heading }} ({{ report.alerts | length }})</h2>
+    {% for a in report.alerts %}
+      <div class="alert-row {% if a.severity == 'critical' %}alert-critical{% endif %}">
+        <div class="alert-text"><strong>{{ a.metric }}:</strong> {{ a.message }}</div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% for section in report.sections %}
+    {% if section.category in params.sections and (params.include_sensitive or section.category not in i18n.sensitive_categories) %}
+      <div class="section">
+        <h2>{{ i18n.category_labels.get(section.category, section.category) }}</h2>
+        <p class="summary-text">{{ section.summary }}</p>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">{{ i18n.stat_average }}</div>
+            <div class="stat-value">{{ section.stats.average }}<span class="stat-unit">{{ section.stats.unit }}</span></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">{{ i18n.stat_min }}</div>
+            <div class="stat-value">{{ section.stats.min }}<span class="stat-unit">{{ section.stats.unit }}</span></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">{{ i18n.stat_max }}</div>
+            <div class="stat-value">{{ section.stats.max }}<span class="stat-unit">{{ section.stats.unit }}</span></div>
+          </div>
+        </div>
+        {% if section.alerts %}
+          {% for a in section.alerts %}
+            <div class="alert-row {% if a.severity == 'critical' %}alert-critical{% endif %}">
+              <div class="alert-text">{{ a.message }}</div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  <div class="footer-disclaimer">
+    {{ i18n.disclaimer }}
+  </div>
+</body>
+</html>

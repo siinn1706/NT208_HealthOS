@@ -5,6 +5,14 @@ export const mealIngredientSchema = z.object({
     .string()
     .min(1, { message: "Tên thành phần không được để trống." })
     .max(100, { message: "Tên thành phần không được vượt quá 100 ký tự." }),
+  /**
+   * B7 — locale-paired English name (when picked from the catalog) so the
+   * meal payload survives a locale switch and ML pipelines can search both.
+   * Optional: free-text rows submitted from the VI form leave it blank.
+   */
+  ingredient_name_en: z.string().max(100).optional(),
+  /** Stable ingredient id (UUID) when the row came from the catalog. */
+  ingredient_id: z.string().uuid().optional(),
   grams: z
     .number()
     .min(1, { message: "Gram phải ít nhất 1g." })

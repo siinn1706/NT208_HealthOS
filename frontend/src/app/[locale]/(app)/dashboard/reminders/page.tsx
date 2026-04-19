@@ -65,6 +65,53 @@ async function fetchReminders(params: { type?: FilterType; state?: StateTab }): 
   }
 }
 
+// B7 P5 — today tab is server-driven via the occurrences endpoint.
+type OccurrenceFromApi = {
+  id: string;
+  reminder_id: string;
+  title: string;
+  type: "medicine" | "appointment" | "exercise";
+  scheduled_at: string;
+  status: string;
+};
+
+async function fetchTodayOccurrences(filterType?: FilterType): Promise<{
+  ok: boolean;
+  data: Reminder[];
+}> {
+  const tzid =
+    (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+    "Asia/Ho_Chi_Minh";
+  const search = new URLSearchParams({ today: "true", tzid });
+  try {
+    const res = await fetch(`/api/v1/reminders/occurrences?${search.toString()}`);
+    if (!res.ok) return { ok: false, data: [] };
+    const json = await res.json().catch(() => null);
+    const list: OccurrenceFromApi[] = Array.isArray(json?.data) ? json.data : [];
+    // Map occurrences → the legacy `Reminder` shape the rest of the page expects.
+    const reminders: Reminder[] = list
+      .filter((o) => !filterType || filterType === "all" || o.type === filterType)
+      .map((o) => {
+        const dt = new Date(o.scheduled_at);
+        const hh = String(dt.getHours()).padStart(2, "0");
+        const mm = String(dt.getMinutes()).padStart(2, "0");
+        return {
+          // Use the parent reminder id for skip/snooze actions; keep occurrence
+          // id available via the spread for future per-occurrence actions.
+          id: o.reminder_id,
+          type: o.type,
+          title: o.title,
+          time: `${hh}:${mm}`,
+          repeat: "once",
+          done: o.status === "done",
+        };
+      });
+    return { ok: true, data: reminders };
+  } catch {
+    return { ok: false, data: [] };
+  }
+}
+
 function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -119,7 +166,11 @@ export default function RemindersPage() {
     let cancelled = false;
     setLoading(true);
     setErrorState(null);
-    fetchReminders({ type: filter, state: stateTab }).then((r) => {
+    const loader =
+      stateTab === "today"
+        ? fetchTodayOccurrences(filter)
+        : fetchReminders({ type: filter, state: stateTab });
+    loader.then((r) => {
       if (cancelled) return;
       if (!r.ok) setErrorState(t("reminders.loadErrorBody"));
       setReminders(r.data);

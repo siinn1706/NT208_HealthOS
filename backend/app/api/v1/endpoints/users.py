@@ -1,16 +1,27 @@
 """Users endpoints."""
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from fastapi.security import HTTPAuthorizationCredentials
+from pydantic import BaseModel, EmailStr, Field
+from redis.asyncio import Redis
+
 from app.adapters.database import get_db
+from app.adapters.redis_client import get_redis
 from app.adapters.storage import upload_file
 from app.core.config import settings
-from app.core.security import get_current_user
+from app.core.security import (
+    get_current_user,
+    get_current_user_for_restore,
+    http_bearer,
+)
+from app.models.audit import AuditEventTypeEnum
 from app.models.core import OnboardingStatusEnum, User, UserProfile
 from app.schemas.auth import (
     CurrentUser,
@@ -18,6 +29,23 @@ from app.schemas.auth import (
     UserProfileUpdate,
 )
 from app.schemas.common import ErrorResponse
+from app.schemas.data_export import (
+    DataExportRequestDTO,
+    DataExportRequestResponse,
+    DataExportSignedUrlData,
+    DataExportSignedUrlResponse,
+)
+from app.services import account_deletion as deletion_svc
+from app.services import data_export as export_svc
+from app.services.account_deletion import AlreadyPendingDeletion, IdentityCheckFailed
+from app.services.audit import audit
+from app.services.data_export import ExportRateLimited
+from app.services.otp import (
+    decrement_attempts,
+    get_latest_active_otp,
+    hash_otp_code,
+    mark_otp_consumed,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -212,3 +240,287 @@ async def update_current_user_profile(
     await db.refresh(current_user)
 
     return _to_current_user_response(current_user)
+
+
+# ─── B7 P8 — Account data export ─────────────────────────────────────────
+
+
+@router.post(
+    "/me/export",
+    response_model=DataExportRequestResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={
+        401: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
+    },
+    summary="Request a downloadable archive of your account data (rate-limited 1 / 24h).",
+)
+async def request_data_export(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DataExportRequestResponse:
+    try:
+        req = await export_svc.request_export(db, current_user.id)
+    except ExportRateLimited as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "RATE_LIMITED",
+                "message": "An export request was already created in the last 24 hours.",
+                "details": {"retry_after_s": exc.retry_after_s},
+            },
+        ) from exc
+    await audit(
+        db=db,
+        event_type=AuditEventTypeEnum.DATA_EXPORT_REQUESTED,
+        user_id=current_user.id,
+        request=request,
+        details={"request_id": str(req.id)},
+    )
+    await db.commit()
+    # Defer the heavy work to Celery so we can return 202 immediately.
+    from app.tasks.data_export import build_user_export
+
+    build_user_export.delay(str(current_user.id), str(req.id))
+    return DataExportRequestResponse(data=DataExportRequestDTO.model_validate(req))
+
+
+@router.get(
+    "/me/export/{request_id}",
+    response_model=DataExportRequestResponse,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Poll the status of a data export job.",
+)
+async def get_data_export_status(
+    request_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DataExportRequestResponse:
+    req = await export_svc.get_request(db, current_user.id, request_id)
+    if req is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Export request not found."},
+        )
+    return DataExportRequestResponse(data=DataExportRequestDTO.model_validate(req))
+
+
+@router.get(
+    "/me/export/{request_id}/download",
+    response_model=DataExportSignedUrlResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        410: {"model": ErrorResponse},
+    },
+    summary="Mint a fresh 5-minute signed download URL for a completed export.",
+)
+async def get_data_export_download(
+    request_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DataExportSignedUrlResponse:
+    from app.adapters.storage import DEFAULT_GET_EXPIRY_S
+    from app.models.core import DataExportStatusEnum
+
+    req = await export_svc.get_request(db, current_user.id, request_id)
+    if req is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Export request not found."},
+        )
+    if req.status != DataExportStatusEnum.COMPLETED.value:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "EXPORT_NOT_READY", "message": "Export is not complete yet."},
+        )
+    now = datetime.now(timezone.utc)
+    if req.expires_at is not None and req.expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={"code": "EXPORT_EXPIRED", "message": "Download link has expired."},
+        )
+    url = export_svc.mint_signed_download(req)
+    await audit(
+        db=db,
+        event_type=AuditEventTypeEnum.DATA_EXPORT_DOWNLOADED,
+        user_id=current_user.id,
+        request=request,
+        details={"request_id": str(req.id)},
+    )
+    await db.commit()
+    return DataExportSignedUrlResponse(
+        data=DataExportSignedUrlData(
+            url=url,
+            expires_in_s=DEFAULT_GET_EXPIRY_S,
+            bytes=req.bytes or 0,
+            expires_at=req.expires_at or now,
+        )
+    )
+
+
+# ─── B7 P9 — Account soft delete + restore ───────────────────────────────
+
+
+class DeleteAccountBody(BaseModel):
+    """Identity proof for account deletion.
+
+    `confirmation_email` must equal the user's email exactly (case-insensitive).
+    Identity verification is one of:
+      * `password` — required for users with `has_password=True`.
+      * `otp_code` — required for OAuth-only users; verified against the
+        most recent active OTP for `purpose='delete_account'`.
+    """
+
+    confirmation_email: EmailStr
+    password: Optional[str] = Field(default=None, max_length=200)
+    otp_code: Optional[str] = Field(default=None, min_length=6, max_length=6, pattern=r"^\d{6}$")
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={
+        401: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+    summary="Soft-delete the current account (30-day grace period).",
+)
+async def soft_delete_account(
+    body: DeleteAccountBody,
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> dict:
+    # B7 P0-2 — OAuth-only users prove identity via OTP rather than password.
+    # Verify the OTP here so the service layer stays pure.
+    user_has_password = bool(getattr(current_user, "has_password", True))
+    otp_verified = False
+    if not user_has_password:
+        if not body.otp_code:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "OTP_REQUIRED",
+                    "message": (
+                        "OAuth-only accounts must verify a one-time code emailed to them. "
+                        "Request one via /v1/auth/request-otp with purpose='delete_account'."
+                    ),
+                },
+            )
+        otp_record = await get_latest_active_otp(
+            db=db, email=current_user.email, purpose="delete_account"
+        )
+        if otp_record is None or otp_record.attempts_left <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
+            )
+        if hash_otp_code(body.otp_code) != otp_record.code_hash:
+            await decrement_attempts(db, otp_record)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
+            )
+        await mark_otp_consumed(db, otp_record)
+        otp_verified = True
+
+    try:
+        user = await deletion_svc.request_deletion(
+            db=db,
+            user=current_user,
+            confirmation_email=body.confirmation_email,
+            password=body.password,
+            otp_verified=otp_verified,
+            reason=body.reason,
+        )
+    except AlreadyPendingDeletion as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "ALREADY_PENDING_DELETION",
+                "message": "An active deletion request already exists for this account.",
+            },
+        ) from exc
+    except IdentityCheckFailed as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "IDENTITY_CHECK_FAILED", "message": str(exc)},
+        ) from exc
+
+    await audit(
+        db=db,
+        event_type=AuditEventTypeEnum.ACCOUNT_DELETION_REQUESTED,
+        user_id=user.id,
+        request=request,
+        details={"purge_at": user.purge_at.isoformat() if user.purge_at else None},
+    )
+
+    # In-app notification with the restore deep-link.
+    from app.services import notifications as notif_svc
+    from app.models.core import NotificationKindEnum
+
+    await notif_svc.enqueue(
+        db=db,
+        user_id=user.id,
+        title="Your account is scheduled for deletion",
+        body=(
+            "You can restore your account at any time within the next 30 days "
+            "by signing in and choosing 'Restore account'."
+        ),
+        kind=NotificationKindEnum.ACCOUNT,
+        link="/dashboard/settings",
+    )
+
+    # Revoke this caller's JWT so the response we are about to return is the
+    # last successful one served on it.
+    if credentials is not None:
+        await deletion_svc.revoke_all_sessions(redis, credentials.credentials)
+    await db.commit()
+
+    return {
+        "data": {
+            "status": "pending_deletion",
+            "purge_at": user.purge_at.isoformat() if user.purge_at else None,
+        }
+    }
+
+
+@router.post(
+    "/me/restore",
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+    },
+    summary="Cancel a pending deletion (restore the account).",
+)
+async def restore_account(
+    request: Request,
+    user: User = Depends(get_current_user_for_restore),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    if user.deleted_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "NOT_PENDING_DELETION",
+                "message": "Account is not in a deletion state.",
+            },
+        )
+    await deletion_svc.restore(db, user)
+    await audit(
+        db=db,
+        event_type=AuditEventTypeEnum.ACCOUNT_DELETION_CANCELLED,
+        user_id=user.id,
+        request=request,
+        details=None,
+    )
+    await db.commit()
+    return {"data": {"status": "active"}}
