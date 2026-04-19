@@ -50,6 +50,12 @@ class AppointmentCreateBody(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
+class AppointmentStatusUpdateBody(BaseModel):
+    status: str = Field(
+        pattern=r"^(booked|scheduled|upcoming|in_progress|completed|cancelled|no_show|rescheduled)$",
+    )
+
+
 class AppointmentResponse(DataResponse[AppointmentDTO]):
     ...
 

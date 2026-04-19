@@ -13,12 +13,22 @@ import datetime
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
-from app.models.core import User
+from app.models.core import (
+    Conversation,
+    ConversationTypeEnum,
+    Message,
+    MessageContentTypeEnum,
+    MessageStatusEnum,
+    User,
+)
+from app.services.ai_chat_stream import stream_assistant_response
 from app.schemas.chat import (
     ConversationDTO,
     ConversationListResponse,
@@ -303,6 +313,81 @@ async def send_message(
         msg.model_dump(mode="json"),
     )
     return MessageResponse(data=msg)
+
+
+@router.post(
+    "/conversations/{conversation_id}/messages/stream",
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+    },
+    summary="AI conversation streaming endpoint (Server-Sent Events).",
+)
+async def stream_message(
+    conversation_id: uuid.UUID,
+    body: SendMessageBody,
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    """B7 P6 — SSE pipe for AI replies.
+
+    Persists the user's message synchronously, then streams an `assistant`
+    delta sequence terminated by either `done` (success) or `aborted` /
+    `error`. The streaming row's `status` column lets the FE distinguish
+    a stopped reply from a completed one when re-loading the transcript.
+    """
+    conv = (
+        await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    ).scalar_one_or_none()
+    if conv is None:
+        raise _http_error(404, "CHAT_NOT_FOUND", "Conversation not found.")
+    if conv.type != ConversationTypeEnum.AI:
+        raise _http_error(
+            400,
+            "STREAM_NOT_SUPPORTED",
+            "Streaming is only available for AI conversations.",
+        )
+    try:
+        await chat_svc.assert_member(db, conversation_id, current_user.id)
+    except PermissionError as exc:
+        raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+
+    # Persist the user message immediately (durable even if streaming dies).
+    user_msg = Message(
+        conversation_id=conversation_id,
+        sender_id=current_user.id,
+        client_message_id=body.client_message_id,
+        content=body.content,
+        content_type=MessageContentTypeEnum(body.content_type or "text"),
+        status=MessageStatusEnum.COMPLETED.value,
+    )
+    db.add(user_msg)
+    await db.flush()
+    user_msg_id = user_msg.id
+    await db.commit()
+
+    # B7 review P2-5 — generator owns its session lifecycle. We don't pass
+    # `db` (the dep-injected one) so FastAPI can return the connection to
+    # the pool the moment this handler returns.
+    generator = stream_assistant_response(
+        request=request,
+        conversation_id=conversation_id,
+        user_id=current_user.id,
+        user_message_id=user_msg_id,
+        prompt=body.content,
+    )
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.patch(

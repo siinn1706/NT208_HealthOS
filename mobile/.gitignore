@@ -1,0 +1,19 @@
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+.env
+.env.local
+.env.development.local
+.env.staging.local
+.env.production.local
+*.log
+*.pem
+.DS_Store
+expo-env.d.ts
+
+# IDE
+.vscode/
+.idea/

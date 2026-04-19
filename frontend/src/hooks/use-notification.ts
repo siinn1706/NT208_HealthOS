@@ -1,7 +1,12 @@
 "use client";
 
 import { toast } from "sonner";
-import { parseApiError, getErrorMessage, isNetworkError } from "@/types/api-error";
+import {
+  parseApiError,
+  getErrorMessage,
+  isNetworkError,
+  type ErrorTranslator,
+} from "@/types/api-error";
 
 /**
  * Notification types
@@ -37,9 +42,14 @@ interface NotificationOptions {
 }
 
 /**
- * Notification hook for showing toast messages
+ * Notification hook for showing toast messages.
+ *
+ * @param t - Optional translator. When provided, network and generic
+ *   fallbacks come from `errors.network` / `errors.generic` (and per-code
+ *   keys under `errors.codes.*`) instead of hardcoded Vietnamese copy.
+ *   Existing call-sites continue to work without a translator.
  */
-export function useNotification() {
+export function useNotification(t?: ErrorTranslator) {
   /**
    * Show success notification
    */
@@ -103,8 +113,8 @@ export function useNotification() {
     response: unknown,
     fallbackMessage?: string
   ): Record<string, string> => {
-    const apiError = parseApiError(response);
-    const message = getErrorMessage(apiError.code, fallbackMessage || apiError.message);
+    const apiError = parseApiError(response, t);
+    const message = getErrorMessage(apiError.code, fallbackMessage || apiError.message, t);
 
     // If there are field errors, return them for inline display
     if (apiError.field_errors && Object.keys(apiError.field_errors).length > 0) {
@@ -124,15 +134,14 @@ export function useNotification() {
    * Handle generic error (network, unexpected)
    */
   const handleError = (err: unknown, fallbackMessage?: string) => {
-    // Network error
     if (isNetworkError(err)) {
-      error("Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối mạng.", {
-        duration: 8000,
-      });
+      const networkMsg = t
+        ? t("errors.network")
+        : "Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối mạng.";
+      error(networkMsg, { duration: 8000 });
       return {};
     }
 
-    // Try to parse as API error
     if (err && typeof err === "object") {
       const fieldErrors = handleApiError(err, fallbackMessage);
       if (Object.keys(fieldErrors).length > 0) {
@@ -140,10 +149,8 @@ export function useNotification() {
       }
     }
 
-    // Generic fallback
-    error(fallbackMessage || "Đã xảy ra lỗi. Vui lòng thử lại.", {
-      duration: 6000,
-    });
+    const genericMsg = t ? t("errors.generic") : "Đã xảy ra lỗi. Vui lòng thử lại.";
+    error(fallbackMessage || genericMsg, { duration: 6000 });
     return {};
   };
 

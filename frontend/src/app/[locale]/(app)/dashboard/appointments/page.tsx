@@ -3,7 +3,19 @@ import { getTranslations } from "next-intl/server";
 import { AppointmentHistoryTable } from "@/components/dashboard/appointments/AppointmentHistoryTable";
 import { AppointmentsPageClient } from "@/components/dashboard/appointments/AppointmentsPageClient";
 import { headers } from "next/headers";
-import type { Appointment } from "@/types/api";
+import type { Appointment, AppointmentStatus } from "@/types/api";
+
+// B7 — full status set returned by Core BE; FE chips already cover all of these.
+const VALID_APPOINTMENT_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
+  "booked",
+  "scheduled",
+  "upcoming",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "no_show",
+  "rescheduled",
+]);
 
 async function fetchAppointments(): Promise<Appointment[]> {
   const t = await getTranslations("dashboard.appointments");
@@ -40,12 +52,9 @@ async function fetchAppointments(): Promise<Appointment[]> {
               typeof item?.diagnosis === "string" && item.diagnosis.trim()
                 ? item.diagnosis
                 : noInfo,
-            status:
-              item?.status === "completed" ||
-              item?.status === "upcoming" ||
-              item?.status === "cancelled"
-                ? item.status
-                : "upcoming",
+            status: VALID_APPOINTMENT_STATUSES.has(item?.status as AppointmentStatus)
+              ? (item.status as AppointmentStatus)
+              : "upcoming",
             hasPrescription: Boolean(item?.has_prescription),
             prescription:
               item?.prescription && typeof item.prescription === "object"

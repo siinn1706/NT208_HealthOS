@@ -13,10 +13,14 @@ const EChartWrapper = dynamic(
   { ssr: false, loading: () => <div className="h-48 animate-pulse rounded-lg bg-muted" /> }
 );
 
-const DAILY_CALORIE_TARGET = 2000;
+// We no longer baseline the chart against a hardcoded 2 000 kcal — the API
+// returns each row's per-user target so the dashed line is honest. The query
+// param below is still passed for legacy backend compatibility but the UI
+// treats `0` (or missing) as "no goal set" and hides the target line.
+const DAILY_CALORIE_GOAL_HINT = 2000;
 
 async function fetchMealCalories(days: number): Promise<WeeklyCaloriePoint[]> {
-  const res = await fetch(`/api/v1/analytics/meal-calories?days=${days}&target=${DAILY_CALORIE_TARGET}`, {
+  const res = await fetch(`/api/v1/analytics/meal-calories?days=${days}&target=${DAILY_CALORIE_GOAL_HINT}`, {
     credentials: "include",
   });
   if (!res.ok) return [];
@@ -68,6 +72,12 @@ export function WeeklyCalorieChartWidget({
 
   const displayData = staticData ?? chartData;
   const hasData = displayData.some((d) => d.calories > 0);
+  // Resolve the user's calorie goal from API rows. We require every visible
+  // row to agree on the same (non-zero) target before drawing the goal line —
+  // otherwise the dashed reference would be a fabrication.
+  const targets = displayData.map((d) => d.target).filter((v) => typeof v === "number" && v > 0);
+  const allAgree = targets.length === displayData.length && targets.every((v) => v === targets[0]);
+  const userTarget: number | null = allAgree && targets.length > 0 ? targets[0] : null;
 
   const option: EChartsOption = {
     backgroundColor: "transparent",
@@ -82,13 +92,16 @@ export function WeeklyCalorieChartWidget({
       formatter: (params: any) => {
         const p = params as Array<{ value: number; seriesName: string; name: string }>;
         const calories = p.find((x) => x.seriesName === t("legend"))?.value ?? 0;
+        const targetRow = userTarget
+          ? `<div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px">
+              ${t("tooltipTarget")} <b>${userTarget} kcal</b>
+            </div>`
+          : "";
         return `
           <div style="padding:4px 6px">
             <div style="font-weight:600;margin-bottom:4px">${p[0]?.name ?? ""}</div>
             <div>${t("tooltipCalories")} <b>${calories} kcal</b></div>
-            <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px">
-              ${t("tooltipTarget")} <b>${DAILY_CALORIE_TARGET} kcal</b>
-            </div>
+            ${targetRow}
           </div>
         `;
       },
@@ -134,16 +147,20 @@ export function WeeklyCalorieChartWidget({
         data: displayData.map((d) => d.calories),
         emphasis: { focus: "series" },
       },
-      {
-        name: t("tooltipTarget").replace(":", "").trim(),
-        type: "line",
-        data: displayData.map(() => DAILY_CALORIE_TARGET),
-        symbol: "none",
-        lineStyle: { type: "dashed", color: "#f59e0b", width: 1.5 },
-        itemStyle: { color: "#f59e0b" },
-        tooltip: { show: false },
-        z: 10,
-      },
+      ...(userTarget
+        ? ([
+            {
+              name: t("tooltipTarget").replace(":", "").trim(),
+              type: "line" as const,
+              data: displayData.map(() => userTarget),
+              symbol: "none" as const,
+              lineStyle: { type: "dashed" as const, color: "var(--color-warning)", width: 1.5 },
+              itemStyle: { color: "var(--color-warning)" },
+              tooltip: { show: false },
+              z: 10,
+            },
+          ])
+        : []),
     ],
   };
 
@@ -158,10 +175,12 @@ export function WeeklyCalorieChartWidget({
           {staticData === undefined && (
             <TimeRangeSelector value={period} onChange={handlePeriodChange} />
           )}
-          <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
-            <span className="inline-block w-5 border-t-2 border-dashed border-amber-500" />
-            {t("target", { n: DAILY_CALORIE_TARGET })}
-          </div>
+          {userTarget && (
+            <div className="flex items-center gap-1.5 text-[10px] text-warning">
+              <span className="inline-block w-5 border-t-2 border-dashed border-warning" />
+              {t("target", { n: userTarget })}
+            </div>
+          )}
         </div>
       </div>
       {isPending ? (

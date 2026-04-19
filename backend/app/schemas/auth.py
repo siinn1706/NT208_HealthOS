@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import datetime
 import re
+import uuid
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.schemas.common import DataResponse
 from app.services.password_validator import validate_password
@@ -20,11 +21,44 @@ class OAuthProfile(BaseModel):
     avatar_url: Optional[str] = None
 
 
+# ─── B7 P3 — OAuth Linked Accounts (settings → linked accounts) ──────────────
+
+
+class OAuthLinkAttachBody(BaseModel):
+    """BFF posts this when an authenticated user re-authorizes a new provider."""
+
+    user_id: uuid.UUID
+    profile: OAuthProfile
+
+
+class OAuthLinkDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    provider: str
+    provider_account_id: str
+    email: Optional[str] = None
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    linked_at: Optional[datetime.datetime] = None
+    last_used_at: Optional[datetime.datetime] = None
+
+
+class OAuthLinkListResponse(DataResponse[list[OAuthLinkDTO]]):
+    ...
+
+
+class OAuthLinkResponse(DataResponse[OAuthLinkDTO]):
+    ...
+
+
 class RequestOtpBody(BaseModel):
     """Request body for email OTP."""
 
     email: EmailStr
-    purpose: Literal["signup", "reset_password", "login"] = "signup"
+    # `delete_account` is the B7 P0-2 path for OAuth-only users to prove
+    # identity for account deletion without a password.
+    purpose: Literal["signup", "reset_password", "login", "delete_account"] = "signup"
     name: Optional[str] = None
     username: Optional[str] = Field(None, description="Username for signup")
     password: Optional[str] = Field(None, description="Password for signup")
@@ -206,7 +240,7 @@ class AuthToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user_id: str
-    email: EmailStr
+    email: str
     username: Optional[str] = None
     display_name: str
     avatar_url: Optional[str] = None
@@ -228,7 +262,7 @@ class WsTicketResponse(DataResponse[WsTicket]):
 
 class CurrentUser(BaseModel):
     id: str
-    email: EmailStr
+    email: str
     username: Optional[str] = None
     display_name: str
     avatar_url: Optional[str] = None

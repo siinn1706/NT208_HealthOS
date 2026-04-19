@@ -167,6 +167,9 @@ async def _build_conversation_dto(
             .options(
                 selectinload(Message.sender).selectinload(User.profile),
                 selectinload(Message.reactions).selectinload(MessageReaction.user),
+                selectinload(Message.reply_to)
+                .selectinload(Message.sender)
+                .selectinload(User.profile),
             )
             .where(
                 and_(
@@ -319,6 +322,9 @@ async def _get_bulk_conversation_data(
         .options(
             selectinload(Message.sender).selectinload(User.profile),
             selectinload(Message.reactions).selectinload(MessageReaction.user),
+            selectinload(Message.reply_to)
+            .selectinload(Message.sender)
+            .selectinload(User.profile),
         )
         .join(subq, and_(Message.id == subq.c.id, subq.c.rn == 1))
     )

@@ -2,8 +2,9 @@ import { getTranslations } from "next-intl/server";
 
 import { getProfileData } from "@/lib/profile-data";
 import { ProfileFormProvider } from "@/components/dashboard/profile";
+import { LinkedAccountsSection } from "@/components/dashboard/profile/LinkedAccountsSection";
+import { PageHeader } from "@/components/shared/page";
 
-// Server Component — data fetch happens here
 export default async function ProfilePage() {
   const [t, profile] = await Promise.all([
     getTranslations("dashboard.profile"),
@@ -11,15 +12,12 @@ export default async function ProfilePage() {
   ]);
 
   return (
-    <div className="max-w-[900px] mx-auto space-y-5">
-      {/* Page header */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
+    <>
+      <PageHeader title={t("title")} description={t("subtitle")} />
+      <div className="max-w-[900px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+        <ProfileFormProvider profile={profile} />
+        <LinkedAccountsSection />
       </div>
-
-      {/* Profile form (manages edit/view state itself) */}
-      <ProfileFormProvider profile={profile} />
-    </div>
+    </>
   );
 }

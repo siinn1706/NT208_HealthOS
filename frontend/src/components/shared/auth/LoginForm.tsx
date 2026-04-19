@@ -1,27 +1,24 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
 import { useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useNotification, ValidationMessages } from "@/hooks/use-notification";
 import { getSafePostLoginRedirectPath } from "@/lib/safe-post-login-redirect";
+import {
+  AuthShell,
+  AuthBanner,
+  PasswordField,
+  PendingButton,
+  FormFieldError,
+} from "./primitives";
+import { track } from "@/lib/analytics";
 
-// ─── Google SVG Icon ─────────────────────────────────────────────────────────
 function GoogleIcon() {
   return (
     <svg
@@ -50,7 +47,6 @@ function GoogleIcon() {
   );
 }
 
-// ─── GitHub SVG Icon ──────────────────────────────────────────────────────────
 function GitHubIcon() {
   return (
     <svg
@@ -67,7 +63,6 @@ function GitHubIcon() {
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export function LoginForm() {
   const t = useTranslations("auth");
   const tErrors = useTranslations("errors");
@@ -79,10 +74,12 @@ export function LoginForm() {
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    track("auth.login.viewed");
+  }, []);
 
   const oauthErrorBanner = useMemo(() => {
     const raw = searchParams.get("oauth_error");
@@ -104,20 +101,21 @@ export function LoginForm() {
     }
   }, [searchParams, t]);
 
-  // Client-side validation
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!identifier.trim()) {
       errors.identifier = ValidationMessages.required(t("loginIdentifier"));
-      identifierRef.current?.focus();
     }
 
     if (!password) {
       errors.password = ValidationMessages.required(t("password"));
-      if (!errors.identifier) {
-        passwordRef.current?.focus();
-      }
+    }
+
+    if (errors.identifier) {
+      identifierRef.current?.focus();
+    } else if (errors.password) {
+      passwordRef.current?.focus();
     }
 
     if (Object.keys(errors).length > 0) {
@@ -129,16 +127,15 @@ export function LoginForm() {
     return true;
   };
 
-  // ─── Submit ─────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
-    // Client-side validation
     if (!validate()) {
+      track("auth.login.validation_failed");
       return;
     }
 
     setIsLoading(true);
+    track("auth.login.submitted");
 
     try {
       const res = await fetch("/api/v1/auth/session", {
@@ -151,15 +148,15 @@ export function LoginForm() {
 
       if (!res.ok) {
         const errors = handleApiError(data, tErrors("loginFailed"));
-        // Map field errors
         if (errors.identifier || errors.password) {
           setFieldErrors(errors);
         }
+        track("auth.login.failed", { code: data?.error?.code ?? "UNKNOWN" });
         return;
       }
 
-      // Success - show toast and redirect
       success(tErrors("loginSuccess"));
+      track("auth.login.succeeded");
 
       const onboardingStatus = data?.data?.onboarding_status;
       const fromRaw = searchParams.get("from");
@@ -177,12 +174,12 @@ export function LoginForm() {
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
       }
+      track("auth.login.errored");
     } finally {
       setIsLoading(false);
     }
   }
 
-  // Clear field error on change
   function handleIdentifierChange(value: string) {
     setIdentifier(value);
     if (fieldErrors.identifier) {
@@ -197,176 +194,24 @@ export function LoginForm() {
     }
   }
 
-  // ─── OAuth ──────────────────────────────────────────────────────────────────
   function handleOAuth(provider: "google" | "github") {
-    // Redirect to BFF OAuth initiation route
+    track("auth.oauth.started", { provider });
     window.location.href = `/api/v1/auth/oauth/${provider}`;
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg animate-fade-in-up">
-      {/* Header */}
-      <CardHeader className="space-y-1 pb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">H</span>
-          </div>
-          <span className="font-semibold text-foreground">HealthOS</span>
-        </div>
-        <CardTitle className="text-2xl font-bold text-foreground">
-          {t("loginTitle")}
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          {t("loginSubtitle")}
-        </CardDescription>
-      </CardHeader>
-
-      {/* Form */}
-      <CardContent>
-        {oauthErrorBanner && (
-          <div
-            role="alert"
-            className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
-            {oauthErrorBanner}
-          </div>
-        )}
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {/* Username or Email */}
-          <div className="space-y-1.5">
-            <Label htmlFor="login-identifier">{t("loginIdentifier")}</Label>
-            <Input
-              ref={identifierRef}
-              id="login-identifier"
-              type="text"
-              placeholder={t("loginIdentifierPlaceholder")}
-              autoComplete="username"
-              value={identifier}
-              onChange={(e) => handleIdentifierChange(e.target.value)}
-              required
-              disabled={isLoading}
-              aria-invalid={!!fieldErrors.identifier}
-            />
-            {fieldErrors.identifier && (
-              <p className="text-xs text-destructive" role="alert">
-                {fieldErrors.identifier}
-              </p>
-            )}
-          </div>
-
-          {/* Password */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="login-password">{t("password")}</Label>
-              <Link
-                href="/forgot-password"
-                className="text-xs text-primary hover:underline transition-colors duration-200"
-              >
-                {t("forgotPassword")}
-              </Link>
-            </div>
-            <div className="relative">
-              <Input
-                ref={passwordRef}
-                id="login-password"
-                type={showPassword ? "text" : "password"}
-                placeholder={t("passwordPlaceholder")}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => handlePasswordChange(e.target.value)}
-                required
-                disabled={isLoading}
-                aria-invalid={!!fieldErrors.password}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? t("hidePassword") : t("showPassword")}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
-              >
-                {showPassword ? (
-                  <EyeOff className="size-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="size-4" aria-hidden="true" />
-                )}
-              </button>
-            </div>
-            {fieldErrors.password && (
-              <p className="text-xs text-destructive" role="alert">
-                {fieldErrors.password}
-              </p>
-            )}
-          </div>
-
-          {/* Remember me */}
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="remember-me"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-              disabled={isLoading}
-            />
-            <Label
-              htmlFor="remember-me"
-              className="text-sm font-normal cursor-pointer select-none"
-            >
-              {t("rememberMe")}
-            </Label>
-          </div>
-
-          {/* Submit */}
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            disabled={isLoading}
-          >
-            {isLoading && (
-              <Loader2 className="animate-spin size-4" aria-hidden="true" />
-            )}
-            {t("loginButton")}
-          </Button>
-        </form>
-
-        {/* Divider */}
-        <div className="my-4 flex items-center gap-3">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted-foreground shrink-0">
-            {t("orDivider")}
-          </span>
-          <Separator className="flex-1" />
-        </div>
-
-        {/* OAuth Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full"
-            onClick={() => handleOAuth("google")}
-            disabled={isLoading}
-          >
-            <GoogleIcon />
-            Google
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full"
-            onClick={() => handleOAuth("github")}
-            disabled={isLoading}
-          >
-            <GitHubIcon />
-            GitHub
-          </Button>
-        </div>
-      </CardContent>
-
-      {/* Footer */}
-      <CardFooter className="justify-center pt-0">
+    <AuthShell
+      title={t("loginTitle")}
+      subtitle={t("loginSubtitle")}
+      banner={
+        oauthErrorBanner ? (
+          <AuthBanner
+            variant="destructive"
+            description={oauthErrorBanner}
+          />
+        ) : undefined
+      }
+      footer={
         <p className="text-sm text-muted-foreground">
           {t("noAccount")}{" "}
           <Link
@@ -376,7 +221,97 @@ export function LoginForm() {
             {t("registerLink")}
           </Link>
         </p>
-      </CardFooter>
-    </Card>
+      }
+    >
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="login-identifier">{t("loginIdentifier")}</Label>
+          <Input
+            ref={identifierRef}
+            id="login-identifier"
+            type="text"
+            placeholder={t("loginIdentifierPlaceholder")}
+            autoComplete="username"
+            value={identifier}
+            onChange={(e) => handleIdentifierChange(e.target.value)}
+            required
+            disabled={isLoading}
+            aria-invalid={!!fieldErrors.identifier}
+            aria-describedby={
+              fieldErrors.identifier ? "login-identifier-error" : undefined
+            }
+          />
+          <FormFieldError
+            id="login-identifier-error"
+            message={fieldErrors.identifier}
+          />
+        </div>
+
+        <PasswordField
+          ref={passwordRef}
+          id="login-password"
+          label={t("password")}
+          placeholder={t("passwordPlaceholder")}
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => handlePasswordChange(e.target.value)}
+          required
+          disabled={isLoading}
+          error={fieldErrors.password}
+          labelTrailing={
+            <Link
+              href="/forgot-password"
+              className="text-xs text-primary hover:underline transition-colors duration-200"
+            >
+              {t("forgotPassword")}
+            </Link>
+          }
+        />
+
+        <PendingButton
+          type="submit"
+          className="w-full"
+          size="lg"
+          pending={isLoading}
+        >
+          {t("loginButton")}
+        </PendingButton>
+      </form>
+
+      <div className="my-4 flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs text-muted-foreground shrink-0">
+          {t("orDivider")}
+        </span>
+        <Separator className="flex-1" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={() => handleOAuth("google")}
+          disabled={isLoading}
+          aria-label={t("continueWithGoogle")}
+        >
+          <GoogleIcon />
+          Google
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={() => handleOAuth("github")}
+          disabled={isLoading}
+          aria-label={t("continueWithGitHub")}
+        >
+          <GitHubIcon />
+          GitHub
+        </Button>
+      </div>
+    </AuthShell>
   );
 }

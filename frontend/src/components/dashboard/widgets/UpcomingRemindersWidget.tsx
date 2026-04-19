@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Clock, Pill, Calendar, Dumbbell } from "lucide-react";
-import { useState } from "react";
+import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
+import { DataState } from "@/components/ui/data-state";
+import type { DataSlice } from "@/types/data-slice";
 
 export interface Reminder {
   id: string;
@@ -14,7 +18,13 @@ export interface Reminder {
 }
 
 interface UpcomingRemindersWidgetProps {
-  reminders: Reminder[];
+  /**
+   * Data slice from `getUpcomingReminders()`. Using a slice (rather than a
+   * raw array) lets the widget surface the difference between an empty list
+   * and a failed fetch — the previous shape collapsed both into "no items",
+   * which hid real network/auth failures from the user. (UX plan §G.)
+   */
+  reminders: DataSlice<Reminder[]>;
 }
 
 const TYPE_CONFIG = {
@@ -35,17 +45,36 @@ const TYPE_CONFIG = {
   },
 };
 
-export function UpcomingRemindersWidget({
-  reminders: initial,
-}: UpcomingRemindersWidgetProps) {
+export function UpcomingRemindersWidget({ reminders }: UpcomingRemindersWidgetProps) {
   const t = useTranslations("dashboard.reminders");
   const tTypes = useTranslations("dashboard.reminders.types");
-  const [items, setItems] = useState<Reminder[]>(initial);
+  const [items, setItems] = useState<Reminder[]>(reminders.data ?? []);
 
-  const ack = (id: string) =>
-    setItems((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, done: true } : r))
-    );
+  /**
+   * Mark a reminder done with an optimistic update. We flip the local copy
+   * first so the UI feels instant, then PATCH the server. If the server
+   * rejects the change we roll back and surface a toast — earlier versions
+   * silently lost the user's tap, leaving the reminder unmarked but visually
+   * crossed-out (a credibility hit per UX plan §G).
+   */
+  const ack = async (id: string) => {
+    const previous = items;
+    setItems((prev) => prev.map((r) => (r.id === id ? { ...r, done: true } : r)));
+
+    try {
+      const res = await fetch(`/api/v1/reminders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ done: true }),
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP_${res.status}`);
+      }
+    } catch {
+      setItems(previous);
+      toast.error(t("ackFailed"));
+    }
+  };
 
   return (
     <div className="rounded-xl border border-border bg-card h-full">
@@ -54,63 +83,93 @@ export function UpcomingRemindersWidget({
         <Clock className="w-4 h-4 text-muted-foreground" />
       </div>
 
-      <ul className="divide-y divide-border overflow-y-auto max-h-[320px]">
-        {items.length === 0 ? (
-          <li className="px-5 py-6 text-sm text-muted-foreground text-center">
-            {t("empty")}
-          </li>
-        ) : (
-          items.map((r) => {
-            const cfg = TYPE_CONFIG[r.type];
-            const Icon = cfg.icon;
-            return (
-              <li
-                key={r.id}
-                className={cn(
-                  "flex items-center gap-3 px-5 py-3.5",
-                  r.done && "opacity-50"
-                )}
-              >
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                    cfg.bg
-                  )}
-                >
-                  <Icon className={cn("w-4 h-4", cfg.color)} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p
+      <div className="overflow-y-auto max-h-[320px]">
+        <DataState
+          // Once the user has started ack'ing items, `items` is the source of
+          // truth for the rendered list — re-derive a success slice so the
+          // empty/error chrome stays consistent with the source.
+          slice={
+            items.length > 0
+              ? {
+                  status: "success",
+                  data: items,
+                  meta: reminders.meta,
+                  error: reminders.error,
+                }
+              : reminders
+          }
+          empty={
+            <div className="px-5 py-6 text-sm text-muted-foreground text-center">
+              {t("empty")}
+            </div>
+          }
+          recoverableError={
+            <div className="px-5 py-6 flex flex-col items-center gap-1.5 text-center">
+              <p className="text-sm font-medium text-foreground">
+                {t("loadErrorTitle")}
+              </p>
+              <p className="text-xs text-muted-foreground max-w-[240px]">
+                {reminders.error?.message ?? t("loadErrorBody")}
+              </p>
+            </div>
+          }
+          minHeight={120}
+        >
+          {(list) => (
+            <ul className="divide-y divide-border">
+              {list.map((r) => {
+                const cfg = TYPE_CONFIG[r.type];
+                const Icon = cfg.icon;
+                return (
+                  <li
+                    key={r.id}
                     className={cn(
-                      "text-sm font-medium text-foreground truncate",
-                      r.done && "line-through"
+                      "flex items-center gap-3 px-5 py-3.5",
+                      r.done && "opacity-50",
                     )}
                   >
-                    {r.title}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {tTypes(r.type as Parameters<typeof tTypes>[0])} · {r.time}
-                  </p>
-                </div>
-                {!r.done && (
-                  <button
-                    onClick={() => ack(r.id)}
-                    aria-label={t("ack")}
-                    className={cn(
-                      "flex-shrink-0 w-7 h-7 rounded-full border border-border",
-                      "flex items-center justify-center",
-                      "hover:bg-primary hover:border-primary hover:text-primary-foreground",
-                      "transition-colors duration-200 cursor-pointer text-muted-foreground"
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+                        cfg.bg,
+                      )}
+                    >
+                      <Icon className={cn("w-4 h-4", cfg.color)} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={cn(
+                          "text-sm font-medium text-foreground truncate",
+                          r.done && "line-through",
+                        )}
+                      >
+                        {r.title}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {tTypes(r.type as Parameters<typeof tTypes>[0])} · {r.time}
+                      </p>
+                    </div>
+                    {!r.done && (
+                      <button
+                        onClick={() => ack(r.id)}
+                        aria-label={t("ack")}
+                        className={cn(
+                          "flex-shrink-0 w-7 h-7 rounded-full border border-border",
+                          "flex items-center justify-center",
+                          "hover:bg-primary hover:border-primary hover:text-primary-foreground",
+                          "transition-colors duration-200 cursor-pointer text-muted-foreground",
+                        )}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
                     )}
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </li>
-            );
-          })
-        )}
-      </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </DataState>
+      </div>
     </div>
   );
 }

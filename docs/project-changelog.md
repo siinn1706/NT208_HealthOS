@@ -1,10 +1,54 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.2 | **Last Updated**: 2026-04-06
+> **Version**: 1.2.2 | **Last Updated**: 2026-04-19
 
 ---
 
-## [1.2.2] - 2026-04-06
+## [Unreleased]
+
+### Changed
+
+#### Frontend
+
+- **Chat end-to-end review implementation** (2026-04-18):
+  - Virtuoso: `scrollToIndex('LAST')`, `firstItemIndex` + `startReached` / `loadMore`, stable footer, `rangeChanged` for date chip, `conversationId` reset, new-message badge on scroll-to-end
+  - `MessageBubble`: stable action callbacks, toolbar above bubble on desktop, long-press sheet on touch, `SheetTitle` i18n
+  - `useChat`: removed debug ingest fetch; `pinMessage` uses functional state; `loadMore` returns prepend count; `simulateAIReply` takes translated text; `useMessages` optional `selfReactionLabel`
+  - Deleted unused `useChatScroll.ts`; `ChatLayout` uses `pendingRequests` from `useStrangerRequests`
+  - i18n: date jump sheet, scroll chip aria, unknown user, pinned expand/collapse, header more menu, `truncateChatPreview` shared constant
+
+- **Dashboard shell refactor** (`dashboard/shell/`):
+  - New: AppShell, MobileNav, SidebarNavGrouped, TopNavV2, NotificationsPopover, CommandPalette, nav-config, use-unread-conversations
+  - Deleted: DashboardShell, SidebarNav, TopNav, GamificationSubNav, Decorations
+
+- **Shared primitives** (auth, page, state components):
+  - `shared/auth/primitives/`: AuthShell, AuthBanner, FormFieldError, OtpField, PasswordField, PendingButton, useBreachCheck, useResendCooldown
+  - `shared/page/`: PageHeader, PageTabs, Stepper
+  - `shared/state/`: StateView, EmptyState, Banner, InlineNotice, OfflineIndicator, StaleDataIndicator, StateCard
+
+- **New UI primitives** (`components/ui/`):
+  - confidence-chip, data-state, freshness-chip, permission-banner, source-badge
+
+- **Onboarding & persistence**:
+  - New: OnboardingWelcome, OnboardingReview components
+  - New: `useOnboardingDraft` hook, `/api/v1/users/me/onboarding-draft` BFF route
+
+- **Offline support**:
+  - OfflineProvider, useOfflineQueue, useOutboundQueue, lib/offline-queue.ts
+
+- **New routes**:
+  - `/dashboard/health/add`, `/legal/privacy`, `/dev/kitchensink` (prod: 404), locale `not-found.tsx`
+  - BFF: `/api/v1/notifications/[id]/read`, `/api/v1/reminders/[id]/skip`, `/api/v1/reminders/[id]/snooze`
+
+- **UX enhancements**:
+  - Reminders: NotificationPermissionBanner, RecurringExplanation, SnoozeMenu
+  - Reports: KpiOverview
+  - Progress: TodayInsightCard
+  - Appointments: AppointmentCreateSheet
+
+---
+
+## [1.2.2] - 2026-04-19
 
 ### Fixed / Security
 
@@ -191,7 +235,7 @@
   - Redis caching for analytics queries (5-min TTL)
 
 #### Testing
-- 22 passing tests (backend + frontend)
+- Initial backend test scaffolding (current count as of v1.2.2: 13 backend test functions across 3 files)
 
 ---
 

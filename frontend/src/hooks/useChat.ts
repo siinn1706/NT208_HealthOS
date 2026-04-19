@@ -89,12 +89,25 @@ function adaptMessage(m: any): Message {
   // sender_id is the authoritative source — never infer identity from display_name
   // to prevent AI message spoofing by a user setting their name to contain "ai".
   const senderId = m.sender_id != null ? String(m.sender_id) : "";
+  // Authoritative origin: prefer explicit `sender_kind` from BE (or `sender_role`),
+  // fall back to legacy `"ai"` literal sender_id, then default to "user". Never
+  // derive this from display name.
+  const rawKind = (m.sender_kind ?? m.sender_role ?? null) as string | null;
+  const senderKind: Message["sender_kind"] =
+    rawKind === "ai" || rawKind === "system" || rawKind === "user"
+      ? rawKind
+      : senderId === "ai"
+        ? "ai"
+        : senderId === "system"
+          ? "system"
+          : "user";
   return {
     id: String(m.id),
     conversation_id: String(m.conversation_id),
     sender_id: senderId,
     sender_display_name:
       typeof m.sender_display_name === "string" ? m.sender_display_name : undefined,
+    sender_kind: senderKind,
     content: m.content ?? "",
     type: (m.content_type ?? m.type ?? "text") as Message["type"],
     status: (m.status ?? "read") as Message["status"],
@@ -323,6 +336,7 @@ export function useConversations() {
         prev.map((conversation) => {
           if (conversation.id !== message.conversation_id) return conversation;
           const shouldIncreaseUnread = activeConversationId !== conversation.id;
+          const isNewLastMessage = conversation.last_message?.id !== message.id;
           return {
             ...conversation,
             last_message: {
@@ -334,7 +348,7 @@ export function useConversations() {
               is_recalled: message.is_recalled,
             },
             updated_at: message.created_at,
-            unread_count: shouldIncreaseUnread
+            unread_count: shouldIncreaseUnread && isNewLastMessage
               ? conversation.unread_count + 1
               : conversation.unread_count,
           };
@@ -379,10 +393,23 @@ export function useConversations() {
 // ──────────────────────────────────────────────────────────────────────────────
 // useMessages
 // ──────────────────────────────────────────────────────────────────────────────
-export function useMessages(conversationId: string | null, currentUserId: string | null = null) {
+export interface UseMessagesOptions {
+  /** Shown in optimistic reaction payloads (e.g. translated "You") */
+  selfReactionLabel?: string;
+}
+
+export function useMessages(
+  conversationId: string | null,
+  currentUserId: string | null = null,
+  options: UseMessagesOptions = {}
+) {
+  const { selfReactionLabel = "You" } = options;
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  // B7 P6 — AI streaming state. `null` means no stream in flight.
+  const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const lastCursorRef = useRef<string | null>(null);
 
@@ -428,22 +455,46 @@ export function useMessages(conversationId: string | null, currentUserId: string
   }, [conversationId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  /** Load older messages (scroll-up pagination). */
-  const loadMore = useCallback(async () => {
-    if (!conversationId || !hasMore || !lastCursorRef.current) return;
-    try {
-      const { data, has_more, next_cursor } = await bffFetch<{
-        data: unknown[];
-        has_more: boolean;
-        next_cursor: string | null;
-      }>(`/api/v1/conversations/${conversationId}/messages?limit=50&before=${encodeURIComponent(lastCursorRef.current)}`);
-      const older = data.map(adaptMessage).reverse();
-      setMessages((prev) => [...older, ...prev]);
-      setHasMore(has_more);
-      lastCursorRef.current = next_cursor ?? null;
-    } catch {
-      // ignore
-    }
+  const loadMoreInFlightRef = useRef<Promise<number> | null>(null);
+
+  /** Load older messages (scroll-up pagination). Returns count prepended, or 0. */
+  const loadMore = useCallback(async (): Promise<number> => {
+    const beforeCursor = lastCursorRef.current;
+    if (!conversationId || !hasMore || !beforeCursor) return 0;
+    if (loadMoreInFlightRef.current) return loadMoreInFlightRef.current;
+
+    const request = (async (): Promise<number> => {
+      try {
+        const { data, has_more, next_cursor } = await bffFetch<{
+          data: unknown[];
+          has_more: boolean;
+          next_cursor: string | null;
+        }>(`/api/v1/conversations/${conversationId}/messages?limit=50&before=${encodeURIComponent(beforeCursor)}`);
+        const older = data.map(adaptMessage).reverse();
+        if (older.length === 0) {
+          setHasMore(has_more);
+          lastCursorRef.current = next_cursor ?? null;
+          return 0;
+        }
+        let prepended = 0;
+        setMessages((prev) => {
+          const existing = new Set(prev.map((m) => m.id));
+          const mergedOlder = older.filter((m) => !existing.has(m.id));
+          prepended = mergedOlder.length;
+          return [...mergedOlder, ...prev];
+        });
+        setHasMore(has_more);
+        lastCursorRef.current = next_cursor ?? null;
+        return prepended;
+      } catch {
+        return 0;
+      } finally {
+        loadMoreInFlightRef.current = null;
+      }
+    })();
+
+    loadMoreInFlightRef.current = request;
+    return request;
   }, [conversationId, hasMore]);
 
   /** Called by WS event handler to upsert a message into state. */
@@ -454,7 +505,7 @@ export function useMessages(conversationId: string | null, currentUserId: string
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = msg;
-        return next;
+        return next.filter((m, i) => m.id !== msg.id || i === idx);
       }
       return [...prev, msg];
     });
@@ -472,10 +523,17 @@ export function useMessages(conversationId: string | null, currentUserId: string
     setIsTyping(typing);
   }, []);
 
-  // ── AI streaming reducers ────────────────────────────────────────────────
-  // Each handler is keyed by the placeholder message_id the BE sends in the
-  // ai:started event so multiple in-flight streams (rare but possible across
-  // tabs) don't collide.
+  // ── AI streaming reducers (WS-driven) ────────────────────────────────────
+  // Used when the AI bot reply is broadcast asynchronously via the chat WS:
+  // BE persists a placeholder Message with status="streaming", emits
+  // `ai:started`, then `ai:chunk` deltas, then `ai:completed` with the final
+  // MessageDTO. Each handler is keyed by `message_id` so multiple in-flight
+  // streams (rare, possible across tabs) don't collide.
+  //
+  // The HTTP/SSE variant `streamAiMessage` below is a parallel path used by
+  // call sites that initiate the stream from the FE directly (e.g. the
+  // dedicated "Ask AI" composer). Both paths can coexist — the WS handlers
+  // are passive and the SSE caller is explicit.
 
   /** Insert a placeholder bubble when the BE signals the AI started replying. */
   const onAiStreamStarted = useCallback(
@@ -491,6 +549,7 @@ export function useMessages(conversationId: string | null, currentUserId: string
           conversation_id: convId,
           sender_id: senderId,
           sender_display_name: "HealthOS AI Assistant",
+          sender_kind: "ai",
           content: "",
           type: "text",
           status: "streaming",
@@ -535,6 +594,166 @@ export function useMessages(conversationId: string | null, currentUserId: string
     });
   }, []);
 
+  /**
+   * B7 P6 — AI streaming send.
+   *
+   * Posts the user message to `/api/v1/conversations/{id}/messages/stream`
+   * (SSE). Inserts an optimistic user message + a placeholder assistant
+   * message; updates the assistant message in place as `delta` events
+   * arrive. `done`, `aborted`, and `error` events all terminate the stream.
+   *
+   * Returns the optimistic user `Message` so callers can update their
+   * outbox UI synchronously.
+   */
+  const streamAiMessage = useCallback(
+    async (convId: string, content: string): Promise<Message | null> => {
+      if (!currentUserId) return null;
+      // Cancel any prior stream — the user can only have one in flight per hook instance.
+      streamAbortRef.current?.abort();
+      const controller = new AbortController();
+      streamAbortRef.current = controller;
+
+      const optimisticUserId = `opt-user-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+      const optimisticAssistantId = `opt-ai-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+      const now = new Date().toISOString();
+
+      const optimisticUser: Message = {
+        id: optimisticUserId,
+        conversation_id: convId,
+        sender_id: currentUserId,
+        sender_display_name: undefined,
+        sender_kind: "user",
+        content,
+        type: "text",
+        status: "sent",
+        reply_to: undefined,
+        reactions: [],
+        is_edited: false,
+        is_recalled: false,
+        is_pinned: false,
+        created_at: now,
+      };
+      const optimisticAssistant: Message = {
+        id: optimisticAssistantId,
+        conversation_id: convId,
+        sender_id: undefined,
+        sender_display_name: undefined,
+        sender_kind: "ai",
+        content: "",
+        type: "text",
+        status: "sending",
+        reply_to: undefined,
+        reactions: [],
+        is_edited: false,
+        is_recalled: false,
+        is_pinned: false,
+        created_at: now,
+      };
+      setMessages((prev) => [...prev, optimisticUser, optimisticAssistant]);
+      setIsTyping(true);
+      setStreamingAssistantId(optimisticAssistantId);
+
+      let serverAssistantId: string | null = null;
+
+      const replaceAssistant = (mutator: (m: Message) => Message) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === (serverAssistantId ?? optimisticAssistantId) ? mutator(m) : m)),
+        );
+      };
+
+      try {
+        const res = await fetch(`/api/v1/conversations/${convId}/messages/stream`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          body: JSON.stringify({
+            content,
+            content_type: "text",
+            client_message_id: optimisticUserId,
+          }),
+          signal: controller.signal,
+        });
+        if (!res.ok || !res.body) {
+          replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+          setIsTyping(false);
+          setStreamingAssistantId(null);
+          return optimisticUser;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        // Standard SSE parser — events end on a blank line.
+        // Each event has `event: NAME\n` (optional) and `data: PAYLOAD\n` lines.
+        // Multiple `data:` lines concatenate with `\n`.
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let separator = buffer.indexOf("\n\n");
+          while (separator >= 0) {
+            const frame = buffer.slice(0, separator);
+            buffer = buffer.slice(separator + 2);
+            separator = buffer.indexOf("\n\n");
+            const lines = frame.split("\n");
+            let eventName = "message";
+            const dataParts: string[] = [];
+            for (const line of lines) {
+              if (line.startsWith("event:")) eventName = line.slice(6).trim();
+              else if (line.startsWith("data:")) dataParts.push(line.slice(5).trim());
+            }
+            if (dataParts.length === 0) continue;
+            const payload = dataParts.join("\n");
+            if (eventName === "ping") continue;
+
+            let parsed: Record<string, unknown> = {};
+            try {
+              parsed = payload ? JSON.parse(payload) : {};
+            } catch {
+              parsed = {};
+            }
+
+            if (eventName === "start") {
+              const assistantId = (parsed["assistant_message_id"] as string | undefined) ?? null;
+              if (assistantId) {
+                serverAssistantId = assistantId;
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === optimisticAssistantId ? { ...m, id: assistantId } : m)),
+                );
+                setStreamingAssistantId(assistantId);
+              }
+            } else if (eventName === "delta") {
+              const text = (parsed["text"] as string | undefined) ?? "";
+              if (text) replaceAssistant((m) => ({ ...m, content: m.content + text }));
+            } else if (eventName === "done") {
+              replaceAssistant((m) => ({ ...m, status: "sent" as const }));
+            } else if (eventName === "aborted") {
+              replaceAssistant((m) => ({ ...m, status: "sent" as const }));
+            } else if (eventName === "error") {
+              replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+            }
+          }
+        }
+      } catch (err) {
+        if ((err as { name?: string } | null)?.name === "AbortError") {
+          // Stop button — leave the partial bubble in place.
+          replaceAssistant((m) => ({ ...m, status: "sent" as const }));
+        } else {
+          replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+        }
+      } finally {
+        if (streamAbortRef.current === controller) streamAbortRef.current = null;
+        setIsTyping(false);
+        setStreamingAssistantId(null);
+      }
+      return optimisticUser;
+    },
+    [currentUserId],
+  );
+
+  const stopStreaming = useCallback(() => {
+    streamAbortRef.current?.abort();
+  }, []);
+
   const sendMessage = useCallback(
     async (
       convId: string,
@@ -546,6 +765,9 @@ export function useMessages(conversationId: string | null, currentUserId: string
       // loaded.  Without it the optimistic message would carry a sentinel ID
       // that breaks sender comparison and may cause duplicate rendering.
       if (!currentUserId) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[useChat] sendMessage blocked: user session not loaded");
+        }
         throw new Error("Cannot send message: user session not loaded");
       }
       // Use crypto.randomUUID() for collision-free IDs even when multiple
@@ -556,6 +778,7 @@ export function useMessages(conversationId: string | null, currentUserId: string
         conversation_id: convId,
         sender_id: currentUserId,
         sender_display_name: undefined,
+        sender_kind: "user",
         content,
         type: "text",
         status: "sending",
@@ -583,17 +806,108 @@ export function useMessages(conversationId: string | null, currentUserId: string
           }
         );
         const confirmed = adaptMessage(result.data);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticId ? confirmed : m))
-        );
+        setMessages((prev) => {
+          const next = prev.map((m) => (m.id === optimisticId ? confirmed : m));
+          const firstConfirmedIdx = next.findIndex((m) => m.id === confirmed.id);
+          if (firstConfirmedIdx < 0) return next;
+          return next.filter((m, idx) => m.id !== confirmed.id || idx === firstConfirmedIdx);
+        });
         return confirmed;
-      } catch {
-        // Mark as failed so UI shows a failed indicator instead of a checkmark
+      } catch (err) {
+        const errorCode: NonNullable<Message["error_code"]> = (() => {
+          const status = (err as { status?: number } | null)?.status;
+          if (status === 429) return "rate_limited";
+          if (status === 400 || status === 422) return "validation";
+          if (status && status >= 400) return "unknown";
+          return "network";
+        })();
         setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticId ? { ...m, status: "failed" as const } : m))
+          prev.map((m) =>
+            m.id === optimisticId
+              ? { ...m, status: "failed" as const, error_code: errorCode }
+              : m
+          )
         );
-        return optimistic;
+        return { ...optimistic, status: "failed" as const, error_code: errorCode };
       }
+    },
+    [currentUserId]
+  );
+
+  /**
+   * Re-send a previously failed outgoing message. The original optimistic row
+   * is removed first so `sendMessage` can produce a fresh optimistic+confirmed
+   * pair (and emit the WS event again). No-op for messages that aren't owned
+   * by the current user or aren't in a failed/queued state.
+   */
+  const retryMessage = useCallback(
+    async (messageId: string): Promise<Message | null> => {
+      const target = messages.find((m) => m.id === messageId);
+      if (!target) return null;
+      if (target.status !== "failed" && target.status !== "queued") return null;
+      if (currentUserId && target.sender_id !== currentUserId) return null;
+      const replyToId = target.reply_to?.id;
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      return sendMessage(target.conversation_id, target.content, replyToId);
+    },
+    [messages, currentUserId, sendMessage]
+  );
+
+  /** Discard a failed/queued outgoing message from the local outbox. */
+  const discardMessage = useCallback((messageId: string) => {
+    setMessages((prev) => {
+      const target = prev.find((m) => m.id === messageId);
+      if (!target) return prev;
+      if (target.status !== "failed" && target.status !== "queued") return prev;
+      return prev.filter((m) => m.id !== messageId);
+    });
+  }, []);
+
+  /**
+   * Promote a `failed` (network-error) message to `queued`, signalling that
+   * the outbound queue has taken ownership of redelivery. Caller is expected
+   * to also persist the item in IndexedDB via `useOutboundQueue.enqueue`.
+   * No-op if the message no longer exists or isn't in a recoverable state.
+   */
+  const markMessageQueued = useCallback((messageId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        if (m.status !== "failed" && m.status !== "sending") return m;
+        return { ...m, status: "queued" as const, error_code: undefined };
+      })
+    );
+  }, []);
+
+  /**
+   * Synthesise an optimistic `queued` message without firing a network call —
+   * used when the user composes while offline. The caller still owns persisting
+   * the payload to IndexedDB via `useOutboundQueue.enqueue`.
+   */
+  const enqueueOptimisticMessage = useCallback(
+    (convId: string, content: string, replyToId?: string): Message | null => {
+      if (!currentUserId) return null;
+      const optimisticId = `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+      const optimistic: Message = {
+        id: optimisticId,
+        conversation_id: convId,
+        sender_id: currentUserId,
+        sender_display_name: undefined,
+        sender_kind: "user",
+        content,
+        type: "text",
+        status: "queued",
+        reply_to: replyToId
+          ? { id: replyToId, content: "", sender_id: "", type: "text" }
+          : undefined,
+        reactions: [],
+        is_edited: false,
+        is_recalled: false,
+        is_pinned: false,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, optimistic]);
+      return optimistic;
     },
     [currentUserId]
   );
@@ -656,13 +970,14 @@ export function useMessages(conversationId: string | null, currentUserId: string
   }, []);
 
   const pinMessage = useCallback(async (convId: string, messageId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, is_pinned: !m.is_pinned } : m))
-    );
-    const msg = messages.find((m) => m.id === messageId);
-    const isCurrentlyPinned = msg?.is_pinned ?? false;
+    let wasPinned = false;
+    setMessages((prev) => {
+      const msg = prev.find((m) => m.id === messageId);
+      wasPinned = Boolean(msg?.is_pinned);
+      return prev.map((m) => (m.id === messageId ? { ...m, is_pinned: !m.is_pinned } : m));
+    });
     try {
-      if (isCurrentlyPinned) {
+      if (wasPinned) {
         await bffFetch(`/api/v1/conversations/${convId}/pinned/${messageId}`, { method: "DELETE" });
       } else {
         await bffFetch(`/api/v1/conversations/${convId}/pinned/${messageId}`, { method: "POST" });
@@ -670,11 +985,11 @@ export function useMessages(conversationId: string | null, currentUserId: string
     } catch {
       // optimistic stays
     }
-  }, [messages]);
+  }, []);
 
   const reactToMessage = useCallback(
     async (convId: string, messageId: string, emoji: string) => {
-      const selfDisplayName = "Bạn";
+      const selfDisplayName = selfReactionLabel;
       // Optimistic toggle — only update local state when userId is known
       if (currentUserId) {
         const selfUserId = currentUserId;
@@ -733,35 +1048,37 @@ export function useMessages(conversationId: string | null, currentUserId: string
         // optimistic stays
       }
     },
-    [currentUserId]
+    [currentUserId, selfReactionLabel]
   );
 
-  /**
-   * @deprecated AI replies now arrive via the real WS stream (events
-   * ``ai:started``, ``ai:chunk``, ``ai:completed``). Kept as a no-op so older
-   * callers (storybook, tests) that import the symbol don't crash. Will be
-   * removed once all FE imports are scrubbed.
-   */
-  const simulateAIReply = useCallback((_convId: string) => {
-    return () => {};
-  }, []);
+  // P0 — `simulateAIReply` was removed. Faking AI replies in the UI without an
+  // explicit `sender_kind:"ai"` from the server bypasses every safety guard on
+  // the AI surface (disclaimer, rate-limits, audit logs, content filters). All
+  // AI replies must originate from the AI worker via the BFF (either the WS
+  // stream handlers above or the `streamAiMessage` SSE caller).
 
   return {
     messages,
     isLoading,
     hasMore,
     isTyping,
+    streamingAssistantId,
     loadMore,
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
     sendMessage,
+    streamAiMessage,
+    stopStreaming,
+    retryMessage,
+    discardMessage,
+    markMessageQueued,
+    enqueueOptimisticMessage,
     editMessage,
     recallMessage,
     deleteMessage,
     pinMessage,
     reactToMessage,
-    simulateAIReply,
     onAiStreamStarted,
     onAiStreamChunk,
     onAiStreamCompleted,

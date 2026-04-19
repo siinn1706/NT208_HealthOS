@@ -12,6 +12,11 @@ import {
   FileText,
   Search,
   SlidersHorizontal,
+  CalendarClock,
+  Activity,
+  UserX,
+  RefreshCw,
+  CalendarPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Appointment, AppointmentStatus, Prescription } from "@/types/api";
@@ -27,29 +32,61 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
   const locale = useLocale();
   const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
   const [search, setSearch] = useState("");
-  const [openPrescription, setOpenPrescription] = useState<Prescription | null>(null);
+  const [openPrescription, setOpenPrescription] = useState<
+    { prescription: Prescription; appointmentId: string } | null
+  >(null);
 
   const STATUS_CONFIG: Record<
     AppointmentStatus,
     { icon: React.ElementType; labelKey: string; color: string; bg: string }
   > = {
-    completed: {
-      icon: CheckCircle2,
-      labelKey: "completed",
-      color: "text-green-500",
-      bg: "bg-green-500/10",
+    booked: {
+      icon: CalendarPlus,
+      labelKey: "booked",
+      color: "text-info",
+      bg: "bg-info/10",
+    },
+    scheduled: {
+      icon: CalendarClock,
+      labelKey: "scheduled",
+      color: "text-info",
+      bg: "bg-info/10",
     },
     upcoming: {
       icon: Clock,
       labelKey: "upcoming",
-      color: "text-[#41BCE6]",
-      bg: "bg-[#41BCE6]/10",
+      color: "text-primary",
+      bg: "bg-primary/10",
+    },
+    in_progress: {
+      icon: Activity,
+      labelKey: "in_progress",
+      color: "text-info",
+      bg: "bg-info/10",
+    },
+    completed: {
+      icon: CheckCircle2,
+      labelKey: "completed",
+      color: "text-success",
+      bg: "bg-success/10",
     },
     cancelled: {
       icon: XCircle,
       labelKey: "cancelled",
       color: "text-muted-foreground",
       bg: "bg-muted",
+    },
+    no_show: {
+      icon: UserX,
+      labelKey: "no_show",
+      color: "text-warning",
+      bg: "bg-warning/10",
+    },
+    rescheduled: {
+      icon: RefreshCw,
+      labelKey: "rescheduled",
+      color: "text-info",
+      bg: "bg-info/10",
     },
   };
 
@@ -58,6 +95,7 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
     { key: "upcoming", labelKey: "upcoming" },
     { key: "completed", labelKey: "completed" },
     { key: "cancelled", labelKey: "cancelled" },
+    { key: "no_show", labelKey: "no_show" },
   ];
 
   // Filter + Search
@@ -108,7 +146,9 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
-              {labelKey === "filter.all" ? t(labelKey) : tStatus(labelKey as "upcoming" | "completed" | "cancelled")}
+              {labelKey === "filter.all"
+                ? t(labelKey)
+                : tStatus(labelKey as Exclude<AppointmentStatus, never>)}
             </button>
           ))}
         </div>
@@ -152,7 +192,7 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                   key={appt.id}
                   className={cn(
                     "px-5 py-4 flex items-start gap-4",
-                    appt.status === "cancelled" && "opacity-60"
+                    (appt.status === "cancelled" || appt.status === "no_show") && "opacity-60"
                   )}
                 >
                   {/* Date column */}
@@ -211,11 +251,17 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                       )}
                       {appt.hasPrescription && appt.prescription && (
                         <button
-                          onClick={() => setOpenPrescription(appt.prescription ?? null)}
+                          onClick={() =>
+                            appt.prescription &&
+                            setOpenPrescription({
+                              prescription: appt.prescription,
+                              appointmentId: appt.id,
+                            })
+                          }
                           className={cn(
                             "ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5",
-                            "text-[11px] font-medium text-[#41BCE6] bg-[#41BCE6]/10",
-                            "hover:bg-[#41BCE6]/20 transition-colors cursor-pointer"
+                            "text-[11px] font-medium text-primary bg-primary/10",
+                            "hover:bg-primary/20 transition-colors cursor-pointer"
                           )}
                           aria-label={t("prescriptionAria", { name: appt.doctorName })}
                         >
@@ -236,7 +282,8 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
       {/* Prescription dialog */}
       {openPrescription && (
         <PrescriptionViewerDialog
-          prescription={openPrescription}
+          prescription={openPrescription.prescription}
+          appointmentId={openPrescription.appointmentId}
           onClose={() => setOpenPrescription(null)}
         />
       )}

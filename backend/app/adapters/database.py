@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 from app.core.config import settings
+from app.models import health_goal  # noqa: F401
 from app.models.core import Base
 
 logger = logging.getLogger(__name__)

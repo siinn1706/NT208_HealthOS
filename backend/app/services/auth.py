@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -131,28 +132,81 @@ async def check_email_availability(db: AsyncSession, email: str) -> bool:
     return result.scalar_one_or_none() is None
 
 
+class UserPendingDeletion(Exception):
+    """Raised when an OAuth sign-in resolves to a soft-deleted user.
+
+    The endpoint catches this and returns 403 with `ACCOUNT_PENDING_DELETION`
+    so the BFF can route the user to a "restore your account" prompt instead
+    of minting a JWT they can't use anyway (see B7 review P0-3).
+    """
+
+    def __init__(self, user_id: uuid.UUID, purge_at):
+        self.user_id = user_id
+        self.purge_at = purge_at
+        super().__init__("Account is pending deletion.")
+
+
 async def get_or_create_user_from_oauth(
     profile: OAuthProfile,
     db: AsyncSession,
 ) -> User:
-    """Find existing user by email or create a new one from OAuth profile."""
-    result = await db.execute(
-        select(User)
-            .options(selectinload(User.profile))
-            .where(User.email == profile.email)
+    """Resolve an OAuth profile to an internal User and ensure a link row.
+
+    Lookup order:
+      1. `oauth_accounts(provider, provider_account_id)` — fastest, exact identity.
+      2. `users.email` — legacy users + email-based auto-link (the OAuth provider
+         is trusted to have email-verified the account; ensured by callers).
+      3. Create a new user.
+
+    Always upserts the `oauth_accounts` row and refreshes `last_used_at` so the
+    profile UI can show "last sign-in via Google · 2h ago".
+    """
+    from app.models.core import OAuthAccount
+
+    # 1. Look up by provider account id (most reliable).
+    link_result = await db.execute(
+        select(OAuthAccount).where(
+            OAuthAccount.provider == profile.provider,
+            OAuthAccount.provider_account_id == profile.provider_account_id,
+        )
     )
-    user: Optional[User] = result.scalar_one_or_none()
+    link: Optional[OAuthAccount] = link_result.scalar_one_or_none()
+
+    user: Optional[User] = None
+    if link is not None:
+        user_result = await db.execute(
+            select(User).options(selectinload(User.profile)).where(User.id == link.user_id)
+        )
+        user = user_result.scalar_one_or_none()
 
     if user is None:
-        # For OAuth users, store a random hashed password placeholder
+        # 2. Fall back to email match (legacy users + first-time link by email).
+        result = await db.execute(
+            select(User)
+                .options(selectinload(User.profile))
+                .where(func.lower(User.email) == profile.email.lower())
+        )
+        user = result.scalar_one_or_none()
+
+    # B7 review P0-3 — soft-deleted users must NOT receive a fresh JWT via
+    # OAuth re-sign-in during their grace period. Surface a typed exception so
+    # the endpoint can route the user to a "restore your account" prompt.
+    if user is not None and user.deleted_at is not None:
+        raise UserPendingDeletion(user_id=user.id, purge_at=user.purge_at)
+
+    if user is None:
+        # 3. Create a fresh user.
+        # `hashed_password` carries an unguessable bcrypt placeholder so the
+        # column stays NOT NULL; the `has_password=False` flag is the
+        # authoritative "this user has no password they actually know" signal.
         placeholder_password = hash_password(profile.provider_account_id)
         user = User(
             email=profile.email,
             display_name=profile.name,
             hashed_password=placeholder_password,
+            has_password=False,
         )
         db.add(user)
-        # flush (not commit) so we get the generated id without closing the tx
         await db.flush()
 
         user_profile = UserProfile(
@@ -162,14 +216,33 @@ async def get_or_create_user_from_oauth(
         )
         db.add(user_profile)
         await db.flush()
-        # Keep relationship in-memory to avoid lazy load later
         user.profile = user_profile
     else:
-        # Optionally keep basic info in sync
+        # Optionally keep basic info in sync (only when not stomping on a real user-set value).
         user.display_name = profile.name
         if user.profile is not None:
             user.profile.full_name = profile.name
             user.profile.avatar_url = profile.avatar_url
+
+    # Upsert the link row.
+    if link is None:
+        link = OAuthAccount(
+            user_id=user.id,
+            provider=profile.provider,
+            provider_account_id=profile.provider_account_id,
+            email=profile.email,
+            display_name=profile.name,
+            avatar_url=profile.avatar_url,
+            last_used_at=datetime.now(timezone.utc),
+        )
+        db.add(link)
+        await db.flush()
+    else:
+        link.email = profile.email
+        link.display_name = profile.name
+        link.avatar_url = profile.avatar_url
+        link.last_used_at = datetime.now(timezone.utc)
+        await db.flush()
 
     return user
 

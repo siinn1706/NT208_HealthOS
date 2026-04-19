@@ -265,10 +265,15 @@ export const TWALLPAPER_COLORS: Record<string, { colors: string[]; tails?: numbe
 export const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "😡"] as const;
 export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 
-export const AI_QUICK_REPLIES = [
-  "Huyết áp của tôi có bình thường không?",
-  "Gợi ý chế độ ăn lành mạnh",
-  "Tôi nên tập bài tập gì?",
-  "Giải thích chỉ số BMI",
-  "Nhắc nhở uống thuốc",
+/**
+ * Translation keys (under `chat.ai.*`) for AI quick-reply suggestions.
+ * Prompts are intentionally educational, NOT diagnostic — see plan §B2.
+ * Resolved by {@link AiQuickReplies} via `useTranslations("chat.ai")`.
+ */
+export const AI_QUICK_REPLY_KEYS = [
+  "quickReply1",
+  "quickReply2",
+  "quickReply3",
+  "quickReply4",
+  "quickReply5",
 ] as const;

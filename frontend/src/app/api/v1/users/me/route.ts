@@ -38,6 +38,28 @@ export async function GET(req: NextRequest) {
   return coreProxy(req, "/v1/users/me");
 }
 
+/**
+ * B7 P9 — Soft-delete the account (30-day grace period).
+ *
+ * The body must include `confirmation_email` and `password`. The route
+ * forwards the request to Core; on success it also clears the local session
+ * cookie so the next page load redirects to /login.
+ */
+export async function DELETE(req: NextRequest) {
+  const upstream = await coreProxy(req, "/v1/users/me", { method: "DELETE" });
+  if (!upstream.ok) return upstream;
+
+  const payload = await upstream.json().catch(() => null);
+  const response = NextResponse.json(payload ?? { data: { status: "pending_deletion" } }, {
+    status: upstream.status,
+  });
+  // Sign the user out — their JWT was already blacklisted on Core.
+  const { SESSION_COOKIE_NAME } = await import("@/lib/bff-auth-cookie");
+  response.cookies.delete(SESSION_COOKIE_NAME);
+  response.cookies.delete(META_COOKIE_NAME);
+  return response;
+}
+
 export async function PATCH(req: NextRequest) {
   // Invalidate gamification-summary cache so progress page picks up new height/weight
   const userId = await getUserIdFromCookie();
@@ -60,7 +82,7 @@ export async function PATCH(req: NextRequest) {
     const onboardingStatus = (payload as { data: { onboarding_status: string } }).data
       .onboarding_status;
     response.cookies.set(META_COOKIE_NAME, JSON.stringify({ onboarding_status: onboardingStatus }), {
-      httpOnly: false,
+      httpOnly: true,
       secure: SESSION_COOKIE_SECURE,
       sameSite: "lax",
       maxAge: SESSION_COOKIE_MAX_AGE,

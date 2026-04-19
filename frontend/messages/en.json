@@ -1,8 +1,15 @@
 {
+  "charts": {
+    "periodComparison": {
+      "currentPeriod": "Current period ({label})",
+      "previousPeriod": "Previous period"
+    }
+  },
   "nav": {
     "home": "Home",
     "about": "About Us",
-    "features": "Features",
+    "services": "Services",
+    "features": "Services",
     "plans": "Plans",
     "articles": "Health Insights",
     "signIn": "Sign In",
@@ -51,15 +58,52 @@
     }
   },
   "onboarding": {
+    "welcome": {
+      "title": "Welcome to HealthOS",
+      "subtitle": "We'll set up your profile in five short steps. Most steps take less than a minute, and you can skip ahead and come back anytime — your progress is saved automatically.",
+      "bullets": {
+        "private": "Your health information stays private and is encrypted in transit and at rest.",
+        "resume": "Leave any time and resume right where you left off.",
+        "skipOptional": "Optional steps are clearly marked — skip what isn't relevant."
+      },
+      "primaryCta": "Let's get started",
+      "skipForNow": "I'll do this later"
+    },
+    "stepLabels": {
+      "welcome": "Welcome",
+      "basics": "Basics",
+      "health": "Health",
+      "contact": "Contact",
+      "emergency": "Emergency",
+      "medical": "Medical",
+      "review": "Review"
+    },
+    "optional": "Optional",
+    "stepHeaders": {
+      "welcome": "A quick tour before we begin",
+      "basics": "Tell us a bit about yourself",
+      "health": "Your height and weight",
+      "contact": "How can we reach you?",
+      "emergency": "Who should we notify in an emergency?",
+      "medical": "Anything we should know clinically?",
+      "review": "Review and confirm"
+    },
+    "whyWeAsk": {
+      "basics": "Why we ask: your name and date of birth personalise reminders, summaries, and care suggestions.",
+      "health": "Why we ask: height and weight let us compute your BMI and tailor risk insights.",
+      "contact": "Why we ask: we'll only call this number if there's a critical alert about your account or health.",
+      "emergency": "Why we ask: emergency contacts are surfaced to first responders if you trigger an SOS.",
+      "medical": "Why we ask: known allergies and conditions help our risk engine flag dangerous interactions."
+    },
     "step1": {
       "title": "Basic Information",
       "subtitle": "Tell us a bit about yourself",
       "fullName": "Full Name",
-      "fullNameRequired": "Full Name is required",
+      "fullNameRequired": "Full name is required",
       "dateOfBirth": "Date of Birth",
-      "dateOfBirthRequired": "Date of Birth is required",
+      "dateOfBirthRequired": "Date of birth is required",
       "gender": "Gender",
-      "genderRequired": "Gender is required",
+      "genderRequired": "Please choose a gender",
       "selectGender": "Select gender",
       "male": "Male",
       "female": "Female",
@@ -73,7 +117,9 @@
       "height": "Height (cm)",
       "weight": "Weight (kg)",
       "bmiLabel": "Your BMI",
-      "bmiPlaceholder": "Enter height and weight to calculate BMI"
+      "bmiPlaceholder": "Enter height and weight to calculate BMI",
+      "heightInvalid": "Enter a height between 50 and 250 cm",
+      "weightInvalid": "Enter a weight between 20 and 300 kg"
     },
     "bmi": {
       "underweight": "Underweight",
@@ -91,7 +137,37 @@
       "title": "Contact Information",
       "subtitle": "We need this to contact you",
       "phone": "Phone Number",
-      "address": "Address"
+      "phonePlaceholder": "+1 555 123 4567",
+      "phoneRequired": "Phone number is required",
+      "phoneInvalid": "That phone number doesn't look right",
+      "address": "Address",
+      "addressPlaceholder": "123 Example Street, City"
+    },
+    "step4": {
+      "title": "Emergency contacts",
+      "subtitle": "Add at least one person we can reach if there's an emergency.",
+      "contactLabel": "Contact {n}",
+      "name": "Name",
+      "namePlaceholder": "Jane Doe",
+      "phone": "Phone",
+      "phonePlaceholder": "+1 555 987 6543",
+      "relationship": "Relationship",
+      "selectRelationship": "Select relationship",
+      "emailOptional": "Email (optional)",
+      "emailPlaceholder": "name@example.com",
+      "addContact": "Add another contact",
+      "removeContact": "Remove contact",
+      "relationships": {
+        "spouse": "Spouse / Partner",
+        "parent": "Parent",
+        "sibling": "Sibling",
+        "child": "Child",
+        "friend": "Friend",
+        "coworker": "Co-worker",
+        "other": "Other"
+      },
+      "errorAtLeastOne": "Please add at least one emergency contact.",
+      "errorIncomplete": "Please complete all required fields for each contact."
     },
     "step5": {
       "title": "Medical Information",
@@ -103,17 +179,60 @@
       "currentMedications": "Current Medications",
       "currentMedicationsPlaceholder": "e.g. Aspirin 100mg daily...",
       "notes": "Additional Notes",
-      "complete": "Complete Registration",
-      "completeHint": "Press \"Complete\" to save your info and start using HealthOS"
+      "notesPlaceholder": "Any other clinical context you'd like us to know...",
+      "complete": "Almost done!",
+      "completeHint": "Review your information on the next step, then submit to start using HealthOS."
+    },
+    "review": {
+      "title": "Review and confirm",
+      "subtitle": "Take a quick look. You can edit anything before submitting.",
+      "sectionBasics": "Basics",
+      "sectionHealth": "Health",
+      "sectionContact": "Contact",
+      "sectionEmergency": "Emergency contacts",
+      "sectionMedical": "Medical",
+      "edit": "Edit",
+      "noContacts": "No emergency contacts added yet.",
+      "notProvided": "Not provided",
+      "labels": {
+        "height": "Height",
+        "weight": "Weight",
+        "phone": "Phone",
+        "address": "Address",
+        "allergies": "Allergies",
+        "conditions": "Conditions",
+        "medications": "Medications",
+        "notes": "Notes"
+      },
+      "consentTitle": "Consent to use this information",
+      "consentBody": "I understand HealthOS will use this information to personalise insights, surface alerts, and provide non-diagnostic guidance. HealthOS is not a substitute for professional medical advice. I can review or revoke this at any time from settings.",
+      "consentRequired": "Please confirm consent to continue."
+    },
+    "draft": {
+      "savedJustNow": "Draft saved",
+      "savedAt": "Draft saved · {time}",
+      "saving": "Saving draft…",
+      "saveFailed": "Couldn't save your progress to this device. Your current step is still safe — try again or finish in one sitting."
+    },
+    "nav": {
+      "back": "Back",
+      "next": "Next",
+      "skip": "Skip for now",
+      "submit": "Finish setup",
+      "submitting": "Submitting…"
+    },
+    "validation": {
+      "summary": "Please correct the highlighted fields to continue."
     },
     "emergencyContactRequired": "Please add at least 1 emergency contact",
     "saveError": "Could not save information",
-    "saveSuccess": "Information saved successfully!",
+    "saveSuccess": "Welcome to HealthOS — your profile is set up!",
     "saveGenericError": "An error occurred. Please try again."
   },
   "errors": {
     "unknown": "An unknown error occurred",
     "generic": "An error occurred",
+    "network": "Can't reach the server. Please check your connection.",
     "networkError": "Network error. Please check your connection.",
     "serverError": "Server error. Please try again later.",
     "invalidEmail": "Invalid email address",
@@ -153,6 +272,7 @@
     "title": "Capture or Upload Meal Photo",
     "aiSubtitle": "AI will identify ingredients and estimate nutrition automatically",
     "openCamera": "Open camera",
+    "cameraPreview": "Camera preview",
     "capture": "Take Photo",
     "upload": "Upload Photo",
     "takenAlt": "Captured meal photo",
@@ -178,7 +298,20 @@
     "capturePhoto": "Capture photo",
     "analyzeError": "Could not analyze photo. Please try again or enter manually.",
     "retry": "Try Again",
-    "manualEntry": "Manual Entry"
+    "manualEntry": "Manual Entry",
+    "fileTooLargeTitle": "Image too large",
+    "fileTooLargeBody": "Photos must be under 10 MB. Please pick a smaller image or retake.",
+    "queuedOfflineTitle": "Saved for later",
+    "queuedOfflineBody": "You're offline. We'll upload this photo automatically when you're back online.",
+    "unsupportedImageTitle": "Unsupported image",
+    "unsupportedImageBody": "Use a JPG, PNG, or WebP photo of a dish. Drawings, screenshots, and other content can't be analysed.",
+    "slowWarning": "Still working on it — heavy AI traffic right now. You can keep waiting or skip to manual entry.",
+    "lowConfidenceTitle": "Results need a quick review",
+    "lowConfidenceBody": "AI wasn't fully sure about this one. Please double-check ingredients and portions before saving.",
+    "confidenceLabel": "AI confidence",
+    "uploadFailedTitle": "Upload failed",
+    "uploadFailedBody": "We couldn't reach the analysis service. Please retry or enter the meal manually.",
+    "skipToManual": "Skip to manual entry"
   },
   "quickMeal": {
     "title": "Quick Meal Log",
@@ -198,8 +331,14 @@
     "dishNamePlaceholder": "e.g. Pho bo tai, Grilled pork rice, Bun rieu...",
     "mealType": "Meal Type",
     "notesLabel": "Log feelings, food origin, or additional info",
+    "notesTitle": "Notes (optional)",
+    "notesPlaceholder": "e.g. Ate at Pho 24, felt comfortably full...",
+    "loggedAt": "Time",
+    "cancel": "Cancel",
     "saving": "Saving...",
-    "submit": "Log to Diary"
+    "submit": "Log to Diary",
+    "savedOffline": "Saved locally — will sync when back online",
+    "savedOfflineDescription": "Your meal is queued and will be sent the next time you're online."
   },
   "validation": {
     "componentNameRequired": "Component name cannot be empty.",
@@ -262,6 +401,10 @@
     "copyright": "Copyright © 2026 HealthOS. All Rights Reserved."
   },
   "home": {
+    "meta": {
+      "title": "HealthOS — Your Virtual Personal Doctor",
+      "description": "Manage records, track nutrition, scan meals with AI, connect wearables and get realtime health alerts — all in one Vietnamese-built app for individuals, families, and clinicians."
+    },
     "hero": {
       "badge": "#1 Virtual Personal Doctor in NT208.Q22.ANTT",
       "title": "Your Virtual Personal Doctor,",
@@ -271,6 +414,8 @@
       "floatingBrand": "HealthOS",
       "floatingStatus": "Active",
       "floatingScoreLabel": "Health Score",
+      "floatingScoreSample": "Sample preview",
+      "floatingScoreAriaLabel": "Illustrative health score preview",
       "imageAlt": "Doctor"
     },
     "about": {
@@ -301,11 +446,14 @@
       "catFree": "Free",
       "catPersonal": "Personal",
       "catFamily": "Family",
-      "catPro": "Professional"
+      "catPro": "Professional",
+      "viewPlans": "View All Plans"
     },
     "testimonials": {
       "badge": "What Users Say",
-      "title": "Thousands of People Trust HealthOS"
+      "title": "Thousands of People Trust HealthOS",
+      "scrollIndicator": "Testimonial scroll position",
+      "goTo": "Go to testimonial"
     },
     "articles": {
       "badge": "Health Insights",
@@ -339,6 +487,11 @@
       "card3Title": "Technology",
       "card3Desc": "AI meal photo analysis, biometric anomaly detection algorithms, and real-time wearable data synchronization."
     },
+    "why": {
+      "badge": "Why HealthOS",
+      "title": "Vision and mission",
+      "subtitle": "Vision sets the direction; mission is how we deliver — two halves of the same promise to you."
+    },
     "vision": {
       "badge": "Our Vision",
       "title": "Access to High-Quality Healthcare, Anytime and Anywhere",
@@ -355,7 +508,17 @@
     },
     "team": {
       "badge": "Our Team",
-      "title": "The Passionate People Behind HealthOS"
+      "title": "The Passionate People Behind HealthOS",
+      "coreGroup": "Core team",
+      "advisorGroup": "Medical advisors"
+    },
+    "atGlance": {
+      "badge": "At a glance",
+      "title": "What HealthOS looks like in numbers",
+      "users": "Active users",
+      "doctors": "Medical advisors",
+      "records": "Records secured",
+      "uptime": "Platform uptime"
     },
     "faq": {
       "badge": "FAQ",
@@ -373,20 +536,30 @@
   },
   "services": {
     "meta": {
-      "title": "Features",
+      "title": "Services",
       "description": "Explore the HealthOS ecosystem: medical records, AI, wearables and realtime alerts."
     },
-    "badge": "Features",
+    "badge": "Services",
     "title": "All the Tools You Need",
-    "subtitle": "Explore the HealthOS ecosystem with full smart personal health management features.",
-    "tab1Label": "Core Features",
+    "subtitle": "Explore the HealthOS ecosystem with full smart personal health management services.",
+    "contactTitle": "Start Your Health Journey",
+    "contactSubtitle": "Fill in your information below to receive a free consultation.",
+    "overviewBadge": "At a glance",
+    "overviewTitle": "Services at a glance",
+    "overviewSubtitle": "Four service families that together cover prevention, monitoring and recovery.",
+    "tab1Label": "Core",
     "tab1Desc": "Foundation for managing personal health records and data.",
+    "tab1Promise": "Your medical history, organized in one place — searchable and ready to share with your doctor.",
     "tab2Label": "AI Intelligence",
     "tab2Desc": "AI meal analysis, anomaly detection and personalized recommendations.",
+    "tab2Promise": "AI that flags risks early and turns your data into clear, doctor-aligned next steps.",
     "tab3Label": "Realtime & Wearables",
     "tab3Desc": "Continuously monitor biometric indicators and receive timely alerts.",
+    "tab3Promise": "Wearable data stays in sync — alerts reach you and your family the moment things drift.",
     "tab4Label": "Goals & Gamification",
-    "tab4Desc": "Set health goals, track progress, and compete with the HealthOS community."
+    "tab4Desc": "Set health goals, track progress, and compete with the HealthOS community.",
+    "tab4Promise": "Habits that stick — daily streaks, weekly milestones and a community that cheers you on.",
+    "seeRelatedPlan": "See related plan →"
   },
   "plans": {
     "meta": {
@@ -398,8 +571,11 @@
     "subtitle": "Choose the plan that fits your needs. All plans come with a 30-day money-back guarantee.",
     "searchPlaceholder": "Search plans...",
     "sort": "Sort",
+    "resultCount": "{count, plural, =0 {No plans} =1 {1 plan} other {# plans}}",
     "noResults": "No plans found. Try a different category.",
+    "clearFilters": "Clear filters",
     "popular": "Popular",
+    "recommended": "Recommended",
     "free": "Free",
     "month": "/mo",
     "cta": "Choose This Plan",
@@ -409,7 +585,32 @@
     "catFree": "Free",
     "catPersonal": "Personal",
     "catFamily": "Family",
-    "catPro": "Professional"
+    "catPro": "Professional",
+    "howItWorksTitle": "How HealthOS plans work",
+    "howItWorksSubtitle": "Three things every plan promises — so you can pick with confidence.",
+    "howItWorksBullet1Title": "Cancel anytime",
+    "howItWorksBullet1Desc": "Switch plans or cancel from your dashboard. No phone calls, no fine print.",
+    "howItWorksBullet2Title": "30-day refund",
+    "howItWorksBullet2Desc": "Not the right fit? Get a full refund within the first 30 days.",
+    "howItWorksBullet3Title": "Your data, your control",
+    "howItWorksBullet3Desc": "Export or delete your records anytime. We never sell your health data.",
+    "compareTitle": "Compare plans side-by-side",
+    "compareSubtitle": "Pick the column that matches how you want to use HealthOS day-to-day.",
+    "compareFeature": "Feature",
+    "compareIncluded": "Included",
+    "compareNotIncluded": "Not included",
+    "compareRows": {
+      "records": "Personal medical records",
+      "aiMeal": "AI meal analysis",
+      "wearables": "Wearable sync & alerts",
+      "family": "Family member sharing",
+      "doctor": "Doctor consultations",
+      "support": "Priority support"
+    },
+    "faqTitle": "Plan questions, answered",
+    "faqSubtitle": "Everything billing-related in one place. Still unsure? Reach out below.",
+    "testimonialsTitle": "People on every plan, in their own words",
+    "testimonialsSubtitle": "A snapshot of why members chose HealthOS — and stayed."
   },
   "articles": {
     "meta": {
@@ -426,7 +627,16 @@
     "catWearable": "Wearable",
     "catAI": "AI & Health",
     "catRecords": "Medical Records",
-    "catLifestyle": "Lifestyle"
+    "catLifestyle": "Lifestyle",
+    "searchPlaceholder": "Search articles by title, topic, or author...",
+    "resultCount": "{count, plural, =0 {No articles} =1 {1 article} other {# articles}}",
+    "minRead": "{n} min read",
+    "relatedTitle": "You may also like",
+    "relatedSubtitle": "More from this topic, hand-picked by our editors."
+  },
+  "compliance": {
+    "title": "Reference information only",
+    "text": "HealthOS provides health information for reference and is not a substitute for medical advice from a licensed clinician. Always consult a qualified professional before making any medical decision."
   },
   "form": {
     "name": "Full Name",
@@ -468,7 +678,8 @@
       "heartRate": "Heart Rate",
       "heartUnit": "bpm",
       "steps": "Steps",
-      "stepsUnit": "steps"
+      "stepsUnit": "steps",
+      "noData": "No data"
     },
     "vitals": {
       "title": "Vitals Trend",
@@ -529,12 +740,16 @@
       "addReminder": "Add Reminder",
       "empty": "No reminders for today",
       "ack": "Mark Done",
+      "ackFailed": "Couldn't mark this reminder as done. Please try again.",
+      "loadErrorTitle": "Couldn't load reminders",
+      "loadErrorBody": "We had trouble reaching the reminders service. Please refresh.",
       "pending": "Pending",
       "done": "Done",
       "total": "Total",
       "repeatLabels": {
         "daily": "Daily",
         "weekly": "Weekly",
+        "monthly": "Monthly",
         "once": "Once"
       },
       "filterAll": "All",
@@ -549,15 +764,72 @@
         "time": "Time",
         "repeat": "Repeat",
         "note": "Note (optional)",
+        "weekdays": "Days of the week",
+        "dayOfMonth": "Day of month",
+        "timezone": "Timezone",
         "cancel": "Cancel"
       },
-      "createFailed": "Failed to create reminder"
+      "weekdayShort": {
+        "mon": "M",
+        "tue": "T",
+        "wed": "W",
+        "thu": "T",
+        "fri": "F",
+        "sat": "S",
+        "sun": "S"
+      },
+      "createFailed": "Failed to create reminder",
+      "tabs": {
+        "today": "Today",
+        "upcoming": "Upcoming",
+        "missed": "Missed",
+        "completed": "Completed",
+        "all": "All"
+      },
+      "appointmentLinked": "Appointment",
+      "snooze": {
+        "label": "Snooze",
+        "tenMin": "10 minutes",
+        "thirtyMin": "30 minutes",
+        "oneHour": "1 hour",
+        "untilTomorrow": "Until tomorrow",
+        "untilTomorrowAt": "Until tomorrow {time}",
+        "snoozedUntil": "Snoozed until {time}",
+        "failed": "Couldn't snooze. Try again."
+      },
+      "skip": "Skip",
+      "skipped": "Skipped",
+      "skipFailed": "Couldn't skip. Try again.",
+      "deleteLabel": "Delete reminder",
+      "deleteConfirmTitle": "Delete this reminder?",
+      "deleteConfirmBody": "This reminder will be permanently removed.",
+      "deleteOrSkipTitle": "Remove recurring reminder?",
+      "deleteOrSkipBody": "You can skip only the next occurrence or delete the entire recurring reminder.",
+      "skipOccurrence": "Skip this occurrence",
+      "deleteEntire": "Delete entire reminder",
+      "cancelDelete": "Cancel",
+      "permission": {
+        "title": "Notifications are off",
+        "body": "Turn on notifications so HealthOS can ping you when something is due.",
+        "deniedHint": "Notifications were blocked. Open your browser site settings to allow them again.",
+        "enable": "Enable",
+        "dismiss": "Not now"
+      },
+      "explain": {
+        "everyDayAt": "Every day at {time}",
+        "everyWeekAt": "Every week at {time}",
+        "everyMonthAt": "Every month at {time}",
+        "onceAt": "Once at {time}"
+      }
     },
     "health": {
       "title": "Vitals & Devices",
       "subtitle": "Track your health metrics",
       "addMetric": "Add Metric",
       "addMetricAria": "Add a health metric",
+      "addMetricSubtitle": "Log a health metric manually",
+      "addMetricComingSoonTitle": "Coming soon",
+      "addMetricComingSoonBody": "Manual metric entry is being built. Connect a device in Settings to start tracking now.",
       "heartRate": "Heart Rate",
       "systolic": "Systolic BP",
       "diastolic": "Diastolic BP",
@@ -566,6 +838,9 @@
       "compareChartTitle": "Heart Rate & Blood Pressure over Time",
       "loading": "Loading...",
       "noData": "No data available",
+      "noReadingTitle": "No reading yet",
+      "noReadingBody": "Connect a device or log a manual reading to start tracking.",
+      "addReading": "Log a reading",
       "connectedDevices": "Connected Devices",
       "noDeviceInfo": "No device information available",
       "connected": "Connected",
@@ -588,9 +863,14 @@
     },
     "appointments": {
       "status": {
-        "completed": "Completed",
+        "booked": "Booked",
+        "scheduled": "Scheduled",
         "upcoming": "Upcoming",
-        "cancelled": "Cancelled"
+        "in_progress": "In progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No-show",
+        "rescheduled": "Rescheduled"
       },
       "filter": {
         "all": "All"
@@ -611,7 +891,57 @@
       "prescriptionAria": "View prescription from {name}",
       "facility": "Facility",
       "prescriptionDate": "Prescription Date",
-      "close": "Close"
+      "close": "Close",
+      "medicineList": "Medications ({count})",
+      "frequency": "Frequency",
+      "duration": "Duration",
+      "doctorNotes": "Doctor's notes",
+      "prescriptionDisclaimer": "Prescription details are for reference only. Do not change dose or stop medication without your doctor's guidance.",
+      "attachments": {
+        "title": "Attachments",
+        "upload": "Upload file",
+        "uploading": "Uploading…",
+        "none": "No files attached yet.",
+        "view": "View",
+        "download": "Download",
+        "delete": "Remove",
+        "loadError": "Couldn't load attachments.",
+        "uploadError": "Upload failed. Please try again.",
+        "uploadSuccess": "File uploaded.",
+        "tooLarge": "File is too large (max 10 MB).",
+        "unsupportedType": "Only PDF, PNG, JPEG, or WEBP files are accepted.",
+        "urlError": "Couldn't open this file. Please try again.",
+        "confirmDelete": "Remove this file?",
+        "deleteSuccess": "File removed.",
+        "deleteError": "Couldn't remove this file."
+      },
+      "create": {
+        "title": "New appointment",
+        "subtitle": "Add a visit so HealthOS can remind you and keep records.",
+        "stepWho": "Doctor",
+        "stepWhen": "When",
+        "stepPurpose": "Purpose",
+        "stepReview": "Review",
+        "doctorName": "Doctor name",
+        "doctorNamePlaceholder": "Dr. Jane Smith",
+        "specialty": "Specialty",
+        "specialtyPlaceholder": "Cardiology",
+        "clinic": "Clinic / facility",
+        "clinicPlaceholder": "St. Paul Hospital",
+        "date": "Date",
+        "time": "Time",
+        "reason": "Reason for visit",
+        "reasonPlaceholder": "Annual check-up, follow-up...",
+        "notes": "Notes (optional)",
+        "notesPlaceholder": "Anything to remember.",
+        "back": "Back",
+        "next": "Next",
+        "save": "Add appointment",
+        "saving": "Saving...",
+        "saved": "Appointment added",
+        "saveFailed": "Couldn't save the appointment. Please try again.",
+        "missingRequired": "Please fill in the required fields."
+      }
     },
     "meals": {
       "subtitle": "Track your diet and nutrition goals",
@@ -654,9 +984,16 @@
       "stepsAvg": "Avg Steps",
       "sleepAvg": "Avg Sleep",
       "weightAvg": "Avg Weight",
+      "noData": "No data",
       "sleepChart": {
         "hours": "Hours",
         "qualityPercent": "Quality (%)"
+      },
+      "detail": {
+        "noData": "No data available",
+        "vitalsHr": "Heart rate (bpm)",
+        "vitalsSys": "Systolic BP (mmHg)",
+        "vitalsDia": "Diastolic BP (mmHg)"
       },
       "exportPdf": {
         "warning": "Needs attention",
@@ -673,6 +1010,10 @@
       "tracking": "Track your progress and streaks",
       "activeGoals": "Active Goals",
       "activeGoalsCount": "{n} active goals",
+      "unlockedAchievements": "Unlocked Achievements",
+      "unlockedOfTotal": "{n} of {total} unlocked",
+      "unlockedCount": "{n} unlocked",
+      "comingSoon": "Coming soon",
       "noGoals": "No active goals yet",
       "pageTitle": "Achievements",
       "pageSubtitle": "Track your progress and streaks",
@@ -730,6 +1071,7 @@
       "leaderboard": {
         "user": "User",
         "score": "Score",
+        "streak": "Streak",
         "change": "Change",
         "you": "You",
         "yourRank": "Your rank:"
@@ -743,7 +1085,9 @@
       "subtitle": "AI analysis based on your biometrics and behavior",
       "scoreGood": "Good",
       "scoreAverage": "Average",
-      "scoreNeedsWork": "Needs Improvement",
+      "scoreNeedsWork": "Could be improved",
+      "noModelOutputTitle": "No prediction available yet",
+      "noModelOutputBody": "We'll generate a personalized risk picture once you've logged enough vitals and basic profile data. Use Refresh to try again, or add measurements first.",
       "monitoredConditions": "Monitored Conditions",
       "highLevel": "High Level",
       "moderateLevel": "Moderate",
@@ -974,6 +1318,7 @@
         "saveAccent": "Save",
         "accentSaved": "Accent color saved",
         "accentSaveFailed": "Failed to save accent color",
+        "accentLowContrast": "Low contrast on light/dark backgrounds — text may be hard to read.",
         "resetDefault": "Reset to Default"
       },
       "notifications": {
@@ -986,7 +1331,8 @@
         "chatMessages": "Chat Messages",
         "chatMessagesDesc": "Messages from doctors and friends",
         "promotions": "Promotions",
-        "promotionsDesc": "Offers and new feature announcements"
+        "promotionsDesc": "Offers and new feature announcements",
+        "saveFailed": "Couldn't save your notification preferences. Please try again."
       },
       "privacy": {
         "policy": "Privacy Policy",
@@ -994,8 +1340,40 @@
         "download": "Download My Data",
         "downloadDesc": "Export your health records as a file",
         "delete": "Delete Account",
-        "deleteDesc": "Permanently remove your account and all data"
+        "deleteDesc": "Permanently remove your account and all data",
+        "pendingNotice": "This action is in progress and will be available soon — contact support@healthos.app for manual processing.",
+        "downloadDialog": {
+          "title": "Request a copy of your data",
+          "body": "We'll prepare an archive of your profile, vitals, meals, and reports and email you a download link. This usually takes a few minutes; large accounts may take up to 24 hours.",
+          "contains": "What's included",
+          "containsList": "Profile, vitals, meals, exercise, sleep, BMI, reports, AI conversations.",
+          "secureNote": "The link expires in 24 hours and is for your eyes only.",
+          "request": "Request export",
+          "requested": "Export started. We'll notify you when your archive is ready (usually within a few minutes).",
+          "requestFailed": "Couldn't request the export. Please try again later.",
+          "rateLimited": "You've already requested an export in the last 24 hours.",
+          "expired": "That download link has expired. Please request a new export.",
+          "downloadFailed": "Couldn't open your export download. Please try again."
+        },
+        "deleteDialog": {
+          "title": "Delete your account?",
+          "body": "This permanently removes your account, profile, and all health records. We cannot recover your data once it is deleted.",
+          "irreversible": "This action is irreversible.",
+          "exportFirst": "Consider downloading a copy of your data first.",
+          "emailPrompt": "Enter your account email to confirm",
+          "emailPlaceholder": "you@example.com",
+          "passwordPrompt": "Current password",
+          "identityFailed": "We couldn't verify your identity. Check the email and password.",
+          "confirmPrompt": "Type {phrase} to confirm",
+          "confirmPlaceholder": "Type the confirmation phrase",
+          "confirmPhrase": "DELETE",
+          "confirm": "Delete my account",
+          "deleting": "Deleting…",
+          "requested": "Account deletion requested. We'll email you when it's done.",
+          "requestFailed": "Couldn't request account deletion. Please try again later."
+        }
       },
+      "dialogClose": "Close",
       "logout": "Sign Out",
       "logoutDesc": "Sign out of your account on this device"
     },
@@ -1004,7 +1382,45 @@
       "subtitle": "Based on your data today",
       "askAI": "Ask AI Assistant",
       "loading": "Analyzing your health data...",
-      "noInfo": "No information available"
+      "noInfo": "No information available",
+      "notMedicalAdvice": "AI-generated insight, not medical advice. Talk to a clinician about anything that worries you."
+    },
+    "topnav": {
+      "searchPlaceholder": "Search records, medicines...",
+      "notifications": "Notifications",
+      "noNotifications": "No new notifications",
+      "profile": "My Profile",
+      "signOut": "Sign Out"
+    },
+    "shell": {
+      "openDrawer": "Open menu",
+      "more": "More",
+      "mobileNav": "Quick navigation",
+      "themeToggle": "Switch theme",
+      "commandPaletteTitle": "Search the app",
+      "commandPaletteHint": "Jump to any page or quick action.",
+      "commandPalettePlaceholder": "Search pages, actions, settings...",
+      "commandPaletteEmpty": "No matches.",
+      "commandPaletteQuickActions": "Quick actions",
+      "commandPaletteShortcut": "Ctrl/⌘ K to open · Esc to close",
+      "commandPaletteComingSoon": "Soon",
+      "notificationsUnread": "{n} unread",
+      "notificationsAllRead": "All caught up",
+      "notificationsLoadError": "Couldn't load notifications.",
+      "notificationsRetry": "Try again",
+      "notificationsCapNotice": "Showing the most recent {n} notifications.",
+      "notificationsUnreadAria": "{n, plural, one {# unread} other {# unread}}",
+      "notificationsDefaultTitle": "Notification",
+      "notificationsMarkAllRead": "Mark all read",
+      "notificationsSeeAll": "See all notifications",
+      "skipToMain": "Skip to main content"
+    },
+    "notificationsPage": {
+      "title": "Notifications",
+      "subtitle": "All your alerts, reminders and updates in one place.",
+      "empty": "You have no notifications yet.",
+      "loadMore": "Load more",
+      "loadingMore": "Loading…"
     },
     "nav": {
       "overview": "Overview",
@@ -1019,18 +1435,39 @@
       "leaderboard": "Leaderboard",
       "chat": "Messages",
       "reports": "Reports",
-      "settings": "Settings"
-    },
-    "topnav": {
-      "searchPlaceholder": "Search records, medicines...",
-      "notifications": "Notifications",
-      "noNotifications": "No new notifications",
-      "profile": "My Profile",
-      "signOut": "Sign Out"
+      "settings": "Settings",
+      "groups": {
+        "overview": "Overview",
+        "track": "Track",
+        "care": "Care",
+        "grow": "Grow",
+        "you": "You"
+      },
+      "mainNavAriaLabel": "Main navigation"
     },
     "profile": {
       "title": "My Profile",
       "subtitle": "Manage your personal info, body metrics, and medical data",
+      "linkedAccounts": {
+        "title": "Linked accounts",
+        "subtitle": "Sign in faster by connecting Google or GitHub. You can remove any link at any time.",
+        "none": "No linked accounts yet.",
+        "loadError": "Couldn't load your linked accounts.",
+        "retry": "Try again",
+        "addProvider": "Add {provider}",
+        "removeAria": "Remove {provider} link",
+        "removeConfirmTitle": "Remove this linked account?",
+        "removeConfirmBody": "After removing {provider} you'll need another sign-in method (password or another linked provider) to access your account.",
+        "remove": "Remove",
+        "removing": "Removing…",
+        "cancel": "Cancel",
+        "removeSuccess": "Linked account removed.",
+        "removeError": "Couldn't remove that link. Please try again.",
+        "lastMethodError": "You can't remove your only sign-in method. Set a password first.",
+        "linkSuccess": "{provider} linked to your account.",
+        "linkError": "Couldn't link that account. Please try again.",
+        "conflictError": "That {provider} account is already linked to a different user."
+      },
       "editButton": "Edit Profile",
       "saveButton": "Save Changes",
       "cancelButton": "Cancel",
@@ -1146,6 +1583,22 @@
     }
   },
   "auth": {
+    "security": {
+      "passwordStrength": {
+        "weak": "Weak",
+        "medium": "Medium",
+        "fair": "Fair",
+        "strong": "Strong",
+        "veryStrong": "Very strong"
+      },
+      "breach": {
+        "checking": "Checking against known breaches...",
+        "breached": "This password appears in known breaches. Please pick another.",
+        "safe": "No breach matches found."
+      },
+      "otpResendIn": "Resend code in {seconds}s",
+      "otpResendNow": "Resend code"
+    },
     "loginTitle": "Sign In",
     "loginSubtitle": "Welcome back! Sign in to continue your health journey.",
     "registerTitle": "Create Account",
@@ -1174,6 +1627,7 @@
     "orDivider": "Or continue with",
     "continueWithGoogle": "Continue with Google",
     "continueWithFacebook": "Continue with Facebook",
+    "continueWithGitHub": "Continue with GitHub",
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "registerLink": "Sign up",
@@ -1230,12 +1684,16 @@
     "noConversation": "Select a conversation to start messaging",
     "typeMessage": "Write a message...",
     "sendMessage": "Send",
+    "stopGeneration": "Stop generation",
     "online": "Online",
     "offline": "Offline",
     "lastSeen": "Last seen",
     "typing": "is typing...",
     "edited": "Edited",
     "recalled": "Message was recalled",
+    "deletedMessage": "Deleted message",
+    "imageMessage": "Image",
+    "fileMessage": "File",
     "pinned": "Pinned",
     "pinChat": "Pin conversation",
     "unpinChat": "Unpin conversation",
@@ -1262,6 +1720,7 @@
     "cancelReply": "Cancel reply",
     "editingMessage": "Editing message",
     "cancelEdit": "Cancel",
+    "scrollToBottom": "New messages",
     "saveEdit": "Save",
     "changeTheme": "Change theme",
     "themeGradients": "Background color",
@@ -1283,14 +1742,21 @@
       "greeting": "Hello! I'm HealthOS AI Assistant. I can help you with health, nutrition, medication reminders, lab result interpretation, and more.",
       "placeholder": "Ask me anything about your health...",
       "subtitle": "Health 24/7",
-      "disclaimer": "AI suggestions are not a substitute for medical advice.",
+      "disclaimer": "AI-generated. Not medical advice.",
+      "disclaimerLong": "Responses from HealthOS AI are generated automatically and may be inaccurate or incomplete. They are for general information only and are not a substitute for consultation with a licensed clinician. Always seek medical advice for diagnosis, treatment, or emergencies.",
+      "disclaimerLearnMore": "Learn how AI is used here",
       "thinking": "Thinking...",
       "quickReplies": "Quick questions",
       "streaming": "AI is replying...",
       "error": "AI assistant hit a temporary error. Please try again.",
       "busy": "AI assistant is still answering the previous message, please wait.",
       "rate_limited": "You're sending messages too fast. Please slow down and retry.",
-      "botLabel": "Bot"
+      "botLabel": "Bot",
+      "quickReply1": "What is blood pressure and why does it matter?",
+      "quickReply2": "Suggest general healthy eating principles",
+      "quickReply3": "How can I build a sustainable exercise routine?",
+      "quickReply4": "Explain what BMI measures (and its limits)",
+      "quickReply5": "Tips for remembering to take my medication"
     },
     "muted": "Muted",
     "unread": "unread",
@@ -1309,7 +1775,63 @@
     "uploadComingSoon": "Upload feature coming soon",
     "typingAria": "User is typing",
     "healthQuestion": "Ask about health",
-    "aiIntegrationNote": "I've received your message! AI feature is being integrated with AI Worker."
+    "aiIntegrationNote": "I've received your message! AI feature is being integrated with AI Worker.",
+    "unknownUser": "Unknown",
+    "messageActions": "Message actions",
+    "moreActions": "More actions",
+    "moreOptions": "More options",
+    "jumpToDateAria": "Jump to {label}",
+    "newMessagesBadge": "{count} new messages",
+    "dateJumpTitle": "Jump to date",
+    "dateJumpTodaySubtitle": "Go to the latest message",
+    "dateJumpMonthCount": "{count} messages",
+    "dateJumpNoMessages": "No messages yet",
+    "dateJumpNotFound": "No messages found for that date yet",
+    "pinnedMore": "+{count} more",
+    "collapsePinned": "Collapse pinned messages",
+    "expandPinned": "Expand pinned messages",
+    "status": {
+      "queued": "Queued — will send when you're back online",
+      "sending": "Sending",
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read",
+      "failed": "Couldn't send",
+      "failedReasonNetwork": "Couldn't send — network problem.",
+      "failedReasonRateLimited": "Slow down a moment — too many messages.",
+      "failedReasonValidation": "This message couldn't be delivered.",
+      "retry": "Retry",
+      "discard": "Discard"
+    },
+    "connection": {
+      "reconnecting": "Reconnecting…",
+      "offline": "You're offline. Messages will send when you reconnect.",
+      "sessionExpired": "Your session expired. Sign in again to continue chatting.",
+      "signInAgain": "Sign in again",
+      "reconnectNow": "Try again"
+    },
+    "queue": {
+      "evictedTitle": "Some queued messages were dropped",
+      "evictedDescription": "{n} oldest messages couldn't be kept while you were offline."
+    },
+    "empty": {
+      "noConversationsTitle": "No conversations yet",
+      "noConversationsDescription": "Start a new chat with a friend, your care team, or the HealthOS AI.",
+      "startNewChat": "Start a new chat",
+      "noPinnedTitle": "No pinned messages",
+      "noPinnedDescription": "Long-press any message to pin it here for quick reference.",
+      "noMediaTitle": "No media yet",
+      "noMediaDescription": "Photos and files shared in this chat will appear here.",
+      "noSearchResultsTitle": "No matches",
+      "noSearchResultsDescription": "Try a different word or check your spelling.",
+      "blockedTitle": "You can't message this person",
+      "blockedDescription": "Either you blocked them or they blocked you. Unblock from settings to resume."
+    },
+    "attachments": {
+      "tooLarge": "Image is too large. Max {max} MB.",
+      "unsupported": "Only JPEG, PNG, or WebP images are supported.",
+      "uploadFailed": "Couldn't upload that image. Try again."
+    }
   },
   "reports": {
     "title": "Health Report",
@@ -1328,12 +1850,19 @@
     "viewDetail": "View Detail",
     "exportPdf": "Export PDF",
     "exportPdfLoading": "Generating PDF...",
-    "exportPdfSuccess": "Report PDF downloaded",
+    "exportPdfSuccess": "We're preparing your PDF — you'll get a notification when it's ready.",
+    "exportPdfExpired": "That PDF download link has expired. Please request a new export.",
+    "exportPdfDownloadFailed": "Couldn't open your PDF download. Please try again.",
     "share": "Share",
     "shareReport": "Share Report",
     "analyzeTrends": "Analyze Trends",
     "recentReports": "Report History",
     "noRecentReports": "No reports yet",
+    "reportFor": "Report · {period}",
+    "alertsCount": "{count, plural, one {# alert} other {# alerts}}",
+    "downloadPdfAria": "Download PDF",
+    "shareReportAria": "Share report",
+    "viewReportAria": "View report",
     "categories": {
       "vitals": "Vital Signs",
       "nutrition": "Nutrition",
@@ -1373,12 +1902,32 @@
       }
     },
     "export": {
-      "createdAt": "Created at:"
+      "createdAt": "Created at:",
+      "dialogDescription": "Choose what to include in the PDF.",
+      "sections": "Report sections",
+      "options": "Options",
+      "includeRawTable": "Include raw data table",
+      "includeAiInsights": "Include AI commentary",
+      "includeSensitive": "Include sensitive sections",
+      "includeSensitiveHint": "Includes medication adherence and other sensitive categories. Off by default.",
+      "sensitiveBlocked": "You picked a sensitive section without enabling 'Include sensitive sections' below. Enable it or unselect that section.",
+      "cancel": "Cancel",
+      "popupBlocked": "Could not open the download window. Please allow popups.",
+      "selectAtLeastOne": "Select at least one section.",
+      "errorGeneric": "PDF generation failed",
+      "piiTitle": "Sensitive personal data",
+      "piiBody": "This PDF contains your name and health readings. Avoid sharing it on public channels and store it somewhere private.",
+      "acknowledge": "I understand and want to download"
     }
   },
   "trends": {
     "title": "Trend Analysis",
     "subtitle": "Analyze and forecast health indicators over time",
+    "breadcrumb": {
+      "parent": "Reports",
+      "root": "Dashboard",
+      "ariaLabel": "Breadcrumb"
+    },
     "selectMetric": "Select Metric",
     "compareMetric": "Compare With",
     "metrics": {
@@ -1394,11 +1943,17 @@
       "actual": "Actual",
       "trendLine": "Trend Line",
       "prediction": "Prediction",
-      "anomaly": "Anomaly"
+      "anomaly": "Anomaly",
+      "uncertaintyBand": "Prediction range",
+      "srCaption": "Tabular view of trend chart data, including actual readings and predictions.",
+      "srDate": "Date",
+      "srSeries": "Series",
+      "srValue": "Value"
     },
     "anomalies": "Anomaly Points",
     "noAnomalies": "No anomalies detected",
     "aiSummary": "AI Summary",
+    "aiDisclaimer": "AI-generated from your recent readings. Not medical advice.",
     "compare": "Compare Metrics",
     "export": "Export Analysis"
   },
@@ -1480,16 +2035,194 @@
     "achievedGoals": "{n} achieved",
     "pageTitle": "BMI Progress",
     "pageSubtitle": "Track your BMI and weight metrics",
+    "rangeLabel": "Showing trend over",
+    "customRangeUnavailable": "Custom date ranges are coming soon. Try 7, 30 or 90 days for now.",
     "bmiCategory": {
       "underweight": "Underweight",
       "normal": "Normal",
       "overweight": "Overweight",
       "obese": "Obese"
+    },
+    "insight": {
+      "eyebrow": "Today's insight",
+      "logNow": "Log a measurement",
+      "newUser": "Welcome to HealthOS. Log a weight today to start tracking your trend.",
+      "noReadings": "No measurements yet. Log a weight to begin your trend.",
+      "stale": "It's been {daysSince} days since your last measurement. A fresh log keeps the trend honest.",
+      "stable": "Your BMI has been stable around {bmi} over the last {windowDays} days.",
+      "trendingToTarget": "You're {gapClosed} closer to your target ({targetBmi}) over the last {windowDays} days. Nice consistency.",
+      "trendingAway": "Your BMI moved {gapWidened} away from your target ({targetBmi}) over the last {windowDays} days.",
+      "trendingTowardNoGoal": "Your BMI dropped {delta} over the last {windowDays} days, now {bmi}.",
+      "trendingAwayNoGoal": "Your BMI rose {delta} over the last {windowDays} days, now {bmi}."
     }
   },
   "comingSoon": {
     "title": "Feature Under Development",
     "description": "We are working hard to bring you this feature. Thank you for your patience!",
     "estimatedTime": "Estimated completion: April 2026"
+  },
+  "primitives": {
+    "source": {
+      "ariaPrefix": "Source:",
+      "manual": "Manual",
+      "apple_health": "Apple Health",
+      "google_fit": "Google Fit",
+      "fitbit": "Fitbit",
+      "garmin": "Garmin",
+      "withings": "Withings",
+      "samsung_health": "Samsung Health"
+    },
+    "freshness": {
+      "live": "Live",
+      "recent": "Recent",
+      "stale": "Stale",
+      "very_stale": "Very stale",
+      "no_data": "No data"
+    },
+    "confidence": {
+      "ariaPrefix": "Confidence:",
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence — review",
+      "unknown": "Unknown confidence"
+    },
+    "permissionBanner": {
+      "enable": "Enable",
+      "dismiss": "Dismiss",
+      "notifications": {
+        "title": "Notifications are off",
+        "body": "Turn on notifications to get reminders for medication, appointments, and abnormal vitals.",
+        "deniedHint": "Notifications were blocked. Open your browser site settings to allow them again."
+      },
+      "camera": {
+        "title": "Camera access required",
+        "body": "Allow camera access to take meal photos for AI analysis.",
+        "deniedHint": "Camera was blocked. Open your browser site settings to allow it again."
+      },
+      "storage": {
+        "title": "Storage access required",
+        "body": "Allow storage access so HealthOS can keep your draft entries between sessions.",
+        "deniedHint": "Storage was blocked. Open your browser site settings to allow it again."
+      }
+    },
+    "dataState": {
+      "pendingTitle": "Working on it",
+      "pendingBody": "This usually finishes in under a minute. You can keep using other parts of the app.",
+      "noPermissionTitle": "Permission required",
+      "noPermissionBody": "Grant access to view this content.",
+      "noPermissionCta": "Grant access",
+      "emptyTitle": "Nothing here yet",
+      "emptyBody": "Once you start logging data, it will appear here.",
+      "emptyInRangeTitle": "No data in this range",
+      "emptyInRangeBody": "Try a wider time range or check connected devices.",
+      "emptyInRangeCta": "Change range",
+      "recoverableErrorTitle": "Could not load",
+      "recoverableErrorBody": "We had trouble reaching the server. Please try again.",
+      "retry": "Try again",
+      "refresh": "Refresh",
+      "hardErrorTitle": "Something went wrong",
+      "hardErrorBody": "An unexpected error occurred. Our team has been notified.",
+      "contactSupport": "Contact support",
+      "missingPayload": "No content to display.",
+      "syncingChip": "Syncing",
+      "partialChip": "Partial data",
+      "degradedChip": "Degraded service"
+    }
+  },
+  "state": {
+    "offline": "Offline",
+    "reconnecting": "Reconnecting...",
+    "online": "Online",
+    "freshness": {
+      "justNow": "Just now",
+      "minAgo": "Updated {n} min ago",
+      "hrAgo": "Updated {n} hr ago",
+      "dayAgo": "Updated {n} d ago"
+    },
+      "errors": {
+        "title": "Something went wrong.",
+        "description": "Please try again. If the problem persists, contact support.",
+        "retry": "Try again",
+        "copyDetails": "Copy details",
+        "detailsCopied": "Copied!",
+        "goHome": "Back to dashboard",
+        "notFoundTitle": "Page not found",
+        "notFoundDescription": "We couldn't find the page you were looking for.",
+        "permissionTitle": "Access denied",
+        "permissionDescription": "You don't have permission to view this page.",
+        "offlineTitle": "You're offline",
+        "offlineDescription": "Reconnect to the internet to continue."
+      },
+    "empty": {
+      "noResults": "No results match your filters.",
+      "noData": "Nothing to show yet.",
+      "noDataInRange": "No data in the selected range."
+    }
+  },
+  "onboardingV2": {
+    "title": "Set up your HealthOS profile",
+    "subtitle": "A few quick steps to personalise your experience. You can edit anything later.",
+    "stepLabels": {
+      "basics": "Basics",
+      "body": "Body",
+      "contact": "Contact",
+      "emergency": "Emergency",
+      "medical": "Medical",
+      "review": "Review"
+    },
+    "next": "Next",
+    "back": "Back",
+    "skip": "Skip for now",
+    "saveDraft": "Save draft",
+    "draftSaved": "Draft saved",
+    "draftSavedAt": "Draft saved {time}",
+    "draftFailed": "Couldn't save draft. Your progress is kept on this device.",
+    "completeButton": "Complete setup",
+    "reviewTitle": "Review your details",
+    "reviewSubtitle": "Confirm everything looks right. We'll only use this data to personalise your HealthOS experience.",
+    "reviewNoValue": "Not provided",
+    "consentLabel": "I confirm the above is accurate and agree to HealthOS using it to personalise my health experience.",
+    "consentRequired": "Please confirm the consent above.",
+    "optional": "Optional",
+    "required": "Required",
+    "stepNOfM": "Step {n} of {total}"
+  },
+  "legal": {
+    "privacy": {
+      "meta": {
+        "title": "Privacy",
+        "description": "How HealthOS collects, uses, and protects your health data."
+      },
+      "title": "Privacy Policy",
+      "subtitle": "We are not yet a regulated medical-records platform. This page describes the data we collect today and the controls you have.",
+      "lastUpdated": "Last updated: April 2026",
+      "sections": {
+        "collect": {
+          "title": "What we collect",
+          "body": "Account profile, your health logs (vitals, meals, reminders, appointments), AI conversation history, and device-sync payloads from connected providers."
+        },
+        "use": {
+          "title": "How we use it",
+          "body": "To compute reports, populate dashboards, generate AI summaries, and send reminders you opt into. Marketing emails are off by default."
+        },
+        "share": {
+          "title": "Who we share it with",
+          "body": "Only the AI worker that generates summaries (no third-party analytics by default), and recipients you explicitly invite via the share-report flow."
+        },
+        "retention": {
+          "title": "How long we keep it",
+          "body": "Your account data stays until you delete it. Anonymised aggregates may be retained for service improvement."
+        },
+        "rights": {
+          "title": "Your controls",
+          "body": "Export everything from Settings → Privacy → Download. Delete your account from Settings → Privacy → Delete. Both actions are irreversible."
+        },
+        "contact": {
+          "title": "Questions",
+          "body": "Email privacy@healthos.vn — replies within 5 business days."
+        }
+      },
+      "draftNote": "This page is a placeholder while the full policy and retention table are reviewed by counsel."
+    }
   }
 }

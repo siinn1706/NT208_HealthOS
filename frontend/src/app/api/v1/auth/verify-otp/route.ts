@@ -84,11 +84,11 @@ export async function POST(req: NextRequest) {
       path: "/",
     });
 
-    // Non-httpOnly meta cookie for middleware onboarding gate
+    // httpOnly meta cookie for the middleware onboarding gate (proxy.ts)
     response.cookies.set(
       META_COOKIE_NAME,
       JSON.stringify({ onboarding_status: (data as { data: { onboarding_status?: string } }).data.onboarding_status ?? "pending" }),
-      { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+      { httpOnly: true, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
     );
 
     return response;

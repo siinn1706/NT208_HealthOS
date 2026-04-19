@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 
 interface PasswordStrengthMeterProps {
   password: string;
@@ -9,66 +9,58 @@ interface PasswordStrengthMeterProps {
 
 interface StrengthResult {
   score: number;
-  label: string;
+  labelKey: "weak" | "medium" | "fair" | "strong" | "veryStrong";
   color: string;
 }
 
-export function PasswordStrengthMeter({
-  password,
-}: PasswordStrengthMeterProps) {
-  const locale = useLocale();
+const SCORE_TO_KEY: Record<number, StrengthResult["labelKey"]> = {
+  0: "weak",
+  1: "weak",
+  2: "medium",
+  3: "fair",
+  4: "strong",
+  5: "veryStrong",
+};
+
+const SCORE_TO_COLOR: Record<number, string> = {
+  0: "bg-destructive",
+  1: "bg-destructive",
+  2: "bg-warning",
+  3: "bg-warning",
+  4: "bg-success",
+  5: "bg-success",
+};
+
+export function PasswordStrengthMeter({ password }: PasswordStrengthMeterProps) {
+  const t = useTranslations("auth.security.passwordStrength");
 
   const strength = useMemo((): StrengthResult => {
     if (!password) {
-      return { score: 0, label: "", color: "" };
+      return { score: 0, labelKey: "weak", color: "" };
     }
 
     let score = 0;
 
-    // Length scoring
     if (password.length >= 8) score++;
     if (password.length >= 12) score++;
     if (password.length >= 16) score++;
 
-    // Character diversity
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
     if (/\d/.test(password)) score++;
     if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) score++;
 
-    // Penalties
-    if (/(.)\1{2,}/.test(password)) score--; // Repeated chars
-    if (/^[a-z]+$/i.test(password)) score--; // Only letters
-    if (/^[0-9]+$/.test(password)) score--; // Only numbers
+    if (/(.)\1{2,}/.test(password)) score--;
+    if (/^[a-z]+$/i.test(password)) score--;
+    if (/^[0-9]+$/.test(password)) score--;
 
     score = Math.max(0, Math.min(5, score));
 
-    const levels: Record<string, Record<number, { label: string; color: string }>> = {
-      vi: {
-        0: { label: "Yếu", color: "bg-red-500" },
-        1: { label: "Yếu", color: "bg-red-500" },
-        2: { label: "Trung bình", color: "bg-yellow-500" },
-        3: { label: "Khá", color: "bg-yellow-500" },
-        4: { label: "Mạnh", color: "bg-green-500" },
-        5: { label: "Rất mạnh", color: "bg-green-600" },
-      },
-      en: {
-        0: { label: "Weak", color: "bg-red-500" },
-        1: { label: "Weak", color: "bg-red-500" },
-        2: { label: "Medium", color: "bg-yellow-500" },
-        3: { label: "Fair", color: "bg-yellow-500" },
-        4: { label: "Strong", color: "bg-green-500" },
-        5: { label: "Very Strong", color: "bg-green-600" },
-      },
-    };
-
-    const labels = levels[locale] || levels.en;
-
     return {
       score,
-      label: labels[score]?.label || labels[0].label,
-      color: labels[score]?.color || labels[0].color,
+      labelKey: SCORE_TO_KEY[score] ?? "weak",
+      color: SCORE_TO_COLOR[score] ?? "bg-destructive",
     };
-  }, [password, locale]);
+  }, [password]);
 
   if (!password) {
     return null;
@@ -76,26 +68,27 @@ export function PasswordStrengthMeter({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex gap-1">
+      <div className="flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={strength.score}>
         {[0, 1, 2, 3, 4].map((i) => (
           <div
             key={i}
             className={`h-1.5 flex-1 rounded-full transition-colors ${
-              i < strength.score ? strength.color : "bg-gray-200"
+              i < strength.score ? strength.color : "bg-muted"
             }`}
           />
         ))}
       </div>
       <p
+        aria-live="polite"
         className={`text-xs ${
           strength.score <= 1
-            ? "text-red-500"
-            : strength.score <= 2
-            ? "text-yellow-500"
-            : "text-green-500"
+            ? "text-destructive"
+            : strength.score <= 3
+            ? "text-warning"
+            : "text-success"
         }`}
       >
-        {strength.label}
+        {t(strength.labelKey)}
       </p>
     </div>
   );

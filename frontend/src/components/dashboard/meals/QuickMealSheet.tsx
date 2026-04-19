@@ -193,11 +193,11 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MEAL_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
+                    {MEAL_TYPES.map((mt) => (
+                      <SelectItem key={mt.value} value={mt.value}>
                         <span className="flex items-center gap-2">
-                          <t.icon className={`size-3.5 ${t.color}`} />
-                          {t.label}
+                          <mt.icon className={`size-3.5 ${mt.color}`} />
+                          {mt.label}
                         </span>
                       </SelectItem>
                     ))}

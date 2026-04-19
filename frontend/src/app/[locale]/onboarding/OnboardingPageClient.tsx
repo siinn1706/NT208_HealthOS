@@ -1,15 +1,23 @@
 "use client";
 
-import { useEffect, useState, createContext, useContext } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "@/navigation";
-import { Check, ChevronRight, Loader2 } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { OnboardingStep1 } from "@/components/onboarding/OnboardingStep1";
 import { OnboardingStep2 } from "@/components/onboarding/OnboardingStep2";
 import { OnboardingStep3 } from "@/components/onboarding/OnboardingStep3";
 import { OnboardingStep4 } from "@/components/onboarding/OnboardingStep4";
 import { OnboardingStep5 } from "@/components/onboarding/OnboardingStep5";
+import { OnboardingWelcome } from "@/components/onboarding/OnboardingWelcome";
+import { OnboardingReview } from "@/components/onboarding/OnboardingReview";
+import { Stepper, type StepperItem } from "@/components/shared/page";
+import { InlineNotice } from "@/components/shared/state";
 import { useNotification } from "@/hooks/use-notification";
+import { useOnboardingDraft } from "@/hooks/useOnboardingDraft";
+import { track } from "@/lib/analytics";
 
 interface OnboardingData {
   fullName?: string;
@@ -51,151 +59,208 @@ export function useOnboarding() {
   return context;
 }
 
-const TOTAL_STEPS = 5;
+// Step indices:
+//   0 = Welcome
+//   1 = Basics
+//   2 = Health
+//   3 = Contact
+//   4 = Emergency
+//   5 = Medical (optional)
+//   6 = Review & confirm
+const FIRST_STEP = 0;
+const LAST_STEP = 6;
 
-// Step validation helpers
-const StepValidators: Record<number, (data: OnboardingData) => { valid: boolean; errors: Record<string, string> }> = {
-  1: (data) => {
+const INITIAL_DATA: OnboardingData = {};
+
+type StepValidator = (
+  data: OnboardingData,
+  t: (key: string) => string,
+) => Record<string, string>;
+
+const STEP_VALIDATORS: Record<number, StepValidator> = {
+  1: (data, t) => {
     const errors: Record<string, string> = {};
-    if (!data.fullName?.trim()) errors.fullName = "Họ và tên là bắt buộc";
-    if (!data.dateOfBirth) errors.dateOfBirth = "Ngày sinh là bắt buộc";
-    if (!data.gender) errors.gender = "Giới tính là bắt buộc";
-    return { valid: Object.keys(errors).length === 0, errors };
+    if (!data.fullName?.trim()) errors.fullName = t("step1.fullNameRequired");
+    if (!data.dateOfBirth) errors.dateOfBirth = t("step1.dateOfBirthRequired");
+    if (!data.gender) errors.gender = t("step1.genderRequired");
+    return errors;
   },
-  2: (data) => {
+  2: (data, t) => {
     const errors: Record<string, string> = {};
     if (!data.heightCm || data.heightCm < 50 || data.heightCm > 250) {
-      errors.heightCm = "Chiều cao không hợp lệ (50-250 cm)";
+      errors.heightCm = t("step2.heightInvalid");
     }
     if (!data.weightKg || data.weightKg < 20 || data.weightKg > 300) {
-      errors.weightKg = "Cân nặng không hợp lệ (20-300 kg)";
+      errors.weightKg = t("step2.weightInvalid");
     }
-    return { valid: Object.keys(errors).length === 0, errors };
+    return errors;
   },
-  3: (data) => {
+  3: (data, t) => {
     const errors: Record<string, string> = {};
-    if (!data.phone?.trim()) errors.phone = "Số điện thoại là bắt buộc";
-    // Validate phone format (Vietnamese format)
-    else if (!/^[\d\s\+\-\(\)]{10,}$/.test(data.phone)) {
-      errors.phone = "Số điện thoại không hợp lệ";
+    if (!data.phone?.trim()) {
+      errors.phone = t("step3.phoneRequired");
+    } else if (!/^[\d\s+\-()]{10,}$/.test(data.phone)) {
+      errors.phone = t("step3.phoneInvalid");
     }
-    return { valid: Object.keys(errors).length === 0, errors };
+    return errors;
   },
-  4: (data) => {
+  4: (data, t) => {
     const errors: Record<string, string> = {};
     if (!data.emergencyContacts || data.emergencyContacts.length === 0) {
-      errors.emergencyContacts = "Vui lòng thêm ít nhất 1 liên hệ khẩn cấp";
-    } else {
-      const invalidContacts = data.emergencyContacts
-        .map((c, i) => {
-          if (!c.name?.trim()) return i;
-          if (!c.phone?.trim()) return i;
-          if (!c.relationship?.trim()) return i;
-          return -1;
-        })
-        .filter((i) => i >= 0);
-      if (invalidContacts.length > 0) {
-        errors.emergencyContacts = "Vui lòng điền đầy đủ thông tin liên hệ";
-      }
+      errors.emergencyContacts = t("step4.errorAtLeastOne");
+      return errors;
     }
-    return { valid: Object.keys(errors).length === 0, errors };
+    const incomplete = data.emergencyContacts.some(
+      (c) => !c.name?.trim() || !c.phone?.trim() || !c.relationship?.trim(),
+    );
+    if (incomplete) {
+      errors.emergencyContacts = t("step4.errorIncomplete");
+    }
+    return errors;
   },
-  5: () => ({ valid: true, errors: {} }), // Medical info is optional
 };
+
+function clampStep(value: number): number {
+  if (Number.isNaN(value)) return FIRST_STEP;
+  return Math.min(Math.max(value, FIRST_STEP), LAST_STEP);
+}
+
+function formatRelativeTime(d: Date | null): string {
+  if (!d) return "";
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function OnboardingPageClient() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { handleApiError, success, handleError } = useNotification();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [data, setData] = useState<OnboardingData>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("onboarding");
+
+  const draft = useOnboardingDraft<OnboardingData>(INITIAL_DATA);
+
+  // Initialize from URL ?step=N once we've hydrated, so refresh restores you.
+  const initialStep = useMemo(() => {
+    const raw = searchParams.get("step");
+    return clampStep(raw ? parseInt(raw, 10) : FIRST_STEP);
+  }, [searchParams]);
+  const [currentStep, setCurrentStep] = useState<number>(initialStep);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [validationSummary, setValidationSummary] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
-  // Check if onboarding is already completed
+  // Keep `?step=N` in sync with state (replace, not push, so back button skips
+  // the wizard rather than walking through each step).
   useEffect(() => {
-    async function checkOnboardingStatus() {
-      try {
-        const res = await fetch("/api/v1/auth/session", { cache: "no-store", credentials: "include" });
-        if (res.ok) {
-          const sessionData = await res.json();
-          if (sessionData?.data?.onboarding_status === "completed") {
-            router.push("/dashboard");
-          }
-        }
-      } catch {
-        // Ignore errors, stay on onboarding
-      }
+    if (!draft.hydrated) return;
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    const next = String(currentStep);
+    if (params.get("step") !== next) {
+      params.set("step", next);
+      router.replace(`${pathname}?${params.toString()}` as never, { scroll: false });
     }
-    checkOnboardingStatus();
-  }, [router]);
+  }, [currentStep, draft.hydrated, pathname, router, searchParams]);
 
-  const updateData = (updates: Partial<OnboardingData>) => {
-    setData((prev) => ({ ...prev, ...updates }));
-    // Clear related field errors when data changes
-    const updatedFields = Object.keys(updates);
-    setFieldErrors((prev) => {
-      const newErrors = { ...prev };
-      updatedFields.forEach((field) => {
-        delete newErrors[field];
+  useEffect(() => {
+    track("onboarding.viewed", { initialStep });
+    // initialStep is captured at mount; we don't want to re-fire when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!draft.hydrated) return;
+    if (draft.status === "saved") {
+      track("onboarding.draft.saved", { step: currentStep });
+    } else if (draft.status === "error") {
+      track("onboarding.draft.failed", {
+        step: currentStep,
+        error: draft.lastError?.message,
       });
-      return newErrors;
-    });
-  };
+    }
+  }, [draft.hydrated, draft.status, draft.lastError, currentStep]);
 
-  const clearFieldError = (field: string) => {
+  const updateData = useCallback(
+    (updates: Partial<OnboardingData>) => {
+      draft.setData((prev) => ({ ...prev, ...updates }));
+      const updatedFields = Object.keys(updates);
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        updatedFields.forEach((field) => {
+          delete next[field];
+        });
+        return next;
+      });
+      setValidationSummary(null);
+    },
+    [draft],
+  );
+
+  const clearFieldError = useCallback((field: string) => {
     setFieldErrors((prev) => {
-      const newErrors = { ...prev };
-      delete newErrors[field];
-      return newErrors;
+      if (!(field in prev)) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
     });
-  };
+  }, []);
 
-  const validateCurrentStep = (): boolean => {
-    const validator = StepValidators[currentStep];
-    if (!validator) return true;
-
-    const { valid, errors } = validator(data);
-    if (!valid) {
-      setFieldErrors((prev) => ({ ...prev, ...errors }));
-      setError("Vui lòng điền đầy đủ thông tin bắt buộc");
-    } else {
+  function validateCurrentStep(): boolean {
+    const validator = STEP_VALIDATORS[currentStep];
+    if (!validator) {
       setFieldErrors({});
-      setError(null);
+      setValidationSummary(null);
+      return true;
     }
-    return valid;
-  };
+    const errors = validator(
+      draft.data,
+      t as unknown as (key: string) => string,
+    );
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setValidationSummary(t("validation.summary"));
+      return false;
+    }
+    setFieldErrors({});
+    setValidationSummary(null);
+    return true;
+  }
 
-  const handleNext = async () => {
-    if (!validateCurrentStep()) {
+  function goToStep(next: number) {
+    setCurrentStep(clampStep(next));
+    setValidationSummary(null);
+    setSubmitError(null);
+  }
+
+  function handleNext() {
+    if (currentStep === LAST_STEP) return;
+    if (!validateCurrentStep()) return;
+    track("onboarding.step_advanced", { from: currentStep, to: currentStep + 1 });
+    goToStep(currentStep + 1);
+  }
+
+  function handleBack() {
+    if (currentStep === FIRST_STEP) return;
+    track("onboarding.step_back", { from: currentStep, to: currentStep - 1 });
+    goToStep(currentStep - 1);
+  }
+
+  async function handleSubmit() {
+    if (!consent) {
+      setConsentError(t("review.consentRequired"));
       return;
     }
+    setConsentError(null);
+    setIsSubmitting(true);
+    setSubmitError(null);
 
-    if (currentStep === TOTAL_STEPS) {
-      await handleComplete();
-    } else {
-      setError(null);
-      setCurrentStep((prev) => prev + 1);
-    }
-  };
-
-  const handleBack = () => {
-    setError(null);
-    if (currentStep > 1) {
-      setCurrentStep((prev) => prev - 1);
-    }
-  };
-
-  const handleComplete = async () => {
-    // Final validation
-    if (!validateCurrentStep()) {
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
+    // Flush any pending draft writes before we try to submit.
+    draft.flush();
 
     try {
+      const data = draft.data;
       const response = await fetch("/api/v1/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -210,48 +275,71 @@ export default function OnboardingPageClient() {
           phone: data.phone,
           address: data.address,
           emergency_contacts: data.emergencyContacts,
-          medical_info: data.medicalInfo ? {
-            allergies: data.medicalInfo.allergies,
-            chronic_conditions: data.medicalInfo.chronicConditions,
-            current_medications: data.medicalInfo.currentMedications,
-            notes: data.medicalInfo.notes,
-          } : undefined,
+          medical_info: data.medicalInfo
+            ? {
+                allergies: data.medicalInfo.allergies,
+                chronic_conditions: data.medicalInfo.chronicConditions,
+                current_medications: data.medicalInfo.currentMedications,
+                notes: data.medicalInfo.notes,
+              }
+            : undefined,
           onboarding_completed: true,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errors = handleApiError(errorData, "Không thể lưu thông tin");
-        // Map field errors
+        const errors = handleApiError(errorData, t("saveError"));
         if (errors && Object.keys(errors).length > 0) {
           setFieldErrors(errors);
         }
+        setSubmitError(t("saveError"));
         return;
       }
 
-      // Success
-      success("Thông tin đã được lưu thành công!");
+      track("onboarding.completed");
+      success(t("saveSuccess"));
+      draft.clear();
       router.push("/dashboard");
     } catch (err) {
-      const errors = handleError(err, "Có lỗi xảy ra. Vui lòng thử lại.");
+      const errors = handleError(err, t("saveGenericError"));
       if (errors && Object.keys(errors).length > 0) {
         setFieldErrors(errors);
       }
+      setSubmitError(t("saveGenericError"));
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
-  };
+  }
 
-  const renderStep = () => {
+  // Build the visible Stepper. The Welcome + Review steps don't get their own
+  // pill — the stepper reflects the five data steps so progress feels concrete.
+  const stepperItems: StepperItem[] = [
+    { id: "basics", label: t("stepLabels.basics") },
+    { id: "health", label: t("stepLabels.health") },
+    { id: "contact", label: t("stepLabels.contact") },
+    { id: "emergency", label: t("stepLabels.emergency") },
+    { id: "medical", label: t("stepLabels.medical"), optional: true },
+  ];
+  // Map step index → stepper active index. Welcome (0) shows step 1 unfilled,
+  // Review (6) shows all five filled.
+  const stepperActiveIndex = currentStep === 0
+    ? -1
+    : currentStep === LAST_STEP
+      ? stepperItems.length
+      : currentStep - 1;
+
+  function renderStep() {
     const stepProps = {
-      data,
+      data: draft.data,
       updateData,
       fieldErrors,
-      clearFieldError
-    };
+      clearFieldError,
+    } as const;
 
     switch (currentStep) {
+      case 0:
+        return <OnboardingWelcome />;
       case 1:
         return <OnboardingStep1 {...stepProps} />;
       case 2:
@@ -262,89 +350,127 @@ export default function OnboardingPageClient() {
         return <OnboardingStep4 {...stepProps} />;
       case 5:
         return <OnboardingStep5 {...stepProps} />;
+      case 6:
+        return (
+          <OnboardingReview
+            data={draft.data}
+            onEditStep={goToStep}
+            consent={consent}
+            onConsentChange={(next) => {
+              setConsent(next);
+              if (next) setConsentError(null);
+            }}
+            consentError={consentError}
+          />
+        );
       default:
         return null;
     }
-  };
+  }
+
+  const draftIndicator = useMemo(() => {
+    if (!draft.hydrated) return null;
+    if (draft.status === "error") {
+      return (
+        <InlineNotice variant="warning">
+          {t("draft.saveFailed")}
+        </InlineNotice>
+      );
+    }
+    if (draft.status === "saving") {
+      return (
+        <span className="text-xs text-muted-foreground" aria-live="polite">
+          {t("draft.saving")}
+        </span>
+      );
+    }
+    if (draft.status === "saved" && draft.lastSavedAt) {
+      return (
+        <span className="text-xs text-muted-foreground" aria-live="polite">
+          {t("draft.savedAt", { time: formatRelativeTime(draft.lastSavedAt) })}
+        </span>
+      );
+    }
+    return null;
+  }, [draft.hydrated, draft.lastSavedAt, draft.status, t]);
 
   return (
-    <OnboardingContext.Provider value={{ data, updateData, fieldErrors, clearFieldError }}>
-      <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-b from-cyan-50 to-white dark:from-cyan-950/20 dark:to-background py-8 px-4">
-        <div className="w-full max-w-2xl mx-auto">
-          {/* Progress Stepper */}
-          <div className="mb-12 px-2">
-            <div className="flex items-start justify-between">
-              {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((step, index) => (
-                <div key={step} className={`flex items-center ${index < TOTAL_STEPS - 1 ? "flex-1" : ""}`}>
-                  <div className="flex flex-col items-center relative">
-                    <div
-                      className={`
-                        w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium
-                        transition-all duration-300
-                        ${
-                          step < currentStep
-                            ? "bg-primary text-primary-foreground"
-                            : step === currentStep
-                            ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                            : "bg-muted text-muted-foreground"
-                        }
-                      `}
-                    >
-                      {step < currentStep ? (
-                        <Check className="size-5" aria-hidden="true" />
-                      ) : (
-                        step
-                      )}
-                    </div>
-                    <span className="text-xs mt-2 absolute top-11 text-muted-foreground hidden sm:block whitespace-nowrap">
-                      {step === 1 && "Cơ bản"}
-                      {step === 2 && "Sức khỏe"}
-                      {step === 3 && "Liên hệ"}
-                      {step === 4 && "Khẩn cấp"}
-                      {step === 5 && "Y tế"}
-                    </span>
-                  </div>
-                  {index < TOTAL_STEPS - 1 && (
-                    <div
-                      className={`
-                        flex-1 h-1 mx-2 sm:mx-4 rounded transition-all duration-300
-                        ${step < currentStep ? "bg-primary" : "bg-muted"}
-                      `}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+    <OnboardingContext.Provider
+      value={{
+        data: draft.data,
+        updateData,
+        fieldErrors,
+        clearFieldError,
+      }}
+    >
+      <div className="min-h-[100dvh] bg-gradient-to-b from-cyan-50 to-white py-8 px-4 dark:from-cyan-950/20 dark:to-background">
+        <div className="mx-auto w-full max-w-2xl">
+          {/* Stepper */}
+          <div className="mb-6">
+            <Stepper
+              steps={stepperItems}
+              activeIndex={stepperActiveIndex}
+              navigableIndexes={Array.from(
+                { length: Math.min(Math.max(0, stepperActiveIndex + 1), stepperItems.length) },
+                (_, i) => i,
+              )}
+              onStepClick={(i) => goToStep(i + 1)}
+              ariaLabel={t("welcome.title")}
+              optionalLabel={t("optional")}
+            />
           </div>
 
           {/* Step Content */}
-          <div className="bg-card rounded-lg border shadow-sm p-6">
-            {error && (
-              <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
+          <div className="rounded-lg border bg-card p-6 shadow-sm">
+            {validationSummary && (
+              <div
+                className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                role="alert"
+              >
+                {validationSummary}
               </div>
             )}
-            {renderStep()}
+            {submitError && (
+              <div
+                className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                role="alert"
+              >
+                {submitError}
+              </div>
+            )}
+            {!draft.hydrated ? (
+              <div className="flex h-40 items-center justify-center">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
+              </div>
+            ) : (
+              renderStep()
+            )}
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-6">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 1 || isLoading}
-            >
-              Quay lại
-            </Button>
-            <Button onClick={handleNext} disabled={isLoading}>
-              {isLoading && <Loader2 className="size-4 animate-spin mr-2" />}
-              {currentStep === TOTAL_STEPS
-                ? "Hoàn thành"
-                : currentStep === TOTAL_STEPS - 1
-                ? "Tiếp tục"
-                : "Tiếp theo"}
-              {currentStep < TOTAL_STEPS && <ChevronRight className="size-4 ml-2" />}
-            </Button>
+          {/* Navigation */}
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-h-[1.25rem] order-2 sm:order-1">{draftIndicator}</div>
+            <div className="order-1 flex items-center justify-between gap-2 sm:order-2 sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                disabled={currentStep === FIRST_STEP || isSubmitting}
+              >
+                <ChevronLeft className="mr-1 size-4" aria-hidden />
+                {t("nav.back")}
+              </Button>
+              {currentStep === LAST_STEP ? (
+                <Button onClick={handleSubmit} disabled={isSubmitting || !consent}>
+                  {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
+                  {isSubmitting ? t("nav.submitting") : t("nav.submit")}
+                </Button>
+              ) : (
+                <Button onClick={handleNext} disabled={isSubmitting}>
+                  {t("nav.next")}
+                  <ChevronRight className="ml-1 size-4" aria-hidden />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

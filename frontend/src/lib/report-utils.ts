@@ -51,7 +51,7 @@ export function trendArrow(trend: TrendDirection, higherIsBetter = true): string
 export function trendColor(trend: TrendDirection): string {
   if (trend === "stable") return "text-muted-foreground";
   const positive = trend === "improving";
-  return positive ? "text-emerald-500" : "text-amber-500";
+  return positive ? "text-success" : "text-warning";
 }
 
 // ─── Category metadata ───────────────────────────────────────────────────────

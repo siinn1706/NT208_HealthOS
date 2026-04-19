@@ -53,19 +53,26 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
   const [connectingProvider, setConnectingProvider] = useState<DeviceProvider | null>(null);
   const [connectErrorProvider, setConnectErrorProvider] = useState<DeviceProvider | null>(null);
 
+  // P0 truth fix (UX plan §E): handleSync MUST throw on non-2xx so the
+  // DeviceConnectionCard can transition into its error state. Previously a
+  // failed POST silently returned and the card flipped to "Sync successful"
+  // because no error propagated up the await chain.
   const handleSync = async (id: string) => {
+    let res: Response;
     try {
-      const res = await fetch(`/api/v1/devices/${id}/sync`, { method: "POST" });
-      if (!res.ok) return; // non-fatal — keep stale device data, no crash
-
-      const json = await res.json().catch(() => null);
-      const synced = normalizeDevice(json?.data);
-      if (!synced) return;
-
-      setDevices((prev) => prev.map((device) => (device.id === id ? synced : device)));
-    } catch {
-      // Network error or unexpected throw — ignore silently to avoid white screen
+      res = await fetch(`/api/v1/devices/${id}/sync`, { method: "POST" });
+    } catch (networkErr) {
+      throw new Error("DEVICE_SYNC_NETWORK_ERROR", { cause: networkErr });
     }
+    if (!res.ok) {
+      throw new Error(`DEVICE_SYNC_HTTP_${res.status}`);
+    }
+    const json = await res.json().catch(() => null);
+    const synced = normalizeDevice(json?.data);
+    if (!synced) {
+      throw new Error("DEVICE_SYNC_INVALID_PAYLOAD");
+    }
+    setDevices((prev) => prev.map((device) => (device.id === id ? synced : device)));
   };
 
   const handleDisconnect = async (id: string) => {

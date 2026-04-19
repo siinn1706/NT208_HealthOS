@@ -4,6 +4,7 @@ import { Target, Flame, Award, TrendingUp } from "lucide-react";
 import { StreakHeatmap } from "@/components/charts/StreakHeatmap";
 import { getGamificationSummary } from "@/lib/gamification-data";
 import { formatDate, formatNumber, getUnitLabel } from "@/lib/format-utils";
+import { PageHeader } from "@/components/shared/page";
 
 function Skeleton() {
   return <div className="animate-pulse rounded-xl bg-muted h-32" />;
@@ -17,13 +18,9 @@ async function GamificationGoalsContent() {
   const { currentUser, activeGoals, streakHistory, recentUnlocked } = summary;
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* Page header */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground">{t("pageTitle")}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{t("pageSubtitle")}</p>
-      </div>
-
+    <>
+      <PageHeader title={t("pageTitle")} description={t("pageSubtitle")} />
+      <div className="max-w-[1400px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
       {/* Stats overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
@@ -49,8 +46,19 @@ async function GamificationGoalsContent() {
             <Award className="w-5 h-5 text-blue-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{currentUser.unlockedAchievements}</p>
-            <p className="text-xs text-muted-foreground">{t("activeGoalsCount", { n: currentUser.unlockedAchievements })}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {currentUser.totalAchievements === null
+                ? currentUser.unlockedAchievements
+                : `${currentUser.unlockedAchievements}/${currentUser.totalAchievements}`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {currentUser.totalAchievements === null
+                ? t("unlockedAchievements")
+                : t("unlockedOfTotal", {
+                    n: currentUser.unlockedAchievements,
+                    total: currentUser.totalAchievements,
+                  })}
+            </p>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
@@ -159,7 +167,8 @@ async function GamificationGoalsContent() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

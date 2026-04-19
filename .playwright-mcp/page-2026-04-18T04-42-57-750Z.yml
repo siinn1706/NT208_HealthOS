@@ -1,0 +1,217 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e242]:
+    - generic [ref=e243]:
+      - img [ref=e245]
+      - generic [ref=e248]: HealthOS
+    - navigation [ref=e249]:
+      - list [ref=e250]:
+        - listitem [ref=e251]:
+          - link "Overview" [ref=e252] [cursor=pointer]:
+            - /url: /en/dashboard
+            - img [ref=e254]
+            - generic [ref=e260]: Overview
+        - listitem [ref=e261]:
+          - link "Profile" [ref=e262] [cursor=pointer]:
+            - /url: /en/dashboard/profile
+            - img [ref=e264]
+            - generic [ref=e268]: Profile
+        - listitem [ref=e269]:
+          - link "Nutrition" [ref=e270] [cursor=pointer]:
+            - /url: /en/dashboard/meals
+            - img [ref=e272]
+            - generic [ref=e278]: Nutrition
+        - listitem [ref=e279]:
+          - link "Vitals & Devices" [ref=e280] [cursor=pointer]:
+            - /url: /en/dashboard/health
+            - img [ref=e282]
+            - generic [ref=e285]: Vitals & Devices
+        - listitem [ref=e286]:
+          - link "Reminders" [ref=e287] [cursor=pointer]:
+            - /url: /en/dashboard/reminders
+            - img [ref=e289]
+            - generic [ref=e293]: Reminders
+        - listitem [ref=e294]:
+          - link "Medical History" [ref=e295] [cursor=pointer]:
+            - /url: /en/dashboard/appointments
+            - img [ref=e297]
+            - generic [ref=e301]: Medical History
+        - listitem [ref=e302]:
+          - link "Risk Predictions" [ref=e303] [cursor=pointer]:
+            - /url: /en/dashboard/risk
+            - img [ref=e305]
+            - generic [ref=e314]: Risk Predictions
+        - listitem [ref=e315]:
+          - link "Goals" [ref=e316] [cursor=pointer]:
+            - /url: /en/dashboard/progress
+            - img [ref=e318]
+            - generic [ref=e323]: Goals
+        - listitem [ref=e324]:
+          - link "Achievements" [ref=e325] [cursor=pointer]:
+            - /url: /en/dashboard/achievements
+            - img [ref=e327]
+            - generic [ref=e334]: Achievements
+        - listitem [ref=e335]:
+          - link "Leaderboard" [ref=e336] [cursor=pointer]:
+            - /url: /en/dashboard/leaderboard
+            - img [ref=e338]
+            - generic [ref=e345]: Leaderboard
+        - listitem [ref=e346]:
+          - link "Messages" [ref=e347] [cursor=pointer]:
+            - /url: /en/dashboard/chat
+            - img [ref=e349]
+            - generic [ref=e352]: Messages
+        - listitem [ref=e353]:
+          - link "Reports" [ref=e354] [cursor=pointer]:
+            - /url: /en/dashboard/reports
+            - img [ref=e356]
+            - generic [ref=e360]: Reports
+        - listitem [ref=e361]:
+          - link "Settings" [ref=e362] [cursor=pointer]:
+            - /url: /en/dashboard/settings
+            - img [ref=e364]
+            - generic [ref=e368]: Settings
+    - button "Collapse sidebar" [ref=e369] [cursor=pointer]:
+      - img [ref=e370]
+  - banner [ref=e372]:
+    - generic [ref=e374]:
+      - img [ref=e375]
+      - searchbox "Search records, medicines..." [ref=e378]
+    - generic [ref=e379]:
+      - button "Switch language" [ref=e381] [cursor=pointer]:
+        - img [ref=e382]
+        - generic [ref=e385]: en
+      - button "Notifications" [ref=e387] [cursor=pointer]:
+        - img [ref=e388]
+      - button "Admin Test" [ref=e392] [cursor=pointer]:
+        - img [ref=e395]
+        - generic [ref=e398]: Admin Test
+        - img [ref=e399]
+  - main [ref=e401]:
+    - generic [ref=e403]:
+      - generic [ref=e404]:
+        - heading "Good morning, Admin Test" [level=1] [ref=e405]
+        - paragraph [ref=e406]: Overview
+      - generic [ref=e407]:
+        - generic [ref=e412]:
+          - paragraph [ref=e413]: "--"
+          - paragraph [ref=e414]: Calories Burned
+        - generic [ref=e419]:
+          - paragraph [ref=e420]: "--"
+          - paragraph [ref=e421]: Sleep Score
+        - generic [ref=e426]:
+          - paragraph [ref=e427]: "--"
+          - paragraph [ref=e428]: Heart Rate
+        - generic [ref=e433]:
+          - paragraph [ref=e434]: "--"
+          - paragraph [ref=e435]: Steps
+      - generic [ref=e436]:
+        - paragraph [ref=e437]: Quick Actions
+        - generic [ref=e438]:
+          - button "Log Meal" [ref=e439] [cursor=pointer]:
+            - img [ref=e441]
+            - generic [ref=e446]:
+              - paragraph [ref=e447]: Log Meal
+              - paragraph [ref=e448]: Add calories & nutrition
+          - button "Scan Meal" [ref=e449] [cursor=pointer]:
+            - img [ref=e451]
+            - generic [ref=e454]:
+              - paragraph [ref=e455]: Scan Meal
+              - paragraph [ref=e456]: AI photo analysis
+          - button "Add Vital" [ref=e457] [cursor=pointer]:
+            - img [ref=e459]
+            - generic [ref=e460]:
+              - paragraph [ref=e461]: Add Vital
+              - paragraph [ref=e462]: Enter latest readings
+          - button "Log Medicine" [ref=e463] [cursor=pointer]:
+            - img [ref=e465]
+            - generic [ref=e468]:
+              - paragraph [ref=e469]: Log Medicine
+              - paragraph [ref=e470]: Record dose taken
+          - button "View Reports" [ref=e471] [cursor=pointer]:
+            - img [ref=e473]
+            - generic [ref=e476]:
+              - paragraph [ref=e477]: View Reports
+              - paragraph [ref=e478]: Health analysis
+      - generic [ref=e479]:
+        - generic [ref=e482]:
+          - generic [ref=e483]:
+            - paragraph [ref=e484]: Vitals Trend
+            - paragraph [ref=e485]: Last 7 days
+          - generic [ref=e486]:
+            - generic [ref=e487]:
+              - button "7 days" [ref=e488]
+              - button "30 days" [ref=e489]
+              - button "90 days" [ref=e490]
+              - button "Custom" [ref=e491]:
+                - img
+                - text: Custom
+            - img [ref=e492]
+        - generic [ref=e499]:
+          - generic [ref=e500]:
+            - paragraph [ref=e501]: Today's Schedule
+            - img [ref=e502]
+          - list [ref=e505]:
+            - listitem [ref=e506]: No reminders for today
+      - generic [ref=e507]:
+        - generic [ref=e508]:
+          - generic [ref=e509]:
+            - heading "Calories per Day" [level=2] [ref=e510]
+            - paragraph [ref=e511]: Last 7 days
+          - generic [ref=e512]:
+            - generic [ref=e513]:
+              - button "7 days" [ref=e514]
+              - button "30 days" [ref=e515]
+              - button "90 days" [ref=e516]
+              - button "Custom" [ref=e517]:
+                - img
+                - text: Custom
+            - generic [ref=e518]: "Target: 2000 kcal"
+        - generic [ref=e520]: No information available
+      - generic [ref=e521]:
+        - generic [ref=e522]:
+          - generic [ref=e523]:
+            - paragraph [ref=e524]: Goal Progress
+            - img [ref=e525]
+          - generic [ref=e529]:
+            - generic [ref=e530]:
+              - generic [ref=e531]:
+                - generic [ref=e532]: Water Intake
+                - generic [ref=e533]: "-- / 2,000 ml"
+              - generic [ref=e534]:
+                - progressbar "Water Intake"
+            - generic [ref=e535]:
+              - generic [ref=e536]:
+                - generic [ref=e537]: Daily Steps
+                - generic [ref=e538]: "-- / 10,000 steps"
+              - generic [ref=e539]:
+                - progressbar "Daily Steps"
+            - generic [ref=e540]:
+              - generic [ref=e541]:
+                - generic [ref=e542]: Calorie Goal
+                - generic [ref=e543]: "-- / 2,000 kcal"
+              - generic [ref=e544]:
+                - progressbar "Calorie Goal"
+            - link "View All Goals →" [ref=e545] [cursor=pointer]:
+              - /url: /en/dashboard/progress
+        - generic [ref=e546]:
+          - generic [ref=e547]:
+            - img [ref=e549]
+            - generic [ref=e552]:
+              - paragraph [ref=e553]: AI Insight
+              - paragraph [ref=e554]: Based on your data today
+          - generic [ref=e555]:
+            - paragraph [ref=e556]: No information available
+            - link "Ask AI Assistant" [ref=e557] [cursor=pointer]:
+              - /url: /en/dashboard/chat
+              - img [ref=e558]
+              - text: Ask AI Assistant
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e561]:
+        - button "Close toast" [ref=e562] [cursor=pointer]:
+          - img [ref=e563]
+        - img [ref=e567]
+        - generic [ref=e571]: Thông tin đã được lưu thành công!
+  - button "Open Next.js Dev Tools" [ref=e114] [cursor=pointer]:
+    - img [ref=e115]
+  - alert [ref=e62]: Good morning, Admin Test

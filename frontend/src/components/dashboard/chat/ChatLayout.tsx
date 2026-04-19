@@ -22,10 +22,13 @@ export function ChatLayout() {
   useEffect(() => {
     let cancelled = false;
     fetch("/api/v1/auth/session", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+      .then(async (res) => {
+        const body = res.ok ? await res.json().catch(() => null) : null;
+        return body;
+      })
       .then((json) => {
         if (cancelled) return;
-        const userId = json?.data?.user_id;
+        const userId = json?.data?.user_id ?? json?.data?.id;
         setCurrentUserId(typeof userId === "string" ? userId : null);
       })
       .catch(() => {
@@ -57,7 +60,7 @@ export function ChatLayout() {
     createConversation,
   } = useConversations();
 
-  const { requests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
+  const { pendingRequests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId),
@@ -140,7 +143,7 @@ export function ChatLayout() {
           conversations={conversations}
           currentUserId={currentUserId}
           activeId={activeId}
-          strangerRequests={requests}
+          strangerRequests={pendingRequests}
           isLoading={isLoading}
           onSelectConversation={handleSelectConversation}
           onPinConversation={pinConversation}

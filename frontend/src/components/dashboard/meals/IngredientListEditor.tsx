@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
+import { useLocale } from "next-intl";
 import { Trash2, Plus, Search, CheckCircle2, HelpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,48 @@ import { searchIngredients, findIngredient, calcNutrition } from "@/data/ingredi
 import type { IngredientItem } from "@/types/api";
 import type { AddMealFormValues } from "@/lib/validators/meal-schema";
 
+// B7 — catalog row enriched with the optional UUID returned by Core BE.
+type CatalogIngredient = IngredientItem & { server_id?: string };
+
 interface IngredientListEditorProps {
   /** Field array name in the parent form */
   fieldName?: "ingredients";
+}
+
+async function fetchServerIngredients(query: string): Promise<CatalogIngredient[]> {
+  try {
+    const url = new URL("/api/v1/nutrition/ingredients", window.location.origin);
+    if (query.trim()) url.searchParams.set("q", query.trim());
+    url.searchParams.set("per_page", "10");
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return [];
+    const json = await res.json().catch(() => null);
+    const rows = Array.isArray(json?.data) ? json.data : [];
+    return rows
+      .map((r: Record<string, unknown>): CatalogIngredient | null => {
+        const id = typeof r.id === "string" ? r.id : null;
+        const slug = typeof r.slug === "string" ? r.slug : null;
+        const nameVi = typeof r.name_vi === "string" ? r.name_vi : null;
+        const nameEn = typeof r.name_en === "string" ? r.name_en : null;
+        if (!nameVi || !nameEn) return null;
+        return {
+          id: slug ?? id ?? nameVi,
+          server_id: id ?? undefined,
+          name_vi: nameVi,
+          name_en: nameEn,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          category: ((r.category as any) ?? "other"),
+          calories_per_100g: Number(r.calories_per_100g ?? 0),
+          protein_per_100g: Number(r.protein_per_100g ?? 0),
+          carbs_per_100g: Number(r.carbs_per_100g ?? 0),
+          fat_per_100g: Number(r.fat_per_100g ?? 0),
+          unit_hint: typeof r.unit_hint === "string" ? r.unit_hint : "gram",
+        };
+      })
+      .filter(Boolean) as CatalogIngredient[];
+  } catch {
+    return [];
+  }
 }
 
 export function IngredientListEditor({
@@ -31,10 +71,12 @@ export function IngredientListEditor({
     name: fieldName,
   });
 
-  const [suggestions, setSuggestions] = useState<IngredientItem[]>([]);
+  const locale = useLocale();
+  const [suggestions, setSuggestions] = useState<CatalogIngredient[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [focusedRow, setFocusedRow] = useState<number | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const queryDebounceRef = useRef<number | null>(null);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -56,19 +98,37 @@ export function IngredientListEditor({
   function handleNameInput(index: number, value: string) {
     setValue(`${fieldName}.${index}.ingredient_name`, value);
     setValue(`${fieldName}.${index}.is_matched`, false);
-    if (value.length >= 1) {
-      setSuggestions(searchIngredients(value));
-      setFocusedRow(index);
-    } else {
+    setValue(`${fieldName}.${index}.ingredient_id`, undefined as unknown as string);
+    setValue(`${fieldName}.${index}.ingredient_name_en`, undefined);
+
+    if (value.length < 1) {
       setSuggestions([]);
       setFocusedRow(null);
+      return;
     }
+
+    setFocusedRow(index);
+    // Optimistic local hits keep the dropdown responsive while we wait for the server.
+    setSuggestions(searchIngredients(value));
+
+    if (queryDebounceRef.current !== null) {
+      window.clearTimeout(queryDebounceRef.current);
+    }
+    queryDebounceRef.current = window.setTimeout(async () => {
+      const server = await fetchServerIngredients(value);
+      if (server.length > 0) setSuggestions(server);
+    }, 180);
   }
 
-  function handleSelectSuggestion(index: number, item: IngredientItem) {
-    setValue(`${fieldName}.${index}.ingredient_name`, item.name_vi, {
-      shouldDirty: true,
-    });
+  function handleSelectSuggestion(index: number, item: CatalogIngredient) {
+    // Locale-aware display name keeps the form input familiar to the user;
+    // the English name is sent alongside so the API and ML side never lose it.
+    const display = locale.startsWith("vi") ? item.name_vi : item.name_en;
+    setValue(`${fieldName}.${index}.ingredient_name`, display, { shouldDirty: true });
+    setValue(`${fieldName}.${index}.ingredient_name_en`, item.name_en);
+    if (item.server_id) {
+      setValue(`${fieldName}.${index}.ingredient_id`, item.server_id);
+    }
     setValue(`${fieldName}.${index}.is_matched`, true);
     // Recalc calories if grams already entered
     const grams = watchedIngredients?.[index]?.grams ?? 0;
@@ -195,16 +255,14 @@ export function IngredientListEditor({
                               >
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium leading-tight truncate">
-                                    {item.name_vi}
+                                    {locale.startsWith("vi") ? item.name_vi : item.name_en}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {locale.startsWith("vi") ? item.name_en : item.name_vi}
+                                    <span className="mx-1">·</span>
                                     {item.calories_per_100g} kcal / 100g
                                     <span className="mx-1">·</span>
-                                    P {item.protein_per_100g}g
-                                    <span className="mx-1">·</span>
-                                    C {item.carbs_per_100g}g
-                                    <span className="mx-1">·</span>
-                                    F {item.fat_per_100g}g
+                                    P {item.protein_per_100g}g · C {item.carbs_per_100g}g · F {item.fat_per_100g}g
                                   </p>
                                 </div>
                               </button>

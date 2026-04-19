@@ -46,21 +46,31 @@ export async function KpiRingWidget({ data }: KpiRingWidgetProps) {
       {KPI_CONFIG.map(({ key, color }) => {
         const item = data[key];
         const chartTarget = item.target && item.target > 0 ? item.target : 100;
-        const chartValue = item.current ?? 0;
+        const hasValue = typeof item.current === "number";
         return (
           <div
             key={key}
             className="rounded-xl border border-border bg-card p-4 flex flex-col items-center gap-2"
           >
-            <KpiDonutChart
-              value={chartValue}
-              target={chartTarget}
-              color={color}
-              size={96}
-            />
+            {hasValue ? (
+              <KpiDonutChart
+                value={item.current as number}
+                target={chartTarget}
+                color={color}
+                size={96}
+              />
+            ) : (
+              // Empty ring instead of a deceptive 0 reading. Keeps the
+              // KPI card layout stable while clearly signalling "no data".
+              <div
+                className="size-[96px] rounded-full border-[6px] border-muted/40"
+                role="img"
+                aria-label={t("noData")}
+              />
+            )}
             <div className="text-center">
               <p className="text-base font-bold text-foreground">
-                {item.current == null ? "--" : item.current.toLocaleString(getLocaleTag(locale))}
+                {hasValue ? (item.current as number).toLocaleString(getLocaleTag(locale)) : "--"}
               </p>
               <p className="text-[11px] text-muted-foreground font-medium">
                 {t(key as Parameters<typeof t>[0])}
