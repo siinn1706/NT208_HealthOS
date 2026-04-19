@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { resolveAuthUserId, userKeySync } from "@/lib/user-scoped-storage";
 
 /**
  * `useOnboardingDraft` — autosave for the onboarding wizard.
@@ -25,9 +26,13 @@ import * as React from "react";
  *
  * On server failure the local copy is still durable; the wizard surfaces the
  * error via `InlineNotice` and the next user keystroke retries the PUT.
+ *
+ * Privacy: storage key is scoped per authenticated user via
+ * `userKeySync(userId, "onboarding-draft")` so user-A's draft cannot be read
+ * by user-B after a logout/login cycle on the same device.
  */
 
-const STORAGE_KEY = "healthos.onboarding.draft.v1";
+const STORAGE_BUCKET = "onboarding-draft";
 const DEBOUNCE_MS = 1500;
 const SCHEMA_VERSION = 1;
 const SERVER_ENDPOINT = "/api/v1/users/me/onboarding-draft";
@@ -72,10 +77,15 @@ export interface UseOnboardingDraftResult<TData> {
   lastError: Error | null;
 }
 
-function readDraft<TData>(initial: TData): { data: TData; updatedAt: Date | null } {
-  if (typeof window === "undefined") return { data: initial, updatedAt: null };
+function readDraft<TData>(
+  storageKey: string | null,
+  initial: TData,
+): { data: TData; updatedAt: Date | null } {
+  if (typeof window === "undefined" || !storageKey) {
+    return { data: initial, updatedAt: null };
+  }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return { data: initial, updatedAt: null };
     const parsed = JSON.parse(raw) as PersistedDraft<TData>;
     if (!parsed || typeof parsed !== "object") return { data: initial, updatedAt: null };
@@ -91,14 +101,14 @@ function readDraft<TData>(initial: TData): { data: TData; updatedAt: Date | null
   }
 }
 
-function writeDraftToLS<TData>(next: TData, updatedAt: string): void {
-  if (typeof window === "undefined") return;
+function writeDraftToLS<TData>(storageKey: string | null, next: TData, updatedAt: string): void {
+  if (typeof window === "undefined" || !storageKey) return;
   const payload: PersistedDraft<TData> = {
     schemaVersion: SCHEMA_VERSION,
     updatedAt,
     data: next,
   };
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  window.localStorage.setItem(storageKey, JSON.stringify(payload));
 }
 
 export function useOnboardingDraft<TData extends object>(
@@ -112,18 +122,29 @@ export function useOnboardingDraft<TData extends object>(
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = React.useRef<TData | null>(null);
   const serverInflightRef = React.useRef<AbortController | null>(null);
+  // Resolved on first mount once the BFF session lookup completes.
+  // While `null` we hold off on writes so we never persist under the wrong
+  // user id (avoids the cross-user PHI leak fixed in this hotfix).
+  const storageKeyRef = React.useRef<string | null>(null);
 
-  // Hydrate from localStorage first, then optionally reconcile with server.
+  // Hydrate from localStorage first (after resolving the per-user key), then
+  // optionally reconcile with server.
   React.useEffect(() => {
-    const { data: localData, updatedAt: localUpdatedAt } = readDraft(initial);
-    setDataState(localData);
-    setLastSavedAt(localUpdatedAt);
-    setHydrated(true);
-
-    if (!SERVER_ENABLED || typeof window === "undefined") return;
-
     let cancelled = false;
     (async () => {
+      const userId = await resolveAuthUserId();
+      if (cancelled) return;
+      const storageKey = userKeySync(userId, STORAGE_BUCKET);
+      storageKeyRef.current = storageKey;
+
+      const { data: localData, updatedAt: localUpdatedAt } = readDraft(storageKey, initial);
+      if (cancelled) return;
+      setDataState(localData);
+      setLastSavedAt(localUpdatedAt);
+      setHydrated(true);
+
+      if (!SERVER_ENABLED || typeof window === "undefined") return;
+
       try {
         const res = await fetch(SERVER_ENDPOINT, {
           credentials: "include",
@@ -141,7 +162,7 @@ export function useOnboardingDraft<TData extends object>(
           const merged = { ...initial, ...(serverData as TData) };
           setDataState(merged);
           setLastSavedAt(serverUpdatedAt);
-          writeDraftToLS(merged, serverUpdatedAt.toISOString());
+          writeDraftToLS(storageKey, merged, serverUpdatedAt.toISOString());
         }
       } catch {
         /* network blip — keep local copy */
@@ -157,10 +178,16 @@ export function useOnboardingDraft<TData extends object>(
 
   const persist = React.useCallback((next: TData) => {
     if (typeof window === "undefined") return;
+    const storageKey = storageKeyRef.current;
+    if (!storageKey) {
+      // We haven't resolved the per-user storage key yet; keep the value in
+      // memory and let the next setData/persist cycle write it.
+      return;
+    }
     let updatedAtIso: string;
     try {
       updatedAtIso = new Date().toISOString();
-      writeDraftToLS(next, updatedAtIso);
+      writeDraftToLS(storageKey, next, updatedAtIso);
       setLastSavedAt(new Date(updatedAtIso));
       setLastError(null);
     } catch (err) {
@@ -248,10 +275,13 @@ export function useOnboardingDraft<TData extends object>(
       serverInflightRef.current = null;
     }
     if (typeof window !== "undefined") {
-      try {
-        window.localStorage.removeItem(STORAGE_KEY);
-      } catch {
-        /* ignore */
+      const storageKey = storageKeyRef.current;
+      if (storageKey) {
+        try {
+          window.localStorage.removeItem(storageKey);
+        } catch {
+          /* ignore */
+        }
       }
     }
     setLastSavedAt(null);

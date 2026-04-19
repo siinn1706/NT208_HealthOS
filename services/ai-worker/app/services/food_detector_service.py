@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,14 +19,18 @@ _MODEL_LOCK = threading.Lock()
 _CLASS_DB_LOCK = threading.Lock()
 _YOLO_MODEL: Any | None = None
 _CLASS_DB: list[dict[str, Any]] | None = None
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
 class DetectionResult:
     dish_name: str
+    serving_type: str
     calories: float
     fat_g: float
+    saturates_g: float
     sugar_g: float
+    salt_g: float
     confidence: float
     source: str
 
@@ -71,7 +77,20 @@ def _load_yolo_model() -> Any:
 
 def _best_yolo_prediction(image: Image.Image) -> tuple[int, float] | None:
     model = _load_yolo_model()
-    results = model(image, conf=settings.ai_confidence_threshold, device="cpu", verbose=False)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(
+            model,
+            image,
+            conf=settings.ai_confidence_threshold,
+            device="cpu",
+            verbose=False,
+        )
+        try:
+            results = future.result(timeout=settings.ai_yolo_timeout_seconds)
+        except FuturesTimeoutError as exc:
+            raise TimeoutError(
+                f"YOLO inference timed out after {settings.ai_yolo_timeout_seconds}s"
+            ) from exc
     first_result = results[0] if results else None
     if first_result is None or first_result.boxes is None or len(first_result.boxes) == 0:
         return None
@@ -89,6 +108,12 @@ def _best_yolo_prediction(image: Image.Image) -> tuple[int, float] | None:
     return best_class_id, best_conf
 
 
+def _prepare_image_for_yolo(image: Image.Image) -> Image.Image:
+    prepared = image.copy()
+    prepared.thumbnail((settings.ai_max_image_size_px, settings.ai_max_image_size_px), Image.Resampling.LANCZOS)
+    return prepared
+
+
 def _run_gemini_fallback(image: Image.Image) -> DetectionResult:
     if not settings.ai_enable_gemini_fallback or not settings.gemini_api_key:
         raise RuntimeError("Gemini fallback unavailable (disabled or missing API key).")
@@ -99,7 +124,8 @@ def _run_gemini_fallback(image: Image.Image) -> DetectionResult:
     model = genai.GenerativeModel(settings.gemini_model)
     prompt = (
         "Analyze this meal image and return strict JSON only with keys: "
-        "dish_name, calories, fat_g, sugar_g, confidence. "
+        "dish_name, serving_type, calories, fat_g, saturates_g, sugar_g, salt_g, confidence. "
+        "serving_type must be either '1 serving' or 'per 100g'. "
         "All numeric values must be numbers."
     )
     response = model.generate_content([prompt, image], request_options={"timeout": settings.ai_gemini_timeout_seconds})
@@ -113,9 +139,12 @@ def _run_gemini_fallback(image: Image.Image) -> DetectionResult:
 
     return DetectionResult(
         dish_name=str(payload.get("dish_name") or "Unknown meal"),
+        serving_type=str(payload.get("serving_type") or "1 serving"),
         calories=float(payload.get("calories") or 0.0),
         fat_g=float(payload.get("fat_g") or 0.0),
+        saturates_g=float(payload.get("saturates_g") or 0.0),
         sugar_g=float(payload.get("sugar_g") or 0.0),
+        salt_g=float(payload.get("salt_g") or 0.0),
         confidence=float(payload.get("confidence") or 0.5),
         source="gemini",
     )
@@ -123,11 +152,11 @@ def _run_gemini_fallback(image: Image.Image) -> DetectionResult:
 
 def detect_food_nutrition(image: Image.Image) -> RawFoodNutrition:
     """Detect food and retrieve raw nutrition attributes."""
-    class_db = _load_class_db(settings.class_names_path)
-
+    class_db: list[dict[str, Any]] | None = None
     yolo_error: Exception | None = None
     try:
-        prediction = _best_yolo_prediction(image)
+        class_db = _load_class_db(settings.class_names_path)
+        prediction = _best_yolo_prediction(_prepare_image_for_yolo(image))
         if prediction is not None:
             class_id, confidence = prediction
             if 0 <= class_id < len(class_db):
@@ -135,17 +164,28 @@ def detect_food_nutrition(image: Image.Image) -> RawFoodNutrition:
                 nutrition = item.get("nutrition") or {}
                 result = DetectionResult(
                     dish_name=str(item.get("name") or "Unknown meal"),
+                    serving_type=str(item.get("serving_type") or "1 serving"),
                     calories=float(nutrition.get("Calories") or 0.0),
                     fat_g=float(nutrition.get("Fat") or 0.0),
+                    saturates_g=float(nutrition.get("Saturates") or 0.0),
                     sugar_g=float(nutrition.get("Sugar") or 0.0),
+                    salt_g=float(nutrition.get("Salt") or 0.0),
                     confidence=confidence,
                     source="yolo",
                 )
+                _LOGGER.info(
+                    "food_detection_success source=yolo dish=%s confidence=%.3f",
+                    result.dish_name,
+                    result.confidence,
+                )
                 return RawFoodNutrition(
                     dish_name=result.dish_name,
+                    serving_type=result.serving_type,
                     calories=result.calories,
                     fat_g=result.fat_g,
+                    saturates_g=result.saturates_g,
                     sugar_g=result.sugar_g,
+                    salt_g=result.salt_g,
                     confidence=result.confidence,
                     source=result.source,
                 )
@@ -155,12 +195,32 @@ def detect_food_nutrition(image: Image.Image) -> RawFoodNutrition:
     except Exception as exc:  # pragma: no cover - model runtime path
         yolo_error = exc
 
+    _LOGGER.warning("food_detection_fallback source=gemini reason=%s", yolo_error)
     gemini_result = _run_gemini_fallback(image)
+    _LOGGER.info(
+        "food_detection_success source=gemini dish=%s confidence=%.3f",
+        gemini_result.dish_name,
+        gemini_result.confidence,
+    )
     return RawFoodNutrition(
         dish_name=gemini_result.dish_name,
+        serving_type=gemini_result.serving_type,
         calories=gemini_result.calories,
         fat_g=gemini_result.fat_g,
+        saturates_g=gemini_result.saturates_g,
         sugar_g=gemini_result.sugar_g,
+        salt_g=gemini_result.salt_g,
         confidence=gemini_result.confidence if yolo_error is None else min(gemini_result.confidence, 0.55),
         source=gemini_result.source,
     )
+
+
+def get_detector_runtime_status() -> dict[str, Any]:
+    """Expose lightweight runtime status for health checks."""
+    return {
+        "model_loaded": _YOLO_MODEL is not None,
+        "class_db_loaded": _CLASS_DB is not None,
+        "class_db_size": len(_CLASS_DB) if _CLASS_DB is not None else 0,
+        "yolo_model_path": str(settings.yolo_model_path),
+        "class_names_path": str(settings.class_names_path),
+    }

@@ -48,7 +48,18 @@ function adaptParticipant(p: any): ChatParticipant {
     email: p.email ?? "",
     is_online: p.is_online ?? false,
     last_seen: p.last_seen_at ?? p.last_seen ?? null,
+    role: typeof p.role === "string" ? p.role : undefined,
+    is_system: Boolean(p.is_system),
   };
+}
+
+/** Pick the AI bot's user_id from a conversation's participants list, if present. */
+export function findAiBotUserId(participants: ChatParticipant[] | undefined | null): string | null {
+  if (!participants?.length) return null;
+  const bot = participants.find(
+    (p) => p.is_system === true || p.role === "assistant"
+  );
+  return bot?.user_id ?? null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -444,6 +455,33 @@ export function useMessages(
   }, [conversationId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /**
+   * Refetch the active conversation's most recent page from the BFF.
+   *
+   * Used after a WS reconnect to rescue any state that may have changed
+   * while the socket was offline — most importantly, an AI bot reply that
+   * landed `ai:completed` between disconnect and reconnect would otherwise
+   * leave a stuck `streaming` placeholder bubble (FE review C6).
+   *
+   * Idempotent and conversation-aware: no-op when no conversation is active
+   * or for the dev FALLBACK_AI_CONVERSATION (which has no real DB rows).
+   */
+  const refetchActiveConversation = useCallback(async () => {
+    if (!conversationId || conversationId === FALLBACK_AI_CONVERSATION.id) return;
+    try {
+      const { data, has_more, next_cursor } = await bffFetch<{
+        data: unknown[];
+        has_more: boolean;
+        next_cursor: string | null;
+      }>(`/api/v1/conversations/${conversationId}/messages?limit=50`);
+      setMessages(data.map(adaptMessage).reverse());
+      setHasMore(has_more);
+      lastCursorRef.current = next_cursor ?? null;
+    } catch {
+      /* leave existing state — next manual interaction will retry */
+    }
+  }, [conversationId]);
+
   const loadMoreInFlightRef = useRef<Promise<number> | null>(null);
 
   /** Load older messages (scroll-up pagination). Returns count prepended, or 0. */
@@ -510,6 +548,77 @@ export function useMessages(
   /** Called by WS typing event. */
   const setRemoteTyping = useCallback((typing: boolean) => {
     setIsTyping(typing);
+  }, []);
+
+  // ── AI streaming reducers (WS-driven) ────────────────────────────────────
+  // Used when the AI bot reply is broadcast asynchronously via the chat WS:
+  // BE persists a placeholder Message with status="streaming", emits
+  // `ai:started`, then `ai:chunk` deltas, then `ai:completed` with the final
+  // MessageDTO. Each handler is keyed by `message_id` so multiple in-flight
+  // streams (rare, possible across tabs) don't collide.
+  //
+  // The HTTP/SSE variant `streamAiMessage` below is a parallel path used by
+  // call sites that initiate the stream from the FE directly (e.g. the
+  // dedicated "Ask AI" composer). Both paths can coexist — the WS handlers
+  // are passive and the SSE caller is explicit.
+
+  /** Insert a placeholder bubble when the BE signals the AI started replying. */
+  const onAiStreamStarted = useCallback(
+    (raw: { message_id?: string; conversation_id?: string; sender_id?: string }) => {
+      const msgId = raw.message_id;
+      const convId = raw.conversation_id;
+      const senderId = raw.sender_id;
+      if (!msgId || !convId || !senderId) return;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msgId)) return prev;
+        const placeholder: Message = {
+          id: msgId,
+          conversation_id: convId,
+          sender_id: senderId,
+          sender_display_name: "HealthOS AI Assistant",
+          sender_kind: "ai",
+          content: "",
+          type: "text",
+          status: "streaming",
+          reactions: [],
+          is_edited: false,
+          is_recalled: false,
+          is_pinned: false,
+          created_at: new Date().toISOString(),
+        };
+        return [...prev, placeholder];
+      });
+    },
+    []
+  );
+
+  /** Append a delta to the streaming bubble identified by message_id. */
+  const onAiStreamChunk = useCallback(
+    (raw: { message_id?: string; delta?: string }) => {
+      const msgId = raw.message_id;
+      const delta = raw.delta;
+      if (!msgId || !delta) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId
+            ? { ...m, content: m.content + delta, status: "streaming" }
+            : m
+        )
+      );
+    },
+    []
+  );
+
+  /** Replace the placeholder content with the final MessageDTO from the BE. */
+  const onAiStreamCompleted = useCallback((raw: unknown) => {
+    const msg = adaptMessage(raw);
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === msg.id);
+      if (idx < 0) return [...prev, { ...msg, status: "read" }];
+      const next = [...prev];
+      next[idx] = { ...msg, status: "read" };
+      return next;
+    });
   }, []);
 
   /**
@@ -677,7 +786,18 @@ export function useMessages(
       convId: string,
       content: string,
       replyToId?: string,
-      onMessageSent?: (msg: Message) => void
+      onMessageSent?: (msg: Message) => void,
+      /**
+       * Invoked when the BFF call fails with a network/connectivity error
+       * (`error_code === "network"`) so the caller can transparently take
+       * ownership of redelivery — typically by calling `markMessageQueued`
+       * + `useOutboundQueue.enqueue` to persist the payload to IndexedDB.
+       *
+       * Without this hook, a transient BFF outage during an "online" send
+       * would leave the bubble stuck at `failed` and require the user to
+       * manually retry (CRITICAL C5 in the FE review).
+       */
+      onNetworkFailure?: (msg: Message) => void | Promise<void>,
     ): Promise<Message> => {
       // Require a valid currentUserId before sending — the session must be
       // loaded.  Without it the optimistic message would carry a sentinel ID
@@ -739,14 +859,25 @@ export function useMessages(
           if (status && status >= 400) return "unknown";
           return "network";
         })();
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === optimisticId
-              ? { ...m, status: "failed" as const, error_code: errorCode }
-              : m
-          )
-        );
-        return { ...optimistic, status: "failed" as const, error_code: errorCode };
+        const failed: Message = {
+          ...optimistic,
+          status: "failed" as const,
+          error_code: errorCode,
+        };
+        setMessages((prev) => prev.map((m) => (m.id === optimisticId ? failed : m)));
+
+        // Network-class failures are safe to auto-enqueue — the BFF rejected
+        // the request because of connectivity, not validation. Hand the
+        // bubble off to the outbound queue so a reconnect drains it.
+        if (errorCode === "network" && onNetworkFailure) {
+          try {
+            await onNetworkFailure(failed);
+          } catch {
+            /* caller's responsibility — keep the failed state visible */
+          }
+        }
+
+        return failed;
       }
     },
     [currentUserId]
@@ -762,6 +893,8 @@ export function useMessages(
     async (messageId: string): Promise<Message | null> => {
       const target = messages.find((m) => m.id === messageId);
       if (!target) return null;
+      // Only the user's own failed/queued messages are retryable. Critically
+      // we never touch a `streaming` AI bubble — the worker still owns it.
       if (target.status !== "failed" && target.status !== "queued") return null;
       if (currentUserId && target.sender_id !== currentUserId) return null;
       const replyToId = target.reply_to?.id;
@@ -771,7 +904,11 @@ export function useMessages(
     [messages, currentUserId, sendMessage]
   );
 
-  /** Discard a failed/queued outgoing message from the local outbox. */
+  /**
+   * Discard a failed/queued outgoing message from the local outbox.
+   * Streaming AI bubbles are explicitly excluded — they're owned by the
+   * worker until `ai:completed` arrives.
+   */
   const discardMessage = useCallback((messageId: string) => {
     setMessages((prev) => {
       const target = prev.find((m) => m.id === messageId);
@@ -785,12 +922,15 @@ export function useMessages(
    * Promote a `failed` (network-error) message to `queued`, signalling that
    * the outbound queue has taken ownership of redelivery. Caller is expected
    * to also persist the item in IndexedDB via `useOutboundQueue.enqueue`.
-   * No-op if the message no longer exists or isn't in a recoverable state.
+   * No-op if the message no longer exists, is `streaming` (AI bot owned),
+   * or isn't otherwise in a recoverable state.
    */
   const markMessageQueued = useCallback((messageId: string) => {
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== messageId) return m;
+        // Never demote a streaming AI bubble — it isn't ours to reroute.
+        if (m.status === "streaming") return m;
         if (m.status !== "failed" && m.status !== "sending") return m;
         return { ...m, status: "queued" as const, error_code: undefined };
       })
@@ -972,7 +1112,8 @@ export function useMessages(
   // P0 — `simulateAIReply` was removed. Faking AI replies in the UI without an
   // explicit `sender_kind:"ai"` from the server bypasses every safety guard on
   // the AI surface (disclaimer, rate-limits, audit logs, content filters). All
-  // AI replies must originate from the AI worker via the BFF.
+  // AI replies must originate from the AI worker via the BFF (either the WS
+  // stream handlers above or the `streamAiMessage` SSE caller).
 
   return {
     messages,
@@ -981,6 +1122,7 @@ export function useMessages(
     isTyping,
     streamingAssistantId,
     loadMore,
+    refetchActiveConversation,
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
@@ -996,6 +1138,9 @@ export function useMessages(
     deleteMessage,
     pinMessage,
     reactToMessage,
+    onAiStreamStarted,
+    onAiStreamChunk,
+    onAiStreamCompleted,
   };
 }
 

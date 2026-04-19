@@ -310,7 +310,15 @@ export const MessageBubble = memo(function MessageBubble({
               {message.is_recalled ? (
                 <span>{t("recalled")}</span>
               ) : isAi ? (
-                <AiMessageContent content={message.content} />
+                <span className="inline-flex flex-col">
+                  <AiMessageContent content={message.content || (message.status === "streaming" ? "…" : "")} />
+                  {message.status === "streaming" && (
+                    <span
+                      aria-label={t("ai.streaming")}
+                      className="inline-block w-1.5 h-3 bg-current animate-pulse mt-1"
+                    />
+                  )}
+                </span>
               ) : (
                 <span
                   className="whitespace-pre-wrap break-words overflow-wrap-anywhere"

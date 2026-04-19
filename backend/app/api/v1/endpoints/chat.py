@@ -1,58 +1,41 @@
+"""Legacy AI chat WebSocket — REMOVED in plans/ai-chat-completion/plan.md.
+
+The previous ``/ws/chat/{user_id}`` route bridged a raw socket to the
+worker's stub ``/api/ai/generate`` endpoint and never persisted messages
+into the ``messages`` table. With the new orchestrator the AI replies flow
+through the canonical chat WS at ``/ws`` (see ``backend/app/main.py``)
+and use the same ``Conversation`` / ``Message`` rows as human chat.
+
+We keep this module so any stale ``include_router(chat_ws_router)`` import
+in ``main.py`` continues to resolve, but the router is intentionally empty
+— the FE no longer calls this URL.
+"""
 from __future__ import annotations
 
-from typing import Any
+import datetime
+import logging
 
-import httpx
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-
-from app.ws.handlers import ConnectionManager
+from fastapi import APIRouter, WebSocket
 
 router = APIRouter()
-chat_manager = ConnectionManager()
+_LOGGER = logging.getLogger("healthos.ws.legacy_chat")
 
 
 @router.websocket("/ws/chat/{user_id}")
-async def websocket_chat(user_id: str, ws: WebSocket) -> None:
-    await chat_manager.connect(ws, user_id)
-    try:
-        while True:
-            payload = await ws.receive_json()
-            message = payload.get("message", "")
-            history = payload.get("history", [])
-
-            if not isinstance(message, str) or not message.strip():
-                await chat_manager.send_to_ws(ws, {
-                    "sender": "system",
-                    "message": "Invalid payload. `message` must be a non-empty string.",
-                })
-                continue
-
-            if not isinstance(history, list):
-                history = []
-
-            try:
-                async with httpx.AsyncClient(timeout=20.0) as client:
-                    response = await client.post(
-                        "http://localhost:8001/api/ai/generate",
-                        json={"user_id": user_id, "message": message, "history": history},
-                    )
-                    response.raise_for_status()
-                    ai_result = response.json()
-            except (httpx.HTTPError, httpx.RequestError) as exc:
-                await chat_manager.send_to_ws(ws, {
-                    "sender": "system",
-                    "message": f"AI worker unavailable: {exc}",
-                })
-                continue
-
-            reply = ai_result.get("reply", "")
-            await chat_manager.send_to_ws(ws, {"sender": "ai", "message": reply})
-
-    except WebSocketDisconnect:
-        chat_manager.disconnect(ws)
-    except Exception as exc:
-        await chat_manager.send_to_ws(ws, {
-            "sender": "system",
-            "message": f"Internal server error: {exc}",
-        })
-        chat_manager.disconnect(ws)
+async def deprecated_websocket_chat(user_id: str, ws: WebSocket) -> None:
+    """Reject connections politely — direct callers to the canonical ``/ws`` route."""
+    await ws.accept()
+    await ws.send_json({
+        "event": "error",
+        "payload": {
+            "code": "ENDPOINT_DEPRECATED",
+            "message": (
+                "/ws/chat/{user_id} has been removed. Use /ws?token=... and "
+                "send {event:'msg:send', payload:{conversation_id, content}} "
+                "to the AI conversation instead."
+            ),
+        },
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    })
+    await ws.close(code=4410)
+    _LOGGER.info("legacy_ws_chat_rejected user=%s", user_id)

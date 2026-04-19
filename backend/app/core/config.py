@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     ai_worker_url: str = "http://localhost:8001"
     celery_broker_url: str = "redis://localhost:6379/2"
 
+    # ── AI chat orchestrator ──────────────────────────────────────────────
+    ai_worker_timeout_seconds: float = 30.0
+    ai_context_max_messages: int = 20
+    ai_chat_max_user_message_chars: int = 2000
+    ai_chat_user_rate_per_minute: int = 10
+    ai_chat_max_concurrent_per_user: int = 1
+    ai_chat_streaming_enabled: bool = True
+    ai_bot_email: str = "ai-bot@healthos.local"
+
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8")
 
     def model_post_init(self, __context: Any) -> None:

@@ -44,7 +44,27 @@ Browser -> Next.js BFF (/api/v1/**) -> Core BE (/v1/**) -> PostgreSQL/Redis/MinI
 bash infra/scripts/setup.sh
 ```
 
-This copies env example files, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
+This copies env example files, downloads the AI YOLO model from Google Drive, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
+
+Skip model download if needed:
+
+```powershell
+.\infra\scripts\setup.ps1 -skipModelDownload
+```
+
+```bash
+bash infra/scripts/setup.sh --skip-model-download
+```
+
+Download model manually:
+
+```powershell
+.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env
+```
+
+```bash
+bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
+```
 
 ### Seed Test Admin (Optional)
 
@@ -145,27 +165,29 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 **v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
 **v1.2.0**: User accent color customization and theming.
 
-- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications read/skip/snooze.
-- **Stub/placeholder**: AI Worker real implementation (currently mock), Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
+- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications read/skip/snooze, **AI Worker chat (Gemini, streaming)**.
+- **Stub/placeholder**: Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
 
 ## CI/CD Pipeline
 
-GitHub Actions workflows in `.github/workflows/`:
-- `ci-smoke.yml` — PR checks (lint, build, dependency verification)
-- `release.yml` — Production release with tag
-- `release-beta.yml` — Beta release to staging
-- `branch-protection.yml` — Enforce protection rules
-- `sync-main-to-dev.yml` — Auto-sync main → dev after release
-- `sync-dev-after-release.yml` — Auto-sync dev → feature branches
+GitHub Actions workflows (`.github/workflows/`):
+- `release.yml` — Production release triggered on `main`, creates tags and GitHub releases
+- `release-beta.yml` — Beta release pipeline (conditional, if enabled)
+- `branch-protection.yml` — Enforces main branch protection rules
+- `sync-main-to-dev.yml` — Auto-sync after releases (if develop branch exists)
+- `sync-dev-after-release.yml` — Additional sync logic (if applicable)
 
-See [Deployment Guide](./docs/deployment-guide.md) for workflow details and troubleshooting.
+**Note:** Release config is dynamic (`.releaserc.cjs`). Verify deployment platform and artifact targets before first production run.
+
+See [Deployment Guide](./docs/deployment-guide.md) for workflow setup and troubleshooting.
 
 ## Git Workflow
 
-- Base branch: `main`
-- Feature branches: `feature/<scope>/<name>`, `fix/<scope>/<name>`, `docs/<name>`
-- PR target: `main`
-- Conventional Commits required.
+- **Base/release branch:** `main` (production releases only)
+- **Development branch:** None formally configured (feature branches merge to main via PR)
+- **Feature branches:** `feature/<scope>/<name>`, `fix/<scope>/<name>`, `docs/<name>`
+- **PR target:** `main`
+- **Commits:** Conventional Commits required (`feat:`, `fix:`, `docs:`, `chore:`, etc.)
 
 ## Documentation
 

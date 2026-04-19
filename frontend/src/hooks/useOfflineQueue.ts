@@ -6,12 +6,14 @@ import {
   flush as flushQueue,
   getQueue,
   remove,
+  setScope as setQueueScope,
   subscribe,
   type EnqueueInput,
   type QueueEntry,
   type FlushOptions,
 } from "@/lib/offline-queue";
 import { useConnection } from "@/components/providers/offline-provider";
+import { resolveAuthUserId } from "@/lib/user-scoped-storage";
 
 /**
  * React adapter around the offline mutation queue. Exposes the live queue
@@ -37,25 +39,39 @@ export interface UseOfflineQueueResult {
 }
 
 export function useOfflineQueue(opts: FlushOptions = {}): UseOfflineQueueResult {
-  const [entries, setEntries] = React.useState<QueueEntry[]>(() => getQueue());
+  const [entries, setEntries] = React.useState<QueueEntry[]>([]);
+  const [scopeReady, setScopeReady] = React.useState(false);
   const { status } = useConnection();
   const optsRef = React.useRef(opts);
   optsRef.current = opts;
 
+  // Bind the underlying store to the authenticated user before any read/write
+  // happens. Until this resolves the queue presents as empty, preventing
+  // cross-user data leakage on shared devices.
   React.useEffect(() => {
-    const initial = getQueue();
-    if (initial.length !== entries.length) setEntries(initial);
-    return subscribe((next) => setEntries(next));
-    // We intentionally only sync from the store; the comparison above guards
-    // against React re-render storms during fast double-mounts in dev.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    void resolveAuthUserId().then((uid) => {
+      if (cancelled) return;
+      setQueueScope(uid);
+      setScopeReady(true);
+      setEntries(getQueue());
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
+    if (!scopeReady) return;
+    return subscribe((next) => setEntries(next));
+  }, [scopeReady]);
+
+  React.useEffect(() => {
+    if (!scopeReady) return;
     if (status !== "online") return;
     if (entries.length === 0) return;
     void flushQueue(optsRef.current);
-  }, [status, entries.length]);
+  }, [scopeReady, status, entries.length]);
 
   const enqueueCb = React.useCallback((input: EnqueueInput) => {
     return enqueueEntry(input);

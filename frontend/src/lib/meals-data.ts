@@ -24,11 +24,17 @@ function normalizeMeal(row: any): Meal {
   const nutritionResult =
     nutrition && typeof nutrition === "object"
       ? {
+          dish_name: typeof nutrition.dish_name === "string" ? nutrition.dish_name : undefined,
+          serving_type: typeof nutrition.serving_type === "string" ? nutrition.serving_type : undefined,
           calories: typeof nutrition.calories === "number" ? nutrition.calories : 0,
           protein_g: typeof nutrition.protein_g === "number" ? nutrition.protein_g : 0,
           carbs_g: typeof nutrition.carbs_g === "number" ? nutrition.carbs_g : 0,
           fat_g: typeof nutrition.fat_g === "number" ? nutrition.fat_g : 0,
+          saturates_g: typeof nutrition.saturates_g === "number" ? nutrition.saturates_g : undefined,
+          sugar_g: typeof nutrition.sugar_g === "number" ? nutrition.sugar_g : undefined,
+          salt_g: typeof nutrition.salt_g === "number" ? nutrition.salt_g : undefined,
           confidence: typeof nutrition.confidence === "number" ? nutrition.confidence : 0,
+          source: typeof nutrition.source === "string" ? nutrition.source : undefined,
         }
       : undefined;
 

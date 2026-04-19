@@ -209,6 +209,7 @@ export interface MessagePreviewLabels {
   fileSelf?: string;    // "You sent a file"
   fileOther?: string;    // "Sent a file"
   you?: string;         // "You: " prefix
+  bot?: string;         // "Bot: " prefix when last message is from the AI assistant
 }
 
 export function getMessagePreview(
@@ -221,12 +222,21 @@ export function getMessagePreview(
   if (!msg) return "";
   if (msg.is_recalled) return l.recalled ?? "";
   const isSelf = !!currentUserId && msg.sender_id === currentUserId;
+  const aiBot = conversation.participants.find(
+    (p) => p.is_system === true || p.role === "assistant"
+  );
+  const isFromBot = !!aiBot && msg.sender_id === aiBot.user_id;
   if (msg.type === "image") {
     return isSelf ? (l.imageSelf ?? "You sent an image") : (l.imageOther ?? "Sent an image");
   }
   if (msg.type === "file") {
     return isSelf ? (l.fileSelf ?? "You sent a file") : (l.fileOther ?? "Sent a file");
   }
-  const prefix = isSelf ? (l.you ?? "You: ") : "";
+  let prefix = "";
+  if (isSelf) {
+    prefix = l.you ?? "You: ";
+  } else if (isFromBot) {
+    prefix = l.bot ?? "Bot: ";
+  }
   return prefix + msg.content;
 }

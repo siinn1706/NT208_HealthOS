@@ -25,10 +25,19 @@
  *     hook is invoked so the UI can surface the error.
  *   - failing with network/5xx, in which case its `attempts` counter is bumped
  *     and it remains queued for the next flush cycle. After `MAX_ATTEMPTS` it
- *     is dropped to avoid permanent retry storms.
+ *     is dropped to avoid permanent retry storms — and `onDrop(_, "max-attempts")`
+ *     is invoked so the UI can surface the permanent failure.
+ *
+ * Privacy
+ * -------
+ * The localStorage key is namespaced by the authenticated user id via
+ * `setScope(userId)` (called once on mount in `useOfflineQueue`). Until a scope
+ * is set, the queue presents as empty so we never write under the wrong user.
  */
 
-const STORAGE_KEY = "healthos.offline-queue.v1";
+import { userKeySync } from "@/lib/user-scoped-storage";
+
+const STORAGE_BUCKET = "offline-queue";
 const SCHEMA_VERSION = 1;
 const MAX_ATTEMPTS = 8;
 
@@ -64,14 +73,46 @@ type Listener = (entries: QueueEntry[]) => void;
 
 const listeners = new Set<Listener>();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-user scoping
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `null` until the React hook resolves the BFF session and calls `setScope`.
+ * Reads/writes are no-ops while unset so we never persist under the wrong
+ * user (cross-user PHI leak guard).
+ */
+let _scope: string | null = null;
+
+/**
+ * Bind the queue to the given user id. Pass `null` to detach (e.g. on
+ * logout — `purgeAllUserScoped` will also wipe the storage entry).
+ *
+ * Safe to call repeatedly; if the scope changes the in-memory listeners
+ * are notified with the new scope's queue contents.
+ */
+export function setScope(userId: string | null): void {
+  if (_scope === userId) return;
+  _scope = userId;
+  // Notify subscribers — the queue contents are now from a different scope.
+  for (const fn of listeners) fn(getQueue());
+}
+
+function storageKey(): string | null {
+  if (_scope === null) return null;
+  return userKeySync(_scope, STORAGE_BUCKET);
+}
+
 function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
 function readRaw(): PersistedQueue {
   if (!isBrowser()) return { schemaVersion: SCHEMA_VERSION, entries: [] };
+  const key = storageKey();
+  if (!key) return { schemaVersion: SCHEMA_VERSION, entries: [] };
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return { schemaVersion: SCHEMA_VERSION, entries: [] };
     const parsed = JSON.parse(raw) as PersistedQueue | null;
     if (!parsed || parsed.schemaVersion !== SCHEMA_VERSION) {
@@ -85,8 +126,10 @@ function readRaw(): PersistedQueue {
 
 function writeRaw(q: PersistedQueue) {
   if (!isBrowser()) return;
+  const key = storageKey();
+  if (!key) return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(q));
+    window.localStorage.setItem(key, JSON.stringify(q));
   } catch {
     /* quota exceeded; nothing to do — caller will surface failure */
   }
@@ -163,7 +206,8 @@ export interface FlushOptions {
    * the supplied `Idempotency-Key` header — we do not retry safety here.
    */
   fetcher?: typeof fetch;
-  /** Called when an entry is dropped due to non-retryable status (4xx / max attempts). */
+  /** Called when an entry is dropped due to non-retryable status (4xx) or
+   *  having exhausted MAX_ATTEMPTS retries. */
   onDrop?: (entry: QueueEntry, reason: "client-error" | "max-attempts") => void;
   /** Called when an entry is successfully flushed. */
   onSuccess?: (entry: QueueEntry, response: Response) => void;
@@ -209,11 +253,21 @@ export async function flush(opts: FlushOptions = {}): Promise<number> {
           opts.onDrop?.(entry, "client-error");
           continue;
         }
-        bumpAttempts(entry, `HTTP ${res.status}`);
-        opts.onTransientFailure?.(entry, new Error(`HTTP ${res.status}`));
+        const dropped = bumpAttempts(entry, `HTTP ${res.status}`);
+        if (dropped) {
+          // Caller is told this entry has run out of retries — surface the
+          // failure to the UI so the user can re-attempt manually.
+          opts.onDrop?.(entry, "max-attempts");
+        } else {
+          opts.onTransientFailure?.(entry, new Error(`HTTP ${res.status}`));
+        }
       } catch (err) {
-        bumpAttempts(entry, err instanceof Error ? err.message : "network");
-        opts.onTransientFailure?.(entry, err);
+        const dropped = bumpAttempts(entry, err instanceof Error ? err.message : "network");
+        if (dropped) {
+          opts.onDrop?.(entry, "max-attempts");
+        } else {
+          opts.onTransientFailure?.(entry, err);
+        }
       }
     }
   } finally {
@@ -222,10 +276,15 @@ export async function flush(opts: FlushOptions = {}): Promise<number> {
   return drained;
 }
 
-function bumpAttempts(entry: QueueEntry, error: string): void {
+/**
+ * Increment `attempts`, persist, and report whether the entry was dropped
+ * after exceeding MAX_ATTEMPTS. Returns `true` when the entry was removed
+ * from the queue, so the caller can fire `onDrop(_, "max-attempts")`.
+ */
+function bumpAttempts(entry: QueueEntry, error: string): boolean {
   const cur = readRaw();
   const idx = cur.entries.findIndex((e) => e.id === entry.id);
-  if (idx === -1) return;
+  if (idx === -1) return false;
   const next = cur.entries.slice();
   const updated: QueueEntry = {
     ...next[idx]!,
@@ -236,10 +295,18 @@ function bumpAttempts(entry: QueueEntry, error: string): void {
   if (updated.attempts >= MAX_ATTEMPTS) {
     next.splice(idx, 1);
     writeRaw({ ...cur, entries: next });
-  } else {
-    next[idx] = updated;
-    writeRaw({ ...cur, entries: next });
+    return true;
   }
+  next[idx] = updated;
+  writeRaw({ ...cur, entries: next });
+  return false;
 }
 
-export const __TESTING__ = { STORAGE_KEY, SCHEMA_VERSION, MAX_ATTEMPTS };
+export const __TESTING__ = {
+  STORAGE_BUCKET,
+  SCHEMA_VERSION,
+  MAX_ATTEMPTS,
+  resetScope: () => {
+    _scope = null;
+  },
+};

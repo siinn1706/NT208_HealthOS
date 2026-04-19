@@ -165,6 +165,16 @@ class User(Base):
         nullable=True,
     )
 
+    # AI Chat: marks the system-owned bot user (`ai-bot@healthos.local`).
+    # Filtered out of normal user listings, lookups, and auth flows so the
+    # bot can never be targeted by a real login attempt.
+    is_system: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+
     # B7 P9 — Soft delete with grace period.
     # `deleted_at` flips during the user-initiated DELETE flow; `purge_at`
     # is set 30d in the future. The daily Celery beat hard-purges users
@@ -932,6 +942,11 @@ class Message(Base):
     )
     # Attachments: [{url, name, size, mime_type}]
     attachments: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
+    # AI metadata for messages produced by the AI bot:
+    #   {model, prompt_tokens, completion_tokens, total_tokens, latency_ms,
+    #    finish_reason, is_first}
+    # NULL for human messages.
+    ai_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Reply-to: stores the replied message id
     reply_to_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

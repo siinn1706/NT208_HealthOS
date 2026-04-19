@@ -3,6 +3,7 @@
 
 param(
     [switch]$docker,
+    [switch]$skipModelDownload,
     [switch]$skipFrontend,
     [switch]$skipBackend
 )
@@ -34,6 +35,18 @@ Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\ai-worker\.env
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\queue-worker\.env"
 Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\notification\.env"
 Copy-EnvFile "$Root\infra\docker\.env.dev.example" "$Root\infra\docker\.env.dev"
+
+if (-not $skipModelDownload) {
+    Write-Host "[MODEL] Ensuring AI YOLO model exists..." -ForegroundColor Cyan
+    & "$Root\infra\scripts\download-ai-model.ps1" -EnvFile "$Root\services\ai-worker\.env"
+    if ($LASTEXITCODE -ne 0) {
+        throw "[MODEL] Failed to download AI model."
+    }
+    Write-Host "[MODEL] Done." -ForegroundColor Green
+}
+else {
+    Write-Host "[MODEL] Skipping model download (--skipModelDownload)." -ForegroundColor Yellow
+}
 
 if ($docker) {
     Write-Host "[DOCKER] Starting full stack..." -ForegroundColor Cyan

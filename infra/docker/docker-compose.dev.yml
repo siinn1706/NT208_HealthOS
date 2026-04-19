@@ -183,6 +183,8 @@ services:
       STORAGE_ENDPOINT: http://minio:9000
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      AI_YOLO_MODEL_PATH: /app/models/yolov10/YOLOv10b_VietFood67_SGD_new_bigger.pt
+      AI_CLASS_NAMES_PATH: /app/data/class_names.py
       DEBUG: "true"
     depends_on:
       redis:
