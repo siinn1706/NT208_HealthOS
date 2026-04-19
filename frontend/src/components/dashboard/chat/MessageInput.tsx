@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Message } from "@/types/api";
+import { useChatDrafts } from "@/hooks/useChatDrafts";
 
 // Lazy load emoji picker to reduce initial bundle
 const EmojiPicker = dynamic(
@@ -21,6 +22,11 @@ const EmojiPicker = dynamic(
 // @emoji-mart/data is imported asynchronously inside the picker itself
 
 interface MessageInputProps {
+  /**
+   * Active conversation id — required so the composer can persist a per-thread
+   * draft across navigation, page reloads, and accidental tab closes.
+   */
+  conversationId: string | null;
   replyTo?: Pick<Message, "id" | "content" | "sender_id" | "sender_display_name" | "type"> | null;
   currentUserId: string | null;
   editingMessage?: Message | null;
@@ -32,6 +38,7 @@ interface MessageInputProps {
 }
 
 export function MessageInput({
+  conversationId,
   replyTo,
   currentUserId,
   editingMessage,
@@ -43,7 +50,8 @@ export function MessageInput({
 }: MessageInputProps) {
   const t = useTranslations("chat");
   const locale = useLocale();
-  const [value, setValue] = useState(editingMessage?.content ?? "");
+  const { draft, setDraft, clear: clearDraft } = useChatDrafts(conversationId);
+  const [value, setValue] = useState<string>(() => editingMessage?.content ?? draft);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [emojiData, setEmojiData] = useState<Record<string, unknown> | null>(null);
@@ -56,14 +64,17 @@ export function MessageInput({
     }
   }, [emojiOpen, emojiData]);
 
-  // Sync value when the active edit target changes; reset textarea height
-  /* eslint-disable react-hooks/exhaustive-deps -- only reset on edit *target* change, not every content poll */
+  // Sync value when the active edit target or conversation changes; reset
+  // textarea height. When NOT editing, the composer is restored from the
+  // per-conversation draft so a user can switch threads (or hard-reload) and
+  // continue typing where they left off.
+  /* eslint-disable react-hooks/exhaustive-deps -- only reset on edit/conversation target change, not draft poll */
   useEffect(() => {
-    setValue(editingMessage?.content ?? "");
+    setValue(editingMessage?.content ?? draft);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [editingMessage?.id]);
+  }, [editingMessage?.id, conversationId]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
   // Auto-focus textarea when reply or edit is activated
@@ -78,7 +89,9 @@ export function MessageInput({
     if (!trimmed) return;
     onSend(trimmed);
     setValue("");
-    // Reset textarea height back to 1-row default after clearing
+    // Edits don't have a draft (they're a separate, transient text path), so
+    // only nuke the persisted draft when we actually sent a *new* message.
+    if (!editingMessage) clearDraft();
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.focus();
@@ -93,7 +106,9 @@ export function MessageInput({
   }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setValue(e.target.value);
+    const next = e.target.value;
+    setValue(next);
+    if (!editingMessage) setDraft(next);
     onKeyPress?.();
     // Auto-resize
     const el = e.target;
@@ -104,7 +119,11 @@ export function MessageInput({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function insertEmoji(emojiObj: any) {
     const emoji = emojiObj?.native ?? emojiObj;
-    setValue((prev) => prev + emoji);
+    setValue((prev) => {
+      const next = prev + emoji;
+      if (!editingMessage) setDraft(next);
+      return next;
+    });
     setEmojiOpen(false);
     textareaRef.current?.focus();
   }
