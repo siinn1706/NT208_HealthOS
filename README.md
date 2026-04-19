@@ -100,7 +100,7 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic upgrade heads
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -151,12 +151,18 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 - `.\start_client_2.bat` — Next.js on **http://localhost:3002**.
 - Ensure `ALLOWED_ORIGINS` in `backend/.env` includes the extra origin (scripts print a CORS reminder).
 
+**Database migrations (Alembic):**
+- Always run `alembic upgrade heads` (plural). The singular `head` form silently no-ops when the migration tree has unmerged branches and was the cause of the missing-`oauth_accounts` incident.
+- Before opening a PR that adds a migration, run `cd backend && python -m alembic heads` and confirm exactly **one** head is reported. If two appear, your branch forked from someone else's; resolve with `python -m alembic merge -m "merge <a> and <b>" <head_a> <head_b>` and commit the resulting no-op merge revision.
+- Each migration runs in its own transaction (`transaction_per_migration=True` in `backend/alembic/env.py`). Write migrations to be safely re-runnable on partial failure (use `IF [NOT] EXISTS`, idempotent backfills).
+
 **Common issues:**
 - CORS errors → Check `ALLOWED_ORIGINS` in `backend/.env` is a JSON array: `["http://localhost:3000"]`
 - Import errors → Verify Python version matches 3.12 (see `.python-version`)
 - npm errors → Verify Node version matches 20 (see `.nvmrc`)
 - Missing env keys after pull → Run `.\check_env.bat` (see Phase 8 tooling)
 - Stale DB / broken migrations → Run `.\reset_docker.bat` then `.\start_ALL.bat`
+- `relation "..." does not exist` after `git pull` → Multi-head migration tree; run `cd backend && .\.venv\Scripts\python.exe -m alembic upgrade heads`
 - Services fail to start → Run `.\start_ALL.bat -CheckOnly` and read the reported logs under `infra/logs/`
 
 ## Current Status

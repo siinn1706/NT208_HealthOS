@@ -97,7 +97,8 @@ else {
         }
 
         Write-Host "[BE] Running database migrations..." -ForegroundColor Cyan
-        & $PyExe -m alembic upgrade head
+        # `heads` (plural) is multi-head safe; `head` silently no-ops on branched trees.
+        & $PyExe -m alembic upgrade heads
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "[BE] Migration failed. DB may need manual setup or Postgres may not be running."
         }

@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+### Fixed
+
+#### Backend
+
+- **Google OAuth hotfix** (2026-04-19):
+  - Merged dual alembic heads (`013` branchpoint + unapplied B7 branch) via migration `024_merge_ai_and_b7_branches.py`
+  - Widened `alembic_version.version_num` to VARCHAR(128) to accommodate 48-char B7 revision IDs
+  - Fixed asyncpg transaction handling + `transaction_per_migration=True` for enum-extending migrations
+  - Updated all migration commands (`alembic upgrade head` → `heads`) across infra scripts, Docker Compose, and startup code
+
 ### Changed
 
 #### Frontend

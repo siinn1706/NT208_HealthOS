@@ -65,7 +65,7 @@ async def _verify_ai_chat_migrations(application: FastAPI) -> None:
         message = (
             "AI chat schema dependencies missing: "
             + ", ".join(missing)
-            + ". Run `alembic upgrade head` before serving traffic."
+            + ". Run `alembic upgrade heads` before serving traffic."
         )
         if not settings.debug:
             raise RuntimeError(message)

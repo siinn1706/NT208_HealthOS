@@ -71,7 +71,10 @@ if (-not $SkipInstall) {
 }
 
 Write-Host "[BE] Running migrations via python -m alembic..." -ForegroundColor Cyan
-& $PythonExe -m alembic upgrade head
+# `heads` (plural) handles a multi-head migration tree gracefully; `head`
+# (singular) silently no-ops when there are unmerged branches and was the
+# direct cause of the missing-oauth_accounts incident.
+& $PythonExe -m alembic upgrade heads
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[BE] WARNING: Migration failed. Server will still start, but chat settings may break." -ForegroundColor Yellow
 }

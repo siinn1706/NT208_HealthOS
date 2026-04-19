@@ -90,7 +90,9 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
-    command: python -m alembic upgrade head
+    # `heads` (plural) handles multi-head trees gracefully; `head` (singular)
+    # silently no-ops when there are unmerged branches.
+    command: python -m alembic upgrade heads
     restart: "no"
 
   # ─── Core Backend ─────────────────────────────────────────────────

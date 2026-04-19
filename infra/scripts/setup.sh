@@ -75,7 +75,8 @@ if [ -f requirements-dev.txt ]; then
     pip install -r requirements-dev.txt
 fi
 echo "[BE] Running database migrations..."
-python -m alembic upgrade head || echo "[BE] WARNING: Migration failed. DB may not be running yet."
+# `heads` (plural) is multi-head safe; `head` silently no-ops on branched trees.
+python -m alembic upgrade heads || echo "[BE] WARNING: Migration failed. DB may not be running yet."
 echo "[BE] Done."
 
 echo ""

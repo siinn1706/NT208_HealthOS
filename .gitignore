@@ -39,6 +39,9 @@ venv/
 .coverage
 coverage/
 
+# One-shot helper scripts (e.g. _fix_*.py, _verify_*.py, _smoke_*.py)
+backend/_*.py
+
 # Env files
 .env
 .env.*
