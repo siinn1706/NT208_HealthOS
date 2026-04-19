@@ -64,7 +64,7 @@ export default function HomePage() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-night-900 via-night-800 to-night-900 py-20 md:py-28">
-        <AtmosphereGrid />
+        <AtmosphereGrid variant="dots" tone="dark" />
         <AtmosphereGlow variant="soft" />
         {/* Single warm nebula blob — cool bottom-left orb removed for calmer tone */}
         <div className="absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full bg-warm-peach/12 blur-[90px]" />

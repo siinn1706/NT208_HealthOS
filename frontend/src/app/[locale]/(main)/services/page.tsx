@@ -11,6 +11,7 @@ import { Section } from "@/components/shared/Section";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { coreFeatures, aiFeatures, realtimeFeatures, gamificationFeatures } from "@/data/services";
 import { AnimatedIllustration } from "@/components/shared/AnimatedIllustration";
+import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
 import { ArrowRight, Stethoscope, Sparkles, Activity, Trophy } from "lucide-react";
 
 const TAB_IDS = ["core", "ai", "realtime", "goals"] as const;
@@ -60,6 +61,7 @@ export default function ServicesPage() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <Section tone="dark" padding="lg" contained={false} aria-labelledby="services-hero-title">
+        <AtmosphereGrid variant="dots" tone="dark" />
         <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-warm-peach/10 blur-[100px]" />
         <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-night-400/15 blur-[80px]" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

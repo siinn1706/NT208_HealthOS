@@ -11,6 +11,7 @@ import { Section } from "@/components/shared/Section";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { TrustStrip, type TrustItem } from "@/components/shared/TrustStrip";
 import { ComplianceStrip } from "@/components/shared/ComplianceStrip";
+import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
 import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
 import { teamMembers } from "@/data/team";
 import { faqs, faqCategories } from "@/data/faqs";
@@ -45,6 +46,7 @@ export default function AboutPage() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <Section tone="dark" padding="lg" contained={false} aria-labelledby="about-hero-title">
+        <AtmosphereGrid variant="dots" tone="dark" />
         <AtmosphereGlow variant="soft" static />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
