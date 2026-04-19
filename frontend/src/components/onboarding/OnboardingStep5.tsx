@@ -98,7 +98,7 @@ export function OnboardingStep5({ data, updateData }: OnboardingStep5Props) {
         <Label htmlFor="notes">{t("step5.notes")}</Label>
         <Textarea
           id="notes"
-          placeholder="Bất kỳ thông tin y tế nào bạn muốn chia sẻ..."
+          placeholder={t("step5.notesPlaceholder")}
           value={data.medicalInfo?.notes || ""}
           onChange={(e) => updateMedicalInfo("notes", e.target.value)}
           rows={3}

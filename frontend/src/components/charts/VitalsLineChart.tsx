@@ -2,6 +2,7 @@
 
 import { EChartWrapper } from "./EChartWrapper";
 import type { EChartsOption, SeriesOption } from "echarts";
+import { METRIC_COLORS } from "@/lib/metric-colors";
 
 export interface VitalsDataPoint {
   date: string; // "MM-DD"
@@ -20,11 +21,11 @@ interface VitalsLineChartProps {
   height?: number;
 }
 
-// NIGHT SKY chart palette
+// Night Sky chart palette — sourced from the canonical metric-colors map
 const COLORS = {
-  heartRate: "#41BCE6",
-  systolic: "#E8BDB7",
-  diastolic: "#E7DEA7",
+  heartRate: METRIC_COLORS.hr,
+  systolic:  METRIC_COLORS.systolic,
+  diastolic: METRIC_COLORS.diastolic,
 };
 
 export function VitalsLineChart({
@@ -56,8 +57,8 @@ export function VitalsLineChart({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(65,188,230,0.25)" },
-            { offset: 1, color: "rgba(65,188,230,0)" },
+            { offset: 0, color: `${METRIC_COLORS.hr}40` },
+            { offset: 1, color: `${METRIC_COLORS.hr}00` },
           ],
         },
       },

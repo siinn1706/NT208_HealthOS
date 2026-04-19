@@ -1,19 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { toast } from "sonner";
 import { TrendingUp, Scale, Ruler } from "lucide-react";
 import { BmiProgressChart } from "@/components/charts/BmiProgressChart";
 import type { UserBmiData } from "@/data/gamification";
 import { HealthGoalDialog } from "./HealthGoalDialog";
+import { TodayInsightCard } from "./TodayInsightCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { FreshnessChip } from "@/components/ui/freshness-chip";
+import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { useTranslations } from "next-intl";
-import type { AggregationPoint } from "@/types/api";
+import { PageHeader } from "@/components/shared/page";
+import type { AggregationPoint, ReportPeriod } from "@/types/api";
 import type { SavedGoal } from "./save-health-goal-action";
+import { track } from "@/lib/analytics";
 
 interface ProgressPageClientProps {
   bmiData: UserBmiData;
   weightHistory: AggregationPoint[];
+  /** Selected report window — propagated from server via `searchParams.period`. */
+  period: ReportPeriod;
+  /** Server-rendered "now" — keeps insight interpretation hydration-stable. */
+  nowIso: string;
 }
 
 function getDaysRemaining(deadline: string | null): number | null {
@@ -31,23 +42,67 @@ function deriveTargetBmi(goal: SavedGoal, heightCm: number | null): number | nul
   return null;
 }
 
-export function ProgressPageClient({ bmiData: initialData, weightHistory }: ProgressPageClientProps) {
+export function ProgressPageClient({
+  bmiData: initialData,
+  weightHistory,
+  period,
+  nowIso,
+}: ProgressPageClientProps) {
   const t = useTranslations("progress");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [, startPeriodTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   // Lift into client state so we can apply saved goals directly
   const [bmiData, setBmiData] = useState<UserBmiData>(initialData);
 
   const heightM = (bmiData.heightCm ?? 0) / 100;
   const hasHeight = bmiData.heightCm != null && bmiData.heightCm > 0;
-  const bmiHistory = weightHistory.map((w: AggregationPoint) => ({
-    date: w.date,
-    bmi: hasHeight
-      ? parseFloat((w.avg_value / (heightM * heightM)).toFixed(1))
-      : 0,
-  }));
+  // Without a height we cannot derive BMI. Returning [] (instead of mapping
+  // every reading to bmi: 0) prevents the chart and "Today's insight" card
+  // from drawing a fake flat-zero line that reads as a real measurement.
+  // See plan §B2 — "BMI plotted as 0 when height is missing".
+  const bmiHistory = useMemo(
+    () =>
+      hasHeight
+        ? weightHistory.map((w: AggregationPoint) => ({
+            date: w.date,
+            bmi: parseFloat((w.avg_value / (heightM * heightM)).toFixed(1)),
+          }))
+        : [],
+    [weightHistory, hasHeight, heightM]
+  );
+
+  // Newest reading drives the FreshnessChip on the metric cards. Until Core
+  // ships `last_reading_at` on the aggregated payload (PR-7), we read it off
+  // the latest history point.
+  const lastReadingDate = bmiHistory.length > 0 ? bmiHistory[bmiHistory.length - 1].date : null;
+  const lastReadingIso = lastReadingDate ? `${lastReadingDate}T00:00:00Z` : null;
 
   const daysRemaining = getDaysRemaining(bmiData.deadline);
   const isOverdue = daysRemaining !== null && daysRemaining < 0;
+
+  const handlePeriodChange = useCallback(
+    (next: ReportPeriod | "custom") => {
+      // Custom ranges need server-side date_from/date_to plumbing through
+      // searchParams + getAggregatedMetrics, which lands with PR-7. Until
+      // then, surface an explicit "coming soon" toast instead of silently
+      // dropping the user's selection (which previously left the popover
+      // closed but the chart unchanged — pure UX trap).
+      if (next === "custom") {
+        toast.info(t("customRangeUnavailable"));
+        return;
+      }
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.set("period", next);
+      track("progress.period.changed", { period: next });
+      startPeriodTransition(() => {
+        router.push(`${pathname}?${params.toString()}`);
+      });
+    },
+    [pathname, router, searchParams, t]
+  );
 
   function handleGoalSaved(goal: SavedGoal) {
     setBmiData((prev) => {
@@ -63,21 +118,32 @@ export function ProgressPageClient({ bmiData: initialData, weightHistory }: Prog
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{t("pageTitle")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("pageSubtitle")}
-          </p>
-        </div>
-        <Button
-          onClick={() => setDialogOpen(true)}
-          className="cursor-pointer shrink-0"
-        >
-          {bmiData.goalId ? t("editGoal") : t("setGoal")}
-        </Button>
+    <>
+      <PageHeader
+        title={t("pageTitle")}
+        description={t("pageSubtitle")}
+        primaryAction={
+          <Button
+            onClick={() => setDialogOpen(true)}
+            className="cursor-pointer shrink-0"
+          >
+            {bmiData.goalId ? t("editGoal") : t("setGoal")}
+          </Button>
+        }
+      />
+      <div className="max-w-[1400px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+      {/* Today's interpretive insight — calm one-sentence read of the trend */}
+      <TodayInsightCard
+        series={bmiHistory}
+        targetBmi={bmiData.targetBmi}
+        nowIso={nowIso}
+        onAction={() => setDialogOpen(true)}
+      />
+
+      {/* Time range selector — wires `?period=` URL state */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted-foreground">{t("rangeLabel")}</p>
+        <TimeRangeSelector value={period} onChange={handlePeriodChange} />
       </div>
 
       {/* Metric cards: BMI, Weight, Height — current + target */}
@@ -102,7 +168,10 @@ export function ProgressPageClient({ bmiData: initialData, weightHistory }: Prog
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">{t("bmi")}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-muted-foreground">{t("bmi")}</p>
+              {lastReadingIso && <FreshnessChip recordedAt={lastReadingIso} />}
+            </div>
           </div>
         </div>
 
@@ -122,7 +191,10 @@ export function ProgressPageClient({ bmiData: initialData, weightHistory }: Prog
               </span>
               <span className="text-sm text-muted-foreground">kg</span>
             </div>
-            <p className="text-xs text-muted-foreground">{t("cardWeight")}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-muted-foreground">{t("cardWeight")}</p>
+              {lastReadingIso && <FreshnessChip recordedAt={lastReadingIso} />}
+            </div>
           </div>
         </div>
 
@@ -186,12 +258,18 @@ export function ProgressPageClient({ bmiData: initialData, weightHistory }: Prog
               {bmiData.targetWeightKg != null ? `${bmiData.targetWeightKg.toFixed(1)} kg` : "--"}
             </p>
           </div>
-          <div className="space-y-1">
-            <p className="text-muted-foreground">{t("bmiScore")}</p>
-            <p className="font-medium text-foreground">
-              {bmiData.bmiScore != null ? `${bmiData.bmiScore} / 100` : "--"}
-            </p>
-          </div>
+          {/*
+            `bmiScore` is rendered only when Core returns a real value. Until
+            then, hide the row entirely (rather than showing "--/100" which
+            implies a known-but-zero score). Restore the block once PR-7's
+            scoring lands BE-side.
+          */}
+          {bmiData.bmiScore != null && (
+            <div className="space-y-1">
+              <p className="text-muted-foreground">{t("bmiScore")}</p>
+              <p className="font-medium text-foreground">{bmiData.bmiScore} / 100</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -202,6 +280,7 @@ export function ProgressPageClient({ bmiData: initialData, weightHistory }: Prog
         initialGoal={bmiData}
         onSaved={handleGoalSaved}
       />
-    </div>
+      </div>
+    </>
   );
 }

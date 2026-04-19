@@ -112,11 +112,11 @@ export async function GET(request: NextRequest) {
       path: "/",
     });
 
-    // Meta cookie (non-httpOnly — carries onboarding_status for src/proxy.ts)
+    // Meta cookie (httpOnly — carries onboarding_status for src/proxy.ts)
     response.cookies.set(
       META_COOKIE_NAME,
       JSON.stringify({ onboarding_status: onboardingStatus }),
-      { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+      { httpOnly: true, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
     );
 
     // Clear temporary OAuth cookies

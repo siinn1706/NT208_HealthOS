@@ -1,36 +1,44 @@
 import { Stat } from "@/types";
 
+/**
+ * Marketing stats. Values are intentionally soft / qualitative until each
+ * claim has a citable source (UX plan §B2 — "Trust-critical health framing").
+ *
+ * Replace with hard numbers ONLY when:
+ *   - the metric is sourced from a measured analytics surface, AND
+ *   - we can link to the source from a press kit / about page.
+ */
 export const stats: Stat[] = [
   {
-    id: "1",
-    value: "50,000+",
+    id: "users",
+    value: "Growing",
     label: {
-      vi: "Ng\u01b0\u1eddi d\u00f9ng \u0111ang ho\u1ea1t \u0111\u1ed9ng h\u00e0ng th\u00e1ng",
-      en: "Monthly active users",
+      vi: "Cộng đồng người dùng đang phát triển",
+      en: "Growing community of active users",
     },
   },
   {
-    id: "2",
-    value: "1,200+",
+    id: "partners",
+    value: "Vetted",
     label: {
-      vi: "B\u00e1c s\u0129 v\u00e0 chuy\u00ean gia y t\u1ebf \u0111\u1ed1i t\u00e1c",
-      en: "Partner doctors & medical professionals",
+      vi: "Đối tác y khoa đã được kiểm duyệt",
+      en: "Vetted medical partners",
     },
   },
   {
-    id: "3",
-    value: "98.7%",
+    id: "ai",
+    value: "AI-assisted",
     label: {
-      vi: "\u0110\u1ed9 ch\u00ednh x\u00e1c c\u1ee7a AI ph\u00e2n t\u00edch b\u1eefa \u0103n",
-      en: "AI meal analysis accuracy rate",
+      vi: "Phân tích bữa ăn hỗ trợ bởi AI",
+      en: "AI-assisted meal analysis",
     },
   },
   {
-    id: "4",
-    value: "4.8\u2605",
+    id: "privacy",
+    value: "Private",
     label: {
-      vi: "\u0110\u00e1nh gi\u00e1 tr\u00ean App Store & Play Store",
-      en: "Rating on App Store & Play Store",
+      vi: "Dữ liệu sức khỏe được bảo vệ",
+      en: "Health data kept private",
     },
   },
 ];

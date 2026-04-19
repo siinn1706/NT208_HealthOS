@@ -1,9 +1,8 @@
 import { redirect, unstable_rethrow } from "next/navigation";
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { AppShell } from "@/components/dashboard/shell";
 import { AccentColorProvider } from "@/components/providers/accent-color-provider";
 import { ThemeModeBootstrap } from "@/components/providers/theme-mode-bootstrap";
 import { headers } from "next/headers";
-import { getLocaleFromPathname } from "@/lib/locale-path";
 
 interface SessionResponse {
   data?: {
@@ -17,9 +16,10 @@ interface SessionResponse {
 
 /**
  * Server-side onboarding gate: supplements the middleware cookie check.
- * The middleware's meta cookie is client-modifiable (non-httpOnly), so a
- * user could forge `onboarding_status: "completed"` to reach the dashboard.
- * This RSC validates the real session from Core BE on every dashboard render.
+ * The meta cookie is now httpOnly so it can't be tampered with from JS, but
+ * we still revalidate the real session against Core BE on every dashboard
+ * render in case the cookie is stale (e.g. another device just completed
+ * onboarding) or the user's session was revoked server-side.
  */
 async function getSessionAndGuard(locale: string): Promise<{
   name: string | undefined;
@@ -94,9 +94,9 @@ export default async function AppLayout({
     <>
       <ThemeModeBootstrap serverThemeMode={initialThemeMode} />
       <AccentColorProvider initialAccent={initialAccent}>
-        <DashboardShell userName={user.name} userAvatar={user.avatarUrl ?? undefined}>
+        <AppShell userName={user.name} userAvatar={user.avatarUrl ?? undefined}>
           {children}
-        </DashboardShell>
+        </AppShell>
       </AccentColorProvider>
     </>
   );

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const NAV_KEYS = [
   { key: "home", href: "/" },
   { key: "about", href: "/about" },
-  { key: "features", href: "/services" },
+  { key: "services", href: "/services" },
   { key: "plans", href: "/plans" },
   { key: "articles", href: "/articles" },
 ] as const;
@@ -65,6 +65,7 @@ export function Navbar() {
                 href={link.href}
                 className={cn(
                   "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   pathname === link.href
                     ? "text-night-300"
                     : "text-night-100/80 hover:text-white"
@@ -114,6 +115,7 @@ export function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className={cn(
                       "rounded-lg px-4 py-3 text-base font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       pathname === link.href
                         ? "bg-night-800 text-night-300"
                         : "text-night-100/80 hover:bg-night-800 hover:text-white"

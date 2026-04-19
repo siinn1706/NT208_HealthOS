@@ -23,14 +23,18 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+export type ReminderRepeat = "daily" | "weekly" | "monthly" | "once";
+
 export interface Reminder {
   id: string;
   type: "medicine" | "appointment" | "exercise";
   title: string;
   time: string;
-  repeat?: "daily" | "weekly" | "once";
+  repeat?: ReminderRepeat;
   done: boolean;
   note?: string;
+  /** Optional FK to an appointment, set by the BE when this reminder was auto-created. */
+  appointment_id?: string;
 }
 
 interface AddReminderDialogProps {
@@ -49,7 +53,7 @@ export function AddReminderDialog({
   const [type, setType] = useState<"medicine" | "appointment" | "exercise">("medicine");
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
-  const [repeat, setRepeat] = useState<"daily" | "weekly" | "once">("daily");
+  const [repeat, setRepeat] = useState<ReminderRepeat>("daily");
   const [note, setNote] = useState("");
 
   function reset() {
@@ -159,6 +163,7 @@ export function AddReminderDialog({
               <SelectContent>
                 <SelectItem value="daily">{t("repeatLabels.daily")}</SelectItem>
                 <SelectItem value="weekly">{t("repeatLabels.weekly")}</SelectItem>
+                <SelectItem value="monthly">{t("repeatLabels.monthly")}</SelectItem>
                 <SelectItem value="once">{t("repeatLabels.once")}</SelectItem>
               </SelectContent>
             </Select>

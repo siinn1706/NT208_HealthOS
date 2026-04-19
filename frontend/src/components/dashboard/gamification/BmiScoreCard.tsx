@@ -13,10 +13,10 @@ const BMI_SCALE_MAX = 35;
 const BMI_SCALE_MIN = 15;
 
 const BMI_STATUS_CONFIG = {
-  underweight: { color: "#60A5FA", bg: "bg-blue-500/10", border: "border-blue-500/30" },
-  normal:      { color: "#4ADE80", bg: "bg-green-500/10", border: "border-green-500/30" },
-  overweight:  { color: "#FBBF24", bg: "bg-yellow-500/10", border: "border-yellow-500/30" },
-  obese:       { color: "#F87171", bg: "bg-red-500/10", border: "border-red-500/30" },
+  underweight: { color: "var(--info)",        bg: "bg-info/10",        border: "border-info/30" },
+  normal:      { color: "var(--success)",     bg: "bg-success/10",     border: "border-success/30" },
+  overweight:  { color: "var(--warning)",     bg: "bg-warning/10",     border: "border-warning/30" },
+  obese:       { color: "var(--destructive)", bg: "bg-destructive/10", border: "border-destructive/30" },
 };
 
 export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
@@ -27,9 +27,10 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
   const pct = hasBmi
     ? Math.min(Math.max(((bmiValue - BMI_SCALE_MIN) / (BMI_SCALE_MAX - BMI_SCALE_MIN)) * 100, 0), 100)
     : 0;
+  const hasTarget = bmi.targetWeightKg != null && bmi.weightKg != null;
   const currentWeight = bmi.weightKg ?? 0;
   const targetWeight = bmi.targetWeightKg ?? 0;
-  const weightDiff = currentWeight - targetWeight;
+  const weightDiff = hasTarget ? currentWeight - targetWeight : 0;
 
   return (
     <div
@@ -75,13 +76,22 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
         </div>
       </div>
 
-      {/* Scale bar */}
-      <div className="space-y-1.5">
-        <div className="relative h-2 w-full rounded-full bg-gradient-to-r from-blue-400 via-green-400 via-yellow-400 to-red-400 overflow-hidden">
-          <div
-            className="absolute top-0 h-2 w-0.5 bg-white shadow-sm transition-[left] duration-500"
-            style={{ left: `${pct}%` }}
-          />
+      {/* Scale bar — gradient is decorative; the indicator only renders when
+          we actually have a BMI reading so we never imply a measurement. */}
+      <div className="space-y-1.5" aria-hidden={!hasBmi}>
+        <div
+          className="relative h-2 w-full rounded-full overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(to right, var(--info), var(--success), var(--warning), var(--destructive))",
+          }}
+        >
+          {hasBmi && (
+            <div
+              className="absolute top-0 h-2 w-0.5 bg-foreground shadow-sm transition-[left] duration-500"
+              style={{ left: `${pct}%` }}
+            />
+          )}
         </div>
         <div className="flex justify-between text-[9px] text-muted-foreground">
           <span>15</span>
@@ -92,8 +102,9 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
         </div>
       </div>
 
-      {/* Target */}
-      {bmi.status !== "normal" && bmi.targetBmi != null && (
+      {/* Target — only render when both target & current weight are known so
+          the delta is an honest comparison, not 0 - target. */}
+      {bmi.status !== "normal" && bmi.targetBmi != null && hasTarget && (
         <div className="rounded-lg bg-background/40 border border-border px-3 py-2">
           <p className="text-xs text-muted-foreground">
             {t("targetLabel")}{" "}
@@ -101,13 +112,13 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
               BMI {bmi.targetBmi.toFixed(1)} — {targetWeight.toFixed(1)}kg
             </span>
             {weightDiff > 0 && (
-              <span className="text-yellow-400">
+              <span className="text-warning">
                 {" "}
                 ({t("needToLose")} {weightDiff.toFixed(1)}kg)
               </span>
             )}
             {weightDiff < 0 && (
-              <span className="text-blue-400">
+              <span className="text-info">
                 {" "}
                 ({t("needToGain")} {Math.abs(weightDiff).toFixed(1)}kg)
               </span>

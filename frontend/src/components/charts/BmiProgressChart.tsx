@@ -16,6 +16,22 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
   const dates = historyData.map((d) => d.date);
   const bmiValues = historyData.map((d) => d.bmi);
 
+  // Adaptive y-axis: a fixed [15, 35] band wastes 60 % of the chart for a
+  // healthy person clustered around 22 and hides week-to-week variation. We
+  // pad ±2 BMI around the observed range and clamp to medical sanity bounds.
+  const observed = bmiValues.filter((v) => typeof v === "number" && Number.isFinite(v));
+  let yMin = 15;
+  let yMax = 35;
+  if (observed.length > 0) {
+    const lo = Math.min(...observed, bmiData.targetBmi ?? Number.POSITIVE_INFINITY);
+    const hi = Math.max(...observed, bmiData.targetBmi ?? Number.NEGATIVE_INFINITY);
+    yMin = Math.max(13, Math.floor(lo - 2));
+    yMax = Math.min(45, Math.ceil(hi + 2));
+    // Always include the "normal" reference band so the markArea stays visible.
+    yMin = Math.min(yMin, 18);
+    yMax = Math.max(yMax, 25);
+  }
+
   const option: EChartsOption = {
     backgroundColor: "transparent",
     tooltip: {
@@ -39,8 +55,9 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
     },
     yAxis: {
       type: "value",
-      min: 15,
-      max: 35,
+      name: "BMI",
+      min: yMin,
+      max: yMax,
       splitLine: { lineStyle: { color: "var(--color-border)", type: "dashed" } },
       axisLabel: { color: "var(--color-muted-foreground)", fontSize: 11 },
     },
@@ -52,35 +69,44 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
         data: bmiValues,
         symbol: "circle",
         symbolSize: 5,
-        itemStyle: { color: "#41BCE6" },
-        lineStyle: { color: "#41BCE6", width: 2 },
+        itemStyle: { color: "var(--color-primary)" },
+        lineStyle: { color: "var(--color-primary)", width: 2 },
         areaStyle: {
           color: {
             type: "linear",
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: "rgba(65,188,230,0.25)" },
-              { offset: 1, color: "rgba(65,188,230,0)" },
+              { offset: 0, color: "color-mix(in srgb, var(--color-primary) 25%, transparent)" },
+              { offset: 1, color: "color-mix(in srgb, var(--color-primary) 0%, transparent)" },
             ],
           },
         },
         markPoint: {
           data: [
-            { type: "max", name: t("chartHighest"), itemStyle: { color: "#E8BDB7" } },
-            { type: "min", name: t("chartLowest"), itemStyle: { color: "#E7DEA7" } },
+            { type: "max", name: t("chartHighest"), itemStyle: { color: "var(--color-warning)" } },
+            { type: "min", name: t("chartLowest"),  itemStyle: { color: "var(--color-info)" } },
           ],
         },
         ...(bmiData.targetBmi != null ? {
           markLine: {
             silent: true,
-            lineStyle: { color: "#16A34A", type: "solid", width: 1 },
-            data: [{ yAxis: bmiData.targetBmi, label: { formatter: `${t("chartTarget")} ${bmiData.targetBmi}`, color: "#16A34A", fontSize: 10 } }],
+            lineStyle: { color: "var(--color-success)", type: "solid", width: 1 },
+            data: [
+              {
+                yAxis: bmiData.targetBmi,
+                label: {
+                  formatter: `${t("chartTarget")} ${bmiData.targetBmi}`,
+                  color: "var(--color-success)",
+                  fontSize: 10,
+                },
+              },
+            ],
           },
         } : {}),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         markArea: {
           silent: true,
-          itemStyle: { color: "rgba(22,163,74,0.06)" },
+          itemStyle: { color: "color-mix(in srgb, var(--color-success) 8%, transparent)" },
           data: [[{ yAxis: 18.5 }, { yAxis: 24.9 }]] as any,
         },
       },

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { getLocaleTag } from "@/lib/format-utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ async function generateAndDownloadPdf(
     sectionsToInclude: string[];
     locale: string;
     createdAtLabel: string;
+    popupBlockedMessage: string;
   }
 ) {
   // Phase 1: Generate a structured HTML snapshot and use window.print()
@@ -36,7 +37,7 @@ async function generateAndDownloadPdf(
 
   const w = window.open("", "_blank");
   if (!w) {
-    toast.error("Không thể mở cửa sổ tải xuống. Vui lòng cho phép popup.");
+    toast.error(options.popupBlockedMessage);
     return;
   }
 
@@ -115,7 +116,9 @@ async function generateAndDownloadPdf(
     };
     return `
       <h2>${categoryLabels[s.category] ?? s.category}</h2>
-      <p class="summary-text">${s.summary}</p>
+      ${options.includeAiInsights
+        ? `<p class="summary-text"><strong>AI:</strong> ${s.summary}</p>`
+        : ""}
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-label">Trung bình</div><div class="stat-value">${s.stats.average.toLocaleString()}<span class="stat-unit">${s.stats.unit}</span></div></div>
         <div class="stat-card"><div class="stat-label">Thấp nhất</div><div class="stat-value">${s.stats.min.toLocaleString()}<span class="stat-unit">${s.stats.unit}</span></div></div>
@@ -153,22 +156,16 @@ interface ExportPdfDialogProps {
 
 export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogProps) {
   const t = useTranslations("reports");
+  const tCat = useTranslations("reports.categories");
+  const tExp = useTranslations("reports.export");
   const locale = useLocale();
   const [generating, setGenerating] = useState(false);
   const [includeDataTable, setIncludeDataTable] = useState(true);
   const [includeAiInsights, setIncludeAiInsights] = useState(true);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [selectedSections, setSelectedSections] = useState<string[]>(
     report.sections.map((s) => s.category)
   );
-
-  const categoryLabels: Record<string, string> = {
-    vitals: "Chỉ số sinh tồn",
-    nutrition: "Dinh dưỡng",
-    activity: "Hoạt động thể chất",
-    sleep: "Giấc ngủ",
-    bmi: "BMI & Cân nặng",
-    medication: "Tuân thủ dùng thuốc",
-  };
 
   function toggleSection(cat: string) {
     setSelectedSections((prev) =>
@@ -178,7 +175,7 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
 
   async function handleExport() {
     if (selectedSections.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một danh mục.");
+      toast.error(tExp("selectAtLeastOne"));
       return;
     }
     setGenerating(true);
@@ -187,12 +184,13 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
       includeAiInsights,
       sectionsToInclude: selectedSections,
       locale,
-      createdAtLabel: t("export.createdAt"),
+      createdAtLabel: tExp("createdAt"),
+      popupBlockedMessage: tExp("popupBlocked"),
     });
     toast.promise(exportPromise, {
       loading: t("exportPdfLoading"),
       success: t("exportPdfSuccess"),
-      error: "Tạo PDF thất bại",
+      error: tExp("errorGeneric"),
     });
     await exportPromise;
     setGenerating(false);
@@ -207,15 +205,25 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
             <Download className="h-4 w-4" aria-hidden />
             {t("exportPdf")}
           </DialogTitle>
-          <DialogDescription>
-            Chọn nội dung bao gồm trong file PDF.
-          </DialogDescription>
+          <DialogDescription>{tExp("dialogDescription")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
+          {/* PII warning */}
+          <div
+            role="note"
+            className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-warning"
+          >
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <div className="space-y-1">
+              <p className="text-xs font-semibold">{tExp("piiTitle")}</p>
+              <p className="text-[11px] leading-relaxed text-warning/90">{tExp("piiBody")}</p>
+            </div>
+          </div>
+
           {/* Section selector */}
           <div>
-            <p className="text-xs font-semibold text-foreground mb-2">Danh mục báo cáo</p>
+            <p className="text-xs font-semibold text-foreground mb-2">{tExp("sections")}</p>
             <div className="space-y-2">
               {report.sections.map((s) => (
                 <div key={s.category} className="flex items-center gap-2">
@@ -225,7 +233,7 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
                     onCheckedChange={() => toggleSection(s.category)}
                   />
                   <Label htmlFor={`section-${s.category}`} className="text-sm font-normal cursor-pointer">
-                    {categoryLabels[s.category] ?? s.category}
+                    {tCat(s.category as never)}
                   </Label>
                 </div>
               ))}
@@ -234,7 +242,7 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
 
           {/* Options */}
           <div>
-            <p className="text-xs font-semibold text-foreground mb-2">Tuỳ chọn</p>
+            <p className="text-xs font-semibold text-foreground mb-2">{tExp("options")}</p>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -243,7 +251,7 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
                   onCheckedChange={(c) => setIncludeDataTable(!!c)}
                 />
                 <Label htmlFor="opt-table" className="text-sm font-normal cursor-pointer">
-                  Bao gồm bảng dữ liệu thô
+                  {tExp("includeRawTable")}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
@@ -253,18 +261,35 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
                   onCheckedChange={(c) => setIncludeAiInsights(!!c)}
                 />
                 <Label htmlFor="opt-ai" className="text-sm font-normal cursor-pointer">
-                  Bao gồm nhận xét AI
+                  {tExp("includeAiInsights")}
                 </Label>
               </div>
             </div>
+          </div>
+
+          {/* PII acknowledgement */}
+          <div className="flex items-start gap-2 border-t border-border pt-3">
+            <Checkbox
+              id="opt-ack"
+              checked={acknowledged}
+              onCheckedChange={(c) => setAcknowledged(!!c)}
+            />
+            <Label htmlFor="opt-ack" className="text-xs font-normal leading-relaxed cursor-pointer">
+              {tExp("acknowledge")}
+            </Label>
           </div>
         </div>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Hủy
+            {tExp("cancel")}
           </Button>
-          <Button size="sm" onClick={handleExport} disabled={generating} className="gap-2">
+          <Button
+            size="sm"
+            onClick={handleExport}
+            disabled={generating || !acknowledged}
+            className="gap-2"
+          >
             {generating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (

@@ -2,11 +2,14 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Heart, Activity, Thermometer, Droplets, Wind, Plus } from "lucide-react";
+import { Heart, Activity, Droplets, Plus } from "lucide-react";
 import { Link } from "@/navigation";
 import { formatDateTime } from "@/lib/format-utils";
+import { METRIC_COLORS } from "@/lib/metric-colors";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { PeriodComparisonChart } from "@/components/charts/PeriodComparisonChart";
+import { PageHeader } from "@/components/shared/page";
 import type { ReportPeriod } from "@/types/api";
 
 interface DeviceItem {
@@ -59,7 +62,16 @@ function formatLastSync(iso: string | null, noInfo: string, locale: string): str
   return formatDateTime(date, locale);
 }
 
-function VitalCard({
+/**
+ * Vital tile that respects data state instead of rendering a literal "--"
+ * placeholder when a metric has no reading yet (UX plan §B, P0 truth fix).
+ *
+ * - `loading=true` → skeleton.
+ * - `value` is `null|undefined` → an explicit "no reading yet" prompt with a
+ *   CTA back to the manual log surface (no fake number).
+ * - otherwise → the formatted value + trend badge.
+ */
+function VitalTile({
   icon: Icon,
   label,
   value,
@@ -67,38 +79,72 @@ function VitalCard({
   trend,
   color,
   trendVsYesterday,
+  loading,
+  emptyTitle,
+  emptyBody,
+  emptyCta,
+  emptyHref,
 }: {
   icon: React.ElementType;
   label: string;
-  value: string | number;
+  value: number | null | undefined;
   unit: string;
   trend?: "up" | "down" | "stable";
   color: string;
   trendVsYesterday?: string;
+  loading: boolean;
+  emptyTitle: string;
+  emptyBody: string;
+  emptyCta: string;
+  emptyHref: string;
 }) {
   const trendColor =
     trend === "up" ? "text-red-500" : trend === "down" ? "text-blue-500" : "text-green-500";
   const trendLabel = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
-  const hasValue = value !== "--" && value !== "N/A";
+  const hasValue = typeof value === "number" && Number.isFinite(value);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 flex items-start gap-4">
+    <div className="rounded-xl border border-border bg-card p-4 flex items-start gap-4 min-h-[100px]">
       <div
         className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
-        style={{ background: `${color}20` }}
+        style={{ background: `color-mix(in srgb, ${color} 12%, transparent)` }}
+        aria-hidden
       >
         <Icon className="w-5 h-5" style={{ color }} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-2xl font-bold text-foreground mt-0.5">
-          {value}
-          {hasValue && <span className="text-sm font-normal text-muted-foreground ml-1">{unit}</span>}
-        </p>
-        {trend && hasValue && (
-          <p className={`text-xs mt-1 ${trendColor}`}>
-            {trendLabel} {trendVsYesterday}
-          </p>
+        {loading ? (
+          <Skeleton className="h-7 w-20 mt-1" />
+        ) : hasValue ? (
+          <>
+            <p className="text-2xl font-bold text-foreground mt-0.5">
+              {value}
+              <span className="text-sm font-normal text-muted-foreground ml-1">
+                {unit}
+              </span>
+            </p>
+            {trend && (
+              <p className={`text-xs mt-1 ${trendColor}`}>
+                {trendLabel} {trendVsYesterday}
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="mt-1 space-y-1">
+            <p className="text-sm font-medium text-foreground leading-tight">
+              {emptyTitle}
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              {emptyBody}
+            </p>
+            <Link
+              href={emptyHref}
+              className="text-xs font-medium text-primary hover:underline inline-block mt-1"
+            >
+              {emptyCta} →
+            </Link>
+          </div>
         )}
       </div>
     </div>
@@ -161,71 +207,70 @@ export default function HealthPage() {
   const diaValues = comparisonData.map((d) => d.values["blood_pressure_diastolic"] ?? 0);
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <>
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        secondaryActions={
           <TimeRangeSelector value={period} onChange={handlePeriodChange} />
-          <button
+        }
+        primaryAction={
+          <Link
+            href="/dashboard/health/add"
             className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             aria-label={t("addMetricAria")}
           >
             <Plus className="w-4 h-4" />
             {t("addMetric")}
-          </button>
-        </div>
-      </div>
-
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <VitalCard
+          </Link>
+        }
+      />
+      <div className="max-w-[1400px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+      {/* KPI cards — only render metrics we actually have a data source for.
+          Temperature & SpO2 tiles were removed until upstream ingestion lands;
+          rendering "--" placeholders for them eroded user trust (UX plan §B). */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <VitalTile
           icon={Heart}
           label={t("heartRate")}
-          value={latest?.heartRate ?? "--"}
+          value={latest?.heartRate}
           unit="bpm"
           trend={latest?.heartRate != null ? "stable" : undefined}
-          color="#EF4444"
+          color={METRIC_COLORS.hr}
           trendVsYesterday={t("trendVsYesterday")}
+          loading={isPending && latest === null}
+          emptyTitle={t("noReadingTitle")}
+          emptyBody={t("noReadingBody")}
+          emptyCta={t("addReading")}
+          emptyHref="/dashboard/settings/devices"
         />
-        <VitalCard
+        <VitalTile
           icon={Activity}
           label={t("systolic")}
-          value={latest?.systolic ?? "--"}
+          value={latest?.systolic}
           unit="mmHg"
           trend={latest?.systolic != null ? "stable" : undefined}
-          color="#41BCE6"
+          color={METRIC_COLORS.systolic}
           trendVsYesterday={t("trendVsYesterday")}
+          loading={isPending && latest === null}
+          emptyTitle={t("noReadingTitle")}
+          emptyBody={t("noReadingBody")}
+          emptyCta={t("addReading")}
+          emptyHref="/dashboard/settings/devices"
         />
-        <VitalCard
+        <VitalTile
           icon={Activity}
           label={t("diastolic")}
-          value={latest?.diastolic ?? "--"}
+          value={latest?.diastolic}
           unit="mmHg"
           trend={latest?.diastolic != null ? "stable" : undefined}
-          color="#6DE7F7"
+          color={METRIC_COLORS.diastolic}
           trendVsYesterday={t("trendVsYesterday")}
-        />
-        <VitalCard
-          icon={Thermometer}
-          label={t("temperature")}
-          value="--"
-          unit="°C"
-          trend={undefined}
-          color="#F97316"
-          trendVsYesterday={t("trendVsYesterday")}
-        />
-        <VitalCard
-          icon={Wind}
-          label="SpO2"
-          value="--"
-          unit="%"
-          trend={undefined}
-          color="#A78BFA"
-          trendVsYesterday={t("trendVsYesterday")}
+          loading={isPending && latest === null}
+          emptyTitle={t("noReadingTitle")}
+          emptyBody={t("noReadingBody")}
+          emptyCta={t("addReading")}
+          emptyHref="/dashboard/settings/devices"
         />
       </div>
 
@@ -310,6 +355,7 @@ export default function HealthPage() {
           <p className="text-xs text-muted-foreground mt-0.5">{t("manualEntryHint")}</p>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

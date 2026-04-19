@@ -11,6 +11,38 @@ import type { HealthReport, EmergencyContact } from "@/types/api";
 
 const EMPTY_EMERGENCY_CONTACTS: EmergencyContact[] = [];
 
+/**
+ * Map a report category (vitals / nutrition / activity / sleep / bmi / medication)
+ * onto the trend metric the trends page actually understands.
+ *
+ * The trends page (`<TrendMetricSelector>`) accepts a closed set of metrics:
+ *   heart_rate, blood_pressure, calories, steps, sleep, bmi, weight
+ *
+ * Earlier we forwarded `?metric=${category}` directly, which sent values like
+ * `metric=vitals` and silently broke the trend selector. (UX plan §H, P0
+ * truth-and-safety fix.)
+ */
+function categoryToTrendMetric(category: string): string {
+  switch (category) {
+    case "vitals":
+      return "heart_rate";
+    case "nutrition":
+      return "calories";
+    case "activity":
+      return "steps";
+    case "sleep":
+      return "sleep";
+    case "bmi":
+      return "bmi";
+    case "medication":
+      // No 1:1 mapping — fall through to a sensible default so the link
+      // still opens a valid trend view rather than rendering an error.
+      return "heart_rate";
+    default:
+      return "heart_rate";
+  }
+}
+
 interface ReportActionsProps {
   report: HealthReport;
   category: string;
@@ -27,6 +59,8 @@ export function ReportActions({
   const t = useTranslations("reports");
   const [shareOpen, setShareOpen] = useState(false);
 
+  const trendMetric = categoryToTrendMetric(category);
+
   return (
     <>
       {/* Sticky bottom action bar */}
@@ -34,7 +68,7 @@ export function ReportActions({
         <div className="mx-auto max-w-5xl flex items-center justify-end gap-2 px-4 py-3 sm:px-6">
           {/* Trend Analysis link */}
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs" asChild>
-            <Link href={`/dashboard/reports/trends?metric=${encodeURIComponent(category)}`}>
+            <Link href={`/dashboard/reports/trends?metric=${encodeURIComponent(trendMetric)}`}>
               <TrendingUp className="h-4 w-4" aria-hidden />
               {t("analyzeTrends")}
             </Link>

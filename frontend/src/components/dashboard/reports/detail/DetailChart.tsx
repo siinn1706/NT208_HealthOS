@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { EChartWrapper } from "@/components/charts/EChartWrapper";
 import type { EChartsOption } from "echarts-for-react";
 import type { ReportSection } from "@/types/api";
+import { METRIC_COLORS } from "@/lib/metric-colors";
 
 interface DetailChartProps {
   section: ReportSection;
@@ -23,11 +25,22 @@ const COLORS = {
   text:      "#9CA3AF",
 };
 
-function buildVitalsOption(section: ReportSection): EChartsOption {
+interface VitalsLabels {
+  hr: string;
+  sys: string;
+  dia: string;
+}
+
+function buildVitalsOption(section: ReportSection, labels: VitalsLabels): EChartsOption {
   const dates = section.data.map((d) => d.date);
   const hr    = section.data.map((d) => d.value);
   const sys   = section.data.map((d) => d.value2 ?? null);
   const dia   = section.data.map((d) => d.value3 ?? null);
+
+  // HR (~40-180 bpm) and BP (~60-200 mmHg) overlap if forced onto a single
+  // axis: a 90 bpm reading reads identically to a 90 mmHg diastolic value,
+  // which is misleading. Each metric gets its own axis with its own units.
+  const hasBp = sys.some((v) => v !== null) || dia.some((v) => v !== null);
 
   return {
     tooltip: {
@@ -49,11 +62,11 @@ function buildVitalsOption(section: ReportSection): EChartsOption {
       },
     },
     legend: {
-      data: ["Nhịp tim (bpm)", "Huyết áp tâm thu", "Huyết áp tâm trương"],
+      data: hasBp ? [labels.hr, labels.sys, labels.dia] : [labels.hr],
       bottom: 0,
       textStyle: { color: COLORS.text, fontSize: 11 },
     },
-    grid: { top: 12, right: 16, bottom: 48, left: 48, containLabel: false },
+    grid: { top: 12, right: hasBp ? 56 : 16, bottom: 48, left: 48, containLabel: false },
     xAxis: {
       type: "category",
       data: dates,
@@ -61,41 +74,67 @@ function buildVitalsOption(section: ReportSection): EChartsOption {
       axisTick: { show: false },
       axisLabel: { color: COLORS.text, fontSize: 10, rotate: dates.length > 14 ? 30 : 0 },
     },
-    yAxis: {
-      type: "value",
-      splitLine: { lineStyle: { color: COLORS.gridLine } },
-      axisLabel: { color: COLORS.text, fontSize: 10 },
-    },
+    yAxis: hasBp
+      ? [
+          {
+            type: "value",
+            name: "bpm",
+            splitLine: { lineStyle: { color: COLORS.gridLine } },
+            axisLabel: { color: COLORS.text, fontSize: 10 },
+          },
+          {
+            type: "value",
+            name: "mmHg",
+            position: "right",
+            splitLine: { show: false },
+            axisLabel: { color: COLORS.text, fontSize: 10 },
+          },
+        ]
+      : [
+          {
+            type: "value",
+            name: "bpm",
+            splitLine: { lineStyle: { color: COLORS.gridLine } },
+            axisLabel: { color: COLORS.text, fontSize: 10 },
+          },
+        ],
     series: [
       {
-        name: "Nhịp tim (bpm)",
+        name: labels.hr,
         type: "line",
         data: hr,
+        yAxisIndex: 0,
         smooth: true,
         symbol: "circle",
         symbolSize: 5,
-        lineStyle: { color: COLORS.secondary, width: 2 },
-        itemStyle: { color: COLORS.secondary },
-        areaStyle: { color: `${COLORS.secondary}20` },
+        lineStyle: { color: METRIC_COLORS.hr, width: 2 },
+        itemStyle: { color: METRIC_COLORS.hr },
+        areaStyle: { color: `${METRIC_COLORS.hr}20` },
       },
-      {
-        name: "Huyết áp tâm thu",
-        type: "line",
-        data: sys,
-        smooth: true,
-        symbol: "none",
-        lineStyle: { color: COLORS.primary, width: 2 },
-        itemStyle: { color: COLORS.primary },
-      },
-      {
-        name: "Huyết áp tâm trương",
-        type: "line",
-        data: dia,
-        smooth: true,
-        symbol: "none",
-        lineStyle: { color: COLORS.accent, width: 1.5, type: "dashed" },
-        itemStyle: { color: COLORS.accent },
-      },
+      ...(hasBp
+        ? ([
+            {
+              name: labels.sys,
+              type: "line",
+              data: sys,
+              yAxisIndex: 1,
+              smooth: true,
+              symbol: "none",
+              lineStyle: { color: METRIC_COLORS.systolic, width: 2 },
+              itemStyle: { color: METRIC_COLORS.systolic },
+            },
+            {
+              name: labels.dia,
+              type: "line",
+              data: dia,
+              yAxisIndex: 1,
+              smooth: true,
+              symbol: "none",
+              lineStyle: { color: METRIC_COLORS.diastolic, width: 1.5, type: "dashed" },
+              itemStyle: { color: METRIC_COLORS.diastolic },
+            },
+          ] as const)
+        : []),
     ],
   };
 }
@@ -277,28 +316,37 @@ function buildMedicationOption(section: ReportSection): EChartsOption {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export function DetailChart({ section, height = 340 }: DetailChartProps) {
+  const t = useTranslations("dashboard.reports.detail");
+  const vitalsLabels = useMemo<VitalsLabels>(
+    () => ({ hr: t("vitalsHr"), sys: t("vitalsSys"), dia: t("vitalsDia") }),
+    [t],
+  );
+
+  // useMemo must run unconditionally — hooks order would change if the
+  // empty-state early-return preceded it (React would crash on the next
+  // mount when data appears).
+  const option = useMemo<EChartsOption>(() => {
+    switch (section.category) {
+      case "vitals":     return buildVitalsOption(section, vitalsLabels);
+      case "nutrition":  return buildNutritionOption(section);
+      case "activity":   return buildActivityOption(section);
+      case "sleep":      return buildSleepOption(section);
+      case "bmi":        return buildBmiOption(section);
+      case "medication": return buildMedicationOption(section);
+      default:           return buildVitalsOption(section, vitalsLabels);
+    }
+  }, [section, vitalsLabels]);
+
   if (!section.data?.length) {
     return (
       <div
         className="flex items-center justify-center rounded-xl border border-border bg-card text-sm text-muted-foreground"
         style={{ height }}
       >
-        No data available
+        {t("noData")}
       </div>
     );
   }
-
-  const option = useMemo<EChartsOption>(() => {
-    switch (section.category) {
-      case "vitals":     return buildVitalsOption(section);
-      case "nutrition":  return buildNutritionOption(section);
-      case "activity":   return buildActivityOption(section);
-      case "sleep":      return buildSleepOption(section);
-      case "bmi":        return buildBmiOption(section);
-      case "medication": return buildMedicationOption(section);
-      default:           return buildVitalsOption(section);
-    }
-  }, [section]);
 
   return <EChartWrapper option={option} height={height} />;
 }

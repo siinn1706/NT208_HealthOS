@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { EChartWrapper } from "./EChartWrapper";
 import type { EChartsOption } from "echarts";
 
@@ -10,11 +11,14 @@ interface PeriodComparisonChartProps {
   dates: string[];
   unit: string;
   height?: number;
+  /** Optional override series labels (i18n-friendly). */
+  currentSeriesLabel?: string;
+  previousSeriesLabel?: string;
 }
 
 const COLORS = {
-  current: "#41BCE6",
-  previous: "rgba(65,188,230,0.35)",
+  current: "var(--color-primary)",
+  previous: "color-mix(in srgb, var(--color-primary) 35%, transparent)",
 };
 
 export function PeriodComparisonChart({
@@ -24,7 +28,17 @@ export function PeriodComparisonChart({
   dates,
   unit,
   height = 260,
+  currentSeriesLabel,
+  previousSeriesLabel,
 }: PeriodComparisonChartProps) {
+  const t = useTranslations("charts.periodComparison");
+  const currentName = currentSeriesLabel ?? t("currentPeriod", { label: currentLabel });
+  const previousName = previousSeriesLabel ?? t("previousPeriod");
+
+  // Comparing against an empty previous period would draw a flat row of zeros
+  // and visually overstate the current-period bars. Hide the previous series
+  // when there's no real data to compare to.
+  const hasPrevious = previousData.some((v) => typeof v === "number" && v !== 0);
   const option: EChartsOption = {
     backgroundColor: "transparent",
     tooltip: {
@@ -57,19 +71,23 @@ export function PeriodComparisonChart({
     },
     series: [
       {
-        name: `Kỳ hiện tại (${currentLabel})`,
+        name: currentName,
         type: "bar",
         data: currentData,
         itemStyle: { color: COLORS.current, borderRadius: [2, 2, 0, 0] },
         barMaxWidth: 12,
       },
-      {
-        name: "Kỳ trước",
-        type: "bar",
-        data: previousData,
-        itemStyle: { color: COLORS.previous, borderRadius: [2, 2, 0, 0] },
-        barMaxWidth: 12,
-      },
+      ...(hasPrevious
+        ? [
+            {
+              name: previousName,
+              type: "bar" as const,
+              data: previousData,
+              itemStyle: { color: COLORS.previous, borderRadius: [2 as const, 2 as const, 0 as const, 0 as const] },
+              barMaxWidth: 12,
+            },
+          ]
+        : []),
     ],
   };
 

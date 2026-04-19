@@ -13,9 +13,13 @@ import { ConversationInfoPanel } from "./ConversationInfoPanel";
 import { ForwardMessageDialog } from "./ForwardMessageDialog";
 import { AiQuickReplies } from "./AiQuickReplies";
 import { ChatBackground } from "./ChatBackground";
+import { ConnectionStatusBanner } from "./ConnectionStatusBanner";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOutboundQueue, type OutboundItem } from "@/hooks/useOutboundQueue";
 import type { Conversation, Message } from "@/types/api";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { track } from "@/lib/analytics";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
 
@@ -54,12 +58,15 @@ export function ChatWindow({
     hasMore,
     loadMore,
     sendMessage,
+    retryMessage,
+    discardMessage,
+    markMessageQueued,
+    enqueueOptimisticMessage,
     editMessage,
     recallMessage,
     deleteMessage,
     reactToMessage,
     pinMessage,
-    simulateAIReply,
     upsertMessage,
     setPinnedState,
     setRemoteTyping,
@@ -152,10 +159,27 @@ export function ChatWindow({
     }
   }, [convId, upsertMessage, setPinnedState, setRemoteTyping, onIncomingMessage, onConversationUpdate, currentUserId]);
 
-  const { sendEvent, isConnected } = useChatWs({
+  const {
+    sendEvent,
+    isConnected,
+    sessionExpired,
+    isReconnecting,
+    reconnectNow,
+  } = useChatWs({
     onEvent: handleWsEvent,
     enabled: wsEnabled,
   });
+
+  const isOnline = useOnlineStatus();
+
+  const { queued: queuedItems, enqueue: enqueueOutbound, remove: removeOutbound, flush: flushOutbound } =
+    useOutboundQueue(convId, {
+      onEvicted: (count) => {
+        toast.warning(t("queue.evictedTitle"), {
+          description: t("queue.evictedDescription", { n: count }),
+        });
+      },
+    });
 
   useEffect(() => {
     if (!wsEnabled || !isConnected) return;
@@ -178,33 +202,168 @@ export function ChatWindow({
       if (editingMessage) {
         editMessage(convId, editingMessage.id, content);
         setEditingMessage(null);
-      } else {
-        void sendMessage(convId, content, replyTo?.id, onMessageSent).catch((error: unknown) => {
+        return;
+      }
+
+      // Offline branch: don't even attempt the network call. Stage a `queued`
+      // optimistic bubble locally and persist it to IndexedDB so it survives
+      // reload. The reconnect effect below will drain it.
+      if (!isOnline || (wsEnabled && !isConnected)) {
+        const optimistic = enqueueOptimisticMessage(convId, content, replyTo?.id);
+        if (optimistic) {
+          void enqueueOutbound({
+            client_message_id: optimistic.id,
+            conversation_id: convId,
+            content,
+            reply_to_id: replyTo?.id ?? null,
+          });
+          track("chat.message.queued", { conversation_id: convId, reason: !isOnline ? "offline" : "ws_down" });
+          onMessageSent?.(optimistic);
+        }
+        setReplyTo(null);
+        messageListRef.current?.scrollToBottom();
+        return;
+      }
+
+      void sendMessage(convId, content, replyTo?.id, onMessageSent)
+        .then((result) => {
+          // The send already happened (and either succeeded or hit a 4xx/5xx).
+          // Only network-class failures get parked in the durable queue —
+          // 422/429 are user-actionable and stay in `failed` so the user sees
+          // a Retry button with the right reason chip.
+          if (result.status === "failed" && result.error_code === "network") {
+            void enqueueOutbound({
+              client_message_id: result.id,
+              conversation_id: convId,
+              content,
+              reply_to_id: replyTo?.id ?? null,
+            });
+            markMessageQueued(result.id);
+            track("chat.message.queued", { conversation_id: convId, reason: "network_after_send" });
+          } else if (result.status === "failed") {
+            track("chat.message.failed", {
+              conversation_id: convId,
+              error_code: result.error_code ?? "unknown",
+            });
+          } else {
+            track("chat.message.sent", { conversation_id: convId });
+          }
+        })
+        .catch((error: unknown) => {
           const message =
             error instanceof Error
               ? error.message
               : "Cannot send message right now. Please try again.";
           toast.error(message);
         });
-        setReplyTo(null);
-        messageListRef.current?.scrollToBottom();
-        if (conversation.type === "ai") {
-          simulateAIReply(convId, t("aiIntegrationNote"));
-        }
-      }
+      setReplyTo(null);
+      messageListRef.current?.scrollToBottom();
+      // P0 — AI replies must come from the AI worker via the BFF; no client-
+      // side simulation. The AI conversation surface still shows a typing
+      // indicator and disclaimer once a real `chat.message.sent` arrives.
     },
     [
       editingMessage,
       replyTo,
-      conversation.type,
       convId,
       sendMessage,
       editMessage,
-      simulateAIReply,
       onMessageSent,
-      t,
+      isOnline,
+      isConnected,
+      wsEnabled,
+      enqueueOptimisticMessage,
+      enqueueOutbound,
+      markMessageQueued,
     ]
   );
+
+  const handleRetry = useCallback((msgId: string) => {
+    // Manual retry always wins over the automatic queue drain — drop the
+    // queue entry so we don't try to send the same payload twice and
+    // delegate to useChat which already handles fresh optimistic IDs.
+    void removeOutbound(msgId);
+    track("chat.message.retried", { conversation_id: convId });
+    void retryMessage(msgId);
+  }, [retryMessage, removeOutbound, convId]);
+
+  const handleDiscard = useCallback((msgId: string) => {
+    void removeOutbound(msgId);
+    track("chat.message.discarded", { conversation_id: convId });
+    discardMessage(msgId);
+  }, [discardMessage, removeOutbound, convId]);
+
+  // Auto-flush queued messages once the connection comes back. Guarded by
+  // both `isOnline` and `isConnected` so we don't burn battery flushing into
+  // a still-degraded socket.
+  const lastFlushKeyRef = useRef<string>("");
+  useEffect(() => {
+    if (!isOnline) return;
+    if (wsEnabled && !isConnected) return;
+    if (queuedItems.length === 0) return;
+
+    // Cheap dedupe: only flush when the (conv, count, head id) tuple changes.
+    // Prevents re-entrant flushes when WS bounces during a slow drain.
+    const key = `${convId}:${queuedItems.length}:${queuedItems[0]?.client_message_id ?? ""}`;
+    if (lastFlushKeyRef.current === key) return;
+    lastFlushKeyRef.current = key;
+
+    void flushOutbound(async (item: OutboundItem) => {
+      try {
+        // The original `queued` bubble was synthesised by
+        // `enqueueOptimisticMessage` and is still in the message list. Discard
+        // it FIRST so `sendMessage` (which always creates a fresh
+        // `optimistic-${uuid}` row) doesn't leave us rendering two bubbles for
+        // the same payload. If the resend fails we'll re-enqueue below, and
+        // either way the message reappears with up-to-date status.
+        discardMessage(item.client_message_id);
+        const result = await sendMessage(
+          item.conversation_id,
+          item.content,
+          item.reply_to_id ?? undefined
+        );
+        if (result.status === "failed") {
+          if (result.error_code === "network") {
+            // Network failure on resend — re-enqueue the (still-failed) row so
+            // the next reconnect tries again. We swap the IDB key over to the
+            // freshly-minted optimistic id so future retries stay aligned.
+            void enqueueOutbound({
+              client_message_id: result.id,
+              conversation_id: item.conversation_id,
+              content: item.content,
+              reply_to_id: item.reply_to_id ?? null,
+            });
+            markMessageQueued(result.id);
+            return true;
+          }
+          // Hard failure (validation / rate-limit) — `sendMessage` already
+          // flipped the new optimistic row into `failed`; remove from the
+          // durable queue so it stops auto-retrying. The user can hit Retry.
+          return true;
+        }
+        return true;
+      } catch {
+        // The original was already discarded above; do NOT mark "remove from
+        // queue" so the next render's effect can try the send again.
+        return false;
+      }
+    }).then(({ sent, failed }) => {
+      if (sent > 0) {
+        track("chat.queue.flushed", { conversation_id: convId, sent, failed });
+      }
+    });
+  }, [
+    isOnline,
+    isConnected,
+    wsEnabled,
+    queuedItems,
+    convId,
+    flushOutbound,
+    sendMessage,
+    discardMessage,
+    enqueueOutbound,
+    markMessageQueued,
+  ]);
 
   const handleReply = useCallback((msg: Message) => {
     setEditingMessage(null);
@@ -285,6 +444,15 @@ export function ChatWindow({
           onInfoOpen={() => setShowInfo(true)}
         />
 
+        {wsEnabled && (
+          <ConnectionStatusBanner
+            isOnline={isOnline}
+            isReconnecting={isReconnecting}
+            sessionExpired={sessionExpired}
+            onReconnect={reconnectNow}
+          />
+        )}
+
         {/* In-conversation search bar */}
         {showSearch && (
           <ChatSearchBar
@@ -336,6 +504,8 @@ export function ChatWindow({
             onPin={handlePin}
             onForward={handleForward}
             onJumpToReply={handleJump}
+            onRetry={handleRetry}
+            onDiscard={handleDiscard}
           />
         )}
 
@@ -345,6 +515,7 @@ export function ChatWindow({
         )}
 
         <MessageInput
+          conversationId={convId}
           replyTo={replyTo}
           currentUserId={currentUserId}
           editingMessage={editingMessage}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import {
   User,
   Bell,
@@ -22,6 +23,20 @@ import {
   Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/shared/page";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const AccentColorSetting = dynamic(
   () => import("@/components/settings/accent-color-setting"),
@@ -33,12 +48,54 @@ const AccentColorSetting = dynamic(
 
 type ThemeOption = "system" | "light" | "dark";
 
+const NOTIF_DEFAULTS = {
+  healthAlerts: true,
+  reminders: true,
+  weeklyReports: false,
+  promotions: false,
+  chatMessages: true,
+} as const;
+
+type NotificationPrefs = typeof NOTIF_DEFAULTS;
+type NotificationKey = keyof NotificationPrefs;
+
 function pushThemeModeToBackend(value: ThemeOption): void {
   void fetch("/api/v1/preferences/me", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ theme_mode: value }),
   });
+}
+
+async function fetchNotificationPrefs(): Promise<NotificationPrefs | null> {
+  try {
+    const res = await fetch("/api/v1/preferences/me");
+    if (!res.ok) return null;
+    const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+    const directNotif = parsed?.notifications;
+    const nestedNotif =
+      parsed?.data && typeof parsed.data === "object"
+        ? (parsed.data as Record<string, unknown>).notifications
+        : undefined;
+    const raw = directNotif ?? nestedNotif;
+    if (!raw || typeof raw !== "object") return null;
+    return { ...NOTIF_DEFAULTS, ...(raw as Partial<NotificationPrefs>) };
+  } catch {
+    return null;
+  }
+}
+
+async function pushNotificationPrefs(value: NotificationPrefs): Promise<boolean> {
+  try {
+    const res = await fetch("/api/v1/preferences/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notifications: value }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 interface SettingRowProps {
@@ -123,13 +180,29 @@ export default function SettingsPage() {
 
   const { theme: rawTheme, setTheme } = useTheme();
   const theme = (rawTheme ?? "system") as ThemeOption;
-  const [notifications, setNotifications] = useState({
-    healthAlerts: true,
-    reminders: true,
-    weeklyReports: false,
-    promotions: false,
-    chatMessages: true,
-  });
+  const [notifications, setNotifications] = useState<NotificationPrefs>(NOTIF_DEFAULTS);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [downloadSubmitting, setDownloadSubmitting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchNotificationPrefs().then((prefs) => {
+      if (prefs) setNotifications(prefs);
+    });
+  }, []);
+
+  const handleNotificationToggle = async (key: NotificationKey, value: boolean) => {
+    const previous = notifications;
+    const next: NotificationPrefs = { ...notifications, [key]: value };
+    setNotifications(next);
+    const ok = await pushNotificationPrefs(next);
+    if (!ok) {
+      setNotifications(previous);
+      toast.error(t("settingsPage.notifications.saveFailed"));
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -139,18 +212,48 @@ export default function SettingsPage() {
     }
   };
 
+  const handleRequestExport = async () => {
+    setDownloadSubmitting(true);
+    try {
+      const res = await fetch("/api/v1/users/me/export", { method: "POST" });
+      if (!res.ok) throw new Error("export-failed");
+      toast.success(t("settingsPage.privacy.downloadDialog.requested"));
+      setDownloadDialogOpen(false);
+    } catch {
+      toast.error(t("settingsPage.privacy.downloadDialog.requestFailed"));
+    } finally {
+      setDownloadSubmitting(false);
+    }
+  };
+
+  const handleRequestDelete = async () => {
+    setDeleteSubmitting(true);
+    try {
+      const res = await fetch("/api/v1/users/me", { method: "DELETE" });
+      if (!res.ok) throw new Error("delete-failed");
+      toast.success(t("settingsPage.privacy.deleteDialog.requested"));
+      setDeleteDialogOpen(false);
+      setDeleteConfirm("");
+    } catch {
+      toast.error(t("settingsPage.privacy.deleteDialog.requestFailed"));
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  };
+
+  const deleteConfirmPhrase = t("settingsPage.privacy.deleteDialog.confirmPhrase");
+  const deleteConfirmed =
+    deleteConfirm.trim().toUpperCase() === deleteConfirmPhrase.toUpperCase();
+
   const LOCALE_LABELS: Record<string, string> = { vi: "Tiếng Việt", en: "English" };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground">{t("settingsPage.pageTitle")}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {t("settingsPage.pageSubtitle")}
-        </p>
-      </div>
-
+    <>
+      <PageHeader
+        title={t("settingsPage.pageTitle")}
+        description={t("settingsPage.pageSubtitle")}
+      />
+      <div className="max-w-2xl mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
       {/* Account */}
       <SettingGroup title={t("settingsPage.sections.account")}>
         <SettingRow
@@ -281,9 +384,7 @@ export default function SettingsPage() {
           <SettingRow key={key} icon={icon} label={label} description={description}>
             <Toggle
               checked={notifications[key]}
-              onChange={(v) =>
-                setNotifications((prev) => ({ ...prev, [key]: v }))
-              }
+              onChange={(v) => void handleNotificationToggle(key, v)}
             />
           </SettingRow>
         ))}
@@ -295,17 +396,20 @@ export default function SettingsPage() {
           icon={Shield}
           label={t("settingsPage.privacy.policy")}
           description={t("settingsPage.privacy.policyDesc")}
+          onClick={() => router.push(`/${locale}/legal/privacy`)}
         />
         <SettingRow
           icon={Download}
           label={t("settingsPage.privacy.download")}
           description={t("settingsPage.privacy.downloadDesc")}
+          onClick={() => setDownloadDialogOpen(true)}
         />
         <SettingRow
           icon={Trash2}
           label={t("settingsPage.privacy.delete")}
           description={t("settingsPage.privacy.deleteDesc")}
           danger
+          onClick={() => setDeleteDialogOpen(true)}
         />
       </SettingGroup>
 
@@ -319,6 +423,107 @@ export default function SettingsPage() {
           danger
         />
       </SettingGroup>
-    </div>
+      </div>
+
+      <AlertDialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("settingsPage.privacy.downloadDialog.title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("settingsPage.privacy.downloadDialog.body")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <p className="text-xs font-semibold text-foreground">
+                {t("settingsPage.privacy.downloadDialog.contains")}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("settingsPage.privacy.downloadDialog.containsList")}
+              </p>
+            </div>
+            <p className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>{t("settingsPage.privacy.downloadDialog.secureNote")}</span>
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("settingsPage.dialogClose")}</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                onClick={handleRequestExport}
+                disabled={downloadSubmitting}
+                className="gap-2"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden />
+                {t("settingsPage.privacy.downloadDialog.request")}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(o) => {
+          setDeleteDialogOpen(o);
+          if (!o) setDeleteConfirm("");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">
+              {t("settingsPage.privacy.deleteDialog.title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("settingsPage.privacy.deleteDialog.body")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-destructive">
+              <p className="text-xs font-semibold">
+                {t("settingsPage.privacy.deleteDialog.irreversible")}
+              </p>
+              <p className="mt-1 text-xs text-destructive/90">
+                {t("settingsPage.privacy.deleteDialog.exportFirst")}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-confirm" className="text-xs">
+                {t("settingsPage.privacy.deleteDialog.confirmPrompt", {
+                  phrase: deleteConfirmPhrase,
+                })}
+              </Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder={t("settingsPage.privacy.deleteDialog.confirmPlaceholder")}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("settingsPage.dialogClose")}</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={handleRequestDelete}
+                disabled={!deleteConfirmed || deleteSubmitting}
+                className="gap-2"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                {deleteSubmitting
+                  ? t("settingsPage.privacy.deleteDialog.deleting")
+                  : t("settingsPage.privacy.deleteDialog.confirm")}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

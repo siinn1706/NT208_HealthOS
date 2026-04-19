@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/redis-cache";
+import { getUserCacheScope } from "@/lib/user-scoped-cache";
 import { CORE_API_URL } from "@/lib/env";
 
 async function getToken(): Promise<string | null> {
@@ -42,8 +43,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Try Redis cache first
-  const userId = "user"; // token-based auth; cache key is broad enough
+  // P0 fix — scope cache key to authenticated user id (was the literal "user").
+  const userId = await getUserCacheScope();
   const ck = cacheKey(userId, "aggregated", { metricType, period, dateFrom: dateFrom ?? "", dateTo: dateTo ?? "" });
   const cached = await cacheGet(ck);
   if (cached) {

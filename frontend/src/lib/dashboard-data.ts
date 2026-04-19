@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 
+import type { DataSlice } from "@/types/data-slice";
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export interface DashboardSummary {
@@ -166,39 +168,78 @@ export async function getVitalsTimeseries(days: number = 7): Promise<VitalPoint[
   }
 }
 
-export async function getUpcomingReminders(): Promise<ReminderItem[]> {
+/**
+ * Returns the upcoming reminders for the current user as a {@link DataSlice}
+ * so the dashboard widget can distinguish between "no data yet" (empty),
+ * "couldn't reach the API" (recoverable_error), and "loaded successfully".
+ *
+ * The previous implementation collapsed every failure into an empty list,
+ * which silently hid auth/network failures from the user (UX plan §G,
+ * P0 truth-and-safety fix).
+ */
+export async function getUpcomingReminders(): Promise<DataSlice<ReminderItem[]>> {
   try {
     const reqHeaders = await headers();
     const res = await fetch(`${APP_URL}/api/v1/reminders/upcoming`, {
       cache: "no-store",
       headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });
-    if (!res.ok) return [];
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      const code =
+        typeof json?.error?.code === "string" ? json.error.code : `HTTP_${res.status}`;
+      const message =
+        typeof json?.error?.message === "string"
+          ? json.error.message
+          : "Could not load reminders.";
+      return {
+        status: "recoverable_error",
+        error: { code, message },
+      };
+    }
+
     const json = await res.json().catch(() => null);
     const data = json?.data;
-    if (!Array.isArray(data)) return [];
-    return data
+    if (!Array.isArray(data)) {
+      return { status: "empty", data: [] };
+    }
+
+    const items = data
       .map(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (row: any): ReminderItem | null => {
-          if (row?.type !== "medicine" && row?.type !== "appointment" && row?.type !== "exercise") {
+          if (
+            row?.type !== "medicine" &&
+            row?.type !== "appointment" &&
+            row?.type !== "exercise"
+          ) {
             return null;
           }
           return {
             id: typeof row.id === "string" ? row.id : "",
             type: row.type,
             title:
-              typeof row.title === "string" && row.title.trim()
-                ? row.title
-                : "",
+              typeof row.title === "string" && row.title.trim() ? row.title : "",
             time: typeof row.time === "string" ? row.time : "--",
             done: Boolean(row.done),
           };
-        }
+        },
       )
       .filter((row): row is ReminderItem => row !== null);
-  } catch {
-    return [];
+
+    if (items.length === 0) {
+      return { status: "empty", data: [] };
+    }
+    return { status: "success", data: items };
+  } catch (err) {
+    return {
+      status: "recoverable_error",
+      error: {
+        code: "REMINDERS_FETCH_FAILED",
+        message: err instanceof Error ? err.message : "Could not load reminders.",
+      },
+    };
   }
 }
 

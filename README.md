@@ -141,11 +141,11 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 
 ## Current Status
 
-**v1.2.2 (Current)**: Data layer refactor and documentation audit.
+**v1.2.2 (Current)**: Data layer refactor, documentation audit, chat E2E review (unreleased).
 **v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
 **v1.2.0**: User accent color customization and theming.
 
-- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification.
+- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications read/skip/snooze.
 - **Stub/placeholder**: AI Worker real implementation (currently mock), Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
 
 ## CI/CD Pipeline
@@ -173,6 +173,8 @@ See [Deployment Guide](./docs/deployment-guide.md) for workflow details and trou
 - [Codebase Summary](./docs/codebase-summary.md)
 - [Code Standards](./docs/code-standards.md)
 - [System Architecture](./docs/system-architecture.md)
+- [Security](./docs/security.md)
+- [Project Changelog](./docs/project-changelog.md)
 - [Project Roadmap](./docs/project-roadmap.md)
 - [Deployment Guide](./docs/deployment-guide.md)
 - [Design Guidelines](./docs/design-guidelines.md)

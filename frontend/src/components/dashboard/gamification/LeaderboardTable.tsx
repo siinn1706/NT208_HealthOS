@@ -42,7 +42,7 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
           <span>#</span>
           <span>{t("user")}</span>
           <span className="text-right">{t("score")}</span>
-          <span className="text-right hidden sm:block">Streak</span>
+          <span className="text-right hidden sm:block">{t("streak")}</span>
           <span className="text-right hidden sm:block">{t("change")}</span>
         </div>
       </div>
@@ -60,7 +60,7 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
                 "px-5 py-3 transition-colors duration-200",
                 "grid grid-cols-[40px_1fr_80px_70px_60px] gap-2 items-center",
                 entry.isCurrentUser
-                  ? "bg-[#1965B3]/15 border-l-2 border-l-[#41BCE6]"
+                  ? "bg-primary/15 border-l-2 border-l-primary"
                   : "hover:bg-muted/30",
                 isTop3 && !entry.isCurrentUser && "bg-muted/10"
               )}
@@ -74,7 +74,7 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
                     className={cn(
                       "text-sm font-bold",
                       entry.isCurrentUser
-                        ? "text-[#41BCE6]"
+                        ? "text-primary"
                         : "text-muted-foreground"
                     )}
                   >
@@ -95,12 +95,12 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
                   <p
                     className={cn(
                       "text-sm font-medium truncate",
-                      entry.isCurrentUser ? "text-[#41BCE6]" : "text-foreground"
+                      entry.isCurrentUser ? "text-primary" : "text-foreground"
                     )}
                   >
                     {entry.displayName}
                     {entry.isCurrentUser && (
-                      <span className="ml-1.5 text-[9px] font-semibold text-[#41BCE6] bg-[#41BCE6]/10 px-1.5 py-0.5 rounded-full">
+                      <span className="ml-1.5 text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
                         {t("you")}
                       </span>
                     )}
@@ -116,7 +116,7 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
                 <p
                   className={cn(
                     "text-sm font-bold",
-                    entry.isCurrentUser ? "text-[#41BCE6]" : "text-foreground"
+                    entry.isCurrentUser ? "text-primary" : "text-foreground"
                   )}
                 >
                   {entry.totalScore.toLocaleString(getLocaleTag(locale))}
@@ -143,15 +143,15 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
 
       {/* Floating "Your rank" summary if current user not visible */}
       {currentUserEntry && currentUserEntry.rank > 10 && (
-        <div className="px-5 py-3 border-t-2 border-[#41BCE6]/30 bg-[#1965B3]/10">
+        <div className="px-5 py-3 border-t-2 border-primary/30 bg-primary/10">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
               {t("yourRank")}{" "}
-              <span className="font-bold text-[#41BCE6]">
+              <span className="font-bold text-primary">
                 #{currentUserEntry.rank}
               </span>
             </p>
-            <p className="text-xs font-bold text-[#41BCE6]">
+            <p className="text-xs font-bold text-primary">
               {currentUserEntry.totalScore.toLocaleString(getLocaleTag(locale))} {getUnitLabel("points", locale)}
             </p>
           </div>

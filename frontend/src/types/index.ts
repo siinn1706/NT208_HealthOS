@@ -20,6 +20,8 @@ export interface Plan {
   description: BilingualText;
   features: BilingualText[];
   popular: boolean;
+  /** Promotes the plan with a "Recommended" badge across cards and compare table. */
+  recommended?: boolean;
 }
 
 export interface Article {
@@ -30,6 +32,8 @@ export interface Article {
   date: string; // ISO date string
   categoryId: string;
   image: string;
+  /** Estimated reading time in minutes; surfaced as a meta chip on cards. */
+  readingMinutes?: number;
 }
 
 export interface ArticleCategory {
@@ -42,6 +46,8 @@ export interface TeamMember {
   name: string;
   role: BilingualText;
   image: string;
+  /** "core" = founders & engineers. "advisor" = medical advisors / consultants. */
+  group?: "core" | "advisor";
 }
 
 export interface Testimonial {

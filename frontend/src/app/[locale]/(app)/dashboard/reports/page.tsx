@@ -1,164 +1,79 @@
-"use client";
-
-import { useState, useTransition, useEffect } from "react";
-import { useTranslations, useLocale } from "next-intl";
-import { getUnitLabel } from "@/lib/format-utils";
+import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { FileBarChart2 } from "lucide-react";
+
 import { Skeleton } from "@/components/ui/skeleton";
-import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
-import { KpiDonutChart } from "@/components/charts/KpiDonutChart";
+import { KpiOverview } from "@/components/dashboard/reports/KpiOverview";
+import { ReportHubWrapper } from "@/components/dashboard/reports/ReportHubWrapper";
+import { PageHeader } from "@/components/shared/page";
+
+import { getHealthReport } from "@/lib/reports-data";
+import { getProfileData } from "@/lib/profile-data";
 import type { ReportPeriod } from "@/types/api";
 
-async function fetchAggregatedKpi(metric: string, period: ReportPeriod) {
-  const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
-  const res = await fetch(
-    `/api/v1/analytics/aggregated?metric_type=${metric}&period=daily&date_from=${getDateFrom(days)}&date_to=${getDateTo()}`,
-    { credentials: "include" }
-  );
-  if (!res.ok) return null;
-  const json = await res.json();
-  return json?.data ?? [];
+interface ReportsPageProps {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ period?: string }>;
 }
 
-function getDateFrom(days: number): string {
-  return new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
-}
+/**
+ * Reports Hub (UX plan §H).
+ *
+ * Server Component shell — fetches the active health report + emergency
+ * contacts so we can hand them to <ReportHubWrapper> (which manages the
+ * share / export dialogs and the auto-share countdown banner). The KPI
+ * strip stays a Client Component because it owns its own period state and
+ * re-fetches in place.
+ */
+export default async function ReportsPage({ params, searchParams }: ReportsPageProps) {
+  const { locale } = await params;
+  const { period: rawPeriod } = await searchParams;
 
-function getDateTo(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+  const period: ReportPeriod =
+    rawPeriod === "30d" || rawPeriod === "90d" ? rawPeriod : "7d";
 
-interface KpiData {
-  heartRate: { avg: number; target: number };
-  steps: { avg: number; target: number };
-  sleep: { avg: number; target: number };
-  weight: { avg: number; target: number };
-}
-
-function KpiCard({
-  label,
-  value,
-  unit,
-  target,
-  color,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  target: number;
-  color: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4 flex flex-col items-center gap-2">
-      <KpiDonutChart value={value} target={target} color={color} size={80} />
-      <div className="text-center">
-        <p className="text-sm font-semibold text-foreground">
-          {value.toFixed(0)} <span className="text-xs font-normal text-muted-foreground">{unit}</span>
-        </p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-export default function ReportsPage() {
-  const t = useTranslations("dashboard.reports");
-  const locale = useLocale();
-  const [period, setPeriod] = useState<ReportPeriod>("7d");
-
-  const KPI_CONFIGS = [
-    { key: "heartRate" as const, label: t("heartRateAvg"), unit: "bpm",                            target: 80,   color: "#EF4444" },
-    { key: "steps"    as const, label: t("stepsAvg"),    unit: getUnitLabel("steps", locale),   target: 8000, color: "#41BCE6" },
-    { key: "sleep"    as const, label: t("sleepAvg"),    unit: getUnitLabel("hours", locale),   target: 8,    color: "#A78BFA" },
-    { key: "weight"   as const, label: t("weightAvg"),   unit: "kg",                             target: 70,   color: "#16A34A" },
-  ] as const;
-  const [kpiData, setKpiData] = useState<KpiData | null>(null);
-  const [isPending, startTransition] = useTransition();
-
-  const loadKpis = (p: ReportPeriod) => {
-    startTransition(async () => {
-      const [hrData, stepsData, sleepData, weightData] = await Promise.all([
-        fetchAggregatedKpi("heart_rate", p),
-        fetchAggregatedKpi("steps", p),
-        fetchAggregatedKpi("sleep_minutes", p),
-        fetchAggregatedKpi("weight_kg", p),
-      ]);
-
-      const avg = (arr: Array<{ avg_value?: number }>) => {
-        const vals = arr.filter((a) => typeof a.avg_value === "number").map((a) => a.avg_value!);
-        if (vals.length === 0) return 0;
-        return vals.reduce((a, b) => a + b, 0) / vals.length;
-      };
-
-      const hrAvg = avg(Array.isArray(hrData) ? hrData : []);
-      const stepsAvg = avg(Array.isArray(stepsData) ? stepsData : []);
-      // sleep is in minutes, convert to hours
-      const sleepAvg = avg(Array.isArray(sleepData) ? sleepData : []) / 60;
-      const weightAvg = avg(Array.isArray(weightData) ? weightData : []);
-
-      setKpiData({
-        heartRate: { avg: hrAvg, target: 80 },
-        steps: { avg: stepsAvg, target: 8000 },
-        sleep: { avg: sleepAvg, target: 8 },
-        weight: { avg: weightAvg, target: 70 },
-      });
-    });
-  };
-
-  // Initial load — must be useEffect, NOT useState, to avoid calling startTransition during render
-  useEffect(() => {
-    loadKpis("7d");
-  }, []);
-
-  const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
-    if (newPeriod === "custom") return;
-    setPeriod(newPeriod);
-    loadKpis(newPeriod);
-  };
+  const [t, report, profile] = await Promise.all([
+    getTranslations("dashboard.reports"),
+    getHealthReport(period),
+    getProfileData(),
+  ]);
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* ── Page header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
+    <>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
             <FileBarChart2 className="h-5 w-5 text-muted-foreground" aria-hidden />
-            <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
-          </div>
-          <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
-        </div>
-        <TimeRangeSelector value={period} onChange={handlePeriodChange} />
-      </div>
-
-      {/* ── KPI Summary Charts ── */}
-      <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3">{t("kpiOverview")}</h2>
-        {isPending && !kpiData ? (
+            {t("title")}
+          </span>
+        }
+        description={t("subtitle")}
+      />
+      <div className="max-w-[1400px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+      <Suspense
+        fallback={
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-36 rounded-xl" />
             ))}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {KPI_CONFIGS.map((cfg) => (
-              <KpiCard
-                key={cfg.key}
-                label={cfg.label}
-                value={kpiData ? kpiData[cfg.key].avg : 0}
-                unit={cfg.unit}
-                target={cfg.target}
-                color={cfg.color}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        }
+      >
+        <KpiOverview initialPeriod={period} />
+      </Suspense>
 
-      {/* ── Placeholder for existing report content ── */}
+      {/* Auto-share banner + share/export quick actions live inside the wrapper
+          so the page itself can stay a Server Component. */}
+      <ReportHubWrapper
+        report={report}
+        emergencyContacts={profile.emergency_contacts}
+        locale={locale}
+      />
+
       <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
         {t("detailedInDev")}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

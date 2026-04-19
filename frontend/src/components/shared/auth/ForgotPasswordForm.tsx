@@ -1,37 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, EyeOff, KeyRound, Loader2, Mail, ShieldCheck } from "lucide-react";
+import { KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { useNotification } from "@/hooks/use-notification";
 import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import { REGEXP_ONLY_DIGITS } from "input-otp";
+  AuthShell,
+  AuthBanner,
+  PasswordField,
+  OtpField,
+  PendingButton,
+  FormFieldError,
+  useResendCooldown,
+  useBreachCheck,
+} from "./primitives";
+import { PasswordStrengthMeter } from "./password-strength-meter";
+import { track } from "@/lib/analytics";
 
-// ─── Step type ────────────────────────────────────────────────────────────────
 type Step = "email" | "otp" | "reset";
 
-// ─── Step indicator helper ─────────────────────────────────────────────────────
 const STEPS: Step[] = ["email", "otp", "reset"];
 
 function StepIndicator({ current }: { current: Step }) {
   const currentIndex = STEPS.indexOf(current);
   return (
-    <div className="flex items-center justify-center gap-2 mb-4">
+    <div className="flex items-center justify-center gap-2 mb-2">
       {STEPS.map((step, i) => (
         <div key={step} className="flex items-center gap-2">
           <div
@@ -39,9 +36,10 @@ function StepIndicator({ current }: { current: Step }) {
               i < currentIndex
                 ? "bg-primary text-primary-foreground"
                 : i === currentIndex
-                ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
-                : "bg-muted text-muted-foreground"
+                  ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+                  : "bg-muted text-muted-foreground"
             }`}
+            aria-current={i === currentIndex ? "step" : undefined}
           >
             {i < currentIndex ? "✓" : i + 1}
           </div>
@@ -58,37 +56,44 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export function ForgotPasswordForm() {
   const t = useTranslations("auth");
   const tErrors = useTranslations("errors");
+  const tSecurity = useTranslations("auth.security");
   const router = useRouter();
+  const { success: notifySuccess, handleApiError } = useNotification();
 
   const [step, setStep] = useState<Step>("email");
 
-  // Step 1 — email
   const [email, setEmail] = useState("");
-
-  // Step 2 — OTP
   const [otp, setOtp] = useState("");
   const [isResending, setIsResending] = useState(false);
 
-  // Step 3 — new password
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Shared
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
-  // ─── Step 1: Send OTP to email ─────────────────────────────────────────────
+  const breach = useBreachCheck(newPassword, { minLength: 8 });
+  const resend = useResendCooldown(`reset-otp:${email || "anon"}`, 60);
+
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    track("auth.forgot_password.viewed", { step });
+  }, [step]);
+
+  useEffect(() => {
+    if (error && bannerRef.current) bannerRef.current.focus();
+  }, [error]);
+
   async function handleSendCode(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    track("auth.forgot_password.send_code_submitted");
 
     try {
       const res = await fetch("/api/v1/auth/request-otp", {
@@ -98,22 +103,29 @@ export function ForgotPasswordForm() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data?.error?.message || t("sendCodeFailed"));
+        const errors = handleApiError(data, t("sendCodeFailed"));
+        setError(errors.email || data?.error?.message || t("sendCodeFailed"));
+        track("auth.forgot_password.send_code_failed", {
+          code: data?.error?.code ?? "UNKNOWN",
+        });
         return;
       }
+      resend.arm();
       setStep("otp");
+      track("auth.forgot_password.send_code_succeeded");
     } catch {
       setError(tErrors("genericTryAgain"));
+      track("auth.forgot_password.send_code_errored");
     } finally {
       setIsLoading(false);
     }
   }
 
-  // ─── Step 2: Verify OTP ─────────────────────────────────────────────────────
   async function handleVerifyOtp() {
     if (otp.length !== 6) return;
     setError(null);
     setIsLoading(true);
+    track("auth.forgot_password.otp_submitted");
 
     try {
       const res = await fetch("/api/v1/auth/verify-otp", {
@@ -124,9 +136,13 @@ export function ForgotPasswordForm() {
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setError(data?.error?.message || t("otpInvalid"));
+        track("auth.forgot_password.otp_failed", {
+          code: data?.error?.code ?? "UNKNOWN",
+        });
         return;
       }
       setStep("reset");
+      track("auth.forgot_password.otp_succeeded");
     } catch {
       setError(tErrors("otpInvalid"));
     } finally {
@@ -134,10 +150,11 @@ export function ForgotPasswordForm() {
     }
   }
 
-  // ─── Step 2: Resend OTP ─────────────────────────────────────────────────────
   async function handleResend() {
+    if (!resend.canResend) return;
     setError(null);
     setIsResending(true);
+    track("auth.forgot_password.resend_clicked");
     try {
       const res = await fetch("/api/v1/auth/request-otp", {
         method: "POST",
@@ -150,6 +167,8 @@ export function ForgotPasswordForm() {
         return;
       }
       setOtp("");
+      resend.arm();
+      notifySuccess(t("verificationSuccess"));
     } catch {
       setError(tErrors("genericTryAgain"));
     } finally {
@@ -157,7 +176,6 @@ export function ForgotPasswordForm() {
     }
   }
 
-  // ─── Step 3: Reset password ──────────────────────────────────────────────────
   async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -165,14 +183,16 @@ export function ForgotPasswordForm() {
       setError(t("passwordMinLength"));
       return;
     }
-
     if (newPassword !== confirmNewPassword) {
-      setError(t("passwordMismatch")); 
+      setError(t("passwordMismatch"));
       return;
     }
 
     setError(null);
     setIsLoading(true);
+    track("auth.forgot_password.reset_submitted", {
+      breached: breach.isBreached,
+    });
 
     try {
       const res = await fetch("/api/v1/auth/reset-password", {
@@ -183,11 +203,19 @@ export function ForgotPasswordForm() {
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setError(data?.error?.message || t("resetPasswordFailed"));
+        track("auth.forgot_password.reset_failed", {
+          code: data?.error?.code ?? "UNKNOWN",
+        });
         return;
       }
-      // BFF sets the httpOnly cookie — do NOT store token in localStorage.
-      setSuccess(t("resetPasswordSuccess"));
-      setTimeout(() => router.push("/login"), 2000);
+      // Reset succeeded; the user must re-authenticate with the new password.
+      // We deliberately do NOT auto-log them in: forcing a fresh /login round-trip
+      // ensures a clean session and exercises the standard auth path (rate limits,
+      // device fingerprint, etc.).
+      setDone(true);
+      notifySuccess(t("resetPasswordSuccess"));
+      track("auth.forgot_password.reset_succeeded");
+      setTimeout(() => router.push("/login"), 1500);
     } catch {
       setError(tErrors("genericTryAgain"));
     } finally {
@@ -195,326 +223,242 @@ export function ForgotPasswordForm() {
     }
   }
 
-  // ─── Render ────────────────────────────────────────────────────────────────
-  return (
-    <Card className="w-full max-w-md shadow-lg animate-fade-in-up">
-      {/* ═══ STEP 1 — Email ════════════════════════════════════════════════════ */}
-      {step === "email" && (
-        <>
-          <CardHeader className="space-y-1 pb-4">
-            {/* Brand mark */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">H</span>
-              </div>
-              <span className="font-semibold text-foreground">HealthOS</span>
-            </div>
+  const banner = error ? (
+    <div ref={bannerRef} tabIndex={-1} className="outline-none">
+      <AuthBanner variant="destructive" description={error} />
+    </div>
+  ) : undefined;
+
+  // ─── STEP 1 ────────────────────────────────────────────────────────────────
+  if (step === "email") {
+    return (
+      <AuthShell
+        title={t("forgotPasswordTitle")}
+        subtitle={t("forgotPasswordSubtitle")}
+        brand={
+          <>
             <StepIndicator current="email" />
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Mail className="size-5 text-primary" aria-hidden="true" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl font-bold text-foreground">
-                  {t("forgotPasswordTitle")}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {t("forgotPasswordSubtitle")}
-                </CardDescription>
-              </div>
+            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10">
+              <Mail className="size-6 text-primary" aria-hidden="true" />
             </div>
-          </CardHeader>
+          </>
+        }
+        banner={banner}
+        footer={
+          <p className="text-sm text-muted-foreground">
+            {t("hasAccount")}{" "}
+            <Link
+              href="/login"
+              className="font-medium text-primary hover:underline transition-colors duration-200"
+            >
+              {t("loginLink")}
+            </Link>
+          </p>
+        }
+      >
+        <form onSubmit={handleSendCode} noValidate className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="forgot-email">{t("email")}</Label>
+            <Input
+              id="forgot-email"
+              type="email"
+              placeholder={t("emailPlaceholder")}
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+              autoFocus
+            />
+          </div>
 
-          <CardContent>
-            <form onSubmit={handleSendCode} noValidate className="space-y-4">
-              {error && (
-                <div
-                  role="alert"
-                  className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                >
-                  {error}
-                </div>
-              )}
+          <PendingButton
+            type="submit"
+            className="w-full"
+            size="lg"
+            pending={isLoading}
+            disabled={isLoading || !email}
+          >
+            {t("sendCode")}
+          </PendingButton>
+        </form>
+      </AuthShell>
+    );
+  }
 
-              <div className="space-y-1.5">
-                <Label htmlFor="forgot-email">{t("email")}</Label>
-                <Input
-                  id="forgot-email"
-                  type="email"
-                  placeholder={t("emailPlaceholder")}
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                disabled={isLoading || !email}
-              >
-                {isLoading && (
-                  <Loader2 className="animate-spin size-4" aria-hidden="true" />
-                )}
-                {t("sendCode")}
-              </Button>
-            </form>
-          </CardContent>
-
-          <CardFooter className="justify-center pt-0">
-            <p className="text-sm text-muted-foreground">
-              {t("hasAccount")}{" "}
-              <Link
-                href="/login"
-                className="font-medium text-primary hover:underline transition-colors duration-200"
-              >
-                {t("loginLink")}
-              </Link>
-            </p>
-          </CardFooter>
-        </>
-      )}
-
-      {/* ═══ STEP 2 — OTP ══════════════════════════════════════════════════════ */}
-      {step === "otp" && (
-        <>
-          <CardHeader className="space-y-1 pb-4 text-center">
-            {/* Brand mark */}
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">H</span>
-              </div>
-              <span className="font-semibold text-foreground">HealthOS</span>
-            </div>
+  // ─── STEP 2 ────────────────────────────────────────────────────────────────
+  if (step === "otp") {
+    return (
+      <AuthShell
+        title={t("forgotPasswordOtpTitle")}
+        subtitle={t("forgotPasswordOtpSubtitle", { email })}
+        brand={
+          <>
             <StepIndicator current="otp" />
-            <div className="mx-auto mb-1 flex size-14 items-center justify-center rounded-full bg-primary/10">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10">
               <ShieldCheck className="size-7 text-primary" aria-hidden="true" />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              {t("forgotPasswordOtpTitle")}
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              {t("forgotPasswordOtpSubtitle", { email })}
-            </CardDescription>
-          </CardHeader>
+          </>
+        }
+        banner={banner}
+        footer={
+          <Link
+            href="/login"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+          >
+            ← {t("backToLogin")}
+          </Link>
+        }
+      >
+        <div className="flex flex-col items-center gap-6">
+          <OtpField
+            id="reset-otp"
+            value={otp}
+            onChange={setOtp}
+            disabled={isLoading}
+            autoFocus
+            ariaLabel={t("forgotPasswordOtpTitle")}
+            onComplete={handleVerifyOtp}
+            hint={t("otpExpiry")}
+          />
 
-          <CardContent className="flex flex-col items-center gap-6">
-            {error && (
-              <div
-                role="alert"
-                className="w-full rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
-              >
-                {error}
-              </div>
-            )}
+          <PendingButton
+            className="w-full"
+            size="lg"
+            onClick={handleVerifyOtp}
+            pending={isLoading}
+            disabled={otp.length !== 6 || isLoading}
+          >
+            {t("verifyButton")}
+          </PendingButton>
 
-            <InputOTP
-              maxLength={6}
-              pattern={REGEXP_ONLY_DIGITS}
-              value={otp}
-              onChange={setOtp}
-              disabled={isLoading}
-              aria-label="Reset password verification code"
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResend}
+            disabled={isResending || isLoading || !resend.canResend}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {!resend.canResend
+              ? tSecurity("otpResendIn", { seconds: resend.remaining })
+              : isResending
+                ? t("resendOtp") + "..."
+                : t("resendOtp")}
+          </Button>
+        </div>
+      </AuthShell>
+    );
+  }
 
-            <p className="text-xs text-muted-foreground">{t("otpExpiry")}</p>
+  // ─── STEP 3 ────────────────────────────────────────────────────────────────
+  const breachWarning =
+    breach.status === "checking"
+      ? tSecurity("breach.checking")
+      : breach.status === "breached"
+        ? tSecurity("breach.breached")
+        : null;
 
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleVerifyOtp}
-              disabled={otp.length !== 6 || isLoading}
-            >
-              {isLoading && (
-                <Loader2 className="animate-spin size-4" aria-hidden="true" />
-              )}
-              {t("verifyButton")}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleResend}
-              disabled={isResending || isLoading}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {isResending && (
-                <Loader2 className="animate-spin size-3 mr-1" aria-hidden="true" />
-              )}
-              {t("resendOtp")}
-            </Button>
-          </CardContent>
-
-          <CardFooter className="justify-center pt-0">
-            <p className="text-sm text-muted-foreground">
-              <Link
-                href="/login"
-                className="font-medium text-primary hover:underline transition-colors duration-200"
-              >
-                {t("backToLogin")}
-              </Link>
-            </p>
-          </CardFooter>
-        </>
-      )}
-
-      {/* ═══ STEP 3 — New password ══════════════════════════════════════════════ */}
-      {step === "reset" && (
+  return (
+    <AuthShell
+      title={t("resetPasswordTitle")}
+      subtitle={t("resetPasswordSubtitle")}
+      brand={
         <>
-          <CardHeader className="space-y-1 pb-4">
-            {/* Brand mark */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">H</span>
-              </div>
-              <span className="font-semibold text-foreground">HealthOS</span>
-            </div>
-            <StepIndicator current="reset" />
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <KeyRound className="size-5 text-primary" aria-hidden="true" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl font-bold text-foreground">
-                  {t("resetPasswordTitle")}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {t("resetPasswordSubtitle")}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <form onSubmit={handleResetPassword} noValidate className="space-y-4">
-              {error && (
-                <div
-                  role="alert"
-                  className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                >
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div
-                  role="status"
-                  className="rounded-md border border-green-400/30 bg-green-400/10 px-3 py-2 text-center text-sm text-green-700 dark:text-green-400"
-                >
-                  {success}
-                </div>
-              )}
-
-              {/* New password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="new-password">{t("newPassword")}</Label>
-                <div className="relative">
-                  <Input
-                    id="new-password"
-                    type={showNewPassword ? "text" : "password"}
-                    placeholder={t("newPasswordPlaceholder")}
-                    autoComplete="new-password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    disabled={isLoading || !!success}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword((v) => !v)}
-                    aria-label={showNewPassword ? t("hidePassword") : t("showPassword")}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
-                  >
-                    {showNewPassword ? (
-                      <EyeOff className="size-4" aria-hidden="true" />
-                    ) : (
-                      <Eye className="size-4" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-                {newPassword && newPassword.length < 8 && (
-                  <p className="text-xs text-destructive mt-1">{t("passwordMinLength")}</p>
-                )}
-              </div>
-
-              {/* Confirm new password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm-new-password">{t("confirmNewPassword")}</Label>
-                <div className="relative">
-                  <Input
-                    id="confirm-new-password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder={t("newPasswordPlaceholder")}
-                    autoComplete="new-password"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    required
-                    disabled={isLoading || !!success}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((v) => !v)}
-                    aria-label={showConfirmPassword ? t("hidePassword") : t("showPassword")}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="size-4" aria-hidden="true" />
-                    ) : (
-                      <Eye className="size-4" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-                {/* Inline mismatch warning */}
-                {confirmNewPassword && newPassword !== confirmNewPassword && (
-                  <p className="text-xs text-destructive mt-1">{t("passwordMismatch")}</p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                disabled={
-                  isLoading ||
-                  !!success ||
-                  !newPassword ||
-                  newPassword.length < 8 ||
-                  newPassword !== confirmNewPassword
-                }
-              >
-                {isLoading && (
-                  <Loader2 className="animate-spin size-4" aria-hidden="true" />
-                )}
-                {t("resetPasswordButton")}
-              </Button>
-            </form>
-          </CardContent>
-
-          <CardFooter className="justify-center pt-0">
-            <p className="text-sm text-muted-foreground">
-              <Link
-                href="/login"
-                className="font-medium text-primary hover:underline transition-colors duration-200"
-              >
-                {t("backToLogin")}
-              </Link>
-            </p>
-          </CardFooter>
+          <StepIndicator current="reset" />
+          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10">
+            <KeyRound className="size-6 text-primary" aria-hidden="true" />
+          </div>
         </>
-      )}
-    </Card>
+      }
+      banner={
+        done ? (
+          <AuthBanner variant="success" description={t("resetPasswordSuccess")} />
+        ) : (
+          banner
+        )
+      }
+      footer={
+        <Link
+          href="/login"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+        >
+          ← {t("backToLogin")}
+        </Link>
+      }
+    >
+      <form onSubmit={handleResetPassword} noValidate className="space-y-4">
+        <PasswordField
+          id="new-password"
+          label={t("newPassword")}
+          placeholder={t("newPasswordPlaceholder")}
+          autoComplete="new-password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          required
+          requiredMark
+          disabled={isLoading || done}
+          error={
+            newPassword && newPassword.length < 8 ? t("passwordMinLength") : null
+          }
+          renderBelow={(val) => (
+            <>
+              <PasswordStrengthMeter password={val} />
+              {breachWarning && (
+                <p
+                  className={`mt-1 text-xs ${
+                    breach.status === "breached"
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  }`}
+                  role={breach.status === "breached" ? "alert" : undefined}
+                >
+                  {breachWarning}
+                </p>
+              )}
+            </>
+          )}
+        />
+
+        <PasswordField
+          id="confirm-new-password"
+          label={t("confirmNewPassword")}
+          placeholder={t("newPasswordPlaceholder")}
+          autoComplete="new-password"
+          value={confirmNewPassword}
+          onChange={(e) => setConfirmNewPassword(e.target.value)}
+          required
+          requiredMark
+          disabled={isLoading || done}
+          error={
+            confirmNewPassword && newPassword !== confirmNewPassword
+              ? t("passwordMismatch")
+              : null
+          }
+        />
+
+        {breach.isBreached && (
+          <FormFieldError
+            id="breach-warning"
+            message={tSecurity("breach.breached")}
+          />
+        )}
+
+        <PendingButton
+          type="submit"
+          className="w-full"
+          size="lg"
+          pending={isLoading}
+          disabled={
+            isLoading ||
+            done ||
+            !newPassword ||
+            newPassword.length < 8 ||
+            newPassword !== confirmNewPassword
+          }
+        >
+          {t("resetPasswordButton")}
+        </PendingButton>
+      </form>
+    </AuthShell>
   );
 }

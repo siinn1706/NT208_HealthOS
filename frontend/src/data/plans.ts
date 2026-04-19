@@ -35,6 +35,7 @@ export const plans: Plan[] = [
     name: { vi: "Cơ bản", en: "Basic" },
     price: 99000,
     popular: true,
+    recommended: true,
     description: {
       vi: "Đủ mạnh cho nhu cầu theo dõi sức khỏe cá nhân toàn diện với AI Meal Scan.",
       en: "Powerful enough for comprehensive personal health monitoring with AI Meal Scan.",
