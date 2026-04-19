@@ -458,7 +458,7 @@ export function KitchensinkClient() {
         <Section
           id="atmosphere"
           title="AtmosphereGlow · AtmosphereGrid"
-          description="Decorative ambient layers for hero sections. AtmosphereGlow renders a radial bloom; AtmosphereGrid overlays a subtle 48px line grid."
+          description='Decorative ambient layers for hero sections. AtmosphereGlow renders a radial bloom; AtmosphereGrid overlays a subtle 48px line grid (default) or a 24px dotted grid (variant="dots").'
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -483,6 +483,18 @@ export function KitchensinkClient() {
               <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid — light surface</p>
               <div className="relative h-32 overflow-hidden rounded-xl bg-card border border-border">
                 <AtmosphereGrid />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid — dots, dark surface</p>
+              <div className="relative h-32 overflow-hidden rounded-xl bg-gradient-to-br from-night-900 via-night-800 to-night-900">
+                <AtmosphereGrid variant="dots" tone="dark" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid — dots, light surface</p>
+              <div className="relative h-32 overflow-hidden rounded-xl border border-border bg-card">
+                <AtmosphereGrid variant="dots" tone="light" />
               </div>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { ArticleCard } from "@/components/shared/ArticleCard";
 import { Section } from "@/components/shared/Section";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { StickyFilterBar, type FilterPill } from "@/components/shared/StickyFilterBar";
+import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
 import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
 import { articles, articleCategories } from "@/data/articles";
 import { pickLocale } from "@/types";
@@ -79,6 +80,7 @@ export default function ArticlesPage() {
           contained={false}
           aria-labelledby="articles-featured-title"
         >
+          <AtmosphereGrid variant="dots" tone="dark" />
           <AtmosphereGlow variant="soft" static />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8">
