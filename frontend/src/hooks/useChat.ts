@@ -618,6 +618,55 @@ export function useMessages(
     });
   }, []);
 
+  /**
+   * Promote a `failed` (network-error) message to `queued`, signalling that
+   * the outbound queue has taken ownership of redelivery. Caller is expected
+   * to also persist the item in IndexedDB via `useOutboundQueue.enqueue`.
+   * No-op if the message no longer exists or isn't in a recoverable state.
+   */
+  const markMessageQueued = useCallback((messageId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        if (m.status !== "failed" && m.status !== "sending") return m;
+        return { ...m, status: "queued" as const, error_code: undefined };
+      })
+    );
+  }, []);
+
+  /**
+   * Synthesise an optimistic `queued` message without firing a network call —
+   * used when the user composes while offline. The caller still owns persisting
+   * the payload to IndexedDB via `useOutboundQueue.enqueue`.
+   */
+  const enqueueOptimisticMessage = useCallback(
+    (convId: string, content: string, replyToId?: string): Message | null => {
+      if (!currentUserId) return null;
+      const optimisticId = `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+      const optimistic: Message = {
+        id: optimisticId,
+        conversation_id: convId,
+        sender_id: currentUserId,
+        sender_display_name: undefined,
+        sender_kind: "user",
+        content,
+        type: "text",
+        status: "queued",
+        reply_to: replyToId
+          ? { id: replyToId, content: "", sender_id: "", type: "text" }
+          : undefined,
+        reactions: [],
+        is_edited: false,
+        is_recalled: false,
+        is_pinned: false,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, optimistic]);
+      return optimistic;
+    },
+    [currentUserId]
+  );
+
   const editMessage = useCallback(async (convId: string, messageId: string, content: string) => {
     // Capture state for rollback before applying optimistic update
     let prevMessages: Message[] | null = null;
@@ -774,6 +823,8 @@ export function useMessages(
     sendMessage,
     retryMessage,
     discardMessage,
+    markMessageQueued,
+    enqueueOptimisticMessage,
     editMessage,
     recallMessage,
     deleteMessage,

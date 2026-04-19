@@ -16,8 +16,9 @@ function isProtected(pathname: string): boolean {
 }
 
 /**
- * Read onboarding status from the non-httpOnly meta cookie set by BFF on login.
+ * Read onboarding status from the httpOnly meta cookie set by BFF on login.
  * Avoids a round-trip fetch to /api/v1/auth/session on every proxy invocation.
+ * The (app) layout still revalidates against Core BE for defence-in-depth.
  */
 function getOnboardingStatus(req: NextRequest): string {
   const raw = req.cookies.get(META_COOKIE_NAME)?.value;
@@ -71,11 +72,14 @@ export default function proxy(req: NextRequest): NextResponse {
   return intlMiddleware(req);
 }
 
+// Next.js requires every entry in `config.matcher` to be a statically-analyzable
+// string literal (no variables, template expressions, or function calls — see
+// https://nextjs.org/docs/app/api-reference/file-conventions/middleware#matcher).
+// The locale alternation below MUST stay in sync with `routing.locales` in
+// `src/i18n/routing.ts`. If you add or remove a locale, update both spots.
 export const config = {
   matcher: [
     "/",
-    // IMPORTANT: keep in sync with routing.locales in src/i18n/routing.ts
-    // The matcher cannot use runtime values, so it must be updated manually when locales change.
     "/(vi|en)/:path*",
     "/((?!_next|_vercel|api|.*\\..*).*)",
   ],

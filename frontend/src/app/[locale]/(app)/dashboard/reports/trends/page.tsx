@@ -12,6 +12,7 @@ import { TrendAiSummary } from "@/components/dashboard/reports/trends/TrendAiSum
 import { MetricComparePanel } from "@/components/dashboard/reports/trends/MetricComparePanel";
 import { TrendExportBar } from "@/components/dashboard/reports/trends/TrendExportBar";
 import type { ReportPeriod } from "@/types/api";
+import { PageHeader } from "@/components/shared/page";
 
 const COMPARE_METRICS = ["heart_rate", "steps", "sleep", "bmi", "calories", "weight", "blood_pressure"];
 
@@ -38,30 +39,27 @@ export default async function TrendsPage(props: TrendsPageProps) {
   ]);
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Link href="/dashboard" className="hover:text-foreground transition-colors flex items-center gap-1">
-          <Home className="h-3 w-3" aria-hidden />
-          Dashboard
-        </Link>
-        <ChevronRight className="h-3 w-3" aria-hidden />
-        <Link href="/dashboard/reports" className="hover:text-foreground transition-colors">
-          {t("title").replace("Phân tích xu hướng", "Báo cáo")}
-        </Link>
-        <ChevronRight className="h-3 w-3" aria-hidden />
-        <span className="text-foreground font-medium">{t("title")}</span>
-      </nav>
-
-      {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("subtitle")}</p>
-        </div>
-        <TrendExportBar analysis={analysis} />
-      </div>
-
+    <>
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        breadcrumbs={
+          <nav aria-label={t("breadcrumb.ariaLabel")} className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Link href="/dashboard" className="rounded-sm hover:text-foreground transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Home className="h-3 w-3" aria-hidden />
+              {t("breadcrumb.root")}
+            </Link>
+            <ChevronRight className="h-3 w-3" aria-hidden />
+            <Link href="/dashboard/reports" className="hover:text-foreground transition-colors">
+              {t("breadcrumb.parent")}
+            </Link>
+            <ChevronRight className="h-3 w-3" aria-hidden />
+            <span className="text-foreground font-medium">{t("title")}</span>
+          </nav>
+        }
+        primaryAction={<TrendExportBar analysis={analysis} />}
+      />
+      <div className="space-y-6 px-4 py-5 sm:px-6 lg:px-8">
       {/* Metric + Period selector */}
       <Suspense fallback={<Skeleton className="h-10 rounded-md" />}>
         <TrendMetricSelector metric={metric} period={period} />
@@ -90,10 +88,13 @@ export default async function TrendsPage(props: TrendsPageProps) {
           </Suspense>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
-export async function generateMetadata() {
-  return { title: "Phân tích xu hướng — HealthOS" };
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
+  const { locale } = await props.params;
+  const t = await getTranslations({ locale, namespace: "trends" });
+  return { title: `${t("title")} — HealthOS` };
 }

@@ -57,7 +57,7 @@ export function TrustStrip({ items, tone = "card", className }: TrustStripProps)
             <span
               className={cn(
                 "text-xs sm:text-sm",
-                tone === "dark" ? "text-night-100/70" : "text-muted-foreground"
+                tone === "dark" ? "text-night-100/80" : "text-muted-foreground"
               )}
             >
               {item.label}

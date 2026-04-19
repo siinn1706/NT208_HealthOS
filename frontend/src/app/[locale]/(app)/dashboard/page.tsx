@@ -9,6 +9,7 @@ import { UpcomingRemindersWidget } from "@/components/dashboard/widgets/Upcoming
 import { GoalProgressWidget } from "@/components/dashboard/widgets/GoalProgressWidget";
 import { AiInsightWidget } from "@/components/dashboard/widgets/AiInsightWidget";
 import { WeeklyCalorieChartWidget } from "@/components/dashboard/widgets/WeeklyCalorieChartWidget";
+import { PageHeader } from "@/components/shared/page";
 
 import {
   getDashboardSummary,
@@ -51,17 +52,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     hour < 12 ? "greeting" : hour < 18 ? "greetingAfternoon" : "greetingEvening";
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
-      {/* Page header */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground">
-          {t(greetingKey as Parameters<typeof t>[0])}, {summary.userName}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {t("overview")}
-        </p>
-      </div>
-
+    <>
+      <PageHeader
+        title={`${t(greetingKey as Parameters<typeof t>[0])}, ${summary.userName}`}
+        description={t("overview")}
+      />
+      <div className="max-w-[1400px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
       {/* ── Row 0: Alert Banner (full-width, conditional) ── */}
       {summary.alerts.length > 0 && (
         <AlertBannerWidget alerts={summary.alerts} />
@@ -96,6 +92,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <GoalProgressWidget goals={summary.goals} />
         <AiInsightWidget insight={summary.aiInsight} />
       </div>
-    </div>
+      </div>
+    </>
   );
 }

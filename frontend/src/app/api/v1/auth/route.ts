@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
       response.cookies.set(
         META_COOKIE_NAME,
         JSON.stringify({ onboarding_status: "completed" }),
-        { httpOnly: false, secure: false, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+        { httpOnly: true, secure: false, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
       );
       return response;
     }
@@ -248,11 +248,11 @@ export async function POST(req: NextRequest) {
       path: "/",
     });
 
-    // Non-httpOnly meta cookie for middleware onboarding gate (no sensitive data)
+    // httpOnly meta cookie consumed only by src/proxy.ts for the onboarding gate.
     response.cookies.set(
       META_COOKIE_NAME,
       JSON.stringify({ onboarding_status: data.data.onboarding_status ?? "pending" }),
-      { httpOnly: false, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+      { httpOnly: true, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
     );
 
     return response;

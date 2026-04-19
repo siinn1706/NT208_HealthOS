@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest) {
     const onboardingStatus = (payload as { data: { onboarding_status: string } }).data
       .onboarding_status;
     response.cookies.set(META_COOKIE_NAME, JSON.stringify({ onboarding_status: onboardingStatus }), {
-      httpOnly: false,
+      httpOnly: true,
       secure: SESSION_COOKIE_SECURE,
       sameSite: "lax",
       maxAge: SESSION_COOKIE_MAX_AGE,

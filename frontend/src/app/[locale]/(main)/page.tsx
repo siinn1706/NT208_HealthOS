@@ -2,7 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/navigation";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AnimatedIllustration } from "@/components/shared/AnimatedIllustration";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,10 @@ import { articles, articleCategories } from "@/data/articles";
 import { stats } from "@/data/stats";
 import { pickLocale } from "@/types";
 import type { Locale } from "@/types";
-import { LeftDecoration, RightDecoration } from "@/components/shared/Decorations";
 import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
 import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
 import { Reveal } from "@/components/shared/Reveal";
+import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   const t = useTranslations("home");
@@ -35,16 +35,39 @@ export default function HomePage() {
   // Show 3 latest articles
   const previewArticles = articles.slice(0, 3);
 
+  // Testimonials scroll tracking (snap dots)
+  const testimonialScrollRef = useRef<HTMLDivElement>(null);
+  const testimonialItemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [activeTestimonialIdx, setActiveTestimonialIdx] = useState(0);
+
+  useEffect(() => {
+    const container = testimonialScrollRef.current;
+    if (!container) return;
+    const items = testimonialItemRefs.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const idx = items.findIndex((r) => r === entry.target);
+            if (idx !== -1) setActiveTestimonialIdx(idx);
+          }
+        }
+      },
+      { root: container, threshold: 0.5 },
+    );
+    items.forEach((el) => { if (el) observer.observe(el); });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="pt-16 md:pt-20">
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-night-900 via-night-800 to-night-900 py-20 md:py-28">
         <AtmosphereGrid />
-        <AtmosphereGlow />
-        {/* Nebula blobs (kept: warm top-right + cool bottom-left; mid-plane blobs replaced by mesh-glow) */}
-        <div className="absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full bg-warm-peach/15 blur-[120px]" />
-        <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-night-400/20 blur-[100px]" />
+        <AtmosphereGlow variant="soft" />
+        {/* Single warm nebula blob — cool bottom-left orb removed for calmer tone */}
+        <div className="absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full bg-warm-peach/12 blur-[90px]" />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
@@ -62,7 +85,11 @@ export default function HomePage() {
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link href="/plans">
-                  <Button size="lg" className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-lg shadow-night-400/20 transition-all hover:scale-105 hover:shadow-night-400/40 hover:brightness-110">
+                  <Button
+                    size="lg"
+                    data-event="home-hero-cta-click"
+                    className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-lg shadow-night-400/20 transition-all hover:scale-105 hover:shadow-night-400/40 hover:brightness-110"
+                  >
                     {t("hero.cta")} <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
@@ -86,14 +113,21 @@ export default function HomePage() {
                 floatVariant="normal"
                 className="drop-shadow-[0_20px_60px_rgba(65,188,230,0.25)]"
               />
-              {/* floating badge */}
-              <div className="absolute -bottom-4 -left-4 rounded-2xl border border-night-500/30 bg-night-900/90 p-4 shadow-xl shadow-night-400/10 backdrop-blur-md">
+              {/* floating badge — sample illustration only, NOT a real metric */}
+              <div
+                className="absolute -bottom-4 -left-4 rounded-2xl border border-night-500/30 bg-night-900/90 p-4 shadow-xl shadow-night-400/10 backdrop-blur-md"
+                role="img"
+                aria-label={t("hero.floatingScoreAriaLabel")}
+              >
                 <p className="text-xs font-semibold bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent">{t("hero.floatingBrand")}</p>
-                <p className="text-xs text-night-100/60">{t("hero.floatingStatus")}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-2xl font-bold text-white">92</span>
-                  <span className="text-xs text-night-100/60">{t("hero.floatingScoreLabel")}</span>
+                <p className="text-xs text-night-100/80">{t("hero.floatingStatus")}</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-white" aria-hidden="true">92</span>
+                  <span className="text-xs text-night-100/80">{t("hero.floatingScoreLabel")}</span>
                 </div>
+                <p className="mt-1 text-[10px] uppercase tracking-wider text-night-100/50">
+                  {t("hero.floatingScoreSample")}
+                </p>
               </div>
             </div>
           </div>
@@ -116,7 +150,6 @@ export default function HomePage() {
 
       {/* ── ABOUT PREVIEW ────────────────────────────────────── */}
       <section className="relative overflow-hidden py-20">
-        <LeftDecoration className="top-8 hidden lg:block" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             {/* Robot: lazy-loaded below-the-fold, centred with float */}
@@ -153,7 +186,6 @@ export default function HomePage() {
 
       {/* ── FEATURES ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-card py-20">
-        <RightDecoration className="top-12 hidden lg:block" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
             <Badge className="mb-3 border-0 bg-gradient-to-r from-warm-rose/80 to-warm-peach/80 text-night-900 font-semibold shadow-sm shadow-warm-rose/20 hover:from-warm-rose/90 hover:to-warm-peach/90">
@@ -197,7 +229,6 @@ export default function HomePage() {
 
       {/* ── PLANS PREVIEW ───────────────────────────────────── */}
       <section className="relative overflow-hidden py-20">
-        <RightDecoration className="top-10 hidden lg:block" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
             <Badge className="mb-3 border-0 bg-gradient-to-r from-night-700/20 to-night-400/20 text-night-700 dark:text-night-300 font-semibold hover:from-night-700/30 hover:to-night-400/30">
@@ -225,7 +256,6 @@ export default function HomePage() {
 
       {/* ── TESTIMONIALS ─────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-card py-20">
-        <LeftDecoration className="top-8 hidden lg:block" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center">
             <Badge className="mb-3 border-0 bg-gradient-to-r from-warm-peach/70 to-warm-gold/70 text-night-900 font-semibold hover:from-warm-peach/90 hover:to-warm-gold/90">
@@ -233,9 +263,54 @@ export default function HomePage() {
             </Badge>
             <h2 className="text-3xl font-extrabold text-foreground">{t("testimonials.title")}</h2>
           </div>
-          <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-none">
-            {testimonials.map((t) => (
-              <TestimonialCard key={t.id} testimonial={t} />
+          {/* Scroll container with snap + relative wrapper for the fade overlay */}
+          <div className="relative">
+            <div
+              ref={testimonialScrollRef}
+              className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory"
+            >
+              {testimonials.map((testimonial, idx) => (
+                <div
+                  key={testimonial.id}
+                  ref={(el) => { testimonialItemRefs.current[idx] = el; }}
+                  className="snap-start"
+                >
+                  <TestimonialCard testimonial={testimonial} />
+                </div>
+              ))}
+            </div>
+            {/* Right-edge peek affordance — hints at more content */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent"
+            />
+          </div>
+          {/* Scroll indicator dots */}
+          <div
+            className="mt-4 flex justify-center gap-2"
+            role="group"
+            aria-label={t("testimonials.scrollIndicator")}
+          >
+            {testimonials.map((testimonial, idx) => (
+              <button
+                key={testimonial.id}
+                type="button"
+                aria-label={`${t("testimonials.goTo")} ${idx + 1}`}
+                aria-current={activeTestimonialIdx === idx ? "true" : undefined}
+                onClick={() => {
+                  testimonialItemRefs.current[idx]?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest",
+                    inline: "center",
+                  });
+                }}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  activeTestimonialIdx === idx
+                    ? "w-6 bg-foreground"
+                    : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60",
+                )}
+              />
             ))}
           </div>
         </div>
@@ -243,7 +318,6 @@ export default function HomePage() {
 
       {/* ── ARTICLES PREVIEW ─────────────────────────────────── */}
       <section className="relative overflow-hidden py-20">
-        <LeftDecoration className="top-8 hidden lg:block" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-center justify-between">
             <div>

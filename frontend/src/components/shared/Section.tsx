@@ -1,84 +1,93 @@
 import { cn } from "@/lib/utils";
 
-type SectionTone = "default" | "muted" | "dark" | "transparent";
+type SectionTone = "default" | "muted" | "dark";
 type SectionPadding = "none" | "sm" | "md" | "lg";
+type SectionOverflow = "hidden" | "visible";
 
 interface SectionProps extends React.HTMLAttributes<HTMLElement> {
-  /** Visual background tone for the section. */
-  tone?: SectionTone;
-  /** Vertical padding step. */
-  padding?: SectionPadding;
-  /** Constrain inner content with `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8`. */
-  contained?: boolean;
-  /** Render as `<div>` instead of `<section>`. */
-  asDiv?: boolean;
   /**
-   * Defaults to `"hidden"` so atmosphere primitives can clip safely; set to
-   * `"visible"` for sections without atmosphere so focus rings on inner CTAs
-   * aren't clipped.
+   * Background tone:
+   * - `default` → `bg-background`
+   * - `muted`   → `bg-card` (alternating beat for content sections)
+   * - `dark`    → `bg-gradient-to-br from-night-900 via-night-800 to-night-900` + white text
    */
-  overflow?: "hidden" | "visible";
-  children: React.ReactNode;
+  tone?: SectionTone;
+  /**
+   * Vertical padding:
+   * - `none` → no padding
+   * - `sm`   → `py-10 md:py-14`
+   * - `md`   → `py-16 md:py-24`
+   * - `lg`   → `py-20 md:py-28` (hero rhythm)
+   */
+  padding?: SectionPadding;
+  /**
+   * When true (default), wraps children in a `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` container.
+   * Set to false when the caller renders its own constrained inner container
+   * (e.g. heroes that need a `relative` wrapper around atmosphere layers + content).
+   */
+  contained?: boolean;
+  /**
+   * Section-level overflow control. Defaults to `hidden` so atmosphere blobs/glows
+   * do not bleed past the section edge. Set to `visible` for sections containing
+   * sticky children whose ancestors must not clip them.
+   */
+  overflow?: SectionOverflow;
+  /**
+   * Optional override for the inner container className.
+   * Has no effect when `contained={false}`.
+   */
+  containerClassName?: string;
 }
 
-const toneClass: Record<SectionTone, string> = {
-  default: "bg-background",
-  muted:
-    "bg-gradient-to-b from-background via-night-100/10 to-background dark:from-background dark:via-night-900/40 dark:to-background",
-  dark: "bg-gradient-to-br from-night-900 via-night-800 to-night-900 text-white",
-  transparent: "",
-};
-
-const paddingClass: Record<SectionPadding, string> = {
+const PADDING_MAP: Record<SectionPadding, string> = {
   none: "",
-  sm: "py-12 md:py-16",
-  md: "py-16 md:py-20",
+  sm: "py-10 md:py-14",
+  md: "py-16 md:py-24",
   lg: "py-20 md:py-28",
 };
 
 /**
- * Shared marketing-page section shell.
+ * Single source of truth for public-page section width, padding, and tone.
  *
- * Centralizes vertical rhythm + tone so home/about/services/plans/articles
- * share identical spacing without each page reinventing classnames.
- *
- * - `tone`: switches background palette (default/muted/dark/transparent)
- * - `padding`: vertical rhythm step
- * - `contained`: wraps children in the standard 7xl content container
- *
- * Atmosphere primitives (AtmosphereGrid/Glow) and Decorations should be
- * placed as direct children when needed; this component reserves
- * `relative overflow-hidden` so they can absolute-position freely.
+ * Always renders `relative` so callers can absolutely position decorative
+ * children. Defaults to `overflow-hidden` to contain atmosphere/glow layers.
  */
 export function Section({
   tone = "default",
   padding = "md",
   contained = true,
-  asDiv = false,
   overflow = "hidden",
   className,
+  containerClassName,
   children,
   ...rest
 }: SectionProps) {
-  const Tag = asDiv ? "div" : "section";
   return (
-    <Tag
+    <section
       className={cn(
         "relative",
-        overflow === "hidden" ? "overflow-hidden" : "overflow-visible",
-        toneClass[tone],
-        paddingClass[padding],
+        overflow === "hidden" && "overflow-hidden",
+        PADDING_MAP[padding],
+        tone === "default" && "bg-background",
+        tone === "muted" && "bg-card",
+        tone === "dark" &&
+          "bg-gradient-to-br from-night-900 via-night-800 to-night-900 text-white",
         className
       )}
       {...rest}
     >
       {contained ? (
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div
+          className={cn(
+            "relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8",
+            containerClassName
+          )}
+        >
           {children}
         </div>
       ) : (
         children
       )}
-    </Tag>
+    </section>
   );
 }

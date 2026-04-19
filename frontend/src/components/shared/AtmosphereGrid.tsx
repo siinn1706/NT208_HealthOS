@@ -5,12 +5,13 @@ interface AtmosphereGridProps {
 }
 
 /**
- * Subtle 1px grid backdrop for dark hero sections.
- * Two stacked linear-gradients form a 48px grid; a radial mask fades
- * the edges so only the middle third reads as "blueprint" texture.
+ * Subtle 1px line grid layered behind hero content.
+ * - 48px cell size, white at ~4% opacity
+ * - Radial mask fades grid toward edges so it dissolves behind copy
+ * - Hidden below `sm` to keep mobile perf high
+ * - Decorative only (aria-hidden, pointer-events-none)
  *
- * Design contract: opacity ≤ 4%, hidden below `sm` to keep mobile
- * perceived perf high. Pure CSS, no JS, no SVG, no new deps.
+ * Designed to be the first child of a `relative overflow-hidden` hero `<section>`.
  */
 export function AtmosphereGrid({ className }: AtmosphereGridProps) {
   return (
@@ -18,15 +19,15 @@ export function AtmosphereGrid({ className }: AtmosphereGridProps) {
       aria-hidden="true"
       className={cn(
         "pointer-events-none absolute inset-0 hidden sm:block",
+        // Light mode: dark grid lines (visible on white/light surfaces)
+        "[background-image:linear-gradient(to_right,rgba(0,0,0,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.06)_1px,transparent_1px)]",
+        // Dark mode: white grid lines (visible on dark surfaces)
+        "dark:[background-image:linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)]",
+        "[background-size:48px_48px]",
         "[mask-image:radial-gradient(ellipse_at_50%_30%,black_0%,transparent_70%)]",
         "[-webkit-mask-image:radial-gradient(ellipse_at_50%_30%,black_0%,transparent_70%)]",
         className
       )}
-      style={{
-        backgroundImage:
-          "linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)",
-        backgroundSize: "48px 48px",
-      }}
     />
   );
 }

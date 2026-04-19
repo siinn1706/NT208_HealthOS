@@ -262,7 +262,14 @@ export interface ConnectedDevice {
 
 // ─── Appointments ────────────────────────────────────────────────────
 
-export type AppointmentStatus = "completed" | "upcoming" | "cancelled";
+export type AppointmentStatus =
+  | "scheduled"
+  | "upcoming"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "no_show"
+  | "rescheduled";
 
 export interface PrescriptionMedicine {
   name: string;

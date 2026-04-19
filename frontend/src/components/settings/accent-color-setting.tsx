@@ -4,9 +4,10 @@ import { useState, useCallback } from "react";
 import BlossomColorPicker, { hexToHsl } from "@dayflow/blossom-color-picker-react";
 import type { BlossomColorPickerColor, BlossomColorPickerValue } from "@dayflow/blossom-color-picker-react";
 import { useTranslations } from "next-intl";
-import { RotateCcw, Save } from "lucide-react";
+import { AlertTriangle, RotateCcw, Save } from "lucide-react";
 import { useAccentColor } from "@/components/providers/accent-color-provider";
 import { AccentPreviewCard } from "./accent-preview-card";
+import { getContrastRatio } from "@/lib/accent-utils";
 import { cn } from "@/lib/utils";
 
 // The original shipped default (light-mode base hue).
@@ -49,6 +50,12 @@ export function AccentColorSetting() {
   // Dirty: user has a pending pick or a pending reset that differs from what's saved.
   const isDirty = (pendingColor !== null || forceHex !== null)
     && displayHex.toUpperCase() !== savedHex;
+
+  // Contrast check against typical light (#FFFFFF) and dark (#0B0F14) backgrounds.
+  // Warn if the chosen accent would be hard to read in either context.
+  const contrastOnLight = getContrastRatio(displayHex, "#FFFFFF");
+  const contrastOnDark  = getContrastRatio(displayHex, "#0B0F14");
+  const hasLowContrast  = contrastOnLight < 4.5 || contrastOnDark < 4.5;
 
   /** One-click reset clears DB + localStorage when user has a custom saved accent or non-default UI state. */
   const canReset =
@@ -141,6 +148,14 @@ export function AccentColorSetting() {
         </div>
       </div>
 
+      {/* Low-contrast warning chip */}
+      {hasLowContrast && (
+        <div className="flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs text-warning">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+          {t("accentLowContrast")}
+        </div>
+      )}
+
       {/* Action bar — save, reset, and feedback */}
       {showActionBar && (
         <div className="flex items-center gap-2">
@@ -162,7 +177,7 @@ export function AccentColorSetting() {
             </button>
           )}
           {!isDirty && saveStatus === "saved" && (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-green-500/15 text-green-600 dark:text-green-400">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-success/10 text-success">
               <Save className="w-3.5 h-3.5" />
               {t("accentSaved")}
             </span>

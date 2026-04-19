@@ -14,6 +14,11 @@ interface RecentReportsListProps {
 export async function RecentReportsList({ locale }: RecentReportsListProps) {
   const t = await getTranslations("reports");
   const reports = await listRecentReports();
+  const periodLabels = {
+    "7d": t("period7d"),
+    "30d": t("period30d"),
+    "90d": t("period90d"),
+  };
 
   if (reports.length === 0) {
     return (
@@ -40,19 +45,19 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">
-                Báo cáo {formatPeriodLabel(report.period)}
+                {t("reportFor", { period: formatPeriodLabel(report.period, periodLabels) })}
               </span>
               <Badge
                 variant={statusBadgeVariant(report.status as HealthStatus)}
                 className="text-[10px] px-1.5 py-0 shrink-0"
               >
                 {report.alert_count > 0
-                  ? `${report.alert_count} cảnh báo`
+                  ? t("alertsCount", { count: report.alert_count })
                   : t("statusNormal")}
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              {formatReportDate(report.generated_at)}
+              {formatReportDate(report.generated_at, locale)}
             </p>
           </div>
 
@@ -62,7 +67,7 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              aria-label="Tải xuống PDF"
+              aria-label={t("downloadPdfAria")}
             >
               <Download className="h-3.5 w-3.5" aria-hidden />
             </Button>
@@ -70,13 +75,13 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              aria-label="Chia sẻ báo cáo"
+              aria-label={t("shareReportAria")}
             >
               <Share2 className="h-3.5 w-3.5" aria-hidden />
             </Button>
             <Link
               href={`/${locale}/dashboard/reports?period=${report.period}`}
-              aria-label="Xem báo cáo"
+              aria-label={t("viewReportAria")}
             >
               <Button variant="ghost" size="icon" className="h-7 w-7">
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden />

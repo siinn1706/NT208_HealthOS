@@ -36,6 +36,8 @@ export function ServiceCard({ service }: ServiceCardProps) {
         </p>
         <Link
           href={service.ctaLink}
+          data-event="service-cta-click"
+          data-event-service-id={service.id}
           className="mt-auto inline-flex items-center text-sm font-semibold bg-gradient-to-r from-night-700 to-night-400 bg-clip-text text-transparent transition-opacity duration-150 ease-out hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-night-400 focus-visible:ring-offset-2 rounded-sm"
         >
           {cta}

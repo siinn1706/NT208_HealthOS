@@ -203,12 +203,27 @@ export default function PlansPage() {
           placeholder: t("searchPlaceholder"),
           ariaLabel: t("searchPlaceholder"),
         }}
+        resultSummary={t("resultCount", { count: filtered.length })}
       />
 
       {/* ── PLAN GRID ───────────────────────────────────────── */}
       <Section tone="default" padding="md" aria-label={t("title")}>
         {filtered.length === 0 ? (
-          <p className="py-20 text-center text-muted-foreground">{t("noResults")}</p>
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <p className="text-muted-foreground">{t("noResults")}</p>
+            {(activeCategory !== "all" || search.length > 0) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCategory("all");
+                  setSearch("");
+                }}
+                className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-night-700 transition-colors hover:border-night-400 hover:text-night-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-night-400 focus-visible:ring-offset-2 dark:text-night-300"
+              >
+                {t("clearFilters")}
+              </button>
+            )}
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {filtered.map((plan) => (
@@ -268,6 +283,7 @@ export default function PlansPage() {
       {/* ── PLAN-SCOPED FAQ ─────────────────────────────────── */}
       {planFaqs.length > 0 && (
         <Section
+          id="faq"
           tone="muted"
           padding="md"
           overflow="visible"

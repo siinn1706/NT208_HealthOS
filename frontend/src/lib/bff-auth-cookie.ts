@@ -1,7 +1,13 @@
 const DEFAULT_COOKIE_NAME = "healthos.session";
 const DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-/** Non-httpOnly companion cookie carrying non-sensitive session metadata (onboarding_status). */
+/**
+ * httpOnly companion cookie carrying non-sensitive session metadata
+ * (`onboarding_status`). It is httpOnly so it can't be tampered with from JS;
+ * the only consumer is `src/proxy.ts`, which runs server-side and reads
+ * httpOnly cookies just fine. Using a separate cookie keeps the session token
+ * unchanged when only the onboarding status flips.
+ */
 export const META_COOKIE_NAME = "healthos.meta";
 
 function parsePositiveInt(value: string | undefined): number | null {

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { pickLocale } from "@/types";
 import type { Plan, Locale } from "@/types";
+import { Link } from "@/navigation";
 
 interface PlanCardProps {
   plan: Plan;
@@ -36,7 +37,7 @@ export function PlanCard({ plan }: PlanCardProps) {
       className={`relative flex flex-col rounded-2xl border transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-1 ${
         isPromoted
           ? "border-night-400/60 bg-gradient-to-b from-night-700/5 to-night-400/5 shadow-lg shadow-night-400/10 ring-1 ring-night-400/30"
-          : "border-border/50 bg-card shadow-sm hover:shadow-md hover:shadow-night-400/10 hover:border-night-400/30"
+          : "border-border/60 bg-card shadow-sm hover:shadow-md hover:shadow-night-400/10 hover:border-night-400/40"
       }`}
     >
       {isPromoted && (
@@ -86,6 +87,10 @@ export function PlanCard({ plan }: PlanCardProps) {
 
         {/* CTA */}
         <Button
+          asChild
+          data-event="plan-cta-click"
+          data-event-plan-id={plan.id}
+          data-event-plan-recommended={isRecommended ? "true" : "false"}
           className={`w-full rounded-full font-semibold transition-[background-color,color,border-color,filter,box-shadow] duration-150 ease-out ${
             isPromoted
               ? "bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-md shadow-night-400/20 hover:brightness-110 hover:shadow-night-400/40"
@@ -93,7 +98,9 @@ export function PlanCard({ plan }: PlanCardProps) {
           }`}
           variant={isPromoted ? "default" : "outline"}
         >
-          {isFree ? t("ctaFree") : t("cta")}
+          <Link href={`/plans?plan=${plan.id}`}>
+            {isFree ? t("ctaFree") : t("cta")}
+          </Link>
         </Button>
       </CardContent>
     </Card>

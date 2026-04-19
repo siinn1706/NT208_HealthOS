@@ -13,7 +13,7 @@ import { articles, articleCategories } from "@/data/articles";
 import { pickLocale } from "@/types";
 import type { Locale } from "@/types";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 9;
 
 export default function ArticlesPage() {
   const t = useTranslations("articles");
@@ -79,9 +79,7 @@ export default function ArticlesPage() {
           contained={false}
           aria-labelledby="articles-featured-title"
         >
-          <AtmosphereGlow variant="soft" />
-          <div className="absolute -top-16 -right-16 h-64 w-64 rounded-full bg-night-400/15 blur-[100px]" />
-          <div className="absolute -bottom-12 -left-12 h-52 w-52 rounded-full bg-warm-rose/10 blur-[80px]" />
+          <AtmosphereGlow variant="soft" static />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8">
               <Badge className="mb-3 border-0 bg-gradient-to-r from-warm-rose/80 to-warm-peach/80 text-night-900 font-bold shadow-sm shadow-warm-rose/20 hover:brightness-105">

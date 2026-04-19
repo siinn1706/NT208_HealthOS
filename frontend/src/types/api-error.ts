@@ -71,36 +71,56 @@ export const ErrorCodes = {
 export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
 
 /**
- * Parse API error response
+ * Optional translator for fallback / unknown-error copy. When provided, keys
+ * resolve under the `errors.*` namespace (see `messages/{en,vi}.json`).
+ *
+ * We keep `parseApiError` callable without `t` because it can run inside
+ * pure Server Components / utilities where a translator isn't ergonomic;
+ * in that case the Vietnamese fallback strings are the safe default for
+ * the primary locale.
  */
-export function parseApiError(response: unknown): ApiError {
+export type ErrorTranslator = (key: string) => string;
+
+function fallbackUnknown(t?: ErrorTranslator): string {
+  return t ? t("errors.unknown") : "Đã xảy ra lỗi không xác định";
+}
+
+function fallbackGeneric(t?: ErrorTranslator): string {
+  return t ? t("errors.generic") : "Đã xảy ra lỗi";
+}
+
+/**
+ * Parse API error response.
+ *
+ * @param t - Optional translator. When provided, fallback strings come from
+ *   the `errors.*` namespace instead of the hardcoded Vietnamese defaults.
+ */
+export function parseApiError(response: unknown, t?: ErrorTranslator): ApiError {
   if (!response || typeof response !== "object") {
     return {
       code: ErrorCodes.UNKNOWN_ERROR,
-      message: "Đã xảy ra lỗi không xác định",
+      message: fallbackUnknown(t),
     };
   }
 
   const data = response as Record<string, unknown>;
 
-  // Standard error format
   if (data.error && typeof data.error === "object") {
     const error = data.error as Record<string, unknown>;
     return {
       code: (error.code as string) || ErrorCodes.UNKNOWN_ERROR,
-      message: (error.message as string) || "Đã xảy ra lỗi",
+      message: (error.message as string) || fallbackGeneric(t),
       details: error.details as string | undefined,
       field_errors: error.field_errors as Record<string, string> | undefined,
     };
   }
 
-  // Fallback: FastAPI { "detail": { code, message } } or { "detail": "string" }
   if (data.detail) {
     if (typeof data.detail === "object") {
       const det = data.detail as Record<string, unknown>;
       return {
         code: (det.code as string) || ErrorCodes.UNKNOWN_ERROR,
-        message: (det.message as string) || "Đã xảy ra lỗi",
+        message: (det.message as string) || fallbackGeneric(t),
         details: det.details as string | undefined,
         field_errors: det.field_errors as Record<string, string> | undefined,
       };
@@ -120,14 +140,32 @@ export function parseApiError(response: unknown): ApiError {
 
   return {
     code: ErrorCodes.UNKNOWN_ERROR,
-    message: "Đã xảy ra lỗi không xác định",
+    message: fallbackUnknown(t),
   };
 }
 
 /**
- * Get user-friendly error message based on error code
+ * Get user-friendly error message based on error code.
+ *
+ * @param t - Optional translator. When provided, the function looks up
+ *   `errors.codes.<CODE>` first; if missing it falls back to the
+ *   Vietnamese default below or the caller's `fallbackMessage`.
  */
-export function getErrorMessage(errorCode: string, fallbackMessage?: string): string {
+export function getErrorMessage(
+  errorCode: string,
+  fallbackMessage?: string,
+  t?: ErrorTranslator,
+): string {
+  if (t) {
+    try {
+      const key = `errors.codes.${errorCode}`;
+      const translated = t(key);
+      if (translated && translated !== key) return translated;
+    } catch {
+      // next-intl throws for missing keys when the strict mode flag is on.
+      // Swallow and fall through to the Vietnamese default below.
+    }
+  }
   const errorMessages: Record<string, string> = {
     // Validation
     [ErrorCodes.VALIDATION_FAILED]: "Dữ liệu không hợp lệ",
@@ -165,7 +203,7 @@ export function getErrorMessage(errorCode: string, fallbackMessage?: string): st
     [ErrorCodes.TIMEOUT_ERROR]: "Yêu cầu hết thời gian chờ",
   };
 
-  return errorMessages[errorCode] || fallbackMessage || "Đã xảy ra lỗi";
+  return errorMessages[errorCode] || fallbackMessage || fallbackGeneric(t);
 }
 
 /**

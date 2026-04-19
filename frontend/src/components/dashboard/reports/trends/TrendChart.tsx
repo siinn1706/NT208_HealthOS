@@ -10,13 +10,18 @@ interface TrendChartProps {
   height?: number;
 }
 
+// Bound to design tokens so the chart respects light/dark mode and the
+// user's accent. Hex values were Night-Sky-only and looked broken on the
+// new light theme.
 const COLORS = {
-  actual:     "#41BCE6",
-  trend:      "#E7DEA7",
-  prediction: "#6DE7F7",
-  anomaly:    "#EF4444",
-  grid:       "rgba(255,255,255,0.06)",
-  axis:       "rgba(255,255,255,0.35)",
+  actual:     "var(--color-primary)",
+  trend:      "var(--color-warning)",
+  prediction: "var(--color-info)",
+  anomaly:    "var(--color-destructive)",
+  band:       "color-mix(in srgb, var(--color-info) 15%, transparent)",
+  grid:       "color-mix(in srgb, var(--color-foreground) 8%, transparent)",
+  axis:       "color-mix(in srgb, var(--color-foreground) 25%, transparent)",
+  axisLabel:  "var(--color-muted-foreground)",
 };
 
 export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
@@ -52,13 +57,26 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
   const actualPadded = [...actualVals, ...predictionDates.map(() => null)];
   const trendPadded  = [...trendVals, ...predictionDates.map(() => null)];
 
+  // Optional uncertainty band around the prediction. The TrendAnalysis API
+  // returns a flat point estimate today, so we synthesise a ± confidence
+  // halo from `confidence` (0-1) — narrower halo as confidence grows. When
+  // confidence is missing we omit the band entirely rather than make one up.
+  const conf = typeof analysis.confidence === "number" ? Math.max(0, Math.min(1, analysis.confidence)) : null;
+  const bandSpread = conf === null ? null : Math.max(0.05, 1 - conf) * (predictionVals[0] ?? 1) * 0.15;
+  const lowerBand = bandSpread === null
+    ? null
+    : [...actualDates.map(() => null), ...predictionVals.map((v) => v - bandSpread)];
+  const upperBand = bandSpread === null
+    ? null
+    : [...actualDates.map(() => null), ...predictionVals.map((v) => v + bandSpread)];
+
   const option: EChartsOption = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
-      backgroundColor: "#0F2743",
-      borderColor: "#1B3A5C",
-      textStyle: { color: "#e2e8f0", fontSize: 11 },
+      backgroundColor: "var(--color-card)",
+      borderColor: "var(--color-border)",
+      textStyle: { color: "var(--color-foreground)", fontSize: 11 },
       formatter: (params: unknown) => {
         const p = params as Array<{ seriesName: string; value: number | null; axisValue: string; color: string }>;
         const date = p[0]?.axisValue ?? "";
@@ -73,7 +91,7 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
               </div>`
           )
           .join("");
-        return `<div style="font-size:11px;padding:4px 0"><div style="margin-bottom:4px;color:#94a3b8">${date}</div>${rows}</div>`;
+        return `<div style="font-size:11px;padding:4px 0"><div style="margin-bottom:4px;color:var(--color-muted-foreground)">${date}</div>${rows}</div>`;
       },
     },
     legend: {
@@ -81,7 +99,7 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
       right: 0,
       itemWidth: 14,
       itemHeight: 8,
-      textStyle: { color: "#94a3b8", fontSize: 11 },
+      textStyle: { color: COLORS.axisLabel, fontSize: 11 },
       data: [
         t("chart.actual"),
         t("chart.trendLine"),
@@ -95,7 +113,7 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
       axisLine: { lineStyle: { color: COLORS.axis } },
       axisTick: { show: false },
       axisLabel: {
-        color: "#64748b",
+        color: COLORS.axisLabel,
         fontSize: 10,
         interval: Math.floor(allDates.length / 7),
         formatter: (val: string) => {
@@ -108,26 +126,53 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
     yAxis: {
       type: "value",
       name: analysis.unit,
-      nameTextStyle: { color: "#64748b", fontSize: 10 },
+      nameTextStyle: { color: COLORS.axisLabel, fontSize: 10 },
       axisLine: { show: false },
       axisTick: { show: false },
       splitLine: { lineStyle: { color: COLORS.grid } },
-      axisLabel: { color: "#64748b", fontSize: 10 },
+      axisLabel: { color: COLORS.axisLabel, fontSize: 10 },
     },
     dataZoom: [
       {
         type: "slider",
         bottom: 4,
         height: 20,
-        borderColor: "#1B3A5C",
-        fillerColor: "rgba(65,188,230,0.15)",
-        handleStyle: { color: "#41BCE6" },
-        textStyle: { color: "#64748b", fontSize: 9 },
+        borderColor: "var(--color-border)",
+        fillerColor: "color-mix(in srgb, var(--color-primary) 15%, transparent)",
+        handleStyle: { color: "var(--color-primary)" },
+        textStyle: { color: COLORS.axisLabel, fontSize: 9 },
         start: 0,
         end: 100,
       },
     ],
     series: [
+      ...(lowerBand && upperBand
+        ? ([
+            // Invisible lower bound to anchor the band's start.
+            {
+              name: "__lowerBand",
+              type: "line" as const,
+              data: lowerBand,
+              showSymbol: false,
+              lineStyle: { opacity: 0 },
+              stack: "uncertaintyBand",
+              tooltip: { show: false },
+              silent: true,
+            },
+            // The visible band fill (delta = upper - lower) stacked above.
+            {
+              name: t("chart.uncertaintyBand"),
+              type: "line" as const,
+              data: upperBand.map((u, i) => (u !== null && lowerBand[i] !== null ? u - (lowerBand[i] as number) : null)),
+              showSymbol: false,
+              lineStyle: { opacity: 0 },
+              stack: "uncertaintyBand",
+              areaStyle: { color: COLORS.band },
+              tooltip: { show: false },
+              silent: true,
+            },
+          ])
+        : []),
       // Actual data
       {
         name: t("chart.actual"),
@@ -139,8 +184,8 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
         areaStyle: {
           color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: "rgba(65,188,230,0.18)" },
-              { offset: 1, color: "rgba(65,188,230,0)" },
+              { offset: 0, color: "color-mix(in srgb, var(--color-primary) 18%, transparent)" },
+              { offset: 1, color: "color-mix(in srgb, var(--color-primary) 0%, transparent)" },
             ],
           },
         },
@@ -149,7 +194,7 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
           symbolSize: 10,
           data: anomalyMarkData,
           label: { show: false },
-          itemStyle: { borderColor: "#fff", borderWidth: 2 },
+          itemStyle: { borderColor: "var(--color-card)", borderWidth: 2 },
         },
       },
       // Trend line
@@ -167,28 +212,46 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
         name: t("chart.prediction"),
         type: "line",
         data: [
-          // Bridge point = last actual value aligned to first prediction date index
           ...actualDates.map(() => null),
           ...predictionVals,
         ],
         smooth: true,
         showSymbol: false,
         lineStyle: { color: COLORS.prediction, width: 2, type: "dotted" },
-        areaStyle: {
-          color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: "rgba(109,231,247,0.14)" },
-              { offset: 1, color: "rgba(109,231,247,0)" },
-            ],
-          },
-        },
       },
     ],
   };
 
+  // Screen-reader-friendly data table: charts are inert to AT users without
+  // a textual fallback. We hide it visually but expose every (date, value)
+  // pair plus the prediction window so users can verify the visualization.
+  const srRows = [
+    ...actualDates.map((d, i) => ({ date: d, value: actualVals[i], series: t("chart.actual") })),
+    ...predictionDates.map((d, i) => ({ date: d, value: predictionVals[i], series: t("chart.prediction") })),
+  ];
+
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <EChartWrapper option={option} height={height} />
+      <table className="sr-only">
+        <caption>{t("chart.srCaption")}</caption>
+        <thead>
+          <tr>
+            <th>{t("chart.srDate")}</th>
+            <th>{t("chart.srSeries")}</th>
+            <th>{t("chart.srValue")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {srRows.map((r, i) => (
+            <tr key={`${r.series}-${r.date}-${i}`}>
+              <td>{r.date}</td>
+              <td>{r.series}</td>
+              <td>{typeof r.value === "number" ? `${r.value.toFixed(1)} ${analysis.unit}` : "--"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

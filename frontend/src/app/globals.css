@@ -48,6 +48,14 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 
+    /* Semantic state tokens */
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+
     /* Night Sky custom tokens */
     --color-night-900: #0B0F14;
     --color-night-800: #141A22;
@@ -99,6 +107,13 @@
     --sidebar-accent-foreground: #1A4474;
     --sidebar-border: #B8F0FA;
     --sidebar-ring: #1965B3;
+    /* Semantic state tokens */
+    --success: #059669;
+    --success-foreground: #FFFFFF;
+    --warning: #D97706;
+    --warning-foreground: #FFFFFF;
+    --info: #0284C7;
+    --info-foreground: #FFFFFF;
 }
 
 .dark {
@@ -134,6 +149,13 @@
     --sidebar-accent-foreground: #EAEEF2;
     --sidebar-border: rgba(138, 162, 180, 0.12);
     --sidebar-ring: #5BA8C8;
+    /* Semantic state tokens */
+    --success: #34D399;
+    --success-foreground: #0B0F14;
+    --warning: #FBBF24;
+    --warning-foreground: #0B0F14;
+    --info: #38BDF8;
+    --info-foreground: #0B0F14;
 }
 
 @layer base {
@@ -204,7 +226,11 @@ html {
   animation: float-delayed 5s ease-in-out infinite;
 }
 
-/* Ambient drift for hero atmosphere glow blooms. Pure transform, GPU-only. */
+/* ── Hero Atmosphere Glow Drift ─────────────────────────────
+   Used by <AtmosphereGlow /> behind the homepage hero.
+   Very slow translate-only drift (GPU-composited), opacity untouched
+   so the bloom budget is preserved. Reduced-motion is enforced globally
+   below; motion-safe: prefix on the consumer adds a second guard. */
 @keyframes glow-drift {
   0%,
   100% {
@@ -221,7 +247,7 @@ html {
 
 /* Chat: highlight animation for jump-to-original-message (reply feature) */
 @keyframes msg-highlight {
-  0% { background-color: hsl(var(--primary) / 0.12); }
+  0% { background-color: color-mix(in srgb, var(--primary) 12%, transparent); }
   100% { background-color: transparent; }
 }
 

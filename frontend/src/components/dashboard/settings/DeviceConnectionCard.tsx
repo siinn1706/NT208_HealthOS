@@ -12,6 +12,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SourceBadge } from "@/components/ui/source-badge";
+import type { ProviderId } from "@/types/data-slice";
 
 type SyncStatus = "idle" | "syncing" | "success" | "error";
 
@@ -116,17 +118,13 @@ export function DeviceConnectionCard({
     >
       {/* Top row */}
       <div className="flex items-start gap-3">
-        {/* Provider icon placeholder (colored square with initial) */}
-        <div
-          className={cn(
-            "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold",
-            meta.bg
-          )}
-          style={{ color: meta.color }}
-          aria-hidden
-        >
-          {meta.label.charAt(0)}
-        </div>
+        {/* Provider icon — uses shared SourceBadge for consistent attribution
+            across vitals, reports, and devices (UX plan §K). */}
+        <SourceBadge
+          provider={device.provider as ProviderId}
+          variant="icon"
+          className="flex-shrink-0 w-10 h-10 rounded-xl justify-center [&>svg]:size-5"
+        />
 
         {/* Info */}
         <div className="flex-1 min-w-0">

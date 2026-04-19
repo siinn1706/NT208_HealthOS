@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro } from "next/font/google";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
+import { OfflineProvider } from "@/components/providers/offline-provider";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -30,8 +31,10 @@ export default async function RootLayout({
       </head>
       <body className="overflow-x-hidden font-[family-name:var(--font-be-vietnam-pro)]">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster position="top-right" richColors closeButton />
+          <OfflineProvider>
+            {children}
+            <Toaster position="top-right" richColors closeButton />
+          </OfflineProvider>
         </ThemeProvider>
       </body>
     </html>

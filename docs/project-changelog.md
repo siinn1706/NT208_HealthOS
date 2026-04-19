@@ -1,6 +1,6 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.2 | **Last Updated**: 2026-04-16
+> **Version**: 1.2.2 | **Last Updated**: 2026-04-19
 
 ---
 
@@ -17,18 +17,34 @@
   - Deleted unused `useChatScroll.ts`; `ChatLayout` uses `pendingRequests` from `useStrangerRequests`
   - i18n: date jump sheet, scroll chip aria, unknown user, pinned expand/collapse, header more menu, `truncateChatPreview` shared constant
 
-- **Chat UI redesign — Phase 5 complete** (`chat-ui` branch):
-  - MessageActions toolbar repositioned above bubble with pill styling
-  - Inline 6-emoji quick reactions replacing Popover (one-tap react)
-  - Reply icon button in toolbar, Reply removed from More dropdown
-  - PinnedMessages compact styling (py-1.5, text-[11px], w-3 icon)
-  - Keyboard accessibility fix: `group-focus-within:opacity-100`
-  - `overflow-visible` on bubble container so toolbar renders above bubble
+- **Dashboard shell refactor** (`dashboard/shell/`):
+  - New: AppShell, MobileNav, SidebarNavGrouped, TopNavV2, NotificationsPopover, CommandPalette, nav-config, use-unread-conversations
+  - Deleted: DashboardShell, SidebarNav, TopNav, GamificationSubNav, Decorations
 
-- **Duplicate chat message race fix** (`hooks/useChat.ts`):
-  - Prevented duplicate renders by deduplicating by message ID when merging WebSocket upserts and optimistic-send confirmations
-  - Prevented duplicate unread increments for repeated same-message WS events
-  - Forwarded cross-conversation incoming updates only for real new-message events (`msg:new`, `chat.message.sent`)
+- **Shared primitives** (auth, page, state components):
+  - `shared/auth/primitives/`: AuthShell, AuthBanner, FormFieldError, OtpField, PasswordField, PendingButton, useBreachCheck, useResendCooldown
+  - `shared/page/`: PageHeader, PageTabs, Stepper
+  - `shared/state/`: StateView, EmptyState, Banner, InlineNotice, OfflineIndicator, StaleDataIndicator, StateCard
+
+- **New UI primitives** (`components/ui/`):
+  - confidence-chip, data-state, freshness-chip, permission-banner, source-badge
+
+- **Onboarding & persistence**:
+  - New: OnboardingWelcome, OnboardingReview components
+  - New: `useOnboardingDraft` hook, `/api/v1/users/me/onboarding-draft` BFF route
+
+- **Offline support**:
+  - OfflineProvider, useOfflineQueue, useOutboundQueue, lib/offline-queue.ts
+
+- **New routes**:
+  - `/dashboard/health/add`, `/legal/privacy`, `/dev/kitchensink` (prod: 404), locale `not-found.tsx`
+  - BFF: `/api/v1/notifications/[id]/read`, `/api/v1/reminders/[id]/skip`, `/api/v1/reminders/[id]/snooze`
+
+- **UX enhancements**:
+  - Reminders: NotificationPermissionBanner, RecurringExplanation, SnoozeMenu
+  - Reports: KpiOverview
+  - Progress: TodayInsightCard
+  - Appointments: AppointmentCreateSheet
 
 ---
 
@@ -219,7 +235,7 @@
   - Redis caching for analytics queries (5-min TTL)
 
 #### Testing
-- 22 passing tests (backend + frontend)
+- 13 backend test functions (3 test files), not 22 (backend + frontend)
 
 ---
 

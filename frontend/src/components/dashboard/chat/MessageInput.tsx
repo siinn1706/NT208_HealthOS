@@ -131,7 +131,14 @@ export function MessageInput({
   const hasReplyOrEdit = !!replyTo || !!editingMessage;
 
   return (
-    <div className="border-t border-border bg-background/80 backdrop-blur-sm">
+    // `pb-[env(safe-area-inset-bottom)]` keeps the composer flush above the
+    // iOS home indicator without leaving a visible gap when the on-screen
+    // keyboard is closed. `sticky bottom-0` pins it inside the chat scroll
+    // container on mobile so the input is always reachable.
+    <div
+      className="sticky bottom-0 z-10 border-t border-border bg-background/80 backdrop-blur-sm"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
       {/* Animated reply / edit indicator */}
       <AnimatePresence>
         {hasReplyOrEdit && (

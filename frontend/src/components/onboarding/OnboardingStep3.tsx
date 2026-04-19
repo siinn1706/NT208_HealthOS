@@ -53,7 +53,7 @@ export function OnboardingStep3({ data, updateData, fieldErrors = {}, clearField
         <Input
           id="phone"
           type="tel"
-          placeholder="+84 987 654 321"
+          placeholder={t("step3.phonePlaceholder")}
           value={data.phone || ""}
           onChange={(e) => {
             updateData({ phone: e.target.value });
@@ -74,7 +74,7 @@ export function OnboardingStep3({ data, updateData, fieldErrors = {}, clearField
         <Label htmlFor="address">{t("step3.address")}</Label>
         <Textarea
           id="address"
-          placeholder="123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh"
+          placeholder={t("step3.addressPlaceholder")}
           value={data.address || ""}
           onChange={(e) => updateData({ address: e.target.value })}
           rows={3}

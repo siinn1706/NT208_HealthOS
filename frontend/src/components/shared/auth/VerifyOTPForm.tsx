@@ -1,27 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { MailCheck, Loader2 } from "lucide-react";
+import { MailCheck } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNotification } from "@/hooks/use-notification";
 import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import { REGEXP_ONLY_DIGITS } from "input-otp";
+  AuthShell,
+  AuthBanner,
+  OtpField,
+  PendingButton,
+  useResendCooldown,
+} from "./primitives";
+import { track } from "@/lib/analytics";
 
 interface VerifyOTPFormProps {
-  /** Email address shown to the user for context. Passed from the page. */
   email?: string;
   /**
    * OTP purpose — determines which flow to verify against.
@@ -33,19 +27,37 @@ interface VerifyOTPFormProps {
 export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps) {
   const t = useTranslations("auth");
   const tErrors = useTranslations("errors");
+  const tSecurity = useTranslations("auth.security");
   const router = useRouter();
+  const { success, handleApiError } = useNotification();
 
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
-  // ─── Verify OTP ─────────────────────────────────────────────────────────────
+  // Cooldown is keyed by email so multiple windows for the same address share
+  // the timer; falls back to a generic key if email is unknown.
+  const resend = useResendCooldown(`otp-resend:${email ?? "anon"}:${purpose}`, 60);
+
+  useEffect(() => {
+    track("auth.verify_otp.viewed", { purpose });
+  }, [purpose]);
+
+  // Move focus to the error banner whenever an error is set, so screen-reader
+  // and keyboard users hear the failure immediately.
+  useEffect(() => {
+    if (error && bannerRef.current) {
+      bannerRef.current.focus();
+    }
+  }, [error]);
+
   async function handleVerify() {
     if (otp.length !== 6) return;
     setError(null);
     setIsLoading(true);
+    track("auth.verify_otp.submitted", { purpose });
 
     try {
       const res = await fetch("/api/v1/auth/verify-otp", {
@@ -55,32 +67,35 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data?.error?.message || t("otpInvalid"));
+        const errors = handleApiError(data, t("otpInvalid"));
+        setError(errors.code || data?.error?.message || t("otpInvalid"));
+        track("auth.verify_otp.failed", { code: data?.error?.code ?? "UNKNOWN" });
         return;
       }
-      // BFF now sets the httpOnly cookie — do NOT store token in localStorage.
-      setSuccess(t("verificationSuccess"));
+      // BFF sets the httpOnly session cookie on signup verification.
+      success(t("verificationSuccess"));
+      track("auth.verify_otp.succeeded", { purpose });
+
       if (purpose === "signup") {
-        // Signup complete: go to onboarding to complete profile
-        setTimeout(() => router.push("/onboarding"), 1200);
+        router.push("/onboarding");
       } else if (purpose === "reset_password") {
-        // Reset password flow is self-contained in ForgotPasswordForm;
-        // redirect to login so the user can sign in with the new password.
-        setTimeout(() => router.push("/login"), 1200);
+        router.push("/login");
       } else {
-        setTimeout(() => router.push("/dashboard"), 1200);
+        router.push("/dashboard");
       }
     } catch {
       setError(tErrors("genericTryAgain"));
+      track("auth.verify_otp.errored");
     } finally {
       setIsLoading(false);
     }
   }
 
-  // ─── Resend OTP ─────────────────────────────────────────────────────────────
   async function handleResend() {
+    if (!resend.canResend) return;
     setError(null);
     setIsResending(true);
+    track("auth.verify_otp.resend_clicked", { purpose });
 
     try {
       const res = await fetch("/api/v1/auth/request-otp", {
@@ -94,6 +109,8 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
         return;
       }
       setOtp("");
+      resend.arm();
+      success(t("verificationSuccess"));
     } catch {
       setError(tErrors("genericTryAgain"));
     } finally {
@@ -102,104 +119,68 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg animate-fade-in-up">
-      {/* Header */}
-      <CardHeader className="space-y-1 pb-4 text-center">
-        {/* Decorative icon */}
-        <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-primary/10">
-          <MailCheck
-            className="size-7 text-primary"
-            aria-hidden="true"
-          />
+    <AuthShell
+      title={t("verifyTitle")}
+      subtitle={email ? t("otpDescription", { email }) : t("verifySubtitle")}
+      brand={
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10">
+            <MailCheck className="size-7 text-primary" aria-hidden="true" />
+          </div>
         </div>
-        <CardTitle className="text-2xl font-bold text-foreground">
-          {t("verifyTitle")}
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          {email
-            ? t("otpDescription", { email })
-            : t("verifySubtitle")}
-        </CardDescription>
-      </CardHeader>
-
-      {/* Content */}
-      <CardContent className="flex flex-col items-center gap-6">
-        {/* Status banners */}
-        {error && (
-          <div
-            role="alert"
-            className="w-full rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
-          >
-            {error}
+      }
+      banner={
+        error ? (
+          <div ref={bannerRef} tabIndex={-1} className="outline-none">
+            <AuthBanner variant="destructive" description={error} />
           </div>
-        )}
-        {success && (
-          <div
-            role="status"
-            className="w-full rounded-md border border-green-400/30 bg-green-400/10 px-3 py-2 text-center text-sm text-green-700 dark:text-green-400"
-          >
-            {success}
-          </div>
-        )}
-
-        {/* OTP Input */}
-        <InputOTP
-          maxLength={6}
-          pattern={REGEXP_ONLY_DIGITS}
-          value={otp}
-          onChange={setOtp}
-          disabled={isLoading || !!success}
-          aria-label="OTP verification code"
-        >
-          <InputOTPGroup>
-            <InputOTPSlot index={0} />
-            <InputOTPSlot index={1} />
-            <InputOTPSlot index={2} />
-            <InputOTPSlot index={3} />
-            <InputOTPSlot index={4} />
-            <InputOTPSlot index={5} />
-          </InputOTPGroup>
-        </InputOTP>
-
-        <p className="text-xs text-muted-foreground">{t("otpExpiry")}</p>
-
-        {/* Verify Button */}
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={handleVerify}
-          disabled={otp.length !== 6 || isLoading || !!success}
-        >
-          {isLoading && (
-            <Loader2 className="animate-spin size-4" aria-hidden="true" />
-          )}
-          {t("verifyButton")}
-        </Button>
-
-        {/* Resend */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleResend}
-          disabled={isResending || isLoading || !!success}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          {isResending && (
-            <Loader2 className="animate-spin size-3 mr-1" aria-hidden="true" />
-          )}
-          {t("resendOtp")}
-        </Button>
-      </CardContent>
-
-      {/* Footer */}
-      <CardFooter className="justify-center pt-0">
+        ) : undefined
+      }
+      footer={
         <Link
           href="/login"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
         >
           ← {t("backToLogin")}
         </Link>
-      </CardFooter>
-    </Card>
+      }
+    >
+      <div className="flex flex-col items-center gap-6">
+        <OtpField
+          id="verify-otp"
+          value={otp}
+          onChange={setOtp}
+          disabled={isLoading}
+          autoFocus
+          ariaLabel={t("verifyTitle")}
+          onComplete={handleVerify}
+          hint={t("otpExpiry")}
+        />
+
+        <PendingButton
+          className="w-full"
+          size="lg"
+          onClick={handleVerify}
+          pending={isLoading}
+          disabled={otp.length !== 6 || isLoading}
+        >
+          {t("verifyButton")}
+        </PendingButton>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleResend}
+          disabled={isResending || isLoading || !resend.canResend}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          {!resend.canResend
+            ? tSecurity("otpResendIn", { seconds: resend.remaining })
+            : isResending
+              ? t("resendOtp") + "..."
+              : t("resendOtp")}
+        </Button>
+      </div>
+    </AuthShell>
   );
 }

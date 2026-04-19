@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@/navigation";
 import {
+  AlertTriangle,
   ChefHat,
   Clock,
   FileText,
@@ -41,11 +42,49 @@ import { NutritionSummaryCard } from "./NutritionSummaryCard";
 import { addMealSchema, type AddMealFormValues } from "@/lib/validators/meal-schema";
 import { bffFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useConnection } from "@/components/providers/offline-provider";
 
 function nowLocalDatetime(): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+const SNAP_PREFILL_KEY = "meal_snap_prefill";
+
+interface SnapPrefillPayload {
+  name?: string;
+  meal_type?: AddMealFormValues["meal_type"];
+  ingredients?: Array<{
+    ingredient_name?: string;
+    grams?: number;
+    calories?: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+  }>;
+  needs_review?: boolean;
+  confidence?: number | null;
+}
+
+/**
+ * Consume the optional camera-snap prefill written to sessionStorage by
+ * `<CameraCapture>` (UX plan §I). The payload is single-shot — once we read
+ * it we wipe it so a later refresh of /dashboard/meals/add starts clean.
+ */
+function readSnapPrefill(): SnapPrefillPayload | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(SNAP_PREFILL_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(SNAP_PREFILL_KEY);
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as SnapPrefillPayload;
+  } catch {
+    return null;
+  }
 }
 
 function SectionCard({
@@ -81,8 +120,12 @@ function SectionCard({
 export function AddMealForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [needsAiReview, setNeedsAiReview] = useState(false);
   const t = useTranslations("dashboard.meals");
   const ta = useTranslations("addMeal");
+  const tc = useTranslations("camera");
+  const offlineQueue = useOfflineQueue();
+  const { status: connectionStatus } = useConnection();
 
   const MEAL_TYPES = [
     { value: "breakfast", icon: Sunrise, label: t("mealTypes.breakfast"), color: "text-orange-400" },
@@ -109,19 +152,63 @@ export function AddMealForm() {
     handleSubmit,
     setValue,
     watch,
+    reset: resetForm,
     formState: { errors },
   } = methods;
 
   const mealType = watch("meal_type");
 
+  // Hydrate the form from the AI snap prefill on mount (UX plan §I). Reading
+  // sessionStorage requires the browser, so we run it inside `useEffect` to
+  // stay SSR-safe.
+  useEffect(() => {
+    const prefill = readSnapPrefill();
+    if (!prefill) return;
+
+    const ingredients = Array.isArray(prefill.ingredients) && prefill.ingredients.length > 0
+      ? prefill.ingredients
+          .map((ing) => ({
+            ingredient_name: typeof ing.ingredient_name === "string" ? ing.ingredient_name : "",
+            grams: typeof ing.grams === "number" && ing.grams > 0 ? ing.grams : 1,
+            manual_calories:
+              typeof ing.calories === "number" && ing.calories >= 0
+                ? ing.calories
+                : undefined,
+            is_matched: false,
+          }))
+          .filter((ing) => ing.ingredient_name.length > 0)
+      : [];
+
+    resetForm({
+      name: typeof prefill.name === "string" ? prefill.name : "",
+      meal_type:
+        prefill.meal_type === "breakfast" ||
+        prefill.meal_type === "lunch" ||
+        prefill.meal_type === "dinner" ||
+        prefill.meal_type === "snack"
+          ? prefill.meal_type
+          : "lunch",
+      logged_at: nowLocalDatetime(),
+      notes: "",
+      ingredients:
+        ingredients.length > 0
+          ? ingredients
+          : [{ ingredient_name: "", grams: 0, is_matched: false }],
+    });
+
+    if (prefill.needs_review === true) {
+      setNeedsAiReview(true);
+    }
+  }, [resetForm]);
+
   async function onSubmit(data: AddMealFormValues) {
     setIsSubmitting(true);
-    try {
-      const payload = {
-        ...data,
-        logged_at: new Date(data.logged_at).toISOString(),
-      };
+    const payload = {
+      ...data,
+      logged_at: new Date(data.logged_at).toISOString(),
+    };
 
+    try {
       await bffFetch("/api/v1/meals", {
         method: "POST",
         body: payload,
@@ -136,8 +223,28 @@ export function AddMealForm() {
       });
 
       router.push("/dashboard/meals");
-    } catch {
-      toast.error(t("saveFailed"));
+    } catch (err) {
+      // If we look offline, save the mutation locally and let the queue
+      // replay it when connection returns. Otherwise report a hard failure.
+      const looksOffline =
+        connectionStatus !== "online" ||
+        (typeof navigator !== "undefined" && navigator.onLine === false) ||
+        (err instanceof TypeError);
+
+      if (looksOffline) {
+        offlineQueue.enqueue({
+          url: "/api/v1/meals",
+          method: "POST",
+          body: payload,
+          label: data.name,
+        });
+        toast.success(ta("savedOffline"), {
+          description: ta("savedOfflineDescription"),
+        });
+        router.push("/dashboard/meals");
+      } else {
+        toast.error(t("saveFailed"));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -166,6 +273,26 @@ export function AddMealForm() {
             {ta("subtitle")}
           </p>
         </div>
+
+        {needsAiReview && (
+          <div
+            role="status"
+            className="mb-6 rounded-xl border border-warning/30 bg-warning/10 p-4 flex items-start gap-3"
+          >
+            <AlertTriangle
+              className="size-5 text-warning flex-shrink-0 mt-0.5"
+              aria-hidden
+            />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-warning">
+                {tc("lowConfidenceTitle")}
+              </p>
+              <p className="text-xs text-warning/90">
+                {tc("lowConfidenceBody")}
+              </p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
@@ -218,11 +345,11 @@ export function AddMealForm() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {MEAL_TYPES.map((t) => (
-                              <SelectItem key={t.value} value={t.value}>
+                            {MEAL_TYPES.map((mt) => (
+                              <SelectItem key={mt.value} value={mt.value}>
                                 <span className="flex items-center gap-2">
-                                  <t.icon className={`size-3.5 ${t.color}`} />
-                                  {t.label}
+                                  <mt.icon className={`size-3.5 ${mt.color}`} />
+                                  {mt.label}
                                 </span>
                               </SelectItem>
                             ))}
@@ -234,7 +361,7 @@ export function AddMealForm() {
                       <div className="space-y-1.5">
                         <Label htmlFor="logged-at">
                           <Clock className="inline size-3.5 mr-1 text-muted-foreground" />
-                          Thời gian
+                          {ta("loggedAt")}
                         </Label>
                         <Input
                           id="logged-at"
@@ -276,12 +403,12 @@ export function AddMealForm() {
               >
                 <SectionCard
                   icon={<FileText className="size-4" />}
-                  title="Ghi chú (tuỳ chọn)"
+                  title={ta("notesTitle")}
                   description={ta("notesLabel")}
                 >
                   <Textarea
                     {...register("notes")}
-                    placeholder="VD: Ăn ở nhà hàng Phở 24, cảm thấy no vừa phải..."
+                    placeholder={ta("notesPlaceholder")}
                     rows={3}
                     className="resize-none"
                   />
@@ -308,7 +435,7 @@ export function AddMealForm() {
                     onClick={() => router.push("/dashboard/meals")}
                     disabled={isSubmitting}
                   >
-                    Hủy
+                    {ta("cancel")}
                   </Button>
                   <Button
                     type="submit"
@@ -358,7 +485,7 @@ export function AddMealForm() {
                   onClick={() => router.push("/dashboard/meals")}
                   disabled={isSubmitting}
                 >
-                  Hủy
+                  {ta("cancel")}
                 </Button>
               </motion.div>
             </div>

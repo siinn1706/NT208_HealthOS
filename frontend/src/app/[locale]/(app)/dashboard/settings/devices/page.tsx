@@ -3,6 +3,7 @@ import { Watch } from "lucide-react";
 import { headers } from "next/headers";
 import { DevicesPageClient } from "@/components/dashboard/settings/DevicesPageClient";
 import type { Device } from "@/components/dashboard/settings/DeviceConnectionCard";
+import { PageHeader } from "@/components/shared/page";
 
 // Keep in sync with SUPPORTED_PROVIDERS in DevicesPageClient
 const PROVIDER_LABELS: Record<string, string> = {
@@ -64,20 +65,19 @@ export default async function DevicesPage() {
   const initialDevices = await fetchDevices();
 
   return (
-    <div className="max-w-[960px] mx-auto space-y-5">
-      {/* ── Page header ── */}
-      <div>
-        <div className="flex items-center gap-2">
-          <Watch className="h-5 w-5 text-muted-foreground" aria-hidden />
-          <h1 className="text-xl font-bold text-foreground">{t("title")}</h1>
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {t("subtitle")}
-        </p>
+    <>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <Watch className="h-5 w-5 text-muted-foreground" aria-hidden />
+            {t("title")}
+          </span>
+        }
+        description={t("subtitle")}
+      />
+      <div className="max-w-[960px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+        <DevicesPageClient initialDevices={initialDevices} />
       </div>
-
-      {/* ── Client-driven device list ── */}
-      <DevicesPageClient initialDevices={initialDevices} />
-    </div>
+    </>
   );
 }
