@@ -91,11 +91,13 @@ export interface GamificationSummary {
   currentUser: {
     displayName: string;
     totalScore: number;
+    /** null when leaderboard rank has not yet been computed for this user. */
     globalRank: number | null;
     currentStreak: number;
     longestStreak: number;
     unlockedAchievements: number;
-    totalAchievements: number;
+    /** null when the milestone catalog has not yet been wired up server-side. */
+    totalAchievements: number | null;
   };
   bmi: UserBmiData;
   activeGoals: UserGoal[];

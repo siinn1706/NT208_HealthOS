@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/redis-cache";
+import { getUserCacheScope } from "@/lib/user-scoped-cache";
 
 import { CORE_API_URL } from "@/lib/env";
 
@@ -23,7 +24,7 @@ async function coreFetch(path: string, token: string): Promise<unknown> {
   return res.json().catch(() => null);
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const token = await getToken();
   if (!token) {
     return NextResponse.json(
@@ -32,8 +33,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Try Redis cache first (5-min TTL)
-  const userId = "user";
+  // P0 fix — scope cache key to authenticated user id (was the literal "user",
+  // which caused cross-user cache collision and would leak personalized data).
+  const userId = await getUserCacheScope();
   const ck = cacheKey(userId, "gamification-summary", {});
   const cached = await cacheGet(ck);
   if (cached) {
@@ -44,35 +46,41 @@ export async function GET(req: NextRequest) {
 
   const profile = profileRes as { display_name?: string; name?: string; height_cm?: number; weight_kg?: number } | null;
 
-  // Build current user from profile
   const displayName = profile?.display_name ?? profile?.name ?? "User";
 
+  const heightCm = profile?.height_cm ?? null;
+  const weightKg = profile?.weight_kg ?? null;
+  const bmi = (heightCm && weightKg)
+    ? parseFloat((weightKg / (heightCm / 100) ** 2).toFixed(1))
+    : null;
+  const bmiStatus: "underweight" | "normal" | "overweight" | "obese" | null = bmi === null
+    ? null
+    : bmi < 18.5
+      ? "underweight"
+      : bmi < 25
+        ? "normal"
+        : bmi < 30
+          ? "overweight"
+          : "obese";
+
+  // P0 fix — return null for fields the system has not yet computed instead of
+  // fabricating values like `totalAchievements: 20` or `globalRank: 1`. The UI
+  // must branch to a neutral "Coming soon" affordance for null fields.
   const response = {
     currentUser: {
       displayName,
       totalScore: 0,
-      globalRank: 1,
+      globalRank: null,
       currentStreak: 0,
       longestStreak: 0,
       unlockedAchievements: 0,
-      totalAchievements: 20,
+      totalAchievements: null,
     },
     bmi: {
-      heightCm: profile?.height_cm ?? null,
-      weightKg: profile?.weight_kg ?? null,
-      bmi: (profile?.height_cm && profile?.weight_kg)
-        ? parseFloat((profile.weight_kg / (profile.height_cm / 100) ** 2).toFixed(1))
-        : null,
-      status: (() => {
-        const bmi = (profile?.height_cm && profile?.weight_kg)
-          ? parseFloat((profile.weight_kg / (profile.height_cm / 100) ** 2).toFixed(1))
-          : null;
-        if (bmi === null) return "normal";
-        if (bmi < 18.5) return "underweight";
-        if (bmi < 25) return "normal";
-        if (bmi < 30) return "overweight";
-        return "obese";
-      })(),
+      heightCm,
+      weightKg,
+      bmi,
+      status: bmiStatus,
       bmiScore: null,
       targetBmi: null,
       targetWeightKg: null,

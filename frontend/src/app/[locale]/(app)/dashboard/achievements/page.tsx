@@ -49,8 +49,19 @@ async function GamificationGoalsContent() {
             <Award className="w-5 h-5 text-blue-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{currentUser.unlockedAchievements}</p>
-            <p className="text-xs text-muted-foreground">{t("activeGoalsCount", { n: currentUser.unlockedAchievements })}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {currentUser.totalAchievements === null
+                ? currentUser.unlockedAchievements
+                : `${currentUser.unlockedAchievements}/${currentUser.totalAchievements}`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {currentUser.totalAchievements === null
+                ? t("unlockedAchievements")
+                : t("unlockedOfTotal", {
+                    n: currentUser.unlockedAchievements,
+                    total: currentUser.totalAchievements,
+                  })}
+            </p>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
