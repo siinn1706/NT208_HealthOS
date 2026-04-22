@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useMemo } from "react";
 import { Image, Pressable, RefreshControl, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScreenContainer } from "@/components/ScreenContainer";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { FlashList, type ListRenderItem } from "@shopify/flash-list";
@@ -21,7 +22,7 @@ import {
 } from "@/api/endpoints/meals";
 import { ApiError } from "@/api/errors";
 import { formatTime, todayBounds } from "@/utils/date";
-import { spacing } from "@/theme/tokens";
+import { spacing, tabBarFrameHeight } from "@/theme/tokens";
 
 // Hoisted style constants — reuse the same object across every list
 // row instead of allocating fresh ones per render. spacing.base = 16,
@@ -40,6 +41,8 @@ export default function MealsScreen() {
   const t = useT();
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const listBottomPad = tabBarFrameHeight() + spacing.base + insets.bottom;
 
   const list = useInfiniteQuery({
     queryKey: ["meals"],
@@ -117,9 +120,11 @@ export default function MealsScreen() {
   }, [list]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+    <ScreenContainer edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
       <FlashList
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: listBottomPad }}
         data={allMeals}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
@@ -184,7 +189,7 @@ export default function MealsScreen() {
           ) : null
         }
       />
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 

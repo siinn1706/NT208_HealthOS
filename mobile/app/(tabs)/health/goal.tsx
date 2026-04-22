@@ -61,7 +61,7 @@ export default function HealthGoalScreen() {
       toast.success(t("common.saved"));
     },
     onError(err) {
-      toast.error(err instanceof ApiError ? err.message : "Couldn't save goal.");
+      toast.error(err instanceof ApiError ? err.message : t("health.goalErrorSave"));
     },
   });
 
@@ -77,7 +77,7 @@ export default function HealthGoalScreen() {
       router.back();
     },
     onError() {
-      toast.error("Couldn't delete goal.");
+      toast.error(t("health.goalErrorDelete"));
     },
   });
 
@@ -108,13 +108,13 @@ export default function HealthGoalScreen() {
         ) : (
           <View style={{ gap: spacing.md }}>
             <Input
-              label="Target weight (kg)"
+              label={t("health.goalFormTargetWeight")}
               value={target}
               onChangeText={setTarget}
               keyboardType="decimal-pad"
             />
             <DateTimeField
-              label="Deadline"
+              label={t("health.goalFormDeadline")}
               mode="date"
               value={deadline}
               onChange={setDeadline}

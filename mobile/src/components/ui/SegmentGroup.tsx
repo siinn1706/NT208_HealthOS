@@ -37,12 +37,21 @@ export function SegmentGroup<T extends string>({
   style,
   accessibilityLabel,
 }: SegmentGroupProps<T>) {
-  const { colors, fontWeights, spacing, radius } = useTheme();
+  const { colors, fontWeights, spacing, radius, typography } = useTheme();
   return (
     <View
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
-      style={[{ flexDirection: "row", gap: spacing.sm }, style]}
+      style={[
+        {
+          flexDirection: "row",
+          gap: spacing.xs,
+          padding: spacing.xs,
+          borderRadius: radius.md,
+          backgroundColor: colors.surfaceMuted,
+        },
+        style,
+      ]}
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -53,17 +62,13 @@ export function SegmentGroup<T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={opt.accessibilityLabel ?? opt.label}
-            // 44dp minHeight = WCAG 2.1 AA touch target. Without it,
-            // `paddingVertical: sm + text height` was landing around
-            // 38dp — fine on most phones, hostile on small-thumb /
-            // motor-impaired users.
             style={{
               flex: 1,
               paddingVertical: spacing.sm,
               minHeight: 44,
               justifyContent: "center",
-              borderRadius: radius.md,
-              backgroundColor: active ? colors.brand : colors.surfaceMuted,
+              borderRadius: radius.sm,
+              backgroundColor: active ? colors.brand : "transparent",
               alignItems: "center",
             }}
           >
@@ -71,6 +76,9 @@ export function SegmentGroup<T extends string>({
               style={{
                 color: active ? colors.brandText : colors.text,
                 fontWeight: fontWeights.semibold,
+                fontSize: typography.sm.fontSize,
+                lineHeight: typography.sm.lineHeight,
+                fontFamily: typography.sm.fontFamily,
               }}
             >
               {opt.label}

@@ -7,8 +7,9 @@ import React, {
   useState,
 } from "react";
 import { Appearance } from "react-native";
+import { FALLBACK_ACCENT_HEX, deriveMobileAccentColors } from "./accent";
 import { darkPalette, lightPalette, type ThemeColors } from "./colors";
-import { elevation, fontWeights, radius, spacing, typography } from "./tokens";
+import { elevation, fontFamilies, fontWeights, radius, spacing, typography } from "./tokens";
 import { savePreferencesCache } from "@/preferences/cache";
 
 export type ThemeMode = "light" | "dark" | "system";
@@ -20,6 +21,7 @@ interface ThemeContextValue {
   spacing: typeof spacing;
   radius: typeof radius;
   typography: typeof typography;
+  fontFamilies: typeof fontFamilies;
   fontWeights: typeof fontWeights;
   elevation: typeof elevation;
   accentColor: string;
@@ -53,16 +55,9 @@ export function ThemeProvider({
   const [mode, setModeState] = useState<ThemeMode>(initialMode);
   const [systemScheme, setSystemScheme] = useState(Appearance.getColorScheme() ?? "light");
   const [accentColor, setAccentColorState] = useState<string>(
-    normalizeAccent(initialAccent) ?? lightPalette.brand
+    normalizeAccent(initialAccent) ?? FALLBACK_ACCENT_HEX
   );
 
-  // useCallback so the setters keep a stable identity across renders.
-  // Without this, the `useMemo<ThemeContextValue>` below captures a
-  // FRESH closure on its first render and never updates them — which
-  // happens to work today (both setters only reference module-level
-  // helpers + React's stable `setState` family) but is fragile and
-  // breaks loudly the moment a setter starts depending on local
-  // state. Make the closure explicitly stable instead.
   const setMode = useCallback((next: ThemeMode) => {
     setModeState(next);
     void savePreferencesCache({ theme_mode: next });
@@ -91,13 +86,25 @@ export function ThemeProvider({
 
   const value = useMemo<ThemeContextValue>(() => {
     const basePalette = scheme === "dark" ? darkPalette : lightPalette;
+    const derived = deriveMobileAccentColors(accentColor, scheme === "dark");
+    const colors: ThemeColors = {
+      ...basePalette,
+      brand: derived.brand,
+      brandMuted: derived.brandMuted,
+      brandText: derived.brandText,
+      ring: derived.ring,
+      card: basePalette.surface,
+      field: basePalette.inputBackground,
+      accentSoft: derived.brandMuted,
+    };
     return {
       mode,
       scheme,
-      colors: { ...basePalette, brand: accentColor },
+      colors,
       spacing,
       radius,
       typography,
+      fontFamilies,
       fontWeights,
       elevation,
       accentColor,

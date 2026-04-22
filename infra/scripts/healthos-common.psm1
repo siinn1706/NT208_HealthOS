@@ -115,8 +115,77 @@ function Invoke-LogCleanup {
         Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
+function Assert-SingleAlembicHead {
+    param(
+        [Parameter(Mandatory)][string]$PythonExe,
+        [Parameter(Mandatory)][string]$BackendDir,
+        [string]$ErrorPrefix = "[BE]"
+    )
+
+    $versionsDir = Join-Path $BackendDir "alembic\versions"
+    $inspectScript = @'
+import ast
+import json
+import pathlib
+import sys
+
+versions_dir = pathlib.Path(sys.argv[1])
+if not versions_dir.exists():
+    raise SystemExit(f"missing Alembic versions dir: {versions_dir}")
+
+nodes = {}
+parents = set()
+
+for path in sorted(versions_dir.glob("*.py")):
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    revision = None
+    down_revisions = []
+
+    for stmt in tree.body:
+        if not isinstance(stmt, ast.Assign):
+            continue
+
+        for target in stmt.targets:
+            if not isinstance(target, ast.Name):
+                continue
+
+            if target.id == "revision":
+                revision = ast.literal_eval(stmt.value)
+            elif target.id == "down_revision":
+                value = ast.literal_eval(stmt.value)
+                if value is None:
+                    down_revisions = []
+                elif isinstance(value, tuple):
+                    down_revisions = [item for item in value if item]
+                else:
+                    down_revisions = [value]
+
+    if revision:
+        nodes[revision] = {
+            "file": path.name,
+            "down_revisions": down_revisions,
+        }
+        parents.update(down_revisions)
+
+heads = sorted(revision for revision in nodes if revision not in parents)
+print(json.dumps({"heads": heads, "nodes": nodes}, sort_keys=True))
+'@
+
+    $headOutput = & $PythonExe -c $inspectScript $versionsDir 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "$ErrorPrefix Failed to inspect Alembic heads.`n$($headOutput -join "`n")"
+    }
+
+    $headInfo = $headOutput | ConvertFrom-Json
+    $heads = @($headInfo.heads)
+    if ($heads.Count -ne 1) {
+        $headSummary = $heads -join ", "
+        throw "$ErrorPrefix Expected exactly one Alembic head, found $($heads.Count). Resolve the migration graph before continuing.`nHeads: $headSummary"
+    }
+}
+
 Export-ModuleMember -Function @(
     "Resolve-LogFilePath", "Test-CommandAvailable", "Test-DockerComposeAvailable", "Test-DockerDaemonReachable",
     "Get-ComposeArgs", "Resolve-EffectiveMode", "Invoke-DockerReadinessValidation", "Start-HealthOSTranscript",
-    "Resolve-PowerShellExe", "Invoke-LogCleanup"
+    "Resolve-PowerShellExe", "Invoke-LogCleanup", "Assert-SingleAlembicHead"
 )

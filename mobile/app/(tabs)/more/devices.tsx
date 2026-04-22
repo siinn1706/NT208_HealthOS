@@ -254,7 +254,13 @@ export default function DevicesScreen() {
                   }
                   variant="secondary"
                 >
-                  {t("devices.syncing")}
+                  {sync.isPending &&
+                  typeof sync.variables === "object" &&
+                  sync.variables !== null &&
+                  "id" in sync.variables &&
+                  (sync.variables as { id: string }).id === d.id
+                    ? t("devices.syncInProgress")
+                    : t("devices.syncNow")}
                 </Button>
                 <Button
                   size="sm"

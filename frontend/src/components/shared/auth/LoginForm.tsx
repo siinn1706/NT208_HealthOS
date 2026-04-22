@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/navigation";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,7 @@ function GitHubIcon() {
 export function LoginForm() {
   const t = useTranslations("auth");
   const tErrors = useTranslations("errors");
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { handleApiError, success, handleError } = useNotification();
@@ -196,7 +197,13 @@ export function LoginForm() {
 
   function handleOAuth(provider: "google" | "github") {
     track("auth.oauth.started", { provider });
-    window.location.href = `/api/v1/auth/oauth/${provider}`;
+    const params = new URLSearchParams();
+    params.set("locale", locale);
+    const fromSafe = getSafePostLoginRedirectPath(searchParams.get("from"));
+    if (fromSafe) {
+      params.set("from", fromSafe);
+    }
+    window.location.href = `/api/v1/auth/oauth/${provider}?${params.toString()}`;
   }
 
   return (

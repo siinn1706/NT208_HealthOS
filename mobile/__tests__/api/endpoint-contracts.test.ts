@@ -158,6 +158,23 @@ describe("users endpoints", () => {
     });
   });
 
+  it("patchCurrentUser sends explicit null clears", async () => {
+    await users.patchCurrentUser({
+      phone: null,
+      address: null,
+      blood_type: null,
+      emergency_contacts: null,
+    });
+    expectCall("PATCH", "/v1/users/me", {
+      body: {
+        phone: null,
+        address: null,
+        blood_type: null,
+        emergency_contacts: null,
+      },
+    });
+  });
+
   it("lookupUsers → GET /v1/users/lookup", async () => {
     await users.lookupUsers("ali", 20);
     expectCall("GET", "/v1/users/lookup", { query: { q: "ali", limit: "20" } });
@@ -174,6 +191,13 @@ describe("preferences + mfa + security log endpoints", () => {
     await preferences.patchPreferences({ theme_mode: "dark", accent_color: "#000" });
     expectCall("PATCH", "/v1/preferences/me", {
       body: { theme_mode: "dark", accent_color: "#000" },
+    });
+  });
+
+  it("patchPreferences can include locale", async () => {
+    await preferences.patchPreferences({ locale: "vi" });
+    expectCall("PATCH", "/v1/preferences/me", {
+      body: { locale: "vi" },
     });
   });
 

@@ -12,11 +12,16 @@ router = APIRouter(prefix="/preferences", tags=["Preferences"])
 
 
 def _default_prefs() -> UserPreferenceData:
-    return UserPreferenceData(theme_mode="system", accent_color=None)
+    return UserPreferenceData(theme_mode="system", accent_color=None, locale="en")
 
 
 def _pref_to_data(pref: UserPreference) -> UserPreferenceData:
-    return UserPreferenceData(theme_mode=pref.theme_mode, accent_color=pref.accent_color)
+    # ORM defaults (e.g. theme_mode, locale) may be unset on a row that was
+    # constructed in-memory before refresh/commit.
+    theme = pref.theme_mode or "system"
+    raw_loc = getattr(pref, "locale", None) or "en"
+    loc = raw_loc if raw_loc in ("en", "vi") else "en"
+    return UserPreferenceData(theme_mode=theme, accent_color=pref.accent_color, locale=loc)
 
 
 @router.get("/me", response_model=UserPreferenceResponse)

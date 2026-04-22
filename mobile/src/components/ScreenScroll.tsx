@@ -1,12 +1,9 @@
 import React from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  type ScrollViewProps,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, type ScrollViewProps } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScreenContainer } from "@/components/ScreenContainer";
 import { useTheme } from "@/theme";
+import { spacing as spacingTokens, tabBarFrameHeight } from "@/theme/tokens";
 
 interface ScreenScrollProps extends ScrollViewProps {
   children: React.ReactNode;
@@ -28,42 +25,22 @@ export function ScreenScroll({
   keyboardAvoiding = true,
   ...rest
 }: ScreenScrollProps) {
-  const { colors, spacing } = useTheme();
-  const inner = (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[
-        { padding: spacing.base, paddingBottom: spacing["3xl"], gap: spacing.base },
-        contentContainerStyle,
-      ]}
-      {...rest}
-    >
-      {children}
-    </ScrollView>
-  );
+  const { spacing } = useTheme();
+  const insets = useSafeAreaInsets();
+  const tabClearance = tabBarFrameHeight() + spacingTokens.base + insets.bottom;
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      edges={edges}
-    >
-      {keyboardAvoiding ? (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          // iOS gets `padding` to lift the bottom of the scroll view
-          // when the soft keyboard appears. Android uses `undefined`
-          // (not `"height"`) because we already set
-          // `softwareKeyboardLayoutMode: "resize"` in app.config.ts —
-          // the OS resizes the window for us, and stacking
-          // `behavior="height"` on top causes a double-resize that
-          // makes the chat composer / form fields jump.
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          {inner}
-        </KeyboardAvoidingView>
-      ) : (
-        inner
-      )}
-    </SafeAreaView>
+    <ScreenContainer edges={edges} keyboardAvoiding={keyboardAvoiding}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          { padding: spacing.base, paddingBottom: tabClearance, gap: spacing.base },
+          contentContainerStyle,
+        ]}
+        {...rest}
+      >
+        {children}
+      </ScrollView>
+    </ScreenContainer>
   );
 }

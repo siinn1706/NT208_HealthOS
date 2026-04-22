@@ -109,6 +109,29 @@
   },
   "home": {
     "greeting": "Hello, {{name}}",
+    "greetingMorning": "Good morning, {{name}}",
+    "greetingAfternoon": "Good afternoon, {{name}}",
+    "greetingEvening": "Good evening, {{name}}",
+    "heroSubtitle": "Here's your health snapshot for today.",
+    "statusChipAlertSingular": "1 alert needs attention",
+    "statusChipAlerts": "{{count}} alerts need attention",
+    "statusChipOnTrack": "You're on track today",
+    "statusChipGettingStarted": "Add data to personalize your dashboard",
+    "quickActionsTitle": "Quick actions",
+    "quickLogMeal": "Log meal",
+    "quickScanMeal": "Scan meal",
+    "quickLogReading": "Log reading",
+    "quickAddReminder": "Add reminder",
+    "viewAllReminders": "View all",
+    "sectionInsight": "Insight",
+    "nutritionInInsightBadge": "Nutrition",
+    "insightCta": "Ask your coach",
+    "sectionGoals": "Goals",
+    "viewGoal": "Manage goal",
+    "openHealth": "Open Health",
+    "vitalsChartNotEnoughData": "Not enough readings to chart yet.",
+    "goalValuePending": "No current value yet",
+    "goalTargetLine": "Target {{value}}{{unit}}",
     "todayKpis": "Today's overview",
     "alerts": "Health alerts",
     "vitals7d": "Vitals - last 7 days",
@@ -122,7 +145,34 @@
     "kpiSleep": "Sleep",
     "kpiWeight": "Weight",
     "kpiSystolic": "Systolic",
-    "kpiDiastolic": "Diastolic"
+    "kpiDiastolic": "Diastolic",
+    "reminderType": {
+      "medicine": "Medicine",
+      "appointment": "Appointment",
+      "exercise": "Exercise",
+      "other": "Reminder"
+    },
+    "reminderRepeat": {
+      "once": "Once",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "alertBadge": {
+      "danger": "Alert",
+      "warning": "Warning",
+      "info": "Info",
+      "neutral": "Notice",
+      "fallback": "Update"
+    },
+    "goalKey": {
+      "steps": "Steps",
+      "heart_rate": "Heart rate",
+      "sleep_minutes": "Sleep",
+      "weight_kg": "Weight",
+      "water_ml": "Water",
+      "active_minutes": "Active minutes"
+    }
   },
   "health": {
     "title": "Health",
@@ -137,6 +187,13 @@
     "comparePeriods": "Compare periods",
     "goal": "Health goal",
     "goalProgress": "Goal progress",
+    "goalFormTargetWeight": "Target weight (kg)",
+    "goalFormDeadline": "Deadline",
+    "goalCtaSet": "Set a goal",
+    "goalSummaryTargetKg": "Target weight: {{value}} kg",
+    "goalSummaryDeadline": "Deadline: {{when}}",
+    "goalErrorSave": "Couldn't save goal.",
+    "goalErrorDelete": "Couldn't delete goal.",
     "rangeShort": "7d",
     "rangeMonth": "30d",
     "rangeQuarter": "90d"
@@ -209,7 +266,28 @@
     "couldNotReact": "Couldn't react.",
     "couldNotPin": "Couldn't toggle pin.",
     "couldNotSend": "Couldn't send.",
-    "pinnedCount": "{{count}} pinned"
+    "pinnedCount": "{{count}} pinned",
+    "timeJustNow": "just now",
+    "timeMinutesAgo": "{{count}}m ago",
+    "timeHoursAgo": "{{count}}h ago",
+    "timeDaysAgo": "{{count}}d ago",
+    "previewYouPrefix": "You: ",
+    "listPinned": "Pinned",
+    "listMuted": "Muted",
+    "roomLoading": "Loading conversation…",
+    "roomErrorTitle": "Couldn't load this chat",
+    "roomEmpty": "No messages yet.",
+    "messageActionsTitle": "Message",
+    "startGroupChat": "Start group chat",
+    "removeSelectedA11y": "Remove {{name}}",
+    "emptyListPreview": "—",
+    "dateToday": "Today",
+    "dateYesterday": "Yesterday",
+    "messageSending": "Sending…",
+    "messageFailed": "Not sent",
+    "pinnedStripHeading": "Pinned messages",
+    "recalledSheetHint": "This message was removed. Actions are unavailable.",
+    "serverActionsBlockedHint": "This message is not on the server yet. Actions are unavailable."
   },
   "reminders": {
     "title": "Reminders",
@@ -258,7 +336,16 @@
     "rangeWeek": "Last 7 days",
     "rangeMonth": "Last 30 days",
     "rangeQuarter": "Last 90 days",
-    "noData": "No data for this period."
+    "noData": "No data for this period.",
+    "unknownMetric": "Metric",
+    "trendUp": "Up",
+    "trendDown": "Down",
+    "trendStable": "Stable",
+    "trendSummary": "Trend",
+    "recentValues": "Recent values",
+    "metricSelector": "Metric",
+    "periodSelector": "Period",
+    "chartNotEnough": "Not enough points to chart this range yet."
   },
   "more": {
     "title": "More",
@@ -283,7 +370,8 @@
     "uploading": "Uploading...",
     "permissionRequired": "Photo permission required.",
     "uploadFailed": "Upload failed.",
-    "couldNotSave": "Couldn't save profile."
+    "couldNotSave": "Couldn't save profile.",
+    "emergencyContactIncomplete": "Enter both name and phone for the emergency contact, or clear all emergency fields."
   },
   "healthMetrics": {
     "heartRate": "Heart rate",
@@ -346,7 +434,8 @@
     "title": "Connected devices",
     "noDevices": "No devices connected.",
     "connect": "Connect",
-    "syncing": "Sync now",
+    "syncNow": "Sync now",
+    "syncInProgress": "Syncing…",
     "syncedAt": "Last sync {{when}}",
     "disconnect": "Disconnect",
     "syncNotice": "Health Connect imports steps, heart rate, sleep, and weight from your other Android health apps. Other providers below currently only update the timestamp.",

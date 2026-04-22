@@ -14,12 +14,9 @@ import { useT } from "@/i18n";
 import { useTheme } from "@/theme";
 import { useToast } from "@/components/ui/Toast";
 import { displayLabel, sessionStore, type SessionUser } from "@/auth/session";
-import {
-  patchCurrentUser,
-  uploadAvatar,
-  type UserProfileUpdate,
-} from "@/api/endpoints/users";
+import { patchCurrentUser, uploadAvatar } from "@/api/endpoints/users";
 import { ApiError } from "@/api/errors";
+import { buildProfileUpdatePayload } from "@/utils/profile-update-payload";
 
 interface ProfileDraft {
   full_name: string;
@@ -60,7 +57,7 @@ export default function ProfileScreen() {
   }, [user?.id]);
 
   const save = useMutation({
-    mutationFn: () => patchCurrentUser(draftToPayload(draft)),
+    mutationFn: (payload: Parameters<typeof patchCurrentUser>[0]) => patchCurrentUser(payload),
     onSuccess(updated) {
       sessionStore.getState().setUser(updated);
       qc.invalidateQueries({ queryKey: ["user", "me"] });
@@ -188,7 +185,18 @@ export default function ProfileScreen() {
               keyboardType={f.kind === "phone" ? "phone-pad" : "default"}
             />
           ))}
-          <Button onPress={() => save.mutate()} loading={save.isPending} fullWidth>
+          <Button
+            onPress={() => {
+              const built = buildProfileUpdatePayload(draft);
+              if (!built.ok) {
+                toast.error(t(built.errorKey));
+                return;
+              }
+              save.mutate(built.payload);
+            }}
+            loading={save.isPending}
+            fullWidth
+          >
             {t("common.save")}
           </Button>
         </View>
@@ -210,25 +218,3 @@ function userToDraft(user: SessionUser | null): ProfileDraft {
   };
 }
 
-function draftToPayload(draft: ProfileDraft): UserProfileUpdate {
-  const payload: UserProfileUpdate = {};
-  if (draft.full_name.trim()) payload.full_name = draft.full_name.trim();
-  if (draft.phone.trim()) payload.phone = draft.phone.trim();
-  if (draft.address.trim()) payload.address = draft.address.trim();
-  if (draft.blood_type.trim()) payload.blood_type = draft.blood_type.trim();
-
-  const ecName = draft.emergency_contact_name.trim();
-  const ecPhone = draft.emergency_contact_phone.trim();
-  const ecRel = draft.emergency_contact_relationship.trim();
-  if (ecName && ecPhone) {
-    payload.emergency_contacts = [
-      {
-        name: ecName,
-        phone: ecPhone,
-        relationship: ecRel || "Other",
-      },
-    ];
-  }
-
-  return payload;
-}

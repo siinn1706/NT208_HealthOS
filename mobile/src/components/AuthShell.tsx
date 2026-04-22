@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
 import { useT } from "@/i18n";
+import { Card } from "@/components/ui/Card";
 
 interface AuthShellProps {
   title: string;
@@ -35,13 +36,15 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ gap: spacing.xs }}>
+          <View style={{ gap: spacing.sm }}>
             <Text
               style={{
                 fontSize: typography.sm.fontSize,
+                lineHeight: typography.sm.lineHeight,
+                fontFamily: typography.sm.fontFamily,
                 color: colors.brand,
                 fontWeight: fontWeights.bold,
-                letterSpacing: 1.4,
+                letterSpacing: 1.2,
               }}
             >
               {t("common.appName").toUpperCase()}
@@ -49,6 +52,8 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
             <Text
               style={{
                 fontSize: typography["3xl"].fontSize,
+                lineHeight: typography["3xl"].lineHeight,
+                fontFamily: typography["3xl"].fontFamily,
                 color: colors.text,
                 fontWeight: fontWeights.bold,
               }}
@@ -59,15 +64,19 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
               <Text
                 style={{
                   fontSize: typography.base.fontSize,
+                  lineHeight: typography.base.lineHeight,
+                  fontFamily: typography.base.fontFamily,
                   color: colors.textMuted,
-                  marginTop: 4,
+                  marginTop: spacing.xs,
                 }}
               >
                 {subtitle}
               </Text>
             ) : null}
           </View>
-          <View style={{ gap: spacing.md }}>{children}</View>
+          <Card variant="default" padded bordered>
+            <View style={{ gap: spacing.md }}>{children}</View>
+          </Card>
           {footer ? <View>{footer}</View> : null}
         </ScrollView>
       </KeyboardAvoidingView>

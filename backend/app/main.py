@@ -12,80 +12,23 @@ from app.api.v1.endpoints.chat import router as chat_ws_router
 from app.adapters.redis_client import close_redis
 from app.adapters.database import engine
 from app.core.config import settings
+from app.core.startup_schema import verify_startup_schema
 from app.ws.handlers import manager
 from app.ws.chat_router import handle_ws_event
 
 _startup_logger = logging.getLogger("healthos")
 
 
-async def _verify_ai_chat_migrations(application: FastAPI) -> None:
-    """
-    Confirm the database migrations the AI chat surface depends on are applied.
-
-    The AI chat orchestrator persists `ai_metadata` JSONB on every reply and
-    queries `users.is_system` to load the bot identity. If the matching
-    migrations (014_add_ai_bot_user, 015_add_ai_metadata_to_messages) were
-    never run on this environment:
-
-      * In production we hard-fail on startup so ops cannot accidentally
-        serve traffic with broken AI flows (the orchestrator would silently
-        wipe the inserted message via rollback — see CRITICAL C10).
-      * In dev / test we degrade gracefully: log a warning and stash a flag
-        on `app.state` so the orchestrator can write content-only updates.
-    """
-    from sqlalchemy import text
-
-    async with engine.connect() as conn:
-        msg_col = await conn.execute(
-            text(
-                "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name = 'messages' AND column_name = 'ai_metadata'"
-            )
-        )
-        ai_metadata_present = msg_col.scalar() is not None
-
-        user_col = await conn.execute(
-            text(
-                "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name = 'users' AND column_name = 'is_system'"
-            )
-        )
-        is_system_present = user_col.scalar() is not None
-
-    application.state.ai_metadata_available = ai_metadata_present
-    application.state.users_is_system_available = is_system_present
-
-    missing: list[str] = []
-    if not ai_metadata_present:
-        missing.append("messages.ai_metadata (migration 015)")
-    if not is_system_present:
-        missing.append("users.is_system (migration 014)")
-
-    if missing:
-        message = (
-            "AI chat schema dependencies missing: "
-            + ", ".join(missing)
-            + ". Run `alembic upgrade head` before serving traffic."
-        )
-        if not settings.debug:
-            raise RuntimeError(message)
-        _startup_logger.warning("%s — AI chat will degrade in dev mode.", message)
-
-
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     try:
-        await _verify_ai_chat_migrations(application)
+        await verify_startup_schema(application, engine)
     except RuntimeError:
         raise
     except Exception as exc:
-        _startup_logger.warning(
-            "Could not verify AI chat migrations (DB unreachable?): %s. "
-            "Continuing startup; the orchestrator will fail-fast on first call.",
-            exc,
-        )
-        application.state.ai_metadata_available = False
-        application.state.users_is_system_available = False
+        raise RuntimeError(
+            "Startup schema verification failed. Ensure the database is reachable and run `alembic upgrade head` before serving traffic."
+        ) from exc
 
     yield
     await close_redis()

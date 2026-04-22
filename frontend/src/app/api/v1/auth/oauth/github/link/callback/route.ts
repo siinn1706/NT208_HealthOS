@@ -7,49 +7,69 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeGitHubCodeForToken, getGitHubEmails, getGitHubUserInfo } from "@/lib/oauth/github";
-import { getLocaleFromReferer } from "@/lib/locale-path";
 import { getUserIdFromSession } from "@/lib/oauth/session-helpers";
 import { CORE_API_URL } from "@/lib/env";
 import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
+import {
+  buildLocalizedAppUrl,
+  buildOAuthCallbackUrlFromContext,
+  clearOAuthCookies,
+  readOAuthContext,
+} from "@/lib/oauth/flow-context";
 
-function profileRedirect(request: NextRequest, locale: string, params: Record<string, string>): NextResponse {
-  const url = new URL(`/${locale}/dashboard/profile`, request.url);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = NextResponse.redirect(url.toString());
-  ["oauth_link_state_github", "oauth_link_user_github"].forEach((name) => res.cookies.delete(name));
+function profileRedirect(
+  context: ReturnType<typeof readOAuthContext>,
+  params: Record<string, string>,
+): NextResponse {
+  const res = NextResponse.redirect(
+    buildLocalizedAppUrl(context, "/dashboard/profile", params),
+  );
+  clearOAuthCookies(res, [
+    "oauth_link_state_github",
+    "oauth_link_user_github",
+    "oauth_link_context_github",
+  ]);
   return res;
 }
 
 export async function GET(request: NextRequest) {
-  const locale = getLocaleFromReferer(request);
+  const context = readOAuthContext(request, "github", "link", [
+    process.env.OAUTH_GITHUB_LINK_CALLBACK_URL,
+    process.env.OAUTH_GITHUB_CALLBACK_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+  ]);
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
   const sessionUserId = getUserIdFromSession(request);
-  if (!sessionUserId) return profileRedirect(request, locale, { link_error: "auth_required" });
+  if (!sessionUserId) return profileRedirect(context, { link_error: "auth_required" });
 
-  if (error) return profileRedirect(request, locale, { link_error: error });
-  if (!code) return profileRedirect(request, locale, { link_error: "missing_code" });
+  if (error) return profileRedirect(context, { link_error: error });
+  if (!code) return profileRedirect(context, { link_error: "missing_code" });
 
   const storedState = request.cookies.get("oauth_link_state_github")?.value;
   if (!storedState || state !== storedState) {
-    return profileRedirect(request, locale, { link_error: "invalid_state" });
+    return profileRedirect(context, { link_error: "invalid_state" });
   }
   const cookieUserId = request.cookies.get("oauth_link_user_github")?.value;
   if (!cookieUserId || cookieUserId !== sessionUserId) {
-    return profileRedirect(request, locale, { link_error: "user_mismatch" });
+    return profileRedirect(context, { link_error: "user_mismatch" });
   }
 
   try {
-    const redirectUri =
-      process.env.OAUTH_GITHUB_LINK_CALLBACK_URL ||
-      process.env.OAUTH_GITHUB_CALLBACK_URL?.replace(
-        "/api/v1/auth/oauth/github/callback",
-        "/api/v1/auth/oauth/github/link/callback",
-      );
-    const tokenResponse = await exchangeGitHubCodeForToken({ code, redirectUri: redirectUri ?? "" });
+    const redirectUri = buildOAuthCallbackUrlFromContext(
+      context,
+      request,
+      "/api/v1/auth/oauth/github/link/callback",
+      [
+        process.env.OAUTH_GITHUB_LINK_CALLBACK_URL,
+        process.env.OAUTH_GITHUB_CALLBACK_URL,
+        process.env.NEXT_PUBLIC_APP_URL,
+      ],
+    );
+    const tokenResponse = await exchangeGitHubCodeForToken({ code, redirectUri });
     const githubUser = await getGitHubUserInfo(tokenResponse.access_token);
 
     let primaryEmail = githubUser.email;
@@ -59,7 +79,7 @@ export async function GET(request: NextRequest) {
       primaryEmail = primary?.email;
     }
     if (!primaryEmail) {
-      return profileRedirect(request, locale, { link_error: "no_verified_email", provider: "github" });
+      return profileRedirect(context, { link_error: "no_verified_email", provider: "github" });
     }
 
     const coreRes = await fetch(`${CORE_API_URL}/v1/auth/oauth/links/attach`, {
@@ -81,16 +101,16 @@ export async function GET(request: NextRequest) {
     });
 
     if (coreRes.status === 409) {
-      return profileRedirect(request, locale, { link_error: "already_linked", provider: "github" });
+      return profileRedirect(context, { link_error: "already_linked", provider: "github" });
     }
     if (!coreRes.ok) {
-      return profileRedirect(request, locale, { link_error: "server_error", provider: "github" });
+      return profileRedirect(context, { link_error: "server_error", provider: "github" });
     }
-    return profileRedirect(request, locale, { linked: "github" });
+    return profileRedirect(context, { linked: "github" });
   } catch (err) {
     if (isCoreUpstreamUnreachable(err)) {
-      return profileRedirect(request, locale, { link_error: "core_unreachable", provider: "github" });
+      return profileRedirect(context, { link_error: "core_unreachable", provider: "github" });
     }
-    return profileRedirect(request, locale, { link_error: "server_error", provider: "github" });
+    return profileRedirect(context, { link_error: "server_error", provider: "github" });
   }
 }

@@ -1,15 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
+import { ScreenContainer } from "@/components/ScreenContainer";
 import { Stack, useLocalSearchParams } from "expo-router";
 import {
   useInfiniteQuery,
@@ -18,7 +9,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { useT } from "@/i18n";
+import { useLocale, useT } from "@/i18n";
 import { useTheme } from "@/theme";
 import { useToast } from "@/components/ui/Toast";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -38,15 +29,32 @@ import {
 } from "@/api/endpoints/conversations";
 import { ApiError } from "@/api/errors";
 import { useChatSocket } from "@/api/ws/useChatSocket";
-import { relative } from "@/utils/date";
+import { relative, type RelativeTimeLabels } from "@/utils/date";
+import {
+  formatChatDateSeparatorLabel,
+  getConversationDisplayTitle,
+  getMessageGroupPosition,
+  isMessageActionSheetEligible,
+  mergeVisibleChatMessages,
+  shouldShowDateSeparatorBefore,
+  shouldShowMessageTimestamp,
+  shouldShowSenderLabel,
+} from "@/utils/chat-presentation";
 import { useThrottle } from "@/utils/debounce";
+import { LoadingState } from "@/components/states/LoadingState";
+import { ErrorState } from "@/components/states/ErrorState";
+import { EmptyState } from "@/components/states/EmptyState";
+import { ConversationRoomHeader } from "@/components/chat/ConversationRoomHeader";
+import { ChatConnectionBanner } from "@/components/chat/ChatConnectionBanner";
+import { PinnedStrip } from "@/components/chat/PinnedStrip";
+import { MessageBubble } from "@/components/chat/MessageBubble";
+import { ChatComposer } from "@/components/chat/ChatComposer";
+import { MessageActionSheet } from "@/components/chat/MessageActionSheet";
 
 interface PendingMessage extends MessageDTO {
   __pending?: boolean;
   __failed?: boolean;
 }
-
-const REACTIONS = ["👍", "❤️", "🎉", "🤔", "😂"];
 
 function uuid(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -54,6 +62,7 @@ function uuid(): string {
 
 export default function ConversationRoomScreen() {
   const t = useT();
+  const { locale } = useLocale();
   const toast = useToast();
   const qc = useQueryClient();
   const { isOnline } = useNetworkStatus();
@@ -61,6 +70,19 @@ export default function ConversationRoomScreen() {
   const params = useLocalSearchParams<{ conversationId: string }>();
   const conversationId = params.conversationId ?? "";
   const meId = sessionStore((s) => s.user?.id);
+  const localeTag = locale === "vi" ? "vi-VN" : "en-US";
+
+  const relativeLabels: RelativeTimeLabels = useMemo(
+    () => ({
+      justNow: t("chat.timeJustNow"),
+      minutesAgo: (c: number) => t("chat.timeMinutesAgo", { count: c }),
+      hoursAgo: (c: number) => t("chat.timeHoursAgo", { count: c }),
+      daysAgo: (c: number) => t("chat.timeDaysAgo", { count: c }),
+      olderThanOneWeek: (iso: string) =>
+        new Date(iso).toLocaleDateString(localeTag, { month: "short", day: "numeric" }),
+    }),
+    [t, localeTag]
+  );
 
   const conversation = useQuery({
     queryKey: ["conversation", conversationId],
@@ -86,7 +108,7 @@ export default function ConversationRoomScreen() {
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<MessageDTO | null>(null);
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
-  const [showReactionsFor, setShowReactionsFor] = useState<string | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<PendingMessage | null>(null);
   const listRef = useRef<FlatList<PendingMessage>>(null);
 
   const allServerMessages = useMemo(
@@ -99,26 +121,25 @@ export default function ConversationRoomScreen() {
     [allServerMessages]
   );
 
-  const merged: PendingMessage[] = useMemo(() => {
-    const visible: PendingMessage[] = [];
-    const seenClient = new Set<string>();
-    for (const m of allServerMessages) {
-      visible.push(m);
-      if (m.client_message_id) seenClient.add(m.client_message_id);
-    }
-    for (const p of pendingMessages) {
-      if (p.client_message_id && seenClient.has(p.client_message_id)) continue;
-      visible.unshift(p);
-    }
-    return visible;
-  }, [allServerMessages, pendingMessages]);
+  const merged: PendingMessage[] = useMemo(
+    () => mergeVisibleChatMessages(allServerMessages, pendingMessages),
+    [allServerMessages, pendingMessages]
+  );
 
-  const wsSendRef = useRef<((event: string, payload: unknown) => boolean) | null>(null);
+  const isGroup = conversation.data?.type === "group";
+
+  const roomTitle = useMemo(() => {
+    if (!conversation.data) return t("chat.fallbackTitle");
+    return getConversationDisplayTitle(conversation.data, meId, {
+      group: t("chat.groupFallback"),
+      direct: t("chat.directFallback"),
+    });
+  }, [conversation.data, meId, t]);
+
   const handleWsEvent = useCallback(
     (event: string, payload: unknown) => {
       const p = payload as Record<string, unknown> | null;
 
-      // Surface server-rejected events to the user via toast.
       if (event === "error" && p) {
         const message = (p.message as string | undefined) ?? "Chat error";
         toast.error(message);
@@ -127,8 +148,6 @@ export default function ConversationRoomScreen() {
 
       if (!p) return;
 
-      // Backend emits past-tense legacy event names for pin/unpin.
-      // Per [chat_router.py](backend/app/ws/chat_router.py): broadcast_dual(..., "msg:pinned", "chat.message.pinned").
       const eventNames = new Set([
         "msg:new",
         "chat.message.sent",
@@ -184,6 +203,8 @@ export default function ConversationRoomScreen() {
     },
     [conversationId, qc, toast]
   );
+
+  const wsSendRef = useRef<((event: string, payload: unknown) => boolean) | null>(null);
 
   const ws = useChatSocket({
     conversationId,
@@ -285,7 +306,6 @@ export default function ConversationRoomScreen() {
   const onReact = async (m: MessageDTO, emoji: string) => {
     try {
       await reactToMessage(conversationId, m.id, emoji);
-      setShowReactionsFor(null);
       qc.invalidateQueries({ queryKey: ["messages", conversationId] });
     } catch {
       toast.error(t("chat.couldNotReact"));
@@ -310,266 +330,294 @@ export default function ConversationRoomScreen() {
     }
   }, [allServerMessages, markReadThrottled]);
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.md }}>
-          <Text style={{ color: colors.text, fontSize: typography["xl"].fontSize, fontWeight: fontWeights.bold }}>
-            {conversation.data?.title ?? t("chat.fallbackTitle")}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: 2 }}>
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: radius.xs,
-                backgroundColor: ws.connected ? colors.success : colors.warning,
-              }}
-            />
-            <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
-              {!isOnline
-                ? t("common.offline")
-                : ws.connected
-                  ? t("chat.live")
-                  : t("chat.wsDisconnected")}
-            </Text>
-          </View>
-        </View>
+  const displayTitle = conversation.data?.title ?? roomTitle;
+  const bannerDotColor = !isOnline
+    ? colors.textMuted
+    : ws.connected
+      ? colors.success
+      : colors.warning;
 
-        {pinned.data && pinned.data.length > 0 ? (
-          <View
-            style={{
-              backgroundColor: colors.surfaceMuted,
-              padding: spacing.sm,
-              marginHorizontal: spacing.base,
-              marginTop: spacing.sm,
-              borderRadius: radius.md,
-            }}
-          >
-            <Text style={{ color: colors.brand, fontSize: typography.xs.fontSize, fontWeight: fontWeights.semibold }}>
-              📌 {t("chat.pinnedCount", { count: pinned.data.length })}
-            </Text>
-            <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }} numberOfLines={1}>
-              {pinned.data[0]?.content}
-            </Text>
-          </View>
-        ) : null}
-
-        <FlatList
-          ref={listRef}
-          data={merged}
-          keyExtractor={(item) => item.id}
-          inverted
-          contentContainerStyle={{ padding: spacing.base, gap: spacing.xs }}
-          onEndReached={() => {
-            if (messages.hasNextPage && !messages.isFetchingNextPage) {
-              messages.fetchNextPage();
-            }
+  const roomChrome = conversation.isPending ? (
+    <LoadingState />
+  ) : conversation.isError ? (
+    <ErrorState error={conversation.error} onRetry={() => conversation.refetch()} />
+  ) : (
+    <>
+      <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.md }}>
+        <ConversationRoomHeader
+          title={displayTitle}
+          titleStyle={{
+            color: colors.text,
+            fontSize: typography["xl"].fontSize,
+            fontWeight: fontWeights.bold,
           }}
-          onEndReachedThreshold={0.4}
-          renderItem={({ item }) => {
-            const isMine = item.sender_id === meId;
-            return (
-              <Pressable
-                onLongPress={() => setShowReactionsFor(item.id)}
-                style={{
-                  alignSelf: isMine ? "flex-end" : "flex-start",
-                  maxWidth: "78%",
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: isMine ? colors.brand : colors.surface,
-                    borderRadius: radius.md,
-                    padding: spacing.sm,
-                    borderWidth: isMine ? 0 : 1,
-                    borderColor: colors.border,
-                    opacity: item.__pending ? 0.6 : item.__failed ? 0.4 : 1,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: isMine ? colors.brandText : colors.text,
-                    }}
-                  >
-                    {item.is_recalled ? `[${t("chat.deleted")}]` : item.content}
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: spacing.xs,
-                      marginTop: spacing.xs,
-                    }}
-                  >
-                    {item.edited_at ? (
-                      <Text
-                        style={{
-                          color: isMine ? colors.brandText : colors.textMuted,
-                          fontSize: typography["2xs"].fontSize,
-                          lineHeight: typography["2xs"].lineHeight,
-                        }}
-                      >
-                        {t("chat.edited")}
-                      </Text>
-                    ) : null}
+        />
+        <ChatConnectionBanner
+          isOnline={isOnline}
+          wsConnected={ws.connected}
+          offlineLabel={t("common.offline")}
+          liveLabel={t("chat.live")}
+          reconnectingLabel={t("chat.wsDisconnected")}
+          dotColor={bannerDotColor}
+          mutedColor={colors.textMuted}
+          fontSize={typography.xs.fontSize}
+          rowStyle={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.xs,
+            marginTop: 2,
+          }}
+        />
+      </View>
+
+      {pinned.data && pinned.data.length > 0 ? (
+        <PinnedStrip
+          countLabel={t("chat.pinnedCount", { count: pinned.data.length })}
+          preview={pinned.data[0]?.content ?? ""}
+          surfaceStyle={{
+            backgroundColor: colors.surfaceMuted,
+            padding: spacing.sm,
+            marginHorizontal: spacing.base,
+            marginTop: spacing.sm,
+            borderRadius: radius.md,
+          }}
+          countTextStyle={{
+            color: colors.brand,
+            fontSize: typography.xs.fontSize,
+            fontWeight: fontWeights.semibold,
+          }}
+          previewTextStyle={{
+            color: colors.textMuted,
+            fontSize: typography.xs.fontSize,
+          }}
+        />
+      ) : null}
+
+      <View style={{ flex: 1 }}>
+        {messages.isError ? (
+          <ErrorState error={messages.error} onRetry={() => messages.refetch()} />
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={merged}
+            keyExtractor={(item) => item.id}
+            inverted
+            contentContainerStyle={{
+              padding: spacing.base,
+              gap: spacing.xs,
+              flexGrow: 1,
+            }}
+            onEndReached={() => {
+              if (messages.hasNextPage && !messages.isFetchingNextPage) {
+                messages.fetchNextPage();
+              }
+            }}
+            onEndReachedThreshold={0.4}
+            renderItem={({ item, index }) => {
+              const isMine = item.sender_id === meId;
+              const olderBelow = merged[index + 1];
+              const newerAbove = merged[index - 1];
+              const groupPosition = getMessageGroupPosition(olderBelow, item, newerAbove);
+              const forceMetaStatus = !!item.__pending || !!item.__failed;
+              const showTimestamp =
+                forceMetaStatus || shouldShowMessageTimestamp(olderBelow, newerAbove, item);
+              const showDateSeparator = shouldShowDateSeparatorBefore(item, olderBelow);
+              const dateSeparatorLabel = showDateSeparator
+                ? formatChatDateSeparatorLabel(
+                    item.created_at,
+                    { today: t("chat.dateToday"), yesterday: t("chat.dateYesterday") },
+                    (d) =>
+                      d.toLocaleDateString(localeTag, {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })
+                  )
+                : "";
+
+              const showSender = shouldShowSenderLabel(!!isGroup, !!isMine, olderBelow, item);
+              const senderLabel = item.sender_display_name ?? "";
+
+              const timeLabel = relative(item.created_at, relativeLabels);
+
+              return (
+                <View>
+                  {showDateSeparator ? (
                     <Text
                       style={{
-                        color: isMine ? colors.brandText : colors.textMuted,
+                        alignSelf: "center",
+                        color: colors.textMuted,
                         fontSize: typography["2xs"].fontSize,
-                        lineHeight: typography["2xs"].lineHeight,
+                        marginBottom: spacing.xs,
+                        marginTop: spacing.sm,
                       }}
                     >
-                      {relative(item.created_at)}
+                      {dateSeparatorLabel}
                     </Text>
-                  </View>
-                  {item.reactions && item.reactions.length > 0 ? (
-                    <View style={{ flexDirection: "row", gap: 4, marginTop: 4 }}>
-                      {Object.entries(
-                        item.reactions.reduce<Record<string, number>>((acc, r) => {
-                          acc[r.emoji] = (acc[r.emoji] ?? 0) + 1;
-                          return acc;
-                        }, {})
-                      ).map(([emoji, count]) => (
-                        <Text key={emoji} style={{ color: isMine ? colors.brandText : colors.text }}>
-                          {emoji} {count}
-                        </Text>
-                      ))}
-                    </View>
                   ) : null}
-                </View>
-                {showReactionsFor === item.id ? (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: spacing.xs,
-                      marginTop: 6,
-                      backgroundColor: colors.surface,
-                      borderRadius: radius.pill,
-                      padding: spacing.xs,
-                      alignSelf: isMine ? "flex-end" : "flex-start",
-                      borderWidth: 1,
+                  <MessageBubble
+                    content={item.content}
+                    isMine={!!isMine}
+                    isRecalled={!!item.is_recalled}
+                    recalledLabel={t("chat.deleted")}
+                    pending={!!item.__pending}
+                    failed={!!item.__failed}
+                    maxWidth="78%"
+                    alignSelf={isMine ? "flex-end" : "flex-start"}
+                    groupPosition={groupPosition}
+                    verticalSectionGap={spacing.xs}
+                    showSenderLabel={showSender}
+                    senderLabel={senderLabel}
+                    senderLabelColor={colors.textMuted}
+                    senderLabelSize={typography["2xs"].fontSize}
+                    onLongPress={() => {
+                      if (isMessageActionSheetEligible(item)) setSelectedMessage(item);
+                    }}
+                    bubbleStyle={{
+                      backgroundColor: isMine ? colors.brand : colors.surface,
+                      borderRadius: radius.md,
+                      padding: spacing.sm,
+                      borderWidth: isMine ? 0 : 1,
                       borderColor: colors.border,
                     }}
-                  >
-                    {REACTIONS.map((emoji) => (
-                      <Pressable
-                        key={emoji}
-                        onPress={() => onReact(item, emoji)}
-                        hitSlop={4}
-                      >
-                        <Text style={{ fontSize: 18 }}>{emoji}</Text>
-                      </Pressable>
-                    ))}
-                    {isMine && !item.is_recalled ? (
-                      <>
-                        <Pressable
-                          onPress={() => {
-                            setEditing(item);
-                            setDraft(item.content);
-                            setShowReactionsFor(null);
-                          }}
-                          hitSlop={4}
-                        >
-                          <Text style={{ color: colors.brand, fontWeight: fontWeights.semibold }}>
-                            {t("chat.edit")}
-                          </Text>
-                        </Pressable>
-                        <Pressable onPress={() => onDelete(item)} hitSlop={4}>
-                          <Text style={{ color: colors.danger, fontWeight: fontWeights.semibold }}>
-                            {t("chat.delete")}
-                          </Text>
-                        </Pressable>
-                      </>
-                    ) : null}
-                    <Pressable onPress={() => onPinToggle(item)} hitSlop={4}>
-                      <Text style={{ color: colors.brand }}>
-                        {item.is_pinned ? t("chat.unpin") : t("chat.pin")}
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          }}
-          ListFooterComponent={
-            messages.isFetchingNextPage ? (
-              <Text style={{ color: colors.textMuted, textAlign: "center", padding: spacing.sm }}>
-                {t("chat.loadingMore")}
-              </Text>
-            ) : null
-          }
-        />
-
-        <View
-          style={[
-            styles.composer,
-            {
-              borderTopColor: colors.border,
-              backgroundColor: colors.surface,
-              paddingHorizontal: spacing.base,
-              paddingVertical: spacing.sm,
-            },
-          ]}
-        >
-          {editing ? (
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-              <Text style={{ color: colors.brand, fontSize: typography.xs.fontSize, flex: 1 }}>
-                {t("chat.editingNotice")}
-              </Text>
-              <Pressable onPress={() => { setEditing(null); setDraft(""); }} hitSlop={6}>
-                <Text style={{ color: colors.danger, fontSize: typography.xs.fontSize }}>
-                  {t("common.cancel")}
+                    bodyColor={isMine ? colors.brandText : colors.text}
+                    meta={{
+                      edited: !!item.edited_at,
+                      showTimestamp,
+                      timeLabel,
+                      editedLabel: t("chat.edited"),
+                      isMine: !!isMine,
+                      editedColor: isMine ? colors.brandText : colors.textMuted,
+                      mutedColor: colors.textMuted,
+                      fontSize: typography["2xs"].fontSize,
+                      lineHeight: typography["2xs"].lineHeight,
+                      pending: !!item.__pending,
+                      failed: !!item.__failed,
+                      pendingLabel: t("chat.messageSending"),
+                      failedLabel: t("chat.messageFailed"),
+                    }}
+                    reactions={
+                      item.reactions && item.reactions.length > 0
+                        ? {
+                            reactions: item.reactions,
+                            textColor: isMine ? colors.brandText : colors.text,
+                          }
+                        : null
+                    }
+                  />
+                </View>
+              );
+            }}
+            ListEmptyComponent={
+              messages.isPending ? (
+                <LoadingState />
+              ) : (
+                <EmptyState title={t("chat.roomEmpty")} />
+              )
+            }
+            ListFooterComponent={
+              messages.isFetchingNextPage ? (
+                <Text
+                  style={{ color: colors.textMuted, textAlign: "center", padding: spacing.sm }}
+                >
+                  {t("chat.loadingMore")}
                 </Text>
-              </Pressable>
-            </View>
-          ) : null}
-          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm }}>
-            <TextInput
-              style={{
-                flex: 1,
-                color: colors.text,
-                backgroundColor: colors.surfaceMuted,
-                borderRadius: radius.md,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
-                maxHeight: 120,
-              }}
-              placeholder={t("chat.messagePlaceholder")}
-              placeholderTextColor={colors.textMuted}
-              value={draft}
-              onChangeText={(text) => {
-                setDraft(text);
-                onTyping();
-              }}
-              multiline
-            />
-            <Pressable
-              onPress={onSend}
-              disabled={!draft.trim()}
-              accessibilityRole="button"
-              accessibilityLabel={t("chat.send")}
-              accessibilityState={{ disabled: !draft.trim() }}
-              style={{
-                backgroundColor: draft.trim() ? colors.brand : colors.surfaceMuted,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.md,
-                minHeight: 44,
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: draft.trim() ? colors.brandText : colors.textMuted, fontWeight: fontWeights.semibold }}>
-                {t("chat.send")}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              ) : null
+            }
+          />
+        )}
+      </View>
+
+      <ChatComposer
+        draft={draft}
+        onChangeDraft={setDraft}
+        onSend={onSend}
+        onTyping={onTyping}
+        editing={!!editing}
+        editingNotice={t("chat.editingNotice")}
+        onCancelEdit={() => {
+          setEditing(null);
+          setDraft("");
+        }}
+        cancelLabel={t("common.cancel")}
+        placeholder={t("chat.messagePlaceholder")}
+        placeholderColor={colors.textMuted}
+        sendLabel={t("chat.send")}
+        canSend={draft.trim().length > 0}
+        noticeStyle={{ color: colors.brand, fontSize: typography.xs.fontSize, flex: 1 }}
+        cancelNoticeStyle={{ color: colors.danger, fontSize: typography.xs.fontSize }}
+        shellStyle={[
+          styles.composer,
+          {
+            borderTopColor: colors.border,
+            backgroundColor: colors.surface,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.sm,
+          },
+        ]}
+        inputStyle={{
+          flex: 1,
+          color: colors.text,
+          backgroundColor: colors.surfaceMuted,
+          borderRadius: radius.md,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          maxHeight: 120,
+        }}
+        sendButtonStyle={{
+          backgroundColor: draft.trim() ? colors.brand : colors.surfaceMuted,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          borderRadius: radius.md,
+          minHeight: 44,
+          justifyContent: "center",
+        }}
+        sendTextStyle={{
+          color: draft.trim() ? colors.brandText : colors.textMuted,
+          fontWeight: fontWeights.semibold,
+        }}
+        sendDisabledTextColor={colors.textMuted}
+      />
+    </>
+  );
+
+  return (
+    <ScreenContainer edges={["top"]} keyboardAvoiding keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {roomChrome}
+        {selectedMessage ? (
+          <MessageActionSheet
+            title={t("chat.messageActionsTitle")}
+            message={selectedMessage}
+            isMine={selectedMessage.sender_id === meId}
+            onClose={() => setSelectedMessage(null)}
+            onReact={(m, emoji) => onReact(m, emoji)}
+            onEdit={(m) => {
+              setEditing(m);
+              setDraft(m.content);
+            }}
+            onDelete={(m) => onDelete(m)}
+            onPinToggle={(m) => onPinToggle(m)}
+            labels={{
+              edit: t("chat.edit"),
+              delete: t("chat.delete"),
+              pin: t("chat.pin"),
+              unpin: t("chat.unpin"),
+            }}
+            recalledHint={t("chat.recalledSheetHint")}
+            serverActionsBlockedHint={t("chat.serverActionsBlockedHint")}
+            closeLabel={t("common.close")}
+            brandColor={colors.brand}
+            dangerColor={colors.danger}
+            mutedColor={colors.textMuted}
+            surfaceColor={colors.surface}
+            borderColor={colors.border}
+            sheetCornerRadius={radius.md}
+          />
+        ) : null}
+      </View>
+    </ScreenContainer>
   );
 }
 

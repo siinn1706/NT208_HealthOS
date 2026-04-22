@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 interface RevealProps {
   children: ReactNode;
@@ -21,6 +22,7 @@ interface RevealProps {
  *
  * - Animates opacity + small translateY when the element scrolls into view.
  * - Honors `prefers-reduced-motion`: degrades to a no-op render.
+ * - Motion runs only after mount so SSR HTML matches the first client paint (no hydration mismatch).
  * - Wraps in a single motion.div; suitable for sections, cards, headings.
  * - Keep usage selective — over-reveal is more distracting than helpful.
  */
@@ -32,9 +34,15 @@ export function Reveal({
   once = true,
   className,
 }: RevealProps) {
+  const [mounted, setMounted] = useState(false);
   const prefersReduced = useReducedMotion();
 
-  if (prefersReduced) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  /** SSR + first client paint: static div so HTML matches (no motion inline styles). */
+  if (!mounted || prefersReduced) {
     return <div className={className}>{children}</div>;
   }
 

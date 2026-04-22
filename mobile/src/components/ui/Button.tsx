@@ -36,27 +36,31 @@ export function Button({
   children,
   ...rest
 }: ButtonProps) {
-  const { colors, radius, spacing, fontWeights } = useTheme();
+  const { colors, radius, spacing, fontWeights, typography } = useTheme();
   const isDisabled = disabled || loading;
 
-  const sizeStyles: Record<ButtonSize, { padV: number; padH: number; font: number; minHeight: number }> = {
-    // 44dp is the WCAG 2.1 AA / Material accessibility target. The previous 36
-    // value made small buttons fail tap-target audits on Android.
-    sm: { padV: 8, padH: 14, font: 14, minHeight: 44 },
-    md: { padV: 12, padH: 16, font: 16, minHeight: 48 },
-    lg: { padV: 16, padH: 20, font: 18, minHeight: 52 },
+  const sizeStyles: Record<ButtonSize, { padV: number; padH: number; font: keyof typeof typography; minHeight: number }> = {
+    sm: { padV: 8, padH: 14, font: "sm", minHeight: 44 },
+    md: { padV: 12, padH: 16, font: "base", minHeight: 48 },
+    lg: { padV: 16, padH: 20, font: "lg", minHeight: 52 },
   };
   const sz = sizeStyles[size];
+  const ty = typography[sz.font];
 
   const palette: Record<
     ButtonVariant,
-    { bg: string; text: string; border?: string }
+    { bg: string; text: string; border?: string; pressed: number }
   > = {
-    primary: { bg: colors.brand, text: colors.brandText },
-    secondary: { bg: colors.surfaceMuted, text: colors.text, border: colors.border },
-    ghost: { bg: "transparent", text: colors.text },
-    destructive: { bg: colors.danger, text: colors.dangerText },
-    link: { bg: "transparent", text: colors.brand },
+    primary: { bg: colors.brand, text: colors.brandText, pressed: 0.88 },
+    secondary: {
+      bg: colors.surfaceMuted,
+      text: colors.text,
+      border: colors.border,
+      pressed: 0.92,
+    },
+    ghost: { bg: "transparent", text: colors.text, pressed: 0.75 },
+    destructive: { bg: colors.danger, text: colors.dangerText, pressed: 0.88 },
+    link: { bg: "transparent", text: colors.brand, pressed: 0.75 },
   };
   const v = palette[variant];
 
@@ -64,7 +68,11 @@ export function Button({
     <Pressable
       {...rest}
       disabled={isDisabled}
-      android_ripple={{ color: colors.borderStrong }}
+      android_ripple={
+        variant === "ghost" || variant === "link"
+          ? { color: `${colors.border}99` }
+          : { color: `${colors.textInverse}33` }
+      }
       style={({ pressed }) => [
         styles.base,
         {
@@ -75,7 +83,7 @@ export function Button({
           minHeight: sz.minHeight,
           borderWidth: v.border ? 1 : 0,
           borderColor: v.border,
-          opacity: isDisabled ? 0.55 : pressed ? 0.85 : 1,
+          opacity: isDisabled ? 0.5 : pressed ? v.pressed : 1,
           alignSelf: fullWidth ? "stretch" : "flex-start",
         },
         style,
@@ -93,7 +101,9 @@ export function Button({
               styles.label,
               {
                 color: v.text,
-                fontSize: sz.font,
+                fontSize: ty.fontSize,
+                lineHeight: ty.lineHeight,
+                fontFamily: ty.fontFamily,
                 fontWeight: fontWeights.semibold,
                 marginHorizontal: leftIcon || rightIcon ? spacing.xs : 0,
                 textDecorationLine: variant === "link" ? "underline" : "none",

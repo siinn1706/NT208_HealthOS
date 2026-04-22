@@ -11,6 +11,8 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path "$PSScriptRoot\..\..\"
 
+Import-Module (Join-Path $PSScriptRoot "healthos-common.psm1") -Force
+
 Write-Host "=== HealthOS Setup ===" -ForegroundColor Cyan
 Write-Host "Root: $Root"
 
@@ -96,10 +98,13 @@ else {
             throw "[BE] pip install failed."
         }
 
+        Write-Host "[BE] Verifying Alembic migration graph..." -ForegroundColor Cyan
+        Assert-SingleAlembicHead -PythonExe $PyExe -BackendDir "$Root\backend" -ErrorPrefix "[BE]"
+
         Write-Host "[BE] Running database migrations..." -ForegroundColor Cyan
         & $PyExe -m alembic upgrade head
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning "[BE] Migration failed. DB may need manual setup or Postgres may not be running."
+            throw "[BE] Database migrations failed. Fix the error above and rerun setup."
         }
 
         Write-Host "[BE] Done." -ForegroundColor Green

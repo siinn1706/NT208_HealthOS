@@ -1,15 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+
+import { ScreenContainer } from "@/components/ScreenContainer";
 
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -243,11 +236,8 @@ export default function OnboardingStepScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+    <ScreenContainer edges={["top", "bottom"]} keyboardAvoiding>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
         style={[
           styles.progress,
@@ -384,8 +374,8 @@ export default function OnboardingStepScreen() {
           </View>
         </View>
       </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </ScreenContainer>
   );
 }
 

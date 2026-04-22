@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -28,13 +28,16 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     rightAdornment,
     containerStyle,
     style,
+    onFocus,
+    onBlur,
     ...rest
   },
   ref
 ) {
   const { colors, radius, spacing, fontWeights, typography } = useTheme();
+  const [focused, setFocused] = useState(false);
   const hasError = !!error;
-  const borderColor = hasError ? colors.danger : colors.border;
+  const borderColor = hasError ? colors.danger : focused ? colors.ring : colors.border;
 
   return (
     <View style={[styles.wrapper, { gap: spacing.xs }, containerStyle]}>
@@ -43,6 +46,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           style={{
             color: colors.text,
             fontSize: typography.sm.fontSize,
+            lineHeight: typography.sm.lineHeight,
+            fontFamily: typography.sm.fontFamily,
             fontWeight: fontWeights.medium,
           }}
         >
@@ -55,9 +60,10 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           {
             borderColor,
             borderRadius: radius.md,
-            backgroundColor: colors.inputBackground,
+            backgroundColor: colors.field,
             paddingHorizontal: spacing.md,
             minHeight: 48,
+            borderWidth: 1,
           },
         ]}
       >
@@ -65,12 +71,22 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         <TextInput
           ref={ref}
           {...rest}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
           placeholderTextColor={colors.textMuted}
           style={[
             styles.input,
             {
               color: colors.text,
               fontSize: typography.base.fontSize,
+              lineHeight: typography.base.lineHeight,
+              fontFamily: typography.base.fontFamily,
               flex: 1,
               paddingVertical: spacing.sm,
             },
@@ -84,6 +100,9 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           style={{
             color: colors.danger,
             fontSize: typography.xs.fontSize,
+            lineHeight: typography.xs.lineHeight,
+            fontFamily: typography.xs.fontFamily,
+            fontWeight: fontWeights.medium,
           }}
         >
           {error}
@@ -93,6 +112,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           style={{
             color: colors.textMuted,
             fontSize: typography.xs.fontSize,
+            lineHeight: typography.xs.lineHeight,
+            fontFamily: typography.xs.fontFamily,
           }}
         >
           {hint}

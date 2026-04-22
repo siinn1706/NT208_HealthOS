@@ -1,17 +1,15 @@
-import React from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import React, { useMemo } from "react";
+import { RefreshControl, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 
 import { ScreenScroll } from "@/components/ScreenScroll";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { EmptyState } from "@/components/states/EmptyState";
-import { useT } from "@/i18n";
+import { useLocale, useT } from "@/i18n";
 import { useTheme } from "@/theme";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -21,15 +19,32 @@ import {
   rejectConversation,
 } from "@/api/endpoints/conversations";
 import { sessionStore } from "@/auth/session";
-import { relative } from "@/utils/date";
+import { relative, type RelativeTimeLabels } from "@/utils/date";
+import { getConversationListPreview, getConversationDisplayTitle } from "@/utils/chat-presentation";
+import { ConversationListItem } from "@/components/chat/ConversationListItem";
+import { PendingInviteSection } from "@/components/chat/PendingInviteSection";
 
 export default function ChatListScreen() {
   const t = useT();
+  const { locale } = useLocale();
   const router = useRouter();
   const toast = useToast();
   const qc = useQueryClient();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
+  const { colors, spacing } = useTheme();
   const meId = sessionStore((s) => s.user?.id);
+  const localeTag = locale === "vi" ? "vi-VN" : "en-US";
+
+  const relativeLabels: RelativeTimeLabels = useMemo(
+    () => ({
+      justNow: t("chat.timeJustNow"),
+      minutesAgo: (c: number) => t("chat.timeMinutesAgo", { count: c }),
+      hoursAgo: (c: number) => t("chat.timeHoursAgo", { count: c }),
+      daysAgo: (c: number) => t("chat.timeDaysAgo", { count: c }),
+      olderThanOneWeek: (iso: string) =>
+        new Date(iso).toLocaleDateString(localeTag, { month: "short", day: "numeric" }),
+    }),
+    [t, localeTag]
+  );
 
   const conversations = useQuery({
     queryKey: ["conversations"],
@@ -82,59 +97,24 @@ export default function ChatListScreen() {
       />
 
       {pending.data && pending.data.length > 0 ? (
-        <Card>
-          <Text style={{ color: colors.text, fontWeight: fontWeights.semibold, fontSize: typography.lg.fontSize, marginBottom: spacing.sm }}>
-            {t("chat.pendingTitle")}
-          </Text>
-          <View style={{ gap: spacing.md }}>
-            {pending.data.map((c) => (
-              <View
-                key={c.id}
-                style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
-              >
-                <Avatar name={titleFor(c, meId)} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.text, fontWeight: fontWeights.medium }}>
-                    {titleFor(c, meId)}
-                  </Text>
-                  <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
-                    {t("chat.pendingInvited")}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => accept.mutate(c.id)}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("chat.accept")}
-                >
-                  <Text style={{ color: colors.brand, fontWeight: fontWeights.semibold }}>
-                    {t("chat.accept")}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => reject.mutate(c.id)}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("chat.reject")}
-                >
-                  <Text style={{ color: colors.danger, fontWeight: fontWeights.semibold }}>
-                    {t("chat.reject")}
-                  </Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        </Card>
+        <PendingInviteSection
+          invites={pending.data}
+          meId={meId}
+          title={t("chat.pendingTitle")}
+          invitedHint={t("chat.pendingInvited")}
+          acceptLabel={t("chat.accept")}
+          rejectLabel={t("chat.reject")}
+          groupFallback={t("chat.groupFallback")}
+          directFallback={t("chat.directFallback")}
+          onAccept={(id) => accept.mutate(id)}
+          onReject={(id) => reject.mutate(id)}
+        />
       ) : null}
 
       {conversations.isPending ? (
-        <Card>
-          <LoadingState />
-        </Card>
+        <LoadingState />
       ) : conversations.isError ? (
-        <Card>
-          <ErrorState error={conversations.error} onRetry={() => conversations.refetch()} />
-        </Card>
+        <ErrorState error={conversations.error} onRetry={() => conversations.refetch()} />
       ) : conversations.data.length === 0 ? (
         <EmptyState
           title={t("chat.noConversations")}
@@ -145,107 +125,40 @@ export default function ChatListScreen() {
       ) : (
         <View style={{ gap: spacing.sm }}>
           {conversations.data.map((c) => {
-            const title = titleFor(c, meId);
+            const title = getConversationDisplayTitle(c, meId, {
+              group: t("chat.groupFallback"),
+              direct: t("chat.directFallback"),
+            });
+            const preview = getConversationListPreview(c, meId, {
+              recalled: t("chat.deleted"),
+              emptyDash: t("chat.emptyListPreview"),
+              youPrefix: t("chat.previewYouPrefix"),
+            });
+            const timeLabel = c.last_message?.created_at
+              ? relative(c.last_message.created_at, relativeLabels)
+              : "";
             return (
-              <Pressable
+              <ConversationListItem
                 key={c.id}
-                accessibilityRole="button"
-                accessibilityLabel={title}
+                title={title}
+                preview={preview}
+                timeLabel={timeLabel}
+                unreadCount={c.unread_count}
+                isPinned={c.is_pinned}
+                isMuted={c.is_muted}
+                pinnedLabel={t("chat.listPinned")}
+                mutedLabel={t("chat.listMuted")}
                 onPress={() =>
                   router.push({
                     pathname: "/(tabs)/chat/[conversationId]",
                     params: { conversationId: c.id },
                   })
                 }
-              >
-                <Card>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                    <Avatar name={title} />
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                        <Text style={{ color: colors.text, fontWeight: fontWeights.semibold, flex: 1 }}>
-                          {title}
-                        </Text>
-                        {c.is_pinned ? <Badge tone="brand">pinned</Badge> : null}
-                        {c.is_muted ? <Badge tone="neutral">muted</Badge> : null}
-                      </View>
-                      <Text
-                        numberOfLines={1}
-                        style={{ color: colors.textMuted, fontSize: typography.sm.fontSize, marginTop: 2 }}
-                      >
-                        {c.last_message?.content ?? "—"}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
-                        {c.last_message?.created_at ? relative(c.last_message.created_at) : ""}
-                      </Text>
-                      {c.unread_count ? (
-                        <View
-                          style={{
-                            marginTop: 2,
-                            backgroundColor: colors.brand,
-                            borderRadius: radius.pill,
-                            paddingHorizontal: 6,
-                            minWidth: 22,
-                            alignItems: "center",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: colors.brandText,
-                              fontSize: typography["2xs"].fontSize,
-                              lineHeight: typography["2xs"].lineHeight,
-                              fontWeight: fontWeights.bold,
-                            }}
-                          >
-                            {c.unread_count}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  </View>
-                </Card>
-              </Pressable>
+              />
             );
           })}
         </View>
       )}
     </ScreenScroll>
-  );
-}
-
-function titleFor(c: import("@/api/endpoints/conversations").ConversationDTO, meId?: string | null): string {
-  // Pure helper, no hooks — caller renders these from inside a translated
-  // context. We deliberately keep the fallbacks as English literals that the
-  // calling component can swap to t("chat.groupFallback") / t("chat.directFallback")
-  // if needed; today's callers display the title verbatim.
-  if (c.title) return c.title;
-  if (c.type !== "direct") return "Group";
-  const other = c.participants?.find((p) => p.id !== meId);
-  return other?.display_name ?? "Direct chat";
-}
-
-function Avatar({ name }: { name: string }) {
-  // Pull theme tokens from context inside the component instead of
-  // threading `colors` + `radius` through props. The previous
-  // ReturnType<typeof useTheme>["colors"] prop typing was both
-  // verbose and forced consumers to re-pass tokens on every render.
-  const { colors, radius, fontWeights } = useTheme();
-  return (
-    <View
-      style={{
-        width: 44,
-        height: 44,
-        borderRadius: radius.pill,
-        backgroundColor: colors.brandMuted,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Text style={{ color: colors.brand, fontWeight: fontWeights.bold }}>
-        {(name ?? "?").charAt(0).toUpperCase()}
-      </Text>
-    </View>
   );
 }

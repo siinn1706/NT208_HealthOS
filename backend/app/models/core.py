@@ -1422,6 +1422,7 @@ class UserPreference(Base):
     )
     theme_mode: Mapped[str] = mapped_column(String(10), default="system", nullable=False)
     accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    locale: Mapped[str] = mapped_column(String(2), default="en", nullable=False)
     appearance: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=dict, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,
