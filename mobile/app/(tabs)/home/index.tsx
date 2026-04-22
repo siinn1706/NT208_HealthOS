@@ -1,77 +1,164 @@
 import React, { useMemo } from "react";
-import { Text, View, RefreshControl } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { RefreshControl, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { ScreenScroll } from "@/components/ScreenScroll";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { LoadingState } from "@/components/states/LoadingState";
-import { ErrorState } from "@/components/states/ErrorState";
-import { EmptyState } from "@/components/states/EmptyState";
+import { AlertBanner } from "@/components/dashboard/alert-banner";
+import { CompactChartCard } from "@/components/dashboard/compact-chart-card";
+import { DashboardSectionCard } from "@/components/dashboard/dashboard-section-card";
+import { DashboardKpiSkeletonGrid } from "@/components/dashboard/dashboard-skeletons";
+import { GoalProgressCard } from "@/components/dashboard/goal-progress-card";
+import { InsightCard } from "@/components/dashboard/insight-card";
+import { KpiMiniCard } from "@/components/dashboard/kpi-mini-card";
+import { KpiSummaryGrid } from "@/components/dashboard/kpi-summary-grid";
+import { QuickActionTile } from "@/components/dashboard/quick-action-tile";
+import { QuickActionsGrid } from "@/components/dashboard/quick-actions-grid";
+import { ReminderPreviewItem } from "@/components/dashboard/reminder-preview-item";
 import { VitalsLineChart } from "@/components/charts/VitalsLineChart";
+import { EmptyState } from "@/components/states/EmptyState";
+import { ErrorState } from "@/components/states/ErrorState";
+import { LoadingState } from "@/components/states/LoadingState";
+import { HomeHero } from "./home-hero";
 import { useT } from "@/i18n";
 import { useTheme } from "@/theme";
-import {
-  fetchDashboardSummary,
-  type DashboardAlert,
-  type KpiValue,
-} from "@/api/endpoints/dashboard";
-import { fetchVitalsTimeseries } from "@/api/endpoints/vitals";
-import { fetchUpcomingReminders } from "@/api/endpoints/reminders";
+import { queryKeys } from "@/api/queryKeys";
+import { fetchDashboardSummary } from "@/api/endpoints/dashboard";
+import { fetchVitalsTimeseries, type VitalPoint } from "@/api/endpoints/vitals";
+import { fetchUpcomingReminders, type Reminder } from "@/api/endpoints/reminders";
 import { fetchNutritionSuggestions } from "@/api/endpoints/nutrition";
 import { displayLabel, sessionStore } from "@/auth/session";
+import {
+  formatKpiValueDisplay,
+  goalKeyLabel,
+  insightPrimaryBadgeLabel,
+  kpiLabelForMetric,
+  kpiUnitForMetric,
+  mapAlertsForBanner,
+  nutritionSuggestionTitle,
+  reminderRepeatLabel,
+  reminderTypeLabel,
+  selectHomeKpiKeys,
+} from "@/utils/dashboard-copy";
 
-const KPI_LABEL_KEYS: Record<string, string> = {
-  steps: "home.kpiSteps",
-  heart_rate: "home.kpiHeartRate",
-  sleep_minutes: "home.kpiSleep",
-  weight_kg: "home.kpiWeight",
-  blood_pressure_systolic: "home.kpiSystolic",
-  blood_pressure_diastolic: "home.kpiDiastolic",
-};
+function QuickActionsBlock({
+  onMealsAdd,
+  onMealsSnap,
+  onHealthMetric,
+  onReminderAdd,
+  t,
+}: {
+  onMealsAdd: () => void;
+  onMealsSnap: () => void;
+  onHealthMetric: () => void;
+  onReminderAdd: () => void;
+  t: ReturnType<typeof useT>;
+}) {
+  return (
+    <DashboardSectionCard title={t("home.quickActionsTitle")}>
+      <QuickActionsGrid>
+        <QuickActionTile title={t("home.quickLogMeal")} iconName="restaurant-outline" onPress={onMealsAdd} />
+        <QuickActionTile title={t("home.quickScanMeal")} iconName="scan-outline" onPress={onMealsSnap} />
+        <QuickActionTile title={t("home.quickLogReading")} iconName="pulse-outline" onPress={onHealthMetric} />
+        <QuickActionTile title={t("home.quickAddReminder")} iconName="alarm-outline" onPress={onReminderAdd} />
+      </QuickActionsGrid>
+    </DashboardSectionCard>
+  );
+}
 
-const KPI_UNITS: Record<string, string> = {
-  steps: "",
-  heart_rate: "bpm",
-  sleep_minutes: "min",
-  weight_kg: "kg",
-  blood_pressure_systolic: "mmHg",
-  blood_pressure_diastolic: "mmHg",
-};
+function RemindersBlock({
+  reminders,
+  onViewAll,
+  t,
+}: {
+  reminders: UseQueryResult<Reminder[], Error>;
+  onViewAll: () => void;
+  t: ReturnType<typeof useT>;
+}) {
+  return (
+    <DashboardSectionCard
+      title={t("home.upcomingReminders")}
+      headerActionLabel={t("home.viewAllReminders")}
+      onHeaderActionPress={onViewAll}
+    >
+      {reminders.isPending && !reminders.data ? (
+        <LoadingState />
+      ) : reminders.isError && !reminders.data ? (
+        <ErrorState error={reminders.error} onRetry={() => reminders.refetch()} />
+      ) : !reminders.data || reminders.data.length === 0 ? (
+        <EmptyState title={t("reminders.noReminders")} />
+      ) : (
+        <View>
+          {reminders.data.slice(0, 3).map((r, idx, arr) => (
+            <ReminderPreviewItem
+              key={r.id}
+              title={r.title}
+              metaLine={`${r.time} · ${reminderRepeatLabel(r.repeat, t)}`}
+              typeLabel={reminderTypeLabel(r.type, t)}
+              isLast={idx === arr.length - 1}
+            />
+          ))}
+        </View>
+      )}
+    </DashboardSectionCard>
+  );
+}
 
-function alertTone(type: string): "danger" | "warning" | "info" | "neutral" {
-  const lower = type.toLowerCase();
-  if (lower.includes("danger") || lower.includes("critical") || lower.includes("error")) {
-    return "danger";
-  }
-  if (lower.includes("warn")) return "warning";
-  if (lower.includes("info") || lower.includes("notice")) return "info";
-  return "neutral";
+function VitalsBlock({
+  vitals,
+  onOpenHealth,
+  t,
+}: {
+  vitals: UseQueryResult<VitalPoint[], Error>;
+  onOpenHealth: () => void;
+  t: ReturnType<typeof useT>;
+}) {
+  return (
+    <CompactChartCard
+      title={t("home.vitals7d")}
+      headerActionLabel={t("home.openHealth")}
+      onHeaderActionPress={onOpenHealth}
+    >
+      {vitals.isPending && !vitals.data ? (
+        <LoadingState />
+      ) : vitals.isError && !vitals.data ? (
+        <ErrorState error={vitals.error} onRetry={() => vitals.refetch()} />
+      ) : (
+        <VitalsLineChart
+          data={vitals.data ?? []}
+          metric="heart_rate"
+          height={140}
+          emptyMessage={t("home.vitalsChartNotEnoughData")}
+        />
+      )}
+    </CompactChartCard>
+  );
 }
 
 export default function HomeScreen() {
   const t = useT();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
+  const router = useRouter();
+  const { colors } = useTheme();
   const user = sessionStore((s) => s.user);
 
   const summary = useQuery({
-    queryKey: ["dashboard", "summary"],
+    queryKey: queryKeys.dashboard.summary(),
     queryFn: fetchDashboardSummary,
   });
 
   const vitals = useQuery({
-    queryKey: ["vitals", 7],
+    queryKey: queryKeys.vitals.timeseries(7),
     queryFn: () => fetchVitalsTimeseries(7),
   });
 
   const reminders = useQuery({
-    queryKey: ["reminders", "upcoming"],
+    queryKey: queryKeys.reminders.upcoming(),
     queryFn: fetchUpcomingReminders,
   });
 
   const nutrition = useQuery({
-    queryKey: ["nutrition", "suggestions"],
+    queryKey: queryKeys.nutrition.suggestions(),
     queryFn: fetchNutritionSuggestions,
   });
 
@@ -88,243 +175,175 @@ export default function HomeScreen() {
     nutrition.refetch();
   };
 
-  const kpiEntries = useMemo<Array<[string, KpiValue]>>(() => {
-    const kpis = summary.data?.kpis;
-    if (!kpis || typeof kpis !== "object") return [];
-    return Object.entries(kpis);
-  }, [summary.data?.kpis]);
-
   const greetingName = summary.data?.user_name ?? displayLabel(user) ?? "";
+
+  const greetingLine = useMemo(() => {
+    const hour = new Date().getHours();
+    const key =
+      hour < 12 ? "home.greetingMorning" : hour < 18 ? "home.greetingAfternoon" : "home.greetingEvening";
+    return t(key, { name: greetingName.trim() || t("common.loading") });
+  }, [greetingName, t]);
+
+  const statusChipLabel = useMemo(() => {
+    const n = summary.data?.alerts?.length ?? 0;
+    if (n === 1) return t("home.statusChipAlertSingular");
+    if (n > 1) return t("home.statusChipAlerts", { count: n });
+    const kpis = summary.data?.kpis;
+    if (kpis && Object.keys(kpis).length > 0) return t("home.statusChipOnTrack");
+    return t("home.statusChipGettingStarted");
+  }, [summary.data?.alerts?.length, summary.data?.kpis, t]);
+
+  const dash = summary.data;
+  const kpiKeys = useMemo(() => selectHomeKpiKeys(dash?.kpis), [dash?.kpis]);
+  const alertItems = dash?.alerts ? mapAlertsForBanner(dash.alerts, t) : [];
+
+  const insightBody = dash?.ai_insight?.text?.trim() ?? null;
+  const nutritionLead = nutrition.data?.[0];
+  const showInsightSurface = Boolean(dash && (insightBody || nutritionLead));
+
+  const goalRows = (() => {
+    const goals = dash?.goals ?? [];
+    return goals.map((g) => {
+      const label = goalKeyLabel(g.key, t);
+      const cur = g.current;
+      const tgt = g.target;
+      const unit = g.unit?.trim() ? ` ${g.unit}` : "";
+      const valueLine =
+        cur !== null && cur !== undefined
+          ? `${formatKpiValueDisplay(cur)}${unit}`
+          : tgt !== null && tgt !== undefined
+            ? t("home.goalValuePending")
+            : "—";
+      const progressLabel =
+        tgt !== null && tgt !== undefined
+          ? t("home.goalTargetLine", {
+              value: formatKpiValueDisplay(tgt),
+              unit: g.unit?.trim() ? ` ${g.unit}` : "",
+            })
+          : null;
+      return { id: g.id, label, valueLine, progressLabel };
+    });
+  })();
+
+  const dashboardFatal = summary.isError && !summary.data;
+  const dashboardPendingFirst = summary.isPending && !summary.data;
+  const showKpiBlock = Boolean(dash && kpiKeys.length > 0);
+
+  const nav = {
+    mealsAdd: () => router.push("/(tabs)/meals/add"),
+    mealsSnap: () => router.push("/(tabs)/meals/snap"),
+    healthMetric: () => router.push("/(tabs)/health/metrics/heart_rate"),
+    reminderAdd: () => router.push("/(tabs)/more/reminders/add"),
+    remindersList: () => router.push("/(tabs)/more/reminders"),
+    chat: () => router.push("/(tabs)/chat"),
+    goal: () => router.push("/(tabs)/health/goal"),
+    health: () => router.push("/(tabs)/health"),
+  };
 
   return (
     <ScreenScroll
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={colors.brand}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />
       }
     >
-      <PageHeader title={t("home.greeting", { name: greetingName })} />
+      <HomeHero
+        greetingLine={greetingLine}
+        subtitle={t("home.heroSubtitle")}
+        statusChipLabel={statusChipLabel}
+      />
 
-      {summary.isPending ? (
-        <Card>
-          <LoadingState />
-        </Card>
-      ) : summary.isError ? (
+      {dashboardFatal ? (
         <Card>
           <ErrorState error={summary.error} onRetry={() => summary.refetch()} />
         </Card>
-      ) : (
+      ) : null}
+
+      {!dashboardFatal && dashboardPendingFirst ? <DashboardKpiSkeletonGrid /> : null}
+
+      {!dashboardFatal && dash ? (
         <>
-          {kpiEntries.length > 0 ? (
-            <Card>
-              <Text
-                style={{
-                  color: colors.text,
-                  fontWeight: fontWeights.semibold,
-                  fontSize: typography.lg.fontSize,
-                  marginBottom: spacing.sm,
-                }}
-              >
-                {t("home.todayKpis")}
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.md }}>
-                {kpiEntries.map(([key, kpi]) => {
-                  const labelKey = KPI_LABEL_KEYS[key];
-                  const label = labelKey ? t(labelKey) : key.replace(/_/g, " ");
-                  const unit = KPI_UNITS[key] ?? "";
-                  const display =
-                    kpi.current === null || kpi.current === undefined
-                      ? "—"
-                      : Number.isInteger(kpi.current)
-                        ? String(kpi.current)
-                        : kpi.current.toFixed(1);
+          {alertItems.length > 0 ? (
+            <DashboardSectionCard title={t("home.alerts")}>
+              <AlertBanner items={alertItems} />
+            </DashboardSectionCard>
+          ) : null}
+
+          {showKpiBlock ? (
+            <DashboardSectionCard title={t("home.todayKpis")}>
+              <KpiSummaryGrid>
+                {kpiKeys.map((key) => {
+                  const kpi = dash.kpis[key];
+                  if (!kpi) return null;
+                  const unit = kpiUnitForMetric(key);
+                  const display = formatKpiValueDisplay(kpi.current);
+                  const targetLine =
+                    kpi.target !== null && kpi.target !== undefined
+                      ? t("home.kpiTarget", { value: String(kpi.target) })
+                      : null;
                   return (
-                    <View
+                    <KpiMiniCard
                       key={key}
-                      style={{
-                        flexBasis: "47%",
-                        backgroundColor: colors.surfaceMuted,
-                        padding: spacing.md,
-                        borderRadius: radius.md,
-                        gap: spacing.xs,
-                      }}
-                    >
-                      <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
-                        {label}
-                      </Text>
-                      <Text style={{ color: colors.text, fontWeight: fontWeights.bold, fontSize: typography["xl"].fontSize }}>
-                        {display}
-                        {unit ? (
-                          <Text style={{ color: colors.textMuted, fontSize: typography.sm.fontSize, fontWeight: fontWeights.regular }}>
-                            {" "}
-                            {unit}
-                          </Text>
-                        ) : null}
-                      </Text>
-                      {kpi.target !== null && kpi.target !== undefined ? (
-                        <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
-                          {t("home.kpiTarget", { value: String(kpi.target) })}
-                        </Text>
-                      ) : null}
-                    </View>
+                      label={kpiLabelForMetric(key, t)}
+                      valueDisplay={display}
+                      unit={unit}
+                      targetLine={targetLine}
+                    />
                   );
                 })}
-              </View>
-            </Card>
-          ) : null}
-
-          <Card>
-            <Text
-              style={{
-                color: colors.text,
-                fontWeight: fontWeights.semibold,
-                fontSize: typography.lg.fontSize,
-                marginBottom: spacing.sm,
-              }}
-            >
-              {t("home.alerts")}
-            </Text>
-            {summary.data.alerts && summary.data.alerts.length > 0 ? (
-              <View style={{ gap: spacing.sm }}>
-                {summary.data.alerts.map((a: DashboardAlert) => (
-                  <View
-                    key={a.id}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      gap: spacing.sm,
-                    }}
-                  >
-                    <Badge tone={alertTone(a.type)}>{a.type}</Badge>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.text }}>
-                        {a.message}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={{ color: colors.textMuted }}>{t("home.noAlerts")}</Text>
-            )}
-          </Card>
-
-          {summary.data.ai_insight ? (
-            <Card>
-              <Badge tone="brand">{t("home.aiInsight")}</Badge>
-              <Text
-                style={{
-                  color: colors.text,
-                  marginTop: spacing.sm,
-                  fontSize: typography.base.fontSize,
-                }}
-              >
-                {summary.data.ai_insight.text}
-              </Text>
-            </Card>
+              </KpiSummaryGrid>
+            </DashboardSectionCard>
           ) : null}
         </>
-      )}
+      ) : null}
 
-      <Card>
-        <Text
-          style={{
-            color: colors.text,
-            fontWeight: fontWeights.semibold,
-            fontSize: typography.lg.fontSize,
-            marginBottom: spacing.sm,
-          }}
-        >
-          {t("home.vitals7d")}
-        </Text>
-        {vitals.isPending ? (
-          <LoadingState />
-        ) : vitals.isError ? (
-          <ErrorState error={vitals.error} onRetry={() => vitals.refetch()} />
-        ) : (
-          <VitalsLineChart data={vitals.data} metric="heart_rate" />
-        )}
-      </Card>
+      {!dashboardFatal ? (
+        <>
+          <QuickActionsBlock
+            t={t}
+            onMealsAdd={nav.mealsAdd}
+            onMealsSnap={nav.mealsSnap}
+            onHealthMetric={nav.healthMetric}
+            onReminderAdd={nav.reminderAdd}
+          />
 
-      <Card>
-        <Text
-          style={{
-            color: colors.text,
-            fontWeight: fontWeights.semibold,
-            fontSize: typography.lg.fontSize,
-            marginBottom: spacing.sm,
-          }}
-        >
-          {t("home.upcomingReminders")}
-        </Text>
-        {reminders.isPending ? (
-          <LoadingState />
-        ) : reminders.isError ? (
-          <ErrorState error={reminders.error} onRetry={() => reminders.refetch()} />
-        ) : reminders.data.length === 0 ? (
-          <EmptyState title={t("reminders.noReminders")} />
-        ) : (
-          <View style={{ gap: spacing.sm }}>
-            {reminders.data.slice(0, 3).map((r) => (
-              <View
-                key={r.id}
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingVertical: spacing.sm,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.border,
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.text, fontWeight: fontWeights.medium }}>
-                    {r.title}
-                  </Text>
-                  <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
-                    {r.time} · {r.repeat}
-                  </Text>
-                </View>
-                <Badge tone="neutral">{r.type}</Badge>
-              </View>
-            ))}
-          </View>
-        )}
-      </Card>
+          <RemindersBlock reminders={reminders} onViewAll={nav.remindersList} t={t} />
 
-      <Card>
-        <Text
-          style={{
-            color: colors.text,
-            fontWeight: fontWeights.semibold,
-            fontSize: typography.lg.fontSize,
-            marginBottom: spacing.sm,
-          }}
-        >
-          {t("home.nutritionTip")}
-        </Text>
-        {nutrition.isPending ? (
-          <LoadingState />
-        ) : nutrition.isError ? (
-          <ErrorState error={nutrition.error} onRetry={() => nutrition.refetch()} />
-        ) : nutrition.data.length === 0 ? (
-          <EmptyState title={t("common.emptyTitle")} />
-        ) : (
-          <View style={{ gap: spacing.sm }}>
-            {nutrition.data.slice(0, 2).map((s) => (
-              <View key={s.id ?? s.title} style={{ gap: 2 }}>
-                <Text style={{ color: colors.text, fontWeight: fontWeights.semibold }}>
-                  {s.title}
-                </Text>
-                <Text style={{ color: colors.textMuted }}>{s.message}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </Card>
+          {!dashboardFatal && dash && showInsightSurface ? (
+            <DashboardSectionCard title={t("home.sectionInsight")}>
+              <InsightCard
+                primaryBadgeLabel={
+                  insightBody ? insightPrimaryBadgeLabel(dash.ai_insight, t) : t("home.nutritionInInsightBadge")
+                }
+                primaryBody={
+                  insightBody
+                    ? insightBody
+                    : nutritionLead
+                      ? `${nutritionLead.title}\n\n${nutritionLead.message}`
+                      : null
+                }
+                secondaryTitle={
+                  insightBody && nutritionLead ? nutritionSuggestionTitle(nutritionLead, t) : null
+                }
+                secondaryBody={insightBody && nutritionLead ? nutritionLead.message : null}
+                ctaLabel={t("home.insightCta")}
+                onCtaPress={nav.chat}
+              />
+            </DashboardSectionCard>
+          ) : null}
+
+          {!dashboardFatal && dash && goalRows.length > 0 ? (
+            <DashboardSectionCard
+              title={t("home.sectionGoals")}
+              headerActionLabel={t("home.viewGoal")}
+              onHeaderActionPress={nav.goal}
+            >
+              <GoalProgressCard rows={goalRows} />
+            </DashboardSectionCard>
+          ) : null}
+
+          <VitalsBlock vitals={vitals} onOpenHealth={nav.health} t={t} />
+        </>
+      ) : null}
     </ScreenScroll>
   );
 }

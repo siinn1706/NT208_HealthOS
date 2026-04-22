@@ -123,9 +123,23 @@ The setup script copies it to `frontend/.env.local` automatically:
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 CORE_API_URL=http://localhost:8000
 NEXT_PUBLIC_CORE_WS_URL=ws://localhost:8000
+ALLOWED_DEV_ORIGINS=localhost,127.0.0.1,healthos-dev.example.com
 ```
 
 Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
+
+### Public OAuth Testing via Cloudflare Tunnel
+
+- Preferred setup is a stable named Cloudflare tunnel. The BFF now derives OAuth callback origins from forwarded/request headers, so flows started from `https://<stable-tunnel>` return to that same public origin instead of collapsing back to localhost.
+- Keep `OAUTH_GOOGLE_CALLBACK_URL` and `OAUTH_GITHUB_CALLBACK_URL` as fallback values for local development. They are no longer the sole source of truth for callback generation.
+- `ALLOWED_DEV_ORIGINS` entries must be hostnames or wildcard hostnames, not full URLs. Example: `localhost,127.0.0.1,healthos-dev.example.com`.
+- If you temporarily use a rotating `trycloudflare.com` URL, add `*.trycloudflare.com` to `ALLOWED_DEV_ORIGINS` so Next.js accepts `/_next/*` HMR traffic during dev. This only affects Next's dev-origin guard; OAuth providers still require exact callback URLs.
+- Register both localhost and the stable tunnel callback URIs in Google Cloud Console and GitHub OAuth App settings:
+  - `http://localhost:3000/api/v1/auth/oauth/google/callback`
+  - `https://<stable-tunnel>/api/v1/auth/oauth/google/callback`
+  - `http://localhost:3000/api/v1/auth/oauth/github/callback`
+  - `https://<stable-tunnel>/api/v1/auth/oauth/github/callback`
+- Rotating `trycloudflare.com` URLs are still supported only as ad-hoc testing targets. When the hostname changes, update the provider redirect URIs before testing again.
 
 ## How Teammates Should Run the Project
 
@@ -165,28 +179,29 @@ Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 **v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
 **v1.2.0**: User accent color customization and theming.
 
-- **Implemented**: Auth (email/OTP/OAuth/MFA), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications read/skip/snooze, **AI Worker chat (Gemini, streaming)**.
-- **Stub/placeholder**: Notification real dispatch (currently mock), wearable device sync (stub), some UX paths (marked as TODO).
+- **Implemented**: Auth (email/OTP/OAuth), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications (`/v1/notifications` + read/read-all + unread-count), AI meal analysis (`/analyze`).
+- **Known gaps / partial**: Password login does not enforce MFA challenge even when `mfa_enabled=true`; JWT decoder does not enforce `iss`/`aud`; notification dispatch service remains stub (`/dispatch` => queued); some UX paths remain TODO.
 
 ## CI/CD Pipeline
 
 GitHub Actions workflows (`.github/workflows/`):
-- `release.yml` — Production release triggered on `main`, creates tags and GitHub releases
-- `release-beta.yml` — Beta release pipeline (conditional, if enabled)
-- `branch-protection.yml` — Enforces main branch protection rules
-- `sync-main-to-dev.yml` — Auto-sync after releases (if develop branch exists)
-- `sync-dev-after-release.yml` — Additional sync logic (if applicable)
+- `ci-smoke.yml` — PR smoke checks for `dev` and `main`
+- `release.yml` — semantic-release on pushes to `main`
+- `release-beta.yml` — semantic-release on pushes to `dev`
+- `branch-protection.yml` — blocks PRs to `main` unless source is `dev` or `hotfix*`
+- `sync-main-to-dev.yml` — merges `main` into `dev` after release commits
+- `sync-dev-after-release.yml` — hard-resets `dev` to `origin/main` after release commits (force push)
 
 **Note:** Release config is dynamic (`.releaserc.cjs`). Verify deployment platform and artifact targets before first production run.
 
-See [Deployment Guide](./docs/deployment-guide.md) for workflow setup and troubleshooting.
+See [Deployment Guide](./docs/deployment-guide.md) for workflow setup, monitoring/checklist gaps, and troubleshooting.
 
 ## Git Workflow
 
-- **Base/release branch:** `main` (production releases only)
-- **Development branch:** None formally configured (feature branches merge to main via PR)
+- **Base/release branch:** `main` (production releases)
+- **Development branch:** `dev` is expected by CI/protection/release-beta workflows
 - **Feature branches:** `feature/<scope>/<name>`, `fix/<scope>/<name>`, `docs/<name>`
-- **PR target:** `main`
+- **PR targets:** feature/fix → `dev`; release/hotfix flow → `main` (branch protection enforces source)
 - **Commits:** Conventional Commits required (`feat:`, `fix:`, `docs:`, `chore:`, etc.)
 
 ## Documentation

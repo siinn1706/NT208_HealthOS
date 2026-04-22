@@ -1,12 +1,34 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.2.2 | **Last Updated**: 2026-04-19
+> **Version**: 1.2.3-docs | **Last Updated**: 2026-04-21
 
 ---
 
 ## [Unreleased]
 
 ### Changed
+
+#### Documentation
+
+- Aligned `system-architecture.md` to current backend surface:
+  - Router inventory updated to 27 mounted routers
+  - BFF route-handler surface updated to 120 routes
+  - Known-gap table corrected for notifications, legacy WS deprecation behavior, and BFF `/plans` drift risk
+- Aligned `code-standards.md` with current runtime behavior:
+  - Rate-limit table now reflects authenticated-user limiter for MFA routes and WS burst model
+  - Added BFF proxy hardening expectations (error normalization, timeout and body-size caps)
+  - Branch strategy language now matches `dev`-gated CI/protection workflows
+- Aligned `project-roadmap.md` with current status:
+  - Notification center backend status corrected to implemented routes
+  - Testing roadmap adjusted from legacy “13 tests” to current suite scale with remaining depth gaps
+  - Current-focus section simplified to active streams backed by current repo state
+- Aligned `deployment-guide.md` with actual workflow triggers and sync semantics:
+  - Release workflows now documented as branch-push driven (with manual-dispatch fallback)
+  - Added note that both dev-sync workflows can fire on the same qualifying release commit
+- Aligned `security.md` with current implementation details:
+  - Corrected method/strategy specifics for rate-limited endpoints
+  - Updated cookie SameSite note to `Lax` and documented additional known gaps (legacy WS deprecation route, `/api/v1/plans` drift, notification dispatch stub)
+- Refreshed metadata/version stamps for updated core docs to `1.2.3-docs` / `2026-04-21`.
 
 #### Frontend
 

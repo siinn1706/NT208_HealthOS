@@ -76,3 +76,11 @@ jest.mock("@react-native-community/datetimepicker", () => {
       React.createElement(View, { testID: "datetime-picker", ...props }),
   };
 });
+
+// 6. Google Fonts — tokens.ts maps font files to family names; Jest has no font loader.
+jest.mock("@expo-google-fonts/be-vietnam-pro", () => ({
+  BeVietnamPro_400Regular: "BeVietnamPro_400Regular",
+  BeVietnamPro_500Medium: "BeVietnamPro_500Medium",
+  BeVietnamPro_600SemiBold: "BeVietnamPro_600SemiBold",
+  BeVietnamPro_700Bold: "BeVietnamPro_700Bold",
+}));

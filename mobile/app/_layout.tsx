@@ -1,10 +1,18 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { View } from "react-native";
+import { useFonts } from "expo-font";
+import {
+  BeVietnamPro_400Regular,
+  BeVietnamPro_500Medium,
+  BeVietnamPro_600SemiBold,
+  BeVietnamPro_700Bold,
+} from "@expo-google-fonts/be-vietnam-pro";
+import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider } from "@/auth/AuthProvider";
 import { I18nProvider } from "@/i18n";
@@ -17,9 +25,28 @@ import { createQueryClient } from "@/api/queryClient";
 import { PreferencesGate, useInitialPreferences } from "@/preferences/PreferencesGate";
 import { useHealthConnectForegroundSync } from "@/healthconnect/useForegroundSync";
 
+void SplashScreen.preventAutoHideAsync();
+
 const queryClient = createQueryClient();
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    BeVietnamPro_400Regular,
+    BeVietnamPro_500Medium,
+    BeVietnamPro_600SemiBold,
+    BeVietnamPro_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

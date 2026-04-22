@@ -1,3 +1,20 @@
+import { Platform } from "react-native";
+import {
+  BeVietnamPro_400Regular,
+  BeVietnamPro_500Medium,
+  BeVietnamPro_600SemiBold,
+  BeVietnamPro_700Bold,
+} from "@expo-google-fonts/be-vietnam-pro";
+
+export const fontFamilies = {
+  regular: BeVietnamPro_400Regular,
+  medium: BeVietnamPro_500Medium,
+  semibold: BeVietnamPro_600SemiBold,
+  bold: BeVietnamPro_700Bold,
+} as const;
+
+const ff = fontFamilies;
+
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -8,6 +25,16 @@ export const spacing = {
   "2xl": 32,
   "3xl": 48,
 } as const;
+
+/**
+ * Total `tabBarStyle.height` from `(tabs)/_layout.tsx` — shared baseline so list
+ * and scroll screens agree on how much bottom clearance tab routes need.
+ */
+export const TAB_BAR_FRAME_HEIGHT = { ios: 62, android: 60 } as const;
+
+export function tabBarFrameHeight(): number {
+  return Platform.OS === "ios" ? TAB_BAR_FRAME_HEIGHT.ios : TAB_BAR_FRAME_HEIGHT.android;
+}
 
 export const radius = {
   /**
@@ -29,14 +56,14 @@ export const typography = {
    * timestamps, and other micro-labels that previously hard-coded
    * `fontSize: 10` or `fontSize: 11` inline.
    */
-  "2xs": { fontSize: 11, lineHeight: 14 },
-  xs: { fontSize: 12, lineHeight: 16 },
-  sm: { fontSize: 14, lineHeight: 20 },
-  base: { fontSize: 16, lineHeight: 24 },
-  lg: { fontSize: 18, lineHeight: 26 },
-  xl: { fontSize: 20, lineHeight: 28 },
-  "2xl": { fontSize: 24, lineHeight: 32 },
-  "3xl": { fontSize: 30, lineHeight: 38 },
+  "2xs": { fontSize: 11, lineHeight: 14, fontFamily: ff.regular },
+  xs: { fontSize: 12, lineHeight: 16, fontFamily: ff.regular },
+  sm: { fontSize: 14, lineHeight: 20, fontFamily: ff.regular },
+  base: { fontSize: 16, lineHeight: 24, fontFamily: ff.regular },
+  lg: { fontSize: 18, lineHeight: 26, fontFamily: ff.medium },
+  xl: { fontSize: 20, lineHeight: 28, fontFamily: ff.semibold },
+  "2xl": { fontSize: 24, lineHeight: 32, fontFamily: ff.bold },
+  "3xl": { fontSize: 30, lineHeight: 38, fontFamily: ff.bold },
 } as const;
 
 export const fontWeights = {

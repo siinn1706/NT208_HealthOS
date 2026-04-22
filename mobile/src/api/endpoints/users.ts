@@ -28,13 +28,13 @@ export interface UserProfileUpdate {
   full_name?: string;
   date_of_birth?: string; // YYYY-MM-DD
   gender?: "male" | "female" | "other";
-  blood_type?: string;
+  blood_type?: string | null;
   height_cm?: number;
   weight_kg?: number;
-  phone?: string;
-  address?: string;
+  phone?: string | null;
+  address?: string | null;
   avatar_url?: string;
-  emergency_contacts?: EmergencyContactInput[];
+  emergency_contacts?: EmergencyContactInput[] | null;
   medical_info?: MedicalInfoInput;
   onboarding_completed?: boolean;
 }

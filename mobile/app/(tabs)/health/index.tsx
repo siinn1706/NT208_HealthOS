@@ -135,15 +135,19 @@ export default function HealthScreen() {
           <ErrorState error={goal.error} onRetry={() => goal.refetch()} />
         ) : !goal.data ? (
           <Button onPress={() => router.push("/(tabs)/health/goal")} fullWidth>
-            Set a goal
+            {t("health.goalCtaSet")}
           </Button>
         ) : (
           <View style={{ gap: spacing.sm }}>
             <Text style={{ color: colors.text }}>
-              Target weight: {goal.data.target_weight_kg ?? "—"} kg
+              {t("health.goalSummaryTargetKg", {
+                value: String(goal.data.target_weight_kg ?? "—"),
+              })}
             </Text>
             <Text style={{ color: colors.textMuted }}>
-              Deadline: {goal.data.deadline ?? "—"}
+              {t("health.goalSummaryDeadline", {
+                when: goal.data.deadline ?? "—",
+              })}
             </Text>
             <Button onPress={() => router.push("/(tabs)/health/goal")} variant="secondary">
               {t("common.edit")}

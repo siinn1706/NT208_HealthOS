@@ -64,11 +64,6 @@ export function PillGroup<T extends string | number>({
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
             accessibilityLabel={opt.accessibilityLabel ?? opt.label}
-            // 44dp minHeight + centered content gives the chip a WCAG
-            // 2.1 AA-compliant touch target without making it visually
-            // taller than the previous inline implementation. The
-            // padding values stay the same so the visible chip looks
-            // identical; just the hit-area floor is enforced.
             style={{
               paddingHorizontal: spacing.md,
               paddingVertical: 6,
@@ -76,6 +71,8 @@ export function PillGroup<T extends string | number>({
               justifyContent: "center",
               borderRadius: radius.pill,
               backgroundColor: active ? colors.brand : colors.surfaceMuted,
+              borderWidth: 1,
+              borderColor: active ? colors.ring : colors.border,
             }}
           >
             <Text
@@ -83,6 +80,8 @@ export function PillGroup<T extends string | number>({
                 color: active ? colors.brandText : colors.text,
                 fontWeight: fontWeights.semibold,
                 fontSize: typography.xs.fontSize,
+                lineHeight: typography.xs.lineHeight,
+                fontFamily: typography.xs.fontFamily,
               }}
             >
               {opt.label}

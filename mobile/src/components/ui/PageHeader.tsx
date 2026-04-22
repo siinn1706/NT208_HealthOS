@@ -11,13 +11,16 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   const { colors, fontWeights, typography, spacing } = useTheme();
   return (
-    <View style={[styles.row, { paddingHorizontal: spacing.base, paddingVertical: spacing.md }]}>
-      <View style={{ flex: 1 }}>
+    <View style={[styles.row, { paddingHorizontal: spacing.base, paddingVertical: spacing.md, gap: spacing.md }]}>
+      <View style={styles.titleBlock}>
         <Text
           style={{
             color: colors.text,
             fontWeight: fontWeights.bold,
             fontSize: typography["2xl"].fontSize,
+            lineHeight: typography["2xl"].lineHeight,
+            fontFamily: typography["2xl"].fontFamily,
+            letterSpacing: -0.3,
           }}
         >
           {title}
@@ -27,14 +30,16 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
             style={{
               color: colors.textMuted,
               fontSize: typography.sm.fontSize,
-              marginTop: 2,
+              lineHeight: typography.sm.lineHeight,
+              fontFamily: typography.sm.fontFamily,
+              marginTop: spacing.xs,
             }}
           >
             {subtitle}
           </Text>
         ) : null}
       </View>
-      {action}
+      {action ? <View style={styles.action}>{action}</View> : null}
     </View>
   );
 }
@@ -42,6 +47,15 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  action: {
+    justifyContent: "center",
+    minHeight: 28,
   },
 });

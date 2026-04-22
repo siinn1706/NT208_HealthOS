@@ -8,6 +8,8 @@ interface Props {
   data: VitalPoint[];
   metric: "heart_rate" | "systolic" | "diastolic";
   height?: number;
+  /** When the series has too few points, shown instead of the default English string. */
+  emptyMessage?: string;
 }
 
 const PADDING = { top: 16, right: 16, bottom: 24, left: 32 };
@@ -17,7 +19,12 @@ function getValue(point: VitalPoint, metric: Props["metric"]): number | null {
   return typeof v === "number" ? v : null;
 }
 
-export function VitalsLineChart({ data, metric, height = 180 }: Props) {
+export function VitalsLineChart({
+  data,
+  metric,
+  height = 180,
+  emptyMessage = "Not enough data yet.",
+}: Props) {
   const { colors, typography } = useTheme();
   const valid = data
     .map((p) => ({ date: p.date, value: getValue(p, metric) }))
@@ -38,7 +45,7 @@ export function VitalsLineChart({ data, metric, height = 180 }: Props) {
             fontSize: typography.sm.fontSize,
           }}
         >
-          Not enough data yet.
+          {emptyMessage}
         </Text>
       </View>
     );

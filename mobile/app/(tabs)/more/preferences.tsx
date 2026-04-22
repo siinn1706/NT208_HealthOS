@@ -6,7 +6,10 @@ import { Stack } from "expo-router";
 import { ScreenScroll } from "@/components/ScreenScroll";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { SegmentGroup } from "@/components/ui/SegmentGroup";
+import { FALLBACK_ACCENT_HEX } from "@/theme/accent";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
 import { useT } from "@/i18n";
@@ -32,12 +35,12 @@ const THEME_OPTIONS: { value: ThemeMode; labelKey: string }[] = [
  * who can't perceive the color directly.
  */
 const ACCENT_OPTIONS: { value: string; label: string }[] = [
-  { value: "#0E7C66", label: "Teal" },
+  { value: FALLBACK_ACCENT_HEX, label: "Night Sky" },
   { value: "#2563EB", label: "Blue" },
+  { value: "#41BCE6", label: "Cyan" },
   { value: "#9333EA", label: "Purple" },
   { value: "#DC2626", label: "Red" },
   { value: "#D97706", label: "Amber" },
-  { value: "#0891B2", label: "Cyan" },
 ];
 
 const LOCALE_OPTIONS: { value: Locale; label: string }[] = [
@@ -65,8 +68,11 @@ export default function PreferencesScreen() {
       if (prefs.data.accent_color) {
         setAccentColor(prefs.data.accent_color);
       }
+      if (prefs.data.locale === "en" || prefs.data.locale === "vi") {
+        setLocale(prefs.data.locale);
+      }
     }
-  }, [prefs.data, setMode, setAccentColor]);
+  }, [prefs.data, setMode, setAccentColor, setLocale]);
 
   const save = useMutation({
     mutationFn: patchPreferences,
@@ -87,6 +93,11 @@ export default function PreferencesScreen() {
   const onPickAccent = (next: string) => {
     setAccentColor(next);
     save.mutate({ accent_color: next });
+  };
+
+  const onPickLocale = (next: Locale) => {
+    setLocale(next);
+    save.mutate({ locale: next });
   };
 
   if (prefs.isPending) {
@@ -163,9 +174,24 @@ export default function PreferencesScreen() {
         <SegmentGroup<Locale>
           accessibilityLabel={t("settings.language")}
           value={locale}
-          onChange={setLocale}
+          onChange={onPickLocale}
           options={LOCALE_OPTIONS}
         />
+      </Card>
+
+      <Card>
+        <View style={{ gap: spacing.sm, alignItems: "flex-start" }}>
+          <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap", alignItems: "center" }}>
+            <Badge tone="brand">Accent</Badge>
+            <Badge tone="neutral">Neutral</Badge>
+          </View>
+          <Button variant="primary" size="sm">
+            Primary
+          </Button>
+          <Button variant="secondary" size="sm">
+            Secondary
+          </Button>
+        </View>
       </Card>
     </ScreenScroll>
   );

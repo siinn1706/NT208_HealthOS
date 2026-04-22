@@ -12,6 +12,7 @@ from app.schemas.common import DataResponse
 class UserPreferenceData(BaseModel):
     theme_mode: str = "system"
     accent_color: Optional[str] = None
+    locale: str = "en"
 
 
 class UserPreferenceResponse(DataResponse[UserPreferenceData]):
@@ -21,6 +22,7 @@ class UserPreferenceResponse(DataResponse[UserPreferenceData]):
 class UserPreferenceUpdate(BaseModel):
     theme_mode: Optional[Literal["system", "light", "dark"]] = None
     accent_color: Optional[str] = Field(None, max_length=7)
+    locale: Optional[Literal["en", "vi"]] = None
 
     @field_validator("accent_color", mode="before")
     @classmethod

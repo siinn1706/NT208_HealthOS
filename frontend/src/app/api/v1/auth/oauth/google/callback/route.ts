@@ -10,9 +10,24 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_COOKIE_SECURE,
 } from "@/lib/bff-auth-cookie";
-import { getLocaleFromReferer } from "@/lib/locale-path";
 import { CORE_API_URL } from "@/lib/env";
 import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
+import {
+  buildLocalizedAppUrl,
+  buildOAuthCallbackUrlFromContext,
+  clearOAuthCookies,
+  readOAuthContext,
+} from "@/lib/oauth/flow-context";
+
+function withGoogleCookieCleanup(response: NextResponse): NextResponse {
+  clearOAuthCookies(response, [
+    "oauth_state_google",
+    "oauth_verifier_google",
+    "oauth_nonce_google",
+    "oauth_context_google",
+  ]);
+  return response;
+}
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -20,21 +35,29 @@ export async function GET(request: NextRequest) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
   const errorDescription = url.searchParams.get("error_description");
-
-  const locale = getLocaleFromReferer(request);
+  const context = readOAuthContext(request, "google", "signin", [
+    process.env.OAUTH_GOOGLE_CALLBACK_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+  ]);
 
   // ─── Handle OAuth Errors ────────────────────────────────────────────────────
   if (error) {
     console.error("Google OAuth error:", error, errorDescription);
-    return NextResponse.redirect(
-      new URL(`/${locale}/login?oauth_error=${encodeURIComponent(errorDescription || error)}`, request.url).toString()
+    return withGoogleCookieCleanup(
+      NextResponse.redirect(
+        buildLocalizedAppUrl(context, "/login", {
+          oauth_error: errorDescription || error,
+        }),
+      ),
     );
   }
 
   // ─── Validate Required Parameters ───────────────────────────────────────────
   if (!code) {
-    return NextResponse.redirect(
-      new URL(`/${locale}/login?oauth_error=missing_code`, request.url).toString()
+    return withGoogleCookieCleanup(
+      NextResponse.redirect(
+        buildLocalizedAppUrl(context, "/login", { oauth_error: "missing_code" }),
+      ),
     );
   }
 
@@ -42,22 +65,31 @@ export async function GET(request: NextRequest) {
   const storedState = request.cookies.get("oauth_state_google")?.value;
   if (!storedState || state !== storedState) {
     console.error("Invalid OAuth state");
-    return NextResponse.redirect(
-      new URL(`/${locale}/login?oauth_error=invalid_state`, request.url).toString()
+    return withGoogleCookieCleanup(
+      NextResponse.redirect(
+        buildLocalizedAppUrl(context, "/login", { oauth_error: "invalid_state" }),
+      ),
     );
   }
 
   // ─── Get PKCE Verifier ───────────────────────────────────────────────────────
   const codeVerifier = request.cookies.get("oauth_verifier_google")?.value;
   if (!codeVerifier) {
-    return NextResponse.redirect(
-      new URL(`/${locale}/login?oauth_error=missing_verifier`, request.url).toString()
+    return withGoogleCookieCleanup(
+      NextResponse.redirect(
+        buildLocalizedAppUrl(context, "/login", { oauth_error: "missing_verifier" }),
+      ),
     );
   }
 
   // ─── Exchange Code for Token ────────────────────────────────────────────────
   try {
-    const redirectUri = process.env.OAUTH_GOOGLE_CALLBACK_URL!;
+    const redirectUri = buildOAuthCallbackUrlFromContext(
+      context,
+      request,
+      "/api/v1/auth/oauth/google/callback",
+      [process.env.OAUTH_GOOGLE_CALLBACK_URL, process.env.NEXT_PUBLIC_APP_URL],
+    );
     const tokenResponse = await exchangeGoogleCodeForToken({
       code,
       codeVerifier,
@@ -73,8 +105,12 @@ export async function GET(request: NextRequest) {
         );
         if (payload.nonce !== storedNonce) {
           console.error("Google OAuth nonce mismatch");
-          return NextResponse.redirect(
-            new URL(`/${locale}/login?oauth_error=nonce_mismatch`, request.url).toString()
+          return withGoogleCookieCleanup(
+            NextResponse.redirect(
+              buildLocalizedAppUrl(context, "/login", {
+                oauth_error: "nonce_mismatch",
+              }),
+            ),
           );
         }
       } catch (e) {
@@ -88,8 +124,12 @@ export async function GET(request: NextRequest) {
 
     // ─── Verify Email ──────────────────────────────────────────────────────────
     if (googleUser.verified_email === false || googleUser.email_verified === false) {
-      return NextResponse.redirect(
-        new URL(`/${locale}/login?oauth_error=unverified_email`, request.url)
+      return withGoogleCookieCleanup(
+        NextResponse.redirect(
+          buildLocalizedAppUrl(context, "/login", {
+            oauth_error: "unverified_email",
+          }),
+        ),
       );
     }
 
@@ -118,11 +158,13 @@ export async function GET(request: NextRequest) {
         (coreError?.detail?.code === "ACCOUNT_PENDING_DELETION" ||
           coreError?.error?.code === "ACCOUNT_PENDING_DELETION")
       ) {
-        return NextResponse.redirect(
-          new URL(
-            `/${locale}/login?restore=pending&provider=google`,
-            request.url,
-          ).toString(),
+        return withGoogleCookieCleanup(
+          NextResponse.redirect(
+            buildLocalizedAppUrl(context, "/login", {
+              restore: "pending",
+              provider: "google",
+            }),
+          ),
         );
       }
       console.error("Core BE token exchange failed:", coreError);
@@ -136,9 +178,12 @@ export async function GET(request: NextRequest) {
 
     // ─── Create Session and Redirect ─────────────────────────────────────────
     const redirectTo = onboardingStatus === "completed"
-      ? new URL(`/${locale}/dashboard`, request.url)
-      : new URL(`/${locale}/onboarding`, request.url);
-    const response = NextResponse.redirect(redirectTo.toString());
+      ? buildLocalizedAppUrl(
+          context,
+          context.postLoginPath ?? "/dashboard",
+        )
+      : buildLocalizedAppUrl(context, "/onboarding");
+    const response = NextResponse.redirect(redirectTo);
 
     // Session cookie (httpOnly — carries JWT)
     response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
@@ -157,23 +202,27 @@ export async function GET(request: NextRequest) {
     );
 
     // Clear temporary OAuth cookies
-    response.cookies.delete("oauth_state_google");
-    response.cookies.delete("oauth_verifier_google");
-    response.cookies.delete("oauth_nonce_google");
-
-    return response;
+    return withGoogleCookieCleanup(response);
   } catch (err) {
     console.error("Google OAuth callback error:", err);
     if (isCoreUpstreamUnreachable(err)) {
       console.error(
         `Core BE unreachable at ${CORE_API_URL}. Start the API (see README) or fix CORE_API_URL in frontend/.env.local.`
       );
-      return NextResponse.redirect(
-        new URL(`/${locale}/login?oauth_error=core_unreachable`, request.url).toString()
+      return withGoogleCookieCleanup(
+        NextResponse.redirect(
+          buildLocalizedAppUrl(context, "/login", {
+            oauth_error: "core_unreachable",
+          }),
+        ),
       );
     }
-    return NextResponse.redirect(
-      new URL(`/${locale}/login?oauth_error=server_error`, request.url).toString()
+    return withGoogleCookieCleanup(
+      NextResponse.redirect(
+        buildLocalizedAppUrl(context, "/login", {
+          oauth_error: "server_error",
+        }),
+      ),
     );
   }
 }

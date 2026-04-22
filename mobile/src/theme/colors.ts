@@ -1,3 +1,5 @@
+import { FALLBACK_ACCENT_HEX } from "./accent";
+
 interface Palette {
   background: string;
   surface: string;
@@ -10,6 +12,14 @@ interface Palette {
   brand: string;
   brandMuted: string;
   brandText: string;
+  /** Focus ring / active chrome (aligned with web `--ring`) */
+  ring: string;
+  /** Semantic alias: card surface (= `surface`) */
+  card: string;
+  /** Semantic alias: form field bg (= `inputBackground`) */
+  field: string;
+  /** Semantic alias: soft accent wash (= `brandMuted`) */
+  accentSoft: string;
   success: string;
   successText: string;
   warning: string;
@@ -23,54 +33,71 @@ interface Palette {
   inputBackground: string;
 }
 
+/** Default accent-driven colors for `deriveMobileAccentColors(FALLBACK, light)` */
+const LIGHT_BRAND_DEFAULT = FALLBACK_ACCENT_HEX;
+const LIGHT_BRAND_MUTED_DEFAULT = "#E3F2FD";
+const LIGHT_BRAND_TEXT_DEFAULT = "#FFFFFF";
+
 export const lightPalette: Palette = {
-  background: "#F7F9FA",
+  background: "#F4FCFE",
   surface: "#FFFFFF",
-  surfaceMuted: "#F0F3F5",
-  border: "#E2E8EC",
-  borderStrong: "#CBD2D9",
-  text: "#0F172A",
-  textMuted: "#52606D",
+  surfaceMuted: "#E8F8FD",
+  border: "#B8F0FA",
+  borderStrong: "#75A2B9",
+  text: "#0F2743",
+  textMuted: "#5B90C4",
   textInverse: "#FFFFFF",
-  brand: "#0E7C66",
-  brandMuted: "#D8EDE7",
-  brandText: "#FFFFFF",
-  success: "#15803D",
-  successText: "#F0FDF4",
-  warning: "#B45309",
-  warningText: "#FFFBEB",
-  danger: "#B91C1C",
-  dangerText: "#FEF2F2",
-  info: "#1D4ED8",
-  infoText: "#EFF6FF",
-  overlay: "rgba(15, 23, 42, 0.45)",
-  shimmer: "#E5EBEF",
+  brand: LIGHT_BRAND_DEFAULT,
+  brandMuted: LIGHT_BRAND_MUTED_DEFAULT,
+  brandText: LIGHT_BRAND_TEXT_DEFAULT,
+  ring: LIGHT_BRAND_DEFAULT,
+  card: "#FFFFFF",
+  field: "#FFFFFF",
+  accentSoft: LIGHT_BRAND_MUTED_DEFAULT,
+  success: "#059669",
+  successText: "#FFFFFF",
+  warning: "#D97706",
+  warningText: "#FFFFFF",
+  danger: "#E54D4D",
+  dangerText: "#FFFFFF",
+  info: "#0284C7",
+  infoText: "#FFFFFF",
+  overlay: "rgba(15, 39, 67, 0.45)",
+  shimmer: "#D4EBF7",
   inputBackground: "#FFFFFF",
 };
 
+const DARK_BRAND_DEFAULT = "#5BA8C8";
+const DARK_BRAND_MUTED_DEFAULT = "#152028";
+const DARK_BRAND_TEXT_DEFAULT = "#0B0F14";
+
 export const darkPalette: Palette = {
-  background: "#0B1220",
-  surface: "#111A2C",
-  surfaceMuted: "#162338",
-  border: "#1F2D45",
-  borderStrong: "#2C3D5A",
-  text: "#F1F5F9",
-  textMuted: "#94A3B8",
-  textInverse: "#0B1220",
-  brand: "#34D7B5",
-  brandMuted: "#0B3B33",
-  brandText: "#02211B",
-  success: "#22C55E",
-  successText: "#04251A",
-  warning: "#F59E0B",
-  warningText: "#2A1B05",
-  danger: "#F87171",
+  background: "#0B0F14",
+  surface: "#141A22",
+  surfaceMuted: "#1A2130",
+  border: "rgba(138, 162, 180, 0.22)",
+  borderStrong: "#3D4F62",
+  text: "#EAEEF2",
+  textMuted: "#7A8A99",
+  textInverse: "#0B0F14",
+  brand: DARK_BRAND_DEFAULT,
+  brandMuted: DARK_BRAND_MUTED_DEFAULT,
+  brandText: DARK_BRAND_TEXT_DEFAULT,
+  ring: DARK_BRAND_DEFAULT,
+  card: "#141A22",
+  field: "rgba(138, 162, 180, 0.12)",
+  accentSoft: DARK_BRAND_MUTED_DEFAULT,
+  success: "#34D399",
+  successText: "#0B0F14",
+  warning: "#FBBF24",
+  warningText: "#0B0F14",
+  danger: "#E54D4D",
   dangerText: "#2A0B0B",
-  info: "#60A5FA",
-  infoText: "#0E1E3A",
+  info: "#38BDF8",
+  infoText: "#0B0F14",
   overlay: "rgba(0, 0, 0, 0.6)",
-  shimmer: "#1B2841",
-  inputBackground: "#0F1A2E",
+  shimmer: "#1B2838",
+  inputBackground: "rgba(138, 162, 180, 0.12)",
 };
 
 export type ThemeColors = Palette;

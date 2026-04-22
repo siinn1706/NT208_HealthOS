@@ -24,6 +24,21 @@ describe("date helpers", () => {
     expect(relative(new Date(now.getTime() - 3 * 86400_000).toISOString())).toBe("3d ago");
   });
 
+  it("relative uses custom labels when provided", () => {
+    const now = new Date();
+    const labels = {
+      justNow: "J",
+      minutesAgo: (n: number) => `${n}M`,
+      hoursAgo: (n: number) => `${n}H`,
+      daysAgo: (n: number) => `${n}D`,
+      olderThanOneWeek: () => "OLD",
+    };
+    expect(relative(new Date(now.getTime() - 30_000).toISOString(), labels)).toBe("J");
+    expect(relative(new Date(now.getTime() - 5 * 60_000).toISOString(), labels)).toBe("5M");
+    expect(relative(new Date(now.getTime() - 3 * 86400_000).toISOString(), labels)).toBe("3D");
+    expect(relative("2020-01-01T00:00:00Z", labels)).toBe("OLD");
+  });
+
   it("todayBounds returns local-day boundaries roughly 24h apart", () => {
     const { start, end } = todayBounds();
     const startMs = new Date(start).getTime();

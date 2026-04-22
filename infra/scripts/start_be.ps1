@@ -33,6 +33,7 @@ if ($CheckOnly) {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
+    Assert-SingleAlembicHead -PythonExe $PythonExe -BackendDir $BackendDir -ErrorPrefix "[BE]"
     & $PythonExe -m alembic current
     exit $LASTEXITCODE
 }
@@ -70,10 +71,12 @@ if (-not $SkipInstall) {
     }
 }
 
+Assert-SingleAlembicHead -PythonExe $PythonExe -BackendDir $BackendDir -ErrorPrefix "[BE]"
+
 Write-Host "[BE] Running migrations via python -m alembic..." -ForegroundColor Cyan
 & $PythonExe -m alembic upgrade head
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[BE] WARNING: Migration failed. Server will still start, but chat settings may break." -ForegroundColor Yellow
+    throw "[BE] Database migrations failed. Fix the migration error before starting the backend."
 }
 
 Write-Host "[BE] Starting FastAPI on http://localhost:8000 ..." -ForegroundColor Green

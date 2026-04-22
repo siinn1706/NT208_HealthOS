@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, CheckCircle2, Github, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -63,6 +63,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export function LinkedAccountsSection() {
   const t = useTranslations("dashboard.profile.linkedAccounts");
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const [links, setLinks] = React.useState<OAuthLink[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -110,7 +111,11 @@ export function LinkedAccountsSection() {
   }, [searchParams, refresh, t]);
 
   const handleAdd = (provider: Provider) => {
-    window.location.assign(`/api/v1/auth/oauth/${provider}/link/init`);
+    const params = new URLSearchParams({
+      locale,
+      from: "/dashboard/profile",
+    });
+    window.location.assign(`/api/v1/auth/oauth/${provider}/link/init?${params.toString()}`);
   };
 
   const handleRemove = async () => {

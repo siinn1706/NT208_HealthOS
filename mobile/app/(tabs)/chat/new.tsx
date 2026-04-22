@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/states/LoadingState";
+import { ErrorState } from "@/components/states/ErrorState";
 import { useT } from "@/i18n";
 import { useTheme } from "@/theme";
 import { useToast } from "@/components/ui/Toast";
@@ -19,13 +20,16 @@ import {
 } from "@/api/endpoints/conversations";
 import { useDebouncedValue } from "@/utils/debounce";
 import { ApiError } from "@/api/errors";
+import { ChatModeToggle } from "@/components/chat/ChatModeToggle";
+import { SelectedUserChip } from "@/components/chat/SelectedUserChip";
+import { UserSearchRow } from "@/components/chat/UserSearchRow";
 
 export default function NewChatScreen() {
   const t = useT();
   const router = useRouter();
   const toast = useToast();
   const qc = useQueryClient();
-  const { colors, fontWeights, typography, spacing, radius } = useTheme();
+  const { colors, fontWeights, spacing, radius, typography } = useTheme();
 
   const [query, setQuery] = useState("");
   const [groupTitle, setGroupTitle] = useState("");
@@ -92,41 +96,28 @@ export default function NewChatScreen() {
     }
   };
 
+  const modeOptions = useMemo(
+    () => [
+      { value: false as const, label: t("chat.directChat") },
+      { value: true as const, label: t("chat.groupChat") },
+    ],
+    [t]
+  );
+
   return (
     <ScreenScroll>
       <Stack.Screen options={{ headerShown: false }} />
       <PageHeader title={t("chat.newChat")} />
       <Card>
-        <View style={{ flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md }}>
-          {[
-            { value: false, label: t("chat.directChat") },
-            { value: true, label: t("chat.groupChat") },
-          ].map((opt) => {
-            const active = isGroup === opt.value;
-            return (
-              <Pressable
-                key={String(opt.value)}
-                onPress={() => setIsGroup(opt.value)}
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.sm,
-                  borderRadius: radius.md,
-                  backgroundColor: active ? colors.brand : colors.surfaceMuted,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.brandText : colors.text,
-                    fontWeight: fontWeights.semibold,
-                  }}
-                >
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <ChatModeToggle
+          options={modeOptions}
+          value={isGroup}
+          onChange={setIsGroup}
+          activeColor={colors.brand}
+          inactiveSurface={colors.surfaceMuted}
+          textColor={colors.text}
+          activeTextColor={colors.brandText}
+        />
         {isGroup ? (
           <Input
             label={t("chat.groupTitle")}
@@ -147,88 +138,98 @@ export default function NewChatScreen() {
 
       {selected.length > 0 ? (
         <Card>
-          <Text style={{ color: colors.text, fontWeight: fontWeights.semibold, marginBottom: spacing.sm }}>
+          <Text
+            style={{
+              color: colors.text,
+              fontWeight: fontWeights.semibold,
+              fontSize: typography.sm.fontSize,
+              marginBottom: spacing.sm,
+            }}
+          >
             {t("chat.selectedHeader")}
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {selected.map((u) => (
-              <Pressable
+              <SelectedUserChip
                 key={u.id}
-                onPress={() => toggle(u)}
-                style={{
-                  flexDirection: "row",
-                  gap: 6,
-                  paddingVertical: 6,
-                  paddingHorizontal: 12,
-                  borderRadius: radius.pill,
-                  backgroundColor: colors.brandMuted,
-                }}
-              >
-                <Text style={{ color: colors.brand, fontWeight: fontWeights.semibold }}>
-                  {u.display_name}
-                </Text>
-                <Text style={{ color: colors.brand }}>×</Text>
-              </Pressable>
+                name={u.display_name}
+                removeAccessibilityLabel={t("chat.removeSelectedA11y", { name: u.display_name })}
+                onRemove={() => toggle(u)}
+                brandColor={colors.brand}
+                brandMuted={colors.brandMuted}
+                borderColor={colors.border}
+                radius={radius.pill}
+              />
             ))}
           </View>
         </Card>
       ) : null}
 
       <Card>
-        {lookup.isFetching ? (
+        {debounced.length <= 1 ? (
+          <Text
+            style={{
+              color: colors.textMuted,
+              fontSize: typography.sm.fontSize,
+              textAlign: "center",
+              paddingVertical: spacing.md,
+            }}
+          >
+            {t("chat.typeMore")}
+          </Text>
+        ) : lookup.isError ? (
+          <ErrorState
+            density="section"
+            error={lookup.error}
+            onRetry={() => lookup.refetch()}
+          />
+        ) : lookup.isFetching ? (
           <LoadingState />
         ) : lookup.data && lookup.data.length > 0 ? (
           <View>
-            {lookup.data.map((u) => {
+            {lookup.data.map((u, i, arr) => {
               const isSelected = !!selected.find((s) => s.id === u.id);
               return (
-                <Pressable
+                <UserSearchRow
                   key={u.id}
+                  displayName={u.display_name}
+                  email={u.email}
+                  selected={isSelected}
+                  showDivider={i < arr.length - 1}
                   onPress={() => toggle(u)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: isSelected }}
-                  accessibilityLabel={u.display_name ?? u.email}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingVertical: spacing.sm,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.border,
-                    minHeight: 44,
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.text, fontWeight: fontWeights.medium }}>
-                      {u.display_name}
-                    </Text>
-                    {u.email ? (
-                      <Text style={{ color: colors.textMuted, fontSize: typography.xs.fontSize }}>
-                        {u.email}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {isSelected ? (
-                    <Text style={{ color: colors.brand, fontWeight: fontWeights.semibold }}>✓</Text>
-                  ) : null}
-                </Pressable>
+                  textColor={colors.text}
+                  mutedColor={colors.textMuted}
+                  brandColor={colors.brand}
+                  borderColor={colors.border}
+                  selectedBackgroundColor={colors.brandMuted}
+                />
               );
             })}
           </View>
         ) : (
-          <Text style={{ color: colors.textMuted }}>
-            {debounced.length > 1 ? t("chat.noMatches") : t("chat.typeMore")}
+          <Text
+            style={{
+              color: colors.textMuted,
+              fontSize: typography.sm.fontSize,
+              textAlign: "center",
+              paddingVertical: spacing.md,
+            }}
+          >
+            {t("chat.noMatches")}
           </Text>
         )}
       </Card>
 
-      <Button
-        onPress={onSubmit}
-        disabled={!canSubmit}
-        loading={directMutation.isPending || groupMutation.isPending}
-        fullWidth
-      >
-        {isGroup ? t("common.create") : t("chat.directChat")}
-      </Button>
+      <View style={{ marginTop: spacing.lg, paddingBottom: spacing.lg }}>
+        <Button
+          onPress={onSubmit}
+          disabled={!canSubmit}
+          loading={directMutation.isPending || groupMutation.isPending}
+          fullWidth
+        >
+          {isGroup ? t("chat.startGroupChat") : t("chat.directChat")}
+        </Button>
+      </View>
     </ScreenScroll>
   );
 }
