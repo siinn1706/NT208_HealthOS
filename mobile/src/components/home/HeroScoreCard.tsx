@@ -1,0 +1,52 @@
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
+import { ProgressRing } from '../charts/ProgressRing';
+
+interface HeroScoreCardProps {
+  value: number;
+  target: number;
+  copy: string;
+}
+
+export function HeroScoreCard({ value, target, copy }: HeroScoreCardProps) {
+  const t = useTheme();
+  const ratio = value / target;
+
+  return (
+    <LinearGradient
+      colors={[t.primary, t.accent]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.card, { borderRadius: t.radius.xl }]}
+    >
+      <View style={styles.inner}>
+        <View style={styles.text}>
+          <Text style={[typography.caption, styles.label]}>Today's health</Text>
+          <Text style={[typography.display, styles.score]}>{value}</Text>
+          <Text style={[typography.caption, styles.copy]}>{copy}</Text>
+        </View>
+        <ProgressRing
+          value={ratio}
+          size={80}
+          stroke={6}
+          color="#FFFFFF"
+          track="rgba(255,255,255,0.25)"
+        >
+          <Text style={[typography.h3, { color: '#FFFFFF' }]}>{value}</Text>
+        </ProgressRing>
+      </View>
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  card:  { marginVertical: 8 },
+  inner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
+  text:  { flex: 1 },
+  label: { color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+  score: { color: '#FFFFFF', marginBottom: 4 },
+  copy:  { color: 'rgba(255,255,255,0.85)' },
+});

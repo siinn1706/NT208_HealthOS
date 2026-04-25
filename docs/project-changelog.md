@@ -8,6 +8,17 @@
 
 ### Changed
 
+#### Mobile
+
+- Expanded the Expo / React Native mobile surface under `mobile/` with additional UI-only, mock-backed flows:
+  - Auth flow scaffolding
+  - Home detail routes for vitals, labs, plan, and insight
+  - Care detail routes for appointment, video, prep, and history
+  - Medication routes for add, edit, import, detail, refill, pause, archive, and history
+  - Reusable forms for intake, symptoms, medication, and insurance
+  - Parent tab navigation retained via Expo Router tabs
+- Clarified repository docs to reflect that the mobile app is now a broader UI-first surface rather than the earlier 6-screen snapshot.
+
 #### Documentation
 
 - Aligned `system-architecture.md` to current backend surface:
