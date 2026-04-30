@@ -69,4 +69,18 @@ class VitalsTimeseriesResponse(DataResponse[list[VitalPointDTO]]):
 
 class NutritionSuggestionsResponse(DataResponse[list[NutritionSuggestionDTO]]):
     ...
+class ExerciseSuggestionDTO(BaseModel):
+    id: str
+    type: str          # "tip" | "warning" | "goal" | "success"
+    icon: str          # lucide icon name
+    title: str         # i18n key
+    message: str       # i18n key
+    message_params: dict[str, int | float] | None = None
+    priority: int
+    duration_minutes: int | None = None
+    intensity: str     # "low" | "medium" | "high"
+    category: str      # "cardio" | "strength" | "flexibility" | "balance"
 
+
+class ExerciseSuggestionsResponse(DataResponse[list[ExerciseSuggestionDTO]]):
+    ...

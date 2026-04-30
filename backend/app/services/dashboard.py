@@ -12,6 +12,7 @@ from app.schemas.dashboard import (
     DashboardAlert,
     DashboardGoal,
     DashboardSummaryDTO,
+    ExerciseSuggestionDTO,    
     KpiValue,
     NutritionSuggestionDTO,
     VitalPointDTO,
@@ -334,3 +335,135 @@ async def get_nutrition_suggestions(
 
     return sorted(suggestions, key=lambda item: item.priority)
 
+async def get_exercise_suggestions(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> list[ExerciseSuggestionDTO]:
+    metrics = await _latest_metrics(db, user_id)
+    meals = await _today_meals(db, user_id)
+
+    steps = _latest_metric_value(metrics, MetricTypeEnum.STEPS)
+    sleep_minutes = _latest_metric_value(metrics, MetricTypeEnum.SLEEP_MINUTES)
+    heart_rate = _latest_metric_value(metrics, MetricTypeEnum.HEART_RATE)
+    calories_intake = _sum_nutrition_value(meals, "calories")
+
+    suggestions: list[ExerciseSuggestionDTO] = []
+
+    # Chưa có data
+    if steps is None and sleep_minutes is None and heart_rate is None:
+        return [
+            ExerciseSuggestionDTO(
+                id="exercise-no-data",
+                type="tip",
+                icon="Info",
+                title="EXERCISE_NO_DATA",
+                message="EXERCISE_NO_DATA",
+                priority=1,
+                duration_minutes=None,
+                intensity="low",
+                category="cardio",
+            )
+        ]
+
+    # Ít bước chân → gợi ý đi bộ
+    if steps is not None and steps < 5000:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-walk-more",
+                type="warning",
+                icon="Footprints",
+                title="EXERCISE_WALK_MORE",
+                message="EXERCISE_WALK_MORE",
+                message_params={"steps": round(steps), "target": 10000},
+                priority=1,
+                duration_minutes=30,
+                intensity="low",
+                category="cardio",
+            )
+        )
+
+    # Ngủ kém → gợi ý yoga/stretching
+    if sleep_minutes is not None and sleep_minutes < 360:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-sleep-yoga",
+                type="tip",
+                icon="Moon",
+                title="EXERCISE_SLEEP_YOGA",
+                message="EXERCISE_SLEEP_YOGA",
+                message_params={"sleep_hours": round(sleep_minutes / 60, 1)},
+                priority=2,
+                duration_minutes=20,
+                intensity="low",
+                category="flexibility",
+            )
+        )
+
+    # Nhịp tim cao → gợi ý hít thở/thiền
+    if heart_rate is not None and heart_rate > 90:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-hr-breathing",
+                type="warning",
+                icon="Heart",
+                title="EXERCISE_HR_BREATHING",
+                message="EXERCISE_HR_BREATHING",
+                message_params={"heart_rate": round(heart_rate)},
+                priority=1,
+                duration_minutes=15,
+                intensity="low",
+                category="balance",
+            )
+        )
+
+    # Ăn nhiều calo → gợi ý cardio
+    if calories_intake > 2200:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-burn-calories",
+                type="goal",
+                icon="Flame",
+                title="EXERCISE_BURN_CALORIES",
+                message="EXERCISE_BURN_CALORIES",
+                message_params={"calories": round(calories_intake)},
+                priority=2,
+                duration_minutes=45,
+                intensity="medium",
+                category="cardio",
+            )
+        )
+
+    # Bước chân đạt → tập sức mạnh
+    if steps is not None and steps >= 8000:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-strength",
+                type="success",
+                icon="Dumbbell",
+                title="EXERCISE_STRENGTH",
+                message="EXERCISE_STRENGTH",
+                message_params={"steps": round(steps)},
+                priority=3,
+                duration_minutes=30,
+                intensity="medium",
+                category="strength",
+            )
+        )
+
+    # Không có gợi ý → đang tốt
+    if not suggestions:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-balanced",
+                type="success",
+                icon="CheckCircle",
+                title="EXERCISE_BALANCED",
+                message="EXERCISE_BALANCED",
+                priority=4,
+                duration_minutes=None,
+                intensity="low",
+                category="cardio",
+            )
+        )
+
+    return sorted(suggestions, key=lambda item: item.priority)

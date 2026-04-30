@@ -2178,6 +2178,82 @@
         "emptyBody": "When someone scans your QR, the entry appears here."
       },
       "previewTitleDraft": "What responders see (draft)"
+    },
+     "trends": {
+      "title": "Health Trends",
+      "subtitle": "Changes over time",
+      "noData": "Not enough data to show trends yet.",
+      "metrics": {
+        "heart_rate": "Heart Rate",
+        "steps": "Steps",
+        "sleep": "Sleep",
+        "calories": "Calories",
+        "weight": "Weight"
+      }
+    },
+    "anomalies": {
+    "title": "Anomaly Alerts",
+    "subtitle": "Unusual readings detected",
+    "live": "Live",
+    "offline": "Offline",
+    "dismiss": "Dismiss",
+    "realtimeSection": "Real-time",
+    "recentSection": "Recent (30 days)",
+    "viewAll": "View all trends"
+    },
+    "exercise": {
+      "title": "Exercise Suggestions",
+      "subtitle": "Based on your health data",
+      "noData": "Log some health data to get exercise recommendations.",
+      "viewAll": "View progress",
+      "minutes": "min",
+      "types": {
+        "warning": "Attention",
+        "tip": "Tip",
+        "goal": "Goal",
+        "success": "Great"
+      },
+      "intensity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "categories": {
+        "cardio": "Cardio",
+        "strength": "Strength",
+        "flexibility": "Flexibility",
+        "balance": "Balance"
+      },
+      "suggestions": {
+        "exercise-no-data": {
+          "title": "Start tracking",
+          "message": "Log your steps, sleep, or heart rate to receive personalized exercise recommendations."
+        },
+        "exercise-walk-more": {
+          "title": "Walk more today",
+          "message": "You've only walked {steps} steps. Try a 30-minute walk to reach your {target}-step goal."
+        },
+        "exercise-sleep-yoga": {
+          "title": "Evening yoga",
+          "message": "You slept {sleep_hours} hours last night. Try gentle yoga or stretching before bed."
+        },
+        "exercise-hr-breathing": {
+          "title": "Breathing exercise",
+          "message": "Your heart rate is {heart_rate} bpm. Try 15 minutes of deep breathing or meditation."
+        },
+        "exercise-burn-calories": {
+          "title": "Cardio session",
+          "message": "You've consumed {calories} kcal today. A 45-minute cardio session can help balance your intake."
+        },
+        "exercise-strength": {
+          "title": "Strength training",
+          "message": "Great job with {steps} steps! Consider adding a 30-minute strength workout."
+        },
+        "exercise-balanced": {
+          "title": "Looking good!",
+          "message": "Your metrics are balanced. Keep up the great work!"
+        }
+      }
     }
   },
   "auth": {

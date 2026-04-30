@@ -2178,6 +2178,82 @@
         "emptyBody": "Khi có người quét QR, mục đó sẽ xuất hiện ở đây."
       },
       "previewTitleDraft": "Người ứng cứu sẽ thấy (chưa lưu)"
+    },
+    "trends": {
+      "title": "Xu hướng sức khỏe",
+      "subtitle": "Thay đổi theo thời gian",
+      "noData": "Chưa đủ dữ liệu để hiển thị xu hướng.",
+      "metrics": {
+        "heart_rate": "Nhịp tim",
+        "steps": "Bước chân",
+        "sleep": "Giấc ngủ",
+        "calories": "Calo",
+        "weight": "Cân nặng"
+      }
+    },
+    "anomalies": {
+    "title": "Cảnh báo bất thường",
+    "subtitle": "Chỉ số bất thường được phát hiện",
+    "live": "Trực tiếp",
+    "offline": "Ngoại tuyến",
+    "dismiss": "Bỏ qua",
+    "realtimeSection": "Thời gian thực",
+    "recentSection": "Gần đây (30 ngày)",
+    "viewAll": "Xem tất cả xu hướng"
+    },
+    "exercise": {
+      "title": "Gợi ý luyện tập",
+      "subtitle": "Dựa trên dữ liệu sức khỏe của bạn",
+      "noData": "Ghi lại dữ liệu sức khỏe để nhận gợi ý luyện tập.",
+      "viewAll": "Xem tiến độ",
+      "minutes": "phút",
+      "types": {
+        "warning": "Lưu ý",
+        "tip": "Mẹo",
+        "goal": "Mục tiêu",
+        "success": "Tốt"
+      },
+      "intensity": {
+        "low": "Nhẹ",
+        "medium": "Vừa",
+        "high": "Cao"
+      },
+      "categories": {
+        "cardio": "Cardio",
+        "strength": "Sức mạnh",
+        "flexibility": "Dẻo dai",
+        "balance": "Cân bằng"
+      },
+      "suggestions": {
+        "exercise-no-data": {
+          "title": "Bắt đầu theo dõi",
+          "message": "Ghi lại bước chân, giấc ngủ hoặc nhịp tim để nhận gợi ý luyện tập phù hợp."
+        },
+        "exercise-walk-more": {
+          "title": "Đi bộ thêm",
+          "message": "Bạn mới đi {steps} bước. Thử đi bộ 30 phút để đạt mục tiêu {target} bước."
+        },
+        "exercise-sleep-yoga": {
+          "title": "Yoga buổi tối",
+          "message": "Bạn ngủ {sleep_hours} giờ đêm qua. Thử yoga nhẹ hoặc giãn cơ trước khi ngủ."
+        },
+        "exercise-hr-breathing": {
+          "title": "Bài tập thở",
+          "message": "Nhịp tim {heart_rate} bpm. Thử 15 phút hít thở sâu hoặc thiền."
+        },
+        "exercise-burn-calories": {
+          "title": "Bài cardio",
+          "message": "Bạn đã nạp {calories} kcal hôm nay. 45 phút cardio giúp cân bằng."
+        },
+        "exercise-strength": {
+          "title": "Tập sức mạnh",
+          "message": "Tuyệt vời với {steps} bước! Thêm 30 phút tập sức mạnh nhé."
+        },
+        "exercise-balanced": {
+          "title": "Rất tốt!",
+          "message": "Chỉ số cân bằng. Tiếp tục phát huy!"
+        }
+      }
     }
   },
   "auth": {

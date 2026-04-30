@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
+import { RealtimeAnomalyWidget } from "@/components/dashboard/widgets/RealtimeAnomalyWidget";
 import { AlertBannerWidget } from "@/components/dashboard/widgets/AlertBannerWidget";
 import { QuickActionsWidget } from "@/components/dashboard/widgets/QuickActionsWidget";
 import { KpiRingWidget } from "@/components/dashboard/widgets/KpiRingWidget";
@@ -11,13 +12,16 @@ import { AiInsightWidget } from "@/components/dashboard/widgets/AiInsightWidget"
 import { WeeklyCalorieChartWidget } from "@/components/dashboard/widgets/WeeklyCalorieChartWidget";
 import { TodayDosesPanel } from "@/components/dashboard/medications/TodayDosesPanel";
 import { PageHeader } from "@/components/shared/page";
+import { ExerciseSuggestionsWidget } from "@/components/dashboard/widgets/ExerciseSuggestionsWidget";
 
 import {
   getDashboardSummary,
   getVitalsTimeseries,
   getUpcomingReminders,
+  getExerciseSuggestions,
 } from "@/lib/dashboard-data";
 import type { ReportPeriod } from "@/types/api";
+import { TrendSummaryWidget } from "@/components/dashboard/widgets/TrendSummaryWidget";
 
 // Skeleton loading state for chart-heavy widget
 function ChartSkeleton() {
@@ -41,10 +45,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const t = await getTranslations("dashboard");
 
   // Parallel data fetch on the server
-  const [summary, vitals, reminders] = await Promise.all([
+ const [summary, vitals, reminders, exerciseSuggestions] = await Promise.all([
     getDashboardSummary(),
     getVitalsTimeseries(days),
     getUpcomingReminders(),
+    getExerciseSuggestions(),
   ]);
 
   // Detect time of day for greeting
@@ -63,6 +68,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {summary.alerts.length > 0 && (
         <AlertBannerWidget alerts={summary.alerts} />
       )}
+
+      {/* ── Row 0b: Anomaly Alerts (realtime + historical) ── */}
+      <RealtimeAnomalyWidget />
 
       {/* ── Row 1: KPI Rings ── */}
       <KpiRingWidget data={summary.kpis} />
@@ -86,13 +94,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </div>
 
-      {/* ── Row 4: Weekly Calorie Chart ── */}
+       {/* ── Row 4: Trend Summary ── */}
+      <TrendSummaryWidget initialPeriod={period} />
+
+      {/* Row 5: Weekly Calorie Chart */}
       <WeeklyCalorieChartWidget initialPeriod={period} />
 
-      {/* ── Row 5: Goal Progress + AI Insight ── */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      {/* Row 6: Goals + AI Insight + Exercise Suggestions */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <GoalProgressWidget goals={summary.goals} />
         <AiInsightWidget insight={summary.aiInsight} />
+        <ExerciseSuggestionsWidget suggestions={exerciseSuggestions} />
       </div>
       </div>
     </>

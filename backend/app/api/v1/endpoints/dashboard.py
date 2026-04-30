@@ -9,6 +9,7 @@ from app.adapters.database import get_db
 from app.core.security import get_current_user
 from app.models.core import User
 from app.schemas.common import ErrorResponse
+from app.schemas.dashboard import DashboardSummaryResponse, ExerciseSuggestionsResponse
 from app.schemas.dashboard import DashboardSummaryResponse
 from app.services import dashboard as dashboard_svc
 
@@ -28,3 +29,15 @@ async def get_dashboard_summary(
     data = await dashboard_svc.get_dashboard_summary(db, current_user)
     return DashboardSummaryResponse(data=data)
 
+@router.get(
+    "/exercise-suggestions",
+    response_model=ExerciseSuggestionsResponse,
+    responses={401: {"model": ErrorResponse}},
+    summary="Get exercise suggestions based on health metrics",
+)
+async def get_exercise_suggestions(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ExerciseSuggestionsResponse:
+    data = await dashboard_svc.get_exercise_suggestions(db=db, user_id=current_user.id)
+    return ExerciseSuggestionsResponse(data=data)
