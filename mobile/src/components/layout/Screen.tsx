@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, View, StyleSheet, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 
 interface ScreenProps {
@@ -12,6 +12,7 @@ interface ScreenProps {
 
 export function Screen({ children, scroll = true, padding = true, style }: ScreenProps) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const bg = { backgroundColor: t.bg };
   const pad = padding ? { paddingHorizontal: t.space[5] } : undefined;
 
@@ -20,7 +21,7 @@ export function Screen({ children, scroll = true, padding = true, style }: Scree
       <SafeAreaView style={[styles.flex, bg]} edges={['top']}>
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={[styles.content, pad, style]}
+          contentContainerStyle={[styles.content, pad, { paddingBottom: 56 + insets.bottom + 16 }, style]}
           showsVerticalScrollIndicator={false}
         >
           {children}
@@ -31,12 +32,12 @@ export function Screen({ children, scroll = true, padding = true, style }: Scree
 
   return (
     <SafeAreaView style={[styles.flex, bg]} edges={['top']}>
-      <View style={[styles.flex, pad, style]}>{children}</View>
+      <View style={[styles.flex, pad, { paddingBottom: 56 + insets.bottom + 16 }, style]}>{children}</View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   flex:    { flex: 1 },
-  content: { paddingBottom: 24 },
+  content: {},
 });

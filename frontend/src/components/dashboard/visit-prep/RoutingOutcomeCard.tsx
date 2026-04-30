@@ -251,16 +251,18 @@ export function RoutingOutcomeCard({
           )
         ) : null}
 
-        {/* Review fix S3: insufficient_info gains a secondary "Find urgent
-            care" CTA so a vague-but-serious symptom isn't routed only to
-            "book a routine appointment". */}
+        {/* Review fix S3: insufficient_info gains an actionable secondary
+            urgent-care CTA so a vague-but-serious symptom isn't routed only
+            to "book a routine appointment". */}
         {outcome.bucket === "insufficient_info" && (
-          <span
+          <a
+            href="tel:115"
+            aria-label={`${t("insufficient_info.urgentSecondary")}. ${t("emergency_now.emergencyHint")}`}
             className="inline-flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning"
           >
             <Phone className="h-3.5 w-3.5" aria-hidden />
             {t("insufficient_info.urgentSecondary")}
-          </span>
+          </a>
         )}
 
         {onRecompute && (

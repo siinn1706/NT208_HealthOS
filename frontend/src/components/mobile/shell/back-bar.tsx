@@ -13,7 +13,7 @@ export function BackBar({ title, right, onBack }: BackBarProps) {
   return (
     <header className="topbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-        <button className="icon-btn ghost" onClick={onBack} aria-label="Go back">
+        <button type="button" className="icon-btn ghost" onClick={onBack} aria-label="Go back">
           <ChevronLeft size={20} />
         </button>
         {title && (

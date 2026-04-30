@@ -10,9 +10,11 @@ interface AiAssistantHeroProps {
   suggestions: string[];
   onPress?: () => void;
   onSuggestion?: (s: string) => void;
+  /** Alias for onSuggestion — preferred going forward */
+  onSuggestionPress?: (text: string) => void;
 }
 
-export function AiAssistantHero({ suggestions, onPress, onSuggestion }: AiAssistantHeroProps) {
+export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggestionPress }: AiAssistantHeroProps) {
   const t = useTheme();
 
   return (
@@ -39,7 +41,7 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion }: AiAssist
           {suggestions.map((s) => (
             <Pressable
               key={s}
-              onPress={() => onSuggestion?.(s)}
+              onPress={() => { onSuggestionPress?.(s); onSuggestion?.(s); }}
               style={[styles.chip, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.pill }]}
             >
               <Text style={[typography.micro, { color: t.brand }]}>{s}</Text>

@@ -1,13 +1,15 @@
 'use client';
 
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { PhoneShell } from '@/components/mobile/shell/phone-shell';
 import { BackBar } from '@/components/mobile/shell/back-bar';
 import { Ring } from '@/components/mobile/primitives/ring';
 import { SectionHeader } from '@/components/mobile/primitives/section-header';
 import { SCORE_CATEGORIES } from '@/lib/mobile/mock/home-detail';
+import { parseTheme, themeClass } from '@/lib/mobile/theme';
 
-interface Props { theme?: string; }
+interface HealthScoreDetailScreenProps { theme?: string; }
 
 function barColor(val: number) {
   if (val >= 80) return 'var(--success, #059669)';
@@ -21,10 +23,15 @@ function valColor(val: number) {
   return 'var(--warning, #D97706)';
 }
 
-export function HealthScoreDetailScreen({ theme = 'theme-calm' }: Props) {
+export function HealthScoreDetailScreen({ theme: themeProp }: HealthScoreDetailScreenProps) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const t = parseTheme(params.get('t'));
+  const resolvedTheme = (themeProp ?? themeClass(t)) as 'theme-calm' | 'theme-night' | 'theme-warm';
+
   return (
-    <PhoneShell theme={theme as 'theme-calm' | 'theme-night' | 'theme-warm'}>
-      <BackBar title="Health score" />
+    <PhoneShell theme={resolvedTheme}>
+      <BackBar title="Health score" onBack={() => router.push(`/mobile?t=${t}`)} />
       <div className="screen-body" style={{ padding: '0 20px 20px' }}>
 
         {/* Large ring */}
@@ -50,7 +57,6 @@ export function HealthScoreDetailScreen({ theme = 'theme-calm' }: Props) {
             <div key={f.label} style={{
               padding: '12px 14px',
               borderBottom: i === SCORE_CATEGORIES.length - 1 ? 'none' : '1px solid var(--border)',
-              borderLeft: `3px solid ${f.color}`,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <div>

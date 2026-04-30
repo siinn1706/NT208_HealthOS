@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import type { WeekDay } from '../../mocks/appointments';
+import type { WeekDay } from '../../api/viewModels';
 
 interface WeekStripProps {
   days: WeekDay[];

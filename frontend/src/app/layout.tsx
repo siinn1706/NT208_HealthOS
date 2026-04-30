@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
@@ -26,6 +27,13 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
       <head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
         {/* Full 5-token early hydration lives in /accent-early.js (~2KB) — keeps layout HTML small. */}
         <script src="/accent-early.js" />
       </head>

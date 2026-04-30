@@ -13,6 +13,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
+import { SessionProvider } from '../src/auth/SessionProvider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,8 +36,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }} />
+          <SessionProvider>
+            <StatusBar style="auto" />
+            <Stack screenOptions={{ headerShown: false }} />
+          </SessionProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

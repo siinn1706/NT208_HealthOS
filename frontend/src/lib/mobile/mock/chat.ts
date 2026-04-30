@@ -1,5 +1,14 @@
 /** Mock data for Chat list and AI conversation screens. */
 
+export const CHAT_TOP_SUBTITLE = 'Care team & AI assistant';
+
+/** Unread count badge on the tab bar (chat list). */
+export const CHAT_TAB_UNREAD = 3;
+
+export const CHAT_DATE_CHIP = 'Today';
+
+export const CHAT_COMPOSER_PLACEHOLDER = 'Message HealthOS…';
+
 export const CHAT_CONVERSATIONS = [
   { avatar: 'L', name: 'Dr. Nguyen Lan',       preview: 'Your lab results are in — everything lo…', time: '9:42', unread: 2, role: 'Cardiologist',   color: undefined },
   { avatar: 'T', name: 'Care coordinator',      preview: 'I rescheduled your Friday appointment t…', time: 'Yes',  unread: 0, role: 'Sunrise Clinic', color: 'var(--warm-peach)' },

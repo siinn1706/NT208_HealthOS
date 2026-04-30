@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Card } from '../primitives/Card';
+import { PressableCard } from '../primitives/PressableCard';
 
 interface MedCardProps {
   name: string;
@@ -10,14 +11,14 @@ interface MedCardProps {
   adherence: number;
   refillDays: number;
   color: string;
+  onPress?: () => void;
 }
 
-export function MedCard({ name, dose, adherence, refillDays, color }: MedCardProps) {
+export function MedCard({ name, dose, adherence, refillDays, color, onPress }: MedCardProps) {
   const t = useTheme();
   const pct = Math.round(adherence * 100);
-
-  return (
-    <Card style={styles.card}>
+  const content = (
+    <>
       <View style={styles.header}>
         <View style={[styles.indicator, { backgroundColor: color }]} />
         <View style={styles.info}>
@@ -33,8 +34,11 @@ export function MedCard({ name, dose, adherence, refillDays, color }: MedCardPro
       <Text style={[typography.micro, { color: t.ink4, marginTop: 6 }]}>
         Refill in {refillDays} days
       </Text>
-    </Card>
+    </>
   );
+
+  const card = <Card style={styles.card}>{content}</Card>;
+  return onPress ? <PressableCard onPress={onPress}>{card}</PressableCard> : card;
 }
 
 const styles = StyleSheet.create({

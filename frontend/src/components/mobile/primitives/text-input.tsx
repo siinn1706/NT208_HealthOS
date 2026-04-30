@@ -1,9 +1,14 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { ChangeEventHandler, ReactNode } from 'react';
 
 interface TextInputProps {
+  id?: string;
+  /** Controlled value — pair with `onChange`. */
   value?: string;
+  /** Uncontrolled initial value — do not mix with `value`. */
+  defaultValue?: string;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
   placeholder?: string;
   type?: 'text' | 'email' | 'password' | 'tel' | 'number';
   error?: boolean;
@@ -11,7 +16,8 @@ interface TextInputProps {
   trailing?: ReactNode;
 }
 
-export function TextInput({ value, placeholder, type = 'text', error, leading, trailing }: TextInputProps) {
+export function TextInput({ id, value, defaultValue, onChange, placeholder, type = 'text', error, leading, trailing }: TextInputProps) {
+  const controlled = value !== undefined;
   return (
     <div style={{
       display: 'flex',
@@ -27,8 +33,12 @@ export function TextInput({ value, placeholder, type = 'text', error, leading, t
         <span style={{ color: 'var(--ink-3)', display: 'flex' }}>{leading}</span>
       )}
       <input
+        id={id}
         type={type}
-        defaultValue={value}
+        {...(controlled
+          ? { value, onChange: onChange ?? (() => {}) }
+          : { defaultValue }
+        )}
         placeholder={placeholder}
         style={{
           flex: 1,

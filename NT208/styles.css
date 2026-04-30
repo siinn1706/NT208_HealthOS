@@ -1,0 +1,278 @@
+/* NT208 HealthOS — Mobile Design System */
+
+:root {
+  /* Night Sky tokens (from web) */
+  --ns-50: #F4FCFE;
+  --ns-100: #E8F8FD;
+  --ns-200: #B8F0FA;
+  --ns-300: #6DE7F7;
+  --ns-400: #41BCE6;
+  --ns-500: #75A2B9;
+  --ns-600: #5B90C4;
+  --ns-700: #1A2130;
+  --ns-800: #141A22;
+  --ns-900: #0B0F14;
+
+  --primary: #1965B3;
+  --primary-deep: #0F2743;
+  --primary-ink: #1A4474;
+
+  --warm-gold: #E7DEA7;
+  --warm-peach: #E3B79A;
+  --warm-rose: #E8BDB7;
+
+  --success: #059669;
+  --warning: #D97706;
+  --danger: #E54D4D;
+  --info: #0284C7;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, 'SF Pro Text', system-ui, sans-serif;
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
+  background: #0f1319;
+  color: #0F2743;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ── THEME WRAPPERS ──────────────────────────────── */
+.theme-calm {
+  --bg: #F4FCFE;
+  --bg-elev: #FFFFFF;
+  --card: #FFFFFF;
+  --ink: #0F2743;
+  --ink-2: #1A4474;
+  --ink-3: #5B90C4;
+  --ink-4: #8FA5BD;
+  --border: #DCEFF7;
+  --border-strong: #B8D9EA;
+  --brand: #1965B3;
+  --brand-soft: #E8F8FD;
+  --accent: #41BCE6;
+  --chip: #E8F8FD;
+}
+
+.theme-night {
+  --bg: #0B0F14;
+  --bg-elev: #141A22;
+  --card: #151C27;
+  --ink: #EAEEF2;
+  --ink-2: #C7D1DC;
+  --ink-3: #8296AC;
+  --ink-4: #5E7289;
+  --border: rgba(138,162,180,0.14);
+  --border-strong: rgba(138,162,180,0.24);
+  --brand: #5BA8C8;
+  --brand-soft: rgba(91,168,200,0.14);
+  --accent: #7EC8D8;
+  --chip: rgba(91,168,200,0.12);
+}
+
+.theme-warm {
+  --bg: #FAF6EF;
+  --bg-elev: #FFFDF8;
+  --card: #FFFDF8;
+  --ink: #2A2418;
+  --ink-2: #4D4332;
+  --ink-3: #8A7C63;
+  --ink-4: #B3A68A;
+  --border: #EEE4CF;
+  --border-strong: #E2D3B0;
+  --brand: #B97843;
+  --brand-soft: #F6EADC;
+  --accent: #D4A06A;
+  --chip: #F4E7CE;
+}
+
+/* ── SCREEN SHELL ────────────────────────────────── */
+.screen {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  background: var(--bg);
+  color: var(--ink);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.screen-body::-webkit-scrollbar { display: none; }
+
+/* ── STATUS BAR ──────────────────────────────────── */
+.statusbar {
+  height: 47px;
+  padding: 16px 28px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.2px;
+  flex-shrink: 0;
+  color: var(--ink);
+}
+.statusbar .icons {
+  display: flex; gap: 5px; align-items: center;
+}
+
+/* ── TOP APP BAR ─────────────────────────────────── */
+.topbar {
+  padding: 10px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.topbar-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  color: var(--ink);
+}
+.topbar-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-2);
+  cursor: pointer;
+  position: relative;
+}
+.icon-btn.ghost { background: transparent; border: none; }
+.icon-btn .dot {
+  position: absolute; top: 8px; right: 8px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--danger);
+  border: 2px solid var(--bg);
+}
+
+/* ── BOTTOM NAV ──────────────────────────────────── */
+.tabbar {
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: 8px 4px 28px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px;
+  cursor: pointer;
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  position: relative;
+}
+.tab.active { color: var(--brand); }
+.tab svg { width: 22px; height: 22px; }
+.tab .badge {
+  position: absolute;
+  top: 3px; right: 20px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  background: var(--danger);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── CARDS ───────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px;
+}
+.card-tight { padding: 12px; border-radius: 16px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background: var(--chip);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}
+.chip.success { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+.chip.warning { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+.chip.danger { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+.chip.brand { background: var(--brand-soft); color: var(--brand); }
+
+.btn {
+  height: 48px;
+  border-radius: 14px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+}
+.btn.ghost {
+  background: var(--bg-elev);
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+.btn.soft {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+/* ── UTILITY ─────────────────────────────────────── */
+.stack > * + * { margin-top: var(--g, 12px); }
+
+.placeholder-bg {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--ink-3) 12%, transparent),
+    color-mix(in srgb, var(--ink-3) 12%, transparent) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+}

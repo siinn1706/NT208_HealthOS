@@ -15,6 +15,18 @@
   --info: #0284C7;
   --ease: cubic-bezier(0.2, 0, 0, 1);
 
+  /* Night Sky base palette (D-2) — use for tinting; themes expose semantic aliases above */
+  --ns-50: #F4FCFE;
+  --ns-100: #E8F8FD;
+  --ns-200: #C1E9F7;
+  --ns-300: #7EC8D8;
+  --ns-400: #41BCE6;
+  --ns-500: #1A9EC8;
+  --ns-600: #1278A0;
+  --ns-700: #0D5A7A;
+  --ns-800: #083D54;
+  --ns-900: #0B0F14;
+
   font-family: 'Inter', -apple-system, 'SF Pro Text', system-ui, sans-serif;
   font-feature-settings: 'ss01', 'cv11', 'tnum';
   -webkit-font-smoothing: antialiased;
@@ -260,9 +272,10 @@
 
 /* Typing indicator animation */
 @media (prefers-reduced-motion: no-preference) {
-  [data-mobile-shell] @keyframes typ {
-    0%, 100% { opacity: 0.3; transform: translateY(0); }
-    50% { opacity: 1; transform: translateY(-3px); }
+  @keyframes typ {
+    0% { opacity: 0.3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-2px); }
+    60%, 100% { opacity: 0.3; transform: translateY(0); }
   }
   [data-mobile-shell] .typing-dot {
     animation: typ 1.2s ease-in-out infinite;
@@ -270,8 +283,20 @@
   [data-mobile-shell] .typing-dot:nth-child(2) { animation-delay: 0.2s; }
   [data-mobile-shell] .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
-  [data-mobile-shell] @keyframes blink {
+  @keyframes blink {
     from { opacity: 1; }
     to { opacity: 0; }
+  }
+
+  [data-mobile-shell] .form-inputs-cursor {
+    animation: blink 1s steps(2) infinite;
+  }
+
+  @keyframes care-appt-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  [data-mobile-shell] .care-appt-pulse {
+    animation: care-appt-pulse 2s ease-in-out infinite;
   }
 }

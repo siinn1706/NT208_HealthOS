@@ -1,62 +1,87 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, Pressable, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Screen } from '../../src/components/layout/Screen';
 import { TopBar } from '../../src/components/layout/TopBar';
 import { IconButton } from '../../src/components/primitives/IconButton';
 import { Card } from '../../src/components/primitives/Card';
 import { Divider } from '../../src/components/primitives/Divider';
+import { ApiState } from '../../src/components/api/ApiState';
 import { IdentityCard } from '../../src/components/profile/IdentityCard';
 import { StatCell } from '../../src/components/profile/StatCell';
 import { EmergencyCard } from '../../src/components/profile/EmergencyCard';
 import { MenuGroup } from '../../src/components/profile/MenuGroup';
-import { IconSettings, IconCheck } from '../../src/icons';
-import { identity, stats, menuGroups } from '../../src/mocks/profile';
+import {
+  AppearanceSheet,
+  SettingsSheet,
+  EmergencySheet,
+  SignOutModal,
+  MissingApiModal,
+} from '../../src/components/profile/me-screen-modals';
+import { IconSettings } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
-import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { typography } from '../../src/theme/typography';
-import type { ThemeName } from '../../src/theme/tokens';
-
-const THEME_OPTIONS: { key: ThemeName | 'system'; label: string; desc: string }[] = [
-  { key: 'calm',   label: 'Calm Clinic',  desc: 'Clean light blues'       },
-  { key: 'night',  label: 'Night Sky',    desc: 'Deep dark tones'         },
-  { key: 'warm',   label: 'Warm Care',    desc: 'Earthy warm palette'     },
-  { key: 'system', label: 'System',       desc: 'Follows device setting'  },
-];
-
-function AppearanceSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const t = useTheme();
-  const { name, setTheme } = useThemeContext();
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: t.card, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
-        <View style={[styles.handle, { backgroundColor: t.border }]} />
-        <Text style={[typography.h3, { color: t.ink, margin: 20, marginBottom: 12 }]}>Appearance</Text>
-        {THEME_OPTIONS.map((opt) => (
-          <Pressable
-            key={opt.key}
-            onPress={() => { setTheme(opt.key); onClose(); }}
-            style={[styles.themeRow, { borderBottomColor: t.border }]}
-          >
-            <View style={styles.themeInfo}>
-              <Text style={[typography.bodyMed, { color: t.ink }]}>{opt.label}</Text>
-              <Text style={[typography.caption, { color: t.ink3 }]}>{opt.desc}</Text>
-            </View>
-            {name === opt.key && <IconCheck size={18} color={t.brand} />}
-          </Pressable>
-        ))}
-      </View>
-    </Modal>
-  );
-}
+import { useSession } from '../../src/auth/SessionProvider';
+import { profileMenuGroups, toIdentity, toProfileStats } from '../../src/api/viewModels';
 
 export default function MeScreen() {
   const t = useTheme();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const router = useRouter();
+  const session = useSession();
+
+  const identity = toIdentity(session.user);
+  const stats = toProfileStats(session.user);
+
+  // Sheet / modal visibility
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [emergencyOpen, setEmergencyOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signOutLoading, setSignOutLoading] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  // Single shared "not yet available" modal
+  const [missingApiOpen, setMissingApiOpen] = useState(false);
+  const [missingApiTitle, setMissingApiTitle] = useState('');
+
+  function openMissingApi(title: string) {
+    setMissingApiTitle(title);
+    setMissingApiOpen(true);
+  }
+
+  // Emergency share — no real share API yet
+  function handleEmergencyShare() {
+    openMissingApi('Emergency share not yet available');
+  }
+
+  const handleSignOut = useCallback(async () => {
+    setSignOutLoading(true);
+    setSignOutError(null);
+    try {
+      await session.signOut();
+      router.replace('/auth/welcome');
+    } catch {
+      setSignOutError('Sign out failed. Please try again.');
+    } finally {
+      setSignOutLoading(false);
+    }
+  }, [session, router]);
 
   function handleMenuPress(id: string) {
-    if (id === 'appearance') setSheetOpen(true);
+    switch (id) {
+      case 'appearance':  setAppearanceOpen(true); break;
+      case 'profile':     router.push('/auth/setup'); break;
+      case 'devices':     openMissingApi('Connected devices API not yet available'); break;
+      case 'emergency':   setEmergencyOpen(true); break;
+      case 'goals':       router.push('/home/today'); break;
+      case 'security':    openMissingApi('Security settings API not yet available'); break;
+      // 'app-lock' toggle is handled inside MenuRow (local state only —
+      //  UserPreference has no app_lock field, so we do not persist it)
+      case 'notifications': router.push('/onboarding/permissions/notifications' as never); break;
+      case 'language':    openMissingApi('Language settings not yet available'); break;
+      case 'logout':      setSignOutOpen(true); break;
+      default: break;
+    }
   }
 
   return (
@@ -68,9 +93,20 @@ export default function MeScreen() {
             <IconButton
               icon={<IconSettings size={20} color={t.ink3} />}
               accessibilityLabel="Settings"
+              onPress={() => setSettingsOpen(true)}
             />
           }
         />
+
+        {session.booting && <ApiState title="Loading profile" loading />}
+        {session.error && (
+          <ApiState
+            title="Profile sync issue"
+            message={session.error}
+            actionLabel="Retry"
+            onAction={session.refreshUser}
+          />
+        )}
 
         <IdentityCard {...identity} />
 
@@ -83,9 +119,9 @@ export default function MeScreen() {
           ))}
         </Card>
 
-        <EmergencyCard />
+        <EmergencyCard onShare={() => setEmergencyOpen(true)} />
 
-        {menuGroups.map((g) => (
+        {profileMenuGroups.map((g) => (
           <MenuGroup key={g.title} title={g.title} items={g.items} onItemPress={handleMenuPress} />
         ))}
 
@@ -94,16 +130,29 @@ export default function MeScreen() {
         </Text>
       </Screen>
 
-      <AppearanceSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <AppearanceSheet visible={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
+      <SettingsSheet   visible={settingsOpen}   onClose={() => setSettingsOpen(false)} />
+      <EmergencySheet
+        visible={emergencyOpen}
+        onClose={() => setEmergencyOpen(false)}
+        onShare={handleEmergencyShare}
+      />
+      <SignOutModal
+        visible={signOutOpen}
+        loading={signOutLoading}
+        error={signOutError}
+        onConfirm={handleSignOut}
+        onCancel={() => { setSignOutOpen(false); setSignOutError(null); }}
+      />
+      <MissingApiModal
+        visible={missingApiOpen}
+        title={missingApiTitle}
+        onClose={() => setMissingApiOpen(false)}
+      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
   statsCard: { flexDirection: 'row', paddingVertical: 0, paddingHorizontal: 0 },
-  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet:     { paddingBottom: 40 },
-  handle:    { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12 },
-  themeRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  themeInfo: { flex: 1 },
 });

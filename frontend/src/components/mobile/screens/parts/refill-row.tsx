@@ -2,7 +2,7 @@
 
 import { RefreshCw } from 'lucide-react';
 
-interface RefillRowProps {
+export interface MedRefillRowProps {
   date: string;
   qty: string;
   src: string;
@@ -10,19 +10,30 @@ interface RefillRowProps {
   last?: boolean;
 }
 
-/** Single refill history row with icon, date/status chip, and qty+source. */
-export function RefillRow({ date, qty, src, status, last }: RefillRowProps) {
+export function MedRefillRow({ date, qty, src, status, last }: MedRefillRowProps) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12, padding: 14,
-      borderBottom: last ? 'none' : '1px solid var(--border)',
-    }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 10,
-        background: 'var(--chip)', color: 'var(--ink-2)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <RefreshCw size={15}/>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: 14,
+        borderBottom: last ? 'none' : '1px solid var(--border)',
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          background: 'var(--chip)',
+          color: 'var(--ink-2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <RefreshCw size={15} />
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

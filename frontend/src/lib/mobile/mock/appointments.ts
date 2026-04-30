@@ -1,5 +1,12 @@
 /** Mock data for the Appointments screen. */
 
+export const APT_TOP_SUBTITLE = '2 upcoming · 3 past';
+
+export const APT_PREP = {
+  title: 'Prep for your visit',
+  sub: 'AI-generated questions for Dr. Nguyen',
+};
+
 export const APT_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 export const APT_DATES = [20, 21, 22, 23, 24, 25, 26];
 export const APT_TODAY_IDX = 4;

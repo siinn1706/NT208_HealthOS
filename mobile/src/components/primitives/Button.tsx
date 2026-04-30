@@ -11,9 +11,10 @@ interface ButtonProps {
   icon?: React.ReactNode;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  disabled?: boolean;
 }
 
-export function Button({ label, variant = 'solid', icon, onPress, style }: ButtonProps) {
+export function Button({ label, variant = 'solid', icon, onPress, style, disabled }: ButtonProps) {
   const t = useTheme();
 
   const variantStyles: Record<ButtonVariant, { bg: string; text: string; border?: string }> = {
@@ -26,12 +27,14 @@ export function Button({ label, variant = 'solid', icon, onPress, style }: Butto
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.btn,
         { backgroundColor: bg, borderRadius: t.radius.pill },
         border && { borderWidth: 1, borderColor: border },
         pressed && styles.pressed,
+        disabled && styles.disabledBtn,
         style,
       ]}
     >
@@ -44,6 +47,7 @@ export function Button({ label, variant = 'solid', icon, onPress, style }: Butto
 }
 
 const styles = StyleSheet.create({
-  btn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 10 },
-  pressed: { opacity: 0.8 },
+  btn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 10 },
+  pressed:    { opacity: 0.8 },
+  disabledBtn: { opacity: 0.45 },
 });

@@ -23,16 +23,15 @@ export interface ScoreCategory {
   label: string;
   val: number; // 0–100
   weight: string; // e.g. "25%"
-  color: string;  // CSS color
 }
 
 export const SCORE_CATEGORIES: ScoreCategory[] = [
-  { label: 'Medication adherence', val: 94, weight: '25%', color: 'var(--success, #059669)' },
-  { label: 'Sleep quality',        val: 88, weight: '20%', color: 'var(--success, #059669)' },
-  { label: 'Activity',             val: 72, weight: '20%', color: 'var(--brand)' },
-  { label: 'Vitals in range',      val: 91, weight: '15%', color: 'var(--success, #059669)' },
-  { label: 'Nutrition',            val: 65, weight: '10%', color: 'var(--brand)' },
-  { label: 'Hydration',            val: 64, weight: '10%', color: 'var(--warning, #D97706)' },
+  { label: 'Medication adherence', val: 94, weight: '25%' },
+  { label: 'Sleep quality', val: 88, weight: '20%' },
+  { label: 'Activity', val: 72, weight: '20%' },
+  { label: 'Vitals in range', val: 91, weight: '15%' },
+  { label: 'Nutrition', val: 65, weight: '10%' },
+  { label: 'Hydration', val: 64, weight: '10%' },
 ];
 
 export interface AiInsight {

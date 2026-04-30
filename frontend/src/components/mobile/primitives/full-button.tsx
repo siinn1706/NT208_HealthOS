@@ -2,17 +2,26 @@
 
 import type { ButtonHTMLAttributes, ReactNode, CSSProperties } from 'react';
 
-type FullButtonVariant = 'primary' | 'ghost' | 'danger';
+/** `'soft'` is an alias for `'secondary'` — matches design CSS `.btn.soft` (D-3). */
+type FullButtonVariant = 'primary' | 'secondary' | 'soft' | 'ghost' | 'danger';
 
 interface FullButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: FullButtonVariant;
 }
 
+const SOFT_STYLE: CSSProperties = {
+  background: 'var(--brand-soft)',
+  color: 'var(--brand)',
+  border: '1px solid var(--border-strong)',
+};
+
 const VARIANT_STYLES: Record<FullButtonVariant, CSSProperties> = {
   primary: { background: 'var(--brand)', color: '#fff', border: 'none' },
-  ghost:   { background: 'transparent', color: 'var(--ink)', border: '1px solid var(--border-strong)' },
-  danger:  { background: 'var(--danger, #E54D4D)', color: '#fff', border: 'none' },
+  secondary: SOFT_STYLE,
+  soft: SOFT_STYLE,
+  ghost: { background: 'transparent', color: 'var(--ink)', border: '1px solid var(--border-strong)' },
+  danger: { background: 'var(--danger, #E54D4D)', color: '#fff', border: 'none' },
 };
 
 export function FullButton({ children, variant = 'primary', style, ...rest }: FullButtonProps) {
@@ -21,7 +30,7 @@ export function FullButton({ children, variant = 'primary', style, ...rest }: Fu
       {...rest}
       style={{
         width: '100%',
-        height: 52,
+        height: 48,
         borderRadius: 14,
         fontSize: 15,
         fontWeight: 700,

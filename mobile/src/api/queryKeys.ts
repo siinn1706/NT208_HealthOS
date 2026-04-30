@@ -1,0 +1,17 @@
+export const queryKeys = {
+  session: 'session',
+  dashboard: 'dashboard.summary',
+  vitals: (days: number) => `vitals.timeseries.${days}`,
+  reminders: 'reminders.upcoming',
+  appointments: 'appointments.list',
+  appointment: (id: string) => `appointments.detail.${id}`,
+  conversations: 'chat.conversations',
+  messages: (conversationId: string) => `chat.messages.${conversationId}`,
+  medications: 'medications.list',
+  medication: (id: string) => `medications.detail.${id}`,
+  medicationAdherence: (id: string, period: string) => `medications.adherence.${id}.${period}`,
+  medicationDosesToday: 'medications.today',
+  profile: 'profile.me',
+  preferences: 'preferences.me',
+  notifications: 'notifications.list',
+};

@@ -1,34 +1,50 @@
 'use client';
 
 import { Calendar, ChevronLeft } from 'lucide-react';
+import { Link } from '@/navigation';
 import { PhoneShell } from '@/components/mobile/shell/phone-shell';
 import { TopBar } from '@/components/mobile/shell/top-bar';
-import { FullButton } from '@/components/mobile/primitives/full-button';
 import { FormField } from '@/components/mobile/primitives/form-field';
 import { TextInput } from '@/components/mobile/primitives/text-input';
+import { useMobileTQuery, useMobileThemeParam } from '@/lib/mobile/use-mobile-theme';
 
-// Step progress: 2 of 5 filled
-const STEPS = [1, 1, 0, 0, 0];
+const STEPS = [1, 1, 0, 0, 0] as const;
 const SEX_OPTIONS = [
-  { label: 'Male', active: true },
-  { label: 'Female', active: false },
-  { label: 'Other', active: false },
+  { label: 'Male' as const, active: true },
+  { label: 'Female' as const, active: false },
+  { label: 'Other' as const, active: false },
+];
+const CONDITION_CHIPS = [
+  { label: 'None', active: true },
+  { label: 'Diabetes', active: false },
+  { label: 'Hypertension', active: false },
 ];
 
 interface HealthProfileSetupScreenProps {
   theme?: string;
 }
 
-export function HealthProfileSetupScreen({ theme = 'theme-calm' }: HealthProfileSetupScreenProps) {
+export function HealthProfileSetupScreen({ theme: themeProp }: HealthProfileSetupScreenProps) {
+  const { theme: fromUrl } = useMobileThemeParam();
+  const t = useMobileTQuery();
+  const theme = themeProp ?? fromUrl;
+
   return (
     <PhoneShell theme={theme as 'theme-calm' | 'theme-night' | 'theme-warm'}>
       <TopBar
-        left={<button className="icon-btn ghost"><ChevronLeft size={20} /></button>}
+        left={(
+          <Link href={`/mobile/auth/otp?${t}`} className="icon-btn ghost" aria-label="Back" style={{ display: 'flex' }}>
+            <ChevronLeft size={20} />
+          </Link>
+        )}
         title=""
-        right={<span style={{ fontSize: 13, color: 'var(--ink-3)', fontWeight: 600 }}>Skip</span>}
+        right={(
+          <Link href={`/mobile/onboarding/permissions/notifications?${t}`} style={{ fontSize: 13, color: 'var(--ink-3)', fontWeight: 600, textDecoration: 'none' }}>
+            Skip
+          </Link>
+        )}
       />
       <div className="screen-body" style={{ padding: '0 24px 24px' }}>
-        {/* Step progress dots */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
           {STEPS.map((filled, i) => (
             <div
@@ -58,6 +74,7 @@ export function HealthProfileSetupScreen({ theme = 'theme-calm' }: HealthProfile
               {SEX_OPTIONS.map(({ label, active }) => (
                 <button
                   key={label}
+                  type="button"
                   style={{
                     height: 48,
                     borderRadius: 12,
@@ -84,10 +101,43 @@ export function HealthProfileSetupScreen({ theme = 'theme-calm' }: HealthProfile
               <TextInput value="68 kg" />
             </FormField>
           </div>
+
+          <div style={{ marginTop: 4, marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 8, letterSpacing: 0.1 }}>
+              Conditions (optional)
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {CONDITION_CHIPS.map((ch) => (
+                <button
+                  key={ch.label}
+                  type="button"
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    border: `1.5px solid ${ch.active ? 'var(--brand)' : 'var(--border-strong)'}`,
+                    background: ch.active ? 'var(--brand-soft)' : 'var(--card)',
+                    color: ch.active ? 'var(--brand)' : 'var(--ink-2)',
+                  }}
+                >
+                  {ch.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div style={{ marginTop: 8 }}>
-          <FullButton>Continue</FullButton>
+          <Link
+            href={`/mobile/onboarding/permissions/notifications?${t}`}
+            className="btn"
+            style={{ width: '100%', textDecoration: 'none', fontWeight: 700, letterSpacing: -0.1, display: 'block', textAlign: 'center' }}
+          >
+            Continue
+          </Link>
         </div>
       </div>
     </PhoneShell>

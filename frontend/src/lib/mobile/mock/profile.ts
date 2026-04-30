@@ -1,5 +1,12 @@
 /** Mock data for the Profile screen. */
 
+export const PROFILE_APP_VERSION = 'NT208 HealthOS · v2.4.0';
+
+export const PROFILE_EMERGENCY = {
+  title: 'Emergency card',
+  sub: 'Share vitals & allergies instantly',
+};
+
 export const PROFILE_USER = {
   name: 'Minh Nguyen',
   initials: 'MN',

@@ -28,6 +28,13 @@ export const HOME_AI_INSIGHT = {
 
 export const HOME_VITALS_SPARKLINE = [72, 70, 74, 71, 68, 67, 68];
 
+export const HOME_VITALS_BLOCK = {
+  label: 'Heart rate · 7 days',
+  bpm: 68,
+  bpmUnit: 'bpm avg',
+  trendChip: '▼ 4 bpm',
+} as const;
+
 export const HOME_QUICK_ACTIONS = [
   { label: 'Log meal',   icon: 'camera' },
   { label: 'Log vitals', icon: 'heartPulse' },

@@ -4,18 +4,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { ProgressRing } from '../charts/ProgressRing';
+import { PressableCard } from '../primitives/PressableCard';
 
 interface HeroScoreCardProps {
   value: number;
   target: number;
   copy: string;
+  onPress?: () => void;
 }
 
-export function HeroScoreCard({ value, target, copy }: HeroScoreCardProps) {
+export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardProps) {
   const t = useTheme();
   const ratio = value / target;
 
-  return (
+  const content = (
     <LinearGradient
       colors={[t.primary, t.accent]}
       start={{ x: 0, y: 0 }}
@@ -40,6 +42,11 @@ export function HeroScoreCard({ value, target, copy }: HeroScoreCardProps) {
       </View>
     </LinearGradient>
   );
+
+  if (onPress) {
+    return <PressableCard onPress={onPress}>{content}</PressableCard>;
+  }
+  return content;
 }
 
 const styles = StyleSheet.create({

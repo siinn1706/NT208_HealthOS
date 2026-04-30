@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconAlert } from '../../icons';
@@ -7,12 +7,13 @@ import { IconAlert } from '../../icons';
 interface RefillAlertCardProps {
   message: string;
   daysLeft: number;
+  onPress?: () => void;
 }
 
-export function RefillAlertCard({ message, daysLeft }: RefillAlertCardProps) {
+export function RefillAlertCard({ message, daysLeft, onPress }: RefillAlertCardProps) {
   const t = useTheme();
 
-  return (
+  const inner = (
     <View style={[styles.card, { backgroundColor: `${t.warning}18`, borderColor: `${t.warning}40`, borderRadius: t.radius.lg }]}>
       <IconAlert size={18} color={t.warning} />
       <View style={styles.text}>
@@ -21,6 +22,16 @@ export function RefillAlertCard({ message, daysLeft }: RefillAlertCardProps) {
       </View>
     </View>
   );
+
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.75 }}>
+        {inner}
+      </Pressable>
+    );
+  }
+
+  return inner;
 }
 
 const styles = StyleSheet.create({

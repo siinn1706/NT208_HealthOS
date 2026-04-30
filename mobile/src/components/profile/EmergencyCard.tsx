@@ -8,9 +8,11 @@ import { Button } from '../primitives/Button';
 
 interface EmergencyCardProps {
   onPress?: () => void;
+  /** Called when the Share button is tapped. If omitted, falls back to onPress. */
+  onShare?: () => void;
 }
 
-export function EmergencyCard({ onPress }: EmergencyCardProps) {
+export function EmergencyCard({ onPress, onShare }: EmergencyCardProps) {
   const t = useTheme();
 
   return (
@@ -26,7 +28,7 @@ export function EmergencyCard({ onPress }: EmergencyCardProps) {
           <Text style={[typography.bodyMed, styles.white]}>Emergency Info</Text>
           <Text style={[typography.caption, styles.dim]}>Share vitals & allergies instantly</Text>
         </View>
-        <Button label="Share" variant="solid" onPress={onPress} style={styles.btn} />
+        <Button label="Share" variant="solid" onPress={onShare ?? onPress} style={styles.btn} />
       </View>
     </LinearGradient>
   );

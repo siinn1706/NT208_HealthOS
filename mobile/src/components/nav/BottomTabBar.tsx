@@ -7,6 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../theme/useTheme';
 import { Home, IconCalendar, IconChat, IconPill, IconUser } from '../../icons';
+import { useApiQuery } from '../../api/query';
+import { queryKeys } from '../../api/queryKeys';
+import { chatService } from '../../api/services';
 
 const TAB_ICONS = [
   { key: 'home',  Icon: Home,          label: 'Home'  },
@@ -69,6 +72,12 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const height = 56 + insets.bottom;
 
+  // Derive unread badge from live conversations; fallback to 0 on error
+  const conversations = useApiQuery(queryKeys.conversations, chatService.conversations);
+  const chatBadge = conversations.data
+    ? conversations.data.filter((c) => c.unread_count > 0).length
+    : 0;
+
   return (
     <View style={[styles.container, { height, borderTopColor: t.border }]}>
       <BlurView
@@ -84,7 +93,7 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
             label={tab.label}
             Icon={tab.Icon}
             active={state.index === i}
-            badgeCount={tab.key === 'chat' ? 2 : undefined}
+            badgeCount={tab.key === 'chat' ? (chatBadge > 0 ? chatBadge : undefined) : undefined}
             onPress={() => navigation.navigate(tab.key)}
           />
         ))}

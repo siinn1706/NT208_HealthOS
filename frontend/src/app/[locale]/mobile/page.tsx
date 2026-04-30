@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { Link } from '@/navigation';
 import { SCREEN_CATALOG, SECTIONS, getScreensBySection } from '@/lib/mobile/screen-catalog';
 import { MOBILE_THEMES, THEME_LABELS, type MobileTheme } from '@/lib/mobile/theme';
 
@@ -10,9 +10,13 @@ const THEME_STORAGE_KEY = 'mobile-demo-theme';
 export default function MobileIndexPage() {
   const [theme, setTheme] = useState<MobileTheme>('calm');
 
+  // After mount, apply stored demo theme (avoids server/client HTML mismatch for catalog links)
   useEffect(() => {
     const stored = localStorage.getItem(THEME_STORAGE_KEY) as MobileTheme | null;
-    if (stored === 'night' || stored === 'warm') setTheme(stored);
+    if (stored === 'night' || stored === 'warm') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time rehydration from localStorage
+      setTheme(stored);
+    }
   }, []);
 
   function selectTheme(t: MobileTheme) {

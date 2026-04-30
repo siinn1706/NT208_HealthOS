@@ -28,11 +28,12 @@ export function ChatBubble({ side, children, typing, small, dataCard }: ChatBubb
         fontSize: 14, lineHeight: 1.4,
       }}>
         {typing ? (
-          <span style={{ display: 'inline-flex', gap: 3, padding: '4px 4px' }}>
+          <span role="status" aria-live="polite" aria-label="AI is typing" style={{ display: 'inline-flex', gap: 3, padding: '4px 4px' }}>
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
                 className="typing-dot"
+                aria-hidden="true"
                 style={{
                   width: 6, height: 6, borderRadius: '50%',
                   background: 'var(--ink-4)',

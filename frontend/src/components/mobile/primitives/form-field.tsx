@@ -1,28 +1,28 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 interface FormFieldProps {
   label: string;
   children: ReactNode;
   error?: string;
   hint?: string;
+  /** When set, label uses `htmlFor` and should match an `id` on the nested control. */
+  fieldId?: string;
 }
 
-export function FormField({ label, children, error, hint }: FormFieldProps) {
-  return (
-    <label style={{ display: 'block', marginBottom: 14 }}>
-      <div style={{
-        fontSize: 12,
-        fontWeight: 600,
-        color: 'var(--ink-2)',
-        marginBottom: 6,
-        letterSpacing: 0.1,
-      }}>
-        {label}
-      </div>
-      {children}
+const LABEL_STYLE = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: 'var(--ink-2)',
+  marginBottom: 6,
+  letterSpacing: 0.1,
+} as const;
+
+export function FormField({ label, children, error, hint, fieldId }: FormFieldProps) {
+  const footer = (
+    <>
       {error && (
         <div style={{
           fontSize: 11,
@@ -32,7 +32,7 @@ export function FormField({ label, children, error, hint }: FormFieldProps) {
           alignItems: 'center',
           gap: 4,
         }}>
-          <AlertTriangle size={11} /> {error}
+          <AlertCircle size={11} /> {error}
         </div>
       )}
       {hint && !error && (
@@ -40,6 +40,26 @@ export function FormField({ label, children, error, hint }: FormFieldProps) {
           {hint}
         </div>
       )}
+    </>
+  );
+
+  if (fieldId) {
+    return (
+      <div style={{ display: 'block', marginBottom: 14 }}>
+        <label htmlFor={fieldId} style={{ display: 'block', ...LABEL_STYLE }}>
+          {label}
+        </label>
+        {children}
+        {footer}
+      </div>
+    );
+  }
+
+  return (
+    <label style={{ display: 'block', marginBottom: 14 }}>
+      <div style={LABEL_STYLE}>{label}</div>
+      {children}
+      {footer}
     </label>
   );
 }

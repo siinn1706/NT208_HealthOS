@@ -12,12 +12,13 @@ import { typography } from '../../theme/typography';
 import { IconCheck } from '../../icons';
 
 interface MedicationCheckButtonProps {
-  onTaken?: () => void;
+  onTaken?: () => Promise<void> | void;
 }
 
 export function MedicationCheckButton({ onTaken }: MedicationCheckButtonProps) {
   const t = useTheme();
   const [taken, setTaken] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const scale = useSharedValue(1);
   const bgProgress = useSharedValue(0);
@@ -27,22 +28,25 @@ export function MedicationCheckButton({ onTaken }: MedicationCheckButtonProps) {
     backgroundColor: bgProgress.value === 1 ? t.success : t.brand,
   }));
 
-  function handlePress() {
-    if (taken) return;
+  async function handlePress() {
+    if (taken || saving) return;
+    setSaving(true);
     scale.value = withSequence(
       withTiming(0.92, { duration: 80 }),
       withTiming(1, { duration: 120 })
     );
-    bgProgress.value = withTiming(1, { duration: 180 }, () => {});
-    setTimeout(() => {
+    try {
+      await onTaken?.();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      bgProgress.value = withTiming(1, { duration: 180 }, () => {});
       setTaken(true);
-      onTaken?.();
-    }, 300);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <Pressable onPress={handlePress} disabled={taken}>
+    <Pressable onPress={handlePress} disabled={taken || saving}>
       <Animated.View
         style={[
           styles.btn,
@@ -54,7 +58,7 @@ export function MedicationCheckButton({ onTaken }: MedicationCheckButtonProps) {
         {taken ? (
           <IconCheck size={16} color="#FFF" />
         ) : (
-          <Text style={[typography.micro, { color: '#FFF' }]}>Take</Text>
+          <Text style={[typography.micro, { color: '#FFF' }]}>{saving ? 'Saving' : 'Take'}</Text>
         )}
       </Animated.View>
     </Pressable>

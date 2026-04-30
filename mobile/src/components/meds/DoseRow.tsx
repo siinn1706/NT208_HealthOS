@@ -1,23 +1,22 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { MedicationCheckButton } from './MedicationCheckButton';
 import { IconCheck } from '../../icons';
-import type { DoseState } from '../../mocks/meds';
+import type { DoseState } from '../../api/viewModels';
 
 interface DoseRowProps {
   time: string;
   name: string;
   note: string;
   state: DoseState;
+  onTaken?: () => Promise<void> | void;
 }
 
-export function DoseRow({ time, name, note, state: initialState }: DoseRowProps) {
+export function DoseRow({ time, name, note, state: currentState, onTaken }: DoseRowProps) {
   const t = useTheme();
-  const [state, setState] = useState(initialState);
-
-  const dotColor = state === 'taken' ? t.success : state === 'due' ? t.warning : t.border;
+  const dotColor = currentState === 'taken' ? t.success : currentState === 'due' ? t.warning : t.border;
 
   return (
     <View style={[styles.row, { borderBottomColor: t.border }]}>
@@ -26,13 +25,13 @@ export function DoseRow({ time, name, note, state: initialState }: DoseRowProps)
         <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{name}</Text>
         <Text style={[typography.caption, { color: t.ink3 }]}>{time} · {note}</Text>
       </View>
-      {state === 'taken' ? (
+      {currentState === 'taken' ? (
         <View style={[styles.takenBadge, { backgroundColor: `${t.success}18`, borderRadius: t.radius.pill }]}>
           <IconCheck size={12} color={t.success} />
           <Text style={[typography.micro, { color: t.success, marginLeft: 4 }]}>Taken</Text>
         </View>
       ) : (
-        <MedicationCheckButton onTaken={() => setState('taken')} />
+        <MedicationCheckButton onTaken={onTaken} />
       )}
     </View>
   );

@@ -1,28 +1,39 @@
 'use client';
 
-import { Footprints, Moon, Droplets, ChevronRight } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Footprints, Moon, Droplets, ChevronRight, Pill, MoreHorizontal, Target } from 'lucide-react';
 import { PhoneShell } from '@/components/mobile/shell/phone-shell';
 import { BackBar } from '@/components/mobile/shell/back-bar';
 import { Ring } from '@/components/mobile/primitives/ring';
 import { SectionHeader } from '@/components/mobile/primitives/section-header';
 import { ChangeRow } from '@/components/mobile/screens/parts/change-row';
 import { TODAY_ACTIVITY } from '@/lib/mobile/mock/home-detail';
+import { parseTheme, themeClass } from '@/lib/mobile/theme';
 
-interface Props { theme?: string; }
+interface TodayOverviewScreenProps { theme?: string; }
 
 const GOALS = [
   { label: '10,000 steps', pct: TODAY_ACTIVITY.steps.pct, val: TODAY_ACTIVITY.steps.val, done: TODAY_ACTIVITY.steps.done, Icon: Footprints },
-  { label: '2.5L water',   pct: TODAY_ACTIVITY.water.pct, val: TODAY_ACTIVITY.water.val, done: TODAY_ACTIVITY.water.done, Icon: Droplets },
-  { label: '8h sleep',     pct: TODAY_ACTIVITY.sleep.pct, val: TODAY_ACTIVITY.sleep.val, done: TODAY_ACTIVITY.sleep.done, Icon: Moon },
-];
+  { label: '2.5L water', pct: TODAY_ACTIVITY.water.pct, val: TODAY_ACTIVITY.water.val, done: TODAY_ACTIVITY.water.done, Icon: Droplets },
+  { label: '8h sleep', pct: TODAY_ACTIVITY.sleep.pct, val: TODAY_ACTIVITY.sleep.val, done: TODAY_ACTIVITY.sleep.done, Icon: Moon },
+  { label: 'Take all meds', pct: TODAY_ACTIVITY.meds.pct, val: TODAY_ACTIVITY.meds.val, done: TODAY_ACTIVITY.meds.done, Icon: Pill },
+] as const;
 
-export function TodayOverviewScreen({ theme = 'theme-calm' }: Props) {
+export function TodayOverviewScreen({ theme: themeProp }: TodayOverviewScreenProps) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const t = parseTheme(params.get('t'));
+  const resolvedTheme = (themeProp ?? themeClass(t)) as 'theme-calm' | 'theme-night' | 'theme-warm';
+
   return (
-    <PhoneShell theme={theme as 'theme-calm' | 'theme-night' | 'theme-warm'}>
-      <BackBar title="Today · Apr 24" />
+    <PhoneShell theme={resolvedTheme}>
+      <BackBar
+        title="Today · Apr 24"
+        onBack={() => router.push(`/mobile?t=${t}`)}
+        right={<button type="button" className="icon-btn" aria-label="More"><MoreHorizontal size={18} /></button>}
+      />
       <div className="screen-body" style={{ padding: '4px 20px 20px' }}>
 
-        {/* Score hero card */}
         <div className="card" style={{
           background: 'linear-gradient(140deg, var(--brand) 0%, color-mix(in srgb, var(--brand) 70%, var(--accent)) 100%)',
           color: '#fff', border: 'none', padding: 18, marginBottom: 14,
@@ -37,15 +48,19 @@ export function TodayOverviewScreen({ theme = 'theme-calm' }: Props) {
               <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>Up 3 pts from last week</div>
             </div>
           </div>
-          <button style={{
-            marginTop: 14, width: '100%', height: 40, borderRadius: 10,
-            background: 'rgba(255,255,255,0.18)', color: '#fff',
-            border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}>How is this calculated?</button>
+          <button
+            type="button"
+            style={{
+              marginTop: 14, width: '100%', height: 40, borderRadius: 10,
+              background: 'rgba(255,255,255,0.18)', color: '#fff',
+              border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            How is this calculated?
+          </button>
         </div>
 
-        {/* Goals */}
         <SectionHeader title="Goals today" action="4 of 6 hit" />
         <div className="card" style={{ padding: 14, marginBottom: 14 }}>
           {GOALS.map((g, i) => (
@@ -73,7 +88,6 @@ export function TodayOverviewScreen({ theme = 'theme-calm' }: Props) {
           ))}
         </div>
 
-        {/* Changes */}
         <SectionHeader title="What changed?" />
         <div className="card" style={{ marginBottom: 14, padding: 0, overflow: 'hidden' }}>
           <ChangeRow dir="up" label="Resting heart rate" val="68 bpm" change="-4 bpm vs last wk" good />
@@ -83,8 +97,8 @@ export function TodayOverviewScreen({ theme = 'theme-calm' }: Props) {
           <ChangeRow dir="down" label="Daily water intake" val="1.8L avg" change="-0.4L vs last wk" />
         </div>
 
-        {/* Recommendation */}
         <div className="card" style={{ background: 'var(--brand-soft)', border: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ color: 'var(--brand)' }}><Target size={22} /></div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>Recommended next</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>Drink 500ml of water now to catch up</div>

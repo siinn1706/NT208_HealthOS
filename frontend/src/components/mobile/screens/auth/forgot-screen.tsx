@@ -1,21 +1,30 @@
 'use client';
 
 import { User, Shield, ChevronLeft } from 'lucide-react';
+import { Link } from '@/navigation';
 import { PhoneShell } from '@/components/mobile/shell/phone-shell';
 import { TopBar } from '@/components/mobile/shell/top-bar';
-import { FullButton } from '@/components/mobile/primitives/full-button';
 import { FormField } from '@/components/mobile/primitives/form-field';
 import { TextInput } from '@/components/mobile/primitives/text-input';
+import { useMobileTQuery, useMobileThemeParam } from '@/lib/mobile/use-mobile-theme';
 
 interface ForgotScreenProps {
   theme?: string;
 }
 
-export function ForgotScreen({ theme = 'theme-calm' }: ForgotScreenProps) {
+export function ForgotScreen({ theme: themeProp }: ForgotScreenProps) {
+  const { theme: fromUrl } = useMobileThemeParam();
+  const t = useMobileTQuery();
+  const theme = themeProp ?? fromUrl;
+
   return (
     <PhoneShell theme={theme as 'theme-calm' | 'theme-night' | 'theme-warm'}>
       <TopBar
-        left={<button className="icon-btn ghost"><ChevronLeft size={20} /></button>}
+        left={(
+          <Link href={`/mobile/auth/login?${t}`} className="icon-btn ghost" aria-label="Back" style={{ display: 'flex' }}>
+            <ChevronLeft size={20} />
+          </Link>
+        )}
         title=""
       />
       <div className="screen-body" style={{ padding: '0 24px 24px' }}>
@@ -30,9 +39,14 @@ export function ForgotScreen({ theme = 'theme-calm' }: ForgotScreenProps) {
           </FormField>
         </div>
 
-        <FullButton>Send reset link</FullButton>
+        <Link
+          href={`/mobile/auth/otp?${t}`}
+          className="btn"
+          style={{ width: '100%', textDecoration: 'none', fontWeight: 700, letterSpacing: -0.1, display: 'block', textAlign: 'center' }}
+        >
+          Send reset link
+        </Link>
 
-        {/* Security notice card */}
         <div className="card" style={{ marginTop: 20, padding: 14, display: 'flex', gap: 10 }}>
           <div style={{ color: 'var(--brand)', flexShrink: 0 }}>
             <Shield size={18} />

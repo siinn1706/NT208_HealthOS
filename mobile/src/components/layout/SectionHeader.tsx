@@ -15,11 +15,13 @@ export function SectionHeader({ title, action, onActionPress }: SectionHeaderPro
   return (
     <View style={styles.row}>
       <Text style={[typography.h3, { color: t.ink }]}>{title}</Text>
-      {action && (
+      {action && onActionPress ? (
         <Pressable onPress={onActionPress} hitSlop={8}>
           <Text style={[typography.caption, { color: t.brand }]}>{action}</Text>
         </Pressable>
-      )}
+      ) : action ? (
+        <Text style={[typography.caption, { color: t.ink3 }]}>{action}</Text>
+      ) : null}
     </View>
   );
 }

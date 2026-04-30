@@ -7,7 +7,7 @@ interface StatBlockProps {
   primary?: boolean;
 }
 
-/** 2-column stat block card — used in vitals detail for min/avg/max. */
+/** Stat block card (e.g. min / avg / max) — used in vitals detail. */
 export function StatBlock({ label, val, unit, primary }: StatBlockProps) {
   return (
     <div className="card card-tight" style={{

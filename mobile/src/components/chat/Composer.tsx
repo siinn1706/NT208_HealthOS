@@ -5,9 +5,10 @@ import { IconPaperclip, IconSend } from '../../icons';
 
 interface ComposerProps {
   onSend?: (text: string) => void;
+  onAttach?: () => void;
 }
 
-export function Composer({ onSend }: ComposerProps) {
+export function Composer({ onSend, onAttach }: ComposerProps) {
   const t = useTheme();
   const [text, setText] = useState('');
 
@@ -19,7 +20,7 @@ export function Composer({ onSend }: ComposerProps) {
 
   return (
     <View style={[styles.bar, { backgroundColor: t.card, borderTopColor: t.border }]}>
-      <Pressable style={styles.icon} accessibilityLabel="Attach file">
+      <Pressable style={styles.icon} accessibilityLabel="Attach file" onPress={onAttach}>
         <IconPaperclip size={20} color={t.ink3} />
       </Pressable>
       <TextInput

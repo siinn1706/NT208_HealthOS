@@ -14,7 +14,7 @@ import { Avatar } from '@/components/mobile/primitives/avatar';
 import { SectionHeader } from '@/components/mobile/primitives/section-header';
 import { NextUpRow } from './parts/next-up-row';
 import { parseTheme, themeClass } from '@/lib/mobile/theme';
-import { HOME_USER, HOME_KPI, HOME_NEXT_UP, HOME_AI_INSIGHT, HOME_VITALS_SPARKLINE, HOME_QUICK_ACTIONS } from '@/lib/mobile/mock/home';
+import { HOME_USER, HOME_KPI, HOME_NEXT_UP, HOME_AI_INSIGHT, HOME_VITALS_SPARKLINE, HOME_VITALS_BLOCK, HOME_QUICK_ACTIONS } from '@/lib/mobile/mock/home';
 import type { LucideIcon } from 'lucide-react';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -37,8 +37,8 @@ export function HomeScreen({ theme }: HomeScreenProps) {
         title={greeting}
         subtitle={`${HOME_USER.name} · Tue, Apr 24`}
         right={<>
-          <button className="icon-btn"><Search size={18} /></button>
-          <button className="icon-btn"><Bell size={18} /><span className="dot" /></button>
+          <button type="button" className="icon-btn" aria-label="Search"><Search size={18} aria-hidden="true" /></button>
+          <button type="button" className="icon-btn" aria-label="Notifications"><Bell size={18} aria-hidden="true" /><span className="dot" aria-hidden="true" /></button>
         </>}
       />
       <div className="screen-body" style={{ padding: '4px 20px 20px' }}>
@@ -113,12 +113,12 @@ export function HomeScreen({ theme }: HomeScreenProps) {
         <div className="card" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Heart rate · 7 days</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>{HOME_VITALS_BLOCK.label}</div>
               <div className="tabular" style={{ fontSize: 24, fontWeight: 700, marginTop: 2 }}>
-                68 <span style={{ fontSize: 12, color: 'var(--ink-3)', fontWeight: 500 }}>bpm avg</span>
+                {HOME_VITALS_BLOCK.bpm} <span style={{ fontSize: 12, color: 'var(--ink-3)', fontWeight: 500 }}>{HOME_VITALS_BLOCK.bpmUnit}</span>
               </div>
             </div>
-            <span className="chip success">▼ 4 bpm</span>
+            <span className="chip success">{HOME_VITALS_BLOCK.trendChip}</span>
           </div>
           <Sparkline data={HOME_VITALS_SPARKLINE} color="var(--brand)" />
         </div>

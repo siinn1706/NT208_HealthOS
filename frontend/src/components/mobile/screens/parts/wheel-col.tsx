@@ -3,10 +3,12 @@
 interface WheelColProps {
   values: string[];
   selected: number;
+  /** Called with the clicked index to support click-to-select. */
+  onSelect?: (index: number) => void;
 }
 
 /** Vertical wheel-picker column — renders values with perspective fade. */
-export function WheelCol({ values, selected }: WheelColProps) {
+export function WheelCol({ values, selected, onSelect }: WheelColProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {values.map((v, i) => {
@@ -16,6 +18,7 @@ export function WheelCol({ values, selected }: WheelColProps) {
             key={i}
             className="tabular"
             aria-selected={dist === 0}
+            onClick={() => onSelect?.(i)}
             style={{
               fontSize: dist === 0 ? 22 : 18,
               fontWeight: dist === 0 ? 700 : 500,
@@ -23,6 +26,7 @@ export function WheelCol({ values, selected }: WheelColProps) {
                 ? 'var(--ink)'
                 : `color-mix(in srgb, var(--ink-3) ${100 - dist * 25}%, transparent)`,
               lineHeight: 1.7,
+              cursor: onSelect ? 'pointer' : 'default',
             }}
           >
             {v}

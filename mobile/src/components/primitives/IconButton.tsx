@@ -11,6 +11,7 @@ interface IconButtonProps {
   dot?: boolean;
   accessibilityLabel: string;
   size?: number;
+  disabled?: boolean;
 }
 
 export function IconButton({
@@ -20,20 +21,23 @@ export function IconButton({
   dot,
   accessibilityLabel,
   size = 40,
+  disabled = false,
 }: IconButtonProps) {
   const t = useTheme();
   const bg = variant === 'filled' ? t.brandSoft : 'transparent';
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       hitSlop={8}
       style={({ pressed }) => [
         styles.btn,
         { width: size, height: size, borderRadius: size / 2, backgroundColor: bg },
-        pressed && styles.pressed,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
       ]}
     >
       {icon}
@@ -51,7 +55,8 @@ export function IconButton({
 
 const styles = StyleSheet.create({
   btn:     { alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: 0.7 },
+  pressed:  { opacity: 0.7 },
+  disabled: { opacity: 0.4 },
   dot: {
     position: 'absolute',
     top: 6,

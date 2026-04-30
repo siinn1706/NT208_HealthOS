@@ -11,9 +11,10 @@ interface DoseRowProps {
   dose: string;
   meal: string;
   state: DoseState;
+  takenAt?: string;
 }
 
-export function DoseRow({ Icon, time, name, dose, meal, state }: DoseRowProps) {
+export function DoseRow({ Icon, time, name, dose, meal, state, takenAt }: DoseRowProps) {
   const isTaken = state === 'taken';
   const isDue = state === 'due';
 
@@ -33,7 +34,9 @@ export function DoseRow({ Icon, time, name, dose, meal, state }: DoseRowProps) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span className="tabular" style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>{time}</span>
           {isDue && <span className="chip warning" style={{ fontSize: 10, padding: '2px 7px' }}>Due</span>}
-          {isTaken && <span className="chip success" style={{ fontSize: 10, padding: '2px 7px' }}>Taken 8:02</span>}
+          {isTaken && takenAt && (
+            <span className="chip success" style={{ fontSize: 10, padding: '2px 7px' }}>Taken {takenAt}</span>
+          )}
         </div>
         <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>
           {name} <span style={{ color: 'var(--ink-3)', fontWeight: 500, fontSize: 12 }}>· {dose}</span>

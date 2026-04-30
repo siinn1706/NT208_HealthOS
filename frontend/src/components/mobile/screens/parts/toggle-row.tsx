@@ -1,15 +1,32 @@
 'use client';
 
+import { useState } from 'react';
+import { useToggleKeyboard } from '@/components/mobile/primitives/use-toggle-keyboard';
+
 interface ToggleRowProps {
   label: string;
   sub?: string;
   on?: boolean;
   last?: boolean;
+  onChange?: (next: boolean) => void;
 }
 
 /** List row with a toggle switch — used in pickers screen. */
-export function ToggleRow({ label, sub, on, last }: ToggleRowProps) {
-  /* Toggle knob: pill track + circle thumb */
+export function ToggleRow({ label, sub, on: onProp = false, last, onChange }: ToggleRowProps) {
+  /* Uncontrolled fallback: maintain internal state when no onChange provided */
+  const [localOn, setLocalOn] = useState(onProp);
+  const controlled = onChange !== undefined;
+  const on = controlled ? onProp : localOn;
+
+  function toggle() {
+    if (controlled) {
+      onChange(!on);
+    } else {
+      setLocalOn((v) => !v);
+    }
+  }
+
+  const handleKeyDown = useToggleKeyboard(toggle);
   const trackBg = on ? 'var(--brand)' : 'var(--border-strong)';
   const thumbX = on ? 18 : 2;
 
@@ -28,11 +45,13 @@ export function ToggleRow({ label, sub, on, last }: ToggleRowProps) {
         )}
       </div>
 
-      {/* Inline toggle visual */}
       <div
         role="switch"
-        aria-checked={on ?? false}
+        tabIndex={0}
+        aria-checked={on}
         aria-label={label}
+        onClick={toggle}
+        onKeyDown={handleKeyDown}
         style={{
           position: 'relative',
           width: 42,
@@ -41,6 +60,7 @@ export function ToggleRow({ label, sub, on, last }: ToggleRowProps) {
           background: trackBg,
           flexShrink: 0,
           transition: 'background .2s',
+          cursor: 'pointer',
         }}
       >
         <div style={{
