@@ -12,6 +12,8 @@ from app.schemas.dashboard import (
     DashboardAlert,
     DashboardGoal,
     DashboardSummaryDTO,
+    ExerciseSuggestionDTO,
+    ExtendedVitalPointDTO,
     KpiValue,
     NutritionSuggestionDTO,
     VitalPointDTO,
@@ -257,6 +259,68 @@ async def get_vitals_timeseries(
     return result
 
 
+async def get_extended_vitals_timeseries(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    days: int = 30,
+) -> list[ExtendedVitalPointDTO]:
+    """Returns timeseries for all 6 metric types: HR, BP sys/dia, steps, sleep, weight."""
+    if days < 1:
+        return []
+
+    now = _utc_now()
+    start = now - datetime.timedelta(days=days - 1)
+    metric_types = (
+        MetricTypeEnum.HEART_RATE,
+        MetricTypeEnum.BLOOD_PRESSURE_SYSTOLIC,
+        MetricTypeEnum.BLOOD_PRESSURE_DIASTOLIC,
+        MetricTypeEnum.STEPS,
+        MetricTypeEnum.SLEEP_MINUTES,
+        MetricTypeEnum.WEIGHT_KG,
+    )
+
+    rows = (
+        await db.execute(
+            select(HealthMetric)
+            .where(
+                and_(
+                    HealthMetric.user_id == user_id,
+                    HealthMetric.metric_type.in_(metric_types),
+                    HealthMetric.recorded_at >= start,
+                    HealthMetric.is_deleted.is_(False),
+                )
+            )
+            .order_by(HealthMetric.recorded_at.asc())
+        )
+    ).scalars().all()
+
+    by_date: dict[str, ExtendedVitalPointDTO] = {}
+    for row in rows:
+        key = row.recorded_at.date().isoformat()
+        if key not in by_date:
+            by_date[key] = ExtendedVitalPointDTO(date=key)
+        point = by_date[key]
+        v = float(row.value)
+        if row.metric_type == MetricTypeEnum.HEART_RATE:
+            point.heart_rate = v
+        elif row.metric_type == MetricTypeEnum.BLOOD_PRESSURE_SYSTOLIC:
+            point.systolic = v
+        elif row.metric_type == MetricTypeEnum.BLOOD_PRESSURE_DIASTOLIC:
+            point.diastolic = v
+        elif row.metric_type == MetricTypeEnum.STEPS:
+            point.steps = v
+        elif row.metric_type == MetricTypeEnum.SLEEP_MINUTES:
+            point.sleep_minutes = v
+        elif row.metric_type == MetricTypeEnum.WEIGHT_KG:
+            point.weight_kg = v
+
+    result: list[ExtendedVitalPointDTO] = []
+    for i in range(days):
+        date_str = (start.date() + datetime.timedelta(days=i)).isoformat()
+        result.append(by_date.get(date_str, ExtendedVitalPointDTO(date=date_str)))
+    return result
+
+
 async def get_nutrition_suggestions(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -334,3 +398,135 @@ async def get_nutrition_suggestions(
 
     return sorted(suggestions, key=lambda item: item.priority)
 
+async def get_exercise_suggestions(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> list[ExerciseSuggestionDTO]:
+    metrics = await _latest_metrics(db, user_id)
+    meals = await _today_meals(db, user_id)
+
+    steps = _latest_metric_value(metrics, MetricTypeEnum.STEPS)
+    sleep_minutes = _latest_metric_value(metrics, MetricTypeEnum.SLEEP_MINUTES)
+    heart_rate = _latest_metric_value(metrics, MetricTypeEnum.HEART_RATE)
+    calories_intake = _sum_nutrition_value(meals, "calories")
+
+    suggestions: list[ExerciseSuggestionDTO] = []
+
+    # Chưa có data
+    if steps is None and sleep_minutes is None and heart_rate is None:
+        return [
+            ExerciseSuggestionDTO(
+                id="exercise-no-data",
+                type="tip",
+                icon="Info",
+                title="EXERCISE_NO_DATA",
+                message="EXERCISE_NO_DATA",
+                priority=1,
+                duration_minutes=None,
+                intensity="low",
+                category="cardio",
+            )
+        ]
+
+    # Ít bước chân → gợi ý đi bộ
+    if steps is not None and steps < 5000:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-walk-more",
+                type="warning",
+                icon="Footprints",
+                title="EXERCISE_WALK_MORE",
+                message="EXERCISE_WALK_MORE",
+                message_params={"steps": round(steps), "target": 10000},
+                priority=1,
+                duration_minutes=30,
+                intensity="low",
+                category="cardio",
+            )
+        )
+
+    # Ngủ kém → gợi ý yoga/stretching
+    if sleep_minutes is not None and sleep_minutes < 360:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-sleep-yoga",
+                type="tip",
+                icon="Moon",
+                title="EXERCISE_SLEEP_YOGA",
+                message="EXERCISE_SLEEP_YOGA",
+                message_params={"sleep_hours": round(sleep_minutes / 60, 1)},
+                priority=2,
+                duration_minutes=20,
+                intensity="low",
+                category="flexibility",
+            )
+        )
+
+    # Nhịp tim cao → gợi ý hít thở/thiền
+    if heart_rate is not None and heart_rate > 90:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-hr-breathing",
+                type="warning",
+                icon="Heart",
+                title="EXERCISE_HR_BREATHING",
+                message="EXERCISE_HR_BREATHING",
+                message_params={"heart_rate": round(heart_rate)},
+                priority=1,
+                duration_minutes=15,
+                intensity="low",
+                category="balance",
+            )
+        )
+
+    # Ăn nhiều calo → gợi ý cardio
+    if calories_intake > 2200:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-burn-calories",
+                type="goal",
+                icon="Flame",
+                title="EXERCISE_BURN_CALORIES",
+                message="EXERCISE_BURN_CALORIES",
+                message_params={"calories": round(calories_intake)},
+                priority=2,
+                duration_minutes=45,
+                intensity="medium",
+                category="cardio",
+            )
+        )
+
+    # Bước chân đạt → tập sức mạnh
+    if steps is not None and steps >= 8000:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-strength",
+                type="success",
+                icon="Dumbbell",
+                title="EXERCISE_STRENGTH",
+                message="EXERCISE_STRENGTH",
+                message_params={"steps": round(steps)},
+                priority=3,
+                duration_minutes=30,
+                intensity="medium",
+                category="strength",
+            )
+        )
+
+    # Không có gợi ý → đang tốt
+    if not suggestions:
+        suggestions.append(
+            ExerciseSuggestionDTO(
+                id="exercise-balanced",
+                type="success",
+                icon="CheckCircle",
+                title="EXERCISE_BALANCED",
+                message="EXERCISE_BALANCED",
+                priority=4,
+                duration_minutes=None,
+                intensity="low",
+                category="cardio",
+            )
+        )
+
+    return sorted(suggestions, key=lambda item: item.priority)
