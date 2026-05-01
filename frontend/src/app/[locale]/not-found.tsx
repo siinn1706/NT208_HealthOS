@@ -22,7 +22,7 @@ export default async function LocaleNotFound() {
         <p className="mt-2 text-sm text-muted-foreground">{t("notFoundDescription")}</p>
         <div className="mt-6 flex justify-center">
           <Button asChild size="sm" className="gap-1.5">
-            <Link href="/">
+            <Link href="/dashboard">
               <Home className="size-3.5" />
               {t("goHome")}
             </Link>

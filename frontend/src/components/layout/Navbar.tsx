@@ -91,7 +91,7 @@ export function Navbar() {
                 {t("signIn")}
               </Button>
             </Link>
-            <Link href="/register">
+            <Link href="/plans">
               <Button className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter,box-shadow] duration-150 ease-out hover:brightness-110 hover:shadow-night-400/40">
                 {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
@@ -139,7 +139,7 @@ export function Navbar() {
                     {t("signIn")}
                   </Button>
                 </Link>
-                <Link href="/register" onClick={() => setMobileOpen(false)}>
+                <Link href="/plans" onClick={() => setMobileOpen(false)}>
                   <Button className="w-full rounded-full bg-gradient-to-r from-night-700 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter] duration-150 ease-out hover:brightness-110">
                     {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
