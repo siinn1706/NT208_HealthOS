@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, { useAnimatedProps } from 'react-native-reanimated';
-import { useAnimatedRing } from '../../hooks/use-animated-ring';
+import { useRingEntrance } from '../../animations/useRingEntrance';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -27,19 +27,17 @@ export function ProgressRing({
   const cx = size / 2;
   const circumference = 2 * Math.PI * r;
 
-  const animatedProps = useAnimatedRing(value, circumference);
+  const animatedProps = useRingEntrance(value, circumference);
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        {/* track */}
         <Circle
           cx={cx} cy={cx} r={r}
           stroke={track}
           strokeWidth={stroke}
           fill="none"
         />
-        {/* progress */}
         <AnimatedCircle
           cx={cx} cy={cx} r={r}
           stroke={color}

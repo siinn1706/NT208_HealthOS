@@ -5,6 +5,7 @@ import { TopBar } from '../../src/components/layout/TopBar';
 import { SectionHeader } from '../../src/components/layout/SectionHeader';
 import { IconButton } from '../../src/components/primitives/IconButton';
 import { ApiState, MissingApiState } from '../../src/components/api/ApiState';
+import { ChatListSkeleton } from '../../src/components/api/Skeletons';
 import { AiAssistantHero } from '../../src/components/chat/AiAssistantHero';
 import { ConversationRow } from '../../src/components/chat/ConversationRow';
 import { IconSearch, IconPlus } from '../../src/icons';
@@ -114,7 +115,9 @@ export default function ChatScreen() {
       )}
 
       <SectionHeader title="Conversations" />
-      {conversations.isLoading && <ApiState title="Loading conversations" loading />}
+      {conversations.isLoading && (
+        <ApiState title="Loading conversations" loading skeleton={<ChatListSkeleton />} />
+      )}
       {conversations.error && (
         <ApiState
           title="Conversations unavailable"

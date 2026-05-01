@@ -1,126 +1,104 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Bell, Camera, Activity, Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
-import { MissingApiState } from '../api/ApiState';
-
-// ─── Permission config ────────────────────────────────────────────────────────
+import { typography } from '../../theme/typography';
+import { Button } from '../primitives/Button';
 
 type PermissionKind = 'notifications' | 'camera' | 'health-data';
 
-const PERMISSION_CONFIG: Record<PermissionKind, { icon: string; title: string; description: string }> = {
+const CONFIG: Record<PermissionKind, {
+  Icon: React.ElementType;
+  title: string;
+  description: string;
+  features: string[];
+}> = {
   notifications: {
-    icon: '🔔',
+    Icon: Bell,
     title: 'Stay on track',
-    description: 'Allow notifications for medication reminders and health alerts',
+    description: 'Allow notifications so HealthOS can remind you about medications, appointments, and health alerts.',
+    features: ['Medication reminders', 'Appointment alerts', 'Health milestone updates'],
   },
   camera: {
-    icon: '📷',
+    Icon: Camera,
     title: 'Snap your meals',
-    description: 'Allow camera access to log meals with a photo',
+    description: 'Allow camera access to log meals with a photo and get AI-powered nutrition analysis.',
+    features: ['Photo meal logging', 'AI nutrition insights', 'Receipt scanning'],
   },
   'health-data': {
-    icon: '❤️',
+    Icon: Activity,
     title: 'Sync your health',
-    description: 'Allow health data access for accurate tracking',
+    description: 'Allow health data access so HealthOS can track your activity and show accurate metrics.',
+    features: ['Step and activity tracking', 'Heart rate monitoring', 'Sleep analysis'],
   },
 };
 
-// ─── PermissionsScreen ────────────────────────────────────────────────────────
-
 interface PermissionsScreenProps {
   kind: PermissionKind;
-  t: ReturnType<typeof useTheme>;
+  t?: ReturnType<typeof useTheme>;
 }
 
-export function PermissionsScreen({ kind, t }: PermissionsScreenProps) {
-  const config = PERMISSION_CONFIG[kind];
+export function PermissionsScreen({ kind }: PermissionsScreenProps) {
+  const t = useTheme();
+  const config = CONFIG[kind];
+  const { Icon } = config;
   const [loading, setLoading] = useState(false);
 
-  async function handleContinue() {
+  function handleContinue() {
     setLoading(true);
     router.replace('/(tabs)/home');
   }
 
   return (
-    <View style={styles.center}>
-      <View style={[styles.iconBox, { backgroundColor: t.brandSoft }]}>
-        <Text style={styles.iconEmoji}>{config.icon}</Text>
+    <View style={styles.root}>
+      {/* Gradient icon hero */}
+      <LinearGradient
+        colors={[t.brand, t.accent ?? t.brandDeep]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <Icon size={36} color="#FFFFFF" />
+      </LinearGradient>
+
+      <Text style={[typography.title, { color: t.ink, textAlign: 'center', marginTop: 20, marginBottom: 8 }]}>
+        {config.title}
+      </Text>
+      <Text style={[typography.body, { color: t.ink3, textAlign: 'center', lineHeight: 22, marginBottom: 28 }]}>
+        {config.description}
+      </Text>
+
+      {/* Feature cards */}
+      <View style={styles.features}>
+        {config.features.map((feat) => (
+          <View key={feat} style={[styles.featureRow, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
+            <View style={[styles.checkCircle, { backgroundColor: t.brandSoft }]}>
+              <Check size={13} color={t.brand} />
+            </View>
+            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{feat}</Text>
+          </View>
+        ))}
       </View>
-      <Text style={[styles.title, { color: t.ink }]}>{config.title}</Text>
-      <Text style={[styles.description, { color: t.ink3 }]}>{config.description}</Text>
-      <MissingApiState title="Native permission flow unavailable" contract="unclear and needs manual confirmation" />
-      <TouchableOpacity
-        style={[styles.btn, { backgroundColor: t.primary }, loading && styles.disabled]}
-        onPress={handleContinue}
-        disabled={loading}
-      >
-        <Text style={[styles.btnLabel, { color: t.primaryInk }]}>{loading ? 'Loading...' : 'Allow'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.btnOutline, { borderColor: t.border }]}
-        onPress={handleContinue}
-        disabled={loading}
-      >
-        <Text style={[styles.btnLabelAlt, { color: t.ink }]}>Maybe later</Text>
-      </TouchableOpacity>
+
+      {/* CTAs */}
+      <View style={styles.ctas}>
+        <Button label="Allow" size="lg" loading={loading} onPress={handleContinue} />
+        <TouchableOpacity style={styles.ghostBtn} onPress={handleContinue}>
+          <Text style={[typography.button, { color: t.ink3 }]}>Maybe later</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 24,
-  },
-  iconBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  iconEmoji: { fontSize: 36 },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 16,
-  },
-  btn: {
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-    width: '100%',
-  },
-  btnOutline: {
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-    width: '100%',
-  },
-  btnLabel:    { fontSize: 16, fontWeight: '600' },
-  btnLabelAlt: { fontSize: 16, fontWeight: '500' },
-  disabled:    { opacity: 0.55 },
+  root:         { flex: 1, alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 },
+  hero:         { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  features:     { width: '100%', gap: 10, marginBottom: 28 },
+  featureRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  checkCircle:  { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  ctas:         { width: '100%', gap: 12 },
+  ghostBtn:     { height: 48, alignItems: 'center', justifyContent: 'center' },
 });

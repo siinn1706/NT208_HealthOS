@@ -7,24 +7,38 @@ import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/TopBar';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
+import { Toggle } from '../primitives/Toggle';
+import { SegmentedControl } from '../primitives/input/SegmentedControl';
 import { ChevronLeft } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { ApiState } from '../api/ApiState';
 
-const FREQ_OPTIONS = ['Once daily', 'Twice daily', '3x daily', 'As needed'];
+export const FREQ_OPTIONS = ['Once', 'Twice', '3× daily', 'As needed'];
+const TAKE_WITH_OPTIONS = ['Water', 'Food', 'Milk', 'Empty stomach'];
 
 export interface MedFormState {
   name: string;
   dosage: string;
-  frequency: number;
+  frequency: string;
   startDate: string;
   notes: string;
   prescriber: string;
+  takeWith: string[];
+  reminderEnabled: boolean;
 }
 
-const EMPTY: MedFormState = { name: '', dosage: '', frequency: 0, startDate: '', notes: '', prescriber: '' };
+const EMPTY: MedFormState = {
+  name: '',
+  dosage: '',
+  frequency: FREQ_OPTIONS[0],
+  startDate: '',
+  notes: '',
+  prescriber: '',
+  takeWith: [],
+  reminderEnabled: true,
+};
 
 interface AddMedicationScreenProps {
   initialValues?: Partial<MedFormState>;
@@ -38,8 +52,17 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function set(key: keyof MedFormState, value: string | number) {
+  function set<K extends keyof MedFormState>(key: K, value: MedFormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  function toggleTakeWith(opt: string) {
+    setForm(prev => ({
+      ...prev,
+      takeWith: prev.takeWith.includes(opt)
+        ? prev.takeWith.filter(v => v !== opt)
+        : [...prev.takeWith, opt],
+    }));
   }
 
   function validateMedicationForm(): string | null {
@@ -71,7 +94,6 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
   }
 
   const saveDisabled = saving || !form.name.trim();
-
   const inputStyle = [s.input, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.md, color: t.ink }];
 
   return (
@@ -110,17 +132,27 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
         />
 
         <Text style={[typography.micro, s.label, { color: t.ink3 }]}>FREQUENCY</Text>
-        <View style={s.chipRow}>
-          {FREQ_OPTIONS.map((opt, i) => {
-            const active = form.frequency === i;
+        <SegmentedControl
+          options={FREQ_OPTIONS}
+          value={form.frequency}
+          onChange={v => set('frequency', v)}
+        />
+
+        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>TAKE WITH</Text>
+        <View style={s.pillRow}>
+          {TAKE_WITH_OPTIONS.map(opt => {
+            const active = form.takeWith.includes(opt);
             return (
               <Pressable
                 key={opt}
-                onPress={() => set('frequency', i)}
+                onPress={() => toggleTakeWith(opt)}
                 style={[
-                  s.chip,
-                  { borderRadius: t.radius.pill, borderColor: active ? t.brand : t.border },
-                  { backgroundColor: active ? t.brandSoft : t.card },
+                  s.pill,
+                  {
+                    borderRadius: t.radius.pill,
+                    borderColor: active ? t.brand : t.border,
+                    backgroundColor: active ? t.brandSoft : t.card,
+                  },
                 ]}
               >
                 <Text style={[typography.caption, { color: active ? t.brand : t.ink2 }]}>{opt}</Text>
@@ -158,14 +190,31 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
           style={[inputStyle, s.multiline]}
         />
 
-        <Button label={saving ? 'Saving...' : 'Save medication'} variant="solid" onPress={saveDisabled ? undefined : handleSave} style={[{ marginTop: 8 }, saveDisabled && { opacity: 0.4 }]} />
+        {/* Reminder toggle */}
+        <View style={[s.reminderRow, { backgroundColor: t.card, borderRadius: t.radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: t.border }]}>
+          <View style={s.flex}>
+            <Text style={[typography.bodyMed, { color: t.ink }]}>Dose reminders</Text>
+            <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>
+              Get notified when it's time to take this medication
+            </Text>
+          </View>
+          <Toggle value={form.reminderEnabled} onChange={v => set('reminderEnabled', v)} />
+        </View>
+
+        <Button
+          label={saving ? 'Saving...' : 'Save medication'}
+          variant="solid"
+          onPress={saveDisabled ? undefined : handleSave}
+          style={[{ marginTop: 8 }, saveDisabled && { opacity: 0.4 }]}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 export function toMedicationCreateBody(form: MedFormState) {
-  const doseTimes = [['08:00'], ['08:00', '20:00'], ['08:00', '14:00', '20:00'], ['08:00']][form.frequency] ?? ['08:00'];
+  const freqIdx = FREQ_OPTIONS.indexOf(form.frequency);
+  const doseTimes = [['08:00'], ['08:00', '20:00'], ['08:00', '14:00', '20:00'], ['08:00']][freqIdx >= 0 ? freqIdx : 0] ?? ['08:00'];
   return {
     name: form.name.trim(),
     strength: form.dosage.trim() || null,
@@ -187,13 +236,14 @@ function normalizeDate(value: string) {
 }
 
 const s = StyleSheet.create({
-  safe:     { flex: 1 },
-  flex:     { flex: 1 },
-  bar:      { paddingHorizontal: 16 },
-  content:  { paddingHorizontal: 16, paddingTop: 4 },
-  label:    { textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 14 },
-  input:    { paddingHorizontal: 14, paddingVertical: 12, borderWidth: StyleSheet.hairlineWidth, fontSize: 14 },
-  multiline:{ height: 80, textAlignVertical: 'top', paddingTop: 12 },
-  chipRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip:     { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
+  safe:        { flex: 1 },
+  flex:        { flex: 1 },
+  bar:         { paddingHorizontal: 16 },
+  content:     { paddingHorizontal: 16, paddingTop: 4 },
+  label:       { textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 14 },
+  input:       { paddingHorizontal: 14, paddingVertical: 12, borderWidth: StyleSheet.hairlineWidth, fontSize: 14 },
+  multiline:   { height: 80, textAlignVertical: 'top', paddingTop: 12 },
+  pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pill:        { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
+  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginTop: 14 },
 });

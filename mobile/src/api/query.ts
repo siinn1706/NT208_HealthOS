@@ -7,6 +7,8 @@ export interface ApiQueryResult<T> {
   error: Error | null;
   isLoading: boolean;
   isRefreshing: boolean;
+  /** True when data resolved to an empty array */
+  isEmpty: boolean;
   reload: () => Promise<void>;
 }
 
@@ -72,5 +74,6 @@ export function useApiQuery<T>(
     };
   }, [enabled, key, reload]);
 
-  return { data, error, isLoading, isRefreshing, reload };
+  const isEmpty = !isLoading && !error && Array.isArray(data) && data.length === 0;
+  return { data, error, isLoading, isRefreshing, isEmpty, reload };
 }

@@ -17,7 +17,7 @@ export function EmergencyCard({ onPress, onShare }: EmergencyCardProps) {
 
   return (
     <LinearGradient
-      colors={[t.danger, '#C0392B']}
+      colors={['#E54D4D', '#C73C3C']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.card, { borderRadius: t.radius.xl }]}

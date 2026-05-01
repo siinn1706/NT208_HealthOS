@@ -8,7 +8,7 @@ import { TopBar } from '../layout/TopBar';
 import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
-import { ChevronLeft } from '../../icons';
+import { ChevronLeft, IconClock } from '../../icons';
 import { ApiState } from '../api/ApiState';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
@@ -57,6 +57,17 @@ export function PauseMedScreen() {
       </View>
 
       <View style={s.content}>
+        {/* Clock icon hero */}
+        <View style={[s.clockHero, { backgroundColor: t.brandSoft, borderRadius: t.radius.xl }]}>
+          <View style={[s.clockCircle, { backgroundColor: t.brand + '22', borderRadius: 40 }]}>
+            <IconClock size={36} color={t.brand} />
+          </View>
+          <Text style={[typography.h3, { color: t.ink, marginTop: 12 }]}>Pause medication</Text>
+          <Text style={[typography.caption, { color: t.ink3, marginTop: 4, textAlign: 'center' }]}>
+            Suspends all dose reminders for the selected duration
+          </Text>
+        </View>
+
         {error && <ApiState title="Pause failed" message={error} />}
         {/* Med name banner */}
         <Card style={{ ...s.medBanner, backgroundColor: t.chip }}>
@@ -131,6 +142,8 @@ const s = StyleSheet.create({
   safe:         { flex: 1 },
   bar:          { paddingHorizontal: 16 },
   content:      { flex: 1, paddingHorizontal: 16, paddingTop: 4, gap: 10 },
+  clockHero:    { alignItems: 'center', padding: 24 },
+  clockCircle:  { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
   medBanner:    {},
   sectionLabel: { textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
   durationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

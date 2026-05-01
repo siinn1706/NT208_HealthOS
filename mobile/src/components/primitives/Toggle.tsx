@@ -52,11 +52,7 @@ export function Toggle({ value, onChange }: ToggleProps) {
             height: THUMB,
             borderRadius: THUMB / 2,
             backgroundColor: '#FFFFFF',
-            shadowColor: '#000',
-            shadowOpacity: 0.15,
-            shadowRadius: 2,
-            shadowOffset: { width: 0, height: 1 },
-            elevation: 2,
+            ...t.shadows.card,
           },
           thumbStyle,
         ]}

@@ -7,6 +7,7 @@ import { SectionHeader } from '../../src/components/layout/SectionHeader';
 import { IconButton } from '../../src/components/primitives/IconButton';
 import { Card } from '../../src/components/primitives/Card';
 import { ApiState } from '../../src/components/api/ApiState';
+import { MedListSkeleton } from '../../src/components/api/Skeletons';
 import { AdherenceHero } from '../../src/components/meds/AdherenceHero';
 import { RefillAlertCard } from '../../src/components/meds/RefillAlertCard';
 import { DoseRow } from '../../src/components/meds/DoseRow';
@@ -60,7 +61,9 @@ export default function MedsScreen() {
         }
       />
 
-      {meds.isLoading && <ApiState title="Loading medications" loading />}
+      {meds.isLoading && (
+        <ApiState title="Loading medications" loading skeleton={<MedListSkeleton />} />
+      )}
       {meds.error && (
         <ApiState
           title="Medications unavailable"

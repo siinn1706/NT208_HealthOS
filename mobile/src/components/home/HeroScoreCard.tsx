@@ -19,7 +19,7 @@ export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardPro
 
   const content = (
     <LinearGradient
-      colors={[t.primary, t.accent]}
+      colors={[t.brand, t.accent]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.card, { borderRadius: t.radius.xl }]}
@@ -32,10 +32,10 @@ export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardPro
         </View>
         <ProgressRing
           value={ratio}
-          size={80}
-          stroke={6}
+          size={74}
+          stroke={7}
           color="#FFFFFF"
-          track="rgba(255,255,255,0.25)"
+          track="rgba(255,255,255,0.2)"
         >
           <Text style={[typography.h3, { color: '#FFFFFF' }]}>{value}</Text>
         </ProgressRing>

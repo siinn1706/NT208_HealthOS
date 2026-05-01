@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { AddMedicationScreen, toMedicationCreateBody, type MedFormState } from './AddMedicationScreen';
+import { AddMedicationScreen, toMedicationCreateBody, FREQ_OPTIONS, type MedFormState } from './AddMedicationScreen';
 import { Button } from '../primitives/Button';
 import { ApiState } from '../api/ApiState';
 import { medicationService } from '../../api/services';
@@ -22,7 +22,7 @@ export function EditMedicationScreen() {
     ? {
         name: medication.data.name,
         dosage: medication.data.strength ?? '',
-        frequency: Math.max(0, Math.min(2, (medication.data.doses?.length ?? 1) - 1)),
+        frequency: FREQ_OPTIONS[Math.max(0, Math.min(2, (medication.data.doses?.length ?? 1) - 1))] ?? FREQ_OPTIONS[0],
         startDate: medication.data.start_date,
         prescriber: medication.data.prescriber ?? '',
         notes: medication.data.notes ?? '',

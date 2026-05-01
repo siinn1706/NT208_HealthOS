@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
-import { IconPaperclip, IconSend } from '../../icons';
+import { IconPaperclip, IconSend, IconMic } from '../../icons';
 
 interface ComposerProps {
   onSend?: (text: string) => void;
@@ -34,6 +34,9 @@ export function Composer({ onSend, onAttach }: ComposerProps) {
         returnKeyType="send"
         onSubmitEditing={handleSend}
       />
+      <Pressable style={styles.icon} accessibilityLabel="Voice input">
+        <IconMic size={20} color={t.ink3} />
+      </Pressable>
       <Pressable
         onPress={handleSend}
         style={[styles.send, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}

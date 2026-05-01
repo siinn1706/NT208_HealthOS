@@ -33,7 +33,7 @@ export function SegmentedTabs({ tabs, value, onChange }: SegmentedTabsProps) {
         style={[
           styles.indicator,
           indicatorStyle,
-          { backgroundColor: t.card, borderRadius: t.radius.pill },
+          { backgroundColor: t.card, borderRadius: t.radius.pill, ...t.shadows.card },
         ]}
       />
       {tabs.map((tab, i) => (
@@ -54,6 +54,6 @@ export function SegmentedTabs({ tabs, value, onChange }: SegmentedTabsProps) {
 
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', padding: 3, marginVertical: 8, position: 'relative' },
-  indicator: { position: 'absolute', top: 3, bottom: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  indicator: { position: 'absolute', top: 3, bottom: 3 },
   tab:       { flex: 1, alignItems: 'center', paddingVertical: 7, zIndex: 1 },
 });

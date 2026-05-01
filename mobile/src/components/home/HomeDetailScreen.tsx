@@ -7,6 +7,7 @@ import { MissingApiState } from '../api/ApiState';
 import { TodayOverviewScreen } from './TodayOverviewScreen';
 import { HealthScoreDetailScreen } from './HealthScoreDetailScreen';
 import { QuickActionSheetScreen } from './QuickActionSheetScreen';
+import { VitalsDetailScreen } from './VitalsDetailScreen';
 
 export type HomeDetailKind = 'today' | 'score' | 'vitals' | 'insight' | 'quick-action';
 
@@ -27,7 +28,7 @@ function GuardedDetailScreen({ kind }: { kind: HomeDetailKind }) {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.bg }]}>
       <View style={styles.container}>
-        <Text style={[styles.back, { color: t.primary }]} onPress={() => router.back()}>
+        <Text style={[styles.back, { color: t.brand }]} onPress={() => router.back()}>
           ← Back
         </Text>
         <Text style={[styles.title, { color: t.ink }]}>{TITLES[kind]}</Text>
@@ -41,6 +42,7 @@ export function HomeDetailScreen({ kind }: HomeDetailScreenProps) {
   switch (kind) {
     case 'today':        return <TodayOverviewScreen />;
     case 'score':        return <HealthScoreDetailScreen />;
+    case 'vitals':       return <VitalsDetailScreen />;
     case 'quick-action': return <QuickActionSheetScreen />;
     default:             return <GuardedDetailScreen kind={kind} />;
   }

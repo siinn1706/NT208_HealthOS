@@ -9,7 +9,7 @@ import { useThemeContext } from '../../theme/ThemeProvider';
 import { typography } from '../../theme/typography';
 import type { ThemeName } from '../../theme/tokens';
 import { IconCheck } from '../../icons';
-import { ApiState, MissingApiState } from '../api/ApiState';
+import { MissingApiState } from '../api/ApiState';
 import { EmergencyCard } from './EmergencyCard';
 import { Button } from '../primitives/Button';
 

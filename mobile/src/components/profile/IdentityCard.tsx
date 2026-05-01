@@ -8,6 +8,7 @@ import { IconCheck } from '../../icons';
 
 interface IdentityCardProps {
   name: string;
+  email?: string;
   age: number;
   gender: string;
   city: string;
@@ -15,7 +16,7 @@ interface IdentityCardProps {
   verified: boolean;
 }
 
-export function IdentityCard({ name, age, gender, city, level, verified }: IdentityCardProps) {
+export function IdentityCard({ name, email, age, gender, city, level, verified }: IdentityCardProps) {
   const t = useTheme();
 
   return (
@@ -28,9 +29,12 @@ export function IdentityCard({ name, age, gender, city, level, verified }: Ident
           </View>
         )}
       </View>
-      <Text style={[typography.title, { color: t.ink, marginTop: 12 }]}>{name}</Text>
+      <Text style={[typography.title, { color: t.ink, marginTop: 12, fontWeight: '700', fontSize: 22 }]}>{name}</Text>
+      {email && (
+        <Text style={[typography.caption, { color: t.ink3, marginTop: 2, fontSize: 13 }]}>{email}</Text>
+      )}
       <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
-        {age} · {gender} · {city}
+        {age > 0 ? `${age} · ` : ''}{gender} · {city}
       </Text>
       <View style={styles.chips}>
         {verified && <Chip label="Verified" variant="success" />}

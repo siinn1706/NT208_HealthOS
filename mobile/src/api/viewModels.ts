@@ -181,6 +181,7 @@ export function toIdentity(user: CurrentUser | null) {
   const age = dob && !Number.isNaN(dob.getTime()) ? new Date().getFullYear() - dob.getFullYear() : 0;
   return {
     name: user?.full_name ?? user?.display_name ?? 'HealthOS user',
+    email: user?.email,
     age,
     gender: user?.gender ?? 'Not set',
     city: user?.address ? user.address.split(',').pop()?.trim() || 'Not set' : 'Not set',

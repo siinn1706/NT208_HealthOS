@@ -6,6 +6,7 @@ import { TopBar } from '../../src/components/layout/TopBar';
 import { SectionHeader } from '../../src/components/layout/SectionHeader';
 import { IconButton } from '../../src/components/primitives/IconButton';
 import { ApiState } from '../../src/components/api/ApiState';
+import { ApptListSkeleton } from '../../src/components/api/Skeletons';
 import { WeekStrip } from '../../src/components/care/WeekStrip';
 import { SegmentedTabs } from '../../src/components/care/SegmentedTabs';
 import { HeroAppointmentCard } from '../../src/components/care/HeroAppointmentCard';
@@ -117,7 +118,9 @@ export default function CareScreen() {
       )}
       <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
 
-      {appointments.isLoading && <ApiState title="Loading appointments" loading />}
+      {appointments.isLoading && (
+        <ApiState title="Loading appointments" loading skeleton={<ApptListSkeleton />} />
+      )}
       {appointments.error && (
         <ApiState
           title="Appointments unavailable"

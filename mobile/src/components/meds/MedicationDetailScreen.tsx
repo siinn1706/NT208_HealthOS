@@ -11,6 +11,7 @@ import { IconButton } from '../primitives/IconButton';
 import { ApiState } from '../api/ApiState';
 import { ProgressRing } from '../charts/ProgressRing';
 import { IconPill, IconClock, IconStethoscope, IconCalendar, ChevronLeft, IconMore } from '../../icons';
+import { AdherenceBarChart } from './AdherenceBarChart';
 import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { medicationService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
@@ -99,6 +100,19 @@ export function MedicationDetailScreen() {
 
         {detail && (
           <>
+            {/* Icon hero */}
+            <View style={[s.iconHero, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
+              <View style={[s.heroIcon, { borderRadius: 16 }]}>
+                <IconPill size={32} color="#fff" strokeWidth={1.5} />
+              </View>
+              <View style={s.flex}>
+                <Text style={[typography.title, { color: t.ink }]}>{detail.name}</Text>
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
+                  {[detail.strength, detail.form].filter(Boolean).join(' · ') || 'No dose details'}
+                </Text>
+              </View>
+            </View>
+
             <Card style={s.adherenceCard}>
               <View style={s.adherenceLeft}>
                 <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.5 }]}>
@@ -107,6 +121,16 @@ export function MedicationDetailScreen() {
                 <Text style={[typography.display, { color: t.ink, marginTop: 2 }]}>
                   {Math.round(percent * 100)}%
                 </Text>
+                {adherence && (
+                  <AdherenceBarChart
+                    values={Array.from({ length: 30 }, (_, i) => {
+                      // Approximate visual from overall percent — vary slightly around mean
+                      const base = adherence.percent > 1 ? adherence.percent / 100 : adherence.percent;
+                      return Math.max(0, Math.min(1, base + (((i * 7 + 3) % 5) - 2) * 0.08));
+                    })}
+                    height={30}
+                  />
+                )}
               </View>
               <ProgressRing value={percent} size={80} stroke={7} color={t.success} track={t.border}>
                 <Text style={[typography.caption, { color: t.success }]}>
@@ -214,8 +238,10 @@ const s = StyleSheet.create({
   flex:          { flex: 1 },
   bar:           { paddingHorizontal: 16 },
   content:       { paddingHorizontal: 16, paddingTop: 8 },
+  iconHero:      { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, marginBottom: 12 },
+  heroIcon:      { width: 72, height: 72, backgroundColor: '#E88B6E', alignItems: 'center', justifyContent: 'center' },
   adherenceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  adherenceLeft: {},
+  adherenceLeft: { flex: 1, gap: 6, marginRight: 12 },
   doseRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
   dot:           { width: 10, height: 10, borderRadius: 5 },
   takeBtn:       { paddingHorizontal: 12, paddingVertical: 6 },

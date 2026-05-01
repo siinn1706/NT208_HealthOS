@@ -1,17 +1,19 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { Screen } from '../layout/Screen';
-import { TopBar } from '../layout/TopBar';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
+import { IconButton } from '../primitives/IconButton';
+import { ChevronDown } from 'lucide-react-native';
 
 const ACTIONS = [
-  { id: 'vitals', label: 'Log vitals', route: '/home/vitals', color: '#1965B3' },
-  { id: 'meal', label: 'Patient intake', route: '/forms/intake', color: '#D97706' },
-  { id: 'appointment', label: 'Book appointment', route: '/care/appointments/new', color: '#7C3AED' },
-  { id: 'meds', label: 'View meds', route: '/(tabs)/meds', color: '#41BCE6' },
-  { id: 'emergency', label: 'Emergency card', route: '/(tabs)/me', color: '#DC2626' },
+  { id: 'vitals',       label: 'Log vitals',       route: '/home/vitals',           color: '#1965B3' },
+  { id: 'meal',         label: 'Patient intake',    route: '/forms/intake',          color: '#D97706' },
+  { id: 'appointment',  label: 'Book appointment',  route: '/care/appointments/new', color: '#7C3AED' },
+  { id: 'meds',         label: 'View meds',         route: '/(tabs)/meds',           color: '#41BCE6' },
+  { id: 'emergency',    label: 'Emergency card',    route: '/(tabs)/me',             color: '#DC2626' },
+  { id: 'ai',           label: 'Ask AI',            route: '/(tabs)/chat',           color: '#12A88A' },
 ];
 
 function ActionCell({ label, route, color }: (typeof ACTIONS)[0]) {
@@ -20,15 +22,15 @@ function ActionCell({ label, route, color }: (typeof ACTIONS)[0]) {
     <Pressable
       style={({ pressed }) => [
         styles.cell,
-        { backgroundColor: t.card, borderRadius: t.radius.lg, opacity: pressed ? 0.75 : 1 },
+        { backgroundColor: t.bgElev, borderRadius: t.radius.lg, opacity: pressed ? 0.75 : 1 },
       ]}
       onPress={() => router.push(route as never)}
       accessibilityLabel={label}
     >
-      <View style={[styles.iconBox, { backgroundColor: color + '18' }]}>
+      <View style={[styles.iconBox, { backgroundColor: color + '18', borderRadius: t.radius.md }]}>
         <Text style={[typography.h3, { color }]}>{label.slice(0, 1)}</Text>
       </View>
-      <Text style={[typography.caption, styles.cellLabel, { color: t.ink }]} numberOfLines={2}>
+      <Text style={[typography.caption, styles.cellLabel, { color: t.ink, fontFamily: 'Inter_600SemiBold' }]} numberOfLines={2}>
         {label}
       </Text>
     </Pressable>
@@ -38,21 +40,34 @@ function ActionCell({ label, route, color }: (typeof ACTIONS)[0]) {
 export function QuickActionSheetScreen() {
   const t = useTheme();
   return (
-    <Screen>
-      <TopBar
-        title="Quick Actions"
-        left={<Text style={[typography.body, { color: t.primary }]} onPress={() => router.back()}>Back</Text>}
-      />
-      <View style={styles.grid}>
-        {ACTIONS.map((a) => <ActionCell key={a.id} {...a} />)}
+    <SafeAreaView style={[styles.scrim]} edges={['bottom']}>
+      <View style={[styles.sheet, { backgroundColor: t.card, ...t.shadows.sheet }]}>
+        {/* Handle pill */}
+        <View style={styles.handleRow}>
+          <View style={[styles.handle, { backgroundColor: t.border }]} />
+        </View>
+
+        <View style={styles.titleRow}>
+          <Text style={[typography.h3, { color: t.ink }]}>Quick Actions</Text>
+          <IconButton icon={<ChevronDown size={22} color={t.ink3} />} onPress={() => router.back()} accessibilityLabel="Dismiss" />
+        </View>
+
+        <View style={styles.grid}>
+          {ACTIONS.map((a) => <ActionCell key={a.id} {...a} />)}
+        </View>
       </View>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  grid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  cell:     { width: '47%', alignItems: 'center', padding: 20, gap: 10 },
-  iconBox:  { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  cellLabel:{ textAlign: 'center', fontWeight: '500' as any },
+  scrim:      { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  sheet:      { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 24 },
+  handleRow:  { alignItems: 'center', paddingTop: 10, paddingBottom: 6 },
+  handle:     { width: 36, height: 4, borderRadius: 2 },
+  titleRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 10 },
+  grid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 16 },
+  cell:       { width: '30%', alignItems: 'center', padding: 14, gap: 8 },
+  iconBox:    { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  cellLabel:  { textAlign: 'center' },
 });

@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '../layout/Screen';
@@ -28,7 +28,7 @@ export function TodayOverviewScreen() {
     <Screen>
       <TopBar
         title="Today's Overview"
-        left={<Text style={[typography.body, { color: t.primary }]} onPress={() => router.back()}>Back</Text>}
+        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>Back</Text>}
       />
 
       {overview.isLoading && <ApiState title="Loading overview" loading />}
@@ -37,7 +37,7 @@ export function TodayOverviewScreen() {
       {overview.data && (
         <>
           <LinearGradient
-            colors={[t.primary, t.accent]}
+            colors={[t.brand, t.accent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.hero, { borderRadius: t.radius.xl }]}
@@ -67,8 +67,35 @@ export function TodayOverviewScreen() {
             </View>
           ))}
 
+          {/* What changed? */}
+          <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>What changed?</Text>
+          <View style={[styles.changedCard, { backgroundColor: t.card, borderRadius: t.radius.md }]}>
+            <View style={styles.changedRow}>
+              <View style={[styles.changeBadge, { backgroundColor: overview.data.vitals.deltaBpm >= 0 ? `${t.success}18` : `${t.danger}18` }]}>
+                <Text style={{ color: overview.data.vitals.deltaBpm >= 0 ? t.success : t.danger, fontSize: 12 }}>
+                  {overview.data.vitals.deltaBpm >= 0 ? '↑' : '↓'}
+                </Text>
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={[typography.bodyMed, { color: t.ink }]}>Heart rate</Text>
+                <Text style={[typography.caption, { color: overview.data.vitals.deltaBpm >= 0 ? t.success : t.danger }]}>
+                  {overview.data.vitals.deltaBpm >= 0 ? '+' : ''}{overview.data.vitals.deltaBpm} bpm this week
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.changedRow, styles.changedRowBorder, { borderTopColor: t.border }]}>
+              <View style={[styles.changeBadge, { backgroundColor: `${t.success}18` }]}>
+                <Text style={{ color: t.success, fontSize: 12 }}>↑</Text>
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={[typography.bodyMed, { color: t.ink }]}>Health score</Text>
+                <Text style={[typography.caption, { color: t.success }]}>Based on this week's data</Text>
+              </View>
+            </View>
+          </View>
+
           <View style={[styles.nextCard, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
-            <Text style={[typography.caption, { color: t.primary }]}>NEXT UP</Text>
+            <Text style={[typography.caption, { color: t.brand }]}>NEXT UP</Text>
             <Text style={[typography.body, { color: t.ink, marginTop: 4 }]}>
               {overview.data.nextUp[0]?.title ?? 'No reminders scheduled.'}
             </Text>
@@ -91,5 +118,9 @@ const styles = StyleSheet.create({
   goalMeta:    { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   barTrack:    { height: 6, borderRadius: 3 },
   barFill:     { height: 6, borderRadius: 3 },
-  nextCard:    { padding: 16, marginTop: 16, marginBottom: 8 },
+  nextCard:        { padding: 16, marginTop: 16, marginBottom: 8 },
+  changedCard:     { padding: 0, overflow: 'hidden', marginBottom: 8 },
+  changedRow:      { flexDirection: 'row', alignItems: 'center', padding: 12 },
+  changedRowBorder:{ borderTopWidth: StyleSheet.hairlineWidth },
+  changeBadge:     { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 });

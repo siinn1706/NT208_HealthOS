@@ -4,6 +4,15 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
+import { EmptyState } from '../primitives/feedback/EmptyState';
+
+interface EmptyConfig {
+  icon?: React.ReactNode;
+  title: string;
+  body?: string;
+  ctaLabel?: string;
+  onCta?: () => void;
+}
 
 interface ApiStateProps {
   title: string;
@@ -11,10 +20,40 @@ interface ApiStateProps {
   actionLabel?: string;
   onAction?: () => void;
   loading?: boolean;
+  /** When loading=true and skeleton provided, renders skeleton instead of spinner */
+  skeleton?: React.ReactNode;
+  /** When isEmpty=true from useApiQuery, renders EmptyState instead of the card */
+  empty?: EmptyConfig;
+  isEmpty?: boolean;
 }
 
-export function ApiState({ title, message, actionLabel, onAction, loading }: ApiStateProps) {
+export function ApiState({
+  title,
+  message,
+  actionLabel,
+  onAction,
+  loading,
+  skeleton,
+  empty,
+  isEmpty,
+}: ApiStateProps) {
   const t = useTheme();
+
+  if (loading && skeleton) {
+    return <>{skeleton}</>;
+  }
+
+  if (isEmpty && empty) {
+    return (
+      <EmptyState
+        icon={empty.icon}
+        title={empty.title}
+        message={empty.body}
+        actionLabel={empty.ctaLabel}
+        onAction={empty.onCta}
+      />
+    );
+  }
 
   return (
     <Card style={styles.card}>

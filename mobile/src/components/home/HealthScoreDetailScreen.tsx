@@ -11,6 +11,12 @@ import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { toHomeView } from '../../api/viewModels';
 
+function scoreColor(pct: number, t: ReturnType<typeof useTheme>): string {
+  if (pct >= 0.8) return t.success;
+  if (pct >= 0.6) return t.warning;
+  return t.danger;
+}
+
 export function HealthScoreDetailScreen() {
   const t = useTheme();
   const loadSummary = useCallback(async () => {
@@ -27,7 +33,7 @@ export function HealthScoreDetailScreen() {
     <Screen>
       <TopBar
         title="Health Score"
-        left={<Text style={[typography.body, { color: t.primary }]} onPress={() => router.back()}>Back</Text>}
+        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>Back</Text>}
       />
 
       {score.isLoading && <ApiState title="Loading score" loading />}
@@ -35,7 +41,7 @@ export function HealthScoreDetailScreen() {
       {score.data && (
         <>
           <View style={[styles.scoreHeader, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <Text style={[typography.display, styles.bigScore, { color: t.primary }]}>{score.data.score.value}</Text>
+            <Text style={[typography.display, styles.bigScore, { color: t.brand }]}>{score.data.score.value}</Text>
             <Text style={[typography.h3, { color: t.ink }]}>Health Score</Text>
             <Text style={[typography.body, { color: t.ink3, marginTop: 4 }]}>{score.data.score.copy}</Text>
           </View>
@@ -49,10 +55,10 @@ export function HealthScoreDetailScreen() {
               <View key={item.id} style={styles.catRow}>
                 <View style={styles.catLabelRow}>
                   <Text style={[typography.bodyMed, { color: t.ink }]}>{item.label}</Text>
-                  <Text style={[typography.bodyMed, { color: item.color }]}>{Math.round(item.v * 100)}%</Text>
+                  <Text style={[typography.bodyMed, { color: scoreColor(item.v, t) }]}>{Math.round(item.v * 100)}%</Text>
                 </View>
                 <View style={[styles.barTrack, { backgroundColor: t.bgElev }]}>
-                  <View style={[styles.barFill, { width: `${Math.round(item.v * 100)}%` as any, backgroundColor: item.color }]} />
+                  <View style={[styles.barFill, { width: `${Math.round(item.v * 100)}%` as any, backgroundColor: scoreColor(item.v, t) }]} />
                 </View>
               </View>
             ))}

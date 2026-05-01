@@ -2,20 +2,23 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Mail } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
+import { Button } from '../primitives/Button';
+import { Input } from '../primitives/input/Input';
 import { authService } from '../../api/services';
 import { useSession } from '../../auth/SessionProvider';
 
-// ─── ForgotPasswordScreen ────────────────────────────────────────────────────
-
-export function ForgotPasswordScreen({ t }: { t: ReturnType<typeof useTheme> }) {
+export function ForgotPasswordScreen({ t: _t }: { t?: ReturnType<typeof useTheme> }) {
+  const t = useTheme();
   const session = useSession();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -25,36 +28,28 @@ export function ForgotPasswordScreen({ t }: { t: ReturnType<typeof useTheme> }) 
   const [error, setError] = useState<string | null>(null);
 
   async function requestReset() {
-    if (!email.trim() || !email.includes('@')) {
-      setError('A valid email address is required.');
-      return;
-    }
+    if (!email.trim() || !email.includes('@')) { setError('A valid email is required.'); return; }
     setLoading(true);
     setError(null);
     try {
       await authService.requestOtp({ email: email.trim(), purpose: 'reset_password' });
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to request reset code.');
+      setError(err instanceof Error ? err.message : 'Unable to send reset code.');
     } finally {
       setLoading(false);
     }
   }
 
   async function completeReset() {
-    if (!email.trim() || !code.trim() || !newPassword) return;
-    if (newPassword.length < 8) {
+    if (!email.trim() || !code.trim() || newPassword.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      await authService.verifyOtp({
-        email: email.trim(),
-        purpose: 'reset_password',
-        code: code.trim(),
-      });
+      await authService.verifyOtp({ email: email.trim(), purpose: 'reset_password', code: code.trim() });
       await authService.resetPassword(email.trim(), newPassword);
       await session.refreshUser();
       router.replace('/(tabs)/home');
@@ -68,98 +63,56 @@ export function ForgotPasswordScreen({ t }: { t: ReturnType<typeof useTheme> }) 
   if (sent) {
     return (
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <View style={[styles.iconBox, { backgroundColor: t.brandSoft }]}>
-          <Text style={[styles.iconText, { color: t.brand }]}>✓</Text>
+        <View style={[styles.infoCard, { backgroundColor: t.brandSoft, borderRadius: t.radius.lg }]}>
+          <Text style={[typography.caption, { color: t.brand }]}>
+            Reset code sent to {email}. Check your inbox.
+          </Text>
         </View>
-        <Text style={[styles.heading, { color: t.ink }]}>Check your inbox</Text>
-        <Text style={[styles.subheading, { color: t.ink3 }]}>
-          We sent a password reset OTP to {email}. It expires shortly.
-        </Text>
-        {error && <Text style={[styles.error, { color: t.danger }]}>{error}</Text>}
-        <TextInput
-          style={[styles.input, { borderColor: t.border, color: t.ink, backgroundColor: t.card }]}
-          placeholder="Reset OTP"
-          placeholderTextColor={t.ink3}
-          keyboardType="number-pad"
-          maxLength={6}
-          value={code}
-          onChangeText={setCode}
-        />
-        <TextInput
-          style={[styles.input, { borderColor: t.border, color: t.ink, backgroundColor: t.card }]}
-          placeholder="New password"
-          placeholderTextColor={t.ink3}
-          secureTextEntry
-          value={newPassword}
-          onChangeText={setNewPassword}
-        />
-        <TouchableOpacity
-          style={[styles.btn, { backgroundColor: t.primary }, loading && styles.disabled]}
-          onPress={completeReset}
-          disabled={loading}
-        >
-          <Text style={[styles.btnLabel, { color: t.primaryInk }]}>{loading ? 'Resetting...' : 'Reset password'}</Text>
-        </TouchableOpacity>
+        {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
+        <Input label="OTP code" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} placeholder="000000" />
+        <Input label="New password" value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Min 8 characters" />
+        <Button label="Reset password" size="lg" loading={loading} onPress={completeReset} style={{ marginTop: 8 }} />
       </KeyboardAvoidingView>
     );
   }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-      <Text style={[styles.heading, { color: t.ink }]}>Forgot password?</Text>
-      <Text style={[styles.subheading, { color: t.ink3 }]}>
-        Enter your email and we'll send a reset OTP
+      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Forgot password?</Text>
+      <Text style={[typography.body, { color: t.ink3, marginBottom: 24 }]}>
+        Enter your email and we'll send a reset code
       </Text>
-      {error && <Text style={[styles.error, { color: t.danger }]}>{error}</Text>}
-      <TextInput
-        style={[styles.input, { borderColor: t.border, color: t.ink, backgroundColor: t.card }]}
-        placeholder="Email"
-        placeholderTextColor={t.ink3}
-        keyboardType="email-address"
-        autoCapitalize="none"
+
+      {/* Info card */}
+      <View style={[styles.infoCard, { backgroundColor: t.brandSoft, borderRadius: t.radius.lg, marginBottom: 20 }]}>
+        <Mail size={14} color={t.brand} style={{ marginRight: 6 }} />
+        <Text style={[typography.caption, { color: t.brand, flex: 1 }]}>We'll email a reset link to the address below</Text>
+      </View>
+
+      {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
+
+      <Input
+        label="Email"
         value={email}
         onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        placeholder="you@example.com"
       />
-      <TouchableOpacity
-        style={[styles.btn, { backgroundColor: t.primary }, loading && styles.disabled]}
-        onPress={requestReset}
-        disabled={loading}
-      >
-        <Text style={[styles.btnLabel, { color: t.primaryInk }]}>{loading ? 'Sending...' : 'Send reset OTP'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.replace('/auth/sign-in')}>
-        <Text style={[styles.link, { color: t.primary }]}>Back to sign in</Text>
+
+      <Button label="Send reset link" size="lg" loading={loading} onPress={requestReset} style={{ marginTop: 8 }} />
+
+      <TouchableOpacity style={styles.backRow} onPress={() => router.replace('/auth/sign-in')}>
+        <Text style={[typography.caption, { color: t.brand }]}>Back to sign in</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex:       { flex: 1 },
-  center:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 8 },
-  iconBox:    { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  iconText:   { fontSize: 32, fontWeight: '700' },
-  heading:    { fontSize: 28, fontWeight: '700', marginBottom: 8 },
-  subheading: { fontSize: 15, marginBottom: 24, color: undefined },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    marginBottom: 12,
-  },
-  btn: {
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-    width: '100%',
-  },
-  btnLabel: { fontSize: 16, fontWeight: '600' },
-  link:     { fontSize: 14, textAlign: 'center', marginTop: 16 },
-  error:    { fontSize: 13, marginBottom: 12 },
-  disabled: { opacity: 0.55 },
+  flex:     { flex: 1 },
+  infoCard: { flexDirection: 'row', alignItems: 'flex-start', padding: 12 },
+  backRow:  { alignItems: 'center', marginTop: 16 },
 });

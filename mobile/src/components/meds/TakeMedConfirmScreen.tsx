@@ -2,11 +2,12 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/Button';
+import { Chip } from '../primitives/Chip';
 import { ApiState } from '../api/ApiState';
-import { IconPill } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -20,6 +21,7 @@ export function TakeMedConfirmScreen() {
   const doses = useApiQuery(queryKeys.medicationDosesToday, loadDoses);
   const dose = doses.data?.find((item) => item.medication_plan_id === medicationId) ?? null;
   const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function confirm() {
@@ -30,25 +32,9 @@ export function TakeMedConfirmScreen() {
       await medicationService.markDoseDone(dose.reminder_id, dose.occurrence_id);
       invalidateApiQuery(queryKeys.medications);
       invalidateApiQuery(queryKeys.medicationDosesToday);
-      router.back();
+      setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not mark dose as taken.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function skip() {
-    if (!dose) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await medicationService.skipDose(dose.reminder_id, dose.occurrence_id);
-      invalidateApiQuery(queryKeys.medications);
-      invalidateApiQuery(queryKeys.medicationDosesToday);
-      router.back();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not skip dose.');
     } finally {
       setSaving(false);
     }
@@ -61,9 +47,10 @@ export function TakeMedConfirmScreen() {
       <View style={[s.sheet, { backgroundColor: t.bgElev, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
         <View style={[s.handle, { backgroundColor: t.borderStrong }]} />
 
-        <View style={[s.iconWrap, { backgroundColor: `${t.success}22`, borderRadius: 44 }]}>
-          <View style={[s.iconInner, { backgroundColor: `${t.success}18`, borderRadius: 36 }]}>
-            <IconPill size={44} color={t.success} strokeWidth={1.5} />
+        {/* Success circle */}
+        <View style={[s.successRing, { backgroundColor: `${t.success}18` }]}>
+          <View style={[s.successInner, { backgroundColor: t.success }]}>
+            <Check size={36} color="#fff" strokeWidth={2.5} />
           </View>
         </View>
 
@@ -76,20 +63,39 @@ export function TakeMedConfirmScreen() {
         {dose && (
           <>
             <Text style={[typography.title, { color: t.ink, textAlign: 'center', marginTop: 16 }]}>
-              Log this dose?
+              {done ? 'Dose logged!' : 'Log this dose?'}
             </Text>
             <Text style={[typography.body, { color: t.ink3, textAlign: 'center', marginTop: 6 }]}>
               {dose.plan_name} {dose.strength ?? ''}
             </Text>
             <Text style={[typography.caption, { color: t.ink4, textAlign: 'center', marginTop: 4 }]}>
-              Scheduled for {formatTime(dose.scheduled_at)}
+              {done
+                ? `Logged at ${formatTime(new Date().toISOString())}`
+                : `Scheduled for ${formatTime(dose.scheduled_at)}`}
             </Text>
+
+            {/* Streak chip (post-confirm) */}
+            {done && (
+              <View style={s.streakRow}>
+                <Chip label="Streak" variant="success" />
+                <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Keep it up!</Text>
+              </View>
+            )}
 
             {error && <ApiState title="Could not log dose" message={error} />}
 
             <View style={s.actions}>
-              <Button label="Skip" variant="ghost" onPress={saving ? undefined : skip} style={[s.flex, saving && { opacity: 0.4 }]} />
-              <Button label={saving ? '...' : 'Confirm'} variant="solid" onPress={saving ? undefined : confirm} style={[s.flex, saving && { opacity: 0.4 }]} />
+              {done ? (
+                <>
+                  <Button label="Undo" variant="ghost" onPress={() => router.back()} style={s.flex} />
+                  <Button label="Done" variant="solid" onPress={() => router.back()} style={s.flex} />
+                </>
+              ) : (
+                <>
+                  <Button label="Skip" variant="ghost" onPress={() => router.back()} style={[s.flex, saving && { opacity: 0.4 }]} />
+                  <Button label={saving ? '…' : 'Confirm'} variant="solid" onPress={saving ? undefined : confirm} style={[s.flex, saving && { opacity: 0.4 }]} />
+                </>
+              )}
             </View>
           </>
         )}
@@ -99,12 +105,13 @@ export function TakeMedConfirmScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:      { flex: 1, justifyContent: 'flex-end' },
-  backdrop:  { ...StyleSheet.absoluteFillObject },
-  sheet:     { padding: 20, paddingBottom: 32, alignItems: 'center' },
-  handle:    { width: 40, height: 4, borderRadius: 2, marginBottom: 18 },
-  iconWrap:  { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
-  iconInner: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
-  actions:   { flexDirection: 'row', gap: 10, marginTop: 24, width: '100%' },
-  flex:      { flex: 1 },
+  safe:         { flex: 1, justifyContent: 'flex-end' },
+  backdrop:     { ...StyleSheet.absoluteFillObject },
+  sheet:        { padding: 20, paddingBottom: 36, alignItems: 'center' },
+  handle:       { width: 40, height: 4, borderRadius: 2, marginBottom: 20 },
+  successRing:  { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
+  successInner: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
+  streakRow:    { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
+  actions:      { flexDirection: 'row', gap: 10, marginTop: 24, width: '100%' },
+  flex:         { flex: 1 },
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -21,7 +21,7 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
 
   return (
     <LinearGradient
-      colors={[t.primaryDeep, t.primary]}
+      colors={[t.brandDeep, t.brand]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.card, { borderRadius: t.radius.xl }]}

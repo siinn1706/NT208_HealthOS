@@ -1,18 +1,19 @@
 import type { ThemeTokens } from './tokens';
+import { shadows } from './shadows';
+import { motion } from './motion';
 
 const shared = {
   success: '#059669',
   warning: '#D97706',
   danger: '#E54D4D',
   info: '#0284C7',
-  primary: '#1965B3',
-  primaryDeep: '#0E3D7A',
-  primaryInk: '#FFFFFF',
   warmGold: '#B97843',
   warmPeach: '#E8A87C',
   warmRose: '#D4849A',
   radius: { sm: 10, md: 14, lg: 16, xl: 20, xxl: 24, pill: 100 },
   space: { 1: 4, 2: 8, 3: 12, 4: 14, 5: 16, 6: 18, 7: 20, 8: 24 },
+  shadows,
+  motion,
 } as const;
 
 export const calmPalette: ThemeTokens = {
@@ -27,6 +28,7 @@ export const calmPalette: ThemeTokens = {
   border: '#DCEFF7',
   borderStrong: '#B8D9EA',
   brand: '#1965B3',
+  brandDeep: '#0E3D7A',
   brandSoft: '#E8F8FD',
   accent: '#41BCE6',
   chip: '#E8F8FD',
@@ -44,6 +46,7 @@ export const nightPalette: ThemeTokens = {
   border: 'rgba(138,162,180,0.14)',
   borderStrong: 'rgba(138,162,180,0.24)',
   brand: '#5BA8C8',
+  brandDeep: '#3A7A9A',
   brandSoft: 'rgba(91,168,200,0.14)',
   accent: '#7EC8D8',
   chip: 'rgba(91,168,200,0.12)',
@@ -61,6 +64,7 @@ export const warmPalette: ThemeTokens = {
   border: '#EEE4CF',
   borderStrong: '#E2D3B0',
   brand: '#B97843',
+  brandDeep: '#7A4C1E',
   brandSoft: '#F6EADC',
   accent: '#D4A06A',
   chip: '#F4E7CE',

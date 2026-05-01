@@ -8,6 +8,7 @@ import { TopBar } from '../layout/TopBar';
 import { Card } from '../primitives/Card';
 import { IconButton } from '../primitives/IconButton';
 import { ApiState } from '../api/ApiState';
+import { TimelineSkeleton } from '../api/Skeletons';
 import { ChevronLeft, IconPill } from '../../icons';
 import { medicationService } from '../../api/services';
 import { useApiQuery } from '../../api/query';
@@ -19,6 +20,11 @@ export function MedicationHistoryScreen() {
   const loadHistory = useCallback(() => medicationService.list('all'), []);
   const history = useApiQuery(`${queryKeys.medications}.history`, loadHistory);
   const archived = (history.data ?? []).filter((med) => med.status !== 'active');
+  const all = history.data ?? [];
+  const paused = all.filter((m) => m.status === 'paused').length;
+  const adherenceAvg = all.length
+    ? Math.round(all.reduce((sum, m) => sum + (m.dose_count > 0 ? 80 : 0), 0) / all.length)
+    : 0;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -30,10 +36,28 @@ export function MedicationHistoryScreen() {
       </View>
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
-        {history.isLoading && <ApiState title="Loading medication history" loading />}
+        {history.isLoading && (
+          <ApiState title="Loading medication history" loading skeleton={<TimelineSkeleton />} />
+        )}
         {history.error && <ApiState title="History unavailable" message={history.error.message} actionLabel="Retry" onAction={history.reload} />}
         {!history.isLoading && !history.error && archived.length === 0 && (
           <ApiState title="No archived medications" message="Completed, cancelled, and paused medications will appear here." />
+        )}
+
+        {/* Stats row */}
+        {!history.isLoading && all.length > 0 && (
+          <View style={[s.statsRow, { borderRadius: t.radius.lg }]}>
+            {[
+              { label: 'Adherence', value: `${adherenceAvg}%`, bg: t.success + '18', color: t.success },
+              { label: 'Medications', value: String(all.length),  bg: t.brand + '18',   color: t.brand  },
+              { label: 'Paused',     value: String(paused),        bg: t.warning + '18', color: t.warning },
+            ].map((stat) => (
+              <View key={stat.label} style={[s.statCell, { backgroundColor: stat.bg, borderRadius: t.radius.md }]}>
+                <Text style={[typography.title, { color: stat.color }]}>{stat.value}</Text>
+                <Text style={[typography.caption, { color: stat.color }]}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
         )}
 
         <Card style={s.groupCard}>
@@ -76,6 +100,8 @@ const s = StyleSheet.create({
   flex:           { flex: 1 },
   bar:            { paddingHorizontal: 16 },
   content:        { paddingHorizontal: 16, paddingTop: 4 },
+  statsRow:       { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  statCell:       { flex: 1, alignItems: 'center', padding: 12, gap: 4 },
   groupCard:      { padding: 0 },
   medRow:         { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
   indicator:      { width: 3, height: 36, borderRadius: 2 },

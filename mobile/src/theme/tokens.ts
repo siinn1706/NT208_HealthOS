@@ -1,3 +1,6 @@
+import type { Shadows } from './shadows';
+import type { Motion } from './motion';
+
 export type ThemeName = 'calm' | 'night' | 'warm';
 
 export interface ThemeTokens {
@@ -13,8 +16,9 @@ export interface ThemeTokens {
   // borders
   border: string;
   borderStrong: string;
-  // brand
+  // brand (per-theme)
   brand: string;
+  brandDeep: string;
   brandSoft: string;
   accent: string;
   chip: string;
@@ -23,10 +27,6 @@ export interface ThemeTokens {
   warning: string;
   danger: string;
   info: string;
-  // brand constants
-  primary: string;
-  primaryDeep: string;
-  primaryInk: string;
   // warm accents (used cross-theme in KPIs & chat avatars)
   warmGold: string;
   warmPeach: string;
@@ -51,4 +51,8 @@ export interface ThemeTokens {
     7: number;
     8: number;
   };
+  // depth
+  shadows: Shadows;
+  // motion
+  motion: Motion;
 }

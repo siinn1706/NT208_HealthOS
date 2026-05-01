@@ -11,6 +11,7 @@ import { TopBar } from '../layout/TopBar';
 import { IconButton } from '../primitives/IconButton';
 import { ApiState, MissingApiState } from '../api/ApiState';
 import { ChevronLeft, IconClock, IconPill, IconUser } from '../../icons';
+import { BarcodePlaceholder } from './BarcodePlaceholder';
 import { useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
@@ -81,7 +82,24 @@ export function PrescriptionDetailScreen() {
               </Card>
             ))}
 
-            <Button label="Import into medications" variant="solid" onPress={() => router.push(`/meds/import?appointmentId=${appointmentId}` as never)} />
+            {/* Instructions card */}
+            <Text style={[typography.h3, { color: t.ink, marginTop: 4, marginBottom: 4 }]}>Instructions</Text>
+            <Card>
+              <Text style={[typography.body, { color: t.ink2 }]}>
+                {prescription.notes ?? 'Take medications as directed. Contact your doctor if you experience side effects.'}
+              </Text>
+            </Card>
+
+            {/* Barcode visual placeholder */}
+            <View style={s.barcodeRow}>
+              <BarcodePlaceholder size={120} />
+            </View>
+
+            {/* CTAs */}
+            <View style={s.ctaRow}>
+              <Button label="Share" variant="ghost" style={s.ctaBtn} onPress={() => {}} />
+              <Button label="Request refill" variant="solid" style={s.ctaBtn} onPress={() => router.push(`/meds/import?appointmentId=${appointmentId}` as never)} />
+            </View>
             <MissingApiState title="Prescription asset download unavailable" contract="existing API needs adaptation" />
           </>
         )}
@@ -106,7 +124,10 @@ const s = StyleSheet.create({
   flex: { flex: 1 },
   bar: { paddingHorizontal: 16 },
   content: { paddingHorizontal: 16, paddingTop: 4, gap: 10 },
-  headerCard: { alignItems: 'center' },
+  headerCard:  { alignItems: 'center' },
+  barcodeRow:  { alignItems: 'center', paddingVertical: 8 },
+  ctaRow:      { flexDirection: 'row', gap: 10 },
+  ctaBtn:      { flex: 1 },
   chips: { flexDirection: 'row', gap: 8, marginTop: 10 },
   medCard: { gap: 2 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },

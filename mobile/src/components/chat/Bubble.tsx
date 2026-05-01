@@ -66,7 +66,7 @@ export function Bubble({ side, text, time, hasSparkline, isCaption, isTyping, in
 }
 
 const styles = StyleSheet.create({
-  wrap:      { marginVertical: 4, maxWidth: '80%', alignSelf: 'flex-start' },
+  wrap:      { marginVertical: 4, maxWidth: '82%', alignSelf: 'flex-start' },
   wrapMe:    { alignSelf: 'flex-end' },
   bubble:    { padding: 12 },
   sparkWrap: { marginTop: 8 },

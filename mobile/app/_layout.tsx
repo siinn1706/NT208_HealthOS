@@ -14,6 +14,8 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { SessionProvider } from '../src/auth/SessionProvider';
+import { ToastProvider } from '../src/components/primitives/feedback/Toast';
+import { OfflineBanner } from '../src/components/api/OfflineBanner';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,8 +39,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <SessionProvider>
-            <StatusBar style="auto" />
-            <Stack screenOptions={{ headerShown: false }} />
+            <ToastProvider>
+              <StatusBar style="auto" />
+              <Stack screenOptions={{ headerShown: false }} />
+              <OfflineBanner />
+            </ToastProvider>
           </SessionProvider>
         </ThemeProvider>
       </SafeAreaProvider>

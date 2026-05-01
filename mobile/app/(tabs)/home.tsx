@@ -7,6 +7,7 @@ import { SectionHeader } from '../../src/components/layout/SectionHeader';
 import { IconButton } from '../../src/components/primitives/IconButton';
 import { Avatar } from '../../src/components/primitives/Avatar';
 import { ApiState } from '../../src/components/api/ApiState';
+import { KpiGridSkeleton, ChartSkeleton } from '../../src/components/api/Skeletons';
 import { HeroScoreCard } from '../../src/components/home/HeroScoreCard';
 import { KpiRingGrid } from '../../src/components/home/KpiRingGrid';
 import { NextUpRow } from '../../src/components/home/NextUpRow';
@@ -63,7 +64,9 @@ export default function HomeScreen() {
         }
       />
 
-      {home.isLoading && <ApiState title="Loading dashboard" loading />}
+      {home.isLoading && (
+        <ApiState title="Loading dashboard" loading skeleton={<><KpiGridSkeleton /><ChartSkeleton /></>} />
+      )}
       {home.error && (
         <ApiState
           title="Dashboard unavailable"

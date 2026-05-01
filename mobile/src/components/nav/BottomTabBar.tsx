@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import Animated, { useSharedValue, withSpring, withTiming, useAnimatedStyle } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../theme/useTheme';
@@ -10,6 +10,7 @@ import { Home, IconCalendar, IconChat, IconPill, IconUser } from '../../icons';
 import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { chatService } from '../../api/services';
+import { useTabBounce } from '../../animations/usePressSpring';
 
 const TAB_ICONS = [
   { key: 'home',  Icon: Home,          label: 'Home'  },
@@ -20,14 +21,12 @@ const TAB_ICONS = [
 ];
 
 function TabItem({
-  tabKey,
   label,
   Icon,
   active,
   badgeCount,
   onPress,
 }: {
-  tabKey: string;
   label: string;
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
   active: boolean;
@@ -35,27 +34,20 @@ function TabItem({
   onPress: () => void;
 }) {
   const t = useTheme();
-  const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const bounce = useTabBounce();
 
   function handlePress() {
-    scale.value = withSpring(1.08, { damping: 10, stiffness: 300 }, () => {
-      scale.value = withSpring(1, { damping: 14, stiffness: 260 });
-    });
+    bounce.trigger();
     Haptics.selectionAsync();
     onPress();
   }
 
   const color = active ? t.brand : t.ink4;
-  const strokeWidth = active ? 2.2 : 1.8;
 
   return (
     <Pressable onPress={handlePress} style={styles.tabItem} accessibilityRole="tab" accessibilityLabel={label}>
-      <Animated.View style={[styles.iconWrap, animStyle]}>
-        <Icon size={22} color={color} strokeWidth={strokeWidth} />
+      <Animated.View style={[styles.iconWrap, bounce.style]}>
+        <Icon size={22} color={color} strokeWidth={active ? 2.2 : 1.8} />
         {badgeCount !== undefined && badgeCount > 0 && (
           <View style={[styles.badge, { backgroundColor: t.danger }]}>
             <Text style={styles.badgeText}>{badgeCount > 9 ? '9+' : badgeCount}</Text>
@@ -72,7 +64,6 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const height = 56 + insets.bottom;
 
-  // Derive unread badge from live conversations; fallback to 0 on error
   const conversations = useApiQuery(queryKeys.conversations, chatService.conversations);
   const chatBadge = conversations.data
     ? conversations.data.filter((c) => c.unread_count > 0).length
@@ -89,7 +80,6 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
         {TAB_ICONS.map((tab, i) => (
           <TabItem
             key={tab.key}
-            tabKey={tab.key}
             label={tab.label}
             Icon={tab.Icon}
             active={state.index === i}

@@ -73,7 +73,7 @@ export function CreateAppointmentScreen() {
         <TopBar
           title="New Appointment"
           left={
-            <Text style={[typography.bodyMed, { color: t.primary }]} onPress={() => !saving && router.back()}>
+            <Text style={[typography.bodyMed, { color: t.brand }]} onPress={() => !saving && router.back()}>
               ← Back
             </Text>
           }

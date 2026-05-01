@@ -31,7 +31,7 @@ export function ConversationRow({ name, role, last, time, unread, online, onPres
       <View style={styles.right}>
         <Text style={[typography.micro, { color: t.ink4 }]}>{time}</Text>
         {unread > 0 && (
-          <View style={[styles.badge, { backgroundColor: t.brand }]}>
+          <View style={[styles.badge, { backgroundColor: t.danger }]}>
             <Text style={styles.badgeText}>{unread}</Text>
           </View>
         )}

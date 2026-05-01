@@ -67,7 +67,7 @@ export function AppointmentDetailScreen() {
         <TopBar
           title="Appointment"
           left={
-            <Text style={[typography.bodyMed, { color: t.primary }]} onPress={() => router.back()}>
+            <Text style={[typography.bodyMed, { color: t.brand }]} onPress={() => router.back()}>
               Back
             </Text>
           }
@@ -101,7 +101,7 @@ export function AppointmentDetailScreen() {
         {appointment && (
           <>
             <LinearGradient
-              colors={[t.primaryDeep, t.primary]}
+              colors={[t.brandDeep, t.brand]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[s.hero, { borderRadius: t.radius.xl }]}
