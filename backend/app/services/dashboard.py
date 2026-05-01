@@ -12,7 +12,8 @@ from app.schemas.dashboard import (
     DashboardAlert,
     DashboardGoal,
     DashboardSummaryDTO,
-    ExerciseSuggestionDTO,    
+    ExerciseSuggestionDTO,
+    ExtendedVitalPointDTO,
     KpiValue,
     NutritionSuggestionDTO,
     VitalPointDTO,
@@ -255,6 +256,68 @@ async def get_vitals_timeseries(
     for i in range(days):
         date_str = (start.date() + datetime.timedelta(days=i)).isoformat()
         result.append(by_date.get(date_str, VitalPointDTO(date=date_str)))
+    return result
+
+
+async def get_extended_vitals_timeseries(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    days: int = 30,
+) -> list[ExtendedVitalPointDTO]:
+    """Returns timeseries for all 6 metric types: HR, BP sys/dia, steps, sleep, weight."""
+    if days < 1:
+        return []
+
+    now = _utc_now()
+    start = now - datetime.timedelta(days=days - 1)
+    metric_types = (
+        MetricTypeEnum.HEART_RATE,
+        MetricTypeEnum.BLOOD_PRESSURE_SYSTOLIC,
+        MetricTypeEnum.BLOOD_PRESSURE_DIASTOLIC,
+        MetricTypeEnum.STEPS,
+        MetricTypeEnum.SLEEP_MINUTES,
+        MetricTypeEnum.WEIGHT_KG,
+    )
+
+    rows = (
+        await db.execute(
+            select(HealthMetric)
+            .where(
+                and_(
+                    HealthMetric.user_id == user_id,
+                    HealthMetric.metric_type.in_(metric_types),
+                    HealthMetric.recorded_at >= start,
+                    HealthMetric.is_deleted.is_(False),
+                )
+            )
+            .order_by(HealthMetric.recorded_at.asc())
+        )
+    ).scalars().all()
+
+    by_date: dict[str, ExtendedVitalPointDTO] = {}
+    for row in rows:
+        key = row.recorded_at.date().isoformat()
+        if key not in by_date:
+            by_date[key] = ExtendedVitalPointDTO(date=key)
+        point = by_date[key]
+        v = float(row.value)
+        if row.metric_type == MetricTypeEnum.HEART_RATE:
+            point.heart_rate = v
+        elif row.metric_type == MetricTypeEnum.BLOOD_PRESSURE_SYSTOLIC:
+            point.systolic = v
+        elif row.metric_type == MetricTypeEnum.BLOOD_PRESSURE_DIASTOLIC:
+            point.diastolic = v
+        elif row.metric_type == MetricTypeEnum.STEPS:
+            point.steps = v
+        elif row.metric_type == MetricTypeEnum.SLEEP_MINUTES:
+            point.sleep_minutes = v
+        elif row.metric_type == MetricTypeEnum.WEIGHT_KG:
+            point.weight_kg = v
+
+    result: list[ExtendedVitalPointDTO] = []
+    for i in range(days):
+        date_str = (start.date() + datetime.timedelta(days=i)).isoformat()
+        result.append(by_date.get(date_str, ExtendedVitalPointDTO(date=date_str)))
     return result
 
 

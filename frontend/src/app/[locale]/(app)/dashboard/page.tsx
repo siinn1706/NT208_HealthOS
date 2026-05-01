@@ -69,26 +69,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <AlertBannerWidget alerts={summary.alerts} />
       )}
 
-      {/* ── Row 0b: Anomaly Alerts (realtime + historical) ── */}
-      <RealtimeAnomalyWidget />
-
       {/* ── Row 1: KPI Rings ── */}
       <KpiRingWidget data={summary.kpis} />
 
       {/* ── Row 2: Quick Actions ── */}
       <QuickActionsWidget />
 
-      {/* ── Row 3: Vitals Chart + Reminders ── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      {/* ── Row 3: Vitals Chart | Anomaly + Reminders + Doses ── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
         {/* Vitals chart — spans 2 of 3 columns */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 min-h-[420px]">
           <Suspense fallback={<ChartSkeleton />}>
             <VitalsChartWidget initialData={vitals} initialPeriod={period} />
           </Suspense>
         </div>
 
-        {/* Upcoming reminders + Today's doses — 1 column */}
-        <div className="min-h-[320px] space-y-5">
+        {/* Right column: Anomaly alerts + Reminders + Doses */}
+        <div className="flex flex-col gap-4">
+          <RealtimeAnomalyWidget />
           <UpcomingRemindersWidget reminders={reminders} />
           <TodayDosesPanel limit={3} variant="card" />
         </div>
@@ -101,7 +99,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <WeeklyCalorieChartWidget initialPeriod={period} />
 
       {/* Row 6: Goals + AI Insight + Exercise Suggestions */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3 items-stretch">
         <GoalProgressWidget goals={summary.goals} />
         <AiInsightWidget insight={summary.aiInsight} />
         <ExerciseSuggestionsWidget suggestions={exerciseSuggestions} />

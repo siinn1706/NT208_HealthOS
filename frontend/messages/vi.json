@@ -690,7 +690,11 @@
       "bloodPressureSys": "Huyết áp tâm thu",
       "bloodPressureDia": "Huyết áp tâm trương",
       "loading": "Đang tải biểu đồ...",
-      "noData": "Chưa có dữ liệu chỉ số"
+      "noData": "Chưa có dữ liệu chỉ số",
+      "tabVitals": "Tim mạch",
+      "tabSteps": "Bước chân",
+      "tabSleep": "Giấc ngủ",
+      "tabWeight": "Cân nặng"
     },
     "calorieChart": {
       "title": "Lượng calo theo ngày",
@@ -2192,14 +2196,21 @@
       }
     },
     "anomalies": {
-    "title": "Cảnh báo bất thường",
-    "subtitle": "Chỉ số bất thường được phát hiện",
-    "live": "Trực tiếp",
-    "offline": "Ngoại tuyến",
-    "dismiss": "Bỏ qua",
-    "realtimeSection": "Thời gian thực",
-    "recentSection": "Gần đây (30 ngày)",
-    "viewAll": "Xem tất cả xu hướng"
+      "title": "Cảnh báo bất thường",
+      "subtitle": "Chỉ số bất thường được phát hiện",
+      "live": "Trực tiếp",
+      "offline": "Ngoại tuyến",
+      "dismiss": "Bỏ qua",
+      "realtimeSection": "Thời gian thực",
+      "recentSection": "Gần đây (30 ngày)",
+      "viewAll": "Xem tất cả xu hướng",
+      "allClear": "Không có bất thường nào trong 30 ngày qua",
+      "statCritical": "Nghiêm trọng",
+      "statWarning": "Cảnh báo",
+      "statTotal": "Tổng (30 ngày)",
+      "metricBreakdown": "Theo chỉ số",
+      "critical": "Nghiêm trọng",
+      "warning": "Cảnh báo"
     },
     "exercise": {
       "title": "Gợi ý luyện tập",
@@ -2207,6 +2218,9 @@
       "noData": "Ghi lại dữ liệu sức khỏe để nhận gợi ý luyện tập.",
       "viewAll": "Xem tiến độ",
       "minutes": "phút",
+      "tabRecommendations": "Gợi ý",
+      "tabWeekly": "Tuần này",
+      "weeklyPlanTitle": "Kế hoạch tuần",
       "types": {
         "warning": "Lưu ý",
         "tip": "Mẹo",

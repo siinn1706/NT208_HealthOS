@@ -690,7 +690,11 @@
       "bloodPressureSys": "Systolic BP",
       "bloodPressureDia": "Diastolic BP",
       "loading": "Loading chart...",
-      "noData": "No vitals data yet"
+      "noData": "No vitals data yet",
+      "tabVitals": "Vitals",
+      "tabSteps": "Steps",
+      "tabSleep": "Sleep",
+      "tabWeight": "Weight"
     },
     "calorieChart": {
       "title": "Calories per Day",
@@ -2192,14 +2196,21 @@
       }
     },
     "anomalies": {
-    "title": "Anomaly Alerts",
-    "subtitle": "Unusual readings detected",
-    "live": "Live",
-    "offline": "Offline",
-    "dismiss": "Dismiss",
-    "realtimeSection": "Real-time",
-    "recentSection": "Recent (30 days)",
-    "viewAll": "View all trends"
+      "title": "Anomaly Alerts",
+      "subtitle": "Unusual readings detected",
+      "live": "Live",
+      "offline": "Offline",
+      "dismiss": "Dismiss",
+      "realtimeSection": "Real-time",
+      "recentSection": "Recent (30 days)",
+      "viewAll": "View all trends",
+      "allClear": "No anomalies detected in the last 30 days",
+      "statCritical": "Critical",
+      "statWarning": "Warning",
+      "statTotal": "Total (30 days)",
+      "metricBreakdown": "By Metric",
+      "critical": "Critical",
+      "warning": "Warning"
     },
     "exercise": {
       "title": "Exercise Suggestions",
@@ -2207,6 +2218,9 @@
       "noData": "Log some health data to get exercise recommendations.",
       "viewAll": "View progress",
       "minutes": "min",
+      "tabRecommendations": "Recommendations",
+      "tabWeekly": "This Week",
+      "weeklyPlanTitle": "Weekly Plan",
       "types": {
         "warning": "Attention",
         "tip": "Tip",

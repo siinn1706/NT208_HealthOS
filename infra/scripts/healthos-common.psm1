@@ -1,3 +1,4 @@
+
 # Shared helpers for HealthOS Windows dev scripts (Import-Module from $PSScriptRoot).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -171,9 +172,23 @@ heads = sorted(revision for revision in nodes if revision not in parents)
 print(json.dumps({"heads": heads, "nodes": nodes}, sort_keys=True))
 '@
 
-    $headOutput = & $PythonExe -c $inspectScript $versionsDir 2>&1
+    # Tạo file .py tạm
+    $tmpScript = [System.IO.Path]::ChangeExtension(
+    [System.IO.Path]::GetTempFileName(), ".py"
+    )
+    try {
+    # Ghi script ra file — không có vấn đề dấu nháy kép
+    [System.IO.File]::WriteAllText($tmpScript, $inspectScript, [System.Text.Encoding]::UTF8)
+
+    # Chạy file trực tiếp — Python đọc từ file, không qua dòng lệnh
+    $headOutput = & $PythonExe $tmpScript $versionsDir 2>&1
+
     if ($LASTEXITCODE -ne 0) {
         throw "$ErrorPrefix Failed to inspect Alembic heads.`n$($headOutput -join "`n")"
+    }
+    } finally {
+        # Luôn dọn dẹp file tạm dù thành công hay thất bại
+        Remove-Item -Path $tmpScript -Force -ErrorAction SilentlyContinue
     }
 
     $headInfo = $headOutput | ConvertFrom-Json

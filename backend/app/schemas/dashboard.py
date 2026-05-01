@@ -48,6 +48,20 @@ class VitalPointDTO(BaseModel):
     diastolic: float | None = None
 
 
+class ExtendedVitalPointDTO(BaseModel):
+    date: str
+    heart_rate: float | None = None
+    systolic: float | None = None
+    diastolic: float | None = None
+    steps: float | None = None
+    sleep_minutes: float | None = None
+    weight_kg: float | None = None
+
+
+class ExtendedVitalsTimeseriesResponse(DataResponse[list[ExtendedVitalPointDTO]]):
+    ...
+
+
 class NutritionSuggestionDTO(BaseModel):
     id: str
     type: str
