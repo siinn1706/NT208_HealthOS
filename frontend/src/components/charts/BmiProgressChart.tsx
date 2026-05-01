@@ -103,7 +103,7 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
             ],
           },
         } : {}),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         markArea: {
           silent: true,
           itemStyle: { color: "color-mix(in srgb, var(--color-success) 8%, transparent)" },

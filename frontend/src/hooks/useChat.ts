@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { bffFetch } from "@/lib/api-client";
+import { parseApiError } from "@/types/api-error";
 import type {
   Conversation,
   Message,
@@ -84,6 +85,25 @@ function adaptReactions(reactions: any[]): MessageReaction[] {
   }));
 }
 
+function normalizeMessageStatus(rawStatus: unknown): Message["status"] {
+  switch (rawStatus) {
+    case "pending":
+      return "sending";
+    case "queued":
+    case "sending":
+    case "streaming":
+    case "completed":
+    case "stopped":
+    case "sent":
+    case "delivered":
+    case "read":
+    case "failed":
+      return rawStatus;
+    default:
+      return "read";
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptMessage(m: any): Message {
   // sender_id is the authoritative source — never infer identity from display_name
@@ -110,7 +130,7 @@ function adaptMessage(m: any): Message {
     sender_kind: senderKind,
     content: m.content ?? "",
     type: (m.content_type ?? m.type ?? "text") as Message["type"],
-    status: (m.status ?? "read") as Message["status"],
+    status: normalizeMessageStatus(m.status),
     reply_to: m.reply_to
       ? {
           id: String(m.reply_to.id),
@@ -171,9 +191,10 @@ export function useConversations() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Initial load
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let cancelled = false;
+    // Initial conversations load intentionally flips the loading flag on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     bffFetch<{ data: unknown[] }>("/api/v1/conversations")
       .then(({ data }) => {
@@ -206,7 +227,6 @@ export function useConversations() {
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const sortedConversations = useMemo(() => [...conversations].sort((a, b) => {
     if (a.type === "ai") return -1;
@@ -396,6 +416,8 @@ export function useConversations() {
 export interface UseMessagesOptions {
   /** Shown in optimistic reaction payloads (e.g. translated "You") */
   selfReactionLabel?: string;
+  /** Active conversation type so AI SSE can reject non-AI threads defensively. */
+  conversationType?: Conversation["type"] | null;
 }
 
 export function useMessages(
@@ -403,18 +425,33 @@ export function useMessages(
   currentUserId: string | null = null,
   options: UseMessagesOptions = {}
 ) {
-  const { selfReactionLabel = "You" } = options;
+  const {
+    selfReactionLabel = "You",
+    conversationType = null,
+  } = options;
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   // B7 P6 — AI streaming state. `null` means no stream in flight.
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const streamAbortReasonRef = useRef(
+    new WeakMap<AbortSignal, "stop" | "replace" | "cleanup">(),
+  );
   const [hasMore, setHasMore] = useState(false);
   const lastCursorRef = useRef<string | null>(null);
 
+  const abortActiveAiStream = useCallback(
+    (reason: "stop" | "replace" | "cleanup" = "cleanup") => {
+      const controller = streamAbortRef.current;
+      if (!controller) return;
+      streamAbortReasonRef.current.set(controller.signal, reason);
+      controller.abort();
+    },
+    [],
+  );
+
   // Load messages when conversationId changes
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
@@ -453,7 +490,12 @@ export function useMessages(
 
     return () => { cancelled = true; };
   }, [conversationId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    return () => {
+      abortActiveAiStream("cleanup");
+    };
+  }, [conversationId, abortActiveAiStream]);
 
   /**
    * Refetch the active conversation's most recent page from the BFF.
@@ -466,19 +508,22 @@ export function useMessages(
    * Idempotent and conversation-aware: no-op when no conversation is active
    * or for the dev FALLBACK_AI_CONVERSATION (which has no real DB rows).
    */
-  const refetchActiveConversation = useCallback(async () => {
-    if (!conversationId || conversationId === FALLBACK_AI_CONVERSATION.id) return;
+  const refetchActiveConversation = useCallback(async (): Promise<Message[] | null> => {
+    if (!conversationId || conversationId === FALLBACK_AI_CONVERSATION.id) return null;
     try {
       const { data, has_more, next_cursor } = await bffFetch<{
         data: unknown[];
         has_more: boolean;
         next_cursor: string | null;
       }>(`/api/v1/conversations/${conversationId}/messages?limit=50`);
-      setMessages(data.map(adaptMessage).reverse());
+      const canonical = data.map(adaptMessage).reverse();
+      setMessages(canonical);
       setHasMore(has_more);
       lastCursorRef.current = next_cursor ?? null;
+      return canonical;
     } catch {
       /* leave existing state — next manual interaction will retry */
+      return null;
     }
   }, [conversationId]);
 
@@ -634,9 +679,17 @@ export function useMessages(
    */
   const streamAiMessage = useCallback(
     async (convId: string, content: string): Promise<Message | null> => {
-      if (!currentUserId) return null;
+      if (!currentUserId) {
+        throw new Error("Cannot send AI message: user session not loaded.");
+      }
+      if (conversationType !== "ai") {
+        throw new Error("AI streaming is only available in AI conversations.");
+      }
+      if (convId === FALLBACK_AI_CONVERSATION.id || conversationId === FALLBACK_AI_CONVERSATION.id) {
+        throw new Error("AI conversation is unavailable right now. Refresh and try again.");
+      }
       // Cancel any prior stream — the user can only have one in flight per hook instance.
-      streamAbortRef.current?.abort();
+      abortActiveAiStream("replace");
       const controller = new AbortController();
       streamAbortRef.current = controller;
 
@@ -652,7 +705,7 @@ export function useMessages(
         sender_kind: "user",
         content,
         type: "text",
-        status: "sent",
+        status: "sending",
         reply_to: undefined,
         reactions: [],
         is_edited: false,
@@ -681,11 +734,134 @@ export function useMessages(
       setStreamingAssistantId(optimisticAssistantId);
 
       let serverAssistantId: string | null = null;
+      let streamAccepted = false;
+      let shouldRefetchCanonical = false;
+      let abortReason: "stop" | "replace" | "cleanup" | null = null;
+      let terminalError: Error | null = null;
+
+      const replaceUser = (mutator: (m: Message) => Message) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === optimisticUserId ? mutator(m) : m)),
+        );
+      };
 
       const replaceAssistant = (mutator: (m: Message) => Message) => {
         setMessages((prev) =>
           prev.map((m) => (m.id === (serverAssistantId ?? optimisticAssistantId) ? mutator(m) : m)),
         );
+      };
+
+      const removeOptimisticRows = () => {
+        const assistantIds = new Set([optimisticAssistantId, serverAssistantId].filter(Boolean));
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== optimisticUserId && !assistantIds.has(m.id)),
+        );
+      };
+
+      const parseRejectedRequest = async (res: Response): Promise<Error> => {
+        const rawText = await res.text().catch(() => "");
+        let payload: unknown = null;
+        if (rawText) {
+          try {
+            payload = JSON.parse(rawText);
+          } catch {
+            payload = { error: { code: `HTTP_${res.status}`, message: rawText } };
+          }
+        }
+        const parsed = parseApiError(
+          payload ?? { error: { code: `HTTP_${res.status}`, message: "Request failed." } },
+        );
+
+        if (res.status === 401 && typeof window !== "undefined") {
+          const from = encodeURIComponent(window.location.pathname);
+          window.location.href = `/login?from=${from}`;
+        }
+
+        const error = new Error(parsed.message || "Cannot send AI message right now.");
+        (error as Error & { code?: string; status?: number }).code = parsed.code;
+        (error as Error & { code?: string; status?: number }).status = res.status;
+        return error;
+      };
+
+      const handleSseFrame = (frameText: string) => {
+        const frame = frameText.trim();
+        if (!frame) return;
+
+        const lines = frame.split("\n");
+        let eventName = "message";
+        const dataParts: string[] = [];
+
+        for (const rawLine of lines) {
+          const line = rawLine.trimEnd();
+          if (line.startsWith("event:")) eventName = line.slice(6).trim();
+          else if (line.startsWith("data:")) dataParts.push(line.slice(5).trim());
+        }
+
+        if (dataParts.length === 0 || eventName === "ping") return;
+
+        let parsed: Record<string, unknown> = {};
+        try {
+          parsed = JSON.parse(dataParts.join("\n")) as Record<string, unknown>;
+        } catch {
+          parsed = {};
+        }
+
+        if (eventName === "start") {
+          shouldRefetchCanonical = true;
+          streamAccepted = true;
+          replaceUser((m) => ({ ...m, status: "sent" as const }));
+          const assistantId = (parsed.assistant_message_id as string | undefined) ?? null;
+          if (assistantId) {
+            serverAssistantId = assistantId;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === optimisticAssistantId
+                  ? { ...m, id: assistantId, status: "streaming" as const }
+                  : m,
+              ),
+            );
+            setStreamingAssistantId(assistantId);
+          } else {
+            replaceAssistant((m) => ({ ...m, status: "streaming" as const }));
+          }
+          return;
+        }
+
+        if (eventName === "delta") {
+          shouldRefetchCanonical = true;
+          streamAccepted = true;
+          const text = (parsed.text as string | undefined) ?? "";
+          replaceAssistant((m) => ({
+            ...m,
+            content: text ? m.content + text : m.content,
+            status: "streaming" as const,
+          }));
+          return;
+        }
+
+        if (eventName === "done") {
+          shouldRefetchCanonical = true;
+          replaceAssistant((m) => ({ ...m, status: "completed" as const }));
+          return;
+        }
+
+        if (eventName === "aborted") {
+          shouldRefetchCanonical = true;
+          replaceAssistant((m) => ({ ...m, status: "stopped" as const }));
+          return;
+        }
+
+        if (eventName === "error") {
+          shouldRefetchCanonical = true;
+          replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+          const detail =
+            typeof parsed.detail === "string"
+              ? parsed.detail
+              : typeof parsed.message === "string"
+                ? parsed.message
+                : "AI response failed.";
+          terminalError = new Error(detail);
+        }
       };
 
       try {
@@ -699,12 +875,18 @@ export function useMessages(
           }),
           signal: controller.signal,
         });
-        if (!res.ok || !res.body) {
-          replaceAssistant((m) => ({ ...m, status: "failed" as const }));
-          setIsTyping(false);
-          setStreamingAssistantId(null);
-          return optimisticUser;
+        if (!res.ok) {
+          removeOptimisticRows();
+          throw await parseRejectedRequest(res);
         }
+
+        if (!res.body) {
+          removeOptimisticRows();
+          throw new Error("AI stream ended before it could start.");
+        }
+
+        streamAccepted = true;
+        replaceUser((m) => ({ ...m, status: "sent" as const }));
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
@@ -716,70 +898,71 @@ export function useMessages(
           const { value, done } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
+          buffer = buffer.replace(/\r\n/g, "\n");
           let separator = buffer.indexOf("\n\n");
           while (separator >= 0) {
             const frame = buffer.slice(0, separator);
             buffer = buffer.slice(separator + 2);
             separator = buffer.indexOf("\n\n");
-            const lines = frame.split("\n");
-            let eventName = "message";
-            const dataParts: string[] = [];
-            for (const line of lines) {
-              if (line.startsWith("event:")) eventName = line.slice(6).trim();
-              else if (line.startsWith("data:")) dataParts.push(line.slice(5).trim());
-            }
-            if (dataParts.length === 0) continue;
-            const payload = dataParts.join("\n");
-            if (eventName === "ping") continue;
-
-            let parsed: Record<string, unknown> = {};
-            try {
-              parsed = payload ? JSON.parse(payload) : {};
-            } catch {
-              parsed = {};
-            }
-
-            if (eventName === "start") {
-              const assistantId = (parsed["assistant_message_id"] as string | undefined) ?? null;
-              if (assistantId) {
-                serverAssistantId = assistantId;
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === optimisticAssistantId ? { ...m, id: assistantId } : m)),
-                );
-                setStreamingAssistantId(assistantId);
-              }
-            } else if (eventName === "delta") {
-              const text = (parsed["text"] as string | undefined) ?? "";
-              if (text) replaceAssistant((m) => ({ ...m, content: m.content + text }));
-            } else if (eventName === "done") {
-              replaceAssistant((m) => ({ ...m, status: "sent" as const }));
-            } else if (eventName === "aborted") {
-              replaceAssistant((m) => ({ ...m, status: "sent" as const }));
-            } else if (eventName === "error") {
-              replaceAssistant((m) => ({ ...m, status: "failed" as const }));
-            }
+            handleSseFrame(frame);
           }
+        }
+
+        if (buffer.trim()) {
+          handleSseFrame(buffer);
         }
       } catch (err) {
         if ((err as { name?: string } | null)?.name === "AbortError") {
           // Stop button — leave the partial bubble in place.
-          replaceAssistant((m) => ({ ...m, status: "sent" as const }));
+          abortReason = streamAbortReasonRef.current.get(controller.signal) ?? null;
+          if (abortReason === "stop") {
+            shouldRefetchCanonical = shouldRefetchCanonical || streamAccepted;
+            replaceAssistant((m) => ({ ...m, status: "stopped" as const }));
+          } else if (!streamAccepted) {
+            removeOptimisticRows();
+          }
         } else {
-          replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+          terminalError = err instanceof Error ? err : new Error("Cannot send AI message right now. Please try again.");
+          if (streamAccepted) {
+            shouldRefetchCanonical = true;
+            replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+          } else {
+            removeOptimisticRows();
+          }
         }
       } finally {
-        if (streamAbortRef.current === controller) streamAbortRef.current = null;
-        setIsTyping(false);
-        setStreamingAssistantId(null);
+        const mayReconcile =
+          shouldRefetchCanonical &&
+          abortReason !== "replace" &&
+          abortReason !== "cleanup";
+        if (mayReconcile) {
+          await refetchActiveConversation();
+        }
+
+        streamAbortReasonRef.current.delete(controller.signal);
+        if (streamAbortRef.current === controller) {
+          streamAbortRef.current = null;
+          setIsTyping(false);
+          setStreamingAssistantId(null);
+        }
+      }
+      if (terminalError) {
+        throw terminalError;
       }
       return optimisticUser;
     },
-    [currentUserId],
+    [
+      abortActiveAiStream,
+      conversationId,
+      conversationType,
+      currentUserId,
+      refetchActiveConversation,
+    ],
   );
 
   const stopStreaming = useCallback(() => {
-    streamAbortRef.current?.abort();
-  }, []);
+    abortActiveAiStream("stop");
+  }, [abortActiveAiStream]);
 
   const sendMessage = useCallback(
     async (

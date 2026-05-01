@@ -102,7 +102,7 @@ export function useChatDrafts(conversationId: string | null): UseChatDraftsResul
   const [userIdReady, setUserIdReady] = useState(false);
 
   // One-time per session: resolve the BFF session user id.
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     let cancelled = false;
     void resolveAuthUserId().then((uid) => {
@@ -121,7 +121,7 @@ export function useChatDrafts(conversationId: string | null): UseChatDraftsResul
     if (!userIdReady) return;
     setDraftState(readDraft(userIdRef.current, conversationId));
   }, [conversationId, userIdReady]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   useEffect(() => {
     return () => {

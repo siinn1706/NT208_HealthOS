@@ -16,7 +16,7 @@ function resolveCssVar(value: string): string {
 
 // Recursively resolve CSS variable strings in an ECharts option object.
 // ECharts renders on <canvas> which does not resolve CSS custom properties.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function resolveChartColors(obj: unknown): unknown {
   if (typeof obj === "string" && obj.startsWith("var(")) return resolveCssVar(obj);
   if (Array.isArray(obj)) return obj.map(resolveChartColors);
@@ -56,7 +56,7 @@ export const EChartWrapper = forwardRef<EChartWrapperRef, EChartWrapperProps>(
     const { resolvedTheme } = useTheme();
 
     // Re-resolve CSS variables on every theme change (canvas does not process CSS vars)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     const resolvedOption = useMemo(
       () => resolveChartColors(option) as EChartsOption,
       [option, resolvedTheme]

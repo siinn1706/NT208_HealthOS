@@ -48,7 +48,7 @@ export function PrintableBrief({ brief, locale, labels, categoryLabels }: Props)
       {/* Hide the app shell entirely while printing — keep this surface
           ink-friendly and self-contained. */}
       <style
-        // eslint-disable-next-line react/no-danger
+         
         dangerouslySetInnerHTML={{
           __html: `
 @media print {

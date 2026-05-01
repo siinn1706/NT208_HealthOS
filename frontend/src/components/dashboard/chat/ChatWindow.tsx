@@ -77,7 +77,10 @@ export function ChatWindow({
     onAiStreamChunk,
     onAiStreamCompleted,
     refetchActiveConversation,
-  } = useMessages(conversation.id, currentUserId, { selfReactionLabel: t("you") });
+  } = useMessages(conversation.id, currentUserId, {
+    selfReactionLabel: t("you"),
+    conversationType: conversation.type,
+  });
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -87,9 +90,9 @@ export function ChatWindow({
   const messageListRef = useRef<MessageListHandle>(null);
 
   const convId = conversation.id;
-  // AI conversations now flow through the same WS pipeline as human chat —
-  // the BE orchestrator persists + broadcasts the bot's reply, including
-  // streaming chunks (ai:* / chat.message.ai_* events).
+  // Human chat remains WS-driven. AI sends go through the BFF SSE route,
+  // while this socket stays enabled so existing realtime events and
+  // reconnect-driven backfills continue to work without regressions.
   const wsEnabled = true;
 
   const handleWsEvent = useCallback((frame: WsFrame) => {
@@ -279,9 +282,17 @@ export function ChatWindow({
       // B7 P6 — AI conversations stream over SSE. Skips the WS / queue paths;
       // each "send" is a fresh request/response and AI replies arrive inline.
       if (conversation.type === "ai") {
-        void streamAiMessage(convId, content).then((sent) => {
-          if (sent) onMessageSent?.(sent);
-        });
+        void streamAiMessage(convId, content)
+          .then((sent) => {
+            if (sent) onMessageSent?.(sent);
+          })
+          .catch((error: unknown) => {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Cannot send AI message right now. Please try again.";
+            toast.error(message);
+          });
         setReplyTo(null);
         messageListRef.current?.scrollToBottom();
         return;

@@ -2392,6 +2392,9 @@
     "status": {
       "queued": "Queued — will send when you're back online",
       "sending": "Sending",
+      "streaming": "Streaming",
+      "completed": "Completed",
+      "stopped": "Stopped",
       "sent": "Sent",
       "delivered": "Delivered",
       "read": "Read",

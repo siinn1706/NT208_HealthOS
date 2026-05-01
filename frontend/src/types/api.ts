@@ -470,6 +470,8 @@ export type MessageType = "text" | "image" | "file" | "audio" | "system";
  * - `queued`    — composed offline, waiting in the outbound queue for reconnect.
  * - `sending`   — handed to the WS layer, no ACK yet.
  * - `streaming` — AI bot reply currently appending tokens via WS chunks.
+ * - `completed` — server finished persisting an AI reply.
+ * - `stopped`   — AI generation was aborted / cancelled before completion.
  * - `sent`      — server stored the message.
  * - `delivered` / `read` — recipient-side ACKs.
  * - `failed`    — terminal, requires explicit user retry.
@@ -478,6 +480,8 @@ export type MessageStatus =
   | "queued"
   | "sending"
   | "streaming"
+  | "completed"
+  | "stopped"
   | "sent"
   | "delivered"
   | "read"

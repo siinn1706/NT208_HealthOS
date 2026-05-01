@@ -2392,6 +2392,9 @@
     "status": {
       "queued": "Đang chờ gửi — sẽ tự gửi khi bạn online",
       "sending": "Đang gửi",
+      "streaming": "Đang stream",
+      "completed": "Hoàn tất",
+      "stopped": "Đã dừng",
       "sent": "Đã gửi",
       "delivered": "Đã nhận",
       "read": "Đã đọc",

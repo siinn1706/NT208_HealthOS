@@ -311,8 +311,13 @@ export const MessageBubble = memo(function MessageBubble({
                 <span>{t("recalled")}</span>
               ) : isAi ? (
                 <span className="inline-flex flex-col">
-                  <AiMessageContent content={message.content || (message.status === "streaming" ? "…" : "")} />
-                  {message.status === "streaming" && (
+                  <AiMessageContent
+                    content={
+                      message.content
+                      || (message.status === "sending" || message.status === "streaming" ? "…" : "")
+                    }
+                  />
+                  {(message.status === "sending" || message.status === "streaming") && (
                     <span
                       aria-label={t("ai.streaming")}
                       className="inline-block w-1.5 h-3 bg-current animate-pulse mt-1"
@@ -361,7 +366,9 @@ export const MessageBubble = memo(function MessageBubble({
               {message.is_edited && !message.is_recalled && (
                 <span className="text-[10px] text-muted-foreground/70 italic">({t("edited")})</span>
               )}
-              {isOwn && !message.is_recalled && <MessageStatus status={message.status} t={t} />}
+              {(isOwn || isAi) && !message.is_recalled && (
+                <MessageStatus status={message.status} t={t} />
+              )}
               {isAi && (
                 <span className="text-[10px] text-amber-600 dark:text-amber-400 italic">
                   {t("ai.disclaimer")}
@@ -473,11 +480,27 @@ function MessageStatus({
       />
     );
   }
+  if (status === "streaming") {
+    return (
+      <Clock
+        className="w-3 h-3 text-muted-foreground"
+        aria-label={t("status.streaming")}
+      />
+    );
+  }
   if (status === "sent") {
     return (
       <Check
         className="w-3 h-3 text-muted-foreground"
         aria-label={t("status.sent")}
+      />
+    );
+  }
+  if (status === "completed") {
+    return (
+      <Check
+        className="w-3 h-3 text-muted-foreground"
+        aria-label={t("status.completed")}
       />
     );
   }
@@ -492,6 +515,17 @@ function MessageStatus({
   if (status === "read") {
     return (
       <CheckCheck className="w-3 h-3 text-primary" aria-label={t("status.read")} />
+    );
+  }
+  if (status === "stopped") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+        aria-label={t("status.stopped")}
+        title={t("status.stopped")}
+      >
+        <X className="w-3 h-3" aria-hidden />
+      </span>
     );
   }
   if (status === "failed") {

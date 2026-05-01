@@ -190,7 +190,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
         setLatestTriage(t2);
       } catch (err) {
         toast.error(t("errors.saveFailed"));
-        // eslint-disable-next-line no-console
+         
         console.error("persistConcernAt", err);
       } finally {
         setPending(false);

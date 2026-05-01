@@ -10,6 +10,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import { useMessages } from "@/hooks/useChat";
+import { bffFetch } from "@/lib/api-client";
 
 // useMessages calls bffFetch on mount; mock it so the test doesn't hit network.
 vi.mock("@/lib/api-client", () => ({
@@ -31,6 +32,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
@@ -128,5 +130,68 @@ describe("useMessages — AI streaming reducers", () => {
     });
 
     expect(result.current.messages).toHaveLength(0);
+  });
+
+  it("blocks SSE sends for non-AI conversations before any network call", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useMessages(CONV_ID, USER_ID, { conversationType: "direct" })
+    );
+
+    let thrown: unknown;
+    await act(async () => {
+      try {
+        await result.current.streamAiMessage(CONV_ID, "Hello");
+      } catch (error) {
+        thrown = error;
+      }
+    });
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toContain("only available in AI conversations");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.messages).toHaveLength(0);
+  });
+
+  it("rolls back optimistic rows when the BFF rejects an AI stream request", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "STREAM_NOT_SUPPORTED",
+              message: "Streaming is only available for AI conversations.",
+            },
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ),
+    );
+
+    const refetchSpy = vi.mocked(bffFetch);
+    const { result } = renderHook(() =>
+      useMessages(CONV_ID, USER_ID, { conversationType: "ai" })
+    );
+
+    let thrown: unknown;
+    await act(async () => {
+      try {
+        await result.current.streamAiMessage(CONV_ID, "Need help");
+      } catch (error) {
+        thrown = error;
+      }
+    });
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe("Streaming is only available for AI conversations.");
+    expect(refetchSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.messages).toHaveLength(0);
+    expect(result.current.streamingAssistantId).toBeNull();
   });
 });

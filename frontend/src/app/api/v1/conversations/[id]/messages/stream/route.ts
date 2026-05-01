@@ -27,13 +27,25 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   const upstream = await coreFetchStream(req, `/v1/conversations/${safe}/messages/stream`, {
     method: "POST",
   });
+  const contentType =
+    upstream.headers.get("content-type")
+    ?? (upstream.ok ? "text/event-stream" : "application/json");
+
+  const headers = new Headers();
+  headers.set("Content-Type", contentType);
+
+  if (upstream.ok) {
+    headers.set("Cache-Control", "no-cache, no-transform");
+    headers.set("X-Accel-Buffering", upstream.headers.get("x-accel-buffering") ?? "no");
+    headers.set("Connection", "keep-alive");
+  } else {
+    headers.set("Cache-Control", "no-store");
+    const retryAfter = upstream.headers.get("retry-after");
+    if (retryAfter) headers.set("Retry-After", retryAfter);
+  }
+
   return new Response(upstream.body, {
     status: upstream.status,
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      "X-Accel-Buffering": "no",
-      Connection: "keep-alive",
-    },
+    headers,
   });
 }
