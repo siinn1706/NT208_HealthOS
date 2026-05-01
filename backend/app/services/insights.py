@@ -665,7 +665,19 @@ def _predict_next(values: list[float], count: int = 7) -> list[float]:
     return [round(start + slope * (i + 1), 2) for i in range(count)]
 
 
-def _find_anomalies(data_points: list[dict], unit: str) -> list[dict]:
+def _find_anomalies(
+    data_points: list[dict],
+    unit: str,
+    higher_is_better: bool = False,
+) -> list[dict]:
+    """Detect statistical anomalies (≥ 25 % deviation from period baseline).
+
+    For *higher_is_better* metrics (e.g. steps, sleep) only flag downward
+    deviations — a day with unusually *many* steps is a success, not an alert.
+    For *lower_is_better* metrics (e.g. heart rate, blood pressure) both
+    directions are flagged: too high is dangerous, surprisingly low may also
+    warrant attention.
+    """
     values = [float(point["value"]) for point in data_points if point["value"] > 0]
     if len(values) < 3:
         return []
@@ -679,12 +691,15 @@ def _find_anomalies(data_points: list[dict], unit: str) -> list[dict]:
         if value <= 0:
             continue
         deviation = ((value - baseline) / baseline) * 100
+        # For higher_is_better, skip positive spikes (they are good outcomes).
+        if higher_is_better and deviation > 0:
+            continue
         if abs(deviation) >= 25:
             anomalies.append(
                 {
                     "date": point["date"],
                     "value": round(value, 2),
-                    "deviation_percent": round(abs(deviation), 2),
+                    "deviation_percent": round(deviation, 2),
                     "severity": "critical" if abs(deviation) >= 40 else "warning",
                     "unit": unit,
                 }
@@ -786,7 +801,11 @@ async def get_trend_analysis(
     trend = _trend_direction(change_percent, bool(selected["higher_is_better"]))
     trend_line = _trend_line([point["value"] for point in data_points])
     prediction = _predict_next([point["value"] for point in data_points], count=7)
-    anomalies = _find_anomalies(data_points, str(selected["unit"]))
+    anomalies = _find_anomalies(
+        data_points,
+        str(selected["unit"]),
+        higher_is_better=bool(selected["higher_is_better"]),
+    )
 
     if not values:
         ai_summary = "TREND_NO_DATA"

@@ -402,17 +402,20 @@ async def get_exercise_suggestions(
     db: AsyncSession,
     user_id: uuid.UUID,
 ) -> list[ExerciseSuggestionDTO]:
+    import datetime as _dt
     metrics = await _latest_metrics(db, user_id)
     meals = await _today_meals(db, user_id)
 
-    steps = _latest_metric_value(metrics, MetricTypeEnum.STEPS)
-    sleep_minutes = _latest_metric_value(metrics, MetricTypeEnum.SLEEP_MINUTES)
-    heart_rate = _latest_metric_value(metrics, MetricTypeEnum.HEART_RATE)
+    steps          = _latest_metric_value(metrics, MetricTypeEnum.STEPS)
+    sleep_minutes  = _latest_metric_value(metrics, MetricTypeEnum.SLEEP_MINUTES)
+    heart_rate     = _latest_metric_value(metrics, MetricTypeEnum.HEART_RATE)
+    systolic       = _latest_metric_value(metrics, MetricTypeEnum.BLOOD_PRESSURE_SYSTOLIC)
     calories_intake = _sum_nutrition_value(meals, "calories")
+    weekday        = _dt.datetime.now().weekday()   # 0=Mon … 6=Sun
 
     suggestions: list[ExerciseSuggestionDTO] = []
 
-    # Chưa có data
+    # ── Chưa có dữ liệu ─────────────────────────────────────────────
     if steps is None and sleep_minutes is None and heart_rate is None:
         return [
             ExerciseSuggestionDTO(
@@ -428,105 +431,188 @@ async def get_exercise_suggestions(
             )
         ]
 
-    # Ít bước chân → gợi ý đi bộ
+    # ── Nhịp tim rất cao (>100) → thiền / hít thở khẩn cấp ─────────
+    if heart_rate is not None and heart_rate > 100:
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-hr-breathing",
+            type="warning",
+            icon="Heart",
+            title="EXERCISE_HR_BREATHING",
+            message="EXERCISE_HR_BREATHING",
+            message_params={"heart_rate": round(heart_rate)},
+            priority=1,
+            duration_minutes=15,
+            intensity="low",
+            category="balance",
+        ))
+    elif heart_rate is not None and heart_rate > 90:
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-hr-elevated",
+            type="tip",
+            icon="Heart",
+            title="EXERCISE_HR_ELEVATED",
+            message="EXERCISE_HR_ELEVATED",
+            message_params={"heart_rate": round(heart_rate)},
+            priority=2,
+            duration_minutes=20,
+            intensity="low",
+            category="balance",
+        ))
+
+    # ── Huyết áp cao → yoga nhẹ ─────────────────────────────────────
+    if systolic is not None and systolic > 135:
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-bp-yoga",
+            type="warning",
+            icon="Target",
+            title="EXERCISE_BP_YOGA",
+            message="EXERCISE_BP_YOGA",
+            message_params={"systolic": round(systolic)},
+            priority=1,
+            duration_minutes=25,
+            intensity="low",
+            category="flexibility",
+        ))
+
+    # ── Ít bước (<5 000) → đi bộ nhanh ─────────────────────────────
     if steps is not None and steps < 5000:
-        suggestions.append(
-            ExerciseSuggestionDTO(
-                id="exercise-walk-more",
-                type="warning",
-                icon="Footprints",
-                title="EXERCISE_WALK_MORE",
-                message="EXERCISE_WALK_MORE",
-                message_params={"steps": round(steps), "target": 10000},
-                priority=1,
-                duration_minutes=30,
-                intensity="low",
-                category="cardio",
-            )
-        )
+        remaining = max(0, 10000 - round(steps))
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-walk-more",
+            type="warning",
+            icon="Footprints",
+            title="EXERCISE_WALK_MORE",
+            message="EXERCISE_WALK_MORE",
+            message_params={"steps": round(steps), "target": 10000, "remaining": remaining},
+            priority=2,
+            duration_minutes=30,
+            intensity="low",
+            category="cardio",
+        ))
+    elif steps is not None and steps < 8000:
+        # Bước vừa → khuyến khích thêm
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-walk-boost",
+            type="goal",
+            icon="Footprints",
+            title="EXERCISE_WALK_BOOST",
+            message="EXERCISE_WALK_BOOST",
+            message_params={"steps": round(steps), "remaining": max(0, 10000 - round(steps))},
+            priority=3,
+            duration_minutes=20,
+            intensity="low",
+            category="cardio",
+        ))
 
-    # Ngủ kém → gợi ý yoga/stretching
+    # ── Ngủ kém (<6h) → giãn cơ / yoga tối ─────────────────────────
     if sleep_minutes is not None and sleep_minutes < 360:
-        suggestions.append(
-            ExerciseSuggestionDTO(
-                id="exercise-sleep-yoga",
-                type="tip",
-                icon="Moon",
-                title="EXERCISE_SLEEP_YOGA",
-                message="EXERCISE_SLEEP_YOGA",
-                message_params={"sleep_hours": round(sleep_minutes / 60, 1)},
-                priority=2,
-                duration_minutes=20,
-                intensity="low",
-                category="flexibility",
-            )
-        )
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-sleep-yoga",
+            type="tip",
+            icon="Moon",
+            title="EXERCISE_SLEEP_YOGA",
+            message="EXERCISE_SLEEP_YOGA",
+            message_params={"sleep_hours": round(sleep_minutes / 60, 1)},
+            priority=3,
+            duration_minutes=20,
+            intensity="low",
+            category="flexibility",
+        ))
 
-    # Nhịp tim cao → gợi ý hít thở/thiền
-    if heart_rate is not None and heart_rate > 90:
-        suggestions.append(
-            ExerciseSuggestionDTO(
-                id="exercise-hr-breathing",
-                type="warning",
-                icon="Heart",
-                title="EXERCISE_HR_BREATHING",
-                message="EXERCISE_HR_BREATHING",
-                message_params={"heart_rate": round(heart_rate)},
-                priority=1,
-                duration_minutes=15,
-                intensity="low",
-                category="balance",
-            )
-        )
-
-    # Ăn nhiều calo → gợi ý cardio
+    # ── Calories cao (>2 200 kcal) → cardio đốt mỡ ──────────────────
     if calories_intake > 2200:
-        suggestions.append(
-            ExerciseSuggestionDTO(
-                id="exercise-burn-calories",
-                type="goal",
-                icon="Flame",
-                title="EXERCISE_BURN_CALORIES",
-                message="EXERCISE_BURN_CALORIES",
-                message_params={"calories": round(calories_intake)},
-                priority=2,
-                duration_minutes=45,
-                intensity="medium",
-                category="cardio",
-            )
-        )
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-burn-calories",
+            type="goal",
+            icon="Flame",
+            title="EXERCISE_BURN_CALORIES",
+            message="EXERCISE_BURN_CALORIES",
+            message_params={"calories": round(calories_intake),
+                            "deficit": round(calories_intake - 2200)},
+            priority=2,
+            duration_minutes=45,
+            intensity="medium",
+            category="cardio",
+        ))
 
-    # Bước chân đạt → tập sức mạnh
-    if steps is not None and steps >= 8000:
-        suggestions.append(
-            ExerciseSuggestionDTO(
-                id="exercise-strength",
+    # ── Bước chân tốt (≥8 000) → sức mạnh / HIIT ───────────────────
+    if steps is not None and steps >= 12000:
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-hiit",
+            type="success",
+            icon="Zap",
+            title="EXERCISE_HIIT",
+            message="EXERCISE_HIIT",
+            message_params={"steps": round(steps)},
+            priority=3,
+            duration_minutes=20,
+            intensity="high",
+            category="cardio",
+        ))
+    elif steps is not None and steps >= 8000:
+        suggestions.append(ExerciseSuggestionDTO(
+            id="exercise-strength",
+            type="success",
+            icon="Dumbbell",
+            title="EXERCISE_STRENGTH",
+            message="EXERCISE_STRENGTH",
+            message_params={"steps": round(steps)},
+            priority=3,
+            duration_minutes=30,
+            intensity="medium",
+            category="strength",
+        ))
+
+    # ── Không kích hoạt điều kiện nào → gợi ý theo thứ trong tuần ──
+    if not suggestions:
+        if weekday in (0, 3):          # Thứ 2, Thứ 5 → sức mạnh
+            suggestions.append(ExerciseSuggestionDTO(
+                id="exercise-balanced-strength",
                 type="success",
                 icon="Dumbbell",
-                title="EXERCISE_STRENGTH",
-                message="EXERCISE_STRENGTH",
-                message_params={"steps": round(steps)},
-                priority=3,
-                duration_minutes=30,
+                title="EXERCISE_BALANCED_STRENGTH",
+                message="EXERCISE_BALANCED_STRENGTH",
+                priority=4,
+                duration_minutes=35,
                 intensity="medium",
                 category="strength",
-            )
-        )
-
-    # Không có gợi ý → đang tốt
-    if not suggestions:
-        suggestions.append(
-            ExerciseSuggestionDTO(
-                id="exercise-balanced",
+            ))
+        elif weekday in (1, 4):        # Thứ 3, Thứ 6 → cardio
+            suggestions.append(ExerciseSuggestionDTO(
+                id="exercise-balanced-cardio",
+                type="success",
+                icon="Flame",
+                title="EXERCISE_BALANCED_CARDIO",
+                message="EXERCISE_BALANCED_CARDIO",
+                priority=4,
+                duration_minutes=30,
+                intensity="medium",
+                category="cardio",
+            ))
+        elif weekday == 2:             # Thứ 4 → dẻo dai
+            suggestions.append(ExerciseSuggestionDTO(
+                id="exercise-balanced-flex",
+                type="tip",
+                icon="Target",
+                title="EXERCISE_BALANCED_FLEX",
+                message="EXERCISE_BALANCED_FLEX",
+                priority=4,
+                duration_minutes=25,
+                intensity="low",
+                category="flexibility",
+            ))
+        else:                          # Thứ 7, CN → phục hồi
+            suggestions.append(ExerciseSuggestionDTO(
+                id="exercise-balanced-rest",
                 type="success",
                 icon="CheckCircle",
-                title="EXERCISE_BALANCED",
-                message="EXERCISE_BALANCED",
+                title="EXERCISE_BALANCED_REST",
+                message="EXERCISE_BALANCED_REST",
                 priority=4,
-                duration_minutes=None,
+                duration_minutes=20,
                 intensity="low",
-                category="cardio",
-            )
-        )
+                category="balance",
+            ))
 
-    return sorted(suggestions, key=lambda item: item.priority)
+    # Trả tối đa 3 gợi ý, ưu tiên cao trước
+    return sorted(suggestions, key=lambda item: item.priority)[:3]

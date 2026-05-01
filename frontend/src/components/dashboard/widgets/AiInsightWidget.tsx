@@ -14,9 +14,24 @@ interface AiInsightWidgetProps {
   insight?: AiInsight | null;
 }
 
+// Resolve raw i18n key from backend (e.g. "CALORIE_NORMAL") to translated string.
+// Keys live at dashboard.risk.insights.*
+function resolveInsightText(
+  raw: string,
+  tInsights: Awaited<ReturnType<typeof getTranslations<"dashboard.risk.insights">>>,
+): string {
+  try {
+    // next-intl throws if key doesn't exist; catch and fall back to raw text
+    return tInsights(raw as Parameters<typeof tInsights>[0]);
+  } catch {
+    return raw;
+  }
+}
+
 // Server Component
 export async function AiInsightWidget({ insight }: AiInsightWidgetProps) {
   const t = await getTranslations("dashboard.ai");
+  const tInsights = await getTranslations("dashboard.risk.insights");
   const locale = await getLocale();
 
   return (
@@ -46,7 +61,7 @@ export async function AiInsightWidget({ insight }: AiInsightWidgetProps) {
             <div className="flex gap-3">
               <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" aria-hidden />
               <p className="text-sm text-foreground leading-relaxed">
-                {insight.text}
+                {resolveInsightText(insight.text, tInsights)}
               </p>
             </div>
             <p className="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground leading-snug">

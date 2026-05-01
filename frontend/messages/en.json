@@ -2240,32 +2240,60 @@
       },
       "suggestions": {
         "exercise-no-data": {
-          "title": "Start tracking",
-          "message": "Log your steps, sleep, or heart rate to receive personalized exercise recommendations."
-        },
-        "exercise-walk-more": {
-          "title": "Walk more today",
-          "message": "You've only walked {steps} steps. Try a 30-minute walk to reach your {target}-step goal."
-        },
-        "exercise-sleep-yoga": {
-          "title": "Evening yoga",
-          "message": "You slept {sleep_hours} hours last night. Try gentle yoga or stretching before bed."
+          "title": "Start your journey",
+          "message": "Log your steps, sleep, or heart rate to receive a personalized training plan."
         },
         "exercise-hr-breathing": {
-          "title": "Breathing exercise",
-          "message": "Your heart rate is {heart_rate} bpm. Try 15 minutes of deep breathing or meditation."
+          "title": "4-7-8 Breathing Technique",
+          "message": "Heart rate at {heart_rate} bpm — elevated. Inhale for 4 seconds, hold for 7, exhale for 8 to activate your parasympathetic system."
+        },
+        "exercise-hr-elevated": {
+          "title": "Mindful Breathing Session",
+          "message": "Heart rate at {heart_rate} bpm. 20 minutes of mindfulness meditation or gentle yoga helps regulate your nervous system effectively."
+        },
+        "exercise-bp-yoga": {
+          "title": "Blood Pressure Yoga",
+          "message": "Systolic BP at {systolic} mmHg. Poses like Child's Pose and Legs-Up-The-Wall naturally lower blood pressure within 25 minutes."
+        },
+        "exercise-walk-more": {
+          "title": "Power Walk",
+          "message": "You've walked {steps} steps today — {remaining} more to hit your {target}-step target. A 30-minute brisk walk burns ~120 kcal and improves blood sugar."
+        },
+        "exercise-walk-boost": {
+          "title": "Push to Your Goal",
+          "message": "At {steps} steps with {remaining} to go. A quick 20-minute walk is all you need to reach today's target."
+        },
+        "exercise-sleep-yoga": {
+          "title": "Sleep Recovery Stretching",
+          "message": "Only {sleep_hours} hours of sleep last night. A 20-minute pre-bed routine — Child's Pose, Supine Twist — reduces cortisol and improves sleep quality."
         },
         "exercise-burn-calories": {
-          "title": "Cardio session",
-          "message": "You've consumed {calories} kcal today. A 45-minute cardio session can help balance your intake."
+          "title": "Fat-Burning Cardio",
+          "message": "You've consumed {calories} kcal today ({deficit} kcal over balance). 45 minutes of light jogging or cycling burns ~315 kcal and restores energy balance."
         },
         "exercise-strength": {
-          "title": "Strength training",
-          "message": "Great job with {steps} steps! Consider adding a 30-minute strength workout."
+          "title": "Full-Body Strength Training",
+          "message": "Excellent! {steps} steps shows your body is in great shape today. Perfect time for 30 minutes of resistance training — squats, push-ups, planks."
         },
-        "exercise-balanced": {
-          "title": "Looking good!",
-          "message": "Your metrics are balanced. Keep up the great work!"
+        "exercise-hiit": {
+          "title": "HIIT — Peak Fat Burn",
+          "message": "{steps} steps today! Your body is at peak performance. 20 minutes of HIIT (20s sprint / 10s rest) burns twice the fat of regular cardio."
+        },
+        "exercise-balanced-strength": {
+          "title": "Strength Day — Mon / Thu",
+          "message": "Today is ideal for resistance training. 35 minutes with 3 sets each of squats, deadlifts, and bench press builds muscle and accelerates metabolism."
+        },
+        "exercise-balanced-cardio": {
+          "title": "Cardio Day — Tue / Fri",
+          "message": "Today is your cardio day. 30 minutes of easy running (zone 2 — conversational pace) or cycling builds cardiovascular endurance without over-fatiguing muscles."
+        },
+        "exercise-balanced-flex": {
+          "title": "Flexibility Day — Wed",
+          "message": "Mid-week is perfect for recovery. 25 minutes of yoga or dynamic stretching keeps your body ready for heavier sessions later in the week."
+        },
+        "exercise-balanced-rest": {
+          "title": "Active Recovery Day",
+          "message": "Weekend is your body's reset time. 20 minutes of light walking or gentle stretching — no heavy lifting — optimizes muscle recovery for next week."
         }
       }
     }
