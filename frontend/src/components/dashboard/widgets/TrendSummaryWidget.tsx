@@ -34,6 +34,43 @@ const TREND_ICON = {
   stable:    Minus,
 };
 
+// ── Mini sparkline SVG ─────────────────────────────────────────────────────────
+function Sparkline({ points, color }: { points: number[]; color: string }) {
+  if (points.length < 2) return null;
+
+  const W = 64, H = 24;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+
+  const coords = points.map((v, i) => {
+    const x = (i / (points.length - 1)) * W;
+    const y = H - ((v - min) / range) * (H - 4) - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  const lastX = W;
+  const lastY = H - ((points[points.length - 1] - min) / range) * (H - 4) - 2;
+  const gradId = `sg${color.replace("#", "")}`;
+
+  const areaPath = `M0,${H} L${coords.join(" L")} L${lastX},${H} Z`;
+  const linePath = `M${coords.join(" L")}`;
+
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible" aria-hidden>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gradId})`} />
+      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY.toFixed(1)} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
 interface Props { initialPeriod?: ReportPeriod }
 
 export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
@@ -88,11 +125,11 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
               <div key={m.key} className="rounded-lg border border-border p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: m.color }} />
-                  <div className="w-4 h-4 rounded bg-muted animate-pulse" />
+                  <div className="w-12 h-4 rounded-full bg-muted animate-pulse" />
                 </div>
                 <div className="h-3 w-16 rounded bg-muted animate-pulse" />
                 <div className="h-5 w-20 rounded bg-muted animate-pulse" />
-                <div className="h-3 w-10 rounded bg-muted animate-pulse" />
+                <div className="h-6 w-full rounded bg-muted animate-pulse opacity-40" />
               </div>
             ))}
           </div>
@@ -113,12 +150,13 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
                 </div>
               );
 
-              const Icon     = TREND_ICON[data.trend] ?? Minus;
-              const sign     = data.change_percent > 0 ? "+" : "";
-              const lastPt   = data.data_points.at(-1);
-              const rawVal   = lastPt?.value ?? null;
+              const Icon   = TREND_ICON[data.trend] ?? Minus;
+              const sign   = data.change_percent > 0 ? "+" : "";
+              const lastPt = data.data_points.at(-1);
+              const rawVal = lastPt?.value ?? null;
+
               // Apply optional scale (sleep: minutes → hours)
-              const dispVal  = rawVal != null
+              const dispVal = rawVal != null
                 ? m.scale != null
                   ? (rawVal * m.scale).toFixed(1)
                   : rawVal >= 1000
@@ -126,29 +164,55 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
                     : rawVal.toLocaleString()
                 : "--";
 
+              // Sparkline data points (scaled)
+              const sparkPts = data.data_points
+                .map((p) => m.scale != null ? p.value * m.scale : p.value);
+
               const trendColor =
                 data.trend === "improving" ? "text-emerald-500"
                 : data.trend === "declining" ? "text-destructive"
                 : "text-muted-foreground";
 
+              const trendPillBg =
+                data.trend === "improving"
+                  ? "bg-emerald-50 dark:bg-emerald-950/30"
+                  : data.trend === "declining"
+                    ? "bg-red-50 dark:bg-red-950/30"
+                    : "bg-muted/50";
+
               return (
                 <Link
                   key={m.key}
                   href={`/${locale}/dashboard/reports/trends?metric=${m.key}&period=${period}`}
-                  className="rounded-lg border border-border p-3 hover:bg-muted/50 transition-colors group"
+                  className="rounded-lg border border-border p-3 hover:bg-muted/50 transition-colors group flex flex-col"
                 >
+                  {/* Top row: dot + trend pill */}
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
-                    <Icon className={cn("w-3.5 h-3.5 transition-transform group-hover:scale-110", trendColor)} />
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
+                    <div className={cn(
+                      "flex items-center gap-0.5 rounded-full px-1.5 py-0.5",
+                      trendPillBg,
+                    )}>
+                      <Icon className={cn("w-3 h-3 transition-transform group-hover:scale-110 flex-shrink-0", trendColor)} />
+                      <span className={cn("text-[9px] font-bold tabular-nums", trendColor)}>
+                        {sign}{data.change_percent.toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Label */}
                   <p className="text-[11px] text-muted-foreground leading-none">{m.label}</p>
+
+                  {/* Value */}
                   <p className="text-lg font-bold text-foreground tabular-nums mt-1 leading-none">
                     {dispVal}
                     <span className="text-[10px] font-normal text-muted-foreground ml-1">{m.unit}</span>
                   </p>
-                  <p className={cn("text-[10px] font-medium mt-1 leading-none", trendColor)}>
-                    {sign}{data.change_percent.toFixed(1)}%
-                  </p>
+
+                  {/* Sparkline */}
+                  <div className="mt-2 flex justify-start">
+                    <Sparkline points={sparkPts} color={m.color} />
+                  </div>
                 </Link>
               );
             })}

@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   Bell, AlertTriangle, X, Wifi, WifiOff, ChevronRight,
   Heart, Activity, Footprints, Moon, Scale, ShieldCheck, TrendingUp, TrendingDown,
+  Crown, Brain, BarChart2,
 } from "lucide-react";
 import { useHealthAlerts } from "@/hooks/useHealthAlerts";
 import { cn } from "@/lib/utils";
@@ -159,8 +160,8 @@ export function RealtimeAnomalyWidget() {
         </span>
       </div>
 
-      {/* ── Body (scrollable, capped height) ── */}
-      <div className="px-4 py-3 space-y-3 max-h-[420px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+      {/* ── Body (fixed frame, scrollable) ── */}
+      <div className="px-4 py-3 space-y-3 min-h-[260px] max-h-[420px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
 
         {/* ── Loading skeleton ── */}
         {isPending && !loaded && (
@@ -176,13 +177,42 @@ export function RealtimeAnomalyWidget() {
 
         {loaded && (
           <>
-            {/* ── All-clear banner ── */}
+            {/* ── All-clear banner + Pro CTA ── */}
             {!hasRt && !hasHist ? (
-              <div className="flex items-center gap-2.5 py-1">
-                <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex flex-col gap-3">
+                {/* All-clear status */}
+                <div className="flex items-center gap-2.5 py-1">
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t("allClear")}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{t("allClear")}</p>
+
+                {/* Inline Pro CTA */}
+                <div className="rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-950/20 dark:to-indigo-950/20 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                      <Crown className="w-3 h-3 text-white" aria-hidden />
+                    </div>
+                    <p className="text-[11px] font-bold text-foreground">Phân tích sức khoẻ nâng cao</p>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Brain className="w-3 h-3 text-violet-500 flex-shrink-0" aria-hidden />
+                      <p className="text-[10px] text-muted-foreground">Dự báo bất thường trước 7 ngày bằng AI</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <BarChart2 className="w-3 h-3 text-indigo-500 flex-shrink-0" aria-hidden />
+                      <p className="text-[10px] text-muted-foreground">Biểu đồ xu hướng 90 ngày + so sánh dân số</p>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/${locale}/pricing`}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                  >
+                    Tìm hiểu Pro <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
               </div>
             ) : (
               <>

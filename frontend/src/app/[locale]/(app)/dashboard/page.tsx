@@ -22,6 +22,7 @@ import {
 } from "@/lib/dashboard-data";
 import type { ReportPeriod } from "@/types/api";
 import { TrendSummaryWidget } from "@/components/dashboard/widgets/TrendSummaryWidget";
+import { UpgradeBannerWidget } from "@/components/dashboard/widgets/UpgradeBannerWidget";
 
 // Skeleton loading state for chart-heavy widget
 function ChartSkeleton() {
@@ -77,11 +78,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* ── Row 3: Vitals Chart | Anomaly + Reminders + Doses ── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
-        {/* Vitals chart — spans 2 of 3 columns */}
-        <div className="lg:col-span-2 min-h-[420px]">
+        {/* Vitals chart + Upgrade banner — spans 2 of 3 columns */}
+        <div className="lg:col-span-2 flex flex-col gap-4">
           <Suspense fallback={<ChartSkeleton />}>
             <VitalsChartWidget initialData={vitals} initialPeriod={period} />
           </Suspense>
+          <div className="flex-1">
+            <UpgradeBannerWidget fill />
+          </div>
         </div>
 
         {/* Right column: Anomaly alerts + Reminders + Doses */}
@@ -92,7 +96,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </div>
 
-       {/* ── Row 4: Trend Summary ── */}
+      {/* ── Row 4: Trend Summary ── */}
       <TrendSummaryWidget initialPeriod={period} />
 
       {/* Row 5: Weekly Calorie Chart */}

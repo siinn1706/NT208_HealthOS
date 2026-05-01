@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { EChartWrapper } from "./EChartWrapper";
 import type { EChartsOption } from "echarts";
+import { getCssVar, cssRgba } from "@/lib/chart-colors";
 
 interface PeriodComparisonChartProps {
   currentLabel: string;
@@ -15,11 +16,6 @@ interface PeriodComparisonChartProps {
   currentSeriesLabel?: string;
   previousSeriesLabel?: string;
 }
-
-const COLORS = {
-  current: "var(--color-primary)",
-  previous: "color-mix(in srgb, var(--color-primary) 35%, transparent)",
-};
 
 export function PeriodComparisonChart({
   currentLabel,
@@ -34,6 +30,12 @@ export function PeriodComparisonChart({
   const t = useTranslations("charts.periodComparison");
   const currentName = currentSeriesLabel ?? t("currentPeriod", { label: currentLabel });
   const previousName = previousSeriesLabel ?? t("previousPeriod");
+
+  // Build canvas-safe colors at render time (CSS vars resolve on client)
+  const COLORS = {
+    current:  getCssVar("--primary", "#1965B3"),
+    previous: cssRgba("--primary", 0.35, "#1965B3"),
+  };
 
   // Comparing against an empty previous period would draw a flat row of zeros
   // and visually overstate the current-period bars. Hide the previous series
