@@ -68,7 +68,8 @@ type AnalysisStep =
   | "result"
   | "lowConfidence"
   | "unsupportedImage"
-  | "failedHard";
+  | "failedHard"
+  | "uploadedPending";
 
 const SNAP_PREFILL_KEY = "meal_snap_prefill";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MiB — matches BFF + Core caps

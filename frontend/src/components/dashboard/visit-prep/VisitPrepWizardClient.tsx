@@ -148,12 +148,12 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
   );
 
   const persistConcernAt = useCallback(
-    async (idx: number) => {
-      if (isReadOnly) return;
+    async (idx: number): Promise<SymptomEntry | undefined> => {
+      if (isReadOnly) return undefined;
       const draft = concerns[idx];
-      if (!draft) return;
+      if (!draft) return undefined;
       const trimmed = draft.concern_text.trim();
-      if (!trimmed) return;
+      if (!trimmed) return undefined;
       setPending(true);
       try {
         const payload = {
@@ -188,10 +188,10 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
         // pulling the result with one round-trip keeps the UI honest.
         const t2 = await recomputeTriage(brief.id);
         setLatestTriage(t2);
-      } catch (err) {
+        return saved;
+      } catch {
         toast.error(t("errors.saveFailed"));
-        // eslint-disable-next-line no-console
-        console.error("persistConcernAt", err);
+        return undefined;
       } finally {
         setPending(false);
       }
@@ -231,21 +231,29 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
   }, [brief.id, t]);
 
   // Review fix T4: flush any concern that has typed text but hasn't yet been
-  // saved to the BE. Returns true if every typed concern is persisted, false
-  // if at least one save failed (so the caller can abort the next action).
-  const flushUnsavedConcerns = useCallback(async (): Promise<boolean> => {
-    if (isReadOnly) return true;
+  // saved to the BE. Returns the up-to-date concern list when successful, or
+  // null if at least one save failed (so callers don't validate stale state).
+  const flushUnsavedConcerns = useCallback(async (): Promise<ConcernDraft[] | null> => {
+    if (isReadOnly) return concerns;
     let allOk = true;
+    const nextConcerns = concerns.slice();
     for (let idx = 0; idx < concerns.length; idx++) {
       const c = concerns[idx];
       if (!c.concern_text.trim() || c.id) continue;
       try {
-        await persistConcernAt(idx);
+        const saved = await persistConcernAt(idx);
+        if (saved) {
+          nextConcerns[idx] = symptomToDraft(saved);
+        } else {
+          allOk = false;
+        }
       } catch {
         allOk = false;
       }
     }
-    return allOk;
+    if (!allOk) return null;
+    setConcerns(nextConcerns);
+    return nextConcerns;
   }, [concerns, isReadOnly, persistConcernAt]);
 
   // Wraps any "go to step X" transition with an auto-save pass so users can
@@ -254,11 +262,15 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
     async (target: StepKey) => {
       if (target === step) return;
       if (!isReadOnly && step === "concerns") {
-        await flushUnsavedConcerns();
+        const flushed = await flushUnsavedConcerns();
+        if (!flushed) {
+          toast.error(t("errors.saveFailed"));
+          return;
+        }
       }
       setStep(target);
     },
-    [flushUnsavedConcerns, isReadOnly, step],
+    [flushUnsavedConcerns, isReadOnly, step, t],
   );
 
   const handleFinalize = useCallback(async () => {
@@ -268,12 +280,12 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
       // Auto-save any unsaved typed concerns before validating, so users
       // who skipped the per-concern "Save concern" button don't see a
       // confusing "Add at least one concern" error when text is on screen.
-      const flushed = await flushUnsavedConcerns();
-      if (!flushed) {
+      const flushedConcerns = await flushUnsavedConcerns();
+      if (!flushedConcerns) {
         toast.error(t("errors.saveFailed"));
         return;
       }
-      const persistedCount = concerns.filter(
+      const persistedCount = flushedConcerns.filter(
         (c) => c.concern_text.trim() && c.id,
       ).length;
       if (persistedCount === 0 || questions.length === 0) {
@@ -295,7 +307,6 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
   }, [
     attachToAppointmentId,
     brief.id,
-    concerns,
     flushUnsavedConcerns,
     isReadOnly,
     questions.length,

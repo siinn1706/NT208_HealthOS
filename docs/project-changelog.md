@@ -1,12 +1,42 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.2.3-docs | **Last Updated**: 2026-04-21
+> **Version**: 1.3.0-docs | **Last Updated**: 2026-04-28
 
 ---
 
 ## [Unreleased]
 
+### Added
+
+#### Mobile Native Interaction Audit (2026-04-30)
+- **All 5 phases completed**: Auth validation/OTP/setup; home search/notifications/KPI/cards/chat handlers; care filter/detail/appointment confirmation; medication form validation/detail sheet/loading states; profile menu wiring/SectionHeader guard/BottomTabBar real badge.
+- Auth flows: Welcome/sign-in/sign-up/OTP validation, password reset, onboarding permissions with validation and disabled submit states.
+- Home/dashboard: Search handler, notifications routing, KPI card drill-down, next-up reminders, action handlers, chat integration.
+- Care workflows: Appointment filter/detail flows, visit prep guards, appointment confirmation, form validation, empty/loading/error states.
+- Medications: Form validation, dose tracking, refill alerts, detail sheets, medication history, archive/pause actions, duplicate-submit prevention.
+- Profile/settings: Menu wiring, health profile routes, device/emergency/goals handlers, settings sheets, section header action guards, bottom tab bar badge logic.
+- TypeScript typecheck passes. All screens manually verified for working behavior or explicit guarded dependency states.
+
+#### Mobile Phase 1 Foundation (React Native App)
+- **Full Expo/React Native app** under `mobile/` with React Native 0.79 + Expo SDK 53 + Expo Router v5
+- **5-tab navigation** (home, care, chat, meds, me) with bottom tab bar + nested routes
+- **Auth screens**: welcome, OTP, sign-in, sign-up, health profile setup
+- **Home tab**: KPI rings (health score, adherence, streaks), today's vitals, labs, plan, AI insights
+- **Care tab**: appointments (list, detail, create), video prep, video visit, history
+- **Chat tab**: conversation list, messages, AI chat (Stranger requests)
+- **Meds tab**: add, edit, import, detail, refill, pause, archive, history, adherence tracking
+- **Reusable forms**: intake, symptoms, medication, insurance questionnaires
+- **Theme system**: 3 themes (calm/blue, night/dark, warm/earthy) with AsyncStorage persistence + auto OS dark-mode detection
+- **Component library**: Primitives (Button, Card, Chip, Avatar, Divider, Toggle, IconButton, PressableCard) → Layout (Screen, TopBar, SectionHeader) → Charts (ProgressRing, Sparkline) → Domain features
+- **Typography**: 7 scales (display, title, h3, body, bodyMed, caption, micro) with Inter font
+- **Locale support**: English + Vietnamese (react-native-i18n)
+- **Design catalog**: Web mobile preview screens in `screen-catalog.ts` for design validation
+- **Status**: UI-first, Phase 1 foundation complete; Phase 2 will add BFF API wiring
+
 ### Changed
+
+#### Mobile
+- Clarified repository docs to reflect mobile as a distinct React Native product surface (not web simulation)
 
 #### Documentation
 
@@ -67,6 +97,14 @@
   - Reports: KpiOverview
   - Progress: TodayInsightCard
   - Appointments: AppointmentCreateSheet
+
+#### Mobile Design Parity Implementation (Phases 1A–5)
+- **Phase 1A**: Tab navigation refactored — locale-aware Link routes + theme persistence across tab switches
+- **Phase 1B**: Safe area insets applied — Screen layout padding: 56px tab-bar + dynamic bottom inset + 16px gutter
+- **Phase 2**: Home detail screens — TodayOverviewScreen, HealthScoreDetailScreen, QuickActionSheetScreen; 3 new routes added
+- **Phase 3**: Medication screens — 10 UI components (take, missed flows); MedicationFlowScreen extended; 2 routes added
+- **Phase 4**: Care screens — 7 components (appointments, video, history); CareDetailScreen 7-kind handler; 3 routes added
+- **Phase 5**: Auth completion — ForgotPasswordScreen, PermissionsScreen; AuthFlowScreen extended with permissionKind support; 2 routes added
 
 ---
 

@@ -269,6 +269,7 @@ export interface ConnectedDevice {
 // ─── Appointments ────────────────────────────────────────────────────
 
 export type AppointmentStatus =
+  | "booked"
   | "scheduled"
   | "upcoming"
   | "in_progress"
@@ -712,6 +713,8 @@ export interface TrendAnalysis {
   trend: TrendDirection;
   change_percent: number;
   ai_summary: string;
+  /** 0–1 when the API provides a model confidence for the forecast band */
+  confidence?: number;
 }
 
 // ─── Share / Notifications ────────────────────────────────────────────────

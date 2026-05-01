@@ -1,220 +1,602 @@
-# NT208_HealthOS — Virtual Personal Doctor
+# Claude Code Boilerplate
 
-Health management platform with FE+BFF, Core API, workers, and data services.
+A comprehensive boilerplate template for building professional software projects with **CLI Coding Agents** (**Claude Code** and **Open Code**). This template provides a complete development environment with AI-powered agent orchestration, automated workflows, and intelligent project management.
 
-## Tech Stack
+## What is Claude Code?
 
-| Layer | Stack | Notes |
-|---|---|---|
-| FE + BFF | Next.js 16, React 19, Tailwind 4, next-intl | BFF Route Handlers under `/api/v1/**` |
-| Core BE | FastAPI + SQLAlchemy async | Router prefix `/v1` |
-| Database | PostgreSQL 16 + asyncpg | Core persistent data |
-| Cache/Queue | Redis 7 + Celery | Cache + async task broker |
-| Storage | MinIO (dev) / S3-compatible | Object storage |
-| Workers | AI Worker (8001), Notification (8002), Queue Worker | Queue worker runs from backend; optional `queue-worker-service` profile in dev |
+**Claude Code** is Anthropic's official CLI tool that brings AI-powered development assistance directly to your terminal. It enables natural language interaction with your codebase and provides intelligent automation for common development tasks.
 
-## Architecture (Critical Rule)
+- [Claude Code](https://claude.com/product/claude-code)
+- [Docs](https://docs.claude.com/en/docs/claude-code/overview)
 
-Browser **never** calls Core directly.
+**Open Code CLI Coding Agents** extend Claude Code with specialized AI agents that handle specific aspects of software development - from planning and research to testing and documentation. This creates a collaborative AI development team that works alongside human developers.
 
-```
-Browser -> Next.js BFF (/api/v1/**) -> Core BE (/v1/**) -> PostgreSQL/Redis/MinIO
-```
+- [Open Code](https://opencode.ai/)
+- [Docs](https://opencode.ai/docs)
 
-- BFF handlers: `frontend/src/app/api/v1/**/route.ts`
-- BFF proxy helper: `frontend/src/lib/core-api-proxy.ts`
-- Core router: `backend/app/api/v1/router.py`
+## Related Projects & Directories
+
+- `claudekit` - Website of ClaudeKit
+  - Directory: `../claudekit`
+  - Repo: https://github.com/claudekit/claudekit
+- `claudekit-marketing` - Marketing Kit repository
+  - Directory: `../claudekit-marketing`
+  - Repo: https://github.com/claudekit/claudekit-marketing
+- `claudekit-cli` - CLI tool for quick project setup
+  - Directory: `../claudekit-cli`
+  - Repo: https://github.com/mrgoonie/claudekit-cli
+- `claudekit-docs` - Public documentation repository: https://docs.claudekit.cc
+  - Directory: `../claudekit-docs`
+  - Repo: https://github.com/claudekit/claudekit-docs
+
+## Key Benefits
+
+### 🚀 Accelerated Development
+- **AI-Powered Planning**: Automated technical planning and architecture design
+- **Intelligent Code Generation**: Context-aware code creation and modification
+- **Automated Testing**: Comprehensive test generation and execution
+- **Smart Documentation**: Synchronized docs that evolve with your code
+
+### 🎯 Enhanced Quality
+- **Multi-Agent Code Review**: Specialized agents for security, performance, and standards
+- **Automated Quality Assurance**: Continuous testing and validation
+- **Best Practices Enforcement**: Built-in adherence to coding standards
+- **Security-First Development**: Proactive security analysis and recommendations
+
+### 🏗️ Structured Workflow
+- **Agent Orchestration**: Coordinated AI agents working in parallel and sequential workflows
+- **Task Management**: Automated project tracking and progress monitoring
+- **Documentation Sync**: Always up-to-date technical documentation
+- **Clean Git Workflow**: Professional commit messages and branch management
+
+## Documentation
+
+### 📚 Core Documentation
+- **[Project Overview & PDR](./docs/project-overview-pdr.md)** - Comprehensive project overview, goals, features, and product development requirements
+- **[Codebase Summary](./docs/codebase-summary.md)** - High-level overview of project structure, technologies, and components
+- **[Code Standards](./docs/code-standards.md)** - Coding standards, naming conventions, and best practices
+- **[System Architecture](./docs/system-architecture.md)** - Detailed architecture documentation, component interactions, and data flow
+- **[Skills Reference](./guide/SKILLS.md)** - Complete guide to all available skills
+
+### 📖 Additional Resources
+- **[CLAUDE.md](./CLAUDE.md)** - Development instructions and workflows for AI agents
+- **[CHANGELOG.md](./CHANGELOG.md)** - Version history and release notes
+- **[Windows Statusline Support](./docs/statusline-windows-support.md)** - Windows compatibility guide for Claude Code statusline
+- **[Statusline Architecture](./docs/statusline-architecture.md)** - Technical documentation for statusline implementation
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.12 (see `.python-version`)
-- Node.js 20 (see `.nvmrc`)
-- Docker Desktop (for infrastructure services)
+- [Claude Code](https://code.claude.com/docs/en/setup) installed and configured
+- Git for version control
+- Node.js 18+ (or your preferred runtime)
+- Operating Systems: macOS 10.15+, Ubuntu 20.04+/Debian 10+, or Windows 10+ (with WSL 1, WSL 2, or Git for Windows)
+- Hardware: 4GB+ RAM
 
-### First-time setup (run once after clone)
+### Setup your new project with ClaudeKit
 
-```powershell
-# Windows PowerShell
-.\infra\scripts\setup.ps1
+1. **Install ClaudeKit CLI**:
+   ```bash
+   npm install -g claudekit-cli
+   ```
+
+2. **Create your new project with ClaudeKit framework**:
+   ```bash
+   mkdir my-project
+   ck new --dir my-project --kit engineer
+   ```
+
+   **Note:** If you want to use the kit with your existing project:
+   ```bash
+   cd /path/to/project
+   ck init --kit engineer
+   ```
+
+3. **Start development**:
+   ```bash
+   # Begin with Claude Code
+   claude
+   # [YOLO mode - not recommended]
+   # claude --dangerously-skip-permissions
+
+   # now you can use these specific commands
+   /plan "implement user authentication"
+   /cook "add database integration"
+   ```
+
+📖 **Learn more from our docs:** [https://docs.claudekit.cc](https://docs.claudekit.cc)
+
+## Project Structure
+
 ```
+├── .claude/                 # Claude Code configuration
+│   ├── agents/             # Claude Code agents
+│   ├── command-archive/    # Archived legacy command definitions
+│   ├── hooks/              # Claude Code hooks
+│   │   └── notifications/  # Multi-provider notification system
+│   ├── skills/             # Claude Code skills
+│   └── CLAUDE.md           # Global development instructions
+├── docs/                   # Project documentation
+│   ├── codebase-summary.md # Auto-generated codebase overview
+│   ├── code-standards.md   # Development standards
+│   ├── project-overview-pdr.md # Product requirements
+│   └── development-roadmap.md  # Project roadmap
+├── plans/                  # Implementation plans and reports
+│   ├── templates/          # Plan templates
+│   └── reports/            # Agent-to-agent communication
+├── CLAUDE.md              # Project-specific Claude instructions
+├── AGENTS.md              # Agent coordination guidelines
+└── README.md              # This file
+```
+
+## The AI Agent Team
+
+This boilerplate includes 17+ specialized AI agents that work together to deliver high-quality software. Agents coordinate through file-based communication, enabling sequential chaining and parallel execution patterns.
+
+### 🎯 Core Development Agents
+
+#### **Planner Agent**
+- Researches technical approaches and best practices
+- Creates comprehensive implementation plans
+- Analyzes architectural trade-offs
+- Spawns multiple researcher agents for parallel investigation
+
+#### **Researcher Agent**
+- Investigates specific technologies and frameworks
+- Analyzes existing solutions and patterns
+- Provides technical recommendations
+- Supports the planner with detailed findings
+
+#### **Tester Agent**
+- Generates comprehensive test suites
+- Validates functionality and performance
+- Ensures cross-platform compatibility
+- Reports on test coverage and quality metrics
+
+### 🔍 Quality Assurance Agents
+
+#### **Code Reviewer Agent**
+- Performs automated code quality analysis
+- Enforces coding standards and conventions
+- Identifies security vulnerabilities
+- Provides improvement recommendations
+
+#### **Debugger Agent**
+- Analyzes application logs and error reports
+- Diagnoses performance bottlenecks
+- Investigates CI/CD pipeline issues
+- Provides root cause analysis
+
+### 📚 Documentation & Management Agents
+
+#### **Docs Manager Agent**
+- Maintains synchronized technical documentation
+- Updates API documentation automatically
+- Ensures documentation accuracy
+- Manages codebase summaries with repomix
+
+#### **Git Manager Agent**
+- Creates clean, conventional commit messages
+- Manages branching and merge strategies
+- Handles version control workflows
+- Ensures professional git history
+
+#### **Project Manager Agent**
+- Tracks development progress and milestones
+- Updates project roadmaps and timelines
+- Manages task completion verification
+- Maintains project health metrics
+
+### 🎨 Design & Content Agents
+
+#### **UI/UX Designer Agent**
+- Creates design specifications and prototypes
+- Develops visual components
+- Ensures design system consistency
+- Performs user experience analysis
+
+#### **Copywriter Agent**
+- Creates marketing and technical content
+- Optimizes copy for conversion
+- Develops documentation narratives
+- Enhances content clarity
+
+### 🔎 Specialized Agents
+
+#### **Scout Agent**
+- Performs parallel codebase exploration
+- Analyzes code patterns and structure
+- Identifies optimization opportunities
+- Maps component relationships
+
+#### **Database Admin Agent**
+- Manages database operations
+- Performs migrations and optimization
+- Ensures data integrity
+- Designs schema patterns
+
+#### **Journal Writer Agent**
+- Documents development decisions
+- Tracks technical explorations
+- Records lessons learned
+- Maintains decision history
+
+## Agent Orchestration Patterns
+
+### Sequential Chaining
+Use when tasks have dependencies:
+```bash
+# Planning → Implementation → Testing → Review
+/plan "implement user dashboard"
+# Wait for plan completion, then:
+/code  # Executes the plan
+# After implementation:
+/test "validate dashboard functionality"
+# Finally:
+/code-review "ensure code quality standards"
+
+# Alternative: Use /cook for standalone implementation (plans internally)
+/cook "implement user dashboard"
+```
+
+### Parallel Execution
+Use for independent tasks:
+```bash
+# Multiple researchers exploring different approaches
+planner agent spawns:
+- researcher (database options)
+- researcher (authentication methods)
+- researcher (UI frameworks)
+# All report back to planner simultaneously
+```
+
+### Context Management
+- Agents communicate through file system reports
+- Context is preserved between agent handoffs
+- Fresh context prevents conversation degradation
+- Essential information is documented in markdown
+
+## Development Workflow
+
+### 1. Feature Development
+```bash
+# Start with planning
+/plan "add real-time notifications"
+
+# Research phase (automatic)
+# Multiple researcher agents investigate approaches
+
+# Implementation
+/cook "implement notification system"
+
+# Quality assurance
+/test
+/code-review
+
+# Documentation update
+/docs
+
+# Project tracking
+/watzup  # Check project status
+```
+
+### 2. Bug Fixing
+```bash
+# Analyze the issue
+/debug "investigate login failures"
+
+# Create fix plan
+/plan "resolve authentication bug"
+
+# Implement solution
+/fix "authentication issue"
+
+# Validate fix
+/test
+```
+
+### 3. Documentation Management
+```bash
+# Update documentation
+/docs
+
+# Generate codebase summary
+repomix  # Creates ./docs/codebase-summary.md
+
+# Review project status
+/watzup
+```
+
+## Configuration Files
+
+### CLAUDE.md
+Project-specific instructions for Claude Code. Customize this file to define:
+- Project architecture guidelines
+- Development standards and conventions
+- Agent coordination protocols
+- Specific workflows for your project
+
+### plans/templates/*.md
+Reusable templates for:
+- Feature implementation plans
+- Bug fix procedures
+- Refactoring strategies
+- Architecture decisions
+
+## Gemini Skills Configuration
+
+This project includes several Gemini-powered skills that require a Google Gemini API key:
+
+- **gemini-audio** - Audio analysis and speech generation
+- **gemini-video-understanding** - Video analysis and understanding
+- **gemini-document-processing** - PDF document processing
+- **gemini-image-gen** - AI image generation
+- **gemini-vision** - Image analysis and vision capabilities
+
+### API Key Setup
+
+The Gemini skills check for `GEMINI_API_KEY` in the following order (priority from highest to lowest):
+
+1. **Environment Variable** (Recommended for development)
+   ```bash
+   export GEMINI_API_KEY='your-api-key-here'
+   ```
+
+2. **Project Root `.env`** (Recommended for project-specific keys)
+   ```bash
+   # Create .env in project root
+   echo 'GEMINI_API_KEY=your-api-key-here' > .env
+   ```
+
+3. **`.claude/.env`** (For Claude-specific configuration)
+   ```bash
+   # Copy example and edit
+   cp .claude/.env.example .claude/.env
+   # Then edit .claude/.env and set your API key
+   ```
+
+4. **`.claude/skills/.env`** (For shared skills configuration)
+   ```bash
+   # Copy example and edit
+   cp .claude/skills/.env.example .claude/skills/.env
+   # Then edit .claude/skills/.env and set your API key
+   ```
+
+5. **Individual Skill Directory `.env`** (For skill-specific keys)
+   ```bash
+   # Example for gemini-audio skill
+   cp .claude/skills/gemini-audio/.env.example .claude/skills/gemini-audio/.env
+   # Then edit and set your API key
+   ```
+
+### Getting Your API Key
+
+Get your free Gemini API key at: https://aistudio.google.com/apikey
+
+### Vertex AI Support
+
+To use Vertex AI instead of Google AI Studio:
 
 ```bash
-# Linux / macOS / WSL
-bash infra/scripts/setup.sh
+# Enable Vertex AI
+export GEMINI_USE_VERTEX=true
+export VERTEX_PROJECT_ID=your-gcp-project-id
+export VERTEX_LOCATION=us-central1  # Optional, defaults to us-central1
 ```
 
-This copies env example files, downloads the AI YOLO model from Google Drive, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
-
-Skip model download if needed:
-
-```powershell
-.\infra\scripts\setup.ps1 -skipModelDownload
+Or in `.env` file:
 ```
+GEMINI_USE_VERTEX=true
+VERTEX_PROJECT_ID=your-gcp-project-id
+VERTEX_LOCATION=us-central1
+```
+
+### Usage Examples
 
 ```bash
-bash infra/scripts/setup.sh --skip-model-download
+# Audio analysis
+claude "Analyze this audio file and summarize the key points: audio.mp3"
+
+# Video understanding
+claude "Describe what happens in this video: video.mp4"
+
+# Document processing
+claude "Extract all tables from this PDF: document.pdf"
+
+# Image generation
+claude "Generate an image of a serene mountain landscape"
+
+# Image analysis
+claude "What objects are in this image: photo.jpg"
 ```
 
-Download model manually:
+## Model Context Protocol (MCP)
 
-```powershell
-.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env
-```
+✍️ Please read [my technical blog article about MCP here](https://faafospecialist.substack.com/p/claude-code-solution-to-use-mcp-servers).
 
+### Pre-requisites
+
+In ClaudeKit, you need to setup the MCP servers in `.claude/.mcp.json` file.
+
+Copy the example file:
 ```bash
-bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
+mv .claude/.mcp.json.example .claude/.mcp.json
 ```
 
-### Seed Test Admin (Optional)
+Then add your MCP servers, below are some examples:
 
-Create an initial admin user for testing (run after setup):
+### [Context7](https://github.com/upstash/context7)
+```json
+{
+   "mcpServers": {
+      "context7": {
+         "command": "npx",
+         "args": ["-y", "@upstash/context7-mcp", "--api-key", "YOUR_API_KEY"],
+      }
+   }
+}
+```
 
+### [Human MCP](https://github.com/mrgoonie/human-mcp/)
+
+```json
+{
+   "mcpServers": {
+      "human": {
+         "command": "npx",
+         "args": ["@goonnguyen/human-mcp@latest"],
+         "env": { "GOOGLE_GEMINI_API_KEY": "YOUR_API_KEY" }
+      }
+   }
+}
+```
+
+### [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)
+```json
+{
+   "mcpServers": {
+      "chrome-devtools": {
+         "command": "npx",
+         "args": ["-y", "chrome-devtools-mcp@latest"]
+      }
+   }
+}
+```
+
+## Best Practices
+
+### Development Principles
+- **YAGNI**: You Aren't Gonna Need It - avoid over-engineering
+- **KISS**: Keep It Simple, Stupid - prefer simple solutions
+- **DRY**: Don't Repeat Yourself - eliminate code duplication
+
+### Code Quality
+- All code changes go through automated review
+- Comprehensive testing is mandatory
+- Security considerations are built-in
+- Performance optimization is continuous
+
+### Documentation
+- Documentation evolves with code changes
+- API docs are automatically updated
+- Architecture decisions are recorded
+- Codebase summaries are regularly refreshed
+
+### Git Workflow
+- Clean, conventional commit messages
+- Professional git history
+- No AI attribution in commits
+- Focused, atomic commits
+
+## Usage Examples
+
+### Starting a New Feature
 ```bash
-cd backend
-.\.venv\Scripts\python.exe seed_admin.py
+# Research and plan
+claude "I need to implement user authentication with OAuth2"
+# Planner agent creates comprehensive plan
+
+# Follow the plan
+claude "Implement the authentication plan"
+# Implementation follows the detailed plan
+
+# Ensure quality
+claude "Review and test the authentication system"
+# Testing and code review agents validate the implementation
 ```
 
-Creates: email `admin@healthos.local` with a pre-configured password. Script lives at `backend/seed_admin.py`.
-
-### Option A: Docker (recommended)
-
+### Debugging Issues
 ```bash
-docker compose -f infra/docker/docker-compose.dev.yml up -d
+# Investigate problem
+claude "Debug the slow database queries"
+# Debugger agent analyzes logs and performance
+
+# Create solution
+claude "Optimize the identified query performance issues"
+# Implementation follows debugging recommendations
+
+# Validate fix
+claude "Test query performance improvements"
+# Tester agent validates the optimization
 ```
 
-### Option B: Local (each in a separate terminal)
-
+### Project Maintenance
 ```bash
-.\start_infra.bat        # Postgres, Redis, MinIO
-.\start_BE.bat           # FastAPI backend
-.\start_FE.bat           # Next.js frontend
-.\start_ai_worker.bat    # AI worker (optional)
+# Check project health
+claude "What's the current project status?"
+# Project manager provides comprehensive status
+
+# Update documentation
+claude "Sync documentation with recent changes"
+# Docs manager updates all relevant documentation
+
+# Plan next sprint
+claude "Plan the next development phase"
+# Planner creates detailed roadmap for upcoming work
 ```
 
-### Manual (core services only)
+## Advanced Features
 
-```bash
-cd frontend && npm ci && npm run dev
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m alembic upgrade head
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
-```
+### Multi-Project Support
+- Manage multiple repositories simultaneously
+- Shared agent configurations across projects
+- Consistent development patterns
 
-## Local Service URLs
+### Custom Agent Creation
+- Define project-specific agents
+- Extend existing agent capabilities
+- Create domain-specific expertise
 
-| Service | URL |
-|---|---|
-| Frontend + BFF | http://localhost:3000 |
-| Core BE docs | http://localhost:8000/docs |
-| AI Worker docs | http://localhost:8001/docs |
-| Notification health | http://localhost:8002/health |
-| MinIO API / Console | http://localhost:9000 / http://localhost:9001 |
+### Integration Capabilities
+- **Multi-provider notifications** (Telegram, Discord, Slack) with smart throttling
+- GitHub Actions integration
+- CI/CD pipeline enhancement
 
-## Environment (Frontend)
+See `.claude/hooks/notifications/docs/` for setup guides.
 
-Use `infra/env/frontend.env.example` as source of truth.
-The setup script copies it to `frontend/.env.local` automatically:
+## Customization Guide
 
-```bash
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-CORE_API_URL=http://localhost:8000
-NEXT_PUBLIC_CORE_WS_URL=ws://localhost:8000
-ALLOWED_DEV_ORIGINS=localhost,127.0.0.1,healthos-dev.example.com
-```
+### 1. Project Setup
+- Update `CLAUDE.md` with your project specifics
+- Customize plan templates in `plans/templates/`
 
-Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
+### 2. Agent Specialization
+- Add domain-specific knowledge to agents
+- Create custom agents for unique requirements
+- Configure agent interaction patterns
 
-### Public OAuth Testing via Cloudflare Tunnel
+### 3. Workflow Optimization
+- Define project-specific commands
+- Create shortcuts for common tasks
+- Establish team coding standards
 
-- Preferred setup is a stable named Cloudflare tunnel. The BFF now derives OAuth callback origins from forwarded/request headers, so flows started from `https://<stable-tunnel>` return to that same public origin instead of collapsing back to localhost.
-- Keep `OAUTH_GOOGLE_CALLBACK_URL` and `OAUTH_GITHUB_CALLBACK_URL` as fallback values for local development. They are no longer the sole source of truth for callback generation.
-- `ALLOWED_DEV_ORIGINS` entries must be hostnames or wildcard hostnames, not full URLs. Example: `localhost,127.0.0.1,healthos-dev.example.com`.
-- If you temporarily use a rotating `trycloudflare.com` URL, add `*.trycloudflare.com` to `ALLOWED_DEV_ORIGINS` so Next.js accepts `/_next/*` HMR traffic during dev. This only affects Next's dev-origin guard; OAuth providers still require exact callback URLs.
-- Register both localhost and the stable tunnel callback URIs in Google Cloud Console and GitHub OAuth App settings:
-  - `http://localhost:3000/api/v1/auth/oauth/google/callback`
-  - `https://<stable-tunnel>/api/v1/auth/oauth/google/callback`
-  - `http://localhost:3000/api/v1/auth/oauth/github/callback`
-  - `https://<stable-tunnel>/api/v1/auth/oauth/github/callback`
-- Rotating `trycloudflare.com` URLs are still supported only as ad-hoc testing targets. When the hostname changes, update the provider redirect URIs before testing again.
+## Contributing
 
-## How Teammates Should Run the Project
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Follow the agent orchestration workflow
+4. Ensure all tests pass and documentation is updated
+5. Create a Pull Request
 
-1. Clone the repo
-2. Run `.\infra\scripts\setup.ps1` (Windows) or `bash infra/scripts/setup.sh` (Linux/macOS)
-3. Start Docker Desktop
-4. Run `docker compose -f infra/docker/docker-compose.dev.yml up -d`
-5. Open http://localhost:3000
+## License
 
-**Running without Docker:**
-1. Run the setup script (step 2 above)
-2. Ensure Postgres, Redis, MinIO are running locally with ports matching `backend/.env`
-3. Open separate terminals and run: `.\start_infra.bat`, `.\start_BE.bat`, `.\start_FE.bat`
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-**Orchestrated start (`start_ALL.bat`):**
-- `.\start_ALL.bat` picks **Docker** when Docker Desktop is running, otherwise **local** mode (Postgres/Redis/MinIO on the host).
-- Override with `-Mode docker` or `-Mode local` (also supported by `.\start_infra.bat`).
-- Preflight only (no new terminals / no `docker compose up`): `.\start_ALL.bat -CheckOnly`
-- Root `.bat` launchers forward a limited set of extra flags via `cmd` (`%3`–`9`). Typical flags fit; for long custom argument lists, run the matching script under `infra\scripts\` with PowerShell directly.
+## Learn More
 
-**Multi-client testing (extra frontends):**
-- `.\start_client_1.bat` — Next.js on **http://localhost:3001** (logged under `infra/logs/client_*.log`).
-- `.\start_client_2.bat` — Next.js on **http://localhost:3002**.
-- Ensure `ALLOWED_ORIGINS` in `backend/.env` includes the extra origin (scripts print a CORS reminder).
+### Claude Code Resources
+- [Claude Code Documentation](https://claude.ai/code)
 
-**Common issues:**
-- CORS errors → Check `ALLOWED_ORIGINS` in `backend/.env` is a JSON array: `["http://localhost:3000"]`
-- Import errors → Verify Python version matches 3.12 (see `.python-version`)
-- npm errors → Verify Node version matches 20 (see `.nvmrc`)
-- Missing env keys after pull → Run `.\check_env.bat` (see Phase 8 tooling)
-- Stale DB / broken migrations → Run `.\reset_docker.bat` then `.\start_ALL.bat`
-- Services fail to start → Run `.\start_ALL.bat -CheckOnly` and read the reported logs under `infra/logs/`
+### Community
+- [ClaudeKit Community](https://claudekit.cc/discord)
+- [Discussion Forum](https://github.com/anthropic/claude-code/discussions)
+- [Example Projects](https://github.com/topics/claude-code)
 
-## Current Status
+### Support
+- [Issue Tracker](https://github.com/anthropic/claude-code/issues)
+- [Feature Requests](https://github.com/anthropic/claude-code/discussions/categories/ideas)
+- [Documentation](https://docs.claude.ai/code)
 
-**v1.2.2 (Current)**: Data layer refactor, documentation audit, chat E2E review (unreleased).
-**v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
-**v1.2.0**: User accent color customization and theming.
+---
 
-- **Implemented**: Auth (email/OTP/OAuth), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications (`/v1/notifications` + read/read-all + unread-count), AI meal analysis (`/analyze`).
-- **Known gaps / partial**: Password login does not enforce MFA challenge even when `mfa_enabled=true`; JWT decoder does not enforce `iss`/`aud`; notification dispatch service remains stub (`/dispatch` => queued); some UX paths remain TODO.
-
-## CI/CD Pipeline
-
-GitHub Actions workflows (`.github/workflows/`):
-- `ci-smoke.yml` — PR smoke checks for `dev` and `main`
-- `release.yml` — semantic-release on pushes to `main`
-- `release-beta.yml` — semantic-release on pushes to `dev`
-- `branch-protection.yml` — blocks PRs to `main` unless source is `dev` or `hotfix*`
-- `sync-main-to-dev.yml` — merges `main` into `dev` after release commits
-- `sync-dev-after-release.yml` — hard-resets `dev` to `origin/main` after release commits (force push)
-
-**Note:** Release config is dynamic (`.releaserc.cjs`). Verify deployment platform and artifact targets before first production run.
-
-See [Deployment Guide](./docs/deployment-guide.md) for workflow setup, monitoring/checklist gaps, and troubleshooting.
-
-## Git Workflow
-
-- **Base/release branch:** `main` (production releases)
-- **Development branch:** `dev` is expected by CI/protection/release-beta workflows
-- **Feature branches:** `feature/<scope>/<name>`, `fix/<scope>/<name>`, `docs/<name>`
-- **PR targets:** feature/fix → `dev`; release/hotfix flow → `main` (branch protection enforces source)
-- **Commits:** Conventional Commits required (`feat:`, `fix:`, `docs:`, `chore:`, etc.)
-
-## Documentation
-
-- [Project Overview + PDR](./docs/project-overview-pdr.md)
-- [Codebase Summary](./docs/codebase-summary.md)
-- [Code Standards](./docs/code-standards.md)
-- [System Architecture](./docs/system-architecture.md)
-- [Security](./docs/security.md)
-- [Project Changelog](./docs/project-changelog.md)
-- [Project Roadmap](./docs/project-roadmap.md)
-- [Deployment Guide](./docs/deployment-guide.md)
-- [Design Guidelines](./docs/design-guidelines.md)
-- [Folder Convention](./docs/standards/folder-convention.md)
-- [API Conventions](./docs/standards/api-conventions.md)
-- [Git Workflow](./docs/standards/git-workflow.md)
+**Start building with AI-powered development today!** This boilerplate provides everything you need to create professional software with intelligent agent assistance.

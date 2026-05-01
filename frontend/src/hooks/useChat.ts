@@ -663,7 +663,7 @@ export function useMessages(
       const optimisticAssistant: Message = {
         id: optimisticAssistantId,
         conversation_id: convId,
-        sender_id: undefined,
+        sender_id: "",
         sender_display_name: undefined,
         sender_kind: "ai",
         content: "",
