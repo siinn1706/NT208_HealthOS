@@ -73,6 +73,17 @@ const IconGlobe = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M3
 const IconHeartPulse = (p) => <Icon {...p}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/><path d="M3 13h3l2-3 3 6 2-4h4"/></Icon>;
 const IconMore = (p) => <Icon {...p}><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></Icon>;
 
+// Meals / nutrition
+const IconUtensils = (p) => <Icon {...p}><path d="M3 2v7a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V2M6 12v10M14 22V12c0-3 2-6 5-6v16"/></Icon>;
+const IconApple = (p) => <Icon {...p}><path d="M12 7c-3-3-9-1-9 5 0 5 4 10 9 10s9-5 9-10c0-6-6-8-9-5z"/><path d="M12 7c0-2 1-4 3-5"/></Icon>;
+const IconLeaf = (p) => <Icon {...p}><path d="M21 3c-7 0-14 4-14 12 0 3 2 6 6 6 8 0 12-7 12-14V3z"/><path d="M5 21c2-6 6-10 12-12"/></Icon>;
+const IconScan = (p) => <Icon {...p}><path d="M3 7V5a2 2 0 0 1 2-2h2M21 7V5a2 2 0 0 0-2-2h-2M3 17v2a2 2 0 0 0 2 2h2M21 17v2a2 2 0 0 1-2 2h-2M3 12h18"/></Icon>;
+const IconFlash = (p) => <Icon {...p}><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></Icon>;
+const IconBarcode = (p) => <Icon {...p}><path d="M3 5v14M7 5v14M11 5v14M14 5v14M17 5v14M21 5v14"/></Icon>;
+const IconTrendUp = (p) => <Icon {...p}><path d="M3 17l6-6 4 4 8-8M21 7h-5M21 7v5"/></Icon>;
+const IconCookie = (p) => <Icon {...p}><path d="M21 12a9 9 0 1 1-9-9 4 4 0 0 0 4 4 4 4 0 0 0 4 4 4 4 0 0 0 1 1z"/><circle cx="9" cy="11" r="0.8" fill="currentColor"/><circle cx="14" cy="15" r="0.8" fill="currentColor"/><circle cx="9" cy="16" r="0.8" fill="currentColor"/></Icon>;
+const IconBowl = (p) => <Icon {...p}><path d="M2 12h20a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8z"/><path d="M7 8c0-2 2-3 3-2M13 7c1-2 3-1 3 1"/></Icon>;
+
 // Status bar
 const StatusIcons = ({ color = "currentColor" }) => (
   <svg width="66" height="13" viewBox="0 0 66 13" fill="none">
@@ -102,5 +113,6 @@ Object.assign(window, {
   IconDroplet, IconCheck, IconX, IconRefresh, IconAlert,
   IconShield, IconSettings, IconLogOut, IconBadge, IconTarget, IconLock, IconGlobe,
   IconHeartPulse, IconMore,
+  IconUtensils, IconApple, IconLeaf, IconScan, IconFlash, IconBarcode, IconTrendUp, IconCookie, IconBowl,
   StatusIcons,
 });
