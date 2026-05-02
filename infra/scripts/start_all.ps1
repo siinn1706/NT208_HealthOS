@@ -283,7 +283,7 @@ Write-Host "[ALL] Syncing env files..." -ForegroundColor Cyan
 
 try {
     if ($effectiveMode -eq "docker") {
-        Invoke-DockerReadinessValidation -ScriptsRoot $PSScriptRoot -Scope all -CheckOnly:$CheckOnly -ErrorPrefix "[ALL]"
+        Invoke-DockerReadinessValidation -ScriptsRoot $PSScriptRoot -Scope "all" -CheckOnly:$CheckOnly -ErrorPrefix "[ALL]"
         Invoke-DockerComponents -Components $selected
     }
     else {
