@@ -1,7 +1,7 @@
 """B7 P2 — extend appointment_status_enum + create ingredients table + backfill.
 
-Revision ID: 015_b7_appointment_status_and_ingredients
-Revises: 014_b7_notifications_columns_and_indexes
+Revision ID: 015_b7_appt_ingredients
+Revises: 014_b7_notif_cols_idx
 Create Date: 2026-04-19
 
 Two slices:
@@ -23,8 +23,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "015_b7_appointment_status_and_ingredients"
-down_revision: Union[str, None] = "014_b7_notifications_columns_and_indexes"
+revision: str = "015_b7_appt_ingredients"
+down_revision: Union[str, None] = "014_b7_notif_cols_idx"
 branch_labels = None
 depends_on = None
 

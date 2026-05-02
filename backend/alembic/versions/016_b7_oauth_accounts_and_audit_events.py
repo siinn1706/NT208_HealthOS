@@ -1,7 +1,7 @@
 """B7 P3 — oauth_accounts table + extend audit_event_type_enum.
 
 Revision ID: 016_b7_oauth_accounts_and_audit_events
-Revises: 015_b7_appointment_status_and_ingredients
+Revises: 015_b7_appt_ingredients
 Create Date: 2026-04-19
 
 `oauth_accounts` is the substrate for "Settings → Linked Accounts" and for the
@@ -20,7 +20,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision: str = "016_b7_oauth_accounts_and_audit_events"
-down_revision: Union[str, None] = "015_b7_appointment_status_and_ingredients"
+down_revision: Union[str, None] = "015_b7_appt_ingredients"
 branch_labels = None
 depends_on = None
 
