@@ -87,13 +87,14 @@ class ExerciseSuggestionDTO(BaseModel):
     id: str
     type: str          # "tip" | "warning" | "goal" | "success"
     icon: str          # lucide icon name
-    title: str         # i18n key
-    message: str       # i18n key
-    message_params: dict[str, int | float] | None = None
+    title: str         # i18n key OR plain text (when source="ai")
+    message: str       # i18n key OR plain text (when source="ai")
+    message_params: dict[str, int | float | str] | None = None
     priority: int
     duration_minutes: int | None = None
     intensity: str     # "low" | "medium" | "high"
     category: str      # "cardio" | "strength" | "flexibility" | "balance"
+    source: str = "rule"  # "rule" | "ai"
 
 
 class ExerciseSuggestionsResponse(DataResponse[list[ExerciseSuggestionDTO]]):

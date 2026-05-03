@@ -42,11 +42,13 @@ export interface ExerciseSuggestion {
   icon: string;
   title: string;
   message: string;
-  message_params?: Record<string, number>;
+  message_params?: Record<string, number | string>;
   priority: number;
   duration_minutes: number | null;
   intensity: "low" | "medium" | "high";
   category: "cardio" | "strength" | "flexibility" | "balance";
+  /** "ai" = title/message are plain text; "rule" = title/message are i18n keys */
+  source?: "ai" | "rule";
 }
 
 export interface ReminderItem {
