@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import {
   Dumbbell, Clock, Flame, Footprints, Heart, Moon,
   CheckCircle2, AlertTriangle, Lightbulb, Target, Info,
-  ArrowRight, Calendar, BarChart3, Zap, TrendingUp,
+  ArrowRight, Calendar, BarChart3, Zap, TrendingUp, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExerciseSuggestion } from "@/lib/dashboard-data";
@@ -80,12 +80,19 @@ function SuggestionCard({ s, t }: { s: ExerciseSuggestion; t: ReturnType<typeof 
   const cal  = estCal(s);
   const icfg = INTENSITY_CONFIG[s.intensity] ?? INTENSITY_CONFIG.low;
 
-  const title = t.has(`suggestions.${s.id}.title` as never)
-    ? t(`suggestions.${s.id}.title` as never)
-    : s.title;
-  const message = t.has(`suggestions.${s.id}.message` as never)
-    ? t(`suggestions.${s.id}.message` as never, (s.message_params ?? {}) as never)
-    : s.message;
+  // AI-generated suggestions ship plain Vietnamese text in title/message,
+  // rule-based ones ship i18n keys that need translation lookup.
+  const isAi = s.source === "ai";
+  const title = isAi
+    ? s.title
+    : (t.has(`suggestions.${s.id}.title` as never)
+        ? t(`suggestions.${s.id}.title` as never)
+        : s.title);
+  const message = isAi
+    ? s.message
+    : (t.has(`suggestions.${s.id}.message` as never)
+        ? t(`suggestions.${s.id}.message` as never, (s.message_params ?? {}) as never)
+        : s.message);
 
   return (
     <div className={cn(
@@ -108,7 +115,12 @@ function SuggestionCard({ s, t }: { s: ExerciseSuggestion; t: ReturnType<typeof 
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1">
-              <p className="text-[13px] font-semibold text-foreground leading-tight">{title}</p>
+              <p className="text-[13px] font-semibold text-foreground leading-tight flex items-center gap-1">
+                {isAi && (
+                  <Sparkles className="w-3 h-3 text-violet-500 flex-shrink-0" aria-label="AI-generated" />
+                )}
+                {title}
+              </p>
               <span className={cn(
                 "flex-shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full",
                 type.badge,

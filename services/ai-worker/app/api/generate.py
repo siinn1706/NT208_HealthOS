@@ -19,6 +19,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from typing import Any
+
 from app.schemas.chat import ChatReply, ChatRequest, ChatTurn
 from app.services import gemini_chat_service
 from app.services.gemini_chat_service import (
@@ -141,6 +143,57 @@ async def chat_completion_stream(payload: ChatRequest) -> StreamingResponse:
             }) + "\n\n"
 
     return StreamingResponse(event_source(), media_type="text/event-stream")
+
+
+# ── /api/ai/exercise-suggestions ─────────────────────────────────────────────
+
+class ExerciseSuggestionsRequest(BaseModel):
+    user_context: dict[str, Any]
+    count: int = 3
+    locale: str = "vi"
+
+
+class ExerciseSuggestionsResponse(BaseModel):
+    suggestions: list[dict[str, Any]]
+
+
+@router.post("/exercise-suggestions", response_model=ExerciseSuggestionsResponse)
+async def exercise_suggestions(payload: ExerciseSuggestionsRequest) -> ExerciseSuggestionsResponse:
+    """Generate AI-powered exercise suggestions using user health context (RAG)."""
+    try:
+        items = await gemini_chat_service.generate_exercise_suggestions(
+            user_context=payload.user_context,
+            count=payload.count,
+            locale=payload.locale,
+        )
+        return ExerciseSuggestionsResponse(suggestions=items)
+    except GeminiChatUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "AI_UNCONFIGURED", "message": str(exc)},
+        ) from exc
+    except GeminiChatTimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail={"code": "AI_TIMEOUT", "message": str(exc)},
+        ) from exc
+    except GeminiChatBlockedError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "AI_SAFETY_BLOCKED", "message": str(exc)},
+        ) from exc
+    except (ValueError, json.JSONDecodeError) as exc:
+        _LOGGER.warning("exercise_suggestions_parse_failed reason=%s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "AI_PARSE_ERROR", "message": str(exc)},
+        ) from exc
+    except Exception as exc:
+        _LOGGER.exception("exercise_suggestions_failed")
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "AI_UPSTREAM_ERROR", "message": str(exc)},
+        ) from exc
 
 
 # ── /api/ai/generate (legacy adapter) ─────────────────────────────────────────
