@@ -1,5 +1,5 @@
-import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandMarkIcon, brandMarkGlassBadgeSurfaceClassName } from "@/components/shared/auth/primitives";
 
 const SIZE_MAP = {
   sm: "w-8 h-8",
@@ -7,10 +7,10 @@ const SIZE_MAP = {
   lg: "w-12 h-12",
 } as const;
 
-const ICON_MAP = {
-  sm: "w-4 h-4",
-  md: "w-5 h-5",
-  lg: "w-6 h-6",
+const LOGO_MAP = {
+  sm: "w-6 h-6",
+  md: "w-7 h-7",
+  lg: "w-9 h-9",
 } as const;
 
 interface AiChatBadgeProps {
@@ -24,13 +24,13 @@ export function AiChatBadge({ size = "md", className }: AiChatBadgeProps) {
     <div
       aria-label="HealthOS AI"
       className={cn(
-        "rounded-full flex items-center justify-center flex-shrink-0",
-        "bg-gradient-to-br from-[#1965B3] to-[#41BCE6]",
+        "flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full",
+        brandMarkGlassBadgeSurfaceClassName,
         SIZE_MAP[size],
-        className
+        className,
       )}
     >
-      <Bot className={cn("text-white", ICON_MAP[size])} />
+      <BrandMarkIcon className={LOGO_MAP[size]} />
     </div>
   );
 }

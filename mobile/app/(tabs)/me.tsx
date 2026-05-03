@@ -73,7 +73,8 @@ export default function MeScreen() {
       case 'profile':     router.push('/auth/setup'); break;
       case 'devices':     openMissingApi('Connected devices API not yet available'); break;
       case 'emergency':   setEmergencyOpen(true); break;
-      case 'goals':       router.push('/home/today'); break;
+      case 'goals':       router.push('/insights/goals' as never); break;
+      case 'achievements': router.push('/insights/goals/milestones' as never); break;
       case 'security':    openMissingApi('Security settings API not yet available'); break;
       // 'app-lock' toggle is handled inside MenuRow (local state only —
       //  UserPreference has no app_lock field, so we do not persist it)

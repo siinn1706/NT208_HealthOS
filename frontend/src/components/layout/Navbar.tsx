@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Menu, ChevronRight, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { BrandMarkIcon, brandMarkGlassBadgeSurfaceClassName } from "@/components/shared/auth/primitives";
 import { cn } from "@/lib/utils";
 
 const NAV_KEYS = [
@@ -44,13 +45,13 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between md:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-night-700 to-night-400 shadow-md shadow-night-400/30">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
-                <path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
-                  fill="currentColor"
-                />
-              </svg>
+            <div
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg",
+                brandMarkGlassBadgeSurfaceClassName,
+              )}
+            >
+              <BrandMarkIcon className="h-5 w-5" />
             </div>
             <span className="text-xl font-bold text-white">
               Health<span className="bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent">OS</span>
@@ -91,7 +92,7 @@ export function Navbar() {
                 {t("signIn")}
               </Button>
             </Link>
-            <Link href="/plans">
+            <Link href="/register">
               <Button className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter,box-shadow] duration-150 ease-out hover:brightness-110 hover:shadow-night-400/40">
                 {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
@@ -139,7 +140,7 @@ export function Navbar() {
                     {t("signIn")}
                   </Button>
                 </Link>
-                <Link href="/plans" onClick={() => setMobileOpen(false)}>
+                <Link href="/register" onClick={() => setMobileOpen(false)}>
                   <Button className="w-full rounded-full bg-gradient-to-r from-night-700 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter] duration-150 ease-out hover:brightness-110">
                     {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>

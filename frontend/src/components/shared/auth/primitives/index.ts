@@ -1,4 +1,9 @@
-export { AuthShell, type AuthShellProps } from "./AuthShell";
+export {
+  AuthShell,
+  BrandMarkIcon,
+  brandMarkGlassBadgeSurfaceClassName,
+  type AuthShellProps,
+} from "./AuthShell";
 export { AuthBanner, type AuthBannerProps } from "./AuthBanner";
 export { PasswordField, type PasswordFieldProps } from "./PasswordField";
 export { OtpField, type OtpFieldProps } from "./OtpField";

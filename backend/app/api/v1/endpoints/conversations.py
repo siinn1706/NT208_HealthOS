@@ -33,6 +33,7 @@ from app.schemas.chat import (
     ConversationDTO,
     ConversationListResponse,
     ConversationSettingsBody,
+    CreateAiConversationBody,
     CreateDirectConversationBody,
     CreateGroupConversationBody,
     EditMessageBody,
@@ -186,6 +187,28 @@ async def create_group_conversation(
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
     return ConversationResponse(data=await chat_svc._build_conversation_dto(db, conv, current_user.id))
+
+
+@router.post(
+    "/conversations/ai",
+    response_model=ConversationResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+    summary="Create or get current user's AI conversation",
+)
+async def create_ai_conversation(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    body: CreateAiConversationBody | None = None,
+) -> ConversationResponse:
+    dto = await chat_svc.get_or_create_ai_conversation(
+        db=db,
+        user_id=current_user.id,
+        initial_message=(body.initial_message if body else None),
+        presence_map=ws_manager.get_presence_map(),
+    )
+    await db.commit()
+    return ConversationResponse(data=dto)
 
 
 @router.post(

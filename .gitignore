@@ -87,3 +87,5 @@ infra/data/
 /.data
 /.husky
 /backend/.venv
+/_design
+/.codex

@@ -24,6 +24,9 @@ from app.schemas.common import ErrorResponse
 from app.schemas.notifications import (
     MarkAllReadData,
     MarkAllReadResponse,
+    NotificationPreferencesData,
+    NotificationPreferencesResponse,
+    NotificationPreferencesUpdateBody,
     NotificationDTO,
     NotificationListMeta,
     NotificationListResponse,
@@ -118,3 +121,37 @@ async def mark_all_read(
     marked = await notif_svc.mark_all_read(db=db, user_id=current_user.id)
     await db.commit()
     return MarkAllReadResponse(data=MarkAllReadData(marked=marked))
+
+
+@router.get(
+    "/preferences",
+    response_model=NotificationPreferencesResponse,
+    responses={401: {"model": ErrorResponse}},
+    summary="Get notification preferences for current user",
+)
+async def get_notification_preferences(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> NotificationPreferencesResponse:
+    data = await notif_svc.get_preferences(db=db, user_id=current_user.id)
+    return NotificationPreferencesResponse(data=NotificationPreferencesData.model_validate(data))
+
+
+@router.patch(
+    "/preferences",
+    response_model=NotificationPreferencesResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+    summary="Update notification preferences for current user",
+)
+async def update_notification_preferences(
+    body: NotificationPreferencesUpdateBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> NotificationPreferencesResponse:
+    data = await notif_svc.update_preferences(
+        db=db,
+        user_id=current_user.id,
+        patch=body.model_dump(exclude_unset=True),
+    )
+    await db.commit()
+    return NotificationPreferencesResponse(data=NotificationPreferencesData.model_validate(data))

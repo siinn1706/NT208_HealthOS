@@ -6,6 +6,9 @@ import { typography } from '../../theme/typography';
 import { Input } from '../primitives/input/Input';
 import { Button } from '../primitives/Button';
 import { ApiState } from '../api/ApiState';
+import { invalidateApiQuery } from '../../api/query';
+import { queryKeys } from '../../api/queryKeys';
+import { profileService } from '../../api/services';
 
 export function IntakeForm() {
   const t = useTheme();
@@ -22,9 +25,20 @@ export function IntakeForm() {
     if (!form.name.trim()) { setError('Full name is required.'); return; }
     setSaving(true);
     setError(null);
-    await new Promise(r => setTimeout(r, 600));
-    setSaving(false);
-    setDone(true);
+    try {
+      await profileService.updateMe({
+        full_name: form.name.trim(),
+        date_of_birth: form.dob.trim() || null,
+        phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
+      });
+      invalidateApiQuery(queryKeys.profile);
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save intake profile.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (done) {

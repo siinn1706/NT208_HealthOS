@@ -11,12 +11,15 @@ import { PasswordStrengthMeter } from "./password-strength-meter";
 import {
   AuthShell,
   AuthBanner,
+  BrandMarkIcon,
+  brandMarkGlassBadgeSurfaceClassName,
   PasswordField,
   PendingButton,
   FormFieldError,
   useBreachCheck,
 } from "./primitives";
 import { track } from "@/lib/analytics";
+import { cn } from "@/lib/utils";
 
 export function RegisterForm() {
   const t = useTranslations("auth");
@@ -348,8 +351,13 @@ export function RegisterForm() {
       subtitle={t("registerSubtitle")}
       brand={
         <div className="flex items-center justify-center gap-2">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">H</span>
+          <div
+            className={cn(
+              "flex size-8 items-center justify-center rounded-lg",
+              brandMarkGlassBadgeSurfaceClassName,
+            )}
+          >
+            <BrandMarkIcon className="size-5" />
           </div>
           <span className="font-semibold text-foreground">HealthOS</span>
         </div>

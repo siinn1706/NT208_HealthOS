@@ -21,9 +21,9 @@ export function PrescriptionDetailScreen() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const appointmentId = (Array.isArray(id) ? id[0] : id) ?? '';
-  const loadAppointments = useCallback(() => appointmentService.list(), []);
-  const appointments = useApiQuery(queryKeys.appointment(appointmentId), loadAppointments, { enabled: Boolean(appointmentId) });
-  const prescription = appointments.data?.find((appointment) => appointment.id === appointmentId)?.prescription ?? null;
+  const loadAppointment = useCallback(() => appointmentService.detail(appointmentId), [appointmentId]);
+  const appointmentQuery = useApiQuery(queryKeys.appointment(appointmentId), loadAppointment, { enabled: Boolean(appointmentId) });
+  const prescription = appointmentQuery.data?.prescription ?? null;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -35,16 +35,16 @@ export function PrescriptionDetailScreen() {
       </View>
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
-        {appointments.isLoading && <ApiState title="Loading prescription" loading />}
-        {appointments.error && (
+        {appointmentQuery.isLoading && <ApiState title="Loading prescription" loading />}
+        {appointmentQuery.error && (
           <ApiState
             title="Prescription unavailable"
-            message={appointments.error.message}
+            message={appointmentQuery.error.message}
             actionLabel="Retry"
-            onAction={appointments.reload}
+            onAction={appointmentQuery.reload}
           />
         )}
-        {!appointments.isLoading && !appointments.error && !prescription && (
+        {!appointmentQuery.isLoading && !appointmentQuery.error && !prescription && (
           <ApiState title="No prescription found" message="No verified prescription payload is attached to this appointment." />
         )}
 

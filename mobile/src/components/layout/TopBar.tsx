@@ -17,11 +17,11 @@ export function TopBar({ title, subtitle, left, right }: TopBarProps) {
     <View style={styles.row}>
       {left && <View style={styles.side}>{left}</View>}
       <View style={styles.center}>
-        <Text style={[typography.h3, { color: t.ink }]} numberOfLines={1}>
+        <Text style={[typography.topBarTitle, { color: t.ink }]} numberOfLines={1}>
           {title}
         </Text>
         {subtitle && (
-          <Text style={[typography.caption, { color: t.ink3 }]} numberOfLines={1}>
+          <Text style={[typography.topBarSub, { color: t.ink3 }]} numberOfLines={1}>
             {subtitle}
           </Text>
         )}
@@ -35,8 +35,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    minHeight: 52,
+    paddingVertical: 10,
+    minHeight: 56,
   },
   center: { flex: 1 },
   side:   { minWidth: 40 },

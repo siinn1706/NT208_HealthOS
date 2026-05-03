@@ -4,7 +4,8 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 import { Link } from "@/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, HeartPulse } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { BrandMarkIcon, brandMarkGlassBadgeSurfaceClassName } from "@/components/shared/auth/primitives";
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS, type NavLink } from "./nav-config";
 import { useUnreadConversations } from "./use-unread-conversations";
@@ -133,8 +134,13 @@ export function SidebarNavGrouped({
           collapsed && "justify-center px-0",
         )}
       >
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
-          <HeartPulse className="h-5 w-5 text-sidebar-primary-foreground" aria-hidden="true" />
+        <div
+          className={cn(
+            "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg",
+            brandMarkGlassBadgeSurfaceClassName,
+          )}
+        >
+          <BrandMarkIcon className="h-5 w-5" />
         </div>
         {!collapsed && (
           <span className="text-lg font-bold tracking-tight text-sidebar-foreground">HealthOS</span>

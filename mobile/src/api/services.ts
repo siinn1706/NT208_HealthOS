@@ -4,20 +4,33 @@ import type {
   Adherence,
   Appointment,
   AppointmentCreateBody,
+  AppointmentUpdateBody,
   AuthToken,
+  CalorieSummaryPoint,
   Conversation,
   CurrentUser,
+  HealthGoal,
+  HealthReport,
   DashboardSummary,
   DataResponse,
   MedicationDose,
   MedicationPlan,
   MedicationPlanCreateBody,
   MedicationPlanDetail,
+  Meal,
+  MealIngredient,
+  NotificationItem,
+  NotificationListData,
+  NotificationPreferences,
+  NutritionSuggestion,
   Message,
   MessageListResponse,
-  Notification,
   PaginatedResponse,
   Reminder,
+  ReportExportDownload,
+  ReportExportRequest,
+  RiskSummary,
+  TrendAnalysis,
   UserPreference,
   UserProfileUpdate,
   VitalPoint,
@@ -137,9 +150,22 @@ export const appointmentService = {
     return response.data;
   },
 
+  async detail(id: string) {
+    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${id}`);
+    return response.data;
+  },
+
   async create(body: AppointmentCreateBody) {
     const response = await apiRequest<DataResponse<Appointment>>('/v1/appointments', {
       method: 'POST',
+      json: body,
+    });
+    return response.data;
+  },
+
+  async update(id: string, body: AppointmentUpdateBody) {
+    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${id}`, {
+      method: 'PATCH',
       json: body,
     });
     return response.data;
@@ -246,6 +272,14 @@ export const chatService = {
     return response.data;
   },
 
+  async createAiConversation(initialMessage?: string) {
+    const response = await apiRequest<DataResponse<Conversation>>('/v1/conversations/ai', {
+      method: 'POST',
+      json: initialMessage ? { initial_message: initialMessage } : undefined,
+    });
+    return response.data;
+  },
+
   async messages(conversationId: string) {
     const response = await apiRequest<MessageListResponse>(`/v1/conversations/${conversationId}/messages?limit=50`);
     return response.data.slice().reverse();
@@ -265,8 +299,311 @@ export const chatService = {
 };
 
 export const notificationService = {
-  async list() {
-    const response = await apiRequest<DataResponse<Notification[]>>('/v1/notifications');
+  async list(params?: { cursor?: string; per_page?: number; only_unread?: boolean }) {
+    const response = await apiRequest<NotificationListData>(`/v1/notifications${buildQuery({
+      cursor: params?.cursor,
+      per_page: params?.per_page,
+      only_unread: params?.only_unread,
+    })}`);
+    return response;
+  },
+
+  async unreadCount() {
+    const response = await apiRequest<DataResponse<{ unread: number }>>('/v1/notifications/unread-count');
+    return response.data.unread;
+  },
+
+  async markRead(id: string) {
+    const response = await apiRequest<DataResponse<NotificationItem>>(`/v1/notifications/${id}/read`, {
+      method: 'POST',
+    });
+    return response.data;
+  },
+
+  async markAllRead() {
+    const response = await apiRequest<DataResponse<{ marked: number }>>('/v1/notifications/read-all', {
+      method: 'POST',
+    });
+    return response.data.marked;
+  },
+
+  async preferences() {
+    const response = await apiRequest<DataResponse<NotificationPreferences>>('/v1/notifications/preferences');
+    return response.data;
+  },
+
+  async updatePreferences(body: Partial<NotificationPreferences>) {
+    const response = await apiRequest<DataResponse<NotificationPreferences>>('/v1/notifications/preferences', {
+      method: 'PATCH',
+      json: body,
+    });
+    return response.data;
+  },
+};
+
+export const reminderService = {
+  async list(type?: 'medicine' | 'appointment' | 'exercise') {
+    const response = await apiRequest<DataResponse<Reminder[]>>(`/v1/reminders${buildQuery({ type })}`);
+    return response.data;
+  },
+
+  async upcoming() {
+    const response = await apiRequest<DataResponse<Reminder[]>>('/v1/reminders/upcoming');
+    return response.data;
+  },
+
+  async create(body: {
+    type: 'medicine' | 'appointment' | 'exercise';
+    title: string;
+    time: string;
+    repeat?: 'once' | 'daily' | 'weekly' | 'monthly';
+    note?: string;
+    tzid?: string;
+    weekday_mask?: number;
+    day_of_month?: number;
+    start_date?: string;
+    end_date?: string;
+  }) {
+    const response = await apiRequest<DataResponse<Reminder>>('/v1/reminders', {
+      method: 'POST',
+      json: body,
+    });
+    return response.data;
+  },
+
+  async updateDone(reminderId: string, done: boolean) {
+    const response = await apiRequest<DataResponse<Reminder>>(`/v1/reminders/${reminderId}`, {
+      method: 'PATCH',
+      json: { done },
+    });
+    return response.data;
+  },
+
+  async delete(reminderId: string) {
+    return apiRequest<void>(`/v1/reminders/${reminderId}`, { method: 'DELETE' });
+  },
+
+  async occurrences(params: { from?: string; to?: string; today?: boolean; tzid?: string; status?: string } = {}) {
+    const response = await apiRequest<
+      DataResponse<
+        {
+          id: string;
+          reminder_id: string;
+          title: string;
+          type: string;
+          scheduled_at: string;
+          status: string;
+          snoozed_until?: string | null;
+          done_at?: string | null;
+          skipped_at?: string | null;
+        }[]
+      >
+    >(`/v1/reminders/occurrences${buildQuery({
+      from: params.from,
+      to: params.to,
+      today: params.today,
+      tzid: params.tzid,
+      status: params.status,
+    })}`);
+    return response.data;
+  },
+
+  async markDone(reminderId: string, occurrence_id?: string) {
+    const response = await apiRequest<
+      DataResponse<{
+        id: string;
+        reminder_id: string;
+        title: string;
+        type: string;
+        scheduled_at: string;
+        status: string;
+      }>
+    >(`/v1/reminders/${reminderId}/done`, {
+      method: 'POST',
+      json: occurrence_id ? { occurrence_id } : {},
+    });
+    return response.data;
+  },
+
+  async skip(reminderId: string, occurrence_id?: string) {
+    const response = await apiRequest<
+      DataResponse<{
+        id: string;
+        reminder_id: string;
+        title: string;
+        type: string;
+        scheduled_at: string;
+        status: string;
+      }>
+    >(`/v1/reminders/${reminderId}/skip`, {
+      method: 'POST',
+      json: occurrence_id ? { occurrence_id } : {},
+    });
+    return response.data;
+  },
+
+  async snooze(reminderId: string, body: { until?: string; minutes?: number; occurrence_id?: string }) {
+    const response = await apiRequest<
+      DataResponse<{
+        id: string;
+        reminder_id: string;
+        title: string;
+        type: string;
+        scheduled_at: string;
+        status: string;
+        snoozed_until?: string | null;
+      }>
+    >(`/v1/reminders/${reminderId}/snooze`, {
+      method: 'POST',
+      json: body,
+    });
+    return response.data;
+  },
+};
+
+export const visitBriefService = {
+  async create(body: {
+    visit_type?: 'gp_routine' | 'specialist' | 'follow_up' | 'mental_health' | 'urgent_walkin' | 'pediatric_caregiver';
+    title?: string;
+    attach_to_appointment_id?: string;
+  }) {
+    const response = await apiRequest<DataResponse<{ id: string }>>('/v1/visit-briefs', {
+      method: 'POST',
+      json: body,
+    });
+    return response.data;
+  },
+
+  async addSymptom(
+    briefId: string,
+    body: {
+      concern_text: string;
+      concern_category?: 'pain' | 'fever' | 'gi' | 'resp' | 'mental' | 'skin' | 'neuro' | 'cardio' | 'other';
+      severity_0_10?: number;
+      context?: Record<string, unknown>;
+    },
+  ) {
+    const response = await apiRequest<DataResponse<{ id: string }>>(`/v1/visit-briefs/${briefId}/symptoms`, {
+      method: 'POST',
+      json: body,
+    });
+    return response.data;
+  },
+
+  async routeNow(briefId: string) {
+    const response = await apiRequest<DataResponse<{ bucket: string; next_action_copy_key?: string | null }>>(
+      `/v1/visit-briefs/${briefId}/route-now`,
+      { method: 'POST' },
+    );
+    return response.data;
+  },
+};
+
+export const mealService = {
+  async list(params: { page?: number; per_page?: number; date_from?: string; date_to?: string } = {}) {
+    const response = await apiRequest<PaginatedResponse<Meal>>(`/v1/meals${buildQuery({
+      page: params.page,
+      per_page: params.per_page,
+      date_from: params.date_from,
+      date_to: params.date_to,
+    })}`);
+    return response.data;
+  },
+
+  async detail(id: string) {
+    const response = await apiRequest<DataResponse<Meal>>(`/v1/meals/${id}`);
+    return response.data;
+  },
+
+  async update(id: string, body: { name?: string; logged_at?: string }) {
+    const response = await apiRequest<DataResponse<Meal>>(`/v1/meals/${id}`, {
+      method: 'PATCH',
+      json: body,
+    });
+    return response.data;
+  },
+
+  async ingredients(id: string) {
+    const response = await apiRequest<DataResponse<MealIngredient[]>>(`/v1/meals/${id}/ingredients`);
+    return response.data;
+  },
+
+  async caloriesSummary(date_from: string, date_to: string) {
+    const response = await apiRequest<DataResponse<CalorieSummaryPoint[]>>(`/v1/meals/calories-summary${buildQuery({
+      date_from,
+      date_to,
+    })}`);
+    return response.data;
+  },
+};
+
+export const nutritionService = {
+  async suggestions() {
+    const response = await apiRequest<DataResponse<NutritionSuggestion[]>>('/v1/nutrition/suggestions');
+    return response.data;
+  },
+};
+
+export const reportService = {
+  async get(period: '7d' | '30d' | '90d' = '7d') {
+    const response = await apiRequest<DataResponse<HealthReport>>(`/v1/reports${buildQuery({ period })}`);
+    return response.data;
+  },
+
+  async trends(metric: string, period: '7d' | '30d' | '90d' = '7d') {
+    const response = await apiRequest<DataResponse<TrendAnalysis>>(`/v1/reports/trends${buildQuery({ metric, period })}`);
+    return response.data;
+  },
+
+  async requestPdf(body: {
+    period: '7d' | '30d' | '90d';
+    sections: string[];
+    locale?: 'en' | 'vi';
+    include_sensitive?: boolean;
+  }) {
+    const response = await apiRequest<DataResponse<ReportExportRequest>>('/v1/reports/export-pdf', {
+      method: 'POST',
+      json: body,
+    });
+    return response.data;
+  },
+
+  async pdfStatus(requestId: string) {
+    const response = await apiRequest<DataResponse<ReportExportRequest>>(`/v1/reports/export-pdf/${requestId}`);
+    return response.data;
+  },
+
+  async pdfDownload(requestId: string) {
+    const response = await apiRequest<DataResponse<ReportExportDownload>>(`/v1/reports/export-pdf/${requestId}/download`);
+    return response.data;
+  },
+};
+
+export const riskService = {
+  async summary() {
+    const response = await apiRequest<DataResponse<RiskSummary>>('/v1/health/risk-predictions');
+    return response.data;
+  },
+
+  async refresh() {
+    const response = await apiRequest<DataResponse<RiskSummary>>('/v1/health/risk-predictions', {
+      method: 'POST',
+    });
+    return response.data;
+  },
+};
+
+export const healthGoalService = {
+  async current() {
+    const response = await apiRequest<DataResponse<HealthGoal | null>>('/v1/health-goals');
+    return response.data;
+  },
+
+  async upsert(body: { target_weight_kg: number; deadline?: string | null }) {
+    const response = await apiRequest<DataResponse<HealthGoal>>('/v1/health-goals', {
+      method: 'POST',
+      json: body,
+    });
     return response.data;
   },
 };

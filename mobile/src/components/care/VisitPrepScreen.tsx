@@ -28,8 +28,8 @@ const CHECKLIST_ITEMS = [
 
 export function VisitPrepScreen() {
   const t = useTheme();
-  const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
-  const apptId = (Array.isArray(appointmentId) ? appointmentId[0] : appointmentId) ?? '';
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
   const [checked, setChecked] = useState<boolean[]>(CHECKLIST_ITEMS.map(() => false));
 
   function toggleItem(index: number) {
@@ -39,9 +39,9 @@ export function VisitPrepScreen() {
   const completedCount = checked.filter(Boolean).length;
   const progress = completedCount / CHECKLIST_ITEMS.length;
 
-  const loadAppointments = useCallback(() => appointmentService.list(), []);
-  const appointments = useApiQuery(queryKeys.appointment(apptId), loadAppointments, { enabled: Boolean(apptId) });
-  const appointment = apptId ? (appointments.data?.find((item) => item.id === apptId) ?? null) : null;
+  const loadAppointment = useCallback(() => appointmentService.detail(apptId), [apptId]);
+  const appointmentQuery = useApiQuery(queryKeys.appointment(apptId), loadAppointment, { enabled: Boolean(apptId) });
+  const appointment = apptId ? (appointmentQuery.data ?? null) : null;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -78,13 +78,13 @@ export function VisitPrepScreen() {
         </LinearGradient>
 
         {/* Appointment context */}
-        {apptId && appointments.isLoading && <ApiState title="Loading appointment" loading />}
-        {apptId && appointments.error && (
+        {apptId && appointmentQuery.isLoading && <ApiState title="Loading appointment" loading />}
+        {apptId && appointmentQuery.error && (
           <ApiState
             title="Appointment unavailable"
-            message={appointments.error.message}
+            message={appointmentQuery.error.message}
             actionLabel="Retry"
-            onAction={appointments.reload}
+            onAction={appointmentQuery.reload}
           />
         )}
         {appointment && (

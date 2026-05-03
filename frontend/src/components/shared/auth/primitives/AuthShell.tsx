@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -10,6 +11,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+/** Frosted-glass surface for HealthOS logo badges only — do not reuse for user avatars. */
+export const brandMarkGlassBadgeSurfaceClassName =
+  "backdrop-blur-xl bg-gradient-to-br from-white/95 via-[#E8F8FD]/85 to-[#B8F0FA]/75 border border-[#B8F0FA]/60 shadow-[0_12px_32px_rgba(65,188,230,0.22),inset_0_1px_0_rgba(255,255,255,0.78)] dark:from-white/12 dark:via-night-700/45 dark:to-night-400/25 dark:border-night-300/20 dark:shadow-[0_12px_32px_rgba(65,188,230,0.18),inset_0_1px_0_rgba(255,255,255,0.14)]";
 
 export interface AuthShellProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   title: React.ReactNode;
@@ -23,14 +28,30 @@ export interface AuthShellProps extends Omit<React.HTMLAttributes<HTMLDivElement
   cardClassName?: string;
 }
 
+export function BrandMarkIcon({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/logo.svg"
+      alt=""
+      width={48}
+      height={48}
+      aria-hidden="true"
+      className={cn("object-contain", className)}
+    />
+  );
+}
+
 function DefaultBrand() {
   return (
     <div className="flex items-center gap-2">
       <div
         aria-hidden="true"
-        className="size-8 rounded-lg bg-primary flex items-center justify-center"
+        className={cn(
+          "flex size-8 items-center justify-center rounded-lg",
+          brandMarkGlassBadgeSurfaceClassName,
+        )}
       >
-        <span className="text-primary-foreground font-bold text-sm">H</span>
+        <BrandMarkIcon className="size-5" />
       </div>
       <span className="font-semibold text-foreground">HealthOS</span>
     </div>

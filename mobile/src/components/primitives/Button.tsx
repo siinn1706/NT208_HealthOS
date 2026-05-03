@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, ActivityIndicator, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
+import type { ThemeTokens } from '../../theme/tokens';
 
 export type ButtonVariant = 'solid' | 'ghost' | 'soft';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -17,8 +18,13 @@ interface ButtonProps {
   loading?: boolean;
 }
 
+/** Touch targets aligned to 8pt-ish grid; horizontal padding tracks theme `space`. */
 const HEIGHT: Record<ButtonSize, number> = { sm: 36, md: 48, lg: 56 };
-const H_PAD:  Record<ButtonSize, number> = { sm: 12, md: 16, lg: 20 };
+
+function horizontalPad(t: ThemeTokens, size: ButtonSize): number {
+  const map: Record<ButtonSize, keyof typeof t.space> = { sm: 3, md: 5, lg: 7 };
+  return t.space[map[size]];
+}
 
 export function Button({
   label,
@@ -51,7 +57,7 @@ export function Button({
           backgroundColor: bg,
           borderRadius: t.radius.pill,
           height: HEIGHT[size],
-          paddingHorizontal: H_PAD[size],
+          paddingHorizontal: horizontalPad(t, size),
         },
         border && { borderWidth: 1, borderColor: border },
         pressed && !isDisabled && styles.pressed,
@@ -64,7 +70,7 @@ export function Button({
       ) : (
         <>
           {icon && <>{icon}</>}
-          <Text style={[typography.button, { color: text, marginLeft: icon ? 6 : 0 }]}>
+          <Text style={[typography.button, { color: text, marginLeft: icon ? t.space[2] : 0 }]}>
             {label}
           </Text>
         </>

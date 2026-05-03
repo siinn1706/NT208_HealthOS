@@ -11,6 +11,8 @@ import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { chatService } from '../../api/services';
 import { useTabBounce } from '../../animations/usePressSpring';
+import { typography } from '../../theme/typography';
+import { TAB_BAR_CONTENT_HEIGHT } from './tab-bar-metrics';
 
 const TAB_ICONS = [
   { key: 'home',  Icon: Home,          label: 'Home'  },
@@ -54,7 +56,7 @@ function TabItem({
           </View>
         )}
       </Animated.View>
-      <Text style={[styles.label, { color }]}>{label}</Text>
+      <Text style={[typography.tabLabel, styles.label, { color }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -62,7 +64,7 @@ function TabItem({
 export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const height = 56 + insets.bottom;
+  const height = TAB_BAR_CONTENT_HEIGHT + insets.bottom;
 
   const conversations = useApiQuery(queryKeys.conversations, chatService.conversations);
   const chatBadge = conversations.data
@@ -72,7 +74,7 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View style={[styles.container, { height, borderTopColor: t.border }]}>
       <BlurView
-        intensity={40}
+        intensity={48}
         tint="default"
         style={[StyleSheet.absoluteFill, { backgroundColor: `${t.bgElev}EB` }]}
       />
@@ -103,7 +105,7 @@ const styles = StyleSheet.create({
   tabs:     { flex: 1, flexDirection: 'row', paddingTop: 6 },
   tabItem:  { flex: 1, alignItems: 'center' },
   iconWrap: { position: 'relative' },
-  label:    { fontSize: 10, marginTop: 2, fontWeight: '500' },
+  label:    { marginTop: 2 },
   badge: {
     position: 'absolute',
     top: -4,

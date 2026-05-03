@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/layout/Screen';
 import { TopBar } from '../../src/components/layout/TopBar';
@@ -12,7 +12,7 @@ import { AdherenceHero } from '../../src/components/meds/AdherenceHero';
 import { RefillAlertCard } from '../../src/components/meds/RefillAlertCard';
 import { DoseRow } from '../../src/components/meds/DoseRow';
 import { MedCard } from '../../src/components/meds/MedCard';
-import { IconRefresh, IconPlus } from '../../src/icons';
+import { IconRefresh, IconPlus, IconBell, ChevronRight } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
 import { useApiQuery, invalidateApiQuery } from '../../src/api/query';
@@ -124,6 +124,16 @@ export default function MedsScreen() {
         />
       ))}
 
+      <SectionHeader title="Reminders" />
+      <Pressable
+        onPress={() => router.push('/reminders' as never)}
+        style={[styles.remindersRow, { backgroundColor: t.card, borderColor: t.border }]}
+      >
+        <IconBell size={20} color={t.brand} />
+        <Text style={[typography.bodyMed, { color: t.ink, flex: 1, marginLeft: 12 }]}>Medication reminders</Text>
+        <ChevronRight size={18} color={t.ink3} />
+      </Pressable>
+
       <Text style={[typography.micro, { color: t.ink4, textAlign: 'center', marginTop: 16 }]}>
         Not a substitute for medical advice. Always follow your doctor's instructions.
       </Text>
@@ -132,5 +142,6 @@ export default function MedsScreen() {
 }
 
 const styles = StyleSheet.create({
-  actions: { flexDirection: 'row', gap: 4 },
+  actions:      { flexDirection: 'row', gap: 4 },
+  remindersRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
 });

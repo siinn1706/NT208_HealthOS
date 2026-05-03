@@ -15,7 +15,7 @@ import {
   IconCalendar, IconClock, IconMapPin, IconVideo,
   IconPaperclip, IconCheck, ChevronRight, IconMore,
 } from '../../icons';
-import { useApiQuery } from '../../api/query';
+import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { formatDate, formatTime } from '../../api/viewModels';
@@ -25,9 +25,9 @@ export function AppointmentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const appointmentId = (Array.isArray(id) ? id[0] : id) ?? '';
 
-  const loadAppointments = useCallback(() => appointmentService.list(), []);
-  const appointments = useApiQuery(queryKeys.appointment(appointmentId), loadAppointments, { enabled: Boolean(appointmentId) });
-  const appointment = appointments.data?.find((item) => item.id === appointmentId) ?? null;
+  const loadAppointment = useCallback(() => appointmentService.detail(appointmentId), [appointmentId]);
+  const appointmentQuery = useApiQuery(queryKeys.appointment(appointmentId), loadAppointment, { enabled: Boolean(appointmentId) });
+  const appointment = appointmentQuery.data;
 
   // More menu sheet state
   const [moreOpen, setMoreOpen] = useState(false);
@@ -46,6 +46,8 @@ export function AppointmentDetailScreen() {
     setCancelError(null);
     try {
       await appointmentService.updateStatus(appointment.id, 'cancelled');
+      invalidateApiQuery(queryKeys.appointments);
+      invalidateApiQuery(queryKeys.appointment(appointment.id));
       setCancelOpen(false);
       router.back();
     } catch (err) {
@@ -82,19 +84,19 @@ export function AppointmentDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {appointments.isLoading && <ApiState title="Loading appointment" loading />}
-        {appointments.error && (
+        {appointmentQuery.isLoading && <ApiState title="Loading appointment" loading />}
+        {appointmentQuery.error && (
           <ApiState
             title="Appointment unavailable"
-            message={appointments.error.message}
+            message={appointmentQuery.error.message}
             actionLabel="Retry"
-            onAction={appointments.reload}
+            onAction={appointmentQuery.reload}
           />
         )}
-        {!appointments.isLoading && !appointments.error && !appointment && (
+        {!appointmentQuery.isLoading && !appointmentQuery.error && !appointment && (
           <ApiState
             title="Appointment not found"
-            message="The backend does not expose a single-appointment endpoint yet, so this screen can only resolve records from the appointment list."
+            message="No appointment found for this id."
           />
         )}
 
@@ -219,7 +221,7 @@ export function AppointmentDetailScreen() {
       <Modal visible={rescheduleOpen} transparent animationType="slide" onRequestClose={() => setRescheduleOpen(false)}>
         <Pressable style={s.backdrop} onPress={() => setRescheduleOpen(false)} />
         <View style={[s.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
-          <MissingApiState title="Reschedule appointment API not available yet." contract="reschedule endpoint not implemented" />
+          <MissingApiState title="Reschedule UI pending date/time picker" contract="PATCH /v1/appointments/{id} is available" />
           <Button label="Close" variant="soft" onPress={() => setRescheduleOpen(false)} style={{ marginTop: 8 }} />
         </View>
       </Modal>

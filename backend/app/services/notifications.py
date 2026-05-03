@@ -22,13 +22,49 @@ from typing import Optional
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.core import Notification, NotificationKindEnum
+from app.models.core import Notification, NotificationKindEnum, UserPreference
 
 logger = logging.getLogger(__name__)
 
 
 MAX_PER_PAGE = 50
 DEFAULT_PER_PAGE = 20
+
+_DEFAULT_NOTIFICATION_PREFERENCES = {
+    "enabled": True,
+    "categories": {
+        "med": True,
+        "appt": True,
+        "vitals": True,
+        "activity": True,
+        "goal": True,
+    },
+    "channels": {
+        "push": True,
+        "sound": True,
+        "haptics": False,
+    },
+    "quiet_hours": {"start": "22:00", "end": "07:00"},
+    "critical_bypass": False,
+    "snooze_options": [5, 10, 30],
+}
+
+def _coerce_snooze_options(value: object | None) -> list[int]:
+    raw = value if isinstance(value, list) else _DEFAULT_NOTIFICATION_PREFERENCES["snooze_options"]
+    out: list[int] = []
+    seen: set[int] = set()
+    for item in raw:
+        if isinstance(item, bool):
+            continue
+        try:
+            minutes = int(item)
+        except (TypeError, ValueError):
+            continue
+        if minutes < 1 or minutes > 24 * 60 or minutes in seen:
+            continue
+        seen.add(minutes)
+        out.append(minutes)
+    return out or list(_DEFAULT_NOTIFICATION_PREFERENCES["snooze_options"])
 
 
 def _encode_cursor(created_at: datetime.datetime, notif_id: uuid.UUID) -> str:
@@ -195,3 +231,89 @@ async def enqueue(
     if commit:
         await db.commit()
     return notif
+
+
+def _normalized_preferences(value: object | None) -> dict:
+    if not isinstance(value, dict):
+        return dict(_DEFAULT_NOTIFICATION_PREFERENCES)
+
+    categories = value.get("categories")
+    if not isinstance(categories, dict):
+        categories = dict(_DEFAULT_NOTIFICATION_PREFERENCES["categories"])
+    channels = value.get("channels")
+    if not isinstance(channels, dict):
+        channels = dict(_DEFAULT_NOTIFICATION_PREFERENCES["channels"])
+    quiet_hours = value.get("quiet_hours")
+    if not isinstance(quiet_hours, dict):
+        quiet_hours = dict(_DEFAULT_NOTIFICATION_PREFERENCES["quiet_hours"])
+
+    return {
+        "enabled": bool(value.get("enabled", _DEFAULT_NOTIFICATION_PREFERENCES["enabled"])),
+        "categories": {
+            "med": bool(categories.get("med", True)),
+            "appt": bool(categories.get("appt", True)),
+            "vitals": bool(categories.get("vitals", True)),
+            "activity": bool(categories.get("activity", True)),
+            "goal": bool(categories.get("goal", True)),
+        },
+        "channels": {
+            "push": bool(channels.get("push", True)),
+            "sound": bool(channels.get("sound", True)),
+            "haptics": bool(channels.get("haptics", False)),
+        },
+        "quiet_hours": {
+            "start": str(quiet_hours.get("start", "22:00")),
+            "end": str(quiet_hours.get("end", "07:00")),
+        },
+        "critical_bypass": bool(value.get("critical_bypass", False)),
+        "snooze_options": _coerce_snooze_options(value.get("snooze_options")),
+    }
+
+
+async def get_preferences(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> dict:
+    row = (
+        await db.execute(select(UserPreference).where(UserPreference.user_id == user_id))
+    ).scalar_one_or_none()
+    if row is None:
+        return dict(_DEFAULT_NOTIFICATION_PREFERENCES)
+    appearance = row.appearance if isinstance(row.appearance, dict) else {}
+    return _normalized_preferences(appearance.get("notification_preferences"))
+
+
+async def update_preferences(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    patch: dict,
+) -> dict:
+    row = (
+        await db.execute(select(UserPreference).where(UserPreference.user_id == user_id))
+    ).scalar_one_or_none()
+    if row is None:
+        row = UserPreference(user_id=user_id)
+        db.add(row)
+        await db.flush()
+
+    appearance = row.appearance if isinstance(row.appearance, dict) else {}
+    current = _normalized_preferences(appearance.get("notification_preferences"))
+
+    next_data = dict(current)
+    if "enabled" in patch:
+        next_data["enabled"] = bool(patch["enabled"])
+    if "categories" in patch and isinstance(patch["categories"], dict):
+        next_data["categories"] = {**next_data["categories"], **patch["categories"]}
+    if "channels" in patch and isinstance(patch["channels"], dict):
+        next_data["channels"] = {**next_data["channels"], **patch["channels"]}
+    if "quiet_hours" in patch and isinstance(patch["quiet_hours"], dict):
+        next_data["quiet_hours"] = {**next_data["quiet_hours"], **patch["quiet_hours"]}
+    if "critical_bypass" in patch:
+        next_data["critical_bypass"] = bool(patch["critical_bypass"])
+    if "snooze_options" in patch and isinstance(patch["snooze_options"], list):
+        next_data["snooze_options"] = _coerce_snooze_options(patch["snooze_options"])
+
+    appearance["notification_preferences"] = _normalized_preferences(next_data)
+    row.appearance = appearance
+    await db.flush()
+    return _normalized_preferences(appearance["notification_preferences"])

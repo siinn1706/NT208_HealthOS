@@ -143,6 +143,10 @@ class CreateGroupConversationBody(BaseModel):
     avatar_url: str | None = None
 
 
+class CreateAiConversationBody(BaseModel):
+    initial_message: str | None = Field(default=None, min_length=1, max_length=4096)
+
+
 class SendMessageBody(BaseModel):
     content: str = Field(..., min_length=1, max_length=4096)
     content_type: MessageContentType = "text"

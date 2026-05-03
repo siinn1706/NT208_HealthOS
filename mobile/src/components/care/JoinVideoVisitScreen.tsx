@@ -36,8 +36,8 @@ function formatTimer(s: number) {
 }
 
 export function JoinVideoVisitScreen() {
-  const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
-  const apptId = (Array.isArray(appointmentId) ? appointmentId[0] : appointmentId) ?? '';
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
   const [elapsed, setElapsed] = useState(0);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
@@ -48,9 +48,9 @@ export function JoinVideoVisitScreen() {
     return () => clearInterval(id);
   }, []);
 
-  const loadAppointments = useCallback(() => appointmentService.list(), []);
-  const appointments = useApiQuery(queryKeys.appointment(apptId), loadAppointments, { enabled: Boolean(apptId) });
-  const appointment = appointments.data?.find((a) => a.id === apptId) ?? null;
+  const loadAppointment = useCallback(() => appointmentService.detail(apptId), [apptId]);
+  const appointmentQuery = useApiQuery(queryKeys.appointment(apptId), loadAppointment, { enabled: Boolean(apptId) });
+  const appointment = appointmentQuery.data ?? null;
   const doctorName = appointment?.doctor_name ?? 'Doctor';
 
   return (
