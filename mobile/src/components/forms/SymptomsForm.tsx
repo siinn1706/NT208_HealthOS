@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/Button';
 import { ApiState } from '../api/ApiState';
+import { visitBriefService } from '../../api/services';
 
 const SYMPTOM_OPTIONS = [
   'Headache', 'Fever', 'Cough', 'Fatigue', 'Nausea',
@@ -18,6 +19,7 @@ export function SymptomsForm() {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [triageBucket, setTriageBucket] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function toggleSymptom(s: string) {
@@ -28,9 +30,28 @@ export function SymptomsForm() {
     if (selected.length === 0) { setError('Select at least one symptom.'); return; }
     setSaving(true);
     setError(null);
-    await new Promise(r => setTimeout(r, 600));
-    setSaving(false);
-    setDone(true);
+    try {
+      const brief = await visitBriefService.create({
+        visit_type: severity >= 7 ? 'urgent_walkin' : 'gp_routine',
+        title: 'Mobile symptom intake',
+      });
+      const topSymptoms = selected.slice(0, 5);
+      for (const symptom of topSymptoms) {
+        await visitBriefService.addSymptom(brief.id, {
+          concern_text: symptom,
+          concern_category: inferConcernCategory(symptom),
+          severity_0_10: severity,
+          context: notes.trim() ? { notes: notes.trim() } : undefined,
+        });
+      }
+      const triage = await visitBriefService.routeNow(brief.id);
+      setTriageBucket(triage.bucket);
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not submit symptoms.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (done) {
@@ -40,6 +61,11 @@ export function SymptomsForm() {
         <Text style={[typography.caption, { color: t.ink3, marginTop: 6, textAlign: 'center' }]}>
           Your symptom report has been recorded.
         </Text>
+        {triageBucket && (
+          <Text style={[typography.caption, { color: t.ink3, marginTop: 6, textAlign: 'center' }]}>
+            Triage: {triageBucket.replace(/_/g, ' ')}
+          </Text>
+        )}
         <Button label="Done" variant="solid" onPress={() => router.back()} style={{ marginTop: 20 }} />
       </View>
     );
@@ -115,6 +141,15 @@ export function SymptomsForm() {
       <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
     </ScrollView>
   );
+}
+
+function inferConcernCategory(symptom: string): 'pain' | 'fever' | 'resp' | 'mental' | 'other' {
+  const value = symptom.toLowerCase();
+  if (value.includes('fever')) return 'fever';
+  if (value.includes('cough') || value.includes('shortness of breath') || value.includes('sore throat')) return 'resp';
+  if (value.includes('pain') || value.includes('headache') || value.includes('back')) return 'pain';
+  if (value.includes('fatigue') || value.includes('dizziness')) return 'mental';
+  return 'other';
 }
 
 const s = StyleSheet.create({

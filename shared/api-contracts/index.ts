@@ -105,9 +105,13 @@ export interface Reminder {
   id: string;
   title: string;
   type: string;
+  time?: string | null;
+  repeat?: string | null;
+  note?: string | null;
   due_at?: string | null;
   next_occurrence_at?: string | null;
   done?: boolean;
+  medication_plan_id?: string | null;
 }
 
 export type AppointmentStatus =
@@ -154,6 +158,15 @@ export interface Appointment {
 export interface AppointmentCreateBody {
   appointment_date: string;
   doctor_name: string;
+  specialty?: string | null;
+  clinic?: string | null;
+  reason?: string | null;
+  notes?: string | null;
+}
+
+export interface AppointmentUpdateBody {
+  appointment_date?: string;
+  doctor_name?: string;
   specialty?: string | null;
   clinic?: string | null;
   reason?: string | null;
@@ -308,4 +321,133 @@ export interface Notification {
   body: string;
   read: boolean;
   created_at: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  kind: string;
+  reference_id: string | null;
+  link: string | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationListMeta {
+  next_cursor: string | null;
+  has_more: boolean;
+  per_page: number;
+}
+
+export interface NotificationListData {
+  data: NotificationItem[];
+  meta: NotificationListMeta;
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  categories: {
+    med: boolean;
+    appt: boolean;
+    vitals: boolean;
+    activity: boolean;
+    goal: boolean;
+  };
+  channels: {
+    push: boolean;
+    sound: boolean;
+    haptics: boolean;
+  };
+  quiet_hours: {
+    start: string;
+    end: string;
+  };
+  critical_bypass: boolean;
+  snooze_options: number[];
+}
+
+export interface MealNutritionResult {
+  dish_name: string | null;
+  serving_type: string | null;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  saturates_g: number | null;
+  sugar_g: number | null;
+  salt_g: number | null;
+  confidence: number | null;
+  source: string | null;
+}
+
+export interface Meal {
+  id: string;
+  name: string;
+  image_url: string | null;
+  job_id: string | null;
+  status: string;
+  nutrition_result: MealNutritionResult | null;
+  logged_at: string;
+  created_at: string;
+}
+
+export interface MealIngredient {
+  name: string;
+  grams: number;
+  kcal: number;
+  carbs_g: number;
+  protein_g: number;
+  fat_g: number;
+}
+
+export interface NutritionSuggestion {
+  id: string;
+  type: string;
+  icon: string;
+  title: string;
+  message: string;
+  message_params?: Record<string, number> | null;
+  priority: number;
+  cta?: { label: string; href: string } | null;
+}
+
+export interface CalorieSummaryPoint {
+  date: string;
+  total_calories: number;
+}
+
+export type HealthReport = Record<string, unknown>;
+export type TrendAnalysis = Record<string, unknown>;
+export type RiskSummary = Record<string, unknown>;
+
+export interface HealthGoal {
+  id: string;
+  user_id: string;
+  target_weight_kg: number | null;
+  deadline: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportExportRequest {
+  id: string;
+  status: string;
+  period: string;
+  sections: string[];
+  locale: string;
+  include_sensitive: boolean;
+  requested_at: string;
+  completed_at: string | null;
+  expires_at: string | null;
+  bytes: number | null;
+  error: string | null;
+}
+
+export interface ReportExportDownload {
+  url: string;
+  expires_in_s: number;
+  bytes: number;
+  expires_at: string;
 }

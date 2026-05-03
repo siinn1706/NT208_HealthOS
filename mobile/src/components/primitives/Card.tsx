@@ -15,8 +15,14 @@ export function Card({ children, tight, style }: CardProps) {
     <View
       style={[
         styles.card,
-        { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg },
-        tight && styles.tight,
+        {
+          padding: tight ? t.space[3] : t.space[5],
+          borderWidth: StyleSheet.hairlineWidth,
+          backgroundColor: t.card,
+          borderColor: t.border,
+          borderRadius: t.radius.lg,
+          ...t.shadows.card,
+        },
         style,
       ]}
     >
@@ -26,6 +32,5 @@ export function Card({ children, tight, style }: CardProps) {
 }
 
 const styles = StyleSheet.create({
-  card:  { padding: 16, borderWidth: StyleSheet.hairlineWidth },
-  tight: { padding: 12 },
+  card:  {},
 });

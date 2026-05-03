@@ -49,6 +49,7 @@
     "@semantic-release/release-notes-generator": "^12.1.0",
     "conventional-changelog-conventionalcommits": "^7.0.2",
     "husky": "^8.0.3",
+    "playwright": "^1.59.1",
     "semantic-release": "^22.0.12"
   },
   "engines": {

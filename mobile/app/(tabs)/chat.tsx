@@ -11,7 +11,7 @@ import { ConversationRow } from '../../src/components/chat/ConversationRow';
 import { IconSearch, IconPlus } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { router } from 'expo-router';
-import { useApiQuery } from '../../src/api/query';
+import { invalidateApiQuery, useApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toConversationRow } from '../../src/api/viewModels';
@@ -38,8 +38,8 @@ export default function ChatScreen() {
   // New chat modal state
   const [newChatOpen, setNewChatOpen] = useState(false);
 
-  // AI suggestion missing-API modal state
-  const [suggestionMissingOpen, setSuggestionMissingOpen] = useState(false);
+  const [creatingAi, setCreatingAi] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const allRows = (conversations.data ?? []).map((c) => toConversationRow(c, user?.id));
   const filteredRows = searchOpen && searchText.trim()
@@ -48,12 +48,27 @@ export default function ChatScreen() {
       )
     : allRows;
 
-  function handleSuggestionPress(text: string) {
+  async function openAiConversation(initialMessage?: string) {
     if (aiConversation) {
       router.push(`/chat/${aiConversation.id}` as never);
-    } else {
-      setSuggestionMissingOpen(true);
+      return;
     }
+    if (creatingAi) return;
+    setCreatingAi(true);
+    setAiError(null);
+    try {
+      const created = await chatService.createAiConversation(initialMessage);
+      invalidateApiQuery(queryKeys.conversations);
+      router.push(`/chat/${created.id}` as never);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Could not open AI conversation.');
+    } finally {
+      setCreatingAi(false);
+    }
+  }
+
+  function handleSuggestionPress(text: string) {
+    openAiConversation(text);
   }
 
   return (
@@ -99,18 +114,17 @@ export default function ChatScreen() {
 
       <AiAssistantHero
         suggestions={AI_SUGGESTIONS}
-        onPress={() => {
-          if (aiConversation) router.push(`/chat/${aiConversation.id}` as never);
-        }}
-        onSuggestion={() => {
-          if (aiConversation) router.push(`/chat/${aiConversation.id}` as never);
-        }}
+        onPress={() => openAiConversation()}
+        onSuggestion={(text) => openAiConversation(text)}
         onSuggestionPress={handleSuggestionPress}
       />
-      {!aiConversation && !conversations.isLoading && (
-        <MissingApiState
-          title="AI conversation not available"
-          contract="existing API needs adaptation"
+      {creatingAi && <ApiState title="Starting AI conversation" loading />}
+      {aiError && (
+        <ApiState
+          title="AI conversation unavailable"
+          message={aiError}
+          actionLabel="Retry"
+          onAction={() => openAiConversation()}
         />
       )}
 
@@ -152,29 +166,6 @@ export default function ChatScreen() {
             />
             <Pressable
               onPress={() => setNewChatOpen(false)}
-              style={[styles.closeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
-            >
-              <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* AI suggestion unavailable modal */}
-      <Modal
-        visible={suggestionMissingOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSuggestionMissingOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <MissingApiState
-              title="AI conversation not available"
-              contract="existing API needs adaptation"
-            />
-            <Pressable
-              onPress={() => setSuggestionMissingOpen(false)}
               style={[styles.closeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
             >
               <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>

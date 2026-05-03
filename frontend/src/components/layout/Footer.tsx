@@ -2,6 +2,8 @@
 
 import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
+import { BrandMarkIcon, brandMarkGlassBadgeSurfaceClassName } from "@/components/shared/auth/primitives";
+import { cn } from "@/lib/utils";
 
 export function Footer() {
   const t = useTranslations("footer");
@@ -24,13 +26,13 @@ export function Footer() {
 
       {/* Logo mark */}
       <div className="flex justify-center pb-8 pt-16">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-night-700/20 to-night-400/20 shadow-inner border border-night-400/20">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-night-700 dark:text-night-300">
-            <path
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
-              fill="currentColor"
-            />
-          </svg>
+        <div
+          className={cn(
+            "flex h-16 w-16 items-center justify-center rounded-2xl",
+            brandMarkGlassBadgeSurfaceClassName,
+          )}
+        >
+          <BrandMarkIcon className="h-8 w-8" />
         </div>
       </div>
 

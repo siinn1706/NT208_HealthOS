@@ -9,6 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.core import Meal, MealStatusEnum
 
 
+def _safe_float(value: object) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return number if number >= 0 else 0.0
+
+
 def _apply_meal_date_filters(
     stmt: Select[tuple[Meal]],
     date_from: datetime.date | None,
@@ -87,6 +95,76 @@ async def get_meal_by_id(
 ) -> Meal | None:
     stmt = select(Meal).where(Meal.id == meal_id, Meal.user_id == user_id)
     return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def update_meal(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    meal_id: uuid.UUID,
+    *,
+    name: str | None = None,
+    logged_at: datetime.datetime | None = None,
+) -> Meal | None:
+    meal = await get_meal_by_id(db, user_id, meal_id)
+    if meal is None:
+        return None
+    if name is not None:
+        meal.name = name.strip()
+    if logged_at is not None:
+        meal.logged_at = logged_at
+    await db.flush()
+    return meal
+
+
+async def get_meal_ingredients(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    meal_id: uuid.UUID,
+) -> list[dict] | None:
+    meal = await get_meal_by_id(db, user_id, meal_id)
+    if meal is None:
+        return None
+
+    nutrition = meal.nutrition_result if isinstance(meal.nutrition_result, dict) else {}
+    rows: list[dict] = []
+
+    raw_items = nutrition.get("ingredients")
+    if isinstance(raw_items, list):
+        for item in raw_items:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("ingredient_name") or item.get("name") or "").strip()
+            if not name:
+                continue
+            rows.append(
+                {
+                    "name": name,
+                    "grams": _safe_float(item.get("grams")),
+                    "kcal": _safe_float(item.get("calories") or item.get("kcal")),
+                    "carbs_g": _safe_float(item.get("carbs_g")),
+                    "protein_g": _safe_float(item.get("protein_g")),
+                    "fat_g": _safe_float(item.get("fat_g")),
+                }
+            )
+    if rows:
+        return rows
+
+    calories = _safe_float(nutrition.get("calories"))
+    carbs = _safe_float(nutrition.get("carbs_g"))
+    protein = _safe_float(nutrition.get("protein_g"))
+    fat = _safe_float(nutrition.get("fat_g"))
+    if calories or carbs or protein or fat:
+        rows.append(
+            {
+                "name": str(nutrition.get("dish_name") or meal.name),
+                "grams": 100.0,
+                "kcal": calories,
+                "carbs_g": carbs,
+                "protein_g": protein,
+                "fat_g": fat,
+            }
+        )
+    return rows
 
 
 async def update_meal_result(

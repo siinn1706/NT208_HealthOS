@@ -25,10 +25,10 @@ import { useSession } from '../../src/auth/SessionProvider';
 import type { DashboardSummary, Reminder, VitalPoint } from '../../../shared/api-contracts';
 
 const quickActions = [
-  { id: 'meal', label: 'Meal', icon: 'IconCoffee', route: '/forms/intake' },
+  { id: 'meal', label: 'Meal', icon: 'IconCoffee', route: '/meals' },
   { id: 'vitals', label: 'Vitals', icon: 'IconActivity', route: '/home/vitals' },
   { id: 'ai', label: 'AI', icon: 'IconSparkle', route: '/(tabs)/chat' },
-  { id: 'sos', label: 'SOS', icon: 'IconHeartPulse', route: '/(tabs)/me' },
+  { id: 'insights', label: 'Insights', icon: 'IconTrendUp', route: '/insights' },
 ];
 
 export default function HomeScreen() {
@@ -108,7 +108,7 @@ export default function HomeScreen() {
 
           <SectionHeader title="AI Insight" />
           {model.aiInsight ? (
-            <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/home/today')} />
+            <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/insights' as never)} />
           ) : (
             <ApiState title="No AI insight yet" message="Insights appear after enough health signals are available." />
           )}

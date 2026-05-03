@@ -7,6 +7,9 @@ import { Input } from '../primitives/input/Input';
 import { Button } from '../primitives/Button';
 import { ApiState } from '../api/ApiState';
 import { IconCamera, IconPaperclip } from '../../icons';
+import { invalidateApiQuery } from '../../api/query';
+import { queryKeys } from '../../api/queryKeys';
+import { profileService } from '../../api/services';
 
 const PROVIDERS = ['Bảo Hiểm Y Tế (BHYT)', 'AIA', 'Manulife', 'Prudential', 'Other'];
 
@@ -26,9 +29,28 @@ export function InsuranceForm() {
     if (!policyNum.trim()) { setError('Policy number is required.'); return; }
     setSaving(true);
     setError(null);
-    await new Promise(r => setTimeout(r, 600));
-    setSaving(false);
-    setDone(true);
+    try {
+      const current = await profileService.me();
+      const existingMedical = (current.medical_info ?? {}) as Record<string, unknown>;
+      await profileService.updateMe({
+        medical_info: {
+          ...existingMedical,
+          insurance: {
+            provider,
+            policy_number: policyNum.trim(),
+            group_number: groupNum.trim() || null,
+            card_front_uploaded: frontUploaded,
+            card_back_uploaded: backUploaded,
+          },
+        },
+      });
+      invalidateApiQuery(queryKeys.profile);
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save insurance details.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (done) {

@@ -50,6 +50,15 @@ class AppointmentCreateBody(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
+class AppointmentUpdateBody(BaseModel):
+    appointment_date: datetime.datetime | None = None
+    doctor_name: str | None = Field(default=None, min_length=1, max_length=255)
+    specialty: str | None = Field(default=None, max_length=128)
+    clinic: str | None = Field(default=None, max_length=255)
+    reason: str | None = Field(default=None, max_length=512)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
 class AppointmentStatusUpdateBody(BaseModel):
     status: str = Field(
         pattern=r"^(booked|scheduled|upcoming|in_progress|completed|cancelled|no_show|rescheduled)$",

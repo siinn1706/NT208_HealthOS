@@ -205,7 +205,8 @@ export const profileMenuGroups = [
       { id: 'profile', label: 'Health profile', icon: 'IconUser', type: 'nav' as const },
       { id: 'devices', label: 'Connected devices', icon: 'IconActivity', type: 'nav' as const },
       { id: 'emergency', label: 'Emergency info', icon: 'IconHeartPulse', type: 'nav' as const },
-      { id: 'goals', label: 'Goals', icon: 'IconTarget', type: 'nav' as const },
+      { id: 'goals', label: 'Goals & Streaks', icon: 'IconTarget', type: 'nav' as const },
+      { id: 'achievements', label: 'Achievements', icon: 'IconBadge', type: 'nav' as const },
     ],
   },
   {

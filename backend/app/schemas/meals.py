@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import DataResponse, PaginatedResponse
 
@@ -35,9 +35,27 @@ class MealResponse(BaseModel):
     created_at: datetime.datetime
 
 
+class MealUpdateBody(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    logged_at: datetime.datetime | None = None
+
+
+class MealIngredientItem(BaseModel):
+    name: str
+    grams: float = Field(ge=0)
+    kcal: float = Field(ge=0)
+    carbs_g: float = Field(ge=0)
+    protein_g: float = Field(ge=0)
+    fat_g: float = Field(ge=0)
+
+
 class MealDataResponse(DataResponse[MealResponse]):
     ...
 
 
 class MealListResponse(PaginatedResponse[MealResponse]):
+    ...
+
+
+class MealIngredientListResponse(DataResponse[list[MealIngredientItem]]):
     ...
