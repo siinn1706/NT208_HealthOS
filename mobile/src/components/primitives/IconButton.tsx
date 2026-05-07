@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
-export type IconButtonVariant = 'filled' | 'ghost';
+export type IconButtonVariant = 'filled' | 'ghost' | 'subtle';
 
 interface IconButtonProps {
   icon: React.ReactNode;
@@ -24,7 +24,10 @@ export function IconButton({
   disabled = false,
 }: IconButtonProps) {
   const t = useTheme();
-  const bg = variant === 'filled' ? t.brandSoft : 'transparent';
+  const bg = variant === 'filled' ? t.brandSoft : variant === 'subtle' ? t.card : 'transparent';
+  const borderStyle = variant === 'subtle'
+    ? { borderWidth: StyleSheet.hairlineWidth, borderColor: t.border }
+    : {};
 
   return (
     <Pressable
@@ -35,7 +38,7 @@ export function IconButton({
       hitSlop={8}
       style={({ pressed }) => [
         styles.btn,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: bg },
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: bg, ...borderStyle },
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
       ]}

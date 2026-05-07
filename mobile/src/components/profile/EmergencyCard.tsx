@@ -1,14 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { IconHeartPulse } from '../../icons';
-import { Button } from '../primitives/Button';
+import { IconHeartPulse, ChevronRight } from '../../icons';
 
 interface EmergencyCardProps {
   onPress?: () => void;
-  /** Called when the Share button is tapped. If omitted, falls back to onPress. */
   onShare?: () => void;
 }
 
@@ -16,29 +14,33 @@ export function EmergencyCard({ onPress, onShare }: EmergencyCardProps) {
   const t = useTheme();
 
   return (
-    <LinearGradient
-      colors={['#E54D4D', '#C73C3C']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.card, { borderRadius: t.radius.xl }]}
-    >
-      <View style={styles.row}>
-        <IconHeartPulse size={24} color="#FFF" />
-        <View style={styles.text}>
-          <Text style={[typography.bodyMed, styles.white]}>Emergency Info</Text>
-          <Text style={[typography.caption, styles.dim]}>Share vitals & allergies instantly</Text>
+    <Pressable onPress={onShare ?? onPress} style={({ pressed }) => pressed && { opacity: 0.85 }}>
+      <LinearGradient
+        colors={[t.danger, '#C73C3C']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.card, { borderRadius: t.radius.xl }]}
+      >
+        <View style={styles.row}>
+          <View style={[styles.iconTile, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: t.radius.md }]}>
+            <IconHeartPulse size={24} color="#FFF" />
+          </View>
+          <View style={styles.text}>
+            <Text style={[typography.bodyMed, styles.white, { fontSize: 16, fontWeight: '700' }]}>Emergency card</Text>
+            <Text style={[typography.caption, { color: 'rgba(255,255,255,0.80)', fontSize: 13, fontWeight: '500' }]}>Share vitals & allergies instantly</Text>
+          </View>
+          <ChevronRight size={18} color="#FFF" />
         </View>
-        <Button label="Share" variant="solid" onPress={onShare ?? onPress} style={styles.btn} />
-      </View>
-    </LinearGradient>
+      </LinearGradient>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card:  { padding: 16, marginVertical: 8 },
-  row:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  text:  { flex: 1 },
-  white: { color: '#FFF' },
-  dim:   { color: 'rgba(255,255,255,0.75)' },
-  btn:   { backgroundColor: 'rgba(255,255,255,0.2)' },
+  card:     { padding: 16, marginVertical: 8 },
+  row:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconTile: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  text:     { flex: 1 },
+  white:    { color: '#FFF' },
+  dim:      { color: 'rgba(255,255,255,0.75)' },
 });

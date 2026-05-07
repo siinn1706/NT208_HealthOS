@@ -26,14 +26,16 @@ export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardPro
     >
       <View style={styles.inner}>
         <View style={styles.text}>
-          <Text style={[typography.caption, styles.label]}>Today's health</Text>
-          <Text style={[typography.display, styles.score]}>{value}</Text>
+          <Text style={[typography.caption, styles.label]}>TODAY'S HEALTH</Text>
+          <Text style={[typography.display, styles.score]}>
+            {value}<Text style={styles.scoreTarget}>/{target}</Text>
+          </Text>
           <Text style={[typography.caption, styles.copy]}>{copy}</Text>
         </View>
         <ProgressRing
           value={ratio}
-          size={74}
-          stroke={7}
+          size={84}
+          stroke={8}
           color="#FFFFFF"
           track="rgba(255,255,255,0.2)"
         >
@@ -53,7 +55,8 @@ const styles = StyleSheet.create({
   card:  { marginVertical: 8 },
   inner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
   text:  { flex: 1 },
-  label: { color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+  label: { color: 'rgba(255,255,255,0.75)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.6 },
   score: { color: '#FFFFFF', marginBottom: 4 },
+  scoreTarget: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
   copy:  { color: 'rgba(255,255,255,0.85)' },
 });

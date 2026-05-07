@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Chip, type ChipVariant } from '../primitives/Chip';
+import type { ChipVariant } from '../primitives/Chip';
 import { PressableCard } from '../primitives/PressableCard';
 
 interface AptRowProps {
@@ -13,11 +13,11 @@ interface AptRowProps {
   specialty: string;
   location: string;
   type: string;
-  badge: { label: string; variant: ChipVariant };
+  badge?: { label: string; variant: ChipVariant };
   onPress?: () => void;
 }
 
-export function AptRow({ dayLabel, date, time, doctor, specialty, location, type, badge, onPress }: AptRowProps) {
+export function AptRow({ dayLabel, date, time, doctor, specialty, location, type, onPress }: AptRowProps) {
   const t = useTheme();
 
   return (
@@ -28,10 +28,9 @@ export function AptRow({ dayLabel, date, time, doctor, specialty, location, type
       </View>
       <View style={styles.meta}>
         <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{doctor}</Text>
-        <Text style={[typography.caption, { color: t.ink3 }]} numberOfLines={1}>{specialty} · {time}</Text>
-        <Text style={[typography.caption, { color: t.ink4 }]} numberOfLines={1}>{location}</Text>
+        <Text style={[typography.caption, { color: t.ink3 }]} numberOfLines={1}>{specialty} · {type}</Text>
+        <Text style={[typography.caption, { color: t.ink4 }]} numberOfLines={1}>{time} · {location}</Text>
       </View>
-      <Chip label={badge.label} variant={badge.variant} />
     </PressableCard>
   );
 }

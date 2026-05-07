@@ -26,14 +26,14 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggesti
         style={[styles.card, { borderRadius: t.radius.xl, borderColor: t.border }]}
       >
         <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: t.brand, borderRadius: t.radius.md }]}>
-            <IconRobot size={24} color="#FFF" />
+          <View style={[styles.avatar, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
+            <IconRobot size={24} color={t.brand} />
           </View>
           <View style={styles.info}>
             <Text style={[typography.bodyMed, { color: t.ink }]}>HealthOS AI</Text>
             <View style={styles.online}>
               <View style={[styles.dot, { backgroundColor: t.success }]} />
-              <Text style={[typography.micro, { color: t.success }]}>Online</Text>
+              <Text style={[typography.micro, { color: t.ink3 }]}>Ready to help · Always private</Text>
             </View>
           </View>
         </View>
@@ -41,7 +41,7 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggesti
           {suggestions.map((s) => (
             <Pressable
               key={s}
-              onPress={() => { onSuggestionPress?.(s); onSuggestion?.(s); }}
+              onPress={() => { onSuggestionPress ? onSuggestionPress(s) : onSuggestion?.(s); }}
               style={[styles.chip, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.pill }]}
             >
               <Text style={[typography.micro, { color: t.brand }]}>{s}</Text>

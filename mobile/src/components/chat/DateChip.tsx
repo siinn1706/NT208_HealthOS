@@ -16,5 +16,5 @@ export function DateChip({ label }: { label: string }) {
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', marginVertical: 12 },
-  chip: { paddingHorizontal: 12, paddingVertical: 4 },
+  chip: { paddingHorizontal: 16, paddingVertical: 8 },
 });

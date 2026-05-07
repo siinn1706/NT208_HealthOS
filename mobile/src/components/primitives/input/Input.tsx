@@ -9,14 +9,19 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { AlertTriangle, Check } from 'lucide-react-native';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
   error?: string;
+  helper?: string;
+  valid?: boolean;
   leadingIcon?: React.ReactNode;
   trailingIcon?: React.ReactNode;
+  trailingText?: string;
+  onTrailingPress?: () => void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }
@@ -24,8 +29,12 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
 export function Input({
   label,
   error,
+  helper,
+  valid,
   leadingIcon,
   trailingIcon,
+  trailingText,
+  onTrailingPress,
   disabled,
   style,
   ...rest
@@ -39,6 +48,8 @@ export function Input({
     : focused
     ? t.brand
     : t.border;
+
+  const accessLabel = rest.accessibilityLabel ?? label;
 
   return (
     <View style={[styles.wrapper, style]}>
@@ -55,7 +66,7 @@ export function Input({
             borderColor,
             borderRadius: t.radius.md,
             backgroundColor: disabled ? t.bgElev : t.card,
-            borderWidth: focused ? 1.5 : 1,
+            borderWidth: focused || !!error ? 1.5 : 1,
           },
         ]}
       >
@@ -67,29 +78,56 @@ export function Input({
           onFocus={(e) => { setFocused(true); rest.onFocus?.(e); }}
           onBlur={(e) => { setFocused(false); rest.onBlur?.(e); }}
           placeholderTextColor={t.ink4}
+          accessibilityLabel={accessLabel}
+          accessibilityState={{ disabled: !!disabled, selected: focused }}
+          accessibilityHint={error ?? helper}
           style={[
             typography.body,
             styles.input,
             { color: disabled ? t.ink4 : t.ink },
           ]}
         />
-        {trailingIcon && <View style={styles.iconRight}>{trailingIcon}</View>}
+        {trailingText ? (
+          <Pressable
+            onPress={onTrailingPress}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={trailingText}
+            style={styles.trailingTextWrap}
+          >
+            <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>
+              {trailingText}
+            </Text>
+          </Pressable>
+        ) : valid && !error ? (
+          <View style={styles.iconRight}>
+            <Check size={16} color={t.success} />
+          </View>
+        ) : trailingIcon ? (
+          <View style={styles.iconRight}>{trailingIcon}</View>
+        ) : null}
       </Pressable>
-      {error && (
-        <Text style={[typography.caption, styles.errorText, { color: t.danger }]}>
-          {error}
-        </Text>
-      )}
+      {error ? (
+        <View style={styles.helperRow}>
+          <AlertTriangle size={13} color={t.danger} style={styles.helperIcon} />
+          <Text style={[typography.caption, { color: t.danger }]}>{error}</Text>
+        </View>
+      ) : helper ? (
+        <Text style={[typography.caption, styles.helperText, { color: t.ink3 }]}>{helper}</Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper:   { gap: 4 },
-  label:     { marginBottom: 2 },
-  row:       { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
-  iconLeft:  { paddingLeft: 12 },
-  iconRight: { paddingRight: 12 },
-  input:     { flex: 1, height: 48, paddingHorizontal: 12 },
-  errorText: { marginTop: 2 },
+  wrapper:          { gap: 4 },
+  label:            { marginBottom: 2 },
+  row:              { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  iconLeft:         { paddingLeft: 12 },
+  iconRight:        { paddingRight: 12 },
+  trailingTextWrap: { paddingRight: 14, paddingVertical: 4 },
+  input:            { flex: 1, height: 48, paddingHorizontal: 12 },
+  helperRow:        { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  helperIcon:       { marginTop: 1 },
+  helperText:       { marginTop: 4 },
 });

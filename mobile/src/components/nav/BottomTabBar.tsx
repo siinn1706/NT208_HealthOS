@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  tabs:     { flex: 1, flexDirection: 'row', paddingTop: 6 },
+  tabs:     { flex: 1, flexDirection: 'row', paddingTop: 8 },
   tabItem:  { flex: 1, alignItems: 'center' },
   iconWrap: { position: 'relative' },
   label:    { marginTop: 2 },

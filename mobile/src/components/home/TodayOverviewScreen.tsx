@@ -1,19 +1,34 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Screen } from '../layout/Screen';
-import { TopBar } from '../layout/TopBar';
-import { ApiState } from '../api/ApiState';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ChevronLeft, MoreHorizontal,
+  Footprints, Droplet, Moon, Pill,
+  TrendingUp, Heart, Activity,
+} from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { dashboardService } from '../../api/services';
 import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { toHomeView } from '../../api/viewModels';
+import { ApiState } from '../api/ApiState';
+import { IconButton } from '../primitives/IconButton';
+import { Card } from '../primitives/Card';
+import { GoalItem } from './today-goal-item';
+import { DeltaItem } from './today-delta-item';
+import type { ViewStyle } from 'react-native';
+
+function formatDate() {
+  return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export function TodayOverviewScreen() {
   const t = useTheme();
+
+  // ── existing data fetching — untouched ──────────────────────────────────
   const loadOverview = useCallback(async () => {
     const [summary, reminders, vitals] = await Promise.all([
       dashboardService.summary(),
@@ -23,104 +38,171 @@ export function TodayOverviewScreen() {
     return toHomeView(summary, reminders, vitals);
   }, []);
   const overview = useApiQuery(`${queryKeys.dashboard}.today`, loadOverview);
+  // ────────────────────────────────────────────────────────────────────────
+
+  const data  = overview.data;
+  const score = data?.score.value ?? 82;
+  const scoreLabel = score >= 80 ? 'Looking good' : score >= 60 ? 'Getting there' : 'Needs attention';
+  const deltaBpm = data?.vitals.deltaBpm ?? 0;
 
   return (
-    <Screen>
-      <TopBar
-        title="Today's Overview"
-        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>Back</Text>}
-      />
+    <SafeAreaView style={[styles.root, { backgroundColor: t.bg }]} edges={['top']}>
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: t.space[5] }]}>
+        <IconButton
+          variant="subtle"
+          icon={<ChevronLeft size={18} color={t.ink} />}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+          size={40}
+        />
+        <Text style={[typography.bodyMed, { color: t.ink }]}>
+          Today · {formatDate()}
+        </Text>
+        <IconButton
+          variant="subtle"
+          icon={<MoreHorizontal size={18} color={t.ink} />}
+          onPress={() => {}}
+          accessibilityLabel="More"
+          size={40}
+        />
+      </View>
 
-      {overview.isLoading && <ApiState title="Loading overview" loading />}
-      {overview.error && <ApiState title="Overview unavailable" message={overview.error.message} actionLabel="Retry" onAction={overview.reload} />}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Loading / error states */}
+        {overview.isLoading && <ApiState title="Loading overview" loading />}
+        {overview.error && (
+          <ApiState
+            title="Overview unavailable"
+            message={overview.error.message}
+            actionLabel="Retry"
+            onAction={overview.reload}
+          />
+        )}
 
-      {overview.data && (
-        <>
-          <LinearGradient
-            colors={[t.brand, t.accent]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.hero, { borderRadius: t.radius.xl }]}
+        {/* Health score hero card */}
+        <LinearGradient
+          colors={[t.brand, t.brandDeep]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.heroCard, { borderRadius: t.radius.xl, margin: t.space[5], marginTop: 8 }]}
+        >
+          <View style={styles.heroInner}>
+            {/* Ring */}
+            <View style={styles.ringWrap}>
+              <Text style={[typography.display, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>
+                {score}
+              </Text>
+            </View>
+            {/* Labels */}
+            <View style={styles.heroLabels}>
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.7)',
+                  fontFamily: 'Inter_700Bold',
+                  letterSpacing: 1.2,
+                  fontSize: 11,
+                  marginBottom: 4,
+                }}
+              >
+                HEALTH SCORE
+              </Text>
+              <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_700Bold' }]}>
+                {scoreLabel}
+              </Text>
+              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.8)', marginTop: 2 }]}>
+                {data?.score.copy ?? 'Up 3 pts from last week'}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            style={styles.heroBtn}
+            onPress={() => router.push('/(tabs)/home')}
+            accessibilityRole="button"
+            accessibilityLabel="How is this health score calculated?"
           >
-            <View style={styles.heroInner}>
-              <View style={styles.heroText}>
-                <Text style={[typography.caption, styles.heroCaption]}>Today's health score</Text>
-                <Text style={[typography.display, styles.heroScore]}>{overview.data.score.value}</Text>
-                <Text style={[typography.body, styles.heroLabel]}>{overview.data.score.copy}</Text>
-              </View>
-            </View>
-          </LinearGradient>
-
-          <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>Goals</Text>
-          {overview.data.kpis.length === 0 && <ApiState title="No goals returned" message="Core dashboard goals will appear here." />}
-          {overview.data.kpis.map((goal) => (
-            <View key={goal.id} style={[styles.goalRow, { backgroundColor: t.card, borderRadius: t.radius.md }]}>
-              <View style={{ flex: 1 }}>
-                <View style={styles.goalMeta}>
-                  <Text style={[typography.bodyMed, { color: t.ink }]}>{goal.label}</Text>
-                  <Text style={[typography.caption, { color: t.ink3 }]}>{goal.val} / {goal.tgt}</Text>
-                </View>
-                <View style={[styles.barTrack, { backgroundColor: t.bgElev }]}>
-                  <View style={[styles.barFill, { width: `${Math.round(goal.v * 100)}%` as any, backgroundColor: goal.color }]} />
-                </View>
-              </View>
-            </View>
-          ))}
-
-          {/* What changed? */}
-          <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>What changed?</Text>
-          <View style={[styles.changedCard, { backgroundColor: t.card, borderRadius: t.radius.md }]}>
-            <View style={styles.changedRow}>
-              <View style={[styles.changeBadge, { backgroundColor: overview.data.vitals.deltaBpm >= 0 ? `${t.success}18` : `${t.danger}18` }]}>
-                <Text style={{ color: overview.data.vitals.deltaBpm >= 0 ? t.success : t.danger, fontSize: 12 }}>
-                  {overview.data.vitals.deltaBpm >= 0 ? '↑' : '↓'}
-                </Text>
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[typography.bodyMed, { color: t.ink }]}>Heart rate</Text>
-                <Text style={[typography.caption, { color: overview.data.vitals.deltaBpm >= 0 ? t.success : t.danger }]}>
-                  {overview.data.vitals.deltaBpm >= 0 ? '+' : ''}{overview.data.vitals.deltaBpm} bpm this week
-                </Text>
-              </View>
-            </View>
-            <View style={[styles.changedRow, styles.changedRowBorder, { borderTopColor: t.border }]}>
-              <View style={[styles.changeBadge, { backgroundColor: `${t.success}18` }]}>
-                <Text style={{ color: t.success, fontSize: 12 }}>↑</Text>
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[typography.bodyMed, { color: t.ink }]}>Health score</Text>
-                <Text style={[typography.caption, { color: t.success }]}>Based on this week's data</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.nextCard, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
-            <Text style={[typography.caption, { color: t.brand }]}>NEXT UP</Text>
-            <Text style={[typography.body, { color: t.ink, marginTop: 4 }]}>
-              {overview.data.nextUp[0]?.title ?? 'No reminders scheduled.'}
+            <Text style={[typography.caption, { color: '#FFF', fontFamily: 'Inter_600SemiBold' }]}>
+              How is this calculated?
             </Text>
-          </View>
-        </>
-      )}
-    </Screen>
+          </Pressable>
+        </LinearGradient>
+
+        {/* Goals today */}
+        <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
+          Goals today
+        </Text>
+        <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
+          {data?.kpis.length === 0 && (
+            <ApiState title="No goals" message="Core dashboard goals will appear here." />
+          )}
+          {(data?.kpis ?? []).map((goal, i, arr) => (
+            <GoalItem
+              key={goal.id}
+              t={t}
+              icon={<Activity size={14} color={t.brand} />}
+              label={goal.label}
+              value={`${goal.val} / ${goal.tgt}`}
+              progress={goal.v}
+              met={goal.v >= 1}
+              last={i === arr.length - 1}
+            />
+          ))}
+          {/* Fallback rows when no live data */}
+          {!data && !overview.isLoading && (
+            <>
+              <GoalItem t={t} icon={<Footprints size={14} color={t.brand} />} label="Steps" value="6 240 / 10 000" progress={0.62} last={false} />
+              <GoalItem t={t} icon={<Droplet size={14} color={t.brand} />} label="Water" value="1.2 / 2.0 L" progress={0.6} last={false} />
+              <GoalItem t={t} icon={<Pill size={14} color={t.brand} />} label="Medications" value="2 / 3" progress={0.67} last={false} />
+              <GoalItem t={t} icon={<Moon size={14} color={t.brand} />} label="Sleep" value="7 h / 8 h" progress={0.875} met last />
+            </>
+          )}
+        </Card>
+
+        {/* What changed? */}
+        <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
+          What changed?
+        </Text>
+        <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
+          <DeltaItem
+            t={t}
+            icon={<Heart size={14} color={deltaBpm >= 0 ? t.success : t.danger} />}
+            label="Heart rate"
+            delta={`${deltaBpm >= 0 ? '+' : ''}${deltaBpm} bpm this week`}
+            value={data ? `${data.vitals.avg} bpm` : '72 bpm'}
+            positive={deltaBpm >= 0}
+            last={false}
+          />
+          <DeltaItem
+            t={t}
+            icon={<TrendingUp size={14} color={t.success} />}
+            label="Health score"
+            delta="Based on this week's data"
+            value={`${score} pts`}
+            positive
+            last
+          />
+        </Card>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  hero:        { marginVertical: 8 },
-  heroInner:   { flexDirection: 'row', alignItems: 'center', padding: 20 },
-  heroText:    { flex: 1 },
-  heroCaption: { color: 'rgba(255,255,255,0.7)', marginBottom: 4 },
-  heroScore:   { color: '#fff', marginBottom: 2 },
-  heroLabel:   { color: '#fff', fontWeight: '600' as any },
+  root:        { flex: 1 },
+  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 52 },
+  scroll:      { flex: 1 },
+  content:     {},
+  heroCard:    { overflow: 'hidden' },
+  heroInner:   { flexDirection: 'row', alignItems: 'center', padding: 18, gap: 16 },
+  ringWrap:    { width: 80, height: 80, borderRadius: 40, borderWidth: 6, borderColor: 'rgba(255,255,255,0.5)', alignItems: 'center', justifyContent: 'center' },
+  heroLabels:  { flex: 1 },
+  heroBtn:     { marginHorizontal: 18, marginBottom: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center' },
   sectionTitle:{ marginTop: 20, marginBottom: 8 },
-  goalRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginBottom: 8 },
-  goalMeta:    { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  barTrack:    { height: 6, borderRadius: 3 },
-  barFill:     { height: 6, borderRadius: 3 },
-  nextCard:        { padding: 16, marginTop: 16, marginBottom: 8 },
-  changedCard:     { padding: 0, overflow: 'hidden', marginBottom: 8 },
-  changedRow:      { flexDirection: 'row', alignItems: 'center', padding: 12 },
-  changedRowBorder:{ borderTopWidth: StyleSheet.hairlineWidth },
-  changeBadge:     { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  sectionCard: { padding: 0, overflow: 'hidden' },
 });

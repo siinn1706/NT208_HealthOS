@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Chip } from '../primitives/Chip';
 import { Button } from '../primitives/Button';
-import { IconVideo, IconMore } from '../../icons';
+import { IconVideo, IconMore, IconClock } from '../../icons';
 
 interface HeroAppointmentCardProps {
   countdown: string;
@@ -26,21 +26,26 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
       end={{ x: 1, y: 1 }}
       style={[styles.card, { borderRadius: t.radius.xl }]}
     >
-      <Chip label={countdown} variant="brand" />
+      <Chip label={countdown} variant="brand" icon={<IconClock size={11} color={t.brand} />} />
       <Text style={[typography.title, styles.doctor]}>{doctor}</Text>
-      <Text style={[typography.caption, styles.sub]}>{specialty}</Text>
+      <Text style={[typography.caption, styles.sub]}>{specialty} · {type}</Text>
       <Text style={[typography.caption, styles.sub]}>{location}</Text>
       <View style={styles.actions}>
         <Button
-          label="Join call"
+          label="Join"
           variant="solid"
-          icon={<IconVideo size={16} color="#FFF" />}
+          icon={<IconVideo size={16} color={t.brand} />}
           onPress={onJoin}
-          style={StyleSheet.flatten([styles.joinBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }])}
+          labelColor={t.brand}
+          style={StyleSheet.flatten([styles.joinBtn, { backgroundColor: '#FFFFFF' }])}
         />
-        <View style={[styles.moreBtn, { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: t.radius.pill }]}>
+        <Pressable
+          onPress={onJoin}
+          style={[styles.moreBtn, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: t.radius.pill }]}
+          accessibilityLabel="More options"
+        >
           <IconMore size={18} color="#FFF" />
-        </View>
+        </Pressable>
       </View>
     </LinearGradient>
   );
@@ -52,5 +57,5 @@ const styles = StyleSheet.create({
   sub:     { color: 'rgba(255,255,255,0.75)' },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   joinBtn: { flex: 1 },
-  moreBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  moreBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, TextInput, View, StyleSheet, Text } from 'react-native';
 import { Screen } from '../../src/components/layout/Screen';
 import { TopBar } from '../../src/components/layout/TopBar';
@@ -40,6 +40,7 @@ export default function ChatScreen() {
 
   const [creatingAi, setCreatingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const creatingAiRef = useRef(false);
 
   const allRows = (conversations.data ?? []).map((c) => toConversationRow(c, user?.id));
   const filteredRows = searchOpen && searchText.trim()
@@ -53,7 +54,8 @@ export default function ChatScreen() {
       router.push(`/chat/${aiConversation.id}` as never);
       return;
     }
-    if (creatingAi) return;
+    if (creatingAiRef.current) return;
+    creatingAiRef.current = true;
     setCreatingAi(true);
     setAiError(null);
     try {
@@ -63,6 +65,7 @@ export default function ChatScreen() {
     } catch (err) {
       setAiError(err instanceof Error ? err.message : 'Could not open AI conversation.');
     } finally {
+      creatingAiRef.current = false;
       setCreatingAi(false);
     }
   }
@@ -79,6 +82,7 @@ export default function ChatScreen() {
         right={
           <View style={styles.actions}>
             <IconButton
+              variant="subtle"
               icon={<IconSearch size={20} color={t.ink3} />}
               accessibilityLabel="Search"
               onPress={() => {
@@ -115,7 +119,6 @@ export default function ChatScreen() {
       <AiAssistantHero
         suggestions={AI_SUGGESTIONS}
         onPress={() => openAiConversation()}
-        onSuggestion={(text) => openAiConversation(text)}
         onSuggestionPress={handleSuggestionPress}
       />
       {creatingAi && <ApiState title="Starting AI conversation" loading />}

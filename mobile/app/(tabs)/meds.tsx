@@ -50,7 +50,7 @@ export default function MedsScreen() {
         subtitle={`${plans.length} active · ${adherence ? Math.round(adherence.percent) : 0}% adherence`}
         right={
           <View style={styles.actions}>
-            <IconButton icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel="Refresh" onPress={meds.reload} />
+            <IconButton variant="subtle" icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel="Refresh" onPress={meds.reload} />
             <IconButton
               icon={<IconPlus size={20} color={t.brand} />}
               variant="filled"

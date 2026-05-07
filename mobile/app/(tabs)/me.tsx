@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../src/components/layout/Screen';
 import { TopBar } from '../../src/components/layout/TopBar';
@@ -18,7 +18,7 @@ import {
   SignOutModal,
   MissingApiModal,
 } from '../../src/components/profile/me-screen-modals';
-import { IconSettings } from '../../src/icons';
+import { IconSettings, IconActivity, IconTarget, IconHeartPulse } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
 import { useSession } from '../../src/auth/SessionProvider';
@@ -92,6 +92,7 @@ export default function MeScreen() {
           title="Me"
           right={
             <IconButton
+              variant="subtle"
               icon={<IconSettings size={20} color={t.ink3} />}
               accessibilityLabel="Settings"
               onPress={() => setSettingsOpen(true)}
@@ -112,12 +113,20 @@ export default function MeScreen() {
         <IdentityCard {...identity} />
 
         <Card style={styles.statsCard}>
-          {stats.map((s, i) => (
-            <React.Fragment key={s.label}>
-              {i > 0 && <Divider />}
-              <StatCell label={s.label} value={s.value} />
-            </React.Fragment>
-          ))}
+          {stats.map((s, i) => {
+            const statMeta: Record<string, { icon: React.ReactNode; tint: string }> = {
+              height: { icon: <IconActivity size={16} color={t.brand} />, tint: `${t.brand}22` },
+              weight: { icon: <IconTarget size={16} color={t.brand} />, tint: `${t.brand}22` },
+              blood:  { icon: <IconHeartPulse size={16} color={t.warning} />, tint: `${t.warning}22` },
+            };
+            const meta = statMeta[s.id] ?? { icon: undefined, tint: undefined };
+            return (
+              <React.Fragment key={s.label}>
+                {i > 0 && <Divider />}
+                <StatCell label={s.label} value={s.value} icon={meta.icon} tint={meta.tint} />
+              </React.Fragment>
+            );
+          })}
         </Card>
 
         <EmergencyCard onShare={() => setEmergencyOpen(true)} />

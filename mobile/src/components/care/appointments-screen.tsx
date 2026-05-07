@@ -67,6 +67,7 @@ export function AppointmentsScreen() {
         right={
           <View style={styles.actions}>
             <IconButton
+              variant="subtle"
               icon={<IconFilter size={20} color={appliedFilter !== 'All' ? t.brand : t.ink3} />}
               accessibilityLabel="Filter"
               onPress={() => { setPendingFilter(appliedFilter); setFilterOpen(true); }}

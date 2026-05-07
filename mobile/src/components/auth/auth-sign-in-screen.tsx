@@ -4,13 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { User, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/Button';
@@ -46,91 +43,88 @@ export function AuthSignInScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Logo */}
-        <View style={styles.logoRow}>
-          <LinearGradient colors={[t.brand, t.brandDeep]} style={styles.logoBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>H</Text>
-          </LinearGradient>
-        </View>
+    <View>
+      {/* Logo */}
+      <View style={styles.logoRow}>
+        <LinearGradient colors={[t.brand, t.brandDeep]} style={styles.logoBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>H</Text>
+        </LinearGradient>
+      </View>
 
-        <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Welcome back</Text>
-        <Text style={[typography.body, { color: t.ink3, marginBottom: 24 }]}>Sign in to your HealthOS account</Text>
+      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Welcome back</Text>
+      <Text style={[typography.body, { color: t.ink3, marginBottom: 24 }]}>Sign in to continue to HealthOS</Text>
 
-        {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
+      {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
 
-        <View style={styles.fieldGroup}>
-          <Input
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            textContentType="emailAddress"
-            placeholder="you@example.com"
-          />
+      <View style={styles.fieldGroup}>
+        <Input
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          textContentType="emailAddress"
+          placeholder="you@example.com"
+          leadingIcon={<User size={18} color={t.ink3} />}
+        />
 
-          <Input
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPw}
-            autoComplete="password"
-            textContentType="password"
-            placeholder="••••••••"
-            trailingIcon={
-              <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={8}>
-                {showPw ? <EyeOff size={18} color={t.ink3} /> : <Eye size={18} color={t.ink3} />}
-              </TouchableOpacity>
-            }
-          />
-        </View>
+        <Input
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPw}
+          autoComplete="password"
+          textContentType="password"
+          placeholder="••••••••"
+          leadingIcon={<Lock size={18} color={t.ink3} />}
+          trailingText={showPw ? 'Hide' : 'Show'}
+          onTrailingPress={() => setShowPw((v) => !v)}
+        />
+      </View>
 
-        <View style={styles.forgotRow}>
-          <TouchableOpacity onPress={() => router.push('/auth/forgot' as never)}>
-            <Text style={[typography.caption, { color: t.brand }]}>Forgot password?</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Button label="Sign in" size="lg" loading={loading} onPress={handleSignIn} style={styles.mainBtn} />
-
-        {/* Divider */}
-        <View style={styles.divider}>
-          <View style={[styles.divLine, { backgroundColor: t.border }]} />
-          <Text style={[typography.caption, { color: t.ink4, marginHorizontal: 12 }]}>or continue with</Text>
-          <View style={[styles.divLine, { backgroundColor: t.border }]} />
-        </View>
-
-        {/* OAuth row */}
-        <View style={styles.oauthRow}>
-          <TouchableOpacity style={[styles.oauthBtn, { borderColor: t.border, backgroundColor: t.card }]}>
-            <GoogleMark size={20} />
-            <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Google</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.oauthBtn, { borderColor: t.border, backgroundColor: t.card }]}>
-            <AppleMark size={20} />
-            <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Apple</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.switchRow} onPress={() => router.push('/auth/sign-up')}>
-          <Text style={[typography.caption, { color: t.ink3 }]}>Don't have an account? </Text>
-          <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>Sign up</Text>
+      <View style={styles.forgotRow}>
+        <TouchableOpacity onPress={() => router.push('/auth/forgot' as never)} accessibilityRole="button" accessibilityLabel="Forgot password">
+          <Text style={[typography.caption, { color: t.brand }]}>Forgot password?</Text>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+
+      <Button label="Sign in" size="lg" loading={loading} onPress={handleSignIn} style={styles.mainBtn} />
+
+      {/* Divider */}
+      <View style={styles.divider}>
+        <View style={[styles.divLine, { backgroundColor: t.border }]} />
+        <Text style={[typography.caption, { color: t.ink4, marginHorizontal: 12, letterSpacing: 1.4, fontFamily: 'Inter_600SemiBold' }]}>
+          OR CONTINUE WITH
+        </Text>
+        <View style={[styles.divLine, { backgroundColor: t.border }]} />
+      </View>
+
+      {/* OAuth row */}
+      <View style={styles.oauthRow}>
+        <TouchableOpacity style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]} accessibilityRole="button" accessibilityLabel="Continue with Google">
+          <GoogleMark size={20} />
+          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Google</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]} accessibilityRole="button" accessibilityLabel="Continue with Apple">
+          <AppleMark size={20} />
+          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Apple</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.switchRow} onPress={() => router.push('/auth/sign-up')} accessibilityRole="button" accessibilityLabel="Create account">
+        <Text style={[typography.caption, { color: t.ink3 }]}>New here? </Text>
+        <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>Create account</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex:       { flex: 1 },
-  scroll:     { paddingBottom: 40 },
   logoRow:    { alignItems: 'flex-start', marginBottom: 24 },
   logoBox:    { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  fieldGroup: { gap: 12, marginBottom: 4 },
-  forgotRow:  { alignItems: 'flex-end', marginBottom: 20 },
+  fieldGroup: { gap: 14, marginBottom: 4 },
+  forgotRow:  { alignItems: 'flex-end', marginBottom: 12 },
   mainBtn:    { marginTop: 4 },
   divider:    { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
   divLine:    { flex: 1, height: StyleSheet.hairlineWidth },

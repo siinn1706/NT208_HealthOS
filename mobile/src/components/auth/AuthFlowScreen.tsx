@@ -1,13 +1,17 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
+import { IconButton } from '../primitives/IconButton';
 import { AuthWelcomeScreen } from './auth-welcome-screen';
 import { AuthSignInScreen } from './auth-sign-in-screen';
 import { AuthSignUpScreen } from './auth-sign-up-screen';
 import { AuthOtpScreen } from './auth-otp-screen';
 import { AuthSetupScreen } from './auth-setup-screen';
-import { ForgotPasswordScreen } from './ForgotPasswordScreen';
+import { AuthForgotPasswordScreen } from './auth-forgot-password-screen';
 import { PermissionsScreen } from './PermissionsScreen';
 
 export type AuthKind = 'welcome' | 'sign-in' | 'sign-up' | 'otp' | 'setup' | 'forgot' | 'permissions';
@@ -20,6 +24,8 @@ interface AuthFlowScreenProps {
 export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
   const t = useTheme();
   const isWelcome = kind === 'welcome';
+  const showHeader = !isWelcome;
+  const showSkip = kind === 'setup' || kind === 'permissions';
 
   function renderInner() {
     switch (kind) {
@@ -28,7 +34,7 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
       case 'sign-up':     return <AuthSignUpScreen />;
       case 'otp':         return <AuthOtpScreen />;
       case 'setup':       return <AuthSetupScreen />;
-      case 'forgot':      return <ForgotPasswordScreen />;
+      case 'forgot':      return <AuthForgotPasswordScreen />;
       case 'permissions': return <PermissionsScreen kind={permissionKind ?? 'notifications'} />;
     }
   }
@@ -43,6 +49,30 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.bg }]}>
+      {showHeader && (
+        <View style={[styles.header, { paddingHorizontal: 8 }]}>
+          <IconButton
+            variant="subtle"
+            icon={<ChevronLeft size={18} color={t.ink} />}
+            onPress={() => router.back()}
+            accessibilityLabel="Back"
+            size={40}
+          />
+          {showSkip && (
+            <Pressable
+              onPress={() => router.replace('/(tabs)/home')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Skip"
+              style={styles.skipHit}
+            >
+              <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>
+                Skip
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -55,6 +85,8 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  safe:   { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 60, paddingBottom: 40 },
+  safe:    { flex: 1 },
+  header:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 56, marginTop: 8 },
+  skipHit: { paddingHorizontal: 8, paddingVertical: 8, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  scroll:  { flexGrow: 1, paddingHorizontal: 28, paddingTop: 20, paddingBottom: 40 },
 });

@@ -2,24 +2,26 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { IconAlert } from '../../icons';
+import { IconAlert, ChevronRight } from '../../icons';
 
 interface RefillAlertCardProps {
   message: string;
   daysLeft: number;
+  pharmacy?: string;
   onPress?: () => void;
 }
 
-export function RefillAlertCard({ message, daysLeft, onPress }: RefillAlertCardProps) {
+export function RefillAlertCard({ message, daysLeft: _daysLeft, pharmacy = 'Pharmacy', onPress }: RefillAlertCardProps) {
   const t = useTheme();
 
   const inner = (
-    <View style={[styles.card, { backgroundColor: `${t.warning}18`, borderColor: `${t.warning}40`, borderRadius: t.radius.lg }]}>
-      <IconAlert size={18} color={t.warning} />
+    <View style={[styles.card, { backgroundColor: t.warmPeach, borderColor: `${t.warmGold}40`, borderRadius: t.radius.lg }]}>
+      <IconAlert size={18} color={t.warmGold} />
       <View style={styles.text}>
-        <Text style={[typography.bodyMed, { color: t.ink }]}>{message}</Text>
-        <Text style={[typography.caption, { color: t.warning }]}>Order refill now</Text>
+        <Text style={[typography.bodyMed, { color: t.ink, fontSize: 14, fontWeight: '700' }]}>{message}</Text>
+        <Text style={[typography.caption, { color: t.ink3, fontSize: 13, fontWeight: '500' }]}>{pharmacy} · Tap to request refill</Text>
       </View>
+      <ChevronRight size={16} color={t.ink4} />
     </View>
   );
 

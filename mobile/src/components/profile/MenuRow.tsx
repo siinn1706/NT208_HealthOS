@@ -32,12 +32,10 @@ export function MenuRow({ label, icon, type, val, defaultVal = false, onPress, s
         pressed && type !== 'toggle' && { opacity: 0.7 },
       ]}
     >
-      <View style={[styles.iconWrap, { backgroundColor: isDanger ? `${t.danger}18` : t.bgElev, borderRadius: t.radius.sm }]}>
-        <View style={{ opacity: isDanger ? 1 : 0.8 }}>
-          {icon}
-        </View>
+      <View style={[styles.iconWrap, { backgroundColor: isDanger ? `${t.danger}18` : t.brandSoft, borderRadius: t.radius.sm }]}>
+        {icon}
       </View>
-      <Text style={[typography.body, styles.label, { color: isDanger ? t.danger : t.ink }]}>
+      <Text style={[typography.body, styles.label, { color: isDanger ? t.danger : t.ink, fontSize: 15, fontWeight: '600' }]}>
         {label}
       </Text>
       {type === 'toggle' ? (
@@ -53,9 +51,9 @@ export function MenuRow({ label, icon, type, val, defaultVal = false, onPress, s
 }
 
 const styles = StyleSheet.create({
-  row:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, gap: 12 },
+  row:     { flexDirection: 'row', alignItems: 'center', height: 56, gap: 12 },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth },
-  iconWrap:{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
-  label:   { flex: 1 },
+  iconWrap:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  label:   { flex: 1, fontSize: 15, fontWeight: '600' },
   right:   { flexDirection: 'row', alignItems: 'center' },
 });

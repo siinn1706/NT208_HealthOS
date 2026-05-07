@@ -4,7 +4,7 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Chip, type ChipVariant } from '../primitives/Chip';
 import { PressableCard } from '../primitives/PressableCard';
-import { IconPill, IconVideo, IconCoffee } from '../../icons';
+import { IconPill, IconVideo, IconCoffee, ChevronRight } from '../../icons';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size: number; color: string }>> = {
   IconPill:   IconPill,
@@ -31,13 +31,14 @@ export function NextUpRow({ time, title, meta, icon, badge, onPress }: NextUpRow
         {IconComp && <IconComp size={18} color={t.brand} />}
       </View>
       <View style={styles.mid}>
+        <View style={styles.timeRow}>
+          <Text style={[typography.bodyMed, { color: t.ink }]}>{time}</Text>
+          {badge && <Chip label={badge.label} variant={badge.variant} />}
+        </View>
         <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{title}</Text>
         <Text style={[typography.caption, { color: t.ink3 }]} numberOfLines={1}>{meta}</Text>
       </View>
-      <View style={styles.right}>
-        <Text style={[typography.micro, { color: t.ink4, marginBottom: 4 }]}>{time}</Text>
-        {badge && <Chip label={badge.label} variant={badge.variant} />}
-      </View>
+      <ChevronRight size={16} color={t.ink4} />
     </PressableCard>
   );
 }
@@ -45,6 +46,6 @@ export function NextUpRow({ time, title, meta, icon, badge, onPress }: NextUpRow
 const styles = StyleSheet.create({
   row:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   iconWrap:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  mid:     { flex: 1 },
-  right:   { alignItems: 'flex-end', marginLeft: 8 },
+  mid:     { flex: 1, marginRight: 8 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
 });

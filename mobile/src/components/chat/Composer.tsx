@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
-import { IconPaperclip, IconSend, IconMic } from '../../icons';
+import { IconPaperclip, IconSend } from '../../icons';
 
 interface ComposerProps {
   onSend?: (text: string) => void;
@@ -34,9 +34,6 @@ export function Composer({ onSend, onAttach }: ComposerProps) {
         returnKeyType="send"
         onSubmitEditing={handleSend}
       />
-      <Pressable style={styles.icon} accessibilityLabel="Voice input">
-        <IconMic size={20} color={t.ink3} />
-      </Pressable>
       <Pressable
         onPress={handleSend}
         style={[styles.send, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
@@ -49,8 +46,8 @@ export function Composer({ onSend, onAttach }: ComposerProps) {
 }
 
 const styles = StyleSheet.create({
-  bar:   { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
-  icon:  { paddingBottom: 8 },
+  bar:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 64, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
+  icon:  { padding: 4 },
   input: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, maxHeight: 100, fontSize: 14 },
   send:  { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

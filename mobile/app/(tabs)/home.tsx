@@ -15,7 +15,7 @@ import { AiInsightCard } from '../../src/components/home/AiInsightCard';
 import { VitalsMiniCard } from '../../src/components/home/VitalsMiniCard';
 import { QuickActionGrid } from '../../src/components/home/QuickActionGrid';
 import { IconSearch, IconBell } from '../../src/icons';
-import { useGreeting } from '../../src/hooks/use-greeting';
+import { useGreetingTitle } from '../../src/hooks/use-greeting';
 import { useTheme } from '../../src/theme/useTheme';
 import { useApiQuery } from '../../src/api/query';
 import { dashboardService } from '../../src/api/services';
@@ -34,7 +34,9 @@ const quickActions = [
 export default function HomeScreen() {
   const t = useTheme();
   const { user } = useSession();
-  const greeting = useGreeting(user?.display_name?.split(' ')[0] ?? 'there');
+  const greetingTitle = useGreetingTitle();
+  const firstName = user?.display_name?.split(' ')[0] ?? 'there';
+  const dateLine = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const loadHome = useCallback(async () => {
     const [summary, reminders, vitalPoints] = await Promise.all([
       dashboardService.summary(),
@@ -53,13 +55,13 @@ export default function HomeScreen() {
   return (
     <Screen>
       <TopBar
-        title={greeting}
-        subtitle="Synced with HealthOS Core"
+        title={greetingTitle}
+        subtitle={`${firstName} · ${dateLine}`}
         left={<Avatar name={user?.display_name ?? 'HealthOS User'} size={36} />}
         right={
           <View style={styles.actions}>
-            <IconButton icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel="Search" onPress={() => router.push('/home/today')} />
-            <IconButton icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel="Notifications" dot onPress={() => router.push('/home/today')} />
+            <IconButton variant="subtle" icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel="Search" onPress={() => router.push('/home/today')} />
+            <IconButton variant="subtle" icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel="Notifications" dot onPress={() => router.push('/home/today')} />
           </View>
         }
       />

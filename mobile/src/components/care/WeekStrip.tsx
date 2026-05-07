@@ -14,36 +14,36 @@ export function WeekStrip({ days, selectedDate, onSelect }: WeekStripProps) {
   const t = useTheme();
 
   return (
-    <View style={[styles.strip, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
+    <View style={styles.strip}>
       {days.map((day) => {
         const active = day.isToday || day.date === selectedDate;
         return (
           <Pressable
             key={day.date}
             onPress={() => onSelect?.(day.date)}
-            style={styles.cell}
+            style={[
+              styles.cell,
+              {
+                borderColor: active ? t.brand : t.border,
+                backgroundColor: active ? t.brand : 'transparent',
+                borderRadius: t.radius.md,
+              },
+            ]}
             accessibilityLabel={`${day.label} ${day.date}`}
           >
-            <Text style={[typography.micro, { color: active ? t.brand : t.ink3 }]}>
-              {day.label}
+            <Text style={[typography.micro, { color: active ? '#FFFFFF' : t.ink3 }]}>
+              {day.label.slice(0, 1).toUpperCase()}
             </Text>
-            <View
+            <Text
               style={[
-                styles.circle,
-                active && { backgroundColor: t.brand },
+                typography.caption,
+                { color: active ? '#FFFFFF' : t.ink, fontFamily: 'Inter_600SemiBold' },
               ]}
             >
-              <Text
-                style={[
-                  typography.caption,
-                  { color: active ? '#FFF' : t.ink, fontFamily: 'Inter_600SemiBold' },
-                ]}
-              >
-                {day.date}
-              </Text>
-            </View>
+              {day.date}
+            </Text>
             {day.hasEvent && (
-              <View style={[styles.dot, { backgroundColor: active ? '#FFF' : t.brand }]} />
+              <View style={[styles.dot, { backgroundColor: active ? '#FFFFFF' : t.brand }]} />
             )}
           </Pressable>
         );
@@ -53,8 +53,7 @@ export function WeekStrip({ days, selectedDate, onSelect }: WeekStripProps) {
 }
 
 const styles = StyleSheet.create({
-  strip:  { flexDirection: 'row', padding: 12, marginVertical: 8 },
-  cell:   { flex: 1, alignItems: 'center', gap: 4 },
-  circle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  dot:    { width: 4, height: 4, borderRadius: 2 },
+  strip: { flexDirection: 'row', gap: 6, marginVertical: 8, paddingHorizontal: 16 },
+  cell:  { flex: 1, alignItems: 'center', paddingVertical: 8, gap: 4, borderWidth: StyleSheet.hairlineWidth },
+  dot:   { width: 4, height: 4, borderRadius: 2 },
 });

@@ -17,13 +17,18 @@ export function AdherenceHero({ percent, taken, total, missed }: AdherenceHeroPr
 
   return (
     <Card style={styles.card}>
-      <ProgressRing value={percent} size={100} stroke={8} color={t.success} track={t.border}>
+      <ProgressRing value={percent} size={72} stroke={8} color={t.success} track={t.border}>
         <Text style={[typography.h3, { color: t.success }]}>{Math.round(percent * 100)}%</Text>
       </ProgressRing>
       <View style={styles.meta}>
-        <Text style={[typography.title, { color: t.ink }]}>{taken}/{total} days</Text>
+        <Text style={[typography.micro, { color: t.ink3, letterSpacing: 0.6, textTransform: 'uppercase' }]}>
+          30-Day Adherence
+        </Text>
+        <Text style={[typography.title, { color: t.ink }]}>
+          {taken}<Text style={{ color: t.ink3, fontWeight: '500' }}>/{total} days</Text>
+        </Text>
         <Text style={[typography.caption, { color: t.ink3 }]}>
-          {missed} missed · {total - taken - missed} upcoming
+          On track — {missed} doses missed this month
         </Text>
       </View>
     </Card>

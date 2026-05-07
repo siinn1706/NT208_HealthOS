@@ -52,7 +52,7 @@ export function MenuGroup({ title, items, onItemPress }: MenuGroupProps) {
             <MenuRow
               key={item.id}
               label={item.label}
-              icon={Icon ? <Icon size={18} color={item.type === 'danger' ? t.danger : t.ink3} /> : <></>}
+              icon={Icon ? <Icon size={18} color={item.type === 'danger' ? t.danger : t.brand} /> : <></>}
               type={item.type}
               val={item.val}
               defaultVal={item.defaultVal}

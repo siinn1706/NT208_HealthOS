@@ -3,16 +3,16 @@ import {
   View,
   Text,
   TextInput,
+  Pressable,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
-  Clipboard,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/Button';
@@ -21,6 +21,15 @@ import { useSession } from '../../auth/SessionProvider';
 
 const OTP_LEN = 6;
 const COUNTDOWN_SEC = 60;
+
+function maskContact(val: string): string {
+  if (!val) return '';
+  if (val.includes('@')) {
+    const [u, d] = val.split('@');
+    return u.length > 2 ? `${u[0]}${'·'.repeat(Math.min(u.length - 2, 4))}${u[u.length - 1]}@${d}` : val;
+  }
+  return val;
+}
 
 function useBlink() {
   const opacity = useSharedValue(1);
@@ -69,8 +78,8 @@ export function AuthOtpScreen() {
 
   useEffect(() => {
     if (countdown <= 0) return;
-    const t = setTimeout(() => setCountdown((v) => v - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCountdown((v) => v - 1), 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
   const code = digits.join('');
@@ -109,7 +118,7 @@ export function AuthOtpScreen() {
   }
 
   async function handleVerify() {
-    if (!isComplete) return;
+    if (!params.email || !isComplete) return;
     setLoading(true);
     setError(null);
     try {
@@ -146,9 +155,13 @@ export function AuthOtpScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Verify your email</Text>
+      <View style={[styles.iconTile, { backgroundColor: t.brandSoft }]}>
+        <Shield size={26} color={t.brand} />
+      </View>
+
+      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Verify it's you</Text>
       <Text style={[typography.body, { color: t.ink3, marginBottom: 24 }]}>
-        Enter the 6-digit code sent to {params.email}
+        We sent a 6-digit code to {maskContact(params.email)}
       </Text>
 
       {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
@@ -176,17 +189,31 @@ export function AuthOtpScreen() {
 
       <Button label="Verify" size="lg" loading={loading} onPress={handleVerify} style={{ marginTop: 24 }} />
 
-      <TouchableOpacity style={styles.resendRow} onPress={handleResend} disabled={countdown > 0 || loading}>
-        {countdown > 0 ? (
-          <Text style={[typography.caption, { color: t.ink4 }]}>
-            Resend in 0:{String(countdown).padStart(2, '0')}
+      {/* Resend row — plain View; tap only when countdown expired */}
+      <View style={styles.resendRow}>
+        {resent ? (
+          <Text style={[typography.caption, { color: t.success }]}>Sent!</Text>
+        ) : countdown > 0 ? (
+          <Text style={[typography.caption, { color: t.ink3 }]}>
+            Didn't get it?{' '}
+            <Text style={{ color: t.ink4, fontFamily: 'Inter_600SemiBold' }}>
+              Resend in 0:{String(countdown).padStart(2, '0')}
+            </Text>
           </Text>
         ) : (
-          <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>
-            {resent ? 'Sent!' : 'Resend code'}
-          </Text>
+          <Pressable
+            onPress={handleResend}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Resend code"
+          >
+            <Text style={[typography.caption, { color: t.ink3 }]}>
+              Didn't get it?{' '}
+              <Text style={{ color: t.brand, fontFamily: 'Inter_600SemiBold' }}>Resend code</Text>
+            </Text>
+          </Pressable>
         )}
-      </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -194,7 +221,8 @@ export function AuthOtpScreen() {
 const styles = StyleSheet.create({
   flex:        { flex: 1 },
   center:      { flex: 1, padding: 16 },
-  boxes:       { flexDirection: 'row', gap: 8 },
+  iconTile:    { width: 60, height: 60, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  boxes:       { flexDirection: 'row', gap: 10 },
   box:         { flex: 1, height: 56, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   cursor:      { width: 2, height: 22, borderRadius: 1 },
   hiddenInput: { position: 'absolute', width: '100%', height: '100%', opacity: 0 },

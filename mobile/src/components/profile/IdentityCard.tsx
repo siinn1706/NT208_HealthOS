@@ -4,7 +4,8 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Avatar } from '../primitives/Avatar';
 import { Chip } from '../primitives/Chip';
-import { IconCheck } from '../../icons';
+import { Card } from '../primitives/Card';
+import { IconCheck, IconShield, IconBadge } from '../../icons';
 
 interface IdentityCardProps {
   name: string;
@@ -20,9 +21,9 @@ export function IdentityCard({ name, email, age, gender, city, level, verified }
   const t = useTheme();
 
   return (
-    <View style={styles.card}>
+    <Card style={styles.card}>
       <View style={styles.avatarWrap}>
-        <Avatar name={name} size={84} />
+        <Avatar name={name} size={96} />
         {verified && (
           <View style={[styles.badge, { backgroundColor: t.success, borderColor: t.bg }]}>
             <IconCheck size={10} color="#FFF" />
@@ -37,23 +38,25 @@ export function IdentityCard({ name, email, age, gender, city, level, verified }
         {age > 0 ? `${age} · ` : ''}{gender} · {city}
       </Text>
       <View style={styles.chips}>
-        {verified && <Chip label="Verified" variant="success" />}
-        <Chip label={`Level ${level}`} variant="brand" />
+        {verified && (
+          <Chip label="Verified" variant="success" icon={<IconShield size={11} color={t.success} />} />
+        )}
+        <Chip label={`Level ${level}`} variant="brand" icon={<IconBadge size={11} color={t.brand} />} />
       </View>
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card:       { alignItems: 'center', paddingVertical: 20 },
+  card:       { alignItems: 'center', marginVertical: 8 },
   avatarWrap: { position: 'relative' },
   badge: {
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,

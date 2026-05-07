@@ -24,6 +24,18 @@ export interface WeekDay {
 
 const KPI_COLORS = ['#1965B3', '#12A88A', '#F59E0B', '#8B5CF6'];
 
+const KPI_ICONS: Record<string, string> = {
+  steps: 'IconFootprints',
+  steps_count: 'IconFootprints',
+  water: 'IconWater',
+  water_intake: 'IconWater',
+  calories: 'IconFire',
+  kcal: 'IconFire',
+  energy: 'IconFire',
+  sleep: 'IconMoon',
+  sleep_hours: 'IconMoon',
+};
+
 export function toHomeView(summary: DashboardSummary, reminders: Reminder[], vitals: VitalPoint[]) {
   const goals = summary.goals ?? [];
   const kpis = Object.entries(summary.kpis ?? {})
@@ -38,6 +50,7 @@ export function toHomeView(summary: DashboardSummary, reminders: Reminder[], vit
         tgt: formatMetric(target, key),
         v: clampRatio(current, target),
         color: KPI_COLORS[index % KPI_COLORS.length],
+        icon: KPI_ICONS[key] ?? 'IconActivity',
       };
     });
 
@@ -192,9 +205,9 @@ export function toIdentity(user: CurrentUser | null) {
 
 export function toProfileStats(user: CurrentUser | null) {
   return [
-    { label: 'Height', value: user?.height_cm ? `${Math.round(user.height_cm)} cm` : '-' },
-    { label: 'Weight', value: user?.weight_kg ? `${Math.round(user.weight_kg)} kg` : '-' },
-    { label: 'Blood', value: user?.blood_type ?? '-' },
+    { id: 'height', label: 'Height', value: user?.height_cm ? `${Math.round(user.height_cm)} cm` : '-' },
+    { id: 'weight', label: 'Weight', value: user?.weight_kg ? `${Math.round(user.weight_kg)} kg` : '-' },
+    { id: 'blood',  label: 'Blood',  value: user?.blood_type ?? '-' },
   ];
 }
 

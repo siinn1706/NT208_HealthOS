@@ -4,7 +4,7 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import type { ThemeTokens } from '../../theme/tokens';
 
-export type ButtonVariant = 'solid' | 'ghost' | 'soft';
+export type ButtonVariant = 'solid' | 'ghost' | 'soft' | 'text';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
@@ -16,6 +16,7 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
   loading?: boolean;
+  labelColor?: string;
 }
 
 /** Touch targets aligned to 8pt-ish grid; horizontal padding tracks theme `space`. */
@@ -35,13 +36,15 @@ export function Button({
   style,
   disabled,
   loading,
+  labelColor,
 }: ButtonProps) {
   const t = useTheme();
 
   const variantStyles: Record<ButtonVariant, { bg: string; text: string; border?: string }> = {
-    solid: { bg: t.brand,      text: '#FFFFFF'  },
+    solid: { bg: t.brand,       text: '#FFFFFF'  },
     ghost: { bg: 'transparent', text: t.brand, border: t.brand },
-    soft:  { bg: t.brandSoft,  text: t.brand   },
+    soft:  { bg: t.brandSoft,   text: t.brand   },
+    text:  { bg: 'transparent', text: t.brand   },
   };
 
   const { bg, text, border } = variantStyles[variant];
@@ -51,13 +54,15 @@ export function Button({
     <Pressable
       onPress={isDisabled ? undefined : onPress}
       disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled }}
       style={({ pressed }) => [
         styles.btn,
         {
           backgroundColor: bg,
           borderRadius: t.radius.pill,
           height: HEIGHT[size],
-          paddingHorizontal: horizontalPad(t, size),
+          paddingHorizontal: variant === 'text' ? 8 : horizontalPad(t, size),
         },
         border && { borderWidth: 1, borderColor: border },
         pressed && !isDisabled && styles.pressed,
@@ -70,7 +75,7 @@ export function Button({
       ) : (
         <>
           {icon && <>{icon}</>}
-          <Text style={[typography.button, { color: text, marginLeft: icon ? t.space[2] : 0 }]}>
+          <Text style={[typography.button, { color: labelColor ?? text, marginLeft: icon ? t.space[2] : 0 }]}>
             {label}
           </Text>
         </>
@@ -82,5 +87,5 @@ export function Button({
 const styles = StyleSheet.create({
   btn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   pressed:  { opacity: 0.8 },
-  disabled: { opacity: 0.45 },
+  disabled: { opacity: 0.55 },
 });

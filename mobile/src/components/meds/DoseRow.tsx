@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { MedicationCheckButton } from './MedicationCheckButton';
 import { IconCheck } from '../../icons';
 import type { DoseState } from '../../api/viewModels';
 
@@ -14,32 +13,43 @@ interface DoseRowProps {
   onTaken?: () => Promise<void> | void;
 }
 
-export function DoseRow({ time, name, note, state: currentState, onTaken }: DoseRowProps) {
+export function DoseRow({ time, name, state: currentState, onTaken }: DoseRowProps) {
   const t = useTheme();
-  const dotColor = currentState === 'taken' ? t.success : currentState === 'due' ? t.warning : t.border;
+  const taken = currentState === 'taken';
 
   return (
     <View style={[styles.row, { borderBottomColor: t.border }]}>
-      <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      <View style={styles.mid}>
-        <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{name}</Text>
-        <Text style={[typography.caption, { color: t.ink3 }]}>{time} · {note}</Text>
-      </View>
-      {currentState === 'taken' ? (
-        <View style={[styles.takenBadge, { backgroundColor: `${t.success}18`, borderRadius: t.radius.pill }]}>
-          <IconCheck size={12} color={t.success} />
-          <Text style={[typography.micro, { color: t.success, marginLeft: 4 }]}>Taken</Text>
+      <Text
+        style={[
+          typography.bodyMed,
+          styles.time,
+          { color: taken ? t.ink4 : t.ink, textDecorationLine: taken ? 'line-through' : 'none' },
+        ]}
+      >
+        {time}
+      </Text>
+      <Text style={[typography.body, styles.name, { color: t.ink }]} numberOfLines={1}>{name}</Text>
+      {taken ? (
+        <View style={[styles.takenBadge, { backgroundColor: t.success }]}>
+          <IconCheck size={14} color="#FFF" />
         </View>
       ) : (
-        <MedicationCheckButton onTaken={onTaken} />
+        <Pressable
+          onPress={onTaken as () => void}
+          hitSlop={8}
+          style={[styles.takeBtn, { backgroundColor: t.brandSoft, borderRadius: t.radius.pill }]}
+        >
+          <Text style={[typography.button, { color: t.brand, fontSize: 13 }]}>Take</Text>
+        </Pressable>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
-  dot:        { width: 10, height: 10, borderRadius: 5 },
-  mid:        { flex: 1 },
-  takenBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5 },
+  row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  time:      { width: 56, marginRight: 12 },
+  name:      { flex: 1, marginRight: 8 },
+  takenBadge:{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  takeBtn:   { height: 32, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
 });

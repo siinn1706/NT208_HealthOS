@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Bell, Camera, Activity, Check } from 'lucide-react-native';
+import {
+  Bell, Camera, Activity,
+  Pill, CalendarCheck, Sparkles,
+  Coffee, Heart, Footprints, Moon,
+  Check, Lock,
+} from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/Button';
@@ -13,92 +18,112 @@ const CONFIG: Record<PermissionKind, {
   Icon: React.ElementType;
   title: string;
   description: string;
-  features: string[];
+  features: { label: string; Icon: React.ElementType }[];
+  ctaLabel: string;
 }> = {
   notifications: {
     Icon: Bell,
-    title: 'Stay on track',
-    description: 'Allow notifications so HealthOS can remind you about medications, appointments, and health alerts.',
-    features: ['Medication reminders', 'Appointment alerts', 'Health milestone updates'],
+    title: 'Turn on reminders',
+    description: "We'll nudge you when it's time for medication or a scheduled appointment. Nothing else — ever.",
+    features: [
+      { label: 'Medication reminders', Icon: Pill },
+      { label: 'Appointment alerts',   Icon: CalendarCheck },
+      { label: 'Weekly health digest', Icon: Sparkles },
+    ],
+    ctaLabel: 'Allow notifications',
   },
   camera: {
     Icon: Camera,
-    title: 'Snap your meals',
-    description: 'Allow camera access to log meals with a photo and get AI-powered nutrition analysis.',
-    features: ['Photo meal logging', 'AI nutrition insights', 'Receipt scanning'],
+    title: 'Snap meals & scans',
+    description: 'Use your camera to log food, scan prescriptions, or capture lab reports. Images stay on your device unless you save them.',
+    features: [
+      { label: 'Log meals from photo',   Icon: Coffee },
+      { label: 'Scan prescriptions',     Icon: Pill },
+      { label: 'Capture lab reports',    Icon: Activity },
+    ],
+    ctaLabel: 'Allow camera',
   },
   'health-data': {
     Icon: Activity,
-    title: 'Sync your health',
-    description: 'Allow health data access so HealthOS can track your activity and show accurate metrics.',
-    features: ['Step and activity tracking', 'Heart rate monitoring', 'Sleep analysis'],
+    title: 'Connect your health data',
+    description: 'Link Apple Health, Google Health Connect, or a wearable to auto-sync vitals and activity. Read-only by default.',
+    features: [
+      { label: 'Heart rate & vitals', Icon: Heart },
+      { label: 'Steps & activity',    Icon: Footprints },
+      { label: 'Sleep tracking',      Icon: Moon },
+    ],
+    ctaLabel: 'Connect Health Connect',
   },
 };
 
 interface PermissionsScreenProps {
   kind: PermissionKind;
-  t?: ReturnType<typeof useTheme>;
 }
 
 export function PermissionsScreen({ kind }: PermissionsScreenProps) {
   const t = useTheme();
   const config = CONFIG[kind];
   const { Icon } = config;
-  const [loading, setLoading] = useState(false);
-
   function handleContinue() {
-    setLoading(true);
     router.replace('/(tabs)/home');
   }
 
   return (
     <View style={styles.root}>
-      {/* Gradient icon hero */}
+      {/* Hero icon tile — 64×64, gradient */}
       <LinearGradient
         colors={[t.brand, t.accent ?? t.brandDeep]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.hero}
       >
-        <Icon size={36} color="#FFFFFF" />
+        <Icon size={28} color="#FFFFFF" />
       </LinearGradient>
 
-      <Text style={[typography.title, { color: t.ink, textAlign: 'center', marginTop: 20, marginBottom: 8 }]}>
+      {/* Title + description — left aligned */}
+      <Text style={[typography.title, { color: t.ink, marginTop: 20, marginBottom: 8 }]}>
         {config.title}
       </Text>
-      <Text style={[typography.body, { color: t.ink3, textAlign: 'center', lineHeight: 22, marginBottom: 28 }]}>
+      <Text style={[typography.body, { color: t.ink3, lineHeight: 22, marginBottom: 28 }]}>
         {config.description}
       </Text>
 
-      {/* Feature cards */}
+      {/* Feature rows */}
       <View style={styles.features}>
-        {config.features.map((feat) => (
-          <View key={feat} style={[styles.featureRow, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
+        {config.features.map(({ label, Icon: FeatureIcon }) => (
+          <View key={label} style={[styles.featureRow, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
             <View style={[styles.checkCircle, { backgroundColor: t.brandSoft }]}>
-              <Check size={13} color={t.brand} />
+              <FeatureIcon size={13} color={t.brand} />
             </View>
-            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{feat}</Text>
+            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{label}</Text>
+            <Check size={14} color={t.success} />
           </View>
         ))}
       </View>
 
+      {/* Footer micro — between features and CTAs */}
+      <View style={[styles.footerMicro, { marginBottom: 12 }]}>
+        <Lock size={11} color={t.ink3} />
+        <Text style={[typography.caption, { color: t.ink3, fontSize: 12, marginLeft: 4 }]}>
+          Private by default · revoke anytime
+        </Text>
+      </View>
+
       {/* CTAs */}
       <View style={styles.ctas}>
-        <Button label="Allow" size="lg" loading={loading} onPress={handleContinue} />
-        <TouchableOpacity style={styles.ghostBtn} onPress={handleContinue}>
-          <Text style={[typography.button, { color: t.ink3 }]}>Maybe later</Text>
-        </TouchableOpacity>
+        <Button label={config.ctaLabel} size="lg" onPress={handleContinue} />
+        <Button label="Not now" variant="text" size="md" onPress={handleContinue} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root:         { flex: 1, alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 },
-  hero:         { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  features:     { width: '100%', gap: 10, marginBottom: 28 },
-  featureRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  checkCircle:  { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  ctas:         { width: '100%', gap: 12 },
-  ghostBtn:     { height: 48, alignItems: 'center', justifyContent: 'center' },
+  root:        { flex: 1, paddingTop: 32, paddingHorizontal: 24 },
+  hero:        { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  features:    { width: '100%', gap: 10, marginBottom: 0 },
+  featureRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  checkCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  footerMicro: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+  ctas:        { width: '100%', gap: 12 },
 });

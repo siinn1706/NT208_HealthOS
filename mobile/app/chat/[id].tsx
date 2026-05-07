@@ -68,12 +68,15 @@ export default function AiConversationScreen() {
           onPress={() => router.back()}
           accessibilityLabel="Back"
         />
-        <View style={[styles.avatarWrap, { backgroundColor: t.brand, borderRadius: t.radius.md }]}>
-          <IconRobot size={20} color="#FFF" />
+        <View style={[styles.avatarWrap, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
+          <IconRobot size={20} color={t.brand} />
         </View>
         <View style={styles.headerInfo}>
-          <Text style={[typography.bodyMed, { color: t.ink }]}>HealthOS AI</Text>
-          <Text style={[typography.micro, { color: t.ink3 }]}>Core conversation</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[typography.h3, { color: t.ink, fontSize: 16, fontWeight: '700' }]}>HealthOS AI</Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: t.success }} />
+          </View>
+          <Text style={[typography.micro, { color: t.ink3 }]}>Always private · Never medical advice</Text>
         </View>
         <IconButton
           icon={<IconMore size={20} color={t.ink3} />}
