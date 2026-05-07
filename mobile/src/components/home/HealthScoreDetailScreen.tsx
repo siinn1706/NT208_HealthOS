@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Screen } from '../layout/Screen';
 import { TopBar } from '../layout/TopBar';
 import { ApiState, MissingApiState } from '../api/ApiState';
+import { ProgressRing } from '../charts/ProgressRing';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { dashboardService } from '../../api/services';
@@ -41,9 +42,17 @@ export function HealthScoreDetailScreen() {
       {score.data && (
         <>
           <View style={[styles.scoreHeader, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <Text style={[typography.display, styles.bigScore, { color: t.brand }]}>{score.data.score.value}</Text>
-            <Text style={[typography.h3, { color: t.ink }]}>Health Score</Text>
-            <Text style={[typography.body, { color: t.ink3, marginTop: 4 }]}>{score.data.score.copy}</Text>
+            <ProgressRing
+              value={score.data.score.value / 100}
+              size={144}
+              stroke={10}
+              color={scoreColor(score.data.score.value / 100, t)}
+              track={t.bgElev}
+            >
+              <Text style={[styles.bigScore, { color: t.brand }]}>{score.data.score.value}</Text>
+            </ProgressRing>
+            <Text style={[typography.h3, { color: t.ink, marginTop: 16 }]}>Health Score</Text>
+            <Text style={[typography.body, { color: t.ink3, marginTop: 4, textAlign: 'center' }]}>{score.data.score.copy}</Text>
           </View>
 
           <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>Score inputs</Text>
@@ -72,11 +81,11 @@ export function HealthScoreDetailScreen() {
 
 const styles = StyleSheet.create({
   scoreHeader:   { alignItems: 'center', padding: 28, marginVertical: 8 },
-  bigScore:      { fontSize: 72, lineHeight: 80 },
+  bigScore:      { fontSize: 56, lineHeight: 64, fontFamily: 'Inter_800ExtraBold' },
   sectionTitle:  { marginTop: 20, marginBottom: 10 },
   categoriesCard:{ padding: 16, marginBottom: 16 },
   catRow:        { marginBottom: 14 },
   catLabelRow:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  barTrack:      { height: 8, borderRadius: 4 },
-  barFill:       { height: 8, borderRadius: 4 },
+  barTrack:      { height: 6, borderRadius: 3 },
+  barFill:       { height: 6, borderRadius: 3 },
 });

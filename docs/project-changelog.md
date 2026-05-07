@@ -106,6 +106,23 @@
 - **Phase 4**: Care screens — 7 components (appointments, video, history); CareDetailScreen 7-kind handler; 3 routes added
 - **Phase 5**: Auth completion — ForgotPasswordScreen, PermissionsScreen; AuthFlowScreen extended with permissionKind support; 2 routes added
 
+#### Mobile Micro-Polish Phase 3 (2026-05-07)
+- **Visual refinements across 14 components** — No behavior changes, UI-only polish:
+  - VitalsLineChart: Y/X axis labels, asymmetric padding, stronger dark-mode line
+  - VitalsDetailScreen: SegmentedControl range selector, tighter chart card, bgElev stats row with dividers
+  - QuickActionSheetScreen: lucide icons in grid (replaced letter glyphs)
+  - HealthScoreDetailScreen: ProgressRing replaces bare score, 6px category bars
+  - HomeDetailScreen: hero card brandSoft, causes/actions list, CTA button
+  - HeroAppointmentCard: marginBottom:12/marginTop:0, actions gap:10
+  - AppointmentDetailScreen: 3 Modals → BottomSheet, 2-column date/time layout, TAB_BAR_CONTENT_HEIGHT scroll padding
+  - JoinVideoVisitScreen: selfPreview border opacity, controls paddingBottom
+  - VisitPrepScreen: 4px progress bar, checklist padding:16, TAB_BAR_CONTENT_HEIGHT scroll padding
+  - CreateAppointmentScreen: text fields → Input primitive, visit-type → SegmentedControl, doctor Modal → BottomSheet
+  - AttachmentUploadScreen: dashedCard padding:24, uploadIcon 56×56 brandSoft, rows → bgElev, sheets → BottomSheet
+  - MedicalHistoryScreen: sep 70% height, visitRow marginBottom:10/no border, chip variant mapping, TAB_BAR_CONTENT_HEIGHT
+  - PrescriptionDetailScreen: headerCard left-aligned rxIconBox, medCard chip row, barcode caption, CTA labels, TAB_BAR_CONTENT_HEIGHT
+  - Skeletons.tsx: ChartSkeleton card-shaped with range pills + stats cells, timeline dot 10×10, listRow gap:14
+
 ---
 
 ## [1.2.2] - 2026-04-19

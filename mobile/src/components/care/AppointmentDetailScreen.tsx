@@ -2,12 +2,14 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Chip } from '../primitives/Chip';
 import { Button } from '../primitives/Button';
 import { PressableCard } from '../primitives/PressableCard';
+import { BottomSheet } from '../primitives/sheet/BottomSheet';
 import { TopBar } from '../layout/TopBar';
 import { IconButton } from '../primitives/IconButton';
 import { ApiState, MissingApiState } from '../api/ApiState';
@@ -22,6 +24,7 @@ import { formatDate, formatTime } from '../../api/viewModels';
 
 export function AppointmentDetailScreen() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const appointmentId = (Array.isArray(id) ? id[0] : id) ?? '';
 
@@ -83,7 +86,7 @@ export function AppointmentDetailScreen() {
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
         {appointmentQuery.isLoading && <ApiState title="Loading appointment" loading />}
         {appointmentQuery.error && (
           <ApiState
@@ -135,13 +138,25 @@ export function AppointmentDetailScreen() {
               )}
             </LinearGradient>
 
+            {/* Date / time 2-column */}
+            <View style={s.dateTimeRow}>
+              <View style={[s.dtCard, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
+                <IconCalendar size={16} color={t.brand} />
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>Date</Text>
+                <Text style={[typography.h3, { color: t.ink }]}>{formatDate(appointment.appointment_date)}</Text>
+              </View>
+              <View style={[s.dtCard, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
+                <IconClock size={16} color={t.brand} />
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>Time</Text>
+                <Text style={[typography.h3, { color: t.ink }]}>{formatTime(appointment.appointment_date)}</Text>
+              </View>
+            </View>
+
             <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>Details</Text>
-            <View style={[s.card, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}>
+            <View style={[s.card, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
               <DetailRow icon={<IconVideo size={14} color={t.ink3} />} label="Status" value={appointment.status} t={t} />
               <View style={[s.divider, { backgroundColor: t.border }]} />
               <DetailRow icon={<IconMapPin size={14} color={t.ink3} />} label="Location" value={appointment.clinic ?? 'Not specified'} t={t} />
-              <View style={[s.divider, { backgroundColor: t.border }]} />
-              <DetailRow icon={<IconClock size={14} color={t.ink3} />} label="Time" value={`${formatDate(appointment.appointment_date)} ${formatTime(appointment.appointment_date)}`} t={t} />
             </View>
 
             <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>Reason for visit</Text>
@@ -188,6 +203,7 @@ export function AppointmentDetailScreen() {
               <Button
                 label="Cancel"
                 variant="ghost"
+                labelColor={t.danger}
                 style={[s.actionBtn, { borderColor: t.danger }]}
                 onPress={() => setCancelOpen(true)}
               />
@@ -197,11 +213,9 @@ export function AppointmentDetailScreen() {
       </ScrollView>
 
       {/* More options sheet */}
-      <Modal visible={moreOpen} transparent animationType="slide" onRequestClose={() => setMoreOpen(false)}>
-        <Pressable style={s.backdrop} onPress={() => setMoreOpen(false)} />
-        <View style={[s.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
+      <BottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)}>
+        <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 12 }]}>Options</Text>
-
           <Pressable style={[s.sheetRow, { borderColor: t.border }]} onPress={() => { setMoreOpen(false); setRescheduleOpen(true); }}>
             <Text style={[typography.body, { color: t.ink }]}>Reschedule</Text>
           </Pressable>
@@ -211,29 +225,24 @@ export function AppointmentDetailScreen() {
           <Pressable style={[s.sheetRow, { borderColor: t.border }]} onPress={() => { setMoreOpen(false); setAttachmentsOpen(true); }}>
             <Text style={[typography.body, { color: t.ink }]}>Attachments</Text>
           </Pressable>
-          <Pressable style={[s.sheetRow, { borderColor: t.border }]} onPress={() => setMoreOpen(false)}>
-            <Text style={[typography.body, { color: t.ink3 }]}>Close</Text>
-          </Pressable>
         </View>
-      </Modal>
+      </BottomSheet>
 
       {/* Reschedule placeholder sheet */}
-      <Modal visible={rescheduleOpen} transparent animationType="slide" onRequestClose={() => setRescheduleOpen(false)}>
-        <Pressable style={s.backdrop} onPress={() => setRescheduleOpen(false)} />
-        <View style={[s.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
+      <BottomSheet visible={rescheduleOpen} onClose={() => setRescheduleOpen(false)}>
+        <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Reschedule UI pending date/time picker" contract="PATCH /v1/appointments/{id} is available" />
           <Button label="Close" variant="soft" onPress={() => setRescheduleOpen(false)} style={{ marginTop: 8 }} />
         </View>
-      </Modal>
+      </BottomSheet>
 
       {/* Attachments placeholder sheet */}
-      <Modal visible={attachmentsOpen} transparent animationType="slide" onRequestClose={() => setAttachmentsOpen(false)}>
-        <Pressable style={s.backdrop} onPress={() => setAttachmentsOpen(false)} />
-        <View style={[s.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
+      <BottomSheet visible={attachmentsOpen} onClose={() => setAttachmentsOpen(false)}>
+        <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Attachments unavailable" contract="unclear and needs manual confirmation" />
           <Button label="Close" variant="soft" onPress={() => setAttachmentsOpen(false)} style={{ marginTop: 8 }} />
         </View>
-      </Modal>
+      </BottomSheet>
 
       {/* Cancel confirmation modal */}
       <Modal visible={cancelOpen} transparent animationType="fade" onRequestClose={() => !cancelling && setCancelOpen(false)}>
@@ -283,23 +292,24 @@ function DetailRow({ icon, label, value, t }: { icon: React.ReactNode; label: st
 const s = StyleSheet.create({
   safe:           { flex: 1 },
   topBarWrap:     { paddingHorizontal: 20 },
-  scroll:         { paddingHorizontal: 20, paddingBottom: 80, gap: 12 },
+  scroll:         { paddingHorizontal: 20, gap: 12 },
   hero:           { padding: 20, gap: 6 },
   heroName:       { color: '#FFF', marginTop: 6 },
   heroSub:        { color: 'rgba(255,255,255,0.75)' },
   heroRow:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  heroMeta:       { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginRight: 8 },
-  joinBtn:        { marginTop: 8 },
+  heroMeta:       { ...typography.caption, color: 'rgba(255,255,255,0.85)', marginRight: 8 },
+  joinBtn:        { marginTop: 12 },
   videoUnavailable: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 8 },
-  card:           { padding: 14, borderWidth: StyleSheet.hairlineWidth },
+  card:           { padding: 16 },
   divider:        { height: StyleSheet.hairlineWidth, marginVertical: 8 },
   detailRow:      { flexDirection: 'row', alignItems: 'center' },
+  dateTimeRow:    { flexDirection: 'row', gap: 10 },
+  dtCard:         { flex: 1, padding: 12, gap: 2 },
   prepCard:       { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
   prepText:       { flex: 1 },
-  actions:        { flexDirection: 'row', gap: 10 },
+  actions:        { flexDirection: 'row', gap: 10, marginTop: 4 },
   actionBtn:      { flex: 1 },
-  backdrop:       { flex: 1 },
-  sheet:          { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1 },
+  sheetInner:     { paddingHorizontal: 20, paddingTop: 8, gap: 0 },
   sheetRow:       { paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   confirmBox:     { width: '100%', padding: 20, borderWidth: StyleSheet.hairlineWidth },

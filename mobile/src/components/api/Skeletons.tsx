@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Skeleton } from '../primitives/feedback/Skeleton';
+import { useTheme } from '../../theme/useTheme';
 
 // ─── KPI grid skeleton (4 rings) ──────────────────────────────────────────────
 
@@ -20,10 +21,17 @@ export function KpiGridSkeleton() {
 // ─── Chart skeleton ────────────────────────────────────────────────────────────
 
 export function ChartSkeleton() {
+  const t = useTheme();
   return (
-    <View style={styles.chart}>
-      <Skeleton width="50%" height={14} />
-      <Skeleton height={120} style={{ marginTop: 8 }} />
+    <View style={[styles.chart, { backgroundColor: t.bgElev, borderRadius: t.radius.lg }]}>
+      <Skeleton width="40%" height={14} radius={6} />
+      <Skeleton height={140} radius={t.radius.md} style={{ marginTop: 2 }} />
+      <View style={styles.rangeRow}>
+        {[0, 1, 2, 3].map((i) => <Skeleton key={i} width={36} height={24} radius={100} />)}
+      </View>
+      <View style={styles.statsRow}>
+        {[0, 1, 2].map((i) => <Skeleton key={i} height={48} radius={t.radius.md} style={{ flex: 1 }} />)}
+      </View>
     </View>
   );
 }
@@ -92,7 +100,7 @@ export function TimelineSkeleton({ rows = 4 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <View key={i} style={styles.timelineRow}>
           <View style={styles.timelineMeta}>
-            <Skeleton width={8} height={8} radius={4} />
+            <Skeleton width={10} height={10} radius={5} />
             <Skeleton width={50} height={10} style={{ marginTop: 4 }} />
           </View>
           <View style={styles.timelineCard}>
@@ -108,9 +116,11 @@ export function TimelineSkeleton({ rows = 4 }: { rows?: number }) {
 const styles = StyleSheet.create({
   kpiRow:       { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 12 },
   kpiCell:      { alignItems: 'center', flex: 1 },
-  chart:        { marginVertical: 12 },
+  chart:        { padding: 12, gap: 10, marginVertical: 12 },
+  rangeRow:     { flexDirection: 'row', gap: 6 },
+  statsRow:     { flexDirection: 'row', gap: 1 },
   list:         { gap: 12, marginVertical: 8 },
-  listRow:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  listRow:      { flexDirection: 'row', alignItems: 'center', gap: 14 },
   listText:     { flex: 1 },
   timeline:     { gap: 16, marginVertical: 8 },
   timelineRow:  { flexDirection: 'row', gap: 12 },

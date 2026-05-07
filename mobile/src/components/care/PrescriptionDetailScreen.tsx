@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Chip } from '../primitives/Chip';
@@ -19,6 +20,7 @@ import { formatDate } from '../../api/viewModels';
 
 export function PrescriptionDetailScreen() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const appointmentId = (Array.isArray(id) ? id[0] : id) ?? '';
   const loadAppointment = useCallback(() => appointmentService.detail(appointmentId), [appointmentId]);
@@ -34,7 +36,7 @@ export function PrescriptionDetailScreen() {
         />
       </View>
 
-      <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
+      <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
         {appointmentQuery.isLoading && <ApiState title="Loading prescription" loading />}
         {appointmentQuery.error && (
           <ApiState
@@ -51,13 +53,19 @@ export function PrescriptionDetailScreen() {
         {prescription && (
           <>
             <Card style={s.headerCard}>
-              <IconPill size={34} color={t.brand} />
-              <Text style={[typography.title, { color: t.ink, marginTop: t.space[3] }]}>
-                {prescription.medicines[0]?.name ?? 'Prescription'}
-              </Text>
-              <Text style={[typography.caption, { color: t.ink3 }]}>
-                {prescription.diagnosis ?? 'Diagnosis not specified'}
-              </Text>
+              <View style={s.headerRow}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[typography.title, { color: t.ink }]}>
+                    {prescription.medicines[0]?.name ?? 'Prescription'}
+                  </Text>
+                  <Text style={[typography.caption, { color: t.ink3 }]}>
+                    {prescription.diagnosis ?? 'Diagnosis not specified'}
+                  </Text>
+                </View>
+                <View style={[s.rxIconBox, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
+                  <IconPill size={20} color={t.brand} />
+                </View>
+              </View>
               <View style={s.chips}>
                 <Chip label={`${prescription.medicines.length} medicines`} variant="brand" />
                 <Chip label={formatDate(prescription.issued_at)} variant="success" />
@@ -73,11 +81,13 @@ export function PrescriptionDetailScreen() {
             {prescription.medicines.map((medicine) => (
               <Card key={`${medicine.name}-${medicine.dosage}`} style={s.medCard}>
                 <Text style={[typography.bodyMed, { color: t.ink }]}>{medicine.name}</Text>
-                <Text style={[typography.caption, { color: t.ink3, marginTop: 3 }]}>
-                  {medicine.dosage} · {medicine.frequency} · {medicine.duration}
-                </Text>
+                <View style={s.chipRow}>
+                  <Chip label={medicine.dosage} variant="brand" />
+                  <Chip label={medicine.frequency} variant="default" />
+                  {medicine.duration && <Chip label={medicine.duration} variant="default" />}
+                </View>
                 {medicine.notes && (
-                  <Text style={[typography.caption, { color: t.ink4, marginTop: 6 }]}>{medicine.notes}</Text>
+                  <Text style={[typography.caption, { color: t.ink3, marginTop: 6 }]}>{medicine.notes}</Text>
                 )}
               </Card>
             ))}
@@ -93,12 +103,13 @@ export function PrescriptionDetailScreen() {
             {/* Barcode visual placeholder */}
             <View style={s.barcodeRow}>
               <BarcodePlaceholder size={120} />
+              <Text style={[typography.micro, { color: t.ink3 }]}>Show this code at pharmacy</Text>
             </View>
 
             {/* CTAs */}
             <View style={s.ctaRow}>
-              <Button label="Share" variant="ghost" style={s.ctaBtn} onPress={() => {}} />
-              <Button label="Request refill" variant="solid" style={s.ctaBtn} onPress={() => router.push(`/meds/import?appointmentId=${appointmentId}` as never)} />
+              <Button label="Share PDF" variant="ghost" style={s.ctaBtn} onPress={() => {}} />
+              <Button label="Refill" variant="solid" style={s.ctaBtn} onPress={() => router.push(`/meds/import?appointmentId=${appointmentId}` as never)} />
             </View>
             <MissingApiState title="Prescription asset download unavailable" contract="existing API needs adaptation" />
           </>
@@ -124,11 +135,14 @@ const s = StyleSheet.create({
   flex: { flex: 1 },
   bar: { paddingHorizontal: 16 },
   content: { paddingHorizontal: 16, paddingTop: 4, gap: 10 },
-  headerCard:  { alignItems: 'center' },
-  barcodeRow:  { alignItems: 'center', paddingVertical: 8 },
-  ctaRow:      { flexDirection: 'row', gap: 10 },
+  headerCard:  { gap: 10 },
+  headerRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  rxIconBox:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  barcodeRow:  { alignItems: 'center', paddingVertical: 16, gap: 8 },
+  ctaRow:      { flexDirection: 'row', gap: 10, marginTop: 16 },
   ctaBtn:      { flex: 1 },
-  chips: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  medCard: { gap: 2 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  chips:       { flexDirection: 'row', gap: 8 },
+  chipRow:     { flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' },
+  medCard:     { gap: 4 },
+  infoRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
 });

@@ -52,10 +52,10 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
 }
 
 const styles = StyleSheet.create({
-  card:    { padding: 20, marginVertical: 8, gap: 6 },
+  card:    { padding: 20, marginBottom: 12, marginTop: 0, gap: 6 },
   doctor:  { color: '#FFF', marginTop: 8 },
   sub:     { color: 'rgba(255,255,255,0.75)' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
   joinBtn: { flex: 1 },
   moreBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

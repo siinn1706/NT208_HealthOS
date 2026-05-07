@@ -44,8 +44,8 @@ export function JoinVideoVisitScreen() {
   const blinkStyle = useBlink();
 
   useEffect(() => {
-    const id = setInterval(() => setElapsed((s) => s + 1), 1000);
-    return () => clearInterval(id);
+    const timerId = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(timerId);
   }, []);
 
   const loadAppointment = useCallback(() => appointmentService.detail(apptId), [apptId]);
@@ -126,13 +126,13 @@ const s = StyleSheet.create({
   safe:          { flex: 1 },
   topBar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 },
   backBtn:       { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  selfPreview:   { position: 'absolute', top: 80, right: 16, width: 96, height: 128, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 8, zIndex: 10 },
+  selfPreview:   { position: 'absolute', top: 80, right: 16, width: 96, height: 128, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 8, zIndex: 10 },
   center:        { flex: 1, alignItems: 'center', justifyContent: 'center' },
   glow:          { position: 'absolute', width: 220, height: 160, borderRadius: 110, backgroundColor: 'rgba(91,168,200,0.12)' },
   avatar:        { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 44, lineHeight: 52, fontFamily: 'Inter_800ExtraBold', color: '#fff' },
   timerRow:      { flexDirection: 'row', alignItems: 'center', gap: 6 },
   liveDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E54D4D' },
-  controls:      { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24, paddingBottom: 20 },
+  controls:      { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24, paddingBottom: 28 },
   ctrlBtn:       { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
 });

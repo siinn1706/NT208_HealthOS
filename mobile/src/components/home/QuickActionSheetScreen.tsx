@@ -5,18 +5,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconButton } from '../primitives/IconButton';
-import { ChevronDown } from 'lucide-react-native';
+import {
+  ChevronDown,
+  HeartPulse,
+  Utensils,
+  CalendarPlus,
+  Pill,
+  AlertCircle,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react-native';
 
-const ACTIONS = [
-  { id: 'vitals',       label: 'Log vitals',       route: '/home/vitals',           color: '#1965B3' },
-  { id: 'meal',         label: 'Patient intake',    route: '/forms/intake',          color: '#D97706' },
-  { id: 'appointment',  label: 'Book appointment',  route: '/care/appointments/new', color: '#7C3AED' },
-  { id: 'meds',         label: 'View meds',         route: '/(tabs)/meds',           color: '#41BCE6' },
-  { id: 'emergency',    label: 'Emergency card',    route: '/(tabs)/me',             color: '#DC2626' },
-  { id: 'ai',           label: 'Ask AI',            route: '/(tabs)/chat',           color: '#12A88A' },
+const ACTIONS: { id: string; label: string; route: string; color: string; Icon: LucideIcon }[] = [
+  { id: 'vitals',       label: 'Log vitals',       route: '/home/vitals',           color: '#1965B3', Icon: HeartPulse },
+  { id: 'meal',         label: 'Patient intake',    route: '/forms/intake',          color: '#D97706', Icon: Utensils },
+  { id: 'appointment',  label: 'Book appointment',  route: '/care/appointments/new', color: '#7C3AED', Icon: CalendarPlus },
+  { id: 'meds',         label: 'View meds',         route: '/(tabs)/meds',           color: '#41BCE6', Icon: Pill },
+  { id: 'emergency',    label: 'Emergency card',    route: '/(tabs)/me',             color: '#DC2626', Icon: AlertCircle },
+  { id: 'ai',           label: 'Ask AI',            route: '/(tabs)/chat',           color: '#12A88A', Icon: Sparkles },
 ];
 
-function ActionCell({ label, route, color }: (typeof ACTIONS)[0]) {
+function ActionCell({ label, route, color, Icon }: (typeof ACTIONS)[0]) {
   const t = useTheme();
   return (
     <Pressable
@@ -28,7 +37,7 @@ function ActionCell({ label, route, color }: (typeof ACTIONS)[0]) {
       accessibilityLabel={label}
     >
       <View style={[styles.iconBox, { backgroundColor: color + '18', borderRadius: t.radius.md }]}>
-        <Text style={[typography.h3, { color }]}>{label.slice(0, 1)}</Text>
+        <Icon size={22} color={color} />
       </View>
       <Text style={[typography.caption, styles.cellLabel, { color: t.ink, fontFamily: 'Inter_600SemiBold' }]} numberOfLines={2}>
         {label}

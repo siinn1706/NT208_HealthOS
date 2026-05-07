@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../layout/Screen';
 import { TopBar } from '../layout/TopBar';
 import { ApiState } from '../api/ApiState';
 import { ChartSkeleton } from '../api/Skeletons';
 import { VitalsLineChart, RangeKey } from '../charts/VitalsLineChart';
+import { SegmentedControl } from '../primitives/input/SegmentedControl';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Chip } from '../primitives/Chip';
@@ -44,6 +45,7 @@ export function VitalsDetailScreen() {
   const delta = values.length >= 2 ? values[values.length - 1] - values[0] : 0;
 
   const chartW = width - 32;
+  const RANGE_LABELS = RANGES.map((r) => r.label);
 
   return (
     <Screen>
@@ -66,29 +68,16 @@ export function VitalsDetailScreen() {
         )}
       </View>
 
-      {/* Range buttons */}
+      {/* Range selector — animated segmented control */}
       <View style={styles.rangeRow}>
-        {RANGES.map((r) => {
-          const active = r.key === range;
-          return (
-            <TouchableOpacity
-              key={r.key}
-              onPress={() => setRange(r.key)}
-              style={[
-                styles.rangeBtn,
-                active && {
-                  backgroundColor: t.card,
-                  borderRadius: t.radius.md,
-                  ...t.shadows.card,
-                },
-              ]}
-            >
-              <Text style={[typography.caption, { color: active ? t.ink : t.ink4, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular' }]}>
-                {r.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <SegmentedControl
+          options={RANGE_LABELS}
+          value={range}
+          onChange={(opt) => {
+            const found = RANGES.find((r) => r.label === opt);
+            if (found) setRange(found.key);
+          }}
+        />
       </View>
 
       {/* Chart */}
@@ -98,7 +87,7 @@ export function VitalsDetailScreen() {
         <View style={[styles.chartCard, { backgroundColor: t.card, borderRadius: t.radius.lg, ...t.shadows.card }]}>
           <VitalsLineChart
             points={points}
-            width={chartW - 32}
+            width={chartW - 24}
             height={140}
             targetMin={60}
             targetMax={100}
@@ -108,12 +97,15 @@ export function VitalsDetailScreen() {
 
       {/* Stats row */}
       {!vitals.isLoading && avg > 0 && (
-        <View style={[styles.statsRow, { backgroundColor: t.card, borderRadius: t.radius.md }]}>
-          {[{ label: 'Avg', value: avg }, { label: 'Min', value: min }, { label: 'Max', value: max }].map((stat) => (
-            <View key={stat.label} style={styles.statCell}>
-              <Text style={[typography.caption, { color: t.ink4 }]}>{stat.label}</Text>
-              <Text style={[typography.h3, { color: t.ink }]}>{stat.value}</Text>
-            </View>
+        <View style={[styles.statsRow, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
+          {[{ label: 'Avg', value: avg }, { label: 'Min', value: min }, { label: 'Max', value: max }].map((stat, idx, arr) => (
+            <React.Fragment key={stat.label}>
+              <View style={styles.statCell}>
+                <Text style={[typography.caption, { color: t.ink4 }]}>{stat.label}</Text>
+                <Text style={[typography.h3, { color: t.ink }]}>{stat.value}</Text>
+              </View>
+              {idx < arr.length - 1 && <View style={[styles.statDivider, { backgroundColor: t.border }]} />}
+            </React.Fragment>
           ))}
         </View>
       )}
@@ -138,12 +130,12 @@ export function VitalsDetailScreen() {
 
 const styles = StyleSheet.create({
   heroRow:     { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 8 },
-  bigValue:    { fontSize: 44, lineHeight: 52, fontFamily: 'Inter_800ExtraBold' },
-  rangeRow:    { flexDirection: 'row', backgroundColor: 'transparent', gap: 4, marginBottom: 12 },
-  rangeBtn:    { flex: 1, paddingVertical: 8, alignItems: 'center' },
-  chartCard:   { padding: 16, marginBottom: 12 },
-  statsRow:    { flexDirection: 'row', padding: 16, marginBottom: 12 },
+  bigValue:    { fontSize: 44, lineHeight: 48, fontFamily: 'Inter_800ExtraBold' },
+  rangeRow:    { marginBottom: 12 },
+  chartCard:   { padding: 12, marginBottom: 12 },
+  statsRow:    { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 16, marginBottom: 12 },
   statCell:    { flex: 1, alignItems: 'center', gap: 4 },
+  statDivider: { width: StyleSheet.hairlineWidth, marginVertical: 4 },
   sectionTitle:{ marginTop: 4, marginBottom: 8 },
   readingRow:  { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
 });

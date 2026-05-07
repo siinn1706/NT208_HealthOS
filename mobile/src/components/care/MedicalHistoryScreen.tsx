@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Chip } from '../primitives/Chip';
@@ -43,7 +44,7 @@ function MiniStats({ history }: { history: Appointment[] }) {
 const ms = StyleSheet.create({
   row:  { flexDirection: 'row', padding: 16, marginBottom: 16 },
   cell: { flex: 1, alignItems: 'center', gap: 2 },
-  sep:  { width: StyleSheet.hairlineWidth, marginVertical: 4 },
+  sep:  { width: StyleSheet.hairlineWidth, height: '70%', alignSelf: 'center' },
 });
 
 function VisitCard({ visit }: { visit: Appointment }) {
@@ -54,7 +55,7 @@ function VisitCard({ visit }: { visit: Appointment }) {
       haptic
       style={[
         s.visitRow,
-        { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg },
+        { backgroundColor: t.card, borderRadius: t.radius.lg },
       ]}
     >
       <View style={s.visitContent}>
@@ -62,7 +63,10 @@ function VisitCard({ visit }: { visit: Appointment }) {
           <View style={[s.dateBadge, { backgroundColor: t.brandSoft, borderRadius: t.radius.sm }]}>
             <Text style={[typography.micro, { color: t.brand }]}>{formatDate(visit.appointment_date)}</Text>
           </View>
-          <Chip label={visit.status} variant={visit.status === 'completed' ? 'success' : 'default'} />
+          <Chip
+            label={visit.status}
+            variant={visit.status === 'completed' ? 'success' : visit.status === 'cancelled' ? 'danger' : 'default'}
+          />
         </View>
         <Text style={[typography.bodyMed, { color: t.ink }]}>{visit.doctor_name}</Text>
         <Text style={[typography.caption, { color: t.ink3 }]}>
@@ -75,6 +79,7 @@ function VisitCard({ visit }: { visit: Appointment }) {
 
 export function MedicalHistoryScreen() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const loadAppointments = useCallback(() => appointmentService.list(), []);
   const appointments = useApiQuery(`${queryKeys.appointments}.history`, loadAppointments);
   const history = (appointments.data ?? []).filter(
@@ -100,7 +105,7 @@ export function MedicalHistoryScreen() {
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
         {appointments.isLoading && (
           <ApiState title="Loading visit history" loading skeleton={<TimelineSkeleton />} />
         )}
@@ -132,9 +137,9 @@ export function MedicalHistoryScreen() {
 const s = StyleSheet.create({
   safe:         { flex: 1 },
   topBarWrap:   { paddingHorizontal: 20 },
-  scroll:       { paddingHorizontal: 20, paddingBottom: 80 },
-  visitRow:     { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, marginBottom: 0, overflow: 'hidden' },
-  visitContent: { flex: 1, padding: 12, gap: 4 },
+  scroll:       { paddingHorizontal: 20 },
+  visitRow:     { flexDirection: 'row', marginBottom: 10, overflow: 'hidden' },
+  visitContent: { flex: 1, padding: 14, gap: 4 },
   visitHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   dateBadge:    { paddingHorizontal: 8, paddingVertical: 3 },
 });

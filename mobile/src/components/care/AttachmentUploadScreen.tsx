@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/TopBar';
 import { IconButton } from '../primitives/IconButton';
 import { Button } from '../primitives/Button';
 import { MissingApiState } from '../api/ApiState';
+import { BottomSheet } from '../primitives/sheet/BottomSheet';
 import { ChevronLeft, IconPaperclip, IconCamera, IconCheck, IconX } from '../../icons';
 
 type ActionSheet = 'library' | 'camera' | null;
@@ -22,6 +23,7 @@ interface UploadSlot {
 
 export function AttachmentUploadScreen() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeSheet, setActiveSheet] = useState<ActionSheet>(null);
   const [slots] = useState<UploadSlot[]>([
     { id: '1', name: 'lab_results.pdf', state: 'done' },
@@ -80,23 +82,19 @@ export function AttachmentUploadScreen() {
         <MissingApiState title="Attachment upload unavailable" contract="unclear and needs manual confirmation" />
       </View>
 
-      {/* Library sheet */}
-      <Modal visible={activeSheet === 'library'} transparent animationType="slide" onRequestClose={() => setActiveSheet(null)}>
-        <Pressable style={s.backdrop} onPress={() => setActiveSheet(null)} />
-        <View style={[s.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
+      <BottomSheet visible={activeSheet === 'library'} onClose={() => setActiveSheet(null)}>
+        <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Photo library access unavailable" contract="requires expo-image-picker and media permissions" />
           <Button label="Close" variant="soft" onPress={() => setActiveSheet(null)} style={{ marginTop: 8 }} />
         </View>
-      </Modal>
+      </BottomSheet>
 
-      {/* Camera sheet */}
-      <Modal visible={activeSheet === 'camera'} transparent animationType="slide" onRequestClose={() => setActiveSheet(null)}>
-        <Pressable style={s.backdrop} onPress={() => setActiveSheet(null)} />
-        <View style={[s.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
+      <BottomSheet visible={activeSheet === 'camera'} onClose={() => setActiveSheet(null)}>
+        <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Camera access unavailable" contract="requires expo-camera and camera permissions" />
           <Button label="Close" variant="soft" onPress={() => setActiveSheet(null)} style={{ marginTop: 8 }} />
         </View>
-      </Modal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -131,12 +129,11 @@ const s = StyleSheet.create({
   bar:          { paddingHorizontal: 16 },
   content:      { paddingHorizontal: 16, gap: 12, marginTop: 8 },
   dashedRow:    { flexDirection: 'row', gap: 10 },
-  dashedCard:   { flex: 1, borderWidth: 1.5, borderStyle: 'dashed', padding: 20, alignItems: 'center', justifyContent: 'center' },
-  uploadIcon:   { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  dashedCard:   { flex: 1, borderWidth: 1.5, borderStyle: 'solid', padding: 24, alignItems: 'center', justifyContent: 'center' },
+  uploadIcon:   { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   divider:      { height: StyleSheet.hairlineWidth },
-  backdrop:     { flex: 1 },
-  sheet:        { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1 },
-  uploadRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderWidth: StyleSheet.hairlineWidth },
+  sheetInner:   { paddingHorizontal: 20, paddingTop: 8 },
+  uploadRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, marginBottom: 8 },
   uploadRowIcon:{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   barTrack:     { height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill:      { height: 4, borderRadius: 2 },

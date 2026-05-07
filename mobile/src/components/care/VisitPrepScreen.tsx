@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -28,6 +29,7 @@ const CHECKLIST_ITEMS = [
 
 export function VisitPrepScreen() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
   const [checked, setChecked] = useState<boolean[]>(CHECKLIST_ITEMS.map(() => false));
@@ -58,7 +60,7 @@ export function VisitPrepScreen() {
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.content}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.content, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
         {/* Hero gradient card */}
         <LinearGradient
           colors={[t.brandSoft, t.accent + '30']}
@@ -135,12 +137,12 @@ export function VisitPrepScreen() {
 const s = StyleSheet.create({
   safe:         { flex: 1 },
   bar:          { paddingHorizontal: 16 },
-  content:      { paddingHorizontal: 16, paddingBottom: 80, gap: 12, marginTop: 8 },
+  content:      { paddingHorizontal: 16, gap: 12, marginTop: 8 },
   hero:         { padding: 20, marginBottom: 4 },
-  barTrack:     { height: 5, borderRadius: 3, overflow: 'hidden' },
-  barFill:      { height: 5, borderRadius: 3 },
-  contextCard:  { padding: 14, borderWidth: StyleSheet.hairlineWidth, gap: 4 },
-  checklistCard:{ padding: 14, borderWidth: StyleSheet.hairlineWidth },
-  checkRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  barTrack:     { height: 4, borderRadius: 2, overflow: 'hidden' },
+  barFill:      { height: 4, borderRadius: 2 },
+  contextCard:  { padding: 14, gap: 4 },
+  checklistCard:{ padding: 16 },
+  checkRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   divider:      { height: StyleSheet.hairlineWidth },
 });
