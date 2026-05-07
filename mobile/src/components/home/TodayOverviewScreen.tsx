@@ -84,108 +84,112 @@ export function TodayOverviewScreen() {
           />
         )}
 
-        {/* Health score hero card */}
-        <LinearGradient
-          colors={[t.brand, t.brandDeep]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.heroCard, { borderRadius: t.radius.xl, margin: t.space[5], marginTop: 8 }]}
-        >
-          <View style={styles.heroInner}>
-            {/* Ring */}
-            <View style={styles.ringWrap}>
-              <Text style={[typography.display, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>
-                {score}
-              </Text>
-            </View>
-            {/* Labels */}
-            <View style={styles.heroLabels}>
-              <Text
-                style={{
-                  color: 'rgba(255,255,255,0.7)',
-                  fontFamily: 'Inter_700Bold',
-                  letterSpacing: 1.2,
-                  fontSize: 11,
-                  marginBottom: 4,
-                }}
+        {!overview.error && (
+          <>
+            {/* Health score hero card */}
+            <LinearGradient
+              colors={[t.brand, t.brandDeep]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.heroCard, { borderRadius: t.radius.xl, margin: t.space[5], marginTop: 8 }]}
+            >
+              <View style={styles.heroInner}>
+                {/* Ring */}
+                <View style={styles.ringWrap}>
+                  <Text style={[typography.display, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>
+                    {score}
+                  </Text>
+                </View>
+                {/* Labels */}
+                <View style={styles.heroLabels}>
+                  <Text
+                    style={{
+                      color: 'rgba(255,255,255,0.7)',
+                      fontFamily: 'Inter_700Bold',
+                      letterSpacing: 1.2,
+                      fontSize: 11,
+                      marginBottom: 4,
+                    }}
+                  >
+                    HEALTH SCORE
+                  </Text>
+                  <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_700Bold' }]}>
+                    {scoreLabel}
+                  </Text>
+                  <Text style={[typography.caption, { color: 'rgba(255,255,255,0.8)', marginTop: 2 }]}>
+                    {data?.score.copy ?? 'Up 3 pts from last week'}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                style={styles.heroBtn}
+                onPress={() => router.push('/(tabs)/home')}
+                accessibilityRole="button"
+                accessibilityLabel="How is this health score calculated?"
               >
-                HEALTH SCORE
-              </Text>
-              <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_700Bold' }]}>
-                {scoreLabel}
-              </Text>
-              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.8)', marginTop: 2 }]}>
-                {data?.score.copy ?? 'Up 3 pts from last week'}
-              </Text>
-            </View>
-          </View>
-          <Pressable
-            style={styles.heroBtn}
-            onPress={() => router.push('/(tabs)/home')}
-            accessibilityRole="button"
-            accessibilityLabel="How is this health score calculated?"
-          >
-            <Text style={[typography.caption, { color: '#FFF', fontFamily: 'Inter_600SemiBold' }]}>
-              How is this calculated?
+                <Text style={[typography.caption, { color: '#FFF', fontFamily: 'Inter_600SemiBold' }]}>
+                  How is this calculated?
+                </Text>
+              </Pressable>
+            </LinearGradient>
+
+            {/* Goals today */}
+            <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
+              Goals today
             </Text>
-          </Pressable>
-        </LinearGradient>
+            <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
+              {data?.kpis.length === 0 && (
+                <ApiState title="No goals" message="Core dashboard goals will appear here." />
+              )}
+              {(data?.kpis ?? []).map((goal, i, arr) => (
+                <GoalItem
+                  key={goal.id}
+                  t={t}
+                  icon={<Activity size={14} color={t.brand} />}
+                  label={goal.label}
+                  value={`${goal.val} / ${goal.tgt}`}
+                  progress={goal.v}
+                  met={goal.v >= 1}
+                  last={i === arr.length - 1}
+                />
+              ))}
+              {/* Fallback rows — only when not loading and no error */}
+              {!data && !overview.isLoading && (
+                <>
+                  <GoalItem t={t} icon={<Footprints size={14} color={t.brand} />} label="Steps" value="6 240 / 10 000" progress={0.62} last={false} />
+                  <GoalItem t={t} icon={<Droplet size={14} color={t.brand} />} label="Water" value="1.2 / 2.0 L" progress={0.6} last={false} />
+                  <GoalItem t={t} icon={<Pill size={14} color={t.brand} />} label="Medications" value="2 / 3" progress={0.67} last={false} />
+                  <GoalItem t={t} icon={<Moon size={14} color={t.brand} />} label="Sleep" value="7 h / 8 h" progress={0.875} met last />
+                </>
+              )}
+            </Card>
 
-        {/* Goals today */}
-        <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
-          Goals today
-        </Text>
-        <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
-          {data?.kpis.length === 0 && (
-            <ApiState title="No goals" message="Core dashboard goals will appear here." />
-          )}
-          {(data?.kpis ?? []).map((goal, i, arr) => (
-            <GoalItem
-              key={goal.id}
-              t={t}
-              icon={<Activity size={14} color={t.brand} />}
-              label={goal.label}
-              value={`${goal.val} / ${goal.tgt}`}
-              progress={goal.v}
-              met={goal.v >= 1}
-              last={i === arr.length - 1}
-            />
-          ))}
-          {/* Fallback rows — only when not loading and no API error */}
-          {!data && !overview.isLoading && !overview.error && (
-            <>
-              <GoalItem t={t} icon={<Footprints size={14} color={t.brand} />} label="Steps" value="6 240 / 10 000" progress={0.62} last={false} />
-              <GoalItem t={t} icon={<Droplet size={14} color={t.brand} />} label="Water" value="1.2 / 2.0 L" progress={0.6} last={false} />
-              <GoalItem t={t} icon={<Pill size={14} color={t.brand} />} label="Medications" value="2 / 3" progress={0.67} last={false} />
-              <GoalItem t={t} icon={<Moon size={14} color={t.brand} />} label="Sleep" value="7 h / 8 h" progress={0.875} met last />
-            </>
-          )}
-        </Card>
-
-        {/* What changed? */}
-        <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
-          What changed?
-        </Text>
-        <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
-          <DeltaItem
-            t={t}
-            icon={<Heart size={14} color={deltaBpm >= 0 ? t.success : t.danger} />}
-            label="Heart rate"
-            delta={`${deltaBpm >= 0 ? '+' : ''}${deltaBpm} bpm this week`}
-            value={data ? `${data.vitals.avg} bpm` : '72 bpm'}
-            positive={deltaBpm >= 0}
-            last={false}
-          />
-          <DeltaItem
-            t={t}
-            icon={<TrendingUp size={14} color={t.success} />}
-            label="Health score"
-            delta="Based on this week's data"
-            value={`${score} pts`}
-            positive
-            last
-          />
-        </Card>
+            {/* What changed? */}
+            <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
+              What changed?
+            </Text>
+            <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
+              <DeltaItem
+                t={t}
+                icon={<Heart size={14} color={deltaBpm >= 0 ? t.success : t.danger} />}
+                label="Heart rate"
+                delta={`${deltaBpm >= 0 ? '+' : ''}${deltaBpm} bpm this week`}
+                value={data ? `${data.vitals.avg} bpm` : '—'}
+                positive={deltaBpm >= 0}
+                last={false}
+              />
+              <DeltaItem
+                t={t}
+                icon={<TrendingUp size={14} color={t.success} />}
+                label="Health score"
+                delta="Based on this week's data"
+                value={data ? `${score} pts` : '—'}
+                positive
+                last
+              />
+            </Card>
+          </>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
