@@ -151,8 +151,8 @@ export function TodayOverviewScreen() {
               last={i === arr.length - 1}
             />
           ))}
-          {/* Fallback rows when no live data */}
-          {!data && !overview.isLoading && (
+          {/* Fallback rows — only when not loading and no API error */}
+          {!data && !overview.isLoading && !overview.error && (
             <>
               <GoalItem t={t} icon={<Footprints size={14} color={t.brand} />} label="Steps" value="6 240 / 10 000" progress={0.62} last={false} />
               <GoalItem t={t} icon={<Droplet size={14} color={t.brand} />} label="Water" value="1.2 / 2.0 L" progress={0.6} last={false} />
