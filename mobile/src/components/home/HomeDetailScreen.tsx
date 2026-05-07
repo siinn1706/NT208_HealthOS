@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
@@ -82,10 +82,13 @@ function AiInsightDetailScreen() {
           {AI_INSIGHT_ACTIONS.map((action, i) => (
             <View key={i}>
               {i > 0 && <View style={[styles.actionDivider, { backgroundColor: t.border }]} />}
-              <View style={styles.actionRow}>
+              <Pressable
+                style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => router.push(action.route as never)}
+              >
                 <Text style={[typography.body, { color: t.ink, flex: 1 }]}>{action.label}</Text>
                 <ChevronRight size={18} color={t.ink4} />
-              </View>
+              </Pressable>
             </View>
           ))}
         </View>
