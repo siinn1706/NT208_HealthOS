@@ -80,7 +80,7 @@ export function TodayOverviewScreen() {
           />
         )}
 
-        {data && (() => {
+        {data && !overview.error && (() => {
           const score = data.score.value;
           const scoreLabel = score >= 80 ? 'Looking good' : score >= 60 ? 'Getting there' : 'Needs attention';
           const deltaBpm = data.vitals.deltaBpm;
