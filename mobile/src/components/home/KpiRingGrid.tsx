@@ -40,7 +40,7 @@ function KpiCell({ item, onItemPress }: { item: KpiItem; onItemPress?: (id: stri
   const IconComp = item.icon ? ICON_MAP[item.icon] : ICON_MAP['IconActivity'];
   return (
     <PressableCard onPress={onItemPress ? () => onItemPress(item.id) : undefined} style={styles.cell}>
-      <ProgressRing value={item.v} size={44} stroke={4} color={item.color} track={t.border}>
+      <ProgressRing value={item.v} size={44} stroke={5} color={item.color} track={t.border}>
         {IconComp && <IconComp size={18} color={item.color} />}
       </ProgressRing>
       <Text style={[typography.bodyMed, { color: t.ink, marginTop: 6 }]} numberOfLines={1}>

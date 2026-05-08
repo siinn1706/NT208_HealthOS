@@ -109,8 +109,11 @@ export function AppointmentDetailScreen() {
               colors={[t.brandDeep, t.brand]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[s.hero, { borderRadius: t.radius.xl }]}
+              style={[s.hero, { borderRadius: t.radius.xl, overflow: 'hidden' }]}
             >
+              {/* Decorative depth circles */}
+              <View style={s.glowCircle1} pointerEvents="none" />
+              <View style={s.glowCircle2} pointerEvents="none" />
               <Chip label={appointment.status} variant="brand" />
               <Text style={[typography.title, s.heroName]}>{appointment.doctor_name}</Text>
               <Text style={[typography.caption, s.heroSub]}>{appointment.specialty ?? 'Appointment'}</Text>
@@ -294,6 +297,8 @@ const s = StyleSheet.create({
   topBarWrap:     { paddingHorizontal: 20 },
   scroll:         { paddingHorizontal: 20, gap: 12 },
   hero:           { padding: 20, gap: 6 },
+  glowCircle1:   { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.10)', right: -30, top: -30 },
+  glowCircle2:   { position: 'absolute', width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.06)', right: 20, bottom: -20 },
   heroName:       { color: '#FFF', marginTop: 6 },
   heroSub:        { color: 'rgba(255,255,255,0.75)' },
   heroRow:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },

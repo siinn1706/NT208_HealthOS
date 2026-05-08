@@ -122,8 +122,8 @@ const styles = StyleSheet.create({
   root:        { flex: 1, paddingTop: 32, paddingHorizontal: 24 },
   hero:        { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   features:    { width: '100%', gap: 10, marginBottom: 0 },
-  featureRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  checkCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  featureRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 16, minHeight: 56 },
+  checkCircle: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   footerMicro: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 20 },
   ctas:        { width: '100%', gap: 12 },
 });

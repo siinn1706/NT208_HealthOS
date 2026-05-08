@@ -32,6 +32,12 @@ export const calmPalette: ThemeTokens = {
   brandSoft: '#E8F8FD',
   accent: '#41BCE6',
   chip: '#E8F8FD',
+  successSoft: '#D1FAE5',
+  warningSoft: '#FEF3C7',
+  dangerSoft: '#FEE2E2',
+  toneWater: '#0EA5E9',
+  toneKcal: '#F97316',
+  toneSleep: '#8B5CF6',
 };
 
 export const nightPalette: ThemeTokens = {
@@ -50,6 +56,12 @@ export const nightPalette: ThemeTokens = {
   brandSoft: 'rgba(91,168,200,0.14)',
   accent: '#7EC8D8',
   chip: 'rgba(91,168,200,0.12)',
+  successSoft: 'rgba(5,150,105,0.15)',
+  warningSoft: 'rgba(217,119,6,0.15)',
+  dangerSoft: 'rgba(229,77,77,0.15)',
+  toneWater: '#38BDF8',
+  toneKcal: '#FB923C',
+  toneSleep: '#A78BFA',
 };
 
 export const warmPalette: ThemeTokens = {
@@ -68,6 +80,12 @@ export const warmPalette: ThemeTokens = {
   brandSoft: '#F6EADC',
   accent: '#D4A06A',
   chip: '#F4E7CE',
+  successSoft: 'rgba(5,150,105,0.12)',
+  warningSoft: 'rgba(217,119,6,0.12)',
+  dangerSoft: 'rgba(229,77,77,0.12)',
+  toneWater: '#B97843',
+  toneKcal: '#B97843',
+  toneSleep: '#8A7C63',
 };
 
 export const palettes: Record<import('./tokens').ThemeName, ThemeTokens> = {

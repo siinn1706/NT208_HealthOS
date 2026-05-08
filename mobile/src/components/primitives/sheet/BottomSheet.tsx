@@ -91,7 +91,7 @@ export function BottomSheet({ visible, onClose, children, maxHeightRatio = 0.85 
           >
             {/* Drag handle */}
             <View style={styles.handleWrap}>
-              <View style={[styles.handle, { backgroundColor: t.border }]} />
+              <View style={[styles.handle, { backgroundColor: t.ink4 }]} />
             </View>
             {children}
           </Animated.View>

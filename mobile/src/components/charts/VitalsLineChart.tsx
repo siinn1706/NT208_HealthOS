@@ -90,7 +90,7 @@ export function VitalsLineChart({
       <Svg width={width} height={height}>
         <Defs>
           <LinearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={t.brand} stopOpacity={0.22} />
+            <Stop offset="0" stopColor={t.brand} stopOpacity={0.32} />
             <Stop offset="1" stopColor={t.brand} stopOpacity={0} />
           </LinearGradient>
         </Defs>
@@ -146,7 +146,7 @@ export function VitalsLineChart({
         {nX.map((nx, i) => {
           const cx = plotX(nx, width);
           const cy = plotY(nY[i], height);
-          return <Circle key={i} cx={cx} cy={cy} r={3} fill={t.brand} stroke={t.card} strokeWidth={1.5} />;
+          return <Circle key={i} cx={cx} cy={cy} r={4.5} fill={t.brand} stroke={t.card} strokeWidth={2} />;
         })}
       </Svg>
     </View>

@@ -31,6 +31,14 @@ export interface ThemeTokens {
   warmGold: string;
   warmPeach: string;
   warmRose: string;
+  // semantic soft containers
+  successSoft: string;
+  warningSoft: string;
+  dangerSoft: string;
+  // KPI tone accents
+  toneWater: string;
+  toneKcal: string;
+  toneSleep: string;
   // radius
   radius: {
     sm: number;

@@ -46,6 +46,6 @@ export function DeltaItem({ icon, label, delta, value, positive, t, last }: Delt
 
 const styles = StyleSheet.create({
   deltaRow:  { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  deltaIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  deltaIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   deltaMid:  { flex: 1 },
 });

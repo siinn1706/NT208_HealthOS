@@ -8,9 +8,8 @@ import { TopBar } from '../layout/TopBar';
 import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
-import { Toggle } from '../primitives/Toggle';
 import { Checkbox } from '../primitives/input/Checkbox';
-import { ChevronLeft, IconCamera, IconSearch, IconPill, IconStethoscope } from '../../icons';
+import { ChevronLeft, IconCamera, IconSearch, IconPill, IconStethoscope, IconCheck } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -97,6 +96,11 @@ export function ImportMedicationScreen() {
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
         {error && <ApiState title="Import failed" message={error} />}
 
+        {/* Intro copy */}
+        <Text style={[typography.body, { color: t.brand, lineHeight: 22 }]}>
+          Connect a source below to automatically import your prescriptions and medication history.
+        </Text>
+
         {sourceAppointmentId && (
           <Button
             label={importing ? 'Importing...' : 'Import appointment prescription'}
@@ -110,8 +114,9 @@ export function ImportMedicationScreen() {
         <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Connected sources</Text>
         <Card style={s.zeroCard}>
           {SOURCES.map((src, i) => (
-            <View
+            <Pressable
               key={src.id}
+              onPress={() => toggleSource(src.id)}
               style={[
                 s.sourceRow,
                 i < SOURCES.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
@@ -124,13 +129,57 @@ export function ImportMedicationScreen() {
                 <Text style={[typography.bodyMed, { color: t.ink }]}>{src.label}</Text>
                 <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>{src.sub}</Text>
               </View>
-              <Toggle value={sourceToggles[src.id] ?? false} onChange={() => toggleSource(src.id)} />
-            </View>
+              {/* Check icon when active, empty circle when inactive */}
+              {sourceToggles[src.id] ? (
+                <View style={[s.checkCircle, { backgroundColor: t.success }]}>
+                  <IconCheck size={12} color="#fff" />
+                </View>
+              ) : (
+                <View style={[s.checkCircle, { backgroundColor: t.border }]} />
+              )}
+            </Pressable>
           ))}
         </Card>
 
-        {/* Choose import method */}
-        <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Import method</Text>
+        {/* Pending items */}
+        <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Pending imports</Text>
+        <View style={s.pendingList}>
+          {PENDING_MEDS.map((med) => {
+            const selected = selectedMeds[med.id] ?? false;
+            return (
+              <Pressable
+                key={med.id}
+                onPress={() => toggleMed(med.id)}
+                style={[
+                  s.pendingCard,
+                  {
+                    backgroundColor: selected ? t.brandSoft : t.card,
+                    borderColor: selected ? t.brand : t.border,
+                    borderRadius: t.radius.lg,
+                  },
+                ]}
+              >
+                <View pointerEvents="none">
+                  <Checkbox value={selected} onChange={() => toggleMed(med.id)} />
+                </View>
+                <View style={s.flex}>
+                  <Text style={[typography.bodyMed, { color: t.ink }]}>{med.name}</Text>
+                  <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>{med.schedule}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Button
+          label={selectedCount > 0 ? `Import ${selectedCount} medication${selectedCount > 1 ? 's' : ''}` : 'Import selected'}
+          variant="solid"
+          onPress={selectedCount > 0 ? () => setMissingModalTitle('Bulk import not yet available.') : undefined}
+          style={selectedCount === 0 ? { opacity: 0.4 } : undefined}
+        />
+
+        {/* Import method options — below fold */}
+        <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 8 }]}>Add another way</Text>
         {IMPORT_OPTIONS.map(opt => (
           <Pressable
             key={opt.title}
@@ -155,36 +204,6 @@ export function ImportMedicationScreen() {
           </Pressable>
         ))}
 
-        {/* Pending items */}
-        <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Pending imports</Text>
-        <Card style={s.zeroCard}>
-          {PENDING_MEDS.map((med, i) => (
-            <Pressable
-              key={med.id}
-              onPress={() => toggleMed(med.id)}
-              style={[
-                s.pendingRow,
-                i < PENDING_MEDS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
-              ]}
-            >
-              <View pointerEvents="none">
-                <Checkbox value={selectedMeds[med.id] ?? false} onChange={() => toggleMed(med.id)} />
-              </View>
-              <View style={s.flex}>
-                <Text style={[typography.bodyMed, { color: t.ink }]}>{med.name}</Text>
-                <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>{med.schedule}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </Card>
-
-        <Button
-          label={selectedCount > 0 ? `Import ${selectedCount} medication${selectedCount > 1 ? 's' : ''}` : 'Import selected'}
-          variant="solid"
-          onPress={selectedCount > 0 ? () => setMissingModalTitle('Bulk import not yet available.') : undefined}
-          style={selectedCount === 0 ? { opacity: 0.4 } : undefined}
-        />
-
         <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
       </ScrollView>
     </SafeAreaView>
@@ -199,9 +218,11 @@ const s = StyleSheet.create({
   zeroCard:     { padding: 0 },
   sourceRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   sourceIcon:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  checkCircle:  { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  pendingList:  { gap: 8 },
+  pendingCard:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderWidth: 1 },
   optRow:       { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderWidth: StyleSheet.hairlineWidth },
   optIcon:      { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  pendingRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   modalBackdrop:{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 },
   modalSheet:   { width: '100%', padding: 20 },
 });

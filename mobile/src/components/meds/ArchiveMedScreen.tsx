@@ -4,12 +4,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { TopBar } from '../layout/TopBar';
-import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
-import { IconButton } from '../primitives/IconButton';
 import { ApiState } from '../api/ApiState';
-import { ChevronLeft, IconAlert, IconCheck } from '../../icons';
+import { IconAlert, IconCheck } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -38,83 +35,55 @@ export function ArchiveMedScreen() {
   }
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
-      <View style={s.bar}>
-        <TopBar
-          title="Archive medication"
-          left={
-            <IconButton
-              icon={<ChevronLeft size={22} color={t.ink} />}
-              onPress={() => router.back()}
-              accessibilityLabel="Back"
-            />
-          }
-        />
-      </View>
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      {/* Dim backdrop */}
+      <Pressable style={s.backdrop} onPress={() => router.back()} />
 
-      <View style={s.content}>
-        {/* Warning banner */}
-        <View style={[s.warnBanner, { backgroundColor: `${t.warning}18`, borderColor: `${t.warning}40`, borderRadius: t.radius.lg }]}>
-          <IconAlert size={20} color={t.warning} />
-          <View style={s.flex}>
-            <Text style={[typography.bodyMed, { color: t.ink }]}>Archive medication?</Text>
-            <Text style={[typography.caption, { color: t.ink3, marginTop: 2, lineHeight: 18 }]}>
-              Archiving moves this medication to your history. Reminders will stop and it will no longer appear in your active list.
-            </Text>
+      {/* Centered dialog card */}
+      <View style={s.centerWrap} pointerEvents="box-none">
+        <View style={[s.dialog, { backgroundColor: t.bgElev, borderRadius: t.radius.xl, ...t.shadows.modal }]}>
+          {/* Icon */}
+          <View style={[s.iconTile, { backgroundColor: `${t.danger}18`, borderRadius: t.radius.md }]}>
+            <IconAlert size={22} color={t.danger} />
           </View>
-        </View>
 
-        {/* Consequences list */}
-        <Card>
-          {[
-            'All dose reminders will be disabled',
-            'Medication removed from active list',
-            'History and adherence data is preserved',
-            'You can restore it at any time from Archives',
-          ].map((item, i) => (
+          <Text style={[typography.title, { color: t.ink, textAlign: 'center', marginTop: 12 }]}>
+            Archive medication?
+          </Text>
+          <Text style={[typography.caption, { color: t.ink3, textAlign: 'center', marginTop: 6, lineHeight: 18 }]}>
+            Archiving moves this medication to your history. Reminders will stop and it will no longer appear in your active list.
+          </Text>
+
+          {error && <ApiState title="Archive failed" message={error} />}
+
+          {/* Safety acknowledgement */}
+          <Pressable onPress={() => setConfirmed(v => !v)} style={s.checkRow}>
             <View
-              key={i}
               style={[
-                s.consequenceRow,
-                i < 3 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
+                s.checkbox,
+                {
+                  borderColor: confirmed ? t.brand : t.borderStrong,
+                  backgroundColor: confirmed ? t.brand : 'transparent',
+                  borderRadius: t.radius.sm,
+                },
               ]}
             >
-              <IconCheck size={14} color={t.ink3} />
-              <Text style={[typography.caption, { color: t.ink2, flex: 1 }]}>{item}</Text>
+              {confirmed && <IconCheck size={12} color="#fff" />}
             </View>
-          ))}
-        </Card>
+            <Text style={[typography.caption, { color: t.ink3, flex: 1 }]}>
+              I understand this will stop all reminders
+            </Text>
+          </Pressable>
 
-        {/* Confirmation checkbox */}
-        <Pressable onPress={() => setConfirmed(v => !v)} style={s.checkRow}>
-          <View
-            style={[
-              s.checkbox,
-              {
-                borderColor: confirmed ? t.brand : t.borderStrong,
-                backgroundColor: confirmed ? t.brand : 'transparent',
-                borderRadius: t.radius.sm,
-              },
-            ]}
-          >
-            {confirmed && <IconCheck size={12} color="#fff" />}
-          </View>
-          <Text style={[typography.caption, { color: t.ink2, flex: 1 }]}>
-            I understand this will stop all reminders for this medication
-          </Text>
-        </Pressable>
-
-        {error && <ApiState title="Archive failed" message={error} />}
-
-        {/* Actions */}
-        <View style={s.actions}>
-          <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={s.flex} />
+          {/* Archive button — full width red */}
           <Button
-            label={saving ? 'Archiving...' : 'Archive'}
+            label={saving ? 'Archiving...' : 'Archive medication'}
             variant="solid"
             onPress={(!confirmed || saving) ? undefined : handleArchive}
-            style={[s.flex, (!confirmed || saving) && { opacity: 0.4 }]}
+            style={[s.archiveBtn, { backgroundColor: t.danger }, (!confirmed || saving) && { opacity: 0.4 }]}
+            labelColor="#fff"
           />
+          <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={s.cancelBtn} />
         </View>
       </View>
     </SafeAreaView>
@@ -122,13 +91,13 @@ export function ArchiveMedScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:           { flex: 1 },
-  bar:            { paddingHorizontal: 16 },
-  content:        { flex: 1, paddingHorizontal: 16, paddingTop: 4, gap: 12 },
-  flex:           { flex: 1 },
-  warnBanner:     { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderWidth: 1 },
-  consequenceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 4 },
-  checkRow:       { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  checkbox:       { width: 22, height: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  actions:        { flexDirection: 'row', gap: 10 },
+  safe:       { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  backdrop:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  centerWrap: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  dialog:     { width: '100%', padding: 24, alignItems: 'center', gap: 0 },
+  iconTile:   { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
+  checkRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, width: '100%' },
+  checkbox:   { width: 22, height: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  archiveBtn: { marginTop: 16, width: '100%' },
+  cancelBtn:  { marginTop: 8, width: '100%' },
 });

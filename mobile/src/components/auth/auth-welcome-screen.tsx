@@ -12,16 +12,22 @@ export function AuthWelcomeScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Logo hero */}
+      {/* Logo hero — outer glow ring + gradient tile */}
       <View style={styles.logoArea}>
-        <LinearGradient
-          colors={[t.brand, t.accent ?? t.brandDeep]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.logoGlow, { shadowColor: t.brand }]}
-        >
-          <HeartPulse size={38} color="#FFFFFF" />
-        </LinearGradient>
+        {/* Outer soft halo */}
+        <View style={[styles.logoHalo, { backgroundColor: `${t.brand}20` }]}>
+          {/* Inner glow ring */}
+          <View style={[styles.logoRing, { backgroundColor: t.brandSoft }]}>
+            <LinearGradient
+              colors={[t.brand, t.accent ?? t.brandDeep]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.logoGlow, { shadowColor: t.brand }]}
+            >
+              <HeartPulse size={38} color="#FFFFFF" />
+            </LinearGradient>
+          </View>
+        </View>
       </View>
 
       {/* Hero text */}
@@ -56,6 +62,8 @@ export function AuthWelcomeScreen() {
 const styles = StyleSheet.create({
   root:       { flex: 1, alignItems: 'center', paddingTop: 20 },
   logoArea:   { alignItems: 'center', paddingHorizontal: 28, paddingTop: 24 },
+  logoHalo:   { borderRadius: 100, padding: 12, alignItems: 'center', justifyContent: 'center' },
+  logoRing:   { borderRadius: 100, padding: 8, alignItems: 'center', justifyContent: 'center' },
   logoGlow:   { width: 80, height: 80, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
                 shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.18, shadowRadius: 30, elevation: 16 },
   heroText:   { paddingHorizontal: 28, alignItems: 'center', marginTop: 24 },

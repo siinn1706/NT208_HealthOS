@@ -9,13 +9,13 @@ import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
 import { Toggle } from '../primitives/Toggle';
 import { SegmentedControl } from '../primitives/input/SegmentedControl';
-import { ChevronLeft } from '../../icons';
+import { ChevronLeft, IconCamera, IconSearch, IconBell } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { ApiState } from '../api/ApiState';
 
-export const FREQ_OPTIONS = ['Once', 'Twice', '3× daily', 'As needed'];
+export const FREQ_OPTIONS = ['1×', '2×', '3×', 'PRN'];
 const TAKE_WITH_OPTIONS = ['Water', 'Food', 'Milk', 'Empty stomach'];
 
 export interface MedFormState {
@@ -113,7 +113,23 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
         {error && <ApiState title="Medication not saved" message={error} />}
 
-        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>MEDICATION NAME</Text>
+        {/* Quick-add tiles — scan or search */}
+        <View style={s.tileRow}>
+          {[
+            { Icon: IconCamera, label: 'Scan barcode' },
+            { Icon: IconSearch, label: 'Search database' },
+          ].map(({ Icon, label }) => (
+            <Pressable
+              key={label}
+              style={[s.tile, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.xl }]}
+            >
+              <Icon size={22} color={t.brand} />
+              <Text style={[typography.caption, { color: t.ink2, marginTop: 6 }]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={[typography.micro, s.label, { color: t.brand }]}>MEDICATION NAME</Text>
         <TextInput
           value={form.name}
           onChangeText={v => set('name', v)}
@@ -122,7 +138,7 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
           style={inputStyle}
         />
 
-        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>DOSAGE</Text>
+        <Text style={[typography.micro, s.label, { color: t.brand }]}>DOSAGE</Text>
         <TextInput
           value={form.dosage}
           onChangeText={v => set('dosage', v)}
@@ -131,14 +147,14 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
           style={inputStyle}
         />
 
-        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>FREQUENCY</Text>
+        <Text style={[typography.micro, s.label, { color: t.brand }]}>FREQUENCY</Text>
         <SegmentedControl
           options={FREQ_OPTIONS}
           value={form.frequency}
           onChange={v => set('frequency', v)}
         />
 
-        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>TAKE WITH</Text>
+        <Text style={[typography.micro, s.label, { color: t.brand }]}>TAKE WITH</Text>
         <View style={s.pillRow}>
           {TAKE_WITH_OPTIONS.map(opt => {
             const active = form.takeWith.includes(opt);
@@ -161,7 +177,7 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
           })}
         </View>
 
-        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>START DATE</Text>
+        <Text style={[typography.micro, s.label, { color: t.brand }]}>START DATE</Text>
         <TextInput
           value={form.startDate}
           onChangeText={v => set('startDate', v)}
@@ -170,7 +186,7 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
           style={inputStyle}
         />
 
-        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>PRESCRIBED BY (OPTIONAL)</Text>
+        <Text style={[typography.micro, s.label, { color: t.brand }]}>PRESCRIBED BY (OPTIONAL)</Text>
         <TextInput
           value={form.prescriber}
           onChangeText={v => set('prescriber', v)}
@@ -179,7 +195,7 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
           style={inputStyle}
         />
 
-        <Text style={[typography.micro, s.label, { color: t.ink3 }]}>NOTES (OPTIONAL)</Text>
+        <Text style={[typography.micro, s.label, { color: t.brand }]}>NOTES (OPTIONAL)</Text>
         <TextInput
           value={form.notes}
           onChangeText={v => set('notes', v)}
@@ -190,14 +206,12 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
           style={[inputStyle, s.multiline]}
         />
 
-        {/* Reminder toggle */}
-        <View style={[s.reminderRow, { backgroundColor: t.card, borderRadius: t.radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: t.border }]}>
-          <View style={s.flex}>
-            <Text style={[typography.bodyMed, { color: t.ink }]}>Dose reminders</Text>
-            <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>
-              Get notified when it's time to take this medication
-            </Text>
+        {/* Reminder toggle — pale brandSoft capsule */}
+        <View style={[s.reminderRow, { backgroundColor: t.brandSoft, borderRadius: t.radius.xxl }]}>
+          <View style={[s.reminderIcon, { backgroundColor: `${t.brand}1A`, borderRadius: t.radius.md }]}>
+            <IconBell size={18} color={t.brand} />
           </View>
+          <Text style={[typography.bodyMed, s.flex, { color: t.ink }]}>Remind me to take</Text>
           <Toggle value={form.reminderEnabled} onChange={v => set('reminderEnabled', v)} />
         </View>
 
@@ -245,5 +259,8 @@ const s = StyleSheet.create({
   multiline:   { height: 80, textAlignVertical: 'top', paddingTop: 12 },
   pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill:        { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
+  tileRow:     { flexDirection: 'row', gap: 10, marginTop: 10, marginBottom: 4 },
+  tile:        { flex: 1, alignItems: 'center', paddingVertical: 16, borderWidth: StyleSheet.hairlineWidth },
   reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginTop: 14 },
+  reminderIcon:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

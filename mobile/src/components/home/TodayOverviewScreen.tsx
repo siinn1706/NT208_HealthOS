@@ -18,6 +18,7 @@ import { IconButton } from '../primitives/IconButton';
 import { Card } from '../primitives/Card';
 import { GoalItem } from './today-goal-item';
 import { DeltaItem } from './today-delta-item';
+import { ProgressRing } from '../charts/ProgressRing';
 import type { ViewStyle } from 'react-native';
 
 function formatDate() {
@@ -94,11 +95,9 @@ export function TodayOverviewScreen() {
                 style={[styles.heroCard, { borderRadius: t.radius.xl, margin: t.space[5], marginTop: 8 }]}
               >
                 <View style={styles.heroInner}>
-                  <View style={styles.ringWrap}>
-                    <Text style={[typography.display, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>
-                      {score}
-                    </Text>
-                  </View>
+                  <ProgressRing value={score / 100} size={80} stroke={7} color="rgba(255,255,255,0.9)" track="rgba(255,255,255,0.2)" glow={true}>
+                    <Text style={[typography.display, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>{score}</Text>
+                  </ProgressRing>
                   <View style={styles.heroLabels}>
                     <Text style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_700Bold', letterSpacing: 1.2, fontSize: 11, marginBottom: 4 }}>
                       HEALTH SCORE
@@ -186,7 +185,6 @@ const styles = StyleSheet.create({
   content:     {},
   heroCard:    { overflow: 'hidden' },
   heroInner:   { flexDirection: 'row', alignItems: 'center', padding: 18, gap: 16 },
-  ringWrap:    { width: 80, height: 80, borderRadius: 40, borderWidth: 6, borderColor: 'rgba(255,255,255,0.5)', alignItems: 'center', justifyContent: 'center' },
   heroLabels:  { flex: 1 },
   heroBtn:     { marginHorizontal: 18, marginBottom: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center' },
   sectionTitle:{ marginTop: 20, marginBottom: 8 },

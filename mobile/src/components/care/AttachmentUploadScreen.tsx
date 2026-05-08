@@ -134,7 +134,7 @@ const s = StyleSheet.create({
   divider:      { height: StyleSheet.hairlineWidth },
   sheetInner:   { paddingHorizontal: 20, paddingTop: 8 },
   uploadRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, marginBottom: 8 },
-  uploadRowIcon:{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  uploadRowIcon:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   barTrack:     { height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill:      { height: 4, borderRadius: 2 },
 });

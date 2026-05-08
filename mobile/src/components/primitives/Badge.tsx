@@ -39,8 +39,8 @@ export function Badge({ count, dot, color, children }: BadgeProps) {
 
 const styles = StyleSheet.create({
   wrapper: { position: 'relative' },
-  badge:   { position: 'absolute', top: -4, right: -4, alignItems: 'center', justifyContent: 'center' },
+  badge:   { position: 'absolute', top: -4, right: -4, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFFFFF' },
   dot:     { width: 8, height: 8, borderRadius: 4 },
-  count:   { minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3 },
-  label:   { color: '#FFFFFF', lineHeight: 16, textAlign: 'center' },
+  count:   { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4 },
+  label:   { color: '#FFFFFF', lineHeight: 18, textAlign: 'center' },
 });

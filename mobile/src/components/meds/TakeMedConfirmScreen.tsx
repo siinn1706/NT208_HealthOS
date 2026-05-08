@@ -6,8 +6,8 @@ import { Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/Button';
-import { Chip } from '../primitives/Chip';
 import { ApiState } from '../api/ApiState';
+import { IconFire } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -42,15 +42,17 @@ export function TakeMedConfirmScreen() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top', 'bottom']}>
-      <View style={[s.backdrop, { backgroundColor: `${t.bg}CC` }]} />
+      <View style={[s.backdrop, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
 
       <View style={[s.sheet, { backgroundColor: t.bgElev, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
         <View style={[s.handle, { backgroundColor: t.borderStrong }]} />
 
-        {/* Success circle */}
-        <View style={[s.successRing, { backgroundColor: `${t.success}18` }]}>
-          <View style={[s.successInner, { backgroundColor: t.success }]}>
-            <Check size={36} color="#fff" strokeWidth={2.5} />
+        {/* Three-layer success halo */}
+        <View style={[s.haloOuter, { backgroundColor: `${t.success}14` }]}>
+          <View style={[s.haloMid, { backgroundColor: `${t.success}20` }]}>
+            <View style={[s.haloInner, { backgroundColor: t.success }]}>
+              <Check size={36} color="#fff" strokeWidth={2.5} />
+            </View>
           </View>
         </View>
 
@@ -63,7 +65,7 @@ export function TakeMedConfirmScreen() {
         {dose && (
           <>
             <Text style={[typography.title, { color: t.ink, textAlign: 'center', marginTop: 16 }]}>
-              {done ? 'Dose logged!' : 'Log this dose?'}
+              {done ? 'Dose logged' : 'Log this dose?'}
             </Text>
             <Text style={[typography.body, { color: t.ink3, textAlign: 'center', marginTop: 6 }]}>
               {dose.plan_name} {dose.strength ?? ''}
@@ -74,11 +76,14 @@ export function TakeMedConfirmScreen() {
                 : `Scheduled for ${formatTime(dose.scheduled_at)}`}
             </Text>
 
-            {/* Streak chip (post-confirm) */}
+            {/* Streak capsule */}
             {done && (
-              <View style={s.streakRow}>
-                <Chip label="Streak" variant="success" />
-                <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Keep it up!</Text>
+              <View style={[s.streakCapsule, { backgroundColor: t.brandSoft }]}>
+                <IconFire size={16} color={t.warning} />
+                <View style={s.streakBody}>
+                  <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.5 }]}>Streak</Text>
+                  <Text style={[typography.bodyMed, { color: t.ink }]}>Keep it up!</Text>
+                </View>
               </View>
             )}
 
@@ -105,13 +110,15 @@ export function TakeMedConfirmScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:         { flex: 1, justifyContent: 'flex-end' },
-  backdrop:     { ...StyleSheet.absoluteFillObject },
-  sheet:        { padding: 20, paddingBottom: 36, alignItems: 'center' },
-  handle:       { width: 40, height: 4, borderRadius: 2, marginBottom: 20 },
-  successRing:  { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
-  successInner: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
-  streakRow:    { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
-  actions:      { flexDirection: 'row', gap: 10, marginTop: 24, width: '100%' },
-  flex:         { flex: 1 },
+  safe:        { flex: 1, justifyContent: 'flex-end' },
+  backdrop:    { ...StyleSheet.absoluteFillObject },
+  sheet:       { padding: 20, paddingBottom: 36, alignItems: 'center' },
+  handle:      { width: 40, height: 4, borderRadius: 2, marginBottom: 20 },
+  haloOuter:   { width: 104, height: 104, borderRadius: 52, alignItems: 'center', justifyContent: 'center' },
+  haloMid:     { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
+  haloInner:   { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
+  streakCapsule: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 100, marginTop: 16 },
+  streakBody:  { gap: 1 },
+  actions:     { flexDirection: 'row', gap: 10, marginTop: 24, width: '100%' },
+  flex:        { flex: 1 },
 });

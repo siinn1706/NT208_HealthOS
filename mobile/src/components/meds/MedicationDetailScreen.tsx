@@ -8,6 +8,7 @@ import { TopBar } from '../layout/TopBar';
 import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
+import { Chip } from '../primitives/Chip';
 import { ApiState } from '../api/ApiState';
 import { ProgressRing } from '../charts/ProgressRing';
 import { IconPill, IconClock, IconStethoscope, IconCalendar, ChevronLeft, IconMore } from '../../icons';
@@ -38,6 +39,10 @@ export function MedicationDetailScreen() {
   const [doseError, setDoseError] = useState<string | null>(null);
   const [pauseSaving, setPauseSaving] = useState(false);
   const [pauseError, setPauseError] = useState<string | null>(null);
+
+  // Approximate taken/scheduled from adherence percent × 30 days
+  const taken = adherence ? Math.round(percent * 30) : 0;
+  const scheduled = 30;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -101,15 +106,21 @@ export function MedicationDetailScreen() {
         {detail && (
           <>
             {/* Icon hero */}
-            <View style={[s.iconHero, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
+            <View style={[s.iconHero, { backgroundColor: t.card, borderRadius: t.radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: t.border }]}>
               <View style={[s.heroIcon, { borderRadius: 16 }]}>
                 <IconPill size={32} color="#fff" strokeWidth={1.5} />
               </View>
               <View style={s.flex}>
                 <Text style={[typography.title, { color: t.ink }]}>{detail.name}</Text>
-                <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
+                <Text style={[typography.caption, { color: t.brand, marginTop: 2 }]}>
                   {[detail.strength, detail.form].filter(Boolean).join(' · ') || 'No dose details'}
                 </Text>
+                <View style={{ marginTop: 6 }}>
+                  <Chip
+                    label={detail.status === 'active' ? 'Active' : detail.status === 'paused' ? 'Paused' : detail.status}
+                    variant={detail.status === 'active' ? 'success' : 'warning'}
+                  />
+                </View>
               </View>
             </View>
 
@@ -124,17 +135,18 @@ export function MedicationDetailScreen() {
                 {adherence && (
                   <AdherenceBarChart
                     values={Array.from({ length: 30 }, (_, i) => {
-                      // Approximate visual from overall percent — vary slightly around mean
                       const base = adherence.percent > 1 ? adherence.percent / 100 : adherence.percent;
                       return Math.max(0, Math.min(1, base + (((i * 7 + 3) % 5) - 2) * 0.08));
                     })}
                     height={30}
+                    successColor={t.success}
+                    noDataColor={t.border}
                   />
                 )}
               </View>
               <ProgressRing value={percent} size={80} stroke={7} color={t.success} track={t.border}>
-                <Text style={[typography.caption, { color: t.success }]}>
-                  {Math.round(percent * 100)}%
+                <Text style={[typography.caption, { color: t.success, textAlign: 'center' }]}>
+                  {taken}/{scheduled}
                 </Text>
               </ProgressRing>
             </Card>
@@ -184,14 +196,16 @@ export function MedicationDetailScreen() {
             </Card>
 
             <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 12 }]}>Details</Text>
-            <Card>
+            <Card style={{ padding: 0 }}>
               {toMedicationDetailRows(detail).map((row, i, arr) => (
                 <View key={row.label} style={[s.detailRow, i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border }]}>
-                  {row.label === 'Dose' && <IconPill size={16} color={t.ink3} />}
-                  {row.label === 'Schedule' && <IconClock size={16} color={t.ink3} />}
-                  {row.label === 'Prescriber' && <IconStethoscope size={16} color={t.ink3} />}
-                  {row.label === 'Started' && <IconCalendar size={16} color={t.ink3} />}
-                  <Text style={[typography.caption, { color: t.ink3, width: 76 }]}>{row.label}</Text>
+                  <View style={s.detailIcon}>
+                    {row.label === 'Dose' && <IconPill size={16} color={t.brand} />}
+                    {row.label === 'Schedule' && <IconClock size={16} color={t.brand} />}
+                    {row.label === 'Prescriber' && <IconStethoscope size={16} color={t.brand} />}
+                    {row.label === 'Started' && <IconCalendar size={16} color={t.brand} />}
+                  </View>
+                  <Text style={[typography.caption, { color: t.brand, width: 80 }]}>{row.label}</Text>
                   <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{row.val}</Text>
                 </View>
               ))}
@@ -238,14 +252,15 @@ const s = StyleSheet.create({
   flex:          { flex: 1 },
   bar:           { paddingHorizontal: 16 },
   content:       { paddingHorizontal: 16, paddingTop: 8 },
-  iconHero:      { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, marginBottom: 12 },
+  iconHero:      { flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16, marginBottom: 12 },
   heroIcon:      { width: 72, height: 72, backgroundColor: '#E88B6E', alignItems: 'center', justifyContent: 'center' },
   adherenceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   adherenceLeft: { flex: 1, gap: 6, marginRight: 12 },
-  doseRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  doseRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
   dot:           { width: 10, height: 10, borderRadius: 5 },
   takeBtn:       { paddingHorizontal: 12, paddingVertical: 6 },
-  detailRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  detailRow:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 14 },
+  detailIcon:    { width: 22, alignItems: 'center' },
   actions:       { flexDirection: 'row', gap: 10 },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet:         { padding: 20, paddingBottom: 36 },

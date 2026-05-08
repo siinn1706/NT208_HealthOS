@@ -114,7 +114,7 @@ function CtrlBtn({ icon, onPress, danger }: { icon: React.ReactNode; onPress: ()
       onPress={onPress}
       style={({ pressed }) => [
         s.ctrlBtn,
-        { backgroundColor: danger ? '#E54D4D' : 'rgba(255,255,255,0.14)', opacity: pressed ? 0.75 : 1 },
+        { backgroundColor: danger ? '#E54D4D' : 'rgba(255,255,255,0.18)', opacity: pressed ? 0.75 : 1 },
       ]}
     >
       {icon}
@@ -128,11 +128,11 @@ const s = StyleSheet.create({
   backBtn:       { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   selfPreview:   { position: 'absolute', top: 80, right: 16, width: 96, height: 128, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 8, zIndex: 10 },
   center:        { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  glow:          { position: 'absolute', width: 220, height: 160, borderRadius: 110, backgroundColor: 'rgba(91,168,200,0.12)' },
+  glow:          { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(91,168,200,0.18)' },
   avatar:        { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 44, lineHeight: 52, fontFamily: 'Inter_800ExtraBold', color: '#fff' },
   timerRow:      { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  liveDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E54D4D' },
+  liveDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
   controls:      { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24, paddingBottom: 28 },
   ctrlBtn:       { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
 });

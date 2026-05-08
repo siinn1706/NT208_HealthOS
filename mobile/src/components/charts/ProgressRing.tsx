@@ -12,6 +12,7 @@ interface ProgressRingProps {
   stroke?: number;
   color: string;
   track?: string;
+  glow?: boolean;      // adds soft color drop-shadow when size >= 72
   children?: React.ReactNode;
 }
 
@@ -21,6 +22,7 @@ export function ProgressRing({
   stroke = 4,
   color,
   track = 'rgba(0,0,0,0.08)',
+  glow = false,
   children,
 }: ProgressRingProps) {
   const r = (size - stroke) / 2;
@@ -29,8 +31,12 @@ export function ProgressRing({
 
   const animatedProps = useRingEntrance(value, circumference);
 
+  const glowStyle = glow && size >= 72
+    ? { shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 0 }
+    : undefined;
+
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, glowStyle]}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Circle
           cx={cx} cy={cx} r={r}

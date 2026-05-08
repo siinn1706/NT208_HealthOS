@@ -45,11 +45,14 @@ export function HealthScoreDetailScreen() {
             <ProgressRing
               value={score.data.score.value / 100}
               size={144}
-              stroke={10}
+              stroke={12}
               color={scoreColor(score.data.score.value / 100, t)}
               track={t.bgElev}
             >
-              <Text style={[styles.bigScore, { color: t.brand }]}>{score.data.score.value}</Text>
+              <View style={styles.scoreCenterCol}>
+                <Text style={[styles.bigScore, { color: t.brand }]}>{score.data.score.value}</Text>
+                <Text style={[typography.caption, { color: t.ink3, textAlign: 'center', marginTop: -2 }]}>/100</Text>
+              </View>
             </ProgressRing>
             <Text style={[typography.h3, { color: t.ink, marginTop: 16 }]}>Health Score</Text>
             <Text style={[typography.body, { color: t.ink3, marginTop: 4, textAlign: 'center' }]}>{score.data.score.copy}</Text>
@@ -81,11 +84,12 @@ export function HealthScoreDetailScreen() {
 
 const styles = StyleSheet.create({
   scoreHeader:   { alignItems: 'center', padding: 28, marginVertical: 8 },
+  scoreCenterCol:{ alignItems: 'center' },
   bigScore:      { fontSize: 56, lineHeight: 64, fontFamily: 'Inter_800ExtraBold' },
   sectionTitle:  { marginTop: 20, marginBottom: 10 },
   categoriesCard:{ padding: 16, marginBottom: 16 },
   catRow:        { marginBottom: 14 },
   catLabelRow:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  barTrack:      { height: 6, borderRadius: 3 },
-  barFill:       { height: 6, borderRadius: 3 },
+  barTrack:      { height: 4, borderRadius: 2 },
+  barFill:       { height: 4, borderRadius: 2 },
 });

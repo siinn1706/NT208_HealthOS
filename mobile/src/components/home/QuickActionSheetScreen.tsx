@@ -70,7 +70,7 @@ export function QuickActionSheetScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrim:      { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  scrim:      { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet:      { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 24 },
   handleRow:  { alignItems: 'center', paddingTop: 10, paddingBottom: 6 },
   handle:     { width: 36, height: 4, borderRadius: 2 },

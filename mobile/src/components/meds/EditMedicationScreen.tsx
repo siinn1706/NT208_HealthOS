@@ -1,9 +1,8 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
 import { AddMedicationScreen, toMedicationCreateBody, FREQ_OPTIONS, type MedFormState } from './AddMedicationScreen';
 import { Button } from '../primitives/Button';
 import { ApiState } from '../api/ApiState';
@@ -35,7 +34,7 @@ export function EditMedicationScreen() {
     invalidateApiQuery(queryKeys.medication(medicationId));
   }
 
-  async function handleDelete() {
+  async function handleArchive() {
     await medicationService.archive(medicationId);
     invalidateApiQuery(queryKeys.medications);
     router.replace('/(tabs)/meds');
@@ -65,7 +64,7 @@ export function EditMedicationScreen() {
   }
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top', 'bottom']}>
+    <View style={[s.safe, { backgroundColor: t.bg }]}>
       <AddMedicationScreen
         screenTitle="Edit medication"
         initialValues={initialValues}
@@ -74,22 +73,27 @@ export function EditMedicationScreen() {
 
       <View style={[s.footer, { backgroundColor: t.bg, borderTopColor: t.border }]}>
         <Button
-          label="Delete medication"
+          label="Pause medication"
           variant="ghost"
-          onPress={handleDelete}
-          style={[s.deleteBtn, { borderColor: t.danger }]}
+          onPress={() => router.push(`/meds/pause/${medicationId}` as never)}
+          style={[s.actionBtn, { borderColor: t.warning }]}
+          labelColor={t.warning}
         />
-        <Text style={[typography.micro, { color: t.ink4, textAlign: 'center', marginTop: 6 }]}>
-          This will archive the medication and stop reminders.
-        </Text>
+        <Button
+          label="Archive medication"
+          variant="ghost"
+          onPress={handleArchive}
+          style={[s.actionBtn, { borderColor: t.danger }]}
+          labelColor={t.danger}
+        />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   safe:      { flex: 1 },
   wrap:      { padding: 16 },
-  footer:    { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
-  deleteBtn: { borderWidth: 1 },
+  footer:    { paddingHorizontal: 16, paddingVertical: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  actionBtn: { borderWidth: 1 },
 });

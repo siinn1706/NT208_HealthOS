@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
@@ -51,9 +52,14 @@ function AiInsightDetailScreen() {
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
         {/* Hero card */}
-        <View style={[styles.aiHero, { backgroundColor: t.brandSoft, borderRadius: t.radius.xl }]}>
-          <View style={[styles.aiIconBox, { backgroundColor: t.card, borderRadius: t.radius.md }]}>
-            <IconSparkle size={24} color={t.brand} />
+        <LinearGradient
+          colors={[t.brandSoft, t.brandSoft + 'CC']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.aiHero, { borderRadius: t.radius.xl }]}
+        >
+          <View style={[styles.aiIconBox, { backgroundColor: t.brand, borderRadius: 12 }]}>
+            <IconSparkle size={24} color="#FFFFFF" />
           </View>
           <Text style={[typography.title, { color: t.ink, marginTop: 12 }]}>
             Your recovery score dropped 12% this week
@@ -61,7 +67,7 @@ function AiInsightDetailScreen() {
           <Text style={[typography.body, { color: t.ink3, marginTop: 6 }]}>
             Based on heart rate, sleep, and activity data from the last 7 days.
           </Text>
-        </View>
+        </LinearGradient>
 
         {/* Causes */}
         <Text style={[typography.caption, { color: t.ink3, letterSpacing: 0.6, textTransform: 'uppercase' }]}>
@@ -70,7 +76,7 @@ function AiInsightDetailScreen() {
         {AI_INSIGHT_CAUSES.map((cause, i) => (
           <View key={i} style={styles.causeRow}>
             <View style={[styles.causeDot, { backgroundColor: t.brand }]} />
-            <Text style={[typography.caption, { color: t.ink2, flex: 1 }]}>{cause}</Text>
+            <Text style={[typography.caption, { color: t.ink2, flex: 1, lineHeight: 22 }]}>{cause}</Text>
           </View>
         ))}
 

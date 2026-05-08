@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
@@ -15,9 +15,9 @@ import { queryKeys } from '../../api/queryKeys';
 import { formatTime } from '../../api/viewModels';
 
 const OPTIONS = [
-  { id: 'taken', Icon: IconCheck, color: '#059669', title: 'I took it late', sub: 'Log the dose as taken' },
-  { id: 'skipped', Icon: IconX, color: '#E54D4D', title: 'I skipped this dose', sub: 'Mark as skipped' },
-  { id: 'now', Icon: IconClock, color: '#1965B3', title: 'Take it now', sub: 'Log it now' },
+  { id: 'taken',   Icon: IconCheck, color: '#059669', title: 'I took it late',      sub: 'Log the dose as taken' },
+  { id: 'skipped', Icon: IconX,     color: '#E54D4D', title: 'I skipped this dose', sub: 'Mark as skipped' },
+  { id: 'now',     Icon: IconClock, color: '#1965B3', title: 'Take it now',          sub: 'Log it now' },
 ];
 
 export function MissedDoseScreen() {
@@ -56,7 +56,7 @@ export function MissedDoseScreen() {
         />
       </View>
 
-      <View style={s.content}>
+      <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 40 }]}>
         {doses.isLoading && <ApiState title="Loading dose" loading />}
         {doses.error && <ApiState title="Dose unavailable" message={doses.error.message} actionLabel="Retry" onAction={doses.reload} />}
         {!doses.isLoading && !doses.error && !dose && (
@@ -70,12 +70,14 @@ export function MissedDoseScreen() {
                 <IconAlert size={22} color="#fff" />
               </View>
               <View style={s.flex}>
-                <Text style={[typography.h3, { color: t.ink }]}>{dose.plan_name}</Text>
-                <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{formatTime(dose.scheduled_at)}</Text>
+                <Text style={[typography.h3, { color: t.ink }]}>Missed · {dose.plan_name}</Text>
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
+                  Scheduled {formatTime(dose.scheduled_at)}
+                </Text>
               </View>
             </View>
 
-            <Text style={[typography.h3, { color: t.ink, marginBottom: 10 }]}>What do you want to do?</Text>
+            <Text style={[typography.h3, { color: t.ink, marginBottom: 10, marginTop: 4 }]}>What do you want to do?</Text>
 
             {choiceError && <ApiState title="Could not save choice" message={choiceError} />}
 
@@ -97,21 +99,22 @@ export function MissedDoseScreen() {
                   <Text style={[typography.bodyMed, { color: t.ink }]}>{opt.title}</Text>
                   <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{opt.sub}</Text>
                 </View>
-                <ChevronRight size={16} color={t.ink4} />
+                <ChevronRight size={16} color={t.brand} />
               </Pressable>
             ))}
+
+            {/* Guidance only shown when dose context is present */}
+            <Card style={[s.guidanceCard, { backgroundColor: t.chip }]}>
+              <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }]}>
+                Guidance
+              </Text>
+              <Text style={[typography.caption, { color: t.ink2, lineHeight: 18 }]}>
+                Do not double up unless your clinician told you to. Contact your care team if unsure.
+              </Text>
+            </Card>
           </>
         )}
-
-        <Card style={{ ...s.guidanceCard, backgroundColor: t.chip }}>
-          <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }]}>
-            Guidance
-          </Text>
-          <Text style={[typography.caption, { color: t.ink2, lineHeight: 18 }]}>
-            Do not double up unless your clinician told you to. Contact your care team if unsure.
-          </Text>
-        </Card>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -119,11 +122,11 @@ export function MissedDoseScreen() {
 const s = StyleSheet.create({
   safe:        { flex: 1 },
   bar:         { paddingHorizontal: 16 },
-  content:     { flex: 1, paddingHorizontal: 16, gap: 10 },
   flex:        { flex: 1 },
-  alertBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderWidth: 1, marginBottom: 4 },
+  content:     { paddingHorizontal: 16, gap: 10 },
+  alertBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderWidth: 1 },
   alertIcon:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   optionRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderWidth: StyleSheet.hairlineWidth },
-  optIcon:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  guidanceCard:{ marginTop: 4 },
+  optIcon:     { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  guidanceCard:{ marginTop: 4, borderRadius: 14 },
 });

@@ -101,9 +101,9 @@ export function PrescriptionDetailScreen() {
             </Card>
 
             {/* Barcode visual placeholder */}
-            <View style={s.barcodeRow}>
+            <View style={[s.barcodeCard, { backgroundColor: '#FFFFFF', borderColor: t.border, borderRadius: t.radius.lg }]}>
               <BarcodePlaceholder size={120} />
-              <Text style={[typography.micro, { color: t.ink3 }]}>Show this code at pharmacy</Text>
+              <Text style={[typography.micro, { color: t.ink3, marginTop: 8 }]}>Show this code at pharmacy</Text>
             </View>
 
             {/* CTAs */}
@@ -138,7 +138,7 @@ const s = StyleSheet.create({
   headerCard:  { gap: 10 },
   headerRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   rxIconBox:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  barcodeRow:  { alignItems: 'center', paddingVertical: 16, gap: 8 },
+  barcodeCard: { alignItems: 'center', paddingVertical: 20, borderWidth: StyleSheet.hairlineWidth },
   ctaRow:      { flexDirection: 'row', gap: 10, marginTop: 16 },
   ctaBtn:      { flex: 1 },
   chips:       { flexDirection: 'row', gap: 8 },

@@ -130,7 +130,7 @@ export function AppointmentsScreen() {
 const styles = StyleSheet.create({
   actions:       { flexDirection: 'row', gap: 4 },
   resetDate:     { marginHorizontal: 16, marginTop: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, alignSelf: 'flex-start' },
-  backdrop:      { flex: 1 },
+  backdrop:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet:         { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1 },
   filterOption:  { padding: 14, borderWidth: 1, marginBottom: 8, borderRadius: 8 },
   filterActions: { flexDirection: 'row', gap: 10, marginTop: 16 },

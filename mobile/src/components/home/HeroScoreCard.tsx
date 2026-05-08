@@ -24,6 +24,9 @@ export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardPro
       end={{ x: 1, y: 1 }}
       style={[styles.card, { borderRadius: t.radius.xl }]}
     >
+      {/* Decorative glow circles — pointer-events none so they don't block touch */}
+      <View pointerEvents="none" style={styles.glowCircle1} />
+      <View pointerEvents="none" style={styles.glowCircle2} />
       <View style={styles.inner}>
         <View style={styles.text}>
           <Text style={[typography.caption, styles.label]}>TODAY'S HEALTH</Text>
@@ -38,6 +41,7 @@ export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardPro
           stroke={8}
           color="#FFFFFF"
           track="rgba(255,255,255,0.2)"
+          glow={true}
         >
           <Text style={[typography.h3, { color: '#FFFFFF' }]}>{value}</Text>
         </ProgressRing>
@@ -52,7 +56,9 @@ export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardPro
 }
 
 const styles = StyleSheet.create({
-  card:  { marginVertical: 8 },
+  card:         { marginVertical: 8, overflow: 'hidden' },
+  glowCircle1:  { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.12)', right: -20, top: -20 },
+  glowCircle2:  { position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.08)', right: 10, bottom: -10 },
   inner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
   text:  { flex: 1 },
   label: { color: 'rgba(255,255,255,0.75)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.6 },

@@ -51,7 +51,7 @@ export function GoalItem({ icon, label, value, progress, met, t, last }: GoalIte
 
 const styles = StyleSheet.create({
   goalRow:  { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  goalIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  goalIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   goalMid:  { flex: 1, gap: 6 },
   goalBar:  { height: 4, borderRadius: 2, overflow: 'hidden' },
   goalFill: { height: 4, borderRadius: 2 },

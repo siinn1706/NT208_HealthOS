@@ -139,8 +139,15 @@ export function MealsHubScreen() {
         subtitle={today.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconCalendar size={20} color={t.ink3} />} accessibilityLabel="Calendar" />
-            <IconButton icon={<IconPlus size={20} color={t.ink3} />} accessibilityLabel="Add meal" onPress={() => router.push('/meals/add' as never)} />
+            <IconButton icon={<IconCalendar size={20} color={t.ink3} />} variant="subtle" accessibilityLabel="Calendar" />
+            {/* Filled circle plus button */}
+            <Pressable
+              onPress={() => router.push('/meals/add' as never)}
+              style={[styles.plusCircle, { backgroundColor: t.brand }]}
+              accessibilityLabel="Add meal"
+            >
+              <IconPlus size={18} color="#fff" />
+            </Pressable>
           </View>
         }
       />
@@ -175,7 +182,13 @@ export function MealsHubScreen() {
             ))}
           </ScrollView>
 
-          <View style={[styles.heroCard, { backgroundColor: t.brand, borderRadius: t.radius.xl }]}>
+          {/* Calories hero with decorative circle overlay */}
+          <View style={[styles.heroCard, { backgroundColor: t.brand, borderRadius: t.radius.xl, overflow: 'hidden' }]}>
+            {/* Decorative translucent circle — clipped inside hero */}
+            <View
+              style={[styles.heroCircle, { backgroundColor: 'rgba(255,255,255,0.10)' }]}
+              pointerEvents="none"
+            />
             <ProgressRing value={Math.min(todayTotals.kcal / DAILY_TARGET_KCAL, 1)} size={84} stroke={8} color="#fff" track="rgba(255,255,255,0.22)">
               <View style={styles.ringCenter}>
                 <Text style={[typography.title, tabularNums, { color: '#fff' }]}>{kcalLeft}</Text>
@@ -191,13 +204,13 @@ export function MealsHubScreen() {
 
           <View style={styles.macroGrid}>
             {[
-              { label: 'Carbs', consumed: todayTotals.carbs, target: 240, color: '#E3B79A' },
-              { label: 'Protein', consumed: todayTotals.protein, target: 120, color: t.brand },
-              { label: 'Fat', consumed: todayTotals.fat, target: 65, color: '#5B90C4' },
+              { label: 'Carbs',   consumed: todayTotals.carbs,   target: 240, color: '#E3B79A' },
+              { label: 'Protein', consumed: todayTotals.protein, target: 120, color: t.brand   },
+              { label: 'Fat',     consumed: todayTotals.fat,     target: 65,  color: '#5B90C4' },
             ].map((m) => {
               const pct = Math.min(m.consumed / m.target, 1);
               return (
-                <Card tight key={m.label} style={styles.macroCard}>
+                <Card tight key={m.label} style={[styles.macroCard, { borderWidth: 1, borderColor: t.border }]}>
                   <Text style={[typography.micro, { color: t.ink3, marginBottom: 4 }]}>{m.label}</Text>
                   <Text style={[typography.bodyMed, tabularNums, { color: t.ink }]}>
                     {Math.round(m.consumed)}
@@ -211,38 +224,44 @@ export function MealsHubScreen() {
             })}
           </View>
 
-          <Card tight style={{ ...styles.coachCard, backgroundColor: t.brandSoft }}>
+          {/* Coach card — icon tile + uppercase COACH label */}
+          <Card tight style={[styles.coachCard, { backgroundColor: t.brandSoft, borderWidth: 1, borderColor: t.border }]}>
             <View style={styles.coachRow}>
-              <IconSparkle size={16} color={t.brand} />
-              <Text style={[typography.chip, { color: t.brand, marginLeft: 4 }]}>Coach</Text>
+              <View style={[styles.coachIcon, { backgroundColor: `${t.brand}18`, borderRadius: t.radius.md }]}>
+                <IconSparkle size={18} color={t.brand} />
+              </View>
+              <View style={styles.flex}>
+                <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 3 }]}>
+                  COACH
+                </Text>
+                <Text style={[typography.caption, { color: t.ink2, lineHeight: 18 }]}>{coachCopy}</Text>
+              </View>
             </View>
-            <Text style={[typography.caption, { color: t.ink2, marginTop: 4 }]}>{coachCopy}</Text>
           </Card>
 
           <SectionHeader title="Today's meals" action="See all" onActionPress={() => router.push('/meals/trends' as never)} />
           {mealRows.length === 0 ? (
             <ApiState title="No meals logged yet" message="Add your first meal to see daily nutrition progress." />
           ) : (
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <View style={styles.mealList}>
               {mealRows.map((m) => (
-                <View key={m.id} style={{ paddingHorizontal: 12 }}>
-                  <MealRow
-                    slotLabel={m.slot}
-                    time={m.time}
-                    title={m.title}
-                    meta={m.meta}
-                    kcal={m.kcal}
-                    aiScanned={m.aiScanned}
-                    icon={<View style={[styles.slotIconBg, { backgroundColor: t.brand }]}>{slotIcon(m.slot)}</View>}
-                    onPress={() => router.push(`/meals/${m.id}` as never)}
-                  />
-                </View>
+                <MealRow
+                  key={m.id}
+                  slotLabel={m.slot}
+                  time={m.time}
+                  title={m.title}
+                  meta={m.meta}
+                  kcal={m.kcal}
+                  aiScanned={m.aiScanned}
+                  icon={<View style={[styles.slotIconBg, { backgroundColor: t.brand }]}>{slotIcon(m.slot)}</View>}
+                  onPress={() => router.push(`/meals/${m.id}` as never)}
+                />
               ))}
-              <Pressable onPress={() => router.push('/meals/add' as never)} style={[styles.addDinner, { borderColor: t.border }]}>
+              <Pressable onPress={() => router.push('/meals/add' as never)} style={[styles.addMealRow, { borderColor: t.border, borderRadius: t.radius.lg }]}>
                 <IconPlus size={16} color={t.ink3} />
                 <Text style={[typography.caption, { color: t.ink3, marginLeft: 6 }]}>Add meal</Text>
               </Pressable>
-            </Card>
+            </View>
           )}
 
           <SectionHeader title="This week" action="Trends" onActionPress={() => router.push('/meals/trends' as never)} />
@@ -262,11 +281,13 @@ export function MealsHubScreen() {
 }
 
 const styles = StyleSheet.create({
-  topActions:      { flexDirection: 'row', gap: 4 },
+  topActions:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  plusCircle:      { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   dayStrip:        { marginHorizontal: -16, marginBottom: 12 },
   dayStripContent: { paddingHorizontal: 16, gap: 8 },
   dayPill:         { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, minWidth: 54 },
-  heroCard:        { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 16, marginBottom: 12 },
+  heroCard:        { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 16, marginBottom: 12, position: 'relative' },
+  heroCircle:      { position: 'absolute', right: -40, top: -40, width: 160, height: 160, borderRadius: 80 },
   ringCenter:      { alignItems: 'center' },
   heroText:        { flex: 1, gap: 2 },
   macroGrid:       { flexDirection: 'row', gap: 8, marginBottom: 12 },
@@ -274,8 +295,11 @@ const styles = StyleSheet.create({
   macroTrack:      { height: 4, borderRadius: 2, marginTop: 6, overflow: 'hidden' },
   macroFill:       { height: 4, borderRadius: 2 },
   coachCard:       { marginBottom: 4 },
-  coachRow:        { flexDirection: 'row', alignItems: 'center' },
-  slotIconBg:      { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  addDinner:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth },
+  coachRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  coachIcon:       { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  flex:            { flex: 1 },
+  mealList:        { gap: 8 },
+  slotIconBg:      { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  addMealRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderWidth: StyleSheet.hairlineWidth },
   weekRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

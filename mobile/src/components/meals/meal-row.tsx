@@ -17,26 +17,26 @@ interface MealRowProps {
 export function MealRow({ slotLabel, time, title, meta, kcal, icon, aiScanned, onPress }: MealRowProps) {
   const t = useTheme();
   return (
-    <Pressable onPress={onPress} style={[styles.row, { borderColor: t.border }]}>
-      {/* Icon circle */}
-      <View style={[styles.iconCircle, { backgroundColor: t.brandSoft }]}>
+    <Pressable onPress={onPress} style={[styles.row, { backgroundColor: t.card, borderColor: t.border }]}>
+      {/* Icon tile — square with rounded corners */}
+      <View style={[styles.iconTile, { borderRadius: t.radius.md, overflow: 'hidden' }]}>
         {icon}
       </View>
 
       {/* Content */}
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Text style={[typography.micro, { color: t.ink3 }]}>
+          <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.4 }]}>
             {slotLabel} · {time}
           </Text>
           {aiScanned && (
-            <View style={[styles.aiChip, { backgroundColor: t.brandSoft }]}>
+            <View style={[styles.aiChip, { backgroundColor: t.brandSoft, borderRadius: t.radius.pill }]}>
               <Text style={[typography.micro, { color: t.brand }]}>AI</Text>
             </View>
           )}
         </View>
         <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{title}</Text>
-        <Text style={[typography.caption, { color: t.ink3 }]} numberOfLines={1}>{meta}</Text>
+        <Text style={[typography.caption, { color: t.brand }]} numberOfLines={1}>{meta}</Text>
       </View>
 
       {/* Calories */}
@@ -52,14 +52,14 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 12,
     gap: 12,
   },
-  iconCircle: {
+  iconTile: {
     width: 48,
     height: 48,
-    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -68,7 +68,6 @@ const styles = StyleSheet.create({
   aiChip: {
     paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: 4,
   },
   kcalCol: { alignItems: 'flex-end' },
 });

@@ -4,17 +4,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { TopBar } from '../layout/TopBar';
-import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
-import { IconButton } from '../primitives/IconButton';
-import { ChevronLeft, IconClock } from '../../icons';
 import { ApiState } from '../api/ApiState';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 
-const DURATION_OPTIONS = ['1 week', '2 weeks', '1 month', 'Custom'];
+const DURATION_OPTIONS = ['1 wk', '2 wks', '1 mo', 'Custom'];
 
 export function PauseMedScreen() {
   const t = useTheme();
@@ -42,44 +38,32 @@ export function PauseMedScreen() {
   }
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
-      <View style={s.bar}>
-        <TopBar
-          title="Pause medication"
-          left={
-            <IconButton
-              icon={<ChevronLeft size={22} color={t.ink} />}
-              onPress={() => router.back()}
-              accessibilityLabel="Back"
-            />
-          }
-        />
-      </View>
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      {/* Dim backdrop — tap to cancel */}
+      <Pressable style={s.backdrop} onPress={() => router.back()} />
 
-      <View style={s.content}>
-        {/* Clock icon hero */}
-        <View style={[s.clockHero, { backgroundColor: t.brandSoft, borderRadius: t.radius.xl }]}>
-          <View style={[s.clockCircle, { backgroundColor: t.brand + '22', borderRadius: 40 }]}>
-            <IconClock size={36} color={t.brand} />
+      {/* Bottom sheet */}
+      <View style={[s.sheet, { backgroundColor: t.bgElev, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
+        <View style={[s.handle, { backgroundColor: t.borderStrong }]} />
+
+        {/* Header icon + title */}
+        <View style={s.header}>
+          <View style={[s.iconTile, { backgroundColor: `${t.warning}18`, borderRadius: t.radius.md }]}>
+            <Text style={{ fontSize: 20 }}>⏸</Text>
           </View>
-          <Text style={[typography.h3, { color: t.ink, marginTop: 12 }]}>Pause medication</Text>
-          <Text style={[typography.caption, { color: t.ink3, marginTop: 4, textAlign: 'center' }]}>
-            Suspends all dose reminders for the selected duration
-          </Text>
+          <View style={s.flex}>
+            <Text style={[typography.title, { color: t.ink }]}>Pause medication?</Text>
+            <Text style={[typography.caption, { color: t.brand, marginTop: 2 }]}>
+              Suspends all dose reminders for the selected duration
+            </Text>
+          </View>
         </View>
 
         {error && <ApiState title="Pause failed" message={error} />}
-        {/* Med name banner */}
-        <Card style={{ ...s.medBanner, backgroundColor: t.chip }}>
-          <Text style={[typography.bodyMed, { color: t.ink }]}>Pause medication</Text>
-          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
-            Pausing will suspend all dose reminders for this medication.
-          </Text>
-        </Card>
 
-        {/* Duration picker */}
+        {/* Duration chips — one row of 4 */}
         <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>PAUSE DURATION</Text>
-        <View style={s.durationGrid}>
+        <View style={s.durationRow}>
           {DURATION_OPTIONS.map((opt, i) => {
             const active = selectedDuration === i;
             return (
@@ -89,29 +73,24 @@ export function PauseMedScreen() {
                 style={[
                   s.durationChip,
                   {
-                    borderRadius: t.radius.md,
+                    borderRadius: t.radius.pill,
                     backgroundColor: active ? t.brandSoft : t.card,
                     borderColor: active ? t.brand : t.border,
                   },
                 ]}
               >
-                <Text style={[typography.bodyMed, { color: active ? t.brand : t.ink2 }]}>
-                  {opt}
-                </Text>
+                <Text style={[typography.caption, { color: active ? t.brand : t.ink2 }]}>{opt}</Text>
               </Pressable>
             );
           })}
         </View>
 
         {/* Reason input */}
-        <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>REASON (OPTIONAL)</Text>
         <TextInput
           value={reason}
           onChangeText={setReason}
-          placeholder="e.g. Side effects, travelling..."
+          placeholder="Reason (optional)…"
           placeholderTextColor={t.ink4}
-          multiline
-          numberOfLines={3}
           style={[
             s.reasonInput,
             {
@@ -123,15 +102,16 @@ export function PauseMedScreen() {
           ]}
         />
 
-        {/* Warning note */}
-        <Text style={[typography.caption, { color: t.ink3, lineHeight: 18 }]}>
-          Always consult your doctor before pausing prescribed medications. Pausing will resume automatically after the selected duration.
-        </Text>
-
-        {/* Actions */}
+        {/* Actions — ghost cancel + orange pause */}
         <View style={s.actions}>
           <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={s.flex} />
-          <Button label={saving ? 'Pausing...' : 'Pause medication'} variant="solid" onPress={saving ? undefined : handlePause} style={[s.flex, saving && { opacity: 0.4 }]} />
+          <Button
+            label={saving ? 'Pausing...' : 'Pause'}
+            variant="solid"
+            onPress={saving ? undefined : handlePause}
+            style={[s.flex, { backgroundColor: t.warning }, saving && { opacity: 0.4 }]}
+            labelColor="#fff"
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -139,16 +119,16 @@ export function PauseMedScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:         { flex: 1 },
-  bar:          { paddingHorizontal: 16 },
-  content:      { flex: 1, paddingHorizontal: 16, paddingTop: 4, gap: 10 },
-  clockHero:    { alignItems: 'center', padding: 24 },
-  clockCircle:  { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
-  medBanner:    {},
-  sectionLabel: { textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-  durationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  durationChip: { paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, minWidth: '45%', alignItems: 'center' },
-  reasonInput:  { borderWidth: StyleSheet.hairlineWidth, padding: 12, textAlignVertical: 'top', height: 80, fontSize: 14 },
-  actions:      { flexDirection: 'row', gap: 10, marginTop: 8 },
+  safe:         { flex: 1, justifyContent: 'flex-end' },
+  backdrop:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet:        { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 36 },
+  handle:       { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  header:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
+  iconTile:     { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   flex:         { flex: 1 },
+  sectionLabel: { textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  durationRow:  { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  durationChip: { flex: 1, alignItems: 'center', paddingVertical: 10, borderWidth: 1 },
+  reasonInput:  { borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, marginBottom: 16 },
+  actions:      { flexDirection: 'row', gap: 10 },
 });

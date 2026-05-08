@@ -27,12 +27,12 @@ export function Chip({ label, variant = 'default', icon }: ChipProps) {
   return (
     <View style={[styles.chip, { backgroundColor: bg, borderRadius: t.radius.pill }]}>
       {icon && <View style={styles.icon}>{icon}</View>}
-      <Text style={[typography.micro, { color: text }]}>{label}</Text>
+      <Text style={[typography.micro, { color: text, fontWeight: '600', fontSize: 11 }]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5 },
   icon: { marginRight: 4 },
 });
