@@ -43,13 +43,15 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
           labelColor={t.brand}
           style={StyleSheet.flatten([styles.joinBtn, { backgroundColor: '#FFFFFF' }])}
         />
-        <Pressable
-          onPress={onMore}
-          style={[styles.moreBtn, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: t.radius.pill }]}
-          accessibilityLabel="More options"
-        >
-          <IconMore size={18} color="#FFF" />
-        </Pressable>
+        {onMore && (
+          <Pressable
+            onPress={onMore}
+            style={[styles.moreBtn, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: t.radius.pill }]}
+            accessibilityLabel="More options"
+          >
+            <IconMore size={18} color="#FFF" />
+          </Pressable>
+        )}
       </View>
     </LinearGradient>
   );
