@@ -14,9 +14,10 @@ interface HeroAppointmentCardProps {
   location: string;
   type: string;
   onJoin?: () => void;
+  onMore?: () => void;
 }
 
-export function HeroAppointmentCard({ countdown, doctor, specialty, location, type, onJoin }: HeroAppointmentCardProps) {
+export function HeroAppointmentCard({ countdown, doctor, specialty, location, type, onJoin, onMore }: HeroAppointmentCardProps) {
   const t = useTheme();
 
   return (
@@ -43,7 +44,7 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
           style={StyleSheet.flatten([styles.joinBtn, { backgroundColor: '#FFFFFF' }])}
         />
         <Pressable
-          onPress={onJoin}
+          onPress={onMore}
           style={[styles.moreBtn, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: t.radius.pill }]}
           accessibilityLabel="More options"
         >
