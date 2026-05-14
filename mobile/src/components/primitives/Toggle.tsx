@@ -6,6 +6,7 @@ import { useTheme } from '../../theme/useTheme';
 interface ToggleProps {
   value: boolean;
   onChange: (next: boolean) => void;
+  disabled?: boolean;
 }
 
 const TRACK_W = 44;
@@ -14,7 +15,7 @@ const THUMB = 20;
 const OFF_X = 2;
 const ON_X = TRACK_W - THUMB - OFF_X;
 
-export function Toggle({ value, onChange }: ToggleProps) {
+export function Toggle({ value, onChange, disabled }: ToggleProps) {
   const t = useTheme();
   const thumbX = useSharedValue(value ? ON_X : OFF_X);
   const trackBg = useSharedValue(value ? 1 : 0);
@@ -24,6 +25,7 @@ export function Toggle({ value, onChange }: ToggleProps) {
   }));
 
   function handlePress() {
+    if (disabled) return;
     const next = !value;
     thumbX.value = next ? ON_X : OFF_X;
     trackBg.value = next ? 1 : 0;
@@ -35,14 +37,16 @@ export function Toggle({ value, onChange }: ToggleProps) {
   return (
     <Pressable
       onPress={handlePress}
+      disabled={disabled}
       accessibilityRole="switch"
-      accessibilityState={{ checked: value }}
+      accessibilityState={{ checked: value, disabled: !!disabled }}
       style={{
         width: TRACK_W,
         height: TRACK_H,
         borderRadius: TRACK_H / 2,
         backgroundColor: bg,
         justifyContent: 'center',
+        opacity: disabled ? 0.45 : 1,
       }}
     >
       <Animated.View

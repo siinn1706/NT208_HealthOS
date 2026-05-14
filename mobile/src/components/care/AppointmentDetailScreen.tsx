@@ -250,28 +250,47 @@ export function AppointmentDetailScreen() {
       {/* Cancel confirmation modal */}
       <Modal visible={cancelOpen} transparent animationType="fade" onRequestClose={() => !cancelling && setCancelOpen(false)}>
         <View style={s.confirmOverlay}>
-          <View style={[s.confirmBox, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}>
-            <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Cancel appointment?</Text>
-            <Text style={[typography.body, { color: t.ink3, marginBottom: 16 }]}>
+          <View style={[s.confirmBox, { backgroundColor: t.card, borderRadius: t.radius.xl, ...t.shadows.modal }]}>
+            {/* Danger icon tile */}
+            <View style={s.confirmIconWrap}>
+              <View style={[s.confirmIconTile, { backgroundColor: t.dangerSoft }]}>
+                <Text style={{ fontSize: 24 }}>✕</Text>
+              </View>
+            </View>
+            {/* Record pill */}
+            {appointment && (
+              <View style={s.confirmMetaWrap}>
+                <View style={[s.confirmMetaPill, { backgroundColor: t.chip }]}>
+                  <Text style={[typography.caption, { color: t.ink3 }]} numberOfLines={1}>
+                    {appointment.doctor_name}
+                  </Text>
+                </View>
+              </View>
+            )}
+            <Text style={[typography.h3, { color: t.ink, marginBottom: 8, textAlign: 'center' }]}>
+              Cancel appointment?
+            </Text>
+            <Text style={[typography.body, { color: t.ink3, marginBottom: 20, textAlign: 'center', lineHeight: 19 }]}>
               This action cannot be undone. The appointment will be marked as cancelled.
             </Text>
             {cancelError && (
-              <Text style={[typography.caption, { color: t.danger, marginBottom: 12 }]}>{cancelError}</Text>
+              <Text style={[typography.caption, { color: t.danger, marginBottom: 12, textAlign: 'center' }]}>{cancelError}</Text>
             )}
-            {cancelling && <ActivityIndicator color={t.brand} style={{ marginBottom: 12 }} />}
-            <View style={s.confirmActions}>
-              <Button
-                label="Keep"
-                variant="ghost"
-                style={s.actionBtn}
-                onPress={() => { setCancelOpen(false); setCancelError(null); }}
-                disabled={cancelling}
-              />
+            {cancelling && <ActivityIndicator color={t.danger} style={{ marginBottom: 12 }} />}
+            {/* Vertical actions — destructive first */}
+            <View style={s.confirmActionsV}>
               <Button
                 label={cancelling ? 'Cancelling…' : 'Yes, cancel'}
                 variant="solid"
-                style={[s.actionBtn, { backgroundColor: t.danger }]}
+                style={[s.confirmBtn, { backgroundColor: t.danger }]}
                 onPress={handleCancel}
+                disabled={cancelling}
+              />
+              <Button
+                label="Keep it"
+                variant="ghost"
+                style={s.confirmBtn}
+                onPress={() => { setCancelOpen(false); setCancelError(null); }}
                 disabled={cancelling}
               />
             </View>
@@ -316,7 +335,12 @@ const s = StyleSheet.create({
   actionBtn:      { flex: 1 },
   sheetInner:     { paddingHorizontal: 20, paddingTop: 8, gap: 0 },
   sheetRow:       { paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
-  confirmBox:     { width: '100%', padding: 20, borderWidth: StyleSheet.hairlineWidth },
-  confirmActions: { flexDirection: 'row', gap: 10 },
+  confirmOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  confirmBox:       { width: '100%', padding: 22 },
+  confirmIconWrap:  { alignItems: 'center', marginBottom: 12 },
+  confirmIconTile:  { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  confirmMetaWrap:  { alignItems: 'center', marginBottom: 10 },
+  confirmMetaPill:  { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20 },
+  confirmActionsV:  { gap: 8 },
+  confirmBtn:       { height: 52 },
 });

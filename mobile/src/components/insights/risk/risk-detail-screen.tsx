@@ -5,8 +5,8 @@ import { Screen } from '../../layout/Screen';
 import { SectionHeader } from '../../layout/SectionHeader';
 import { Card } from '../../primitives/Card';
 import { Button } from '../../primitives/Button';
-import { Sparkline } from '../../charts/Sparkline';
 import { ApiState, MissingApiState } from '../../api/ApiState';
+import { ProgressRing } from '../../charts/ProgressRing';
 import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { riskService } from '../../../api/services';
@@ -16,6 +16,8 @@ import {
   ChevronLeft, IconMore, IconHeartPulse,
   IconActivity, IconShield, IconLeaf,
 } from '../../../icons';
+
+// ─── BackBar ──────────────────────────────────────────────────────────────────
 
 function BackBar({ title, right }: { title: string; right?: React.ReactNode }) {
   const t = useTheme();
@@ -30,66 +32,52 @@ function BackBar({ title, right }: { title: string; right?: React.ReactNode }) {
   );
 }
 
+// ─── Factor row with horizontal progress bar ──────────────────────────────────
+
 type ImpactLevel = 'high' | 'medium' | 'low';
 
-function ImpactChip({ level }: { level: ImpactLevel }) {
-  const t = useTheme();
-  const map = {
-    high: { bg: t.danger + '18', text: t.danger, label: 'High impact' },
-    medium: { bg: t.warning + '18', text: t.warning, label: 'Med impact' },
-    low: { bg: t.success + '18', text: t.success, label: 'Low impact' },
-  };
-  const { bg, text, label } = map[level];
-  return (
-    <View style={[styles.chip, { backgroundColor: bg, borderRadius: t.radius.pill }]}>
-      <Text style={[typography.chip, { color: text }]}>{label}</Text>
-    </View>
-  );
-}
-
-function FactorRow({
-  icon,
-  iconBg,
+function FactorProgressRow({
   name,
   detail,
+  value,
   impact,
+  icon,
+  iconBg,
 }: {
-  icon: React.ReactNode;
-  iconBg: string;
   name: string;
   detail: string;
+  value: number; // 0-1
   impact: ImpactLevel;
+  icon: React.ReactNode;
+  iconBg: string;
 }) {
   const t = useTheme();
+  const fillColor = impact === 'high' ? t.danger : impact === 'medium' ? t.warning : t.success;
+  const impactLabel = impact === 'high' ? 'High' : impact === 'medium' ? 'Mod' : 'Low';
+
   return (
     <View style={[styles.factorRow, { borderBottomColor: t.border }]}>
       <View style={[styles.factorIcon, { backgroundColor: iconBg, borderRadius: t.radius.md }]}>
         {icon}
       </View>
       <View style={styles.factorBody}>
-        <Text style={[typography.bodyMed, { color: t.ink }]}>{name}</Text>
-        <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{detail}</Text>
+        <View style={styles.factorTitleRow}>
+          <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]} numberOfLines={1}>{name}</Text>
+          <View style={[styles.factorChip, { backgroundColor: fillColor + '18', borderRadius: t.radius.pill }]}>
+            <Text style={[typography.micro, { color: fillColor }]}>{impactLabel}</Text>
+          </View>
+        </View>
+        <Text style={[typography.caption, { color: t.ink3, marginTop: 2, marginBottom: 6 }]}>{detail}</Text>
+        {/* Thin progress track */}
+        <View style={[styles.factorTrack, { backgroundColor: t.border, borderRadius: t.radius.pill }]}>
+          <View style={[styles.factorFill, { backgroundColor: fillColor, width: `${Math.round(value * 100)}%`, borderRadius: t.radius.pill }]} />
+        </View>
       </View>
-      <ImpactChip level={impact} />
     </View>
   );
 }
 
-function SuggestionCard({ priority, title, detail }: { priority: 'high' | 'medium' | 'low'; title: string; detail: string }) {
-  const t = useTheme();
-  const color = priority === 'high' ? t.warning : priority === 'medium' ? t.brand : t.success;
-  return (
-    <View style={[styles.suggCard, { backgroundColor: color + '10', borderColor: color + '30', borderRadius: t.radius.lg }]}>
-      <View style={styles.suggHeader}>
-        <View style={[styles.suggPill, { backgroundColor: color + '20', borderRadius: t.radius.pill }]}>
-          <Text style={[typography.micro, { color, letterSpacing: 0.8 }]}>{priority.toUpperCase()}</Text>
-        </View>
-        <Text style={[typography.bodyMed, { color: t.ink, flex: 1, marginLeft: 8 }]}>{title}</Text>
-      </View>
-      <Text style={[typography.caption, { color: t.ink3, marginTop: 6 }]}>{detail}</Text>
-    </View>
-  );
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -125,6 +113,8 @@ function iconForLabel(label: string, color: string) {
   return <IconShield size={16} color={color} />;
 }
 
+// ─── Main Screen ───────────────────────────────────────────────────────────────
+
 export function RiskDetailScreen() {
   const t = useTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -146,11 +136,12 @@ export function RiskDetailScreen() {
       const impact: ImpactLevel = impactRaw === 'negative' ? 'high' : impactRaw === 'positive' ? 'low' : 'medium';
       const label = asString(item.label, 'Factor');
       const detail = asString(item.detail, 'No detail');
-      const color = impact === 'high' ? '#E54D4D' : impact === 'medium' ? '#D97706' : '#059669';
+      const color = impact === 'high' ? t.danger : impact === 'medium' ? t.warning : t.success;
       return {
         name: label.replace(/_/g, ' '),
         detail,
         impact,
+        value: impact === 'high' ? 0.75 : impact === 'medium' ? 0.45 : 0.2,
         icon: iconForLabel(label, color),
         iconBg: color + '18',
       };
@@ -174,9 +165,8 @@ export function RiskDetailScreen() {
       factors,
       suggestions,
       probability,
-      trendSeries: [Math.round(probability * 100)],
     };
-  }, [risk.data, rawId]);
+  }, [risk.data, rawId, t]);
 
   if (risk.isLoading) {
     return (
@@ -212,11 +202,16 @@ export function RiskDetailScreen() {
 
   const condition = asString(model.selected.condition, 'Risk');
   const level = asString(model.selected.level, 'unknown');
+  const pct = Math.round(model.probability * 100);
+  const isElevated = level.toLowerCase() === 'moderate' || level.toLowerCase() === 'high' || level.toLowerCase() === 'critical';
+  const trendColor = isElevated ? t.warning : t.success;
+  const heroCardBg = t.warning + '10';
+  const heroCardBorder = t.warning + '30';
 
   return (
     <Screen>
       <BackBar
-        title={`${condition.toLowerCase()} risk`}
+        title={`${condition} risk`}
         right={
           <Pressable hitSlop={8} style={styles.moreBtn} onPress={risk.reload}>
             <IconMore size={20} color={t.ink3} />
@@ -224,47 +219,65 @@ export function RiskDetailScreen() {
         }
       />
 
-      <Card style={{ ...styles.heroCard, backgroundColor: t.warning + '10', borderColor: t.warning + '30' }}>
+      {/* Hero card: donut ring left + meta right */}
+      <Card style={{ ...styles.heroCard, backgroundColor: heroCardBg, borderColor: heroCardBorder }}>
         <View style={styles.heroTop}>
-          <View style={[styles.heroIcon, { backgroundColor: t.warning + '25', borderRadius: t.radius.md }]}>
-            <IconHeartPulse size={24} color={t.warning} />
-          </View>
-          <View style={styles.heroMeta}>
-            <View style={[styles.chip, { backgroundColor: t.warning + '18', borderRadius: t.radius.pill, alignSelf: 'flex-start', marginBottom: 6 }]}>
-              <Text style={[typography.chip, { color: t.warning }]}>{level}</Text>
+          {/* Left: donut ring with percent */}
+          <ProgressRing value={model.probability} size={96} stroke={9} color={trendColor} track={t.border} glow>
+            <View style={styles.ringCenter}>
+              <Text style={[typography.h3, { color: t.ink, lineHeight: 20 }]}>{pct}%</Text>
             </View>
-            <Text style={[typography.caption, { color: t.ink3 }]}>
+          </ProgressRing>
+
+          {/* Right: title + trend chip + timestamp */}
+          <View style={styles.heroMeta}>
+            <Text style={[typography.title, { color: t.ink }]} numberOfLines={3}>{condition} risk</Text>
+            <View style={[styles.trendChip, { backgroundColor: trendColor + '18', borderRadius: t.radius.pill, marginTop: 8, alignSelf: 'flex-start' }]}>
+              <Text style={[typography.micro, { color: trendColor, textTransform: 'uppercase', letterSpacing: 0.8 }]}>
+                {level.toUpperCase()} — TRENDING UP
+              </Text>
+            </View>
+            <Text style={[typography.caption, { color: t.ink3, marginTop: 8 }]}>
               {model.generatedAt ? `Updated ${new Date(model.generatedAt).toLocaleString()}` : 'Generated time unavailable'}
             </Text>
-          </View>
-          <Sparkline data={model.trendSeries} color={t.warning} width={80} height={36} />
-        </View>
-        <View style={styles.heroScoreRow}>
-          <Text style={[typography.display, { color: t.ink }]}>{Math.round(model.probability * 100)}</Text>
-          <View style={styles.heroScoreDetail}>
-            <Text style={[typography.caption, { color: t.ink3 }]}>Current probability (%)</Text>
           </View>
         </View>
       </Card>
 
+      {/* Driving factors with progress bars */}
       <SectionHeader title="Driving factors" />
       {model.factors.length === 0 ? (
         <ApiState title="No factors returned" message="Risk payload has no factor details." />
       ) : (
         <Card tight>
-          {model.factors.map((factor, i) => <FactorRow key={`${factor.name}-${i}`} {...factor} />)}
+          {model.factors.map((factor, i) => (
+            <FactorProgressRow key={`${factor.name}-${i}`} {...factor} />
+          ))}
         </Card>
       )}
 
-      <SectionHeader title="What to do" />
+      {/* What to do */}
+      <SectionHeader title="If you change one thing" />
       {model.suggestions.length === 0 ? (
         <ApiState title="No suggestions returned" message="Risk payload has no tip details." />
       ) : (
         <View style={styles.suggList}>
-          {model.suggestions.map((suggestion, i) => <SuggestionCard key={`${suggestion.title}-${i}`} {...suggestion} />)}
+          {model.suggestions.map((s, i) => {
+            const color = s.priority === 'high' ? t.warning : s.priority === 'medium' ? t.brand : t.success;
+            return (
+              <Card key={`${s.title}-${i}`} style={{ backgroundColor: color + '08', borderColor: color + '25' }}>
+                <View style={[styles.suggIcon, { backgroundColor: color + '18', borderRadius: t.radius.md }]}>
+                  <IconShield size={18} color={color} />
+                </View>
+                <Text style={[typography.bodyMed, { color: t.ink, marginTop: 8 }]}>{s.title}</Text>
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>{s.detail}</Text>
+              </Card>
+            );
+          })}
         </View>
       )}
 
+      {/* Track over time — missing endpoint */}
       <SectionHeader title="Track over time" />
       <Card tight style={styles.trackCard}>
         <MissingApiState title="Risk trend history unavailable" contract="TODO: add endpoint GET /v1/health/risk-predictions/{id}/history?period=30d" />
@@ -282,23 +295,23 @@ export function RiskDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBar:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, minHeight: 52 },
-  backBtn:        { width: 40, alignItems: 'flex-start' },
-  backRight:      { flexDirection: 'row', gap: 4 },
-  moreBtn:        { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  chip:           { paddingHorizontal: 8, paddingVertical: 3 },
-  heroCard:       { marginTop: 4 },
-  heroTop:        { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  heroIcon:       { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  heroMeta:       { flex: 1 },
-  heroScoreRow:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  heroScoreDetail:{ flex: 1 },
-  factorRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  factorIcon:     { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  factorBody:     { flex: 1 },
-  suggList:       { gap: 10 },
-  suggCard:       { padding: 14, borderWidth: StyleSheet.hairlineWidth },
-  suggHeader:     { flexDirection: 'row', alignItems: 'center' },
-  suggPill:       { paddingHorizontal: 7, paddingVertical: 3 },
-  trackCard:      { overflow: 'hidden' },
+  backBar:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, minHeight: 52 },
+  backBtn:      { width: 40, alignItems: 'flex-start' },
+  backRight:    { flexDirection: 'row', gap: 4 },
+  moreBtn:      { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  heroCard:     { marginTop: 4 },
+  heroTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  ringCenter:   { alignItems: 'center' },
+  heroMeta:     { flex: 1 },
+  trendChip:    { paddingHorizontal: 8, paddingVertical: 4 },
+  factorRow:    { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  factorIcon:   { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  factorBody:   { flex: 1 },
+  factorTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  factorChip:   { paddingHorizontal: 7, paddingVertical: 2 },
+  factorTrack:  { height: 4, width: '100%' },
+  factorFill:   { height: 4 },
+  suggList:     { gap: 10 },
+  suggIcon:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  trackCard:    { overflow: 'hidden' },
 });

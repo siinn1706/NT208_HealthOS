@@ -16,31 +16,22 @@ export function IngredientRow({ name, grams, kcal, carbs, protein, fat }: Ingred
   const t = useTheme();
   return (
     <View style={[styles.row, { borderBottomColor: t.border }]}>
+      {/* Left: name + grams */}
       <View style={styles.left}>
         <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{name}</Text>
-        <Text style={[typography.caption, { color: t.ink3 }]}>{grams}g · {kcal} kcal</Text>
+        <Text style={[typography.caption, { color: t.ink3 }]}>{grams}g</Text>
       </View>
-      <View style={styles.macros}>
-        <MacroPill label="C" value={carbs} color="#E3B79A" />
-        <MacroPill label="P" value={protein} color={t.brand} />
-        <MacroPill label="F" value={fat} color="#5B90C4" />
+      {/* Right: kcal bold + macro sub-line */}
+      <View style={styles.right}>
+        <Text style={[typography.bodyMed, tabularNums, { color: t.ink }]}>{kcal} kcal</Text>
+        <Text style={[typography.micro, { color: t.ink3 }]}>C {carbs}g P {protein}g F {fat}g</Text>
       </View>
-    </View>
-  );
-}
-
-function MacroPill({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={styles.pill}>
-      <Text style={[typography.micro, { color }]}>{label}</Text>
-      <Text style={[typography.micro, tabularNums, { color, marginLeft: 2 }]}>{value}g</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, gap: 8 },
-  left:   { flex: 1, gap: 2 },
-  macros: { flexDirection: 'row', gap: 6 },
-  pill:   { flexDirection: 'row', alignItems: 'center' },
+  row:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, gap: 8 },
+  left:  { flex: 1, gap: 2 },
+  right: { alignItems: 'flex-end', gap: 2 },
 });

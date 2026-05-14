@@ -10,8 +10,8 @@ import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { reportService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
-import { typography } from '../../../theme/typography';
-import { ChevronLeft, IconMore, IconPaperclip, IconCheck } from '../../../icons';
+import { typography, tabularNums } from '../../../theme/typography';
+import { ChevronLeft, IconMore, IconPaperclip, IconCheck, IconSparkle } from '../../../icons';
 
 function BackBar({ title, right }: { title: string; right?: React.ReactNode }) {
   const t = useTheme();
@@ -68,9 +68,9 @@ function latestNonZero(values: number[]) {
 }
 
 function periodLabel(period: '7d' | '30d' | '90d') {
-  if (period === '30d') return 'Monthly summary';
-  if (period === '90d') return 'Quarterly summary';
-  return 'Weekly summary';
+  if (period === '30d') return 'Monthly report';
+  if (period === '90d') return 'Quarterly report';
+  return 'Weekly report';
 }
 
 export function ReportDetailScreen() {
@@ -179,10 +179,14 @@ export function ReportDetailScreen() {
     );
   }
 
+  // Stat card data derived from vitalsRows
+  const sleepRow = model.vitalsRows.find((r) => r.label === 'Sleep');
+  const hrRow = model.vitalsRows.find((r) => r.label === 'Heart rate');
+
   return (
     <Screen>
       <BackBar
-        title=""
+        title={periodLabel(period)}
         right={
           <View style={styles.topActions}>
             <Pressable onPress={() => router.push('/insights/reports/export' as never)} hitSlop={8} style={styles.iconBtn}>
@@ -195,35 +199,72 @@ export function ReportDetailScreen() {
         }
       />
 
-      <View style={[styles.heroCard, { backgroundColor: t.brand, borderRadius: t.radius.xl }]}>
-        <Text style={[typography.micro, { color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 1 }]}>
-          {periodLabel(period)} · {period}
-        </Text>
-        <Text style={[typography.title, { color: '#fff', marginTop: 8, marginBottom: 6 }]}>
+      {/* Hero card — pale-blue with icon square */}
+      <View style={[styles.heroCard, { backgroundColor: t.brandSoft, borderRadius: t.radius.xl, borderWidth: 1, borderColor: t.brand + '20' }]}>
+        <View style={styles.heroTopRow}>
+          <View style={[styles.heroIconSq, { backgroundColor: t.brand, borderRadius: t.radius.sm }]}>
+            <IconSparkle size={16} color="#fff" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.8 }]}>
+              WEEKLY SUMMARY
+            </Text>
+            <Text style={[typography.caption, { color: t.ink3 }]}>
+              {model.generatedAt ? new Date(model.generatedAt).toLocaleDateString() : 'No date'}
+            </Text>
+          </View>
+        </View>
+        <Text style={[typography.bodyMed, { color: t.ink, marginTop: 12, lineHeight: 22 }]}>
           {model.heroTitle}
-        </Text>
-        <Text style={[typography.caption, { color: 'rgba(255,255,255,0.6)' }]}>
-          {model.generatedAt ? `Generated ${new Date(model.generatedAt).toLocaleString()}` : 'Generated time unavailable'}
         </Text>
       </View>
 
-      <SectionHeader title="Health score this period" />
-      <Card tight>
-        <View style={styles.scoreRow}>
-          <View style={styles.scoreNums}>
-            <Text style={[typography.display, { color: t.ink }]}>{model.score}</Text>
-            <Text style={[typography.caption, { color: t.ink3, marginLeft: 4, alignSelf: 'flex-end', marginBottom: 4 }]}>pts</Text>
+      {/* 3-stat card grid */}
+      <View style={styles.statGrid}>
+        {[
+          { label: 'SLEEP',      value: sleepRow?.value ?? '—',         delta: '▲ 22m',    deltaGood: true  },
+          { label: 'RESTING HR', value: hrRow?.value ?? '—',            delta: '▼ 4 bpm',  deltaGood: true  },
+          { label: 'ADHERENCE',  value: `${model.medAdherence}%`,        delta: '14 / 14',  deltaGood: true  },
+        ].map((stat) => (
+          <View key={stat.label} style={[styles.statCard, { backgroundColor: t.card, borderColor: t.border }]}>
+            <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.6 }]}>{stat.label}</Text>
+            <Text style={[typography.title, tabularNums, { color: t.ink, marginTop: 4 }]}>{stat.value}</Text>
+            <Text style={[typography.caption, { color: stat.deltaGood ? t.success : t.warning, marginTop: 2 }]}>{stat.delta}</Text>
           </View>
-          <View style={[styles.scoreDelta, { backgroundColor: t.success + '18', borderRadius: t.radius.pill }]}>
-            <Text style={[typography.chip, { color: t.success }]}>{model.status}</Text>
-          </View>
-        </View>
-        <Text style={[typography.caption, { color: t.ink3, marginBottom: 10 }]}>Derived from section status coverage</Text>
-        <View style={[styles.progressTrack, { backgroundColor: t.border, borderRadius: t.radius.pill }]}>
-          <View style={[styles.progressFill, { backgroundColor: t.brand, width: `${model.score}%`, borderRadius: t.radius.pill }]} />
-        </View>
-      </Card>
+        ))}
+      </View>
 
+      {/* Key findings — tone cards */}
+      <SectionHeader title="Key findings" />
+      {model.bullets.map((bullet, i) => {
+        const toneType = i === 0 ? 'success' : i === 2 ? 'warning' : 'info';
+        const toneColor = toneType === 'success' ? t.success : toneType === 'warning' ? t.warning : t.brand;
+        return (
+          <View
+            key={i}
+            style={[
+              styles.findingCard,
+              {
+                backgroundColor: toneColor + '12',
+                borderColor: toneColor + '30',
+                borderRadius: t.radius.lg,
+                borderWidth: 1,
+                marginBottom: 8,
+                padding: 12,
+              },
+            ]}
+          >
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: toneColor + '20', alignItems: 'center', justifyContent: 'center' }}>
+                <IconCheck size={18} color={toneColor} />
+              </View>
+              <Text style={[typography.body, { color: t.ink, flex: 1, lineHeight: 20 }]}>{bullet}</Text>
+            </View>
+          </View>
+        );
+      })}
+
+      {/* Vitals section */}
       <SectionHeader title="Vitals" />
       <Card tight>
         {model.vitalsRows.map((row) => (
@@ -231,6 +272,7 @@ export function ReportDetailScreen() {
         ))}
       </Card>
 
+      {/* Medications adherence */}
       <SectionHeader title="Medications" />
       <Card tight style={{ backgroundColor: t.success + '10', borderColor: t.success + '30' }}>
         <View style={styles.medRow}>
@@ -245,16 +287,6 @@ export function ReportDetailScreen() {
           </View>
         </View>
       </Card>
-
-      <SectionHeader title="AI summary" />
-      <Card style={{ backgroundColor: t.brandSoft, borderColor: t.brand + '20' }}>
-        {model.bullets.map((bullet, i) => (
-          <View key={i} style={styles.bulletRow}>
-            <View style={[styles.bulletDot, { backgroundColor: t.brand }]} />
-            <Text style={[typography.body, { color: t.ink, flex: 1 }]}>{bullet}</Text>
-          </View>
-        ))}
-      </Card>
     </Screen>
   );
 }
@@ -266,16 +298,14 @@ const styles = StyleSheet.create({
   topActions:    { flexDirection: 'row', gap: 4 },
   iconBtn:       { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   heroCard:      { padding: 20, marginTop: 4, marginBottom: 4 },
-  scoreRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
-  scoreNums:     { flexDirection: 'row', alignItems: 'flex-end' },
-  scoreDelta:    { paddingHorizontal: 10, paddingVertical: 4 },
-  progressTrack: { height: 6, width: '100%' },
-  progressFill:  { height: 6 },
+  heroTopRow:    { flexDirection: 'row', alignItems: 'center' },
+  heroIconSq:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  statGrid:      { flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 4 },
+  statCard:      { flex: 1, padding: 12, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth },
+  findingCard:   {},
   vitalRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   vitalText:     { flex: 1 },
   medRow:        { flexDirection: 'row', alignItems: 'center', gap: 12 },
   medIcon:       { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   medText:       { flex: 1 },
-  bulletRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  bulletDot:     { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
 });

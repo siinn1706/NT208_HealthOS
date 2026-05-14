@@ -10,6 +10,7 @@ import { IconButton } from '../../primitives/IconButton';
 import { ApiState } from '../../api/ApiState';
 import { InsightsSegmentedTabs } from '../insights-segmented-tabs';
 import { RiskGauge } from './risk-gauge';
+import { Skeleton } from '../../primitives/feedback/Skeleton';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { useApiQuery } from '../../../api/query';
@@ -59,6 +60,81 @@ function iconForCondition(condition: string, color: string) {
   return <IconAlert size={16} color={color} />;
 }
 
+// ─── Refresh/Loading skeleton state ───────────────────────────────────────────
+
+const REFRESH_STEPS = [
+  { label: 'Fetching vitals',       sub: 'Heart rate, BP, SpO₂',         done: true  },
+  { label: 'Recomputing risk score', sub: 'Running prediction model…',    done: false },
+  { label: 'Updating factors',      sub: 'Cardiovascular, metabolic',     done: false },
+];
+
+function RiskRefreshState() {
+  const t = useTheme();
+  return (
+    <View style={rfStyles.wrap}>
+      {/* Skeleton hero card */}
+      <Card style={[rfStyles.skCard, { backgroundColor: t.card, borderColor: t.border }]}>
+        <View style={rfStyles.skCardInner}>
+          <Skeleton width={80} height={80} radius={40} />
+          <View style={rfStyles.skLines}>
+            <Skeleton width="60%" height={14} />
+            <Skeleton width="80%" height={10} style={{ marginTop: 8 }} />
+            <Skeleton width="45%" height={10} style={{ marginTop: 6 }} />
+          </View>
+        </View>
+      </Card>
+
+      {/* Recomputing row */}
+      <View style={rfStyles.statusRow}>
+        <View style={[rfStyles.spinWrap, { backgroundColor: t.brand + '18', borderRadius: 999 }]}>
+          <View style={[rfStyles.spinner, { borderColor: t.brand }]} />
+        </View>
+        <Text style={[typography.bodyMed, { color: t.brand }]}>Recomputing your risk profile</Text>
+      </View>
+
+      {/* Step checklist */}
+      <Card tight style={rfStyles.checkCard}>
+        {REFRESH_STEPS.map((step, i) => (
+          <View
+            key={i}
+            style={[
+              rfStyles.checkRow,
+              { borderBottomColor: t.border, borderBottomWidth: i < REFRESH_STEPS.length - 1 ? StyleSheet.hairlineWidth : 0 },
+            ]}
+          >
+            <View style={[
+              rfStyles.stepIcon,
+              { backgroundColor: step.done ? t.success + '18' : i === 1 ? t.brand + '18' : t.border + '40', borderRadius: 999 },
+            ]}>
+              {step.done
+                ? <Text style={{ fontSize: 9, color: t.success }}>✓</Text>
+                : i === 1
+                  ? <View style={[rfStyles.innerSpinner, { borderColor: t.brand }]} />
+                  : <View style={[rfStyles.dot, { backgroundColor: t.ink4 }]} />
+              }
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.bodyMed, { color: t.ink }]}>{step.label}</Text>
+              <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>{step.sub}</Text>
+            </View>
+            {i === 1 && (
+              <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.8 }]}>…</Text>
+            )}
+          </View>
+        ))}
+      </Card>
+
+      {/* Second skeleton card peeking */}
+      <Card style={[rfStyles.skCard2, { backgroundColor: t.card, borderColor: t.border, opacity: 0.5 }]}>
+        <Skeleton width="100%" height={12} />
+        <Skeleton width="70%" height={10} style={{ marginTop: 8 }} />
+      </Card>
+    </View>
+  );
+}
+
+// ─── Main Screen ───────────────────────────────────────────────────────────────
+
 export function RiskOverviewScreen() {
   const t = useTheme();
   const loadRisk = useCallback(() => riskService.summary(), []);
@@ -83,7 +159,7 @@ export function RiskOverviewScreen() {
     <Screen>
       <TopBar
         title="Insights"
-        subtitle="Personalized risk profile"
+        subtitle={risk.isLoading ? 'Refreshing…' : 'Personalized risk profile'}
         right={
           <View style={styles.topActions}>
             <IconButton icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel="Refresh" onPress={() => risk.reload()} />
@@ -94,11 +170,21 @@ export function RiskOverviewScreen() {
 
       <InsightsSegmentedTabs active="risk" />
 
-      {risk.isLoading && <ApiState title="Loading risk profile" loading />}
-      {risk.error && <ApiState title="Risk profile unavailable" message={risk.error.message} actionLabel="Retry" onAction={risk.reload} />}
+      {/* Loading → custom skeleton refresh state */}
+      {risk.isLoading && <RiskRefreshState />}
+
+      {risk.error && (
+        <ApiState
+          title="Risk profile unavailable"
+          message={risk.error.message}
+          actionLabel="Retry"
+          onAction={risk.reload}
+        />
+      )}
 
       {!risk.isLoading && !risk.error && (
         <>
+          {/* Hero card with risk gauge */}
           <Card style={{ ...styles.heroCard, backgroundColor: t.warning + '12', borderColor: t.warning + '30' }}>
             <View style={styles.heroContent}>
               <RiskGauge value={Math.max(0, Math.min(1, (100 - parsed.overallScore) / 100))} size={150} />
@@ -133,9 +219,9 @@ export function RiskOverviewScreen() {
               </Text>
               <View style={styles.barWrap}>
                 <View style={[styles.barTrack, { borderRadius: t.radius.pill, overflow: 'hidden' }]}>
-                  <View style={[styles.barSegGreen, { flex: 1 }]} />
-                  <View style={[styles.barSegYellow, { flex: 1 }]} />
-                  <View style={[styles.barSegRed, { flex: 1 }]} />
+                  <View style={[styles.barSegGreen, { flex: 1, backgroundColor: t.success }]} />
+                  <View style={[styles.barSegYellow, { flex: 1, backgroundColor: t.warning }]} />
+                  <View style={[styles.barSegRed, { flex: 1, backgroundColor: t.danger }]} />
                 </View>
                 <View style={[styles.barMarker, { left: `${riskProgress(parsed.top.probability) * 100}%`, borderColor: t.card }]} />
               </View>
@@ -202,9 +288,9 @@ const styles = StyleSheet.create({
   chip:             { paddingHorizontal: 8, paddingVertical: 3 },
   barWrap:          { position: 'relative', marginBottom: 4 },
   barTrack:         { flexDirection: 'row', height: 8 },
-  barSegGreen:      { backgroundColor: '#059669' },
-  barSegYellow:     { backgroundColor: '#D97706' },
-  barSegRed:        { backgroundColor: '#E54D4D' },
+  barSegGreen:      {},
+  barSegYellow:     {},
+  barSegRed:        {},
   barMarker:        { position: 'absolute', top: -3, width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff', borderWidth: 2, marginLeft: -7 },
   barLabels:        { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   riskRow:          { flexDirection: 'row', gap: 12, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
@@ -213,4 +299,20 @@ const styles = StyleSheet.create({
   riskTitleRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   progressTrack:    { height: 4, width: '100%' },
   progressFill:     { height: 4 },
+});
+
+const rfStyles = StyleSheet.create({
+  wrap:        { paddingHorizontal: 16, paddingTop: 8 },
+  skCard:      { padding: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth },
+  skCardInner: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  skLines:     { flex: 1, gap: 0 },
+  statusRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  spinWrap:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  spinner:     { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderTopColor: 'transparent' },
+  checkCard:   { marginBottom: 12 },
+  checkRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 16 },
+  stepIcon:    { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  innerSpinner:{ width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderTopColor: 'transparent' },
+  dot:         { width: 5, height: 5, borderRadius: 3 },
+  skCard2:     { padding: 16, borderWidth: StyleSheet.hairlineWidth },
 });

@@ -1,12 +1,23 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.0-docs | **Last Updated**: 2026-04-28
+> **Version**: 1.3.2-docs | **Last Updated**: 2026-05-14
 
 ---
 
 ## [Unreleased]
 
 ### Added
+
+#### Mobile Phase 9: Visual Detail Polish — Notifications, Quiet Hours, Inputs, Sheets, Dialogs (2026-05-14)
+- **14 tasks complete**: Notification preference grouped cards (IconTile, GroupCard, PrefRow with critical badge, channel/delivery sections), Quiet Hours ring SVG (24-segment donut with center time/quiet labels + day chips + exception rows), Notification off-state hero (OffHero when master=false, email fallback chip), Input focus halo (3px outer brand halo at 18% opacity) + height 50 + disabled chip fill, Select/dropdown affordances (trailingIcon, editable=false), Attachment upload list (single clipped grouped card), Bottom sheet polish (handle color borderStrong, width 40), Destructive dialog polish (icon tile, meta pill, vertical action stacking, 0.5 scrim). Refs 120–129. All theme parity (calm/night/warm). TypeScript clean, ESLint clean.
+- **Files modified**: Toggle.tsx (added disabled prop), Input.tsx (focus halo, height 50, disabled fill), BottomSheet.tsx (handle color/width), CenterDialog.tsx (icon, meta, vertical actions, scrim), reminder-preferences-screen.tsx (full rework: GroupCard/PreferenceRow locals, master card, categories/channels clipped, quiet hours integration), quiet-hours-ring.tsx (NEW: SVG donut ring with 24 segments, center labels, legend, day chips), AppointmentDetailScreen.tsx (cancel modal polish: icon tile, danger meta pill, vertical stacking), AttachmentUploadScreen.tsx (clipped upload list card).
+
+#### Mobile Phase 6: Insights UI Polish (2026-05-13)
+- **Risk screens**: RiskGauge (theme-aware semicircle, success/warning/danger color segments, needle marker), RiskOverviewScreen (skeleton refresh state), RiskDetailScreen (redesigned hero with ProgressRing + FactorProgressRow)
+- **Goals Hub**: GoalsHubScreen (LinearGradient hero with theme colors—calm blue, night dark, warm orange—decorative blob, check-in ProgressRing), CreateGoalScreen (4-step wizard with StepProgress bar, enhanced WizardStep1-4)
+- **Reports Hub**: Rich state UX—loading ProgressRing with sparkle icon, generating with step checklist (collecting vitals → analyzing trends → building insights → finalizing), empty state, error handling
+- **Prevention screen**: Filter chip bar (Cardiovascular, Nutrition, Activity, Stress categories), enhanced SuggestionCard (effort dots 1–3, benefit pills green-accent), BackBar with filter button
+- **8 files modified**: mobile/src/components/insights/{risk,goals,reports}/*.tsx, all TypeScript typecheck clean
 
 #### Mobile Native Interaction Audit (2026-04-30)
 - **All 5 phases completed**: Auth validation/OTP/setup; home search/notifications/KPI/cards/chat handlers; care filter/detail/appointment confirmation; medication form validation/detail sheet/loading states; profile menu wiring/SectionHeader guard/BottomTabBar real badge.
@@ -105,6 +116,17 @@
 - **Phase 3**: Medication screens — 10 UI components (take, missed flows); MedicationFlowScreen extended; 2 routes added
 - **Phase 4**: Care screens — 7 components (appointments, video, history); CareDetailScreen 7-kind handler; 3 routes added
 - **Phase 5**: Auth completion — ForgotPasswordScreen, PermissionsScreen; AuthFlowScreen extended with permissionKind support; 2 routes added
+
+#### Mobile Phase 7: Goals & Care & Me & Reminders Polish (2026-05-14)
+- **22 tasks complete**: Goals wizard (refs 090–094: step bar, review card, hero gradient, streaks heatmap, milestones), Care hub (refs 095–096: hero buttons, 2×2 tiles, quick-access), Me hub (refs 099–100: compact identity, emergency soft variant), Home (ref 101: KPI density), Quick Action sheet (ref 102: 2-column grid, blur, cancel), Reminders (refs 103–104: ring snapshot, segmented status strip, filter chips, row states), Bottom tab parity across all routes. All theme parity (calm/night/warm). TypeScript typecheck clean. No behavioral changes, API changes, or new dependencies.
+- **Files modified**: 15 component files (create-goal-wizard-* / goal-*-screen, care-hub-screen, IdentityCard, EmergencyCard, reminders-center-screen, reminder-row, QuickActionSheetScreen, BottomTabBar, and theme/token refinements).
+
+#### Mobile Phase 8: Reminders & Notifications UI Detail Polish (2026-05-14)
+- **Visual detail refinements** (refs 105–119): ReminderRow (inline time after title, action buttons right-aligned), ReminderDetailScreen (hero row layout, next-reminder branded card with Done/Snooze/Skip actions, 7-day adherence grid with day labels + 4-stat row, grouped settings card, BottomSheet action sheets), CreateReminderScreen (3×2 category tile grid, day-of-week repeat buttons, Save in backbar, notes textarea, push toggle row), NotificationsInboxScreen (pill tabs with count badges, grouped clipped cards NEW/EARLIER TODAY, inline action buttons), ReminderPreferencesScreen (brandSoft master card with large icon, clipped grouped cards for categories/channels, CRITICAL badge), ReminderTimelineScreen (vertical spine layout, NOW rule, status dots with halo, compact event cards, segmented day/week control). All components theme-aware (calm/night/warm). TypeScript typecheck clean. No behavioral changes, API changes, or new dependencies.
+- **Files modified**: 7 component files (reminder-row, reminder-detail-screen, create-reminder-screen, notifications-inbox-screen, reminder-preferences-screen, reminder-timeline-screen, reminders-center-screen).
+
+#### Mobile Micro-Polish Phase 5 (2026-05-13)
+- **Phase 5 mobile visual detail polish complete** — 24 tasks (P5-01 to P5-24): meals screens (add-meal-screen, food-row, meal-scan-camera-screen, meal-scan-analyzing-screen, meal-scan-results-screen, meal-detail-screen, ingredient-row, macro-donut overlay, nutrition-trends-screen), reports/insights screens (insights-segmented-tabs, reports-hub-screen, report-detail-screen, report-export-screen), shared nav (BottomTabBar), theme parity (calm/night/warm), and shared atom polish (Card, Button, IconButton, Badge, ProgressBar, Toggle, BottomSheet, ProgressRing, Sparkline, Screen, TopBar, tab-bar-metrics). Visual refs 060-074. TypeScript typecheck clean, lint pass, no behavioral changes.
 
 #### Mobile Micro-Polish Phase 3 (2026-05-07)
 - **Visual refinements across 14 components** — No behavior changes, UI-only polish:

@@ -1,14 +1,12 @@
 // Prevention plan screen — actionable steps for cardiovascular risk reduction
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../layout/Screen';
-import { SectionHeader } from '../../layout/SectionHeader';
 import { Card } from '../../primitives/Card';
-import { ProgressRing } from '../../charts/ProgressRing';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
-import { ChevronLeft, IconBell, IconCheck, IconAlert, IconTarget, IconLeaf, IconActivity, IconHeart, IconShield } from '../../../icons';
+import { ChevronLeft, IconFilter, IconTarget, IconLeaf, IconActivity, IconHeart, IconShield, IconAlert } from '../../../icons';
 
 // ─── BackBar ──────────────────────────────────────────────────────────────────
 
@@ -20,151 +18,212 @@ function BackBar({ title }: { title: string }) {
         <ChevronLeft size={24} color={t.ink} />
       </Pressable>
       <Text style={[typography.h3, { flex: 1, color: t.ink }]} numberOfLines={1}>{title}</Text>
+      <Pressable style={[styles.filterBtn, { borderColor: t.border, borderRadius: 999 }]}>
+        <IconFilter size={18} color={t.ink3} />
+      </Pressable>
+    </View>
+  );
+}
+
+// ─── Effort dots ──────────────────────────────────────────────────────────────
+
+function EffortDots({ effort, color }: { effort: 1 | 2 | 3; color: string }) {
+  return (
+    <View style={effortStyles.row}>
+      {[1, 2, 3].map((i) => (
+        <View
+          key={i}
+          style={[effortStyles.dot, { backgroundColor: i <= effort ? color : 'transparent', borderColor: color }]}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─── Benefit pill ─────────────────────────────────────────────────────────────
+
+function BenefitPill({ label }: { label: string }) {
+  const t = useTheme();
+  return (
+    <View style={[benefitStyles.pill, { backgroundColor: t.success + '18', borderRadius: t.radius.pill }]}>
+      <Text style={[typography.micro, { color: t.success }]}>{label}</Text>
     </View>
   );
 }
 
 // ─── Action item data ─────────────────────────────────────────────────────────
 
+type Category = 'Cardiovascular' | 'Nutrition' | 'Activity' | 'Stress';
 type Priority = 'HIGH' | 'MED' | 'LOW';
-type ActionStatus = 'active' | 'pending';
 
 interface ActionItem {
   id: string;
+  category: Category;
   priority: Priority;
   title: string;
   detail: string;
-  status: ActionStatus;
-  icon: React.ReactNode;
+  duration: string;
+  benefit: string;
+  effort: 1 | 2 | 3;
+  icon: (color: string) => React.ReactNode;
 }
 
-// ─── Action card ──────────────────────────────────────────────────────────────
+const INITIAL_ACTIONS: ActionItem[] = [
+  {
+    id: '1', category: 'Cardiovascular', priority: 'HIGH',
+    title: 'Reduce sodium intake',
+    detail: 'Target < 2,300 mg/day. Swap processed snacks for whole foods.',
+    duration: '4 weeks', benefit: '−8 mmHg BP', effort: 2,
+    icon: (c) => <IconLeaf size={18} color={c} />,
+  },
+  {
+    id: '2', category: 'Activity', priority: 'HIGH',
+    title: 'Daily 20-min walk',
+    detail: 'Low-impact cardio improves BP and lowers cardiovascular risk significantly.',
+    duration: '4 weeks', benefit: '−6% risk', effort: 1,
+    icon: (c) => <IconActivity size={18} color={c} />,
+  },
+  {
+    id: '3', category: 'Cardiovascular', priority: 'MED',
+    title: 'Check BP twice weekly',
+    detail: 'Log morning readings before medication to track trends accurately.',
+    duration: '2 weeks', benefit: 'Better tracking', effort: 1,
+    icon: (c) => <IconHeart size={18} color={c} />,
+  },
+  {
+    id: '4', category: 'Nutrition', priority: 'MED',
+    title: 'Mediterranean diet basics',
+    detail: 'Add olive oil, legumes, fish × 2/week. Reduce red meat.',
+    duration: '8 weeks', benefit: '−12% risk', effort: 3,
+    icon: (c) => <IconLeaf size={18} color={c} />,
+  },
+  {
+    id: '5', category: 'Stress', priority: 'MED',
+    title: 'Limit alcohol to 1/week',
+    detail: 'Excess alcohol raises BP and disrupts sleep quality.',
+    duration: '4 weeks', benefit: '−5% risk', effort: 2,
+    icon: (c) => <IconAlert size={18} color={c} />,
+  },
+  {
+    id: '6', category: 'Stress', priority: 'LOW',
+    title: 'Stress management',
+    detail: 'Guided breathing or meditation can reduce resting heart rate.',
+    duration: '8 weeks', benefit: 'Improved HRV', effort: 1,
+    icon: (c) => <IconShield size={18} color={c} />,
+  },
+  {
+    id: '7', category: 'Cardiovascular', priority: 'LOW',
+    title: 'Annual cardio checkup',
+    detail: 'Schedule a lipid panel + ECG with your cardiologist.',
+    duration: '1 day', benefit: 'Early detection', effort: 1,
+    icon: (c) => <IconTarget size={18} color={c} />,
+  },
+];
 
-interface ActionCardProps {
-  item: ActionItem;
-  started: boolean;
-  onToggle: () => void;
-}
+const ALL_CATEGORIES: Category[] = ['Cardiovascular', 'Nutrition', 'Activity', 'Stress'];
 
-function ActionCard({ item, started, onToggle }: ActionCardProps) {
+// ─── Suggestion card ──────────────────────────────────────────────────────────
+
+function SuggestionCard({ item, started, onToggle }: { item: ActionItem; started: boolean; onToggle: () => void }) {
   const t = useTheme();
   const priorityColor = item.priority === 'HIGH' ? t.warning : item.priority === 'MED' ? t.brand : t.success;
-  const cardBg = started ? t.success + '08' : t.card;
-  const cardBorder = started ? t.success + '30' : t.border;
+  const iconColor = priorityColor;
 
   return (
-    <View style={[styles.actionCard, { backgroundColor: cardBg, borderColor: cardBorder, borderRadius: t.radius.lg }]}>
-      <View style={styles.actionHeader}>
-        <View style={[styles.actionIconWrap, { backgroundColor: priorityColor + '18', borderRadius: t.radius.sm }]}>
-          {item.icon}
+    <Card style={[cardStyles.card, { borderColor: t.border }]}>
+      {/* Category eyebrow */}
+      <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }]}>
+        {item.category.toUpperCase()} · {item.priority} PRIORITY
+      </Text>
+
+      <View style={cardStyles.headerRow}>
+        <View style={[cardStyles.iconTile, { backgroundColor: priorityColor + '18', borderRadius: t.radius.md }]}>
+          {item.icon(iconColor)}
         </View>
-        <View style={styles.actionTitles}>
-          <View style={styles.actionTitleRow}>
-            <View style={[styles.priorityPill, { backgroundColor: priorityColor + '18', borderRadius: t.radius.pill }]}>
-              <Text style={[typography.micro, { color: priorityColor, letterSpacing: 0.8 }]}>{item.priority}</Text>
-            </View>
-            {started && (
-              <View style={[styles.startedBadge, { backgroundColor: t.success + '18', borderRadius: t.radius.pill }]}>
-                <IconCheck size={10} color={t.success} />
-                <Text style={[typography.micro, { color: t.success, marginLeft: 3 }]}>Started</Text>
-              </View>
-            )}
-          </View>
-          <Text style={[typography.bodyMed, { color: t.ink, marginTop: 4 }]}>{item.title}</Text>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={[typography.h3, { color: t.ink }]}>{item.title}</Text>
         </View>
       </View>
-      <Text style={[typography.caption, { color: t.ink3, marginTop: 8, marginBottom: 12 }]}>{item.detail}</Text>
-      <View style={styles.actionButtons}>
-        <Pressable
-          onPress={() => {}}
-          style={[styles.actionBtn, { backgroundColor: t.brandSoft, borderRadius: t.radius.pill }]}
-        >
-          <IconBell size={14} color={t.brand} />
-          <Text style={[typography.chip, { color: t.brand, marginLeft: 5 }]}>Set reminder</Text>
-        </Pressable>
+
+      <Text style={[typography.body, { color: t.ink3, marginTop: 10, marginBottom: 12 }]}>{item.detail}</Text>
+
+      {/* Divider */}
+      <View style={[cardStyles.divider, { backgroundColor: t.border }]} />
+
+      {/* Benefit row */}
+      <View style={cardStyles.footerRow}>
+        <BenefitPill label={item.benefit} />
+        <View style={cardStyles.effortWrap}>
+          <Text style={[typography.micro, { color: t.ink4, marginRight: 4 }]}>Effort</Text>
+          <EffortDots effort={item.effort} color={priorityColor} />
+        </View>
+        <Text style={[typography.caption, { color: t.ink4 }]}>{item.duration}</Text>
         <Pressable
           onPress={onToggle}
-          style={[
-            styles.actionBtn,
-            { borderRadius: t.radius.pill },
-            started
-              ? { backgroundColor: t.success + '18' }
-              : { backgroundColor: t.brand, },
-          ]}
+          style={[cardStyles.startBtn, { backgroundColor: started ? t.success + '18' : t.brand, borderRadius: t.radius.pill }]}
         >
-          {started
-            ? <IconCheck size={14} color={t.success} />
-            : <IconTarget size={14} color="#fff" />
-          }
-          <Text style={[
-            typography.chip,
-            { marginLeft: 5, color: started ? t.success : '#fff' },
-          ]}>
-            {started ? 'In progress' : 'Mark started'}
+          <Text style={[typography.chip, { color: started ? t.success : '#fff' }]}>
+            {started ? '✓ Started' : 'Start'}
           </Text>
         </Pressable>
       </View>
-    </View>
+    </Card>
   );
 }
-
-// ─── Stub data ────────────────────────────────────────────────────────────────
-
-const INITIAL_ACTIONS: ActionItem[] = [
-  { id: '1', priority: 'HIGH', title: 'Reduce sodium intake',    detail: 'Target < 2,300 mg/day. Swap processed snacks for whole foods.',      status: 'active',  icon: <IconLeaf     size={16} color="#D97706" /> },
-  { id: '2', priority: 'HIGH', title: 'Daily 20-min walk',       detail: 'Low-impact cardio improves BP and lowers cardiovascular risk.',        status: 'active',  icon: <IconActivity size={16} color="#D97706" /> },
-  { id: '3', priority: 'MED',  title: 'Check BP twice weekly',   detail: 'Log morning readings before medication to track trends accurately.',   status: 'active',  icon: <IconHeart    size={16} color="#3B82F6" /> },
-  { id: '4', priority: 'MED',  title: 'Mediterranean diet basics', detail: 'Add olive oil, legumes, fish × 2/week. Reduce red meat.',            status: 'pending', icon: <IconLeaf     size={16} color="#3B82F6" /> },
-  { id: '5', priority: 'MED',  title: 'Limit alcohol to 1/week', detail: 'Excess alcohol raises BP and disrupts sleep quality.',                  status: 'pending', icon: <IconAlert    size={16} color="#3B82F6" /> },
-  { id: '6', priority: 'LOW',  title: 'Stress management app',   detail: 'Guided breathing or meditation can reduce resting heart rate.',         status: 'pending', icon: <IconShield   size={16} color="#059669" /> },
-  { id: '7', priority: 'LOW',  title: 'Annual cardio checkup',   detail: 'Schedule a lipid panel + ECG with your cardiologist.',                  status: 'pending', icon: <IconTarget   size={16} color="#059669" /> },
-];
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export function PreventionScreen() {
   const t = useTheme();
+  const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [startedIds, setStartedIds] = useState<Set<string>>(
-    new Set(INITIAL_ACTIONS.filter((a) => a.status === 'active').map((a) => a.id))
+    new Set(INITIAL_ACTIONS.filter((a) => a.priority === 'HIGH').map((a) => a.id))
   );
 
   const toggle = (id: string) =>
     setStartedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
 
-  const startedCount = startedIds.size;
-  const total = INITIAL_ACTIONS.length;
-  const progress = startedCount / total;
+  const filtered = activeCategory === 'All'
+    ? INITIAL_ACTIONS
+    : INITIAL_ACTIONS.filter((a) => a.category === activeCategory);
+
+  const categories: (Category | 'All')[] = ['All', ...ALL_CATEGORIES];
 
   return (
     <Screen>
-      <BackBar title="Prevention plan" />
+      <BackBar title="Prevention" />
 
-      {/* Progress summary */}
-      <Card style={styles.progressCard}>
-        <View style={styles.progressRow}>
-          <ProgressRing value={progress} size={64} stroke={6} color={t.brand} track={t.brandSoft}>
-            <Text style={[typography.chip, { color: t.brand }]}>{startedCount}/{total}</Text>
-          </ProgressRing>
-          <View style={styles.progressText}>
-            <Text style={[typography.bodyMed, { color: t.ink }]}>
-              {startedCount} of {total} actions started
-            </Text>
-            <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>
-              Keep going — consistency reduces your risk score.
-            </Text>
-          </View>
-        </View>
-      </Card>
+      {/* Filter chip bar */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={filterStyles.bar}>
+        {categories.map((cat) => {
+          const active = activeCategory === cat;
+          return (
+            <Pressable
+              key={cat}
+              onPress={() => setActiveCategory(cat)}
+              style={[
+                filterStyles.chip,
+                {
+                  backgroundColor: active ? t.brand : t.card,
+                  borderColor: active ? t.brand : t.border,
+                  borderRadius: t.radius.pill,
+                },
+              ]}
+            >
+              <Text style={[typography.chip, { color: active ? '#fff' : t.ink3 }]}>{cat}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
-      <SectionHeader title="Actions" />
-
+      {/* Cards list */}
       <View style={styles.cardList}>
-        {INITIAL_ACTIONS.map((item) => (
-          <ActionCard
+        {filtered.map((item) => (
+          <SuggestionCard
             key={item.id}
             item={item}
             started={startedIds.has(item.id)}
@@ -177,19 +236,32 @@ export function PreventionScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBar:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, minHeight: 52 },
-  backBtn:       { width: 40, alignItems: 'flex-start' },
-  progressCard:  { marginTop: 4 },
-  progressRow:   { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  progressText:  { flex: 1 },
-  cardList:      { gap: 12 },
-  actionCard:    { padding: 14, borderWidth: StyleSheet.hairlineWidth },
-  actionHeader:  { flexDirection: 'row', gap: 12 },
-  actionIconWrap:{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  actionTitles:  { flex: 1 },
-  actionTitleRow:{ flexDirection: 'row', gap: 6, alignItems: 'center' },
-  priorityPill:  { paddingHorizontal: 7, paddingVertical: 3 },
-  startedBadge:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 3 },
-  actionButtons: { flexDirection: 'row', gap: 8 },
-  actionBtn:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 },
+  backBar:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, minHeight: 52 },
+  backBtn:   { width: 40, alignItems: 'flex-start' },
+  filterBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
+  cardList:  { gap: 12 },
+});
+
+const filterStyles = StyleSheet.create({
+  bar:  { flexDirection: 'row', gap: 8, paddingBottom: 12 },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth },
+});
+
+const cardStyles = StyleSheet.create({
+  card:       { padding: 18, borderWidth: StyleSheet.hairlineWidth },
+  headerRow:  { flexDirection: 'row', alignItems: 'center' },
+  iconTile:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  divider:    { height: StyleSheet.hairlineWidth, marginBottom: 10 },
+  footerRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  effortWrap: { flexDirection: 'row', alignItems: 'center' },
+  startBtn:   { paddingHorizontal: 12, paddingVertical: 6, marginLeft: 'auto' },
+});
+
+const effortStyles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 3 },
+  dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
+});
+
+const benefitStyles = StyleSheet.create({
+  pill: { paddingHorizontal: 8, paddingVertical: 3 },
 });

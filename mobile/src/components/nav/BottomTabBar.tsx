@@ -6,6 +6,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../theme/useTheme';
+import { useThemeContext } from '../../theme/ThemeProvider';
 import { Home, IconCalendar, IconChat, IconPill, IconUser } from '../../icons';
 import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -63,6 +64,7 @@ function TabItem({
 
 export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const t = useTheme();
+  const { name: themeName } = useThemeContext();
   const insets = useSafeAreaInsets();
   const height = TAB_BAR_CONTENT_HEIGHT + insets.bottom;
 
@@ -75,7 +77,7 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
     <View style={[styles.container, { height, borderTopColor: t.border }]}>
       <BlurView
         intensity={48}
-        tint="default"
+        tint={themeName === 'night' ? 'dark' : 'light'}
         style={[StyleSheet.absoluteFill, { backgroundColor: `${t.bgElev}EB` }]}
       />
       <View style={styles.tabs}>
@@ -102,17 +104,17 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  tabs:     { flex: 1, flexDirection: 'row', paddingTop: 8 },
+  tabs:     { flex: 1, flexDirection: 'row', paddingTop: 10 },
   tabItem:  { flex: 1, alignItems: 'center' },
   iconWrap: { position: 'relative' },
   label:    { marginTop: 2 },
   badge: {
     position: 'absolute',
     top: -4,
-    right: -8,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 3,

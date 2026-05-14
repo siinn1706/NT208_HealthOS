@@ -42,7 +42,7 @@ export function BottomSheet({ visible, onClose, children, maxHeightRatio = 0.85 
       translateY.value = withTiming(maxH, { duration: t.motion.durations.sheet, easing: ease });
       scrimOpacity.value = withTiming(0, { duration: t.motion.durations.sheet, easing: ease });
     }
-  }, [visible]);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -91,7 +91,7 @@ export function BottomSheet({ visible, onClose, children, maxHeightRatio = 0.85 
           >
             {/* Drag handle */}
             <View style={styles.handleWrap}>
-              <View style={[styles.handle, { backgroundColor: t.ink4 }]} />
+              <View style={[styles.handle, { backgroundColor: t.borderStrong }]} />
             </View>
             {children}
           </Animated.View>
@@ -111,5 +111,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   handleWrap: { alignItems: 'center', paddingTop: 10, paddingBottom: 4 },
-  handle:     { width: 36, height: 4, borderRadius: 2 },
+  handle:     { width: 40, height: 4, borderRadius: 2 },
 });

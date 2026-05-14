@@ -1,86 +1,52 @@
-// Export / share sheet for a health report
+// Export / share sheet for a health report — bottom-sheet style with destination tiles and include toggles
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Linking } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Linking, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { Screen } from '../../layout/Screen';
-import { Card } from '../../primitives/Card';
-import { Button } from '../../primitives/Button';
-import { ApiState } from '../../api/ApiState';
+import { Toggle } from '../../primitives/Toggle';
 import { reportService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
-import { ChevronLeft, ChevronRight, IconPaperclip } from '../../../icons';
+import { IconHeartPulse, IconPaperclip, IconUser, IconShield } from '../../../icons';
 
-// ─── BackBar ─────────────────────────────────────────────────────────────────
-
-function BackBar({ title }: { title: string }) {
-  const t = useTheme();
-  return (
-    <View style={styles.backBar}>
-      <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-        <ChevronLeft size={24} color={t.ink} />
-      </Pressable>
-      <Text style={[typography.h3, { flex: 1, color: t.ink }]} numberOfLines={1}>{title}</Text>
-    </View>
-  );
-}
-
-// ─── Format segmented control ────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ExportFormat = 'pdf' | 'csv' | 'summary';
-const FORMATS: { key: ExportFormat; label: string }[] = [
-  { key: 'pdf',     label: 'PDF'     },
-  { key: 'csv',     label: 'CSV'     },
-  { key: 'summary', label: 'Summary' },
-];
+type Dest = 'doctor' | 'pdf' | 'link' | 'family';
 
-function FormatPicker({ value, onChange }: { value: ExportFormat; onChange: (f: ExportFormat) => void }) {
-  const t = useTheme();
-  return (
-    <View style={[styles.formatRow, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
-      {FORMATS.map((f) => {
-        const active = f.key === value;
-        return (
-          <Pressable
-            key={f.key}
-            onPress={() => onChange(f.key)}
-            style={[styles.formatTab, { borderRadius: t.radius.sm }, active && { backgroundColor: t.card }]}
-          >
-            <Text style={[typography.chip, { color: active ? t.ink : t.ink3 }]}>{f.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-// ─── Share option row ────────────────────────────────────────────────────────
-
-interface ShareOptionProps { label: string; sub: string; onPress: () => void; disabled?: boolean; }
-
-function ShareOption({ label, sub, onPress, disabled }: ShareOptionProps) {
-  const t = useTheme();
-  return (
-    <Pressable onPress={disabled ? undefined : onPress} style={[styles.shareRow, { borderBottomColor: t.border, opacity: disabled ? 0.45 : 1 }]}>
-      <View style={styles.shareText}>
-        <Text style={[typography.bodyMed, { color: t.ink }]}>{label}</Text>
-        <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{sub}</Text>
-      </View>
-      <ChevronRight size={18} color={t.ink3} />
-    </Pressable>
-  );
+interface IncludeToggles {
+  vitals: boolean;
+  medication: boolean;
+  sleep: boolean;
+  meals: boolean;
+  ai: boolean;
 }
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export function ReportExportScreen() {
   const t = useTheme();
+
+  // Format state kept for export logic compatibility
   const [format, setFormat] = useState<ExportFormat>('pdf');
   const [exporting, setExporting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+
+  // Destination tile selection
+  const [dest, setDest] = useState<Dest>('pdf');
+
+  // Include toggles
+  const [includes, setIncludes] = useState<IncludeToggles>({
+    vitals: true,
+    medication: true,
+    sleep: true,
+    meals: false,
+    ai: true,
+  });
+
+  // ─── Async handlers (all original logic preserved) ────────────────────────
 
   async function pollUntilReady(nextRequestId: string) {
     for (let i = 0; i < 20; i += 1) {
@@ -151,89 +117,236 @@ export function ReportExportScreen() {
     }
   }
 
+  // ─── Destination tile config ───────────────────────────────────────────────
+
+  const destinations: { key: Dest; label: string; Icon: React.ComponentType<{ size: number; color: string }> }[] = [
+    { key: 'doctor', label: 'Doctor',  Icon: IconHeartPulse },
+    { key: 'pdf',    label: 'PDF',     Icon: IconPaperclip  },
+    { key: 'link',   label: 'Link',    Icon: IconShield     },
+    { key: 'family', label: 'Family',  Icon: IconUser       },
+  ];
+
+  // ─── Include rows config ──────────────────────────────────────────────────
+
+  const includeRows: { key: keyof IncludeToggles; label: string; sub: string }[] = [
+    { key: 'vitals',     label: 'Vitals trends',         sub: 'HR, BP, glucose · last 7 days'  },
+    { key: 'medication', label: 'Medication adherence',  sub: '14 of 14 doses'                 },
+    { key: 'sleep',      label: 'Sleep',                 sub: '7 nights, avg 7h 12m'           },
+    { key: 'meals',      label: 'Meals & nutrition',     sub: '21 meals, sodium flagged'       },
+    { key: 'ai',         label: 'AI recommendations',    sub: '3 items'                        },
+  ];
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
-    <Screen>
-      <BackBar title="Export report" />
-
-      <Text style={[typography.caption, { color: t.ink3, marginBottom: 10, marginTop: 4 }]}>
-        Weekly summary · Apr 18–24
-      </Text>
-
-      {/* Format picker */}
-      <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 8 }]}>Format</Text>
-      <FormatPicker value={format} onChange={setFormat} />
-
-      <View style={[styles.formatDesc, { backgroundColor: t.brandSoft, borderRadius: t.radius.md, marginTop: 8 }]}>
-        {format === 'pdf' && (
-          <Text style={[typography.caption, { color: t.ink3 }]}>
-            PDF includes charts, vitals, AI summary — formatted for sharing with clinicians.
-          </Text>
-        )}
-        {format === 'csv' && (
-          <Text style={[typography.caption, { color: t.ink3 }]}>
-            CSV exports raw vitals data for spreadsheet analysis.
-          </Text>
-        )}
-        {format === 'summary' && (
-          <Text style={[typography.caption, { color: t.ink3 }]}>
-            Plain-text summary — great for pasting into messages or notes.
-          </Text>
-        )}
+    <View style={styles.root}>
+      {/* Ghost report preview behind sheet */}
+      <View style={styles.previewArea}>
+        <View style={styles.previewCard}>
+          <Text style={[typography.caption, { color: 'rgba(255,255,255,0.4)' }]}>Weekly report preview</Text>
+        </View>
       </View>
 
-      {/* Share options */}
-      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 24, marginBottom: 8 }]}>Share options</Text>
-      <Card tight>
-        <ShareOption
-          label="Open download link"
-          sub={downloadUrl ? 'Open generated PDF URL' : 'Export PDF first'}
-          onPress={handleOpenDownload}
-          disabled={!downloadUrl}
-        />
-        <ShareOption
-          label="Refresh export status"
-          sub={requestId ? 'Check if PDF is ready' : 'No request started'}
-          onPress={handleRefreshStatus}
-          disabled={!requestId}
-        />
-        <ShareOption
-          label="Back to reports"
-          sub="Return without exporting"
-          onPress={() => router.back()}
-        />
-      </Card>
+      {/* Bottom sheet panel */}
+      <View style={styles.sheet}>
+        {/* Drag handle */}
+        <View style={styles.handle} />
 
-      {statusText && (
-        <View style={{ marginTop: 12 }}>
-          <ApiState title="Export status" message={statusText} />
-        </View>
-      )}
-      {error && (
-        <View style={{ marginTop: 12 }}>
-          <ApiState title="Export failed" message={error} />
-        </View>
-      )}
+        {/* Title */}
+        <Text style={[typography.h3, { color: '#111' }]}>Share weekly report</Text>
+        <Text style={[typography.caption, { color: '#888', marginTop: 4, marginBottom: 20 }]}>Apr 18 – Apr 24</Text>
 
-      {/* Export CTA */}
-      <Button
-        label={exporting ? 'Exporting...' : 'Export'}
-        variant="solid"
-        size="lg"
-        icon={<IconPaperclip size={18} color="#fff" />}
-        style={{ marginTop: 24 }}
-        onPress={exporting ? undefined : handleExport}
-        loading={exporting}
-      />
-    </Screen>
+        {/* Destination tiles */}
+        <View style={styles.destRow}>
+          {destinations.map(({ key, label, Icon }) => {
+            const active = dest === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => setDest(key)}
+                style={[
+                  styles.destTile,
+                  {
+                    backgroundColor: active ? t.brand : '#F5F5F5',
+                    borderColor: active ? t.brand : '#E0E0E0',
+                  },
+                ]}
+              >
+                <Icon size={20} color={active ? '#fff' : '#666'} />
+                <Text style={[typography.caption, { color: active ? '#fff' : '#666', marginTop: 6, fontWeight: '600' }]}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Include toggles */}
+        <Text style={[typography.micro, { color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }]}>
+          WHAT TO INCLUDE
+        </Text>
+        <View style={styles.includeList}>
+          {includeRows.map(({ key, label, sub }, idx) => (
+            <View
+              key={key}
+              style={[
+                styles.includeRow,
+                {
+                  borderBottomWidth: idx < includeRows.length - 1 ? StyleSheet.hairlineWidth : 0,
+                  borderBottomColor: '#E0E0E0',
+                },
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.bodyMed, { color: '#111' }]}>{label}</Text>
+                <Text style={[typography.caption, { color: '#888', marginTop: 2 }]}>{sub}</Text>
+              </View>
+              <Toggle
+                value={includes[key]}
+                onChange={(v) => setIncludes((prev) => ({ ...prev, [key]: v }))}
+              />
+            </View>
+          ))}
+        </View>
+
+        {/* Info note */}
+        <View style={styles.infoNote}>
+          <IconShield size={16} color={t.brand} />
+          <Text style={[typography.caption, { color: '#444', flex: 1, lineHeight: 18 }]}>
+            Identifying info (name, DOB) is included only when sharing with your care team. Link sharing is read-only and expires in 7 days.
+          </Text>
+        </View>
+
+        {/* Status / error feedback */}
+        {statusText && (
+          <Text style={[typography.caption, { color: t.brand, marginBottom: 8, textAlign: 'center' }]}>
+            {statusText}
+          </Text>
+        )}
+        {error && (
+          <Text style={[typography.caption, { color: t.danger, marginBottom: 8, textAlign: 'center' }]}>
+            {error}
+          </Text>
+        )}
+
+        {/* Action buttons */}
+        <View style={styles.actionRow}>
+          <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
+            <Text style={[typography.button, { color: '#333' }]}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            onPress={exporting ? undefined : handleExport}
+            style={[styles.shareBtn, { backgroundColor: exporting ? t.brand + '80' : t.brand }]}
+          >
+            {exporting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={[typography.button, { color: '#fff' }]}>Share PDF</Text>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Open download link if available */}
+        {downloadUrl && (
+          <Pressable onPress={handleOpenDownload} style={{ marginTop: 12, alignItems: 'center' }}>
+            <Text style={[typography.caption, { color: t.brand }]}>Open download link</Text>
+          </Pressable>
+        )}
+
+        {/* Refresh status link if request started */}
+        {requestId && !downloadUrl && (
+          <Pressable onPress={handleRefreshStatus} style={{ marginTop: 8, alignItems: 'center' }}>
+            <Text style={[typography.caption, { color: t.brand }]}>Refresh export status</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backBar:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, minHeight: 52 },
-  backBtn:    { width: 40, alignItems: 'flex-start' },
-  formatRow:  { flexDirection: 'row', padding: 4 },
-  formatTab:  { flex: 1, alignItems: 'center', paddingVertical: 8 },
-  formatDesc: { padding: 12 },
-  shareRow:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  shareText:  { flex: 1 },
+  root: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  previewArea: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewCard: {
+    width: '85%',
+    height: 120,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    padding: 16,
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  destRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 24,
+  },
+  destTile: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  includeList: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  includeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  infoNote: {
+    backgroundColor: '#EEF4FF',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareBtn: {
+    flex: 2,
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

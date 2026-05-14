@@ -1,6 +1,6 @@
 # Claude Code Boilerplate
 
-A comprehensive boilerplate template for building professional software projects with **CLI Coding Agents** (**Claude Code** and **Open Code**). This template provides a complete development environment with AI-powered agent orchestration, automated workflows, and intelligent project management.
+A comprehensive boilerplate template for building professional software projects with **Claude Code**. This template provides a complete development environment with AI-powered agent orchestration, automated workflows, and intelligent project management.
 
 ## What is Claude Code?
 
@@ -9,10 +9,7 @@ A comprehensive boilerplate template for building professional software projects
 - [Claude Code](https://claude.com/product/claude-code)
 - [Docs](https://docs.claude.com/en/docs/claude-code/overview)
 
-**Open Code CLI Coding Agents** extend Claude Code with specialized AI agents that handle specific aspects of software development - from planning and research to testing and documentation. This creates a collaborative AI development team that works alongside human developers.
-
-- [Open Code](https://opencode.ai/)
-- [Docs](https://opencode.ai/docs)
+Additional provider support, including OpenCode, is handled by ClaudeKit CLI migration rather than bundled engineer-kit artifacts.
 
 ## Related Projects & Directories
 
@@ -92,6 +89,11 @@ A comprehensive boilerplate template for building professional software projects
    ck init --kit engineer
    ```
 
+   To target another provider later, run ClaudeKit CLI migration from the project root, for example:
+   ```bash
+   ck migrate -a opencode
+   ```
+
 3. **Start development**:
    ```bash
    # Begin with Claude Code
@@ -100,8 +102,11 @@ A comprehensive boilerplate template for building professional software projects
    # claude --dangerously-skip-permissions
 
    # now you can use these specific commands
-   /plan "implement user authentication"
-   /cook "add database integration"
+   /ck:plan "implement user authentication"
+   /ck:plan --deep "refactor the notification pipeline"
+   /ck:plan --tdd "refactor auth middleware safely"
+   /ck:cook "add database integration"
+   /ck:cook "refactor auth middleware" --tdd
    ```
 
 📖 **Learn more from our docs:** [https://docs.claudekit.cc](https://docs.claudekit.cc)
@@ -113,6 +118,7 @@ A comprehensive boilerplate template for building professional software projects
 │   ├── agents/             # Claude Code agents
 │   ├── command-archive/    # Archived legacy command definitions
 │   ├── hooks/              # Claude Code hooks
+│   │   ├── .logs/          # Structured hook diagnostics (hook-log.jsonl)
 │   │   └── notifications/  # Multi-provider notification system
 │   ├── skills/             # Claude Code skills
 │   └── CLAUDE.md           # Global development instructions
@@ -125,7 +131,6 @@ A comprehensive boilerplate template for building professional software projects
 │   ├── templates/          # Plan templates
 │   └── reports/            # Agent-to-agent communication
 ├── CLAUDE.md              # Project-specific Claude instructions
-├── AGENTS.md              # Agent coordination guidelines
 └── README.md              # This file
 ```
 
@@ -227,16 +232,19 @@ This boilerplate includes 17+ specialized AI agents that work together to delive
 Use when tasks have dependencies:
 ```bash
 # Planning → Implementation → Testing → Review
-/plan "implement user dashboard"
-# Wait for plan completion, then:
-/code  # Executes the plan
-# After implementation:
-/test "validate dashboard functionality"
-# Finally:
-/code-review "ensure code quality standards"
+/ck:plan "implement user dashboard"
+# For large refactors:
+/ck:plan --deep "untangle the dashboard data flow"
+/ck:plan --tdd "refactor dashboard state safely"
+# After planning, use the exact absolute-path handoff command emitted by plan:
+/ck:cook /absolute/path/to/plans/YYMMDD-HHMM-dashboard/plan.md
+# If planning used --tdd, preserve it on handoff:
+/ck:cook /absolute/path/to/plans/YYMMDD-HHMM-dashboard/plan.md --tdd
+# Cook already runs testing and code review as part of the workflow.
 
-# Alternative: Use /cook for standalone implementation (plans internally)
-/cook "implement user dashboard"
+# Alternative: Use /ck:cook for standalone implementation (plans internally)
+/ck:cook "implement user dashboard"
+/ck:cook "refactor dashboard state" --tdd
 ```
 
 ### Parallel Execution
@@ -261,50 +269,50 @@ planner agent spawns:
 ### 1. Feature Development
 ```bash
 # Start with planning
-/plan "add real-time notifications"
+/ck:plan "add real-time notifications"
+/ck:plan --deep "refactor the notifications delivery pipeline"
 
 # Research phase (automatic)
 # Multiple researcher agents investigate approaches
 
 # Implementation
-/cook "implement notification system"
+/ck:cook "implement notification system"
+/ck:cook "refactor notification retries" --tdd
 
-# Quality assurance
-/test
-/code-review
+# Cook includes testing and code review in the workflow.
 
 # Documentation update
-/docs
+/ck:docs
 
 # Project tracking
-/watzup  # Check project status
+/ck:watzup  # Check project status
 ```
 
 ### 2. Bug Fixing
 ```bash
 # Analyze the issue
-/debug "investigate login failures"
+/ck:debug "investigate login failures"
 
 # Create fix plan
-/plan "resolve authentication bug"
+/ck:plan "resolve authentication bug"
 
 # Implement solution
-/fix "authentication issue"
+/ck:fix "authentication issue"
 
 # Validate fix
-/test
+/ck:test
 ```
 
 ### 3. Documentation Management
 ```bash
 # Update documentation
-/docs
+/ck:docs
 
 # Generate codebase summary
 repomix  # Creates ./docs/codebase-summary.md
 
 # Review project status
-/watzup
+/ck:watzup
 ```
 
 ## Configuration Files
@@ -332,6 +340,8 @@ This project includes several Gemini-powered skills that require a Google Gemini
 - **gemini-document-processing** - PDF document processing
 - **gemini-image-gen** - AI image generation
 - **gemini-vision** - Image analysis and vision capabilities
+
+For image generation specifically, current Gemini/Imagen API models are paid-tier only. If you want an alternative routing path for image generation, the engineer kit also supports `OPENROUTER_API_KEY` for OpenRouter-backed image models.
 
 ### API Key Setup
 

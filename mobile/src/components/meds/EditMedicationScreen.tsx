@@ -34,12 +34,6 @@ export function EditMedicationScreen() {
     invalidateApiQuery(queryKeys.medication(medicationId));
   }
 
-  async function handleArchive() {
-    await medicationService.archive(medicationId);
-    invalidateApiQuery(queryKeys.medications);
-    router.replace('/(tabs)/meds');
-  }
-
   if (medication.isLoading) {
     return (
       <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -82,7 +76,7 @@ export function EditMedicationScreen() {
         <Button
           label="Archive medication"
           variant="ghost"
-          onPress={handleArchive}
+          onPress={() => router.push(`/meds/archive?id=${medicationId}` as never)}
           style={[s.actionBtn, { borderColor: t.danger }]}
           labelColor={t.danger}
         />

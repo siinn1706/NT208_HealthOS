@@ -4,15 +4,16 @@ import { useRouter } from 'expo-router';
 import { Screen } from '../layout/Screen';
 import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
+import { IconButton } from '../primitives/IconButton';
 import { ProgressRing } from '../charts/ProgressRing';
 import { useTheme } from '../../theme/useTheme';
 import { typography, tabularNums } from '../../theme/typography';
-import { ChevronLeft, IconRefresh, IconClock, IconAlert } from '../../icons';
+import { ChevronLeft, ChevronRight, IconRefresh, IconClock, IconAlert } from '../../icons';
 
 const MACROS = [
-  { label: 'Carbs',   value: '75g',  color: '#E3B79A' },
-  { label: 'Protein', value: '38g',  color: null },      // t.brand
-  { label: 'Fat',     value: '22g',  color: '#5B90C4' },
+  { label: 'Carbs',   value: 75,  unit: 'g', color: '#E3B79A' },
+  { label: 'Protein', value: 38,  unit: 'g', color: null },      // t.brand
+  { label: 'Fat',     value: 22,  unit: 'g', color: '#5B90C4' },
 ];
 
 const DETECTED = [
@@ -45,17 +46,30 @@ export function MealScanResultsScreen() {
         title="Confirm meal"
         onBack={() => router.back()}
         right={
-          <Pressable hitSlop={8}>
-            <IconRefresh size={20} color={t.ink3} />
-          </Pressable>
+          <IconButton
+            variant="subtle"
+            size={40}
+            icon={<IconRefresh size={20} color={t.ink3} />}
+            accessibilityLabel="Refresh"
+          />
         }
       />
 
-      {/* Faux food photo */}
-      <View style={[styles.photoCard, { backgroundColor: t.card, borderRadius: t.radius.lg, borderColor: t.border }]}>
-        <View style={[styles.blob, { backgroundColor: '#5C3D20', top: 20, left: 30, width: 110, height: 80 }]} />
-        <View style={[styles.blob, { backgroundColor: '#3B5E3A', top: 50, right: 40, width: 80, height: 60 }]} />
-        <View style={[styles.blob, { backgroundColor: '#7A4A1E', bottom: 30, left: 60, width: 90, height: 65 }]} />
+      {/* Warm food photo card — dark bg with plate */}
+      <View style={[styles.photoCard, { borderRadius: t.radius.lg, borderColor: t.border }]}>
+        {/* Cream plate with food blobs */}
+        <View style={styles.plateCircle}>
+          {/* Pork blob */}
+          <View style={[styles.blob, { backgroundColor: '#8B4513', width: 110, height: 70, top: 30, left: 55 }]} />
+          {/* Noodles blob */}
+          <View style={[styles.blob, { backgroundColor: '#D4C5A0', width: 100, height: 45, top: 75, left: 45 }]} />
+          {/* Herb blob */}
+          <View style={[styles.blob, { backgroundColor: '#4A7C59', width: 70, height: 55, top: 55, right: 15 }]} />
+        </View>
+        {/* Detected pill */}
+        <View style={styles.detectedPill}>
+          <Text style={[typography.micro, { color: '#fff' }]}>✦ Detected</Text>
+        </View>
       </View>
 
       {/* Match header */}
@@ -64,6 +78,8 @@ export function MealScanResultsScreen() {
           <View style={styles.matchLeft}>
             <Text style={[typography.micro, { color: t.ink3, letterSpacing: 0.5 }]}>BEST MATCH · 94%</Text>
             <Text style={[typography.title, { color: t.ink, marginTop: 2 }]}>Bún chả Hà Nội</Text>
+            {/* Subtitle */}
+            <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>Grilled pork, rice noodles, herbs</Text>
           </View>
           <Pressable style={[styles.changeBtn, { borderColor: t.border, borderRadius: t.radius.pill }]}>
             <Text style={[typography.chip, { color: t.ink2 }]}>Change</Text>
@@ -75,14 +91,16 @@ export function MealScanResultsScreen() {
       <Card tight style={styles.summaryCard}>
         <View style={styles.summaryRow}>
           <ProgressRing value={620 / 2100} size={60} stroke={6} color={t.brand} track={t.border}>
-            <Text style={[typography.chip, tabularNums, { color: t.ink }]}>620</Text>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={[typography.chip, tabularNums, { color: t.ink }]}>620</Text>
+              <Text style={[typography.micro, { color: t.ink3 }]}>KCAL</Text>
+            </View>
           </ProgressRing>
           <View style={styles.macroGrid}>
             {MACROS.map((m) => (
               <View key={m.label} style={styles.macroItem}>
-                <View style={[styles.macroDot, { backgroundColor: m.color ?? t.brand }]} />
+                <Text style={[typography.bodyMed, tabularNums, { color: t.ink }]}>{m.value}{m.unit}</Text>
                 <Text style={[typography.micro, { color: t.ink3 }]}>{m.label}</Text>
-                <Text style={[typography.chip, tabularNums, { color: t.ink }]}>{m.value}</Text>
               </View>
             ))}
           </View>
@@ -97,18 +115,19 @@ export function MealScanResultsScreen() {
           <View key={item.name} style={[styles.detectedRow, { borderBottomColor: t.border }]}>
             <View style={styles.detectedInfo}>
               <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{item.name}</Text>
-              <Text style={[typography.caption, { color: t.ink3 }]}>{item.amount}</Text>
+              <Text style={[typography.caption, { color: t.ink3 }]}>
+                {item.amount} · {item.kcal} kcal · {item.pct}% match
+              </Text>
             </View>
             <View style={styles.detectedRight}>
               {item.warn && (
                 <View style={[styles.warnChip, { backgroundColor: '#FEF3C7' }]}>
                   <IconAlert size={10} color="#D97706" />
-                  <Text style={[typography.micro, { color: '#D97706', marginLeft: 3 }]}>High sodium</Text>
+                  <Text style={[typography.micro, { color: '#D97706', marginLeft: 3 }]}>Low confidence</Text>
                 </View>
               )}
-              <Text style={[typography.caption, tabularNums, { color: t.ink2 }]}>{item.kcal} kcal</Text>
-              <Text style={[typography.micro, { color: t.ink3 }]}>{item.pct}%</Text>
             </View>
+            <ChevronRight size={16} color={t.ink3} />
           </View>
         ))}
       </Card>
@@ -137,8 +156,13 @@ export function MealScanResultsScreen() {
 const styles = StyleSheet.create({
   backBar:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
   backBtn:      { width: 40 },
-  photoCard:    { height: 160, borderWidth: StyleSheet.hairlineWidth, marginBottom: 12, overflow: 'hidden' },
-  blob:         { position: 'absolute', borderRadius: 50, opacity: 0.8 },
+  // Warm dark photo card — height 180
+  photoCard:    { height: 180, backgroundColor: '#2C1A0E', borderWidth: StyleSheet.hairlineWidth, marginBottom: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  // Cream plate circle centered in card
+  plateCircle:  { width: 240, height: 180, borderRadius: 120, backgroundColor: '#F0E6D0', overflow: 'hidden' },
+  blob:         { position: 'absolute', borderRadius: 50 },
+  // "✦ Detected" absolute pill
+  detectedPill: { position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   matchCard:    { marginBottom: 10 },
   matchRow:     { flexDirection: 'row', alignItems: 'center' },
   matchLeft:    { flex: 1 },
@@ -146,9 +170,9 @@ const styles = StyleSheet.create({
   summaryCard:  { marginBottom: 4 },
   summaryRow:   { flexDirection: 'row', alignItems: 'center', gap: 16 },
   macroGrid:    { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  macroItem:    { alignItems: 'center', gap: 3 },
-  macroDot:     { width: 8, height: 8, borderRadius: 4 },
-  detectedRow:  { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth },
+  // Label column instead of dot
+  macroItem:    { alignItems: 'center', gap: 2 },
+  detectedRow:  { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, gap: 8 },
   detectedInfo: { flex: 1, gap: 1 },
   detectedRight:{ alignItems: 'flex-end', gap: 3 },
   warnChip:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },

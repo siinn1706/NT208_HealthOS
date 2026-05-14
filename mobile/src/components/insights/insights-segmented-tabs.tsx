@@ -18,7 +18,7 @@ const TABS: { key: InsightsTab; label: string; route: string }[] = [
 export function InsightsSegmentedTabs({ active }: InsightsSegmentedTabsProps) {
   const t = useTheme();
   return (
-    <View style={[styles.container, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
+    <View style={[styles.container, { backgroundColor: t.brandSoft, borderRadius: t.radius.lg }]}>
       {TABS.map((tab) => {
         const isActive = tab.key === active;
         return (
@@ -28,10 +28,25 @@ export function InsightsSegmentedTabs({ active }: InsightsSegmentedTabsProps) {
             style={[
               styles.tab,
               { borderRadius: t.radius.sm },
-              isActive && { backgroundColor: t.card },
+              isActive && {
+                backgroundColor: t.card,
+                ...t.shadows.card,
+                shadowColor: t.shadows.card.shadowColor,
+              },
             ]}
           >
-            <Text style={[typography.chip, { color: isActive ? t.ink : t.ink3 }]}>{tab.label}</Text>
+            <Text
+              style={[
+                typography.chip,
+                {
+                  color: isActive
+                    ? t.ink
+                    : t.ink3,
+                },
+              ]}
+            >
+              {tab.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -41,5 +56,5 @@ export function InsightsSegmentedTabs({ active }: InsightsSegmentedTabsProps) {
 
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', padding: 4, marginBottom: 4 },
-  tab:       { flex: 1, alignItems: 'center', paddingVertical: 8 },
+  tab:       { flex: 1, alignItems: 'center', paddingVertical: 6 },
 });

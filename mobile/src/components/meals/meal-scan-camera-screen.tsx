@@ -51,9 +51,22 @@ export function MealScanCameraScreen() {
 
       {/* Viewfinder */}
       <View style={styles.viewfinder}>
-        {/* Faux plate */}
-        <View style={styles.plate}>
-          <View style={styles.plateInner} />
+        {/* Hint chip — above the plate */}
+        <View style={styles.hintChip}>
+          <Text style={[typography.caption, { color: WHITE }]}>✦ Center the plate in the frame</Text>
+        </View>
+
+        {/* Realistic food plate composition */}
+        <View style={styles.plateBg}>
+          {/* Cream plate circle */}
+          <View style={styles.plate}>
+            {/* Food blob: pork (brown) */}
+            <View style={[styles.blob, { backgroundColor: '#8B4513', width: 100, height: 70, top: 55, left: 40 }]} />
+            {/* Food blob: noodles (beige) */}
+            <View style={[styles.blob, { backgroundColor: '#D4C5A0', width: 90, height: 40, top: 90, left: 35 }]} />
+            {/* Food blob: greens (olive) */}
+            <View style={[styles.blob, { backgroundColor: '#4A7C59', width: 60, height: 50, top: 70, right: 30 }]} />
+          </View>
         </View>
 
         {/* Corner brackets */}
@@ -63,25 +76,31 @@ export function MealScanCameraScreen() {
           <CornerBracket pos="bl" />
           <CornerBracket pos="br" />
         </View>
-
-        {/* Hint chip */}
-        <View style={styles.hintChip}>
-          <Text style={[typography.caption, { color: WHITE }]}>Center the plate in the frame</Text>
-        </View>
       </View>
 
       {/* Bottom controls */}
       <View style={styles.bottom}>
-        {/* Mode tabs */}
+        {/* Mode tabs — active "Photo" as white pill */}
         <View style={styles.modeTabs}>
           {MODES.map((m, i) => (
-            <Text key={m} style={[typography.caption, { color: i === 0 ? WHITE : 'rgba(255,255,255,0.45)' }]}>{m}</Text>
+            i === 0 ? (
+              <View key={m} style={styles.activeTab}>
+                <Text style={[typography.caption, { color: '#111' }]}>{m}</Text>
+              </View>
+            ) : (
+              <Text key={m} style={[typography.caption, { color: 'rgba(255,255,255,0.45)' }]}>{m}</Text>
+            )
           ))}
         </View>
 
-        {/* Shutter row */}
+        {/* Shutter row with thumbnail on left */}
         <View style={styles.shutterRow}>
-          <View style={styles.shutterSide} />
+          {/* Thumbnail preview placeholder */}
+          <View style={styles.shutterSide}>
+            <View style={styles.thumbnail}>
+              <View style={styles.thumbnailInner} />
+            </View>
+          </View>
           <Pressable
             onPress={() => router.push('/meals/scan-analyzing' as never)}
             style={styles.shutter}
@@ -100,20 +119,27 @@ export function MealScanCameraScreen() {
 }
 
 const styles = StyleSheet.create({
-  root:        { flex: 1 },
-  topBar:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 52, paddingHorizontal: 20, paddingBottom: 12 },
-  topRight:    { flexDirection: 'row', gap: 12 },
-  ghostBtn:    { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
-  viewfinder:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  plate:       { width: 260, height: 260, borderRadius: 130, backgroundColor: '#3B2A1A', alignItems: 'center', justifyContent: 'center' },
-  plateInner:  { width: 180, height: 180, borderRadius: 90, backgroundColor: '#5C3D20' },
-  bracketFrame:{ position: 'absolute', width: 220, height: 220 },
-  bracket:     { position: 'absolute', width: 28, height: 28 },
-  hintChip:    { position: 'absolute', bottom: 32, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  bottom:      { paddingBottom: 48, paddingHorizontal: 24 },
-  modeTabs:    { flexDirection: 'row', justifyContent: 'center', gap: 24, marginBottom: 28 },
-  shutterRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  shutterSide: { width: 56, alignItems: 'center' },
-  shutter:     { width: 72, height: 72, borderRadius: 36, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: 'rgba(255,255,255,0.5)' },
-  shutterInner:{ width: 58, height: 58, borderRadius: 29, backgroundColor: WHITE },
+  root:         { flex: 1 },
+  topBar:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 52, paddingHorizontal: 20, paddingBottom: 12 },
+  topRight:     { flexDirection: 'row', gap: 12 },
+  ghostBtn:     { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  viewfinder:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // Hint chip — above plate, top: 24 from viewfinder
+  hintChip:     { position: 'absolute', top: 24, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  plateBg:      { width: 260, height: 260, borderRadius: 130, backgroundColor: '#2C1A0E', alignItems: 'center', justifyContent: 'center' },
+  plate:        { width: 260, height: 260, borderRadius: 130, backgroundColor: '#F0E6D0', overflow: 'hidden' },
+  blob:         { position: 'absolute', borderRadius: 40 },
+  bracketFrame: { position: 'absolute', width: 220, height: 220 },
+  bracket:      { position: 'absolute', width: 28, height: 28 },
+  bottom:       { paddingBottom: 48, paddingHorizontal: 24 },
+  modeTabs:     { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginBottom: 28 },
+  // White pill for active mode tab
+  activeTab:    { backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 5 },
+  shutterRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  shutterSide:  { width: 56, alignItems: 'center' },
+  // Thumbnail preview
+  thumbnail:    { width: 44, height: 44, borderRadius: 10, backgroundColor: '#5C3D20', overflow: 'hidden' },
+  thumbnailInner: { flex: 1, backgroundColor: '#3B2A1A' },
+  shutter:      { width: 72, height: 72, borderRadius: 36, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: 'rgba(255,255,255,0.5)' },
+  shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: WHITE },
 });

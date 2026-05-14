@@ -7,7 +7,9 @@ import { Screen } from '../layout/Screen';
 import { TopBar } from '../layout/TopBar';
 import { SectionHeader } from '../layout/SectionHeader';
 import { IconButton } from '../primitives/IconButton';
+import { Card } from '../primitives/Card';
 import { ApiState } from '../api/ApiState';
+import { ProgressRing } from '../charts/ProgressRing';
 import { IconBell, IconPlus, IconFilter } from '../../icons';
 import { ReminderRow, type ReminderRowData } from './reminder-row';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
@@ -38,6 +40,50 @@ function mapCategory(type: string): ReminderRowData['category'] {
   if (type === 'exercise') return 'activity';
   return 'care';
 }
+
+// 8-segment status rail — maps rows to colored segments
+function SegmentRail({ rows, done, upcoming, overdue }: {
+  rows: ReminderRowData[];
+  done: ReminderRowData[];
+  upcoming: ReminderRowData[];
+  overdue: ReminderRowData[];
+}) {
+  const t = useTheme();
+  // Build 8 slots from real rows (or fill with empty)
+  const segments = Array.from({ length: 8 }, (_, i) => {
+    const row = rows[i];
+    if (!row) return 'empty';
+    if (row.done)    return 'done';
+    if (row.overdue) return 'overdue';
+    return 'upcoming';
+  });
+
+  const colorMap: Record<string, string> = {
+    done: t.success,
+    upcoming: t.brand,
+    overdue: t.danger,
+    empty: t.border,
+  };
+
+  return (
+    <View style={railStyles.rail}>
+      {segments.map((seg, i) => (
+        <View
+          key={i}
+          style={[
+            railStyles.segment,
+            { backgroundColor: colorMap[seg], flex: 1 },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+const railStyles = StyleSheet.create({
+  rail:    { flexDirection: 'row', gap: 3, marginTop: 12 },
+  segment: { height: 6, borderRadius: 3 },
+});
 
 export function RemindersCenterScreen() {
   const t = useTheme();
@@ -72,6 +118,11 @@ export function RemindersCenterScreen() {
   const upcoming = rows.filter((r) => !r.overdue && !r.done);
   const done = rows.filter((r) => r.done);
 
+  // Derive next upcoming reminder info
+  const nextUpcoming = upcoming[0];
+  const nextReminderTime = nextUpcoming?.time ?? '--';
+  const nextReminderTitle = nextUpcoming?.title ?? 'None';
+
   async function markDone(reminderId: string) {
     await reminderService.updateDone(reminderId, true);
     invalidateApiQuery('reminders.');
@@ -83,6 +134,8 @@ export function RemindersCenterScreen() {
     invalidateApiQuery('reminders.');
     reminders.reload();
   }
+
+  const progressValue = rows.length > 0 ? done.length / rows.length : 0;
 
   return (
     <Screen>
@@ -97,31 +150,48 @@ export function RemindersCenterScreen() {
         }
       />
 
-      <View style={[styles.snapshot, { backgroundColor: t.card, borderColor: t.border }]}>
-        {[
-          { label: 'Done', count: done.length, color: t.success },
-          { label: 'Upcoming', count: upcoming.length, color: t.brand },
-          { label: 'Overdue', count: overdue.length, color: t.danger },
-        ].map((item) => (
-          <View key={item.label} style={styles.snapItem}>
-            <Text style={[typography.h3, { color: item.color }]}>{item.count}</Text>
-            <Text style={[typography.micro, { color: t.ink3, marginTop: 2 }]}>{item.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f}
-            onPress={() => setActiveFilter(f)}
-            style={[styles.chip, { backgroundColor: activeFilter === f ? t.brand : t.bgElev, borderColor: activeFilter === f ? t.brand : t.border }]}
-          >
-            <Text style={[typography.body, { color: activeFilter === f ? '#FFF' : t.ink3, fontWeight: activeFilter === f ? '600' : '400' }]}>
-              {f}
+      {/* Snapshot card — ProgressRing + text + 8-segment rail */}
+      <Card style={styles.snapshotCard}>
+        <View style={styles.snapshotRow}>
+          <ProgressRing size={64} stroke={7} value={progressValue} color={t.brand} track={t.border}>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: t.ink }}>{done.length}/{rows.length}</Text>
+          </ProgressRing>
+          <View style={styles.snapshotText}>
+            <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.8 }]}>TODAY</Text>
+            <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '800', fontSize: 17, marginTop: 2 }]}>
+              {done.length} done · {rows.length - done.length} left
             </Text>
-          </TouchableOpacity>
-        ))}
+            <Text style={[typography.micro, { color: t.ink3, marginTop: 2 }]} numberOfLines={1}>
+              Next at {nextReminderTime} · {nextReminderTitle}
+            </Text>
+          </View>
+        </View>
+        <SegmentRail rows={rows} done={done} upcoming={upcoming} overdue={overdue} />
+      </Card>
+
+      {/* Filter chips */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+        {FILTERS.map((f) => {
+          const active = activeFilter === f;
+          return (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setActiveFilter(f)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: active ? t.brand : 'transparent',
+                  borderColor: active ? t.brand : t.border,
+                  borderRadius: t.radius.pill,
+                },
+              ]}
+            >
+              <Text style={[typography.body, { color: active ? '#fff' : t.ink3, fontWeight: active ? '600' : '400' }]}>
+                {f}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {reminders.isLoading && <ApiState title="Loading reminders" loading />}
@@ -130,25 +200,42 @@ export function RemindersCenterScreen() {
         <ApiState title="No reminders yet" message="Create your first reminder to track medications and appointments." />
       )}
 
+      {/* Overdue section — pink-tinted joined card */}
       {overdue.length > 0 && (
         <>
           <SectionHeader title="Overdue" />
-          {overdue.map((r) => <ReminderRow key={r.id} {...r} onPress={() => router.push(`/reminders/${r.id}` as never)} />)}
+          <Card style={[styles.joinedCard, { backgroundColor: `${t.danger}08`, borderColor: `${t.danger}30`, padding: 0, overflow: 'hidden' }]}>
+            {overdue.map((r, i) => (
+              <ReminderRow
+                key={r.id}
+                {...r}
+                joined
+                showDivider={i < overdue.length - 1}
+                onDone={() => { markDone(r.id); }}
+                onPress={() => router.push(`/reminders/${r.id}` as never)}
+              />
+            ))}
+          </Card>
         </>
       )}
 
+      {/* Up Next section — joined card */}
       {upcoming.length > 0 && (
         <>
           <SectionHeader title="Up Next" />
-          {upcoming.map((r) => (
-            <ReminderRow
-              key={r.id}
-              {...r}
-              onDone={() => { markDone(r.id); }}
-              onSnooze={() => { snooze(r.id); }}
-              onPress={() => router.push(`/reminders/${r.id}` as never)}
-            />
-          ))}
+          <Card style={[styles.joinedCard, { padding: 0, overflow: 'hidden' }]}>
+            {upcoming.map((r, i) => (
+              <ReminderRow
+                key={r.id}
+                {...r}
+                joined
+                showDivider={i < upcoming.length - 1}
+                onDone={() => { markDone(r.id); }}
+                onSnooze={() => { snooze(r.id); }}
+                onPress={() => router.push(`/reminders/${r.id}` as never)}
+              />
+            ))}
+          </Card>
         </>
       )}
 
@@ -169,11 +256,13 @@ export function RemindersCenterScreen() {
 }
 
 const styles = StyleSheet.create({
-  topActions:    { flexDirection: 'row', gap: 4 },
-  snapshot:      { flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 16, marginTop: 8, marginBottom: 12, padding: 16, borderRadius: 14, borderWidth: 1 },
-  snapItem:      { alignItems: 'center' },
-  filterScroll:  { marginBottom: 4 },
-  filterContent: { paddingHorizontal: 16, gap: 8, paddingVertical: 4 },
-  chip:          { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
-  inboxRow:      { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 16, marginBottom: 8, padding: 14, borderRadius: 12, borderWidth: 1 },
+  topActions:   { flexDirection: 'row', gap: 4 },
+  snapshotCard: { marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
+  snapshotRow:  { flexDirection: 'row', alignItems: 'center' },
+  snapshotText: { flex: 1, marginLeft: 12 },
+  filterScroll: { marginBottom: 4 },
+  filterContent:{ paddingHorizontal: 16, gap: 8, paddingVertical: 4 },
+  chip:         { paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1 },
+  joinedCard:   { marginHorizontal: 16, marginBottom: 8 },
+  inboxRow:     { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 16, marginBottom: 8, padding: 14, borderRadius: 12, borderWidth: 1 },
 });

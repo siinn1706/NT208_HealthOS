@@ -15,11 +15,43 @@ interface IdentityCardProps {
   city: string;
   level: number;
   verified: boolean;
+  compact?: boolean;
 }
 
-export function IdentityCard({ name, email, age, gender, city, level, verified }: IdentityCardProps) {
+export function IdentityCard({ name, email, age, gender, city, level, verified, compact }: IdentityCardProps) {
   const t = useTheme();
 
+  if (compact) {
+    return (
+      <Card style={styles.compactCard}>
+        {/* Left: avatar with badge */}
+        <View style={styles.avatarWrap}>
+          <Avatar name={name} size={56} />
+          {verified && (
+            <View style={[styles.badge, { backgroundColor: t.success, borderColor: t.bg }]}>
+              <IconCheck size={10} color="#FFF" />
+            </View>
+          )}
+        </View>
+
+        {/* Right: name, meta, chips */}
+        <View style={styles.compactRight}>
+          <Text style={[typography.title, { color: t.ink, fontSize: 17, fontWeight: '700' }]}>{name}</Text>
+          <Text style={[typography.caption, { color: t.ink3, fontSize: 12, marginTop: 2 }]}>
+            {age > 0 ? `${age} · ` : ''}{gender}{city ? ` · ${city}` : ''}
+          </Text>
+          <View style={styles.chips}>
+            {verified && (
+              <Chip label="Verified" variant="success" icon={<IconShield size={11} color={t.success} />} />
+            )}
+            <Chip label={`Level ${level}`} variant="brand" icon={<IconBadge size={11} color={t.brand} />} />
+          </View>
+        </View>
+      </Card>
+    );
+  }
+
+  // Default (non-compact) layout — unchanged
   return (
     <Card style={styles.card}>
       <View style={styles.avatarWrap}>
@@ -48,8 +80,9 @@ export function IdentityCard({ name, email, age, gender, city, level, verified }
 }
 
 const styles = StyleSheet.create({
-  card:       { alignItems: 'center', marginVertical: 8 },
-  avatarWrap: { position: 'relative' },
+  // Default centered layout
+  card:         { alignItems: 'center', marginVertical: 8 },
+  avatarWrap:   { position: 'relative' },
   badge: {
     position: 'absolute',
     bottom: 2,
@@ -61,5 +94,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
   },
-  chips: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  chips:        { flexDirection: 'row', gap: 8, marginTop: 10 },
+  // Compact horizontal layout
+  compactCard:  { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16, marginVertical: 8 },
+  compactRight: { flex: 1 },
 });

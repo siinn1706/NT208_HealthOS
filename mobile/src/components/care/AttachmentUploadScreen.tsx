@@ -71,11 +71,20 @@ export function AttachmentUploadScreen() {
           </Pressable>
         </View>
 
-        {/* File slots */}
+        {/* File slots — single clipped grouped card */}
         {slots.length > 0 && (
           <>
             <Text style={[typography.h3, { color: t.ink }]}>Uploads</Text>
-            {slots.map((slot) => <UploadRow key={slot.id} slot={slot} />)}
+            <View style={[s.uploadsCard, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.md }]}>
+              {slots.map((slot, i) => (
+                <View key={slot.id}>
+                  <UploadRow slot={slot} />
+                  {i < slots.length - 1 && (
+                    <View style={[s.uploadDivider, { backgroundColor: t.border, marginLeft: 60 }]} />
+                  )}
+                </View>
+              ))}
+            </View>
           </>
         )}
 
@@ -133,7 +142,9 @@ const s = StyleSheet.create({
   uploadIcon:   { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   divider:      { height: StyleSheet.hairlineWidth },
   sheetInner:   { paddingHorizontal: 20, paddingTop: 8 },
-  uploadRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, marginBottom: 8 },
+  uploadsCard:  { borderWidth: 1, overflow: 'hidden' },
+  uploadDivider:{ height: StyleSheet.hairlineWidth },
+  uploadRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
   uploadRowIcon:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   barTrack:     { height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill:      { height: 4, borderRadius: 2 },

@@ -4,11 +4,8 @@ import { useRouter } from 'expo-router';
 import { Screen } from '../../src/components/layout/Screen';
 import { TopBar } from '../../src/components/layout/TopBar';
 import { IconButton } from '../../src/components/primitives/IconButton';
-import { Card } from '../../src/components/primitives/Card';
-import { Divider } from '../../src/components/primitives/Divider';
 import { ApiState } from '../../src/components/api/ApiState';
 import { IdentityCard } from '../../src/components/profile/IdentityCard';
-import { StatCell } from '../../src/components/profile/StatCell';
 import { EmergencyCard } from '../../src/components/profile/EmergencyCard';
 import { MenuGroup } from '../../src/components/profile/MenuGroup';
 import {
@@ -18,11 +15,11 @@ import {
   SignOutModal,
   MissingApiModal,
 } from '../../src/components/profile/me-screen-modals';
-import { IconSettings, IconActivity, IconTarget, IconHeartPulse } from '../../src/icons';
+import { IconSettings } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
 import { useSession } from '../../src/auth/SessionProvider';
-import { profileMenuGroups, toIdentity, toProfileStats } from '../../src/api/viewModels';
+import { profileMenuGroups, toIdentity } from '../../src/api/viewModels';
 
 export default function MeScreen() {
   const t = useTheme();
@@ -30,7 +27,6 @@ export default function MeScreen() {
   const session = useSession();
 
   const identity = toIdentity(session.user);
-  const stats = toProfileStats(session.user);
 
   // Sheet / modal visibility
   const [appearanceOpen, setAppearanceOpen] = useState(false);
@@ -110,26 +106,9 @@ export default function MeScreen() {
           />
         )}
 
-        <IdentityCard {...identity} />
+        <IdentityCard {...identity} compact />
 
-        <Card style={styles.statsCard}>
-          {stats.map((s, i) => {
-            const statMeta: Record<string, { icon: React.ReactNode; tint: string }> = {
-              height: { icon: <IconActivity size={16} color={t.brand} />, tint: `${t.brand}22` },
-              weight: { icon: <IconTarget size={16} color={t.brand} />, tint: `${t.brand}22` },
-              blood:  { icon: <IconHeartPulse size={16} color={t.warning} />, tint: `${t.warning}22` },
-            };
-            const meta = statMeta[s.id] ?? { icon: undefined, tint: undefined };
-            return (
-              <React.Fragment key={s.label}>
-                {i > 0 && <Divider />}
-                <StatCell label={s.label} value={s.value} icon={meta.icon} tint={meta.tint} />
-              </React.Fragment>
-            );
-          })}
-        </Card>
-
-        <EmergencyCard onShare={() => setEmergencyOpen(true)} />
+        <EmergencyCard variant="soft" onShare={() => setEmergencyOpen(true)} />
 
         {profileMenuGroups.map((g) => (
           <MenuGroup key={g.title} title={g.title} items={g.items} onItemPress={handleMenuPress} />
@@ -163,6 +142,4 @@ export default function MeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  statsCard: { flexDirection: 'row', paddingVertical: 0, paddingHorizontal: 0 },
-});
+const styles = StyleSheet.create({});

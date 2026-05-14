@@ -65,8 +65,15 @@ export function Input({
           {
             borderColor,
             borderRadius: t.radius.md,
-            backgroundColor: disabled ? t.bgElev : t.card,
+            backgroundColor: disabled ? t.chip : t.card,
             borderWidth: focused || !!error ? 1.5 : 1,
+          },
+          focused && !error && {
+            shadowColor: t.brand,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.22,
+            shadowRadius: 5,
+            elevation: 2,
           },
         ]}
       >
@@ -126,7 +133,7 @@ const styles = StyleSheet.create({
   iconLeft:         { paddingLeft: 12 },
   iconRight:        { paddingRight: 12 },
   trailingTextWrap: { paddingRight: 14, paddingVertical: 4 },
-  input:            { flex: 1, height: 48, paddingHorizontal: 12 },
+  input:            { flex: 1, height: 50, paddingHorizontal: 12 },
   helperRow:        { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   helperIcon:       { marginTop: 1 },
   helperText:       { marginTop: 4 },

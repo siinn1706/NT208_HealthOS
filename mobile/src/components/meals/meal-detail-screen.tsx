@@ -72,9 +72,9 @@ export function MealDetailScreen() {
       protein,
       fat,
       micronutrients: [
-        { label: 'Salt', value: saltG, unit: 'g', max: 6, warn: saltG > 5 },
-        { label: 'Sugar', value: sugarG, unit: 'g', max: 50, warn: sugarG > 40 },
-        { label: 'Sat fat', value: satG, unit: 'g', max: 20, warn: satG > 16 },
+        { label: 'Salt',    value: saltG,  unit: 'g', max: 6,  warn: saltG > 5 },
+        { label: 'Sugar',   value: sugarG, unit: 'g', max: 50, warn: sugarG > 40 },
+        { label: 'Sat fat', value: satG,   unit: 'g', max: 20, warn: satG > 16 },
       ],
     };
   }, [meal.data]);
@@ -140,6 +140,13 @@ export function MealDetailScreen() {
   const consumedPct = Math.min(model.calories / DAILY_TARGET_KCAL, 1);
   const loggedLabel = model.loggedAt.toLocaleString();
 
+  // Status subtitle — no raw status exposed
+  function statusSubtitle(status: string) {
+    if (status === 'ready') return 'AI scan · nutrition verified';
+    if (status === 'pending') return 'Nutrition pending';
+    return 'Manual entry';
+  }
+
   return (
     <Screen>
       <BackBar
@@ -152,6 +159,7 @@ export function MealDetailScreen() {
         }
       />
 
+      {/* Hero photo — consistent borderRadius via style, no double-application */}
       <View style={[styles.heroPhoto, { backgroundColor: t.card, borderRadius: t.radius.lg, borderColor: t.border }]}>
         {model.imageUrl ? (
           <Image source={{ uri: model.imageUrl }} style={styles.heroImage} resizeMode="cover" />
@@ -167,29 +175,37 @@ export function MealDetailScreen() {
         </View>
       </View>
 
+      {/* Title block */}
       <View style={styles.titleBlock}>
         <Text style={[typography.micro, { color: t.ink3, letterSpacing: 1 }]}>
           {slotLabel(model.loggedAt.toISOString())} · {loggedLabel}
         </Text>
         <Text style={[typography.title, { color: t.ink, marginTop: 4 }]}>{model.title}</Text>
-        <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>Meal status: {model.status}</Text>
+        {/* Clean status subtitle — no raw status string */}
+        <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
+          {statusSubtitle(model.status)}
+        </Text>
       </View>
 
+      {/* Macros card — "Of daily target" + percent in brand */}
       <Card tight style={styles.macrosCard}>
         <View style={styles.macrosRow}>
           <ProgressRing value={consumedPct} size={72} stroke={7} color={t.brand} track={t.border}>
             <View style={{ alignItems: 'center' }}>
-              <Text style={[typography.chip, tabularNums, { color: t.ink }]}>{Math.round(consumedPct * 100)}%</Text>
+              <Text style={[typography.micro, { color: t.ink3 }]}>Of daily</Text>
+              <Text style={[typography.micro, { color: t.ink3 }]}>target</Text>
+              <Text style={[typography.chip, tabularNums, { color: t.brand }]}>{Math.round(consumedPct * 100)}%</Text>
             </View>
           </ProgressRing>
           <View style={styles.macrosBars}>
+            {/* On-track chip */}
             <View style={[styles.onTrackChip, { backgroundColor: t.success + '22', borderRadius: t.radius.sm }]}>
-              <Text style={[typography.micro, { color: t.success }]}>{model.calories} kcal</Text>
+              <Text style={[typography.micro, { color: t.success }]}>On track for the day</Text>
             </View>
             {[
-              { label: 'Carbs', val: model.carbs, max: 240, color: '#E3B79A' },
+              { label: 'Carbs',   val: model.carbs,   max: 240, color: '#E3B79A' },
               { label: 'Protein', val: model.protein, max: 120, color: t.brand },
-              { label: 'Fat', val: model.fat, max: 65, color: '#5B90C4' },
+              { label: 'Fat',     val: model.fat,     max: 65,  color: '#5B90C4' },
             ].map((m) => (
               <View key={m.label} style={styles.macroBarRow}>
                 <Text style={[typography.micro, { color: t.ink3, width: 44 }]}>{m.label}</Text>
@@ -293,26 +309,27 @@ export function MealDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBar: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  backBtn: { width: 40 },
-  topActions: { flexDirection: 'row', alignItems: 'center' },
-  heroPhoto: { height: 200, borderWidth: StyleSheet.hairlineWidth, marginBottom: 14, overflow: 'hidden', borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  heroImage: { width: '100%', height: '100%' },
-  blob: { position: 'absolute', borderRadius: 50, opacity: 0.85 },
-  aiChip: { position: 'absolute', top: 12, left: 12, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  titleBlock: { marginBottom: 14 },
-  macrosCard: { marginBottom: 4 },
-  macrosRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  macrosBars: { flex: 1, gap: 6 },
-  onTrackChip: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4 },
-  macroBarRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  barTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: 5, borderRadius: 3 },
-  microRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
-  healthCard: { marginTop: 12, borderWidth: 1 },
-  healthRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  healthText: { flex: 1, gap: 3 },
-  editCard: { marginTop: 14 },
-  editInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  backBar:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  backBtn:      { width: 40 },
+  topActions:   { flexDirection: 'row', alignItems: 'center' },
+  // No double-applying corner radius — borderRadius set via inline only
+  heroPhoto:    { height: 200, borderWidth: StyleSheet.hairlineWidth, marginBottom: 14, overflow: 'hidden' },
+  heroImage:    { width: '100%', height: '100%' },
+  blob:         { position: 'absolute', borderRadius: 50, opacity: 0.85 },
+  aiChip:       { position: 'absolute', top: 12, left: 12, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  titleBlock:   { marginBottom: 14 },
+  macrosCard:   { marginBottom: 4 },
+  macrosRow:    { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  macrosBars:   { flex: 1, gap: 6 },
+  onTrackChip:  { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4 },
+  macroBarRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  barTrack:     { height: 5, borderRadius: 3, overflow: 'hidden' },
+  barFill:      { height: 5, borderRadius: 3 },
+  microRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
+  healthCard:   { marginTop: 12, borderWidth: 1 },
+  healthRow:    { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  healthText:   { flex: 1, gap: 3 },
+  editCard:     { marginTop: 14 },
+  editInput:    { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  btnRow:       { flexDirection: 'row', gap: 10, marginTop: 20 },
 });

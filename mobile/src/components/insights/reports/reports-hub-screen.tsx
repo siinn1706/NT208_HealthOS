@@ -1,13 +1,15 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Screen } from '../../layout/Screen';
 import { TopBar } from '../../layout/TopBar';
 import { SectionHeader } from '../../layout/SectionHeader';
 import { Card } from '../../primitives/Card';
+import { Button } from '../../primitives/Button';
 import { IconButton } from '../../primitives/IconButton';
-import { ApiState } from '../../api/ApiState';
 import { InsightsSegmentedTabs } from '../insights-segmented-tabs';
+import { ProgressRing } from '../../charts/ProgressRing';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { useApiQuery } from '../../../api/query';
@@ -16,6 +18,7 @@ import { reportService } from '../../../api/services';
 import {
   IconSearch, IconFilter, IconRefresh, IconSparkle,
   IconPlus, IconHeartPulse, IconShield, IconActivity, ChevronRight,
+  IconAlert, IconPaperclip,
 } from '../../../icons';
 
 type Tone = 'success' | 'warning' | 'info' | 'danger';
@@ -38,6 +41,198 @@ function asArray(value: unknown): unknown[] {
 function str(value: unknown, fallback = '') {
   return typeof value === 'string' ? value : fallback;
 }
+
+// ─── Report Generating State ───────────────────────────────────────────────────
+
+const GENERATE_STEPS = [
+  { label: 'Collecting vitals', sub: 'Heart rate, BP, SpO₂' },
+  { label: 'Analyzing trends', sub: 'Last 7 days vs baseline' },
+  { label: 'Building insights', sub: 'Powered by health AI' },
+  { label: 'Finalizing report', sub: 'Formatting recommendations' },
+];
+
+function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
+  const t = useTheme();
+  const activeStep = 1; // second step is in-progress
+
+  return (
+    <View style={genStyles.wrap}>
+      {/* Progress ring with sparkle icon */}
+      <ProgressRing value={0.35} size={148} stroke={10} color={t.brand} track={t.brandSoft} glow>
+        <View style={[genStyles.ringIcon, { backgroundColor: t.brandSoft, borderRadius: 999 }]}>
+          <IconSparkle size={36} color={t.brand} />
+        </View>
+      </ProgressRing>
+
+      <Text style={[typography.display, { color: t.ink, marginTop: 20, textAlign: 'center' }]}>
+        Building report…
+      </Text>
+      <Text style={[typography.body, { color: t.ink3, textAlign: 'center', marginTop: 4, marginBottom: 20 }]}>
+        This usually takes 15–30 seconds
+      </Text>
+
+      {/* Step checklist */}
+      <Card style={[genStyles.checkCard, { borderColor: t.border }]} tight>
+        {GENERATE_STEPS.map((step, i) => {
+          const done = i < activeStep;
+          const active = i === activeStep;
+          return (
+            <View
+              key={i}
+              style={[
+                genStyles.checkRow,
+                { borderBottomColor: t.border, borderBottomWidth: i < GENERATE_STEPS.length - 1 ? StyleSheet.hairlineWidth : 0 },
+              ]}
+            >
+              <View style={[genStyles.checkIcon, { backgroundColor: done ? t.success + '18' : active ? t.brand + '18' : t.border + '60', borderRadius: 999 }]}>
+                {done
+                  ? <Text style={{ fontSize: 10 }}>✓</Text>
+                  : active
+                    ? <View style={[genStyles.spinner, { borderColor: t.brand }]} />
+                    : <View style={[genStyles.dot, { backgroundColor: t.ink4 }]} />
+                }
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.bodyMed, { color: t.ink }]}>{step.label}</Text>
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>{step.sub}</Text>
+              </View>
+              {active && (
+                <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.8 }]}>WORKING</Text>
+              )}
+            </View>
+          );
+        })}
+      </Card>
+
+      <Button
+        label="Cancel"
+        variant="ghost"
+        size="lg"
+        style={{ marginTop: 20, minWidth: 160 }}
+        onPress={onCancel ?? (() => {})}
+      />
+    </View>
+  );
+}
+
+// ─── Reports Empty State ───────────────────────────────────────────────────────
+
+function ReportsEmptyState({ onLearn, onLog }: { onLearn?: () => void; onLog?: () => void }) {
+  const t = useTheme();
+  const loggedDays = 3;
+  const requiredDays = 5;
+
+  return (
+    <View style={emptyStyles.wrap}>
+      {/* Icon tile */}
+      <View style={[emptyStyles.iconTile, { backgroundColor: t.brandSoft, borderColor: t.brand + '20', borderRadius: t.radius.xl }]}>
+        <IconSparkle size={38} color={t.brand} />
+      </View>
+
+      <Text style={[typography.h3, { color: t.ink, textAlign: 'center', marginTop: 16 }]}>
+        No reports yet
+      </Text>
+      <Text style={[typography.body, { color: t.ink3, textAlign: 'center', marginTop: 6, lineHeight: 20 }]}>
+        Log health data for at least{' '}
+        <Text style={{ color: t.ink, fontWeight: '700' }}>{requiredDays} days</Text>
+        {' '}to generate your first report.
+      </Text>
+
+      {/* 5-day progress dots */}
+      <View style={emptyStyles.dotsRow}>
+        {Array.from({ length: requiredDays }).map((_, i) => (
+          <View
+            key={i}
+            style={[emptyStyles.dayDot, { backgroundColor: i < loggedDays ? t.brand : t.border }]}
+          />
+        ))}
+      </View>
+      <Text style={[typography.caption, { color: t.ink3, marginTop: 6 }]}>
+        {loggedDays} of {requiredDays} days logged
+      </Text>
+
+      {/* Dual CTAs */}
+      <View style={emptyStyles.ctaRow}>
+        <Button label="Learn how" variant="ghost" size="lg" style={emptyStyles.cta} onPress={onLearn ?? (() => {})} />
+        <Button label="Log today" variant="solid" size="lg" style={emptyStyles.cta} onPress={onLog ?? (() => {})} />
+      </View>
+
+      {/* Info note */}
+      <View style={[emptyStyles.note, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
+        <Text style={[typography.caption, { color: t.ink3, textAlign: 'center' }]}>
+          Reports are auto-generated once your data meets the threshold.{' '}
+          <Text style={{ color: t.brand }}>No action needed.</Text>
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Reports Error State ───────────────────────────────────────────────────────
+
+const DATA_SOURCES = [
+  { icon: <IconHeartPulse size={16} color="#059669" />, name: 'Vitals API',     status: 'ok'    },
+  { icon: <IconActivity   size={16} color="#E54D4D" />, name: 'Activity sync',  status: 'error', note: 'Last sync failed — check device permissions' },
+  { icon: <IconShield     size={16} color="#D97706" />, name: 'Risk prediction', status: 'ok'   },
+];
+
+function ReportsErrorState({ onRetry, onReconnect }: { onRetry?: () => void; onReconnect?: () => void }) {
+  const t = useTheme();
+  return (
+    <View style={errStyles.wrap}>
+      {/* Warning icon tile */}
+      <View style={[errStyles.iconTile, { backgroundColor: t.danger + '10', borderColor: t.danger + '25', borderRadius: t.radius.xl }]}>
+        <IconAlert size={36} color={t.danger} />
+      </View>
+
+      <Text style={[typography.h3, { color: t.ink, textAlign: 'center', marginTop: 16 }]}>
+        Some data sources failed
+      </Text>
+      <Text style={[typography.caption, { color: t.ink3, textAlign: 'center', marginTop: 6 }]}>
+        Fix errors below to generate a complete report
+      </Text>
+
+      {/* Source list */}
+      <Card tight style={{ marginTop: 20, width: '100%' }}>
+        {DATA_SOURCES.map((src, i) => (
+          <View
+            key={i}
+            style={[
+              errStyles.srcRow,
+              { borderBottomColor: t.border, borderBottomWidth: i < DATA_SOURCES.length - 1 ? StyleSheet.hairlineWidth : 0 },
+            ]}
+          >
+            <View style={[errStyles.srcIcon, { backgroundColor: src.status === 'error' ? t.danger + '14' : t.success + '14', borderRadius: t.radius.sm }]}>
+              {src.icon}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.bodyMed, { color: t.ink }]}>{src.name}</Text>
+              {src.note && (
+                <Text style={[typography.caption, { color: t.danger, marginTop: 2 }]}>{src.note}</Text>
+              )}
+            </View>
+            <View style={[errStyles.statusChip, { backgroundColor: src.status === 'error' ? t.danger + '18' : t.success + '18', borderRadius: t.radius.pill }]}>
+              <Text style={[typography.chip, { color: src.status === 'error' ? t.danger : t.success }]}>
+                {src.status === 'error' ? 'ERROR' : 'OK'}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </Card>
+
+      <View style={errStyles.btnRow}>
+        <Button label="Reconnect" variant="ghost" size="lg" style={errStyles.btn} onPress={onReconnect ?? (() => {})} />
+        <Button label="Try again" variant="solid" size="lg" style={errStyles.btn} onPress={onRetry ?? (() => {})} />
+      </View>
+
+      <Text style={[typography.caption, { color: t.ink3, textAlign: 'center', marginTop: 12 }]}>
+        Build with available sources
+      </Text>
+    </View>
+  );
+}
+
+// ─── Report Row ────────────────────────────────────────────────────────────────
 
 function ReportRow({
   icon,
@@ -89,6 +284,8 @@ function QuickTile({ icon, label, sub, onPress }: { icon: React.ReactNode; label
   );
 }
 
+// ─── Main Screen ───────────────────────────────────────────────────────────────
+
 export function ReportsHubScreen() {
   const t = useTheme();
   const loadWeekly = useCallback(() => reportService.get('7d'), []);
@@ -138,6 +335,8 @@ export function ReportsHubScreen() {
   const loading = report7d.isLoading || report30d.isLoading;
   const error = report7d.error ?? report30d.error;
 
+  const isEmpty = !loading && !error && hero.sections === 0;
+
   return (
     <Screen>
       <TopBar
@@ -145,34 +344,62 @@ export function ReportsHubScreen() {
         subtitle="Reports · Risks · Goals"
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel="Search" />
-            <IconButton icon={<IconFilter size={20} color={t.ink3} />} accessibilityLabel="Filter" />
+            <IconButton icon={<IconSearch size={20} color={t.ink3} />} variant="subtle" accessibilityLabel="Search" />
+            <IconButton icon={<IconFilter size={20} color={t.ink3} />} variant="subtle" accessibilityLabel="Filter" />
           </View>
         }
       />
 
       <InsightsSegmentedTabs active="reports" />
 
-      {loading && <ApiState title="Loading reports" loading />}
-      {error && (
-        <ApiState
-          title="Reports unavailable"
-          message={error.message}
-          actionLabel="Retry"
-          onAction={() => {
+      {/* Loading → custom generating state */}
+      {loading && (
+        <ReportGeneratingState
+          onCancel={() => {
             report7d.reload();
             report30d.reload();
           }}
         />
       )}
 
-      {!loading && !error && (
+      {/* Error state */}
+      {error && (
+        <ReportsErrorState
+          onRetry={() => { report7d.reload(); report30d.reload(); }}
+          onReconnect={() => {}}
+        />
+      )}
+
+      {/* Empty state (loaded but no sections) */}
+      {isEmpty && (
+        <ReportsEmptyState
+          onLog={() => router.push('/home' as never)}
+        />
+      )}
+
+      {!loading && !error && !isEmpty && (
         <>
-          <View style={[styles.heroCard, { backgroundColor: t.brand, borderRadius: t.radius.xl }]}>
+          {/* Hero card — gradient with decorative circles */}
+          <LinearGradient
+            colors={[t.brand, `${t.brand}CC`, '#1A5FA8']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.heroCard, { borderRadius: t.radius.xl, overflow: 'hidden' }]}
+          >
+            {/* Decorative circles */}
+            <View
+              pointerEvents="none"
+              style={{ position: 'absolute', right: -28, top: -24, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.08)' }}
+            />
+            <View
+              pointerEvents="none"
+              style={{ position: 'absolute', right: -10, bottom: -42, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.06)' }}
+            />
+
             <View style={styles.heroTag}>
               <IconSparkle size={12} color="rgba(255,255,255,0.9)" />
               <Text style={[typography.micro, { color: 'rgba(255,255,255,0.9)', marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.8 }]}>
-                Weekly summary
+                WEEKLY SUMMARY · NEW
               </Text>
             </View>
             <Text style={[typography.title, { color: '#fff', marginTop: 10, marginBottom: 6 }]}>
@@ -190,26 +417,31 @@ export function ReportsHubScreen() {
               </Pressable>
               <Pressable
                 onPress={() => router.push('/insights/reports/export' as never)}
-                style={[styles.heroBtnGhost, { borderRadius: t.radius.pill, borderColor: 'rgba(255,255,255,0.5)' }]}
+                style={[styles.heroBtnGhost, { borderRadius: t.radius.pill, borderColor: 'rgba(255,255,255,0.5)', flexDirection: 'row', alignItems: 'center' }]}
               >
-                <Text style={[typography.button, { color: '#fff' }]}>Export PDF</Text>
+                <IconPaperclip size={14} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={[typography.button, { color: '#fff' }]}>Share</Text>
               </Pressable>
             </View>
-          </View>
+          </LinearGradient>
 
-          <Card style={{ ...styles.statusCard, backgroundColor: t.brandSoft }}>
+          {/* Status card — monthly report queued */}
+          <Pressable
+            style={[styles.statusCard, { backgroundColor: t.card, borderColor: t.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: t.radius.lg }]}
+          >
             <View style={styles.statusRow}>
-              <View style={[styles.statusIconWrap, { backgroundColor: t.brand + '20', borderRadius: t.radius.sm }]}>
-                <IconRefresh size={16} color={t.brand} />
+              <View style={[styles.statusIconWrap, { backgroundColor: t.brandSoft, borderRadius: t.radius.sm }]}>
+                <IconRefresh size={18} color={t.brand} />
               </View>
               <View style={styles.statusText}>
-                <Text style={[typography.bodyMed, { color: t.ink }]}>Report sections: {hero.sections}</Text>
+                <Text style={[typography.bodyMed, { color: t.ink }]}>Monthly report queued</Text>
                 <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
-                  Status: {hero.status}
+                  Will run {hero.subtitle ? 'soon' : 'on Apr 30'} · uses 30-day data
                 </Text>
               </View>
+              <ChevronRight size={18} color={t.ink3} />
             </View>
-          </Card>
+          </Pressable>
 
           <View style={styles.quickGrid}>
             <QuickTile
@@ -252,15 +484,45 @@ const styles = StyleSheet.create({
   heroTag:        { flexDirection: 'row', alignItems: 'center' },
   heroButtons:    { flexDirection: 'row', gap: 10 },
   heroBtnPrimary: { backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
-  heroBtnGhost:   { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
-  statusCard:     { marginBottom: 12, borderWidth: 0 },
+  heroBtnGhost:   { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 10 },
+  statusCard:     { marginBottom: 12, padding: 14 },
   statusRow:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
   statusIconWrap: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   statusText:     { flex: 1 },
   quickGrid:      { flexDirection: 'row', gap: 12, marginBottom: 4 },
   quickTile:      { flex: 1, padding: 16, borderWidth: StyleSheet.hairlineWidth },
-  quickTileIcon:  { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  quickTileIcon:  { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   reportRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   reportIcon:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   reportBody:     { flex: 1 },
+});
+
+const genStyles = StyleSheet.create({
+  wrap:      { alignItems: 'center', paddingTop: 32, paddingHorizontal: 20 },
+  ringIcon:  { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
+  checkCard: { width: '100%', marginTop: 8 },
+  checkRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
+  checkIcon: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  spinner:   { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderTopColor: 'transparent' },
+  dot:       { width: 6, height: 6, borderRadius: 3 },
+});
+
+const emptyStyles = StyleSheet.create({
+  wrap:     { alignItems: 'center', paddingTop: 32, paddingHorizontal: 20, paddingBottom: 16 },
+  iconTile: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
+  dotsRow:  { flexDirection: 'row', gap: 8, marginTop: 20 },
+  dayDot:   { width: 10, height: 10, borderRadius: 5 },
+  ctaRow:   { flexDirection: 'row', gap: 12, marginTop: 24, width: '100%' },
+  cta:      { flex: 1 },
+  note:     { padding: 14, marginTop: 20, width: '100%' },
+});
+
+const errStyles = StyleSheet.create({
+  wrap:       { alignItems: 'center', paddingTop: 24, paddingHorizontal: 20, paddingBottom: 16 },
+  iconTile:   { width: 86, height: 86, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
+  srcRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 16 },
+  srcIcon:    { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  statusChip: { paddingHorizontal: 8, paddingVertical: 3 },
+  btnRow:     { flexDirection: 'row', gap: 12, marginTop: 20, width: '100%' },
+  btn:        { flex: 1 },
 });

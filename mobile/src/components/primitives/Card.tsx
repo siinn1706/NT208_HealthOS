@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, type ViewStyle } from 'react-native';
+import { View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
 interface CardProps {
   children: React.ReactNode;
   tight?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Card({ children, tight, style }: CardProps) {

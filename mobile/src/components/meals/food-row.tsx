@@ -44,8 +44,9 @@ export function FoodRow({ name, serving, kcal, icon, frequencyLabel, subtitle, s
       </View>
       <Text style={[typography.bodyMed, { color: t.ink2 }]}>{kcal} kcal</Text>
       {showAddButton && (
-        <View style={[styles.addBtn, { backgroundColor: t.brandSoft, borderRadius: t.radius.pill }]}>
-          <IconPlus size={14} color={t.brand} />
+        // Solid brand bg, white icon, 36px touch target
+        <View style={[styles.addBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}>
+          <IconPlus size={16} color="#fff" />
         </View>
       )}
     </Pressable>
@@ -58,5 +59,6 @@ const styles = StyleSheet.create({
   info:       { flex: 1, gap: 1 },
   nameRow:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
   freqChip:   { paddingHorizontal: 6, paddingVertical: 2 },
-  addBtn:     { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  // 36px solid brand add button
+  addBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });
