@@ -1,4 +1,0 @@
-{
-  "status": 500,
-  "body": "{\"error\":{\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"Internal server error\"}}"
-}
