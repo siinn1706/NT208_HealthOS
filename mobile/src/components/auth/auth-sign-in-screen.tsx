@@ -10,12 +10,12 @@ import { router } from 'expo-router';
 import { User, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Button } from '../primitives/Button';
-import { Input } from '../primitives/input/Input';
+import { Button } from '../primitives/button';
+import { Input } from '../primitives/input/input';
 import { authService } from '../../api/services';
-import { useSession } from '../../auth/SessionProvider';
-import { GoogleMark } from '../../icons/oauth/GoogleMark';
-import { AppleMark } from '../../icons/oauth/AppleMark';
+import { useSession } from '../../auth/session-provider';
+import { GoogleMark } from '../../icons/oauth/google-mark';
+import { AppleMark } from '../../icons/oauth/apple-mark';
 
 export function AuthSignInScreen() {
   const t = useTheme();

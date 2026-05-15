@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { Screen } from '../../layout/Screen';
-import { Card } from '../../primitives/Card';
-import { SectionHeader } from '../../layout/SectionHeader';
-import { ApiState, MissingApiState } from '../../api/ApiState';
+import { Screen } from '../../layout/screen';
+import { Card } from '../../primitives/card';
+import { SectionHeader } from '../../layout/section-header';
+import { ApiState, MissingApiState } from '../../api/api-state';
 import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { healthGoalService } from '../../../api/services';

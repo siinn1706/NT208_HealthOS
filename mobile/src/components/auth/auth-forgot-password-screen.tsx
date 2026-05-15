@@ -10,10 +10,10 @@ import { router } from 'expo-router';
 import { Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Button } from '../primitives/Button';
-import { Input } from '../primitives/input/Input';
+import { Button } from '../primitives/button';
+import { Input } from '../primitives/input/input';
 import { authService } from '../../api/services';
-import { useSession } from '../../auth/SessionProvider';
+import { useSession } from '../../auth/session-provider';
 
 export function AuthForgotPasswordScreen() {
   const t = useTheme();

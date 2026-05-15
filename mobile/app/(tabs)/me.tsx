@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '../../src/components/layout/Screen';
-import { TopBar } from '../../src/components/layout/TopBar';
-import { IconButton } from '../../src/components/primitives/IconButton';
-import { ApiState } from '../../src/components/api/ApiState';
-import { IdentityCard } from '../../src/components/profile/IdentityCard';
-import { EmergencyCard } from '../../src/components/profile/EmergencyCard';
-import { MenuGroup } from '../../src/components/profile/MenuGroup';
+import { Screen } from '../../src/components/layout/screen';
+import { TopBar } from '../../src/components/layout/top-bar';
+import { IconButton } from '../../src/components/primitives/icon-button';
+import { ApiState } from '../../src/components/api/api-state';
+import { IdentityCard } from '../../src/components/profile/identity-card';
+import { EmergencyCard } from '../../src/components/profile/emergency-card';
+import { MenuGroup } from '../../src/components/profile/menu-group';
 import {
   AppearanceSheet,
   SettingsSheet,
@@ -18,7 +18,7 @@ import {
 import { IconSettings } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
-import { useSession } from '../../src/auth/SessionProvider';
+import { useSession } from '../../src/auth/session-provider';
 import { profileMenuGroups, toIdentity } from '../../src/api/viewModels';
 
 export default function MeScreen() {
@@ -106,7 +106,7 @@ export default function MeScreen() {
           />
         )}
 
-        <IdentityCard {...identity} compact />
+        <IdentityCard {...identity} />
 
         <EmergencyCard variant="soft" onShare={() => setEmergencyOpen(true)} />
 

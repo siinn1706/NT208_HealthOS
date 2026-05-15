@@ -4,17 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
-import { Bubble } from '../../src/components/chat/Bubble';
-import { DateChip } from '../../src/components/chat/DateChip';
-import { Composer } from '../../src/components/chat/Composer';
-import { IconButton } from '../../src/components/primitives/IconButton';
-import { ApiState, MissingApiState } from '../../src/components/api/ApiState';
+import { Bubble } from '../../src/components/chat/bubble';
+import { DateChip } from '../../src/components/chat/date-chip';
+import { Composer } from '../../src/components/chat/composer';
+import { IconButton } from '../../src/components/primitives/icon-button';
+import { ApiState, MissingApiState } from '../../src/components/api/api-state';
 import { ChevronLeft, IconMore, IconRobot } from '../../src/icons';
 import { useApiQuery, invalidateApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toBubble } from '../../src/api/viewModels';
-import { useSession } from '../../src/auth/SessionProvider';
+import { useSession } from '../../src/auth/session-provider';
 import type { Message } from '../../../shared/api-contracts';
 
 export default function AiConversationScreen() {

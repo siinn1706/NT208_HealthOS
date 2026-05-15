@@ -89,3 +89,7 @@ infra/data/
 /backend/.venv
 /_design
 /.codex
+.repomixignore
+release-manifest.json
+/.playwright-mcp
+/nt208

@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { Screen } from '../../layout/Screen';
-import { Card } from '../../primitives/Card';
+import { Screen } from '../../layout/screen';
+import { Card } from '../../primitives/card';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { ChevronLeft, IconFilter, IconTarget, IconLeaf, IconActivity, IconHeart, IconShield, IconAlert } from '../../../icons';

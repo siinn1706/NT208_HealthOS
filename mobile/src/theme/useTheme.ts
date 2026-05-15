@@ -1,4 +1,4 @@
-import { useThemeContext } from './ThemeProvider';
+import { useThemeContext } from './theme-provider';
 import type { ThemeTokens } from './tokens';
 
 export function useTheme(): ThemeTokens {

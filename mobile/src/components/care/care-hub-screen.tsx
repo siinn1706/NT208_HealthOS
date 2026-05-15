@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-nativ
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
-import { useThemeContext } from '../../theme/ThemeProvider';
+import { useThemeContext } from '../../theme/theme-provider';
 import { typography } from '../../theme/typography';
-import { Screen } from '../layout/Screen';
-import { TopBar } from '../layout/TopBar';
-import { Card } from '../primitives/Card';
-import { IconButton } from '../primitives/IconButton';
-import { ApiState } from '../api/ApiState';
+import { Screen } from '../layout/screen';
+import { TopBar } from '../layout/top-bar';
+import { Card } from '../primitives/card';
+import { IconButton } from '../primitives/icon-button';
+import { ApiState } from '../api/api-state';
 import { useApiQuery } from '../../api/query';
 import { appointmentService, medicationService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
@@ -19,7 +19,7 @@ import {
   IconUtensils,
   IconPill,
   IconActivity,
-  IconSearch,
+  IconFilter,
   IconPlus,
   IconVideo,
   IconTarget,
@@ -91,11 +91,11 @@ export function CareHubScreen() {
     <Screen>
       <TopBar
         title="Care"
-        subtitle="Your health management"
+        subtitle="Appointments · Prep · History"
         right={
           <View style={styles.topBarIcons}>
-            <IconButton icon={<IconSearch size={20} color={t.ink2} />} onPress={() => {}} accessibilityLabel="Search" />
-            <IconButton icon={<IconPlus size={20} color={t.ink2} />} onPress={() => router.push('/care/appointments/new' as never)} accessibilityLabel="New" />
+            <IconButton icon={<IconFilter size={20} color={t.ink2} />} onPress={() => {}} accessibilityLabel="Filter" />
+            <IconButton variant="filled" icon={<IconPlus size={20} color="#FFF" />} onPress={() => router.push('/care/appointments/new' as never)} accessibilityLabel="New" />
           </View>
         }
       />

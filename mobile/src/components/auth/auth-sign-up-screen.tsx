@@ -8,10 +8,10 @@ import {
 import { router } from 'expo-router';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Button } from '../primitives/Button';
-import { Input } from '../primitives/input/Input';
-import { Checkbox } from '../primitives/input/Checkbox';
-import { ProgressBar } from '../primitives/ProgressBar';
+import { Button } from '../primitives/button';
+import { Input } from '../primitives/input/input';
+import { Checkbox } from '../primitives/input/checkbox';
+import { ProgressBar } from '../primitives/progress-bar';
 import { authService } from '../../api/services';
 
 export function AuthSignUpScreen() {

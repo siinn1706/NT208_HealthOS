@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/theme/useTheme';
-import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useThemeContext } from '../../src/theme/theme-provider';
 import { typography } from '../../src/theme/typography';
 import type { ThemeName } from '../../src/theme/tokens';
 

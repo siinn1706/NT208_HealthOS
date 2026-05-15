@@ -29,6 +29,7 @@ export interface ThemeTokens {
   info: string;
   // warm accents (used cross-theme in KPIs & chat avatars)
   warmGold: string;
+  warmGoldAccent: string;  // pale cream gold (#E7DEA7) — goals gradient, badge highlights
   warmPeach: string;
   warmRose: string;
   // semantic soft containers

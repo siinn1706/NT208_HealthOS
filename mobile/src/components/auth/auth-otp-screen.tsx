@@ -15,9 +15,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Button } from '../primitives/Button';
+import { Button } from '../primitives/button';
 import { authService } from '../../api/services';
-import { useSession } from '../../auth/SessionProvider';
+import { useSession } from '../../auth/session-provider';
 
 const OTP_LEN = 6;
 const COUNTDOWN_SEC = 60;

@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '../layout/Screen';
-import { Card } from '../primitives/Card';
-import { Button } from '../primitives/Button';
-import { IconButton } from '../primitives/IconButton';
-import { ProgressRing } from '../charts/ProgressRing';
+import { Screen } from '../layout/screen';
+import { Card } from '../primitives/card';
+import { Button } from '../primitives/button';
+import { IconButton } from '../primitives/icon-button';
+import { ProgressRing } from '../charts/progress-ring';
 import { useTheme } from '../../theme/useTheme';
 import { typography, tabularNums } from '../../theme/typography';
 import { ChevronLeft, ChevronRight, IconRefresh, IconClock, IconAlert } from '../../icons';

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Linking, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { Toggle } from '../../primitives/Toggle';
+import { Toggle } from '../../primitives/toggle';
 import { reportService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';

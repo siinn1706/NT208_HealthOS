@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
-import { Card } from '../../primitives/Card';
+import { Card } from '../../primitives/card';
 import { IconCheck } from '../../../icons';
 import type { Category } from './create-goal-wizard-steps';
 

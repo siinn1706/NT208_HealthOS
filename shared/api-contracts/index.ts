@@ -52,6 +52,8 @@ export interface UserProfileUpdate {
 export interface AuthToken {
   access_token: string;
   token_type: string;
+  /** Present once backend adds refresh_token to /auth/login and /auth/verify-otp responses. */
+  refresh_token?: string | null;
   user_id: string;
   email: string;
   username: string | null;
@@ -149,6 +151,7 @@ export interface Appointment {
   specialty: string | null;
   clinic: string | null;
   diagnosis: string | null;
+  visit_type?: string | null;
   status: AppointmentStatus;
   notes: string | null;
   has_prescription: boolean;

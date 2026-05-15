@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { HeartPulse } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Button } from '../primitives/Button';
+import { Button } from '../primitives/button';
 
 export function AuthWelcomeScreen() {
   const t = useTheme();

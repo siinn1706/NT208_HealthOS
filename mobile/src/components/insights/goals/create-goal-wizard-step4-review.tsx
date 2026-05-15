@@ -4,7 +4,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
-import { Card } from '../../primitives/Card';
+import { Card } from '../../primitives/card';
 import { IconTarget, IconCheck } from '../../../icons';
 import type { Category, Schedule } from './create-goal-wizard-steps';
 import { CATEGORIES } from './create-goal-wizard-steps';

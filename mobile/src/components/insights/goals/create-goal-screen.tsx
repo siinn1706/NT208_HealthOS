@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { Screen } from '../../layout/Screen';
-import { Button } from '../../primitives/Button';
+import { Screen } from '../../layout/screen';
+import { Button } from '../../primitives/button';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { ChevronLeft } from '../../../icons';

@@ -1,13 +1,13 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, TextInput, View, StyleSheet, Text } from 'react-native';
-import { Screen } from '../../src/components/layout/Screen';
-import { TopBar } from '../../src/components/layout/TopBar';
-import { SectionHeader } from '../../src/components/layout/SectionHeader';
-import { IconButton } from '../../src/components/primitives/IconButton';
-import { ApiState, MissingApiState } from '../../src/components/api/ApiState';
-import { ChatListSkeleton } from '../../src/components/api/Skeletons';
-import { AiAssistantHero } from '../../src/components/chat/AiAssistantHero';
-import { ConversationRow } from '../../src/components/chat/ConversationRow';
+import { Screen } from '../../src/components/layout/screen';
+import { TopBar } from '../../src/components/layout/top-bar';
+import { SectionHeader } from '../../src/components/layout/section-header';
+import { IconButton } from '../../src/components/primitives/icon-button';
+import { ApiState, MissingApiState } from '../../src/components/api/api-state';
+import { ChatListSkeleton } from '../../src/components/api/skeletons';
+import { AiAssistantHero } from '../../src/components/chat/ai-assistant-hero';
+import { ConversationRow } from '../../src/components/chat/conversation-row';
 import { IconSearch, IconPlus } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { router } from 'expo-router';
@@ -15,7 +15,7 @@ import { invalidateApiQuery, useApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toConversationRow } from '../../src/api/viewModels';
-import { useSession } from '../../src/auth/SessionProvider';
+import { useSession } from '../../src/auth/session-provider';
 import { typography } from '../../src/theme/typography';
 
 const AI_SUGGESTIONS = [

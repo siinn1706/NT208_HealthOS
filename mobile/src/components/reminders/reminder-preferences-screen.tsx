@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { router } from 'expo-router';
 import { useTheme } from '../../theme/useTheme';
 import { withOpacity } from '../../utils/color-mix';
-import { Screen } from '../layout/Screen';
-import { ApiState } from '../api/ApiState';
-import { Toggle } from '../primitives/Toggle';
-import { Button } from '../primitives/Button';
+import { Screen } from '../layout/screen';
+import { ApiState } from '../api/api-state';
+import { Toggle } from '../primitives/toggle';
+import { Button } from '../primitives/button';
 import { QuietHoursRing } from './quiet-hours-ring';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { notificationService } from '../../api/services';

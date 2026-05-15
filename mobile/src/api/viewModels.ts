@@ -1,4 +1,4 @@
-import type { ChipVariant } from '../components/primitives/Chip';
+import type { ChipVariant } from '../components/primitives/chip';
 import type {
   Adherence,
   Appointment,

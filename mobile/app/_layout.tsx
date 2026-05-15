@@ -12,10 +12,10 @@ import {
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
-import { ThemeProvider } from '../src/theme/ThemeProvider';
-import { SessionProvider } from '../src/auth/SessionProvider';
-import { ToastProvider } from '../src/components/primitives/feedback/Toast';
-import { OfflineBanner } from '../src/components/api/OfflineBanner';
+import { ThemeProvider } from '../src/theme/theme-provider';
+import { SessionProvider } from '../src/auth/session-provider';
+import { ToastProvider } from '../src/components/primitives/feedback/toast';
+import { OfflineBanner } from '../src/components/api/offline-banner';
 
 SplashScreen.preventAutoHideAsync();
 

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '../layout/Screen';
-import { SectionHeader } from '../layout/SectionHeader';
-import { Card } from '../primitives/Card';
+import { Screen } from '../layout/screen';
+import { SectionHeader } from '../layout/section-header';
+import { Card } from '../primitives/card';
 import { MacroDonut } from './macro-donut';
 import { useTheme } from '../../theme/useTheme';
 import { typography, tabularNums } from '../../theme/typography';

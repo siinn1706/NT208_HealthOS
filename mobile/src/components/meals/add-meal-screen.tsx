@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '../layout/Screen';
-import { SectionHeader } from '../layout/SectionHeader';
-import { Card } from '../primitives/Card';
-import { IconButton } from '../primitives/IconButton';
+import { Screen } from '../layout/screen';
+import { SectionHeader } from '../layout/section-header';
+import { Card } from '../primitives/card';
+import { IconButton } from '../primitives/icon-button';
 import { FoodRow } from './food-row';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';

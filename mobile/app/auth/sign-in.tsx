@@ -1,2 +1,2 @@
-import { AuthFlowScreen } from '../../src/components/auth/AuthFlowScreen';
+import { AuthFlowScreen } from '../../src/components/auth/auth-flow-screen';
 export default function SignInRoute() { return <AuthFlowScreen kind="sign-in" />; }

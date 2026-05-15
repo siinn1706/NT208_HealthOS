@@ -5,9 +5,9 @@ import {
 import { router } from 'expo-router';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Screen } from '../layout/Screen';
+import { Screen } from '../layout/screen';
 import { ChevronLeft, IconBell, IconCalendar, IconHeart, IconActivity, IconTarget, IconStethoscope, IconClock } from '../../icons';
-import { ApiState } from '../api/ApiState';
+import { ApiState } from '../api/api-state';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { reminderService } from '../../api/services';

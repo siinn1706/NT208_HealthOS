@@ -1,12 +1,21 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.2-docs | **Last Updated**: 2026-05-14
+> **Version**: 1.3.3-docs | **Last Updated**: 2026-05-15
 
 ---
 
 ## [Unreleased]
 
 ### Added
+
+#### Mobile Code Review Remediation — Auth Token Refresh, Service Modularization, Testing Foundation (2026-05-15)
+- **Refresh token flow**: Added `refresh_token?: string | null` to `AuthToken` contract. Mobile session-store persists refresh token in SecureStore with REFRESH_KEY, deletes when absent (token rotation safety). Client.ts implements singleton `refreshPromise` + `_retried` flag for concurrent-401 deduplication. SessionProvider injects `setRefreshHandler()` on mount, wiring `authService.refreshToken()` callback. 29 tests cover session persistence, concurrent refresh handling, token lifecycle.
+- **API client hardening**: 401-retry logic waits on singleton `refreshPromise` (prevents thundering herd), retries original request with new token, clears session + calls unauthorized handler on refresh failure. Timeout handling improved with AbortController + 30s default.
+- **Service modularization**: Split `services.ts` (609 LOC) into 15 domain files (auth-service.ts, appointment-service.ts, chat-service.ts, dashboard-service.ts, health-goal-service.ts, meal-service.ts, medication-service.ts, notification-service.ts, nutrition-service.ts, preference-service.ts, profile-service.ts, reminder-service.ts, report-service.ts, risk-service.ts, visit-brief-service.ts). Barrel export `index.ts` preserves 100% backward compatibility — all existing imports still work.
+- **File naming standardization**: Renamed 96 PascalCase component/utility files to kebab-case (per code-standards), updated 130 import paths. Examples: `ForgotPasswordScreen.tsx` → `forgot-password-screen.tsx`, `TopBar.tsx` → `top-bar.tsx`.
+- **Dead code removal**: Deleted `mobile/src/components/auth/ForgotPasswordScreen.tsx` (superseded by onboarding flow).
+- **Testing infrastructure**: Added jest + jest-expo + @testing-library/react-native. 3 test files with 29 tests covering session-store (getAccessToken, getRefreshToken, getCachedUser, saveAuthToken, clearStoredSession), apiRequest (timeout, 401 handling, error normalization), authService (login, logout, refreshToken).
+- **Architecture documentation**: ADR-001 in container-diagram.md formally documents mobile→Core BE direct connection (Bearer token via SecureStore, no BFF layer), rationale (eliminates cookie/CORS/SSR overhead), and constraints (HTTPS required in prod, must handle 401 refresh).
 
 #### Mobile Phase 9: Visual Detail Polish — Notifications, Quiet Hours, Inputs, Sheets, Dialogs (2026-05-14)
 - **14 tasks complete**: Notification preference grouped cards (IconTile, GroupCard, PrefRow with critical badge, channel/delivery sections), Quiet Hours ring SVG (24-segment donut with center time/quiet labels + day chips + exception rows), Notification off-state hero (OffHero when master=false, email fallback chip), Input focus halo (3px outer brand halo at 18% opacity) + height 50 + disabled chip fill, Select/dropdown affordances (trailingIcon, editable=false), Attachment upload list (single clipped grouped card), Bottom sheet polish (handle color borderStrong, width 40), Destructive dialog polish (icon tile, meta pill, vertical action stacking, 0.5 scrim). Refs 120–129. All theme parity (calm/night/warm). TypeScript clean, ESLint clean.

@@ -9,6 +9,8 @@ interface ApiRequestOptions {
   auth?: boolean;
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** Internal: prevents infinite retry loop on 401. */
+  _retried?: boolean;
 }
 
 export class ApiError extends Error {
@@ -26,16 +28,33 @@ export class ApiError extends Error {
 }
 
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
+let refreshHandler: (() => Promise<boolean>) | null = null;
+/** Deduplicates concurrent 401 refresh attempts — N parallel requests share one refresh call. */
+let refreshPromise: Promise<boolean> | null = null;
 
 export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null) {
   unauthorizedHandler = handler;
+}
+
+/**
+ * Inject a token-refresh callback. Return true if refresh succeeded (new token
+ * is now in SecureStore), false if it failed (session should be cleared).
+ * Called by SessionProvider on mount so client.ts stays free of service imports.
+ */
+export function setRefreshHandler(handler: (() => Promise<boolean>) | null) {
+  refreshHandler = handler;
+  refreshPromise = null;
 }
 
 export function getCoreApiBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as { coreApiUrl?: string } | undefined;
   const configured = process.env.EXPO_PUBLIC_CORE_API_URL ?? extra?.coreApiUrl;
   const fallback = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
-  return (configured || fallback).replace(/\/+$/, '');
+  const url = (configured || fallback).replace(/\/+$/, '');
+  if (!__DEV__ && url.startsWith('http://')) {
+    console.warn('[HealthOS] Core API URL is not HTTPS in production:', url);
+  }
+  return url;
 }
 
 export function getCoreWsBaseUrl(): string {
@@ -93,6 +112,20 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     if (!response.ok) {
       const err = normalizeError(payload, response.status);
+      if (response.status === 401 && !options._retried && refreshHandler) {
+        if (!refreshPromise) {
+          refreshPromise = refreshHandler().catch(() => false).finally(() => {
+            refreshPromise = null;
+          });
+        }
+        const refreshed = await refreshPromise;
+        if (refreshed) {
+          return apiRequest<T>(path, { ...options, _retried: true });
+        }
+        await clearStoredSession();
+        await unauthorizedHandler?.();
+        throw err;
+      }
       if (response.status === 401) {
         await clearStoredSession();
         await unauthorizedHandler?.();
@@ -112,14 +145,15 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
 function normalizeError(payload: unknown, status: number): ApiError {
   if (payload && typeof payload === 'object') {
-    const obj = payload as Record<string, any>;
+    const obj = payload as Record<string, unknown>;
     const detail = obj.error ?? obj.detail ?? obj;
     if (detail && typeof detail === 'object') {
+      const d = detail as Record<string, unknown>;
       return new ApiError(
-        String(detail.message ?? detail.detail ?? `Request failed with status ${status}.`),
+        String(d.message ?? d.detail ?? `Request failed with status ${status}.`),
         status,
-        String(detail.code ?? obj.code ?? 'REQUEST_FAILED'),
-        detail.details ?? detail.field_errors ?? detail,
+        String(d.code ?? obj.code ?? 'REQUEST_FAILED'),
+        d.details ?? d.field_errors ?? detail,
       );
     }
     if (typeof detail === 'string') {

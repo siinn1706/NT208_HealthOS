@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Screen } from '../layout/Screen';
-import { Card } from '../primitives/Card';
-import { Button } from '../primitives/Button';
-import { ProgressRing } from '../charts/ProgressRing';
-import { ApiState } from '../api/ApiState';
+import { Screen } from '../layout/screen';
+import { Card } from '../primitives/card';
+import { Button } from '../primitives/button';
+import { ProgressRing } from '../charts/progress-ring';
+import { ApiState } from '../api/api-state';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { mealService } from '../../api/services';
