@@ -18,6 +18,7 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { authService } from '../../api/services';
 import { useSession } from '../../auth/session-provider';
+import { getPendingSignup, clearPendingSignup } from '../../auth/pending-signup';
 
 const OTP_LEN = 6;
 const COUNTDOWN_SEC = 60;
@@ -67,7 +68,7 @@ function OtpBox({
 export function AuthOtpScreen() {
   const t = useTheme();
   const session = useSession();
-  const params = useLocalSearchParams<{ email?: string; password?: string; purpose?: string }>();
+  const params = useLocalSearchParams<{ email?: string; purpose?: string }>();
   const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
   const [focusIdx, setFocusIdx] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -122,7 +123,19 @@ export function AuthOtpScreen() {
     setLoading(true);
     setError(null);
     try {
-      await authService.verifyOtp({ email: params.email!, password: params.password, purpose: (params.purpose ?? 'signup') as 'signup' | 'reset_password' | 'login', code });
+      const pending = getPendingSignup();
+      const result = await authService.verifyOtp({
+        email: params.email!,
+        password: pending?.password,
+        purpose: (params.purpose ?? 'signup') as 'signup' | 'reset_password' | 'login',
+        code,
+      });
+      if (!('access_token' in result)) {
+        setError('Verification succeeded but no session was created. Please sign in.');
+        router.replace('/auth/sign-in');
+        return;
+      }
+      clearPendingSignup();
       await session.refreshUser();
       if (params.purpose === 'reset_password') router.replace('/auth/sign-in');
       else if (params.purpose === 'login') router.replace('/(tabs)/home');

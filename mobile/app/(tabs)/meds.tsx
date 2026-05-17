@@ -24,21 +24,34 @@ import type { Adherence, MedicationDose, MedicationPlan } from '../../../shared/
 export default function MedsScreen() {
   const t = useTheme();
   const loadMeds = useCallback(async () => {
-    const [plans, doses] = await Promise.all([
+    const [plansResult, dosesResult] = await Promise.allSettled([
       medicationService.list('active'),
       medicationService.today(),
     ]);
-    const adherence = plans[0] ? await medicationService.adherence(plans[0].id, '30d') : null;
-    return { plans, doses, adherence };
+    const plans = plansResult.status === 'fulfilled' ? plansResult.value : [];
+    const doses = dosesResult.status === 'fulfilled' ? dosesResult.value : [];
+    const adherenceResults = await Promise.allSettled(
+      plans.map((p) => medicationService.adherence(p.id, '30d')),
+    );
+    const adherenceRecord: Record<string, Adherence> = {};
+    plans.forEach((p, i) => {
+      const r = adherenceResults[i];
+      if (r?.status === 'fulfilled') adherenceRecord[p.id] = r.value;
+    });
+    return { plans, doses, adherenceRecord };
   }, []);
   const meds = useApiQuery<{
     plans: MedicationPlan[];
     doses: MedicationDose[];
-    adherence: Adherence | null;
+    adherenceRecord: Record<string, Adherence>;
   }>(queryKeys.medications, loadMeds);
-  const adherence = meds.data?.adherence;
+  const adherenceRecord = meds.data?.adherenceRecord ?? {};
   const plans = meds.data?.plans ?? [];
   const doses = meds.data?.doses ?? [];
+  const overallAdherence = plans.length > 0
+    ? { percent: Object.values(adherenceRecord).reduce((sum, a) => sum + a.percent, 0) / plans.length }
+    : null;
+  const firstAdherence = plans[0] ? adherenceRecord[plans[0].id] ?? null : null;
   const refillPlan = plans
     .filter((plan) => plan.next_refill_estimated_at)
     .sort((a, b) => new Date(a.next_refill_estimated_at ?? 0).getTime() - new Date(b.next_refill_estimated_at ?? 0).getTime())[0];
@@ -47,7 +60,7 @@ export default function MedsScreen() {
     <Screen>
       <TopBar
         title="Medications"
-        subtitle={`${plans.length} active · ${adherence ? Math.round(adherence.percent) : 0}% adherence`}
+        subtitle={`${plans.length} active · ${overallAdherence ? Math.round(overallAdherence.percent) : 0}% adherence`}
         right={
           <View style={styles.actions}>
             <IconButton variant="subtle" icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel="Refresh" onPress={meds.reload} />
@@ -73,12 +86,12 @@ export default function MedsScreen() {
         />
       )}
 
-      {adherence && (
+      {firstAdherence && (
         <AdherenceHero
-          percent={adherence.percent > 1 ? adherence.percent / 100 : adherence.percent}
-          taken={adherence.taken}
-          total={adherence.scheduled}
-          missed={adherence.missed}
+          percent={firstAdherence.percent > 1 ? firstAdherence.percent / 100 : firstAdherence.percent}
+          taken={firstAdherence.taken}
+          total={firstAdherence.scheduled}
+          missed={firstAdherence.missed}
         />
       )}
 
@@ -119,7 +132,7 @@ export default function MedsScreen() {
       {plans.map((plan) => (
         <MedCard
           key={plan.id}
-          {...toMedicationCard(plan, adherence)}
+          {...toMedicationCard(plan, adherenceRecord[plan.id] ?? null)}
           onPress={() => router.push(`/meds/${plan.id}` as never)}
         />
       ))}

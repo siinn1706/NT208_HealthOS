@@ -36,6 +36,9 @@ export function AuthSetupScreen() {
     if (dob.trim()) {
       const parsed = normalizeDate(dob);
       if (!parsed || !/^\d{4}-\d{2}-\d{2}$/.test(parsed)) return 'Date must be DD/MM/YYYY.';
+      const year = parseInt(parsed.slice(0, 4), 10);
+      const currentYear = new Date().getFullYear();
+      if (year < currentYear - 120 || year > currentYear - 13) return 'Please enter a valid birth year.';
     }
     const h = Number(height);
     if (height && (isNaN(h) || h <= 50 || h >= 300)) return 'Height must be 51–299 cm.';
@@ -54,6 +57,7 @@ export function AuthSetupScreen() {
     try {
       await session.updateProfile({
         date_of_birth: normalizeDate(dob),
+        gender: sex,
         height_cm: height ? Number(height) : null,
         weight_kg: weight ? Number(weight) : null,
         onboarding_completed: true,

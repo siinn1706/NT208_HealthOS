@@ -21,6 +21,7 @@ export const reportService = {
     const response = await apiRequest<DataResponse<ReportExportRequest>>('/v1/reports/export-pdf', {
       method: 'POST',
       json: body,
+      timeoutMs: 60000,
     });
     return response.data;
   },

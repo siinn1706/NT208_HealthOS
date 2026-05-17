@@ -43,14 +43,12 @@ export const authService = {
     return response.data;
   },
 
-  async resetPassword(email: string, newPassword: string) {
-    const response = await apiRequest<DataResponse<AuthToken>>('/v1/auth/reset-password', {
+  async resetPassword(email: string, newPassword: string, code?: string) {
+    await apiRequest<DataResponse<AuthToken>>('/v1/auth/reset-password', {
       method: 'POST',
       auth: false,
-      json: { email, new_password: newPassword },
+      json: { email, new_password: newPassword, ...(code ? { code } : {}) },
     });
-    await saveAuthToken(response.data);
-    return response.data;
   },
 
   async logout() {

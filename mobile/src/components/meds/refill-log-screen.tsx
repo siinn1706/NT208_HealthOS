@@ -1,26 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, Modal, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
-import { Card } from '../primitives/card';
 import { Button } from '../primitives/button';
-import { Chip } from '../primitives/chip';
 import { IconButton } from '../primitives/icon-button';
-import { ApiState } from '../api/api-state';
+import { ApiState, MissingApiState } from '../api/api-state';
 import { ChevronLeft, IconRefresh } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
-
-const STUB_HISTORY = [
-  { id: '1', date: 'May 1, 2025',  units: 30, status: 'Filled' as const },
-  { id: '2', date: 'Apr 1, 2025',  units: 30, status: 'Filled' as const },
-  { id: '3', date: 'Mar 3, 2025',  units: 28, status: 'Filled' as const },
-  { id: '4', date: 'Feb 4, 2025',  units: 30, status: 'Filled' as const },
-];
 
 export function RefillLogScreen() {
   const t = useTheme();
@@ -31,12 +22,15 @@ export function RefillLogScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [supplyUnits, setSupplyUnits] = useState<string>('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [missingOpen, setMissingOpen] = useState(false);
 
   const currentUnits = medication.data?.refill_supply_units ?? 0;
   const isRunningLow = currentUnits > 0 && currentUnits <= 7;
 
   async function logRefill() {
     if (!medication.data) return;
+    setConfirmOpen(false);
     setSaving(true);
     setError(null);
     try {
@@ -67,6 +61,32 @@ export function RefillLogScreen() {
         />
       </View>
 
+      {/* Confirm log refill modal */}
+      <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
+        <Pressable style={s.modalBackdrop} onPress={() => setConfirmOpen(false)}>
+          <View style={[s.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
+            <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Log refill?</Text>
+            <Text style={[typography.body, { color: t.ink2, marginBottom: 16 }]}>
+              This will record a refill of {supplyUnits.trim() ? supplyUnits : (medication.data?.refill_supply_units ?? 30)} units for {medication.data?.name}.
+            </Text>
+            <View style={s.confirmRow}>
+              <Button label="Cancel" variant="ghost" onPress={() => setConfirmOpen(false)} style={s.confirmBtn} />
+              <Button label="Confirm" variant="solid" onPress={logRefill} style={s.confirmBtn} />
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Request refill coming-soon modal */}
+      <Modal visible={missingOpen} transparent animationType="fade" onRequestClose={() => setMissingOpen(false)}>
+        <Pressable style={s.modalBackdrop} onPress={() => setMissingOpen(false)}>
+          <View style={[s.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
+            <MissingApiState title="Request refill" contract="Pharmacy refill request API not yet available." />
+            <Button label="Close" variant="ghost" onPress={() => setMissingOpen(false)} style={{ marginTop: 8 }} />
+          </View>
+        </Pressable>
+      </Modal>
+
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
         {medication.isLoading && <ApiState title="Loading refill info" loading />}
         {medication.error && <ApiState title="Refill unavailable" message={medication.error.message} actionLabel="Retry" onAction={medication.reload} />}
@@ -74,7 +94,6 @@ export function RefillLogScreen() {
 
         {medication.data && (
           <>
-            {/* Running-low card — centered and dominant */}
             {isRunningLow && (
               <View style={[s.alertCard, { backgroundColor: `${t.warning}18`, borderRadius: t.radius.lg, borderWidth: 1, borderColor: `${t.warning}40` }]}>
                 <Text style={[{ fontSize: 44, fontWeight: '700', color: t.warning, lineHeight: 50, textAlign: 'center' }]}>
@@ -88,40 +107,18 @@ export function RefillLogScreen() {
                   label="Request refill"
                   variant="solid"
                   style={[s.alertBtn]}
-                  onPress={() => {}}
+                  onPress={() => setMissingOpen(true)}
                 />
               </View>
             )}
 
-            {/* Refill history */}
             <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Refill history</Text>
-            <Card style={s.listCard}>
-              {STUB_HISTORY.map((row, i) => (
-                <View
-                  key={row.id}
-                  style={[
-                    s.historyRow,
-                    i < STUB_HISTORY.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
-                  ]}
-                >
-                  <View style={[s.iconSquare, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
-                    <IconRefresh size={16} color={t.brand} />
-                  </View>
-                  <View style={s.flex}>
-                    <Text style={[typography.bodyMed, { color: t.ink }]}>{row.units} units</Text>
-                    <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>{row.date}</Text>
-                  </View>
-                  <Chip label={row.status} variant="success" />
-                </View>
-              ))}
-            </Card>
+            <MissingApiState title="Refill history" contract="Refill history API not yet available." />
 
-            {/* Footer note */}
             <Text style={[typography.micro, { color: t.brand, textAlign: 'center' }]}>
               Contact your pharmacy to update refill history
             </Text>
 
-            {/* Log refill form — below fold */}
             <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 8 }]}>Log a refill</Text>
             <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }]}>
               SUPPLY UNITS
@@ -142,7 +139,7 @@ export function RefillLogScreen() {
               label={saving ? 'Logging...' : 'Log refill'}
               variant="solid"
               icon={<IconRefresh size={16} color="#fff" />}
-              onPress={saving ? undefined : logRefill}
+              onPress={saving ? undefined : () => setConfirmOpen(true)}
               style={saving && { opacity: 0.4 }}
             />
           </>
@@ -153,14 +150,15 @@ export function RefillLogScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:       { flex: 1 },
-  flex:       { flex: 1 },
-  bar:        { paddingHorizontal: 16 },
-  content:    { paddingHorizontal: 16, paddingTop: 4, gap: 10 },
-  alertCard:  { padding: 20, alignItems: 'center', gap: 4 },
-  alertBtn:   { marginTop: 12, alignSelf: 'stretch' },
-  listCard:   { padding: 0 },
-  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  iconSquare: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  unitsInput: { paddingHorizontal: 14, paddingVertical: 12, borderWidth: StyleSheet.hairlineWidth, fontSize: 14 },
+  safe:         { flex: 1 },
+  flex:         { flex: 1 },
+  bar:          { paddingHorizontal: 16 },
+  content:      { paddingHorizontal: 16, paddingTop: 4, gap: 10 },
+  alertCard:    { padding: 20, alignItems: 'center', gap: 4 },
+  alertBtn:     { marginTop: 12, alignSelf: 'stretch' },
+  unitsInput:   { paddingHorizontal: 14, paddingVertical: 12, borderWidth: StyleSheet.hairlineWidth, fontSize: 14 },
+  modalBackdrop:{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 },
+  modalSheet:   { width: '100%', padding: 20 },
+  confirmRow:   { flexDirection: 'row', gap: 10 },
+  confirmBtn:   { flex: 1 },
 });

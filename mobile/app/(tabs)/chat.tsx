@@ -50,11 +50,10 @@ export default function ChatScreen() {
     : allRows;
 
   async function openAiConversation(initialMessage?: string) {
-    if (aiConversation) {
-      router.push(`/chat/${aiConversation.id}` as never);
-      return;
-    }
     if (creatingAiRef.current) return;
+    await conversations.reload();
+    const freshAi = conversations.data?.find((c) => c.type === 'ai');
+    if (freshAi) { router.push(`/chat/${freshAi.id}` as never); return; }
     creatingAiRef.current = true;
     setCreatingAi(true);
     setAiError(null);
