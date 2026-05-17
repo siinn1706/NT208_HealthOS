@@ -5,13 +5,13 @@
 import React from 'react';
 import { View, Text, Modal, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
-import { useThemeContext } from '../../theme/ThemeProvider';
+import { useThemeContext } from '../../theme/theme-provider';
 import { typography } from '../../theme/typography';
 import type { ThemeName } from '../../theme/tokens';
 import { IconCheck } from '../../icons';
-import { MissingApiState } from '../api/ApiState';
-import { EmergencyCard } from './EmergencyCard';
-import { Button } from '../primitives/Button';
+import { MissingApiState } from '../api/api-state';
+import { EmergencyCard } from './emergency-card';
+import { Button } from '../primitives/button';
 
 // ---------- Shared sheet skeleton ----------
 const HANDLE_OFFSET = 12;

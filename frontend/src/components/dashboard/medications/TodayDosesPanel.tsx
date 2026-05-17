@@ -146,13 +146,13 @@ export function TodayDosesPanel({ limit, variant = "card" }: TodayDosesPanelProp
           ))}
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground gap-2 px-6">
-          <Bell className="w-6 h-6 opacity-40" />
+        <div className="flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground">
+          <Bell className="w-4 h-4 opacity-40 flex-shrink-0" />
           <p className="text-xs">{t("todayLoadError")}</p>
         </div>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-          <Pill className="w-6 h-6 opacity-40" />
+        <div className="flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground">
+          <Pill className="w-4 h-4 opacity-40 flex-shrink-0" />
           <p className="text-xs">{t("todayEmpty")}</p>
         </div>
       ) : (

@@ -1,4 +1,4 @@
-import type { ChipVariant } from '../components/primitives/Chip';
+import type { ChipVariant } from '../components/primitives/chip';
 import type {
   Adherence,
   Appointment,
@@ -24,6 +24,18 @@ export interface WeekDay {
 
 const KPI_COLORS = ['#1965B3', '#12A88A', '#F59E0B', '#8B5CF6'];
 
+const KPI_ICONS: Record<string, string> = {
+  steps: 'IconFootprints',
+  steps_count: 'IconFootprints',
+  water: 'IconWater',
+  water_intake: 'IconWater',
+  calories: 'IconFire',
+  kcal: 'IconFire',
+  energy: 'IconFire',
+  sleep: 'IconMoon',
+  sleep_hours: 'IconMoon',
+};
+
 export function toHomeView(summary: DashboardSummary, reminders: Reminder[], vitals: VitalPoint[]) {
   const goals = summary.goals ?? [];
   const kpis = Object.entries(summary.kpis ?? {})
@@ -38,6 +50,7 @@ export function toHomeView(summary: DashboardSummary, reminders: Reminder[], vit
         tgt: formatMetric(target, key),
         v: clampRatio(current, target),
         color: KPI_COLORS[index % KPI_COLORS.length],
+        icon: KPI_ICONS[key] ?? 'IconActivity',
       };
     });
 
@@ -178,7 +191,9 @@ export function toBubble(message: Message, currentUserId?: string | null) {
 
 export function toIdentity(user: CurrentUser | null) {
   const dob = user?.date_of_birth ? new Date(user.date_of_birth) : null;
-  const age = dob && !Number.isNaN(dob.getTime()) ? new Date().getFullYear() - dob.getFullYear() : 0;
+  const age = dob && !Number.isNaN(dob.getTime())
+    ? Math.floor((Date.now() - dob.getTime()) / (365.25 * 86400000))
+    : 0;
   return {
     name: user?.full_name ?? user?.display_name ?? 'HealthOS user',
     email: user?.email,
@@ -192,9 +207,9 @@ export function toIdentity(user: CurrentUser | null) {
 
 export function toProfileStats(user: CurrentUser | null) {
   return [
-    { label: 'Height', value: user?.height_cm ? `${Math.round(user.height_cm)} cm` : '-' },
-    { label: 'Weight', value: user?.weight_kg ? `${Math.round(user.weight_kg)} kg` : '-' },
-    { label: 'Blood', value: user?.blood_type ?? '-' },
+    { id: 'height', label: 'Height', value: user?.height_cm ? `${Math.round(user.height_cm)} cm` : '-' },
+    { id: 'weight', label: 'Weight', value: user?.weight_kg ? `${Math.round(user.weight_kg)} kg` : '-' },
+    { id: 'blood',  label: 'Blood',  value: user?.blood_type ?? '-' },
   ];
 }
 
@@ -205,7 +220,8 @@ export const profileMenuGroups = [
       { id: 'profile', label: 'Health profile', icon: 'IconUser', type: 'nav' as const },
       { id: 'devices', label: 'Connected devices', icon: 'IconActivity', type: 'nav' as const },
       { id: 'emergency', label: 'Emergency info', icon: 'IconHeartPulse', type: 'nav' as const },
-      { id: 'goals', label: 'Goals', icon: 'IconTarget', type: 'nav' as const },
+      { id: 'goals', label: 'Goals & Streaks', icon: 'IconTarget', type: 'nav' as const },
+      { id: 'achievements', label: 'Achievements', icon: 'IconBadge', type: 'nav' as const },
     ],
   },
   {
@@ -236,11 +252,12 @@ function average(values: number[]) {
 }
 
 function clampRatio(current: number, target: number) {
-  if (!target || target <= 0) return 0;
+  if (!target || target <= 0 || !Number.isFinite(current)) return 0;
   return Math.max(0, Math.min(1, current / target));
 }
 
 function normalizePercent(value: number) {
+  if (!Number.isFinite(value)) return 0;
   return value > 1 ? value / 100 : value;
 }
 
@@ -255,14 +272,14 @@ function formatMetric(value: number, key: string) {
 export function formatDate(value?: string | null) {
   if (!value) return 'Not scheduled';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return '--';
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function formatTime(value?: string | null) {
   if (!value) return '--';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return '--';
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 

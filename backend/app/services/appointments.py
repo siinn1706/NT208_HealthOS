@@ -8,7 +8,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import Appointment, AppointmentStatusEnum
-from app.schemas.appointments import AppointmentCreateBody, AppointmentDTO, PrescriptionPayload
+from app.schemas.appointments import (
+    AppointmentCreateBody,
+    AppointmentDTO,
+    AppointmentUpdateBody,
+    PrescriptionPayload,
+)
 
 
 # B7 — explicit transition table.
@@ -156,6 +161,75 @@ async def create_appointment(
     await db.flush()
     await db.refresh(item)
     return _to_dto(item)
+
+
+async def get_appointment(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    appointment_id: uuid.UUID,
+) -> AppointmentDTO | None:
+    stmt = select(Appointment).where(
+        Appointment.id == appointment_id,
+        Appointment.user_id == user_id,
+    )
+    result = await db.execute(stmt)
+    item = result.scalar_one_or_none()
+    if item is None:
+        return None
+    return _to_dto(item)
+
+
+async def update_appointment(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    appointment_id: uuid.UUID,
+    body: AppointmentUpdateBody,
+) -> AppointmentDTO | None:
+    stmt = select(Appointment).where(
+        Appointment.id == appointment_id,
+        Appointment.user_id == user_id,
+    )
+    result = await db.execute(stmt)
+    appt = result.scalar_one_or_none()
+    if appt is None:
+        return None
+
+    updates = body.model_dump(exclude_unset=True)
+    if "appointment_date" in updates:
+        next_date = updates["appointment_date"]
+        if next_date is None:
+            raise ValueError("appointment_date cannot be null.")
+        appt.appointment_date = next_date
+        if appt.status in (
+            AppointmentStatusEnum.BOOKED,
+            AppointmentStatusEnum.SCHEDULED,
+            AppointmentStatusEnum.UPCOMING,
+        ):
+            now = datetime.datetime.now(datetime.timezone.utc)
+            appt.status = (
+                AppointmentStatusEnum.UPCOMING
+                if next_date >= now
+                else AppointmentStatusEnum.COMPLETED
+            )
+
+    if "doctor_name" in updates:
+        next_name = updates["doctor_name"]
+        if next_name is None:
+            raise ValueError("doctor_name cannot be null.")
+        appt.doctor_name = next_name
+
+    if "specialty" in updates:
+        appt.specialty = updates["specialty"]
+    if "clinic" in updates:
+        appt.clinic = updates["clinic"]
+    if "reason" in updates:
+        appt.diagnosis = updates["reason"]
+    if "notes" in updates:
+        appt.notes = updates["notes"]
+
+    await db.flush()
+    await db.refresh(appt)
+    return _to_dto(appt)
 
 
 class InvalidStatusTransition(ValueError):

@@ -113,8 +113,17 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    # API-only CSP — no scripts served; frame-ancestors blocks clickjacking
-    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    # Swagger UI loads CSS/JS from CDN — skip strict CSP for docs paths
+    if request.url.path in ("/docs", "/redoc", "/openapi.json"):
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https://fastapi.tiangolo.com;"
+        )
+    else:
+        # API-only CSP — no scripts served; frame-ancestors blocks clickjacking
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
     return response
 
 app.include_router(v1_router)

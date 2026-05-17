@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     ai_yolo_model_path: str = str(_DEFAULT_MODEL_PATH)
     ai_class_names_path: str = str(_DEFAULT_CLASS_NAMES_PATH)
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash-lite"
 
-    gemini_chat_model: str = "gemini-2.0-flash"
+    gemini_chat_model: str = "gemini-2.5-flash-lite"
     ai_chat_max_tokens: int = 1024
     ai_chat_temperature: float = 0.6
     ai_chat_timeout_seconds: float = 30.0

@@ -13,6 +13,7 @@ from app.schemas.appointments import (
     AppointmentCreateBody,
     AppointmentListResponse,
     AppointmentResponse,
+    AppointmentUpdateBody,
     AppointmentStatusUpdateBody,
 )
 from app.schemas.common import ErrorResponse, PaginationMeta
@@ -68,6 +69,67 @@ async def create_appointment(
             detail={"code": "VALIDATION_ERROR", "message": str(exc)},
         ) from exc
 
+    await db.commit()
+    return AppointmentResponse(data=item)
+
+
+@router.get(
+    "/{appointment_id}",
+    response_model=AppointmentResponse,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Get appointment detail",
+)
+async def get_appointment(
+    appointment_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AppointmentResponse:
+    item = await appointment_svc.get_appointment(
+        db=db,
+        user_id=current_user.id,
+        appointment_id=appointment_id,
+    )
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+        )
+    return AppointmentResponse(data=item)
+
+
+@router.patch(
+    "/{appointment_id}",
+    response_model=AppointmentResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+    },
+    summary="Update appointment detail",
+)
+async def update_appointment(
+    appointment_id: uuid.UUID,
+    body: AppointmentUpdateBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AppointmentResponse:
+    try:
+        item = await appointment_svc.update_appointment(
+            db=db,
+            user_id=current_user.id,
+            appointment_id=appointment_id,
+            body=body,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+        ) from exc
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+        )
     await db.commit()
     return AppointmentResponse(data=item)
 

@@ -4,6 +4,7 @@ import { EChartWrapper } from "./EChartWrapper";
 import type { EChartsOption, SeriesOption } from "echarts";
 import type { UserBmiData } from "@/data/gamification";
 import { useTranslations } from "next-intl";
+import { cssRgba } from "@/lib/chart-colors";
 
 interface BmiProgressChartProps {
   bmiData: UserBmiData;
@@ -76,8 +77,8 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
             type: "linear",
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: "color-mix(in srgb, var(--color-primary) 25%, transparent)" },
-              { offset: 1, color: "color-mix(in srgb, var(--color-primary) 0%, transparent)" },
+              { offset: 0, color: cssRgba("--primary", 0.25, "#1965B3") },
+              { offset: 1, color: cssRgba("--primary", 0,    "#1965B3") },
             ],
           },
         },
@@ -106,7 +107,7 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         markArea: {
           silent: true,
-          itemStyle: { color: "color-mix(in srgb, var(--color-success) 8%, transparent)" },
+          itemStyle: { color: cssRgba("--success", 0.08, "#059669") },
           data: [[{ yAxis: 18.5 }, { yAxis: 24.9 }]] as any,
         },
       },

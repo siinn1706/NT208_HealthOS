@@ -98,7 +98,7 @@ export function PlanCard({ plan }: PlanCardProps) {
           }`}
           variant={isPromoted ? "default" : "outline"}
         >
-          <Link href={`/plans?plan=${plan.id}`}>
+          <Link href={isFree ? `/register` : `/register?plan=${plan.id}`}>
             {isFree ? t("ctaFree") : t("cta")}
           </Link>
         </Button>

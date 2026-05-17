@@ -690,7 +690,11 @@
       "bloodPressureSys": "Systolic BP",
       "bloodPressureDia": "Diastolic BP",
       "loading": "Loading chart...",
-      "noData": "No vitals data yet"
+      "noData": "No vitals data yet",
+      "tabVitals": "Vitals",
+      "tabSteps": "Steps",
+      "tabSleep": "Sleep",
+      "tabWeight": "Weight"
     },
     "calorieChart": {
       "title": "Calories per Day",
@@ -2178,6 +2182,120 @@
         "emptyBody": "When someone scans your QR, the entry appears here."
       },
       "previewTitleDraft": "What responders see (draft)"
+    },
+     "trends": {
+      "title": "Health Trends",
+      "subtitle": "Changes over time",
+      "noData": "Not enough data to show trends yet.",
+      "metrics": {
+        "heart_rate": "Heart Rate",
+        "steps": "Steps",
+        "sleep": "Sleep",
+        "calories": "Calories",
+        "weight": "Weight"
+      }
+    },
+    "anomalies": {
+      "title": "Anomaly Alerts",
+      "subtitle": "Unusual readings detected",
+      "live": "Live",
+      "offline": "Offline",
+      "dismiss": "Dismiss",
+      "realtimeSection": "Real-time",
+      "recentSection": "Recent (30 days)",
+      "viewAll": "View all trends",
+      "allClear": "No anomalies detected in the last 30 days",
+      "statCritical": "Critical",
+      "statWarning": "Warning",
+      "statTotal": "Total (30 days)",
+      "metricBreakdown": "By Metric",
+      "critical": "Critical",
+      "warning": "Warning"
+    },
+    "exercise": {
+      "title": "Exercise Suggestions",
+      "subtitle": "Based on your health data",
+      "noData": "Log some health data to get exercise recommendations.",
+      "viewAll": "View progress",
+      "minutes": "min",
+      "tabRecommendations": "Recommendations",
+      "tabWeekly": "This Week",
+      "weeklyPlanTitle": "Weekly Plan",
+      "types": {
+        "warning": "Attention",
+        "tip": "Tip",
+        "goal": "Goal",
+        "success": "Great"
+      },
+      "intensity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "categories": {
+        "cardio": "Cardio",
+        "strength": "Strength",
+        "flexibility": "Flexibility",
+        "balance": "Balance"
+      },
+      "suggestions": {
+        "exercise-no-data": {
+          "title": "Start your journey",
+          "message": "Log your steps, sleep, or heart rate to receive a personalized training plan."
+        },
+        "exercise-hr-breathing": {
+          "title": "4-7-8 Breathing Technique",
+          "message": "Heart rate at {heart_rate} bpm — elevated. Inhale for 4 seconds, hold for 7, exhale for 8 to activate your parasympathetic system."
+        },
+        "exercise-hr-elevated": {
+          "title": "Mindful Breathing Session",
+          "message": "Heart rate at {heart_rate} bpm. 20 minutes of mindfulness meditation or gentle yoga helps regulate your nervous system effectively."
+        },
+        "exercise-bp-yoga": {
+          "title": "Blood Pressure Yoga",
+          "message": "Systolic BP at {systolic} mmHg. Poses like Child's Pose and Legs-Up-The-Wall naturally lower blood pressure within 25 minutes."
+        },
+        "exercise-walk-more": {
+          "title": "Power Walk",
+          "message": "You've walked {steps} steps today — {remaining} more to hit your {target}-step target. A 30-minute brisk walk burns ~120 kcal and improves blood sugar."
+        },
+        "exercise-walk-boost": {
+          "title": "Push to Your Goal",
+          "message": "At {steps} steps with {remaining} to go. A quick 20-minute walk is all you need to reach today's target."
+        },
+        "exercise-sleep-yoga": {
+          "title": "Sleep Recovery Stretching",
+          "message": "Only {sleep_hours} hours of sleep last night. A 20-minute pre-bed routine — Child's Pose, Supine Twist — reduces cortisol and improves sleep quality."
+        },
+        "exercise-burn-calories": {
+          "title": "Fat-Burning Cardio",
+          "message": "You've consumed {calories} kcal today ({deficit} kcal over balance). 45 minutes of light jogging or cycling burns ~315 kcal and restores energy balance."
+        },
+        "exercise-strength": {
+          "title": "Full-Body Strength Training",
+          "message": "Excellent! {steps} steps shows your body is in great shape today. Perfect time for 30 minutes of resistance training — squats, push-ups, planks."
+        },
+        "exercise-hiit": {
+          "title": "HIIT — Peak Fat Burn",
+          "message": "{steps} steps today! Your body is at peak performance. 20 minutes of HIIT (20s sprint / 10s rest) burns twice the fat of regular cardio."
+        },
+        "exercise-balanced-strength": {
+          "title": "Strength Day — Mon / Thu",
+          "message": "Today is ideal for resistance training. 35 minutes with 3 sets each of squats, deadlifts, and bench press builds muscle and accelerates metabolism."
+        },
+        "exercise-balanced-cardio": {
+          "title": "Cardio Day — Tue / Fri",
+          "message": "Today is your cardio day. 30 minutes of easy running (zone 2 — conversational pace) or cycling builds cardiovascular endurance without over-fatiguing muscles."
+        },
+        "exercise-balanced-flex": {
+          "title": "Flexibility Day — Wed",
+          "message": "Mid-week is perfect for recovery. 25 minutes of yoga or dynamic stretching keeps your body ready for heavier sessions later in the week."
+        },
+        "exercise-balanced-rest": {
+          "title": "Active Recovery Day",
+          "message": "Weekend is your body's reset time. 20 minutes of light walking or gentle stretching — no heavy lifting — optimizes muscle recovery for next week."
+        }
+      }
     }
   },
   "auth": {

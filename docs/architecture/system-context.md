@@ -4,11 +4,12 @@
 
 HealthOS là "bác sĩ cá nhân ảo": quản lý hồ sơ y tế, nhật ký dinh dưỡng, phân tích ảnh bữa ăn, kết nối wearable, cảnh báo realtime.
 
-## Người dùng
+## Người dùng / Clients
 
 | Actor | Mô tả |
 |-------|--------|
-| End User | Người dùng cuối sử dụng app web |
+| End User (Browser) | Sử dụng app web qua Next.js FE + BFF |
+| End User (Mobile) | Sử dụng app native (Expo/React Native) gọi Core BE trực tiếp (see ADR-001) |
 | Admin | Quản trị viên hệ thống |
 | Wearable Device | Thiết bị đeo (Apple Health, Garmin, Fitbit, …) gửi dữ liệu tự động |
 
@@ -24,13 +25,20 @@ HealthOS là "bác sĩ cá nhân ảo": quản lý hồ sơ y tế, nhật ký d
 ## Tổng quan luồng dữ liệu chính
 
 ```
-End User → FE (Next.js) → BFF (Route Handlers) → Core BE (FastAPI) → PostgreSQL
-                                                ↓
-                                         AI Worker (FastAPI) ← Queue/Worker
-                                                                      ↑
-                                         Wearable APIs ────────────────┘
-                                         Notification Gateway ←──────────
+Browser          FE (Next.js)
+  End User   →     ↓
+              BFF (Route Handlers)
+                    ↓
+                    ↓ (HTTP)
+Mobile          ──→ Core BE (FastAPI) → PostgreSQL
+  End User   ──┘       ↓
+            (HTTP)  AI Worker (FastAPI) ← Queue/Worker
+                           ↑
+              Wearable APIs ────────────
+              Notification Gateway ←─────
 ```
+
+**Note**: Browser clients use BFF layer (cookie-based auth, CORS mitigation). Mobile clients call Core BE directly (see ADR-001).
 
 ## Tài liệu liên quan
 

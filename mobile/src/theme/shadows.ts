@@ -48,6 +48,47 @@ export const shadows = {
     shadowRadius: 32,
     elevation: 16,
   } satisfies ShadowStyle,
+
+  cardNight: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.20,
+    shadowRadius: 4,
+    elevation: 3,
+  } satisfies ShadowStyle,
+
+  cardWarm: {
+    shadowColor: '#7A4C1E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 4,
+    elevation: 2,
+  } satisfies ShadowStyle,
+
+  // nt208 spec-named aliases — --shadow-sm / --shadow-md / --shadow-lg
+  sm: {
+    shadowColor: BASE,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  } satisfies ShadowStyle,
+
+  md: {
+    shadowColor: BASE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 4,
+  } satisfies ShadowStyle,
+
+  lg: {
+    shadowColor: BASE,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.20,
+    shadowRadius: 24,
+    elevation: 12,
+  } satisfies ShadowStyle,
 } as const;
 
 export type Shadows = typeof shadows;

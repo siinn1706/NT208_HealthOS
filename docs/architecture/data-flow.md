@@ -1,6 +1,6 @@
 # HealthOS — Data Flow
 
-## Luồng 1: User đăng nhập
+## Luồng 1a: User đăng nhập (Browser)
 
 ```
 Browser → FE (Next)
@@ -9,6 +9,24 @@ Browser → FE (Next)
     ← access_token + refresh_token
   → set httpOnly cookie
   ← redirect về dashboard
+```
+
+## Luồng 1b: User đăng nhập (Mobile App)
+
+```
+Mobile (Expo/RN) → Core BE POST /v1/auth/login
+  json: { identifier, password }
+  ← { access_token, refresh_token, user_id, email, ... }
+  → save access_token + refresh_token to SecureStore (expo-secure-store)
+  ← next: show dashboard
+
+Mobile on 401 response:
+  → detect 401 (concurrent requests dedup via refreshPromise singleton)
+  → POST /v1/auth/refresh { refresh_token }
+  ← { new access_token, new refresh_token }
+  → update SecureStore with new tokens
+  → retry original request with new Authorization header
+  ← success or clear session if refresh fails
 ```
 
 ## Luồng 2: Ghi nhật ký bữa ăn (ảnh)

@@ -3,19 +3,18 @@ import {
   View,
   Text,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Calendar } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Button } from '../primitives/Button';
-import { Input } from '../primitives/input/Input';
-import { useSession } from '../../auth/SessionProvider';
+import { Button } from '../primitives/button';
+import { Input } from '../primitives/input/input';
+import { ProgressBar } from '../primitives/progress-bar';
+import { useSession } from '../../auth/session-provider';
 
-const PROGRESS = 0.4;
 type Sex = 'male' | 'female' | 'other';
 const SEX_OPTIONS: { value: Sex; label: string }[] = [
   { value: 'male', label: 'Male' },
@@ -37,6 +36,9 @@ export function AuthSetupScreen() {
     if (dob.trim()) {
       const parsed = normalizeDate(dob);
       if (!parsed || !/^\d{4}-\d{2}-\d{2}$/.test(parsed)) return 'Date must be DD/MM/YYYY.';
+      const year = parseInt(parsed.slice(0, 4), 10);
+      const currentYear = new Date().getFullYear();
+      if (year < currentYear - 120 || year > currentYear - 13) return 'Please enter a valid birth year.';
     }
     const h = Number(height);
     if (height && (isNaN(h) || h <= 50 || h >= 300)) return 'Height must be 51–299 cm.';
@@ -55,6 +57,7 @@ export function AuthSetupScreen() {
     try {
       await session.updateProfile({
         date_of_birth: normalizeDate(dob),
+        gender: sex,
         height_cm: height ? Number(height) : null,
         weight_kg: weight ? Number(weight) : null,
         onboarding_completed: true,
@@ -68,70 +71,92 @@ export function AuthSetupScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Progress bar */}
-        <View style={[styles.progressTrack, { backgroundColor: t.border }]}>
-          <View style={[styles.progressFill, { backgroundColor: t.brand, width: `${PROGRESS * 100}%` }]} />
-        </View>
+    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {/* Segmented progress bar */}
+      <View style={{ marginBottom: 20 }}>
+        <ProgressBar segments={5} filled={2} height={6} />
+      </View>
 
-        <Text style={[typography.title, { color: t.ink, marginTop: 20, marginBottom: 4 }]}>Health profile</Text>
-        <Text style={[typography.body, { color: t.ink3, marginBottom: 24 }]}>Help us personalise your experience</Text>
+      {/* Eyebrow */}
+      <Text style={[typography.caption, { color: t.ink3, fontFamily: 'Inter_700Bold', letterSpacing: 1.4, fontSize: 11, lineHeight: 14, marginBottom: 6 }]}>
+        STEP 2 · BODY BASICS
+      </Text>
 
-        {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
+      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Tell us a bit about your body</Text>
 
-        <View style={{ marginBottom: 16 }}>
+      <Text style={[typography.caption, { color: t.ink3, marginBottom: 20 }]}>
+        Only used to personalize insights. You can change this later.
+      </Text>
+
+      {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
+
+      <View style={{ marginBottom: 16 }}>
+        <Input
+          label="Date of birth"
+          value={dob}
+          onChangeText={setDob}
+          placeholder="DD/MM/YYYY"
+          keyboardType="numbers-and-punctuation"
+          trailingIcon={<Calendar size={18} color={t.ink3} />}
+        />
+      </View>
+
+      {/* Sex toggle */}
+      <Text style={[typography.caption, { color: t.ink3, marginBottom: 8 }]}>Biological sex</Text>
+      <View style={styles.sexRow}>
+        {SEX_OPTIONS.map((opt) => {
+          const active = sex === opt.value;
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              style={[
+                styles.sexBtn,
+                {
+                  borderColor: active ? t.brand : t.border,
+                  borderWidth: active ? 1.5 : 1,
+                  backgroundColor: active ? t.brandSoft : t.card,
+                },
+              ]}
+              onPress={() => setSex(opt.value)}
+              activeOpacity={0.7}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={opt.label}
+            >
+              <Text style={[{ fontSize: 14, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular', color: active ? t.brand : t.ink2 }]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Height + Weight side-by-side */}
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={styles.measureField}>
           <Input
-            label="Date of birth"
-            value={dob}
-            onChangeText={setDob}
-            placeholder="DD/MM/YYYY"
-            keyboardType="numbers-and-punctuation"
+            label="Height"
+            value={height}
+            onChangeText={setHeight}
+            keyboardType="numeric"
+            placeholder="170"
+            trailingText="cm"
           />
         </View>
-
-        {/* Sex toggle */}
-        <Text style={[typography.caption, { color: t.ink3, marginBottom: 8 }]}>Biological sex</Text>
-        <View style={styles.sexRow}>
-          {SEX_OPTIONS.map((opt) => {
-            const active = sex === opt.value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                style={[
-                  styles.sexBtn,
-                  { borderColor: active ? t.brand : t.border, backgroundColor: active ? t.brandSoft : t.card },
-                ]}
-                onPress={() => setSex(opt.value)}
-                activeOpacity={0.7}
-              >
-                <Text style={[typography.chip, { color: active ? t.brand : t.ink3, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular' }]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+        <View style={styles.measureField}>
+          <Input
+            label="Weight"
+            value={weight}
+            onChangeText={setWeight}
+            keyboardType="numeric"
+            placeholder="65"
+            trailingText="kg"
+          />
         </View>
+      </View>
 
-        {/* Height + Weight with unit suffix */}
-        <View style={styles.measureRow}>
-          <View style={styles.measureField}>
-            <Input label="Height" value={height} onChangeText={setHeight} keyboardType="numeric" placeholder="170" />
-            <Text style={[styles.unit, { color: t.ink4 }]}>cm</Text>
-          </View>
-          <View style={styles.measureField}>
-            <Input label="Weight" value={weight} onChangeText={setWeight} keyboardType="numeric" placeholder="65" />
-            <Text style={[styles.unit, { color: t.ink4 }]}>kg</Text>
-          </View>
-        </View>
-
-        <Button label="Continue" size="lg" loading={loading} onPress={handleFinish} style={{ marginTop: 8 }} />
-
-        <TouchableOpacity style={styles.skipRow} onPress={() => router.replace('/(tabs)/home')}>
-          <Text style={[typography.caption, { color: t.ink4 }]}>Skip for now</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Button label="Continue" size="lg" loading={loading} onPress={handleFinish} style={{ marginTop: 8 }} />
+    </ScrollView>
   );
 }
 
@@ -146,14 +171,8 @@ function normalizeDate(value: string) {
 }
 
 const styles = StyleSheet.create({
-  flex:          { flex: 1 },
-  scroll:        { paddingBottom: 40 },
-  progressTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
-  progressFill:  { height: 4, borderRadius: 2 },
-  sexRow:        { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  sexBtn:        { flex: 1, height: 40, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  measureRow:    { flexDirection: 'row', gap: 12 },
-  measureField:  { flex: 1, position: 'relative' },
-  unit:          { position: 'absolute', right: 14, bottom: 22, fontSize: 13 },
-  skipRow:       { alignItems: 'center', marginTop: 16 },
+  scroll:       { paddingBottom: 40 },
+  sexRow:       { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  sexBtn:       { flex: 1, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  measureField: { flex: 1 },
 });

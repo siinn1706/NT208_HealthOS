@@ -280,6 +280,27 @@ async def _ensure_ai_conversation(
     return await _reload_conversation(db, conv.id)
 
 
+async def get_or_create_ai_conversation(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    initial_message: str | None = None,
+    presence_map: dict[str, bool] | None = None,
+) -> ConversationDTO:
+    conv = await _ensure_ai_conversation(db, user_id)
+    if initial_message and initial_message.strip():
+        await send_message(
+            db=db,
+            conversation_id=conv.id,
+            sender_id=user_id,
+            content=initial_message.strip(),
+            content_type="text",
+            client_message_id=f"mobile-ai-seed-{uuid.uuid4()}",
+        )
+        conv = await _reload_conversation(db, conv.id)
+    return await _build_conversation_dto(db, conv, user_id, presence_map)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Conversation operations
 # ──────────────────────────────────────────────────────────────────────────────

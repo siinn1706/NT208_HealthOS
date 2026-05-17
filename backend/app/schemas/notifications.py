@@ -63,3 +63,41 @@ class MarkAllReadData(BaseModel):
 
 class MarkAllReadResponse(DataResponse[MarkAllReadData]):
     ...
+
+
+class NotificationPreferencesData(BaseModel):
+    enabled: bool = True
+    categories: dict[str, bool] = Field(
+        default_factory=lambda: {
+            "med": True,
+            "appt": True,
+            "vitals": True,
+            "activity": True,
+            "goal": True,
+        },
+    )
+    channels: dict[str, bool] = Field(
+        default_factory=lambda: {
+            "push": True,
+            "sound": True,
+            "haptics": False,
+        },
+    )
+    quiet_hours: dict[str, str] = Field(
+        default_factory=lambda: {"start": "22:00", "end": "07:00"},
+    )
+    critical_bypass: bool = False
+    snooze_options: list[int] = Field(default_factory=lambda: [5, 10, 30])
+
+
+class NotificationPreferencesUpdateBody(BaseModel):
+    enabled: bool | None = None
+    categories: dict[str, bool] | None = None
+    channels: dict[str, bool] | None = None
+    quiet_hours: dict[str, str] | None = None
+    critical_bypass: bool | None = None
+    snooze_options: list[int] | None = None
+
+
+class NotificationPreferencesResponse(DataResponse[NotificationPreferencesData]):
+    ...

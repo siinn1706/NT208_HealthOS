@@ -1,21 +1,21 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, TextInput, View, StyleSheet, Text } from 'react-native';
-import { Screen } from '../../src/components/layout/Screen';
-import { TopBar } from '../../src/components/layout/TopBar';
-import { SectionHeader } from '../../src/components/layout/SectionHeader';
-import { IconButton } from '../../src/components/primitives/IconButton';
-import { ApiState, MissingApiState } from '../../src/components/api/ApiState';
-import { ChatListSkeleton } from '../../src/components/api/Skeletons';
-import { AiAssistantHero } from '../../src/components/chat/AiAssistantHero';
-import { ConversationRow } from '../../src/components/chat/ConversationRow';
+import { Screen } from '../../src/components/layout/screen';
+import { TopBar } from '../../src/components/layout/top-bar';
+import { SectionHeader } from '../../src/components/layout/section-header';
+import { IconButton } from '../../src/components/primitives/icon-button';
+import { ApiState, MissingApiState } from '../../src/components/api/api-state';
+import { ChatListSkeleton } from '../../src/components/api/skeletons';
+import { AiAssistantHero } from '../../src/components/chat/ai-assistant-hero';
+import { ConversationRow } from '../../src/components/chat/conversation-row';
 import { IconSearch, IconPlus } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { router } from 'expo-router';
-import { useApiQuery } from '../../src/api/query';
+import { invalidateApiQuery, useApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toConversationRow } from '../../src/api/viewModels';
-import { useSession } from '../../src/auth/SessionProvider';
+import { useSession } from '../../src/auth/session-provider';
 import { typography } from '../../src/theme/typography';
 
 const AI_SUGGESTIONS = [
@@ -38,8 +38,9 @@ export default function ChatScreen() {
   // New chat modal state
   const [newChatOpen, setNewChatOpen] = useState(false);
 
-  // AI suggestion missing-API modal state
-  const [suggestionMissingOpen, setSuggestionMissingOpen] = useState(false);
+  const [creatingAi, setCreatingAi] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const creatingAiRef = useRef(false);
 
   const allRows = (conversations.data ?? []).map((c) => toConversationRow(c, user?.id));
   const filteredRows = searchOpen && searchText.trim()
@@ -48,12 +49,28 @@ export default function ChatScreen() {
       )
     : allRows;
 
-  function handleSuggestionPress(text: string) {
-    if (aiConversation) {
-      router.push(`/chat/${aiConversation.id}` as never);
-    } else {
-      setSuggestionMissingOpen(true);
+  async function openAiConversation(initialMessage?: string) {
+    if (creatingAiRef.current) return;
+    await conversations.reload();
+    const freshAi = conversations.data?.find((c) => c.type === 'ai');
+    if (freshAi) { router.push(`/chat/${freshAi.id}` as never); return; }
+    creatingAiRef.current = true;
+    setCreatingAi(true);
+    setAiError(null);
+    try {
+      const created = await chatService.createAiConversation(initialMessage);
+      invalidateApiQuery(queryKeys.conversations);
+      router.push(`/chat/${created.id}` as never);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Could not open AI conversation.');
+    } finally {
+      creatingAiRef.current = false;
+      setCreatingAi(false);
     }
+  }
+
+  function handleSuggestionPress(text: string) {
+    openAiConversation(text);
   }
 
   return (
@@ -64,6 +81,7 @@ export default function ChatScreen() {
         right={
           <View style={styles.actions}>
             <IconButton
+              variant="subtle"
               icon={<IconSearch size={20} color={t.ink3} />}
               accessibilityLabel="Search"
               onPress={() => {
@@ -99,18 +117,16 @@ export default function ChatScreen() {
 
       <AiAssistantHero
         suggestions={AI_SUGGESTIONS}
-        onPress={() => {
-          if (aiConversation) router.push(`/chat/${aiConversation.id}` as never);
-        }}
-        onSuggestion={() => {
-          if (aiConversation) router.push(`/chat/${aiConversation.id}` as never);
-        }}
+        onPress={() => openAiConversation()}
         onSuggestionPress={handleSuggestionPress}
       />
-      {!aiConversation && !conversations.isLoading && (
-        <MissingApiState
-          title="AI conversation not available"
-          contract="existing API needs adaptation"
+      {creatingAi && <ApiState title="Starting AI conversation" loading />}
+      {aiError && (
+        <ApiState
+          title="AI conversation unavailable"
+          message={aiError}
+          actionLabel="Retry"
+          onAction={() => openAiConversation()}
         />
       )}
 
@@ -152,29 +168,6 @@ export default function ChatScreen() {
             />
             <Pressable
               onPress={() => setNewChatOpen(false)}
-              style={[styles.closeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
-            >
-              <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* AI suggestion unavailable modal */}
-      <Modal
-        visible={suggestionMissingOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSuggestionMissingOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <MissingApiState
-              title="AI conversation not available"
-              contract="existing API needs adaptation"
-            />
-            <Pressable
-              onPress={() => setSuggestionMissingOpen(false)}
               style={[styles.closeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
             >
               <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>

@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
@@ -18,7 +19,14 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.core import Meal, MealStatusEnum, User
 from app.schemas.common import DataResponse, ErrorResponse, PaginationMeta
-from app.schemas.meals import MealDataResponse, MealListResponse, MealResponse
+from app.schemas.meals import (
+    MealDataResponse,
+    MealIngredientItem,
+    MealIngredientListResponse,
+    MealListResponse,
+    MealResponse,
+    MealUpdateBody,
+)
 from app.core.metrics import record_idempotency_outcome
 from app.services import idempotency as idem_svc
 from app.services import meals as meal_svc
@@ -234,6 +242,58 @@ async def get_meal(
         )
     return MealDataResponse(data=MealResponse.model_validate(meal))
 
+@router.patch(
+    "/{meal_id}",
+    response_model=MealDataResponse,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Update a meal log",
+)
+async def update_meal(
+    meal_id: uuid.UUID,
+    body: MealUpdateBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MealDataResponse:
+    meal = await meal_svc.update_meal(
+        db=db,
+        user_id=current_user.id,
+        meal_id=meal_id,
+        name=body.name,
+        logged_at=body.logged_at,
+    )
+    if meal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Meal not found."},
+        )
+    await db.commit()
+    return MealDataResponse(data=MealResponse.model_validate(meal))
+
+@router.get(
+    "/{meal_id}/ingredients",
+    response_model=MealIngredientListResponse,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Get ingredient-level meal breakdown",
+)
+async def get_meal_ingredients(
+    meal_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MealIngredientListResponse:
+    items = await meal_svc.get_meal_ingredients(
+        db=db,
+        user_id=current_user.id,
+        meal_id=meal_id,
+    )
+    if items is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Meal not found."},
+        )
+    return MealIngredientListResponse(
+        data=[MealIngredientItem.model_validate(item) for item in items]
+    )
+
 
 class AnalysisJobResponse(BaseModel):
     job_id: str
@@ -314,8 +374,6 @@ async def get_analysis_status_by_job(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AnalysisJobResponse:
     """Get the status of an analysis job by job_id."""
-    from sqlalchemy import select
-
     from app.models.core import Meal
 
     stmt = select(Meal).where(Meal.job_id == job_id, Meal.user_id == current_user.id)

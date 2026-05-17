@@ -12,6 +12,11 @@
 │  │ Router           │           │ /api/v1/**                   │   │
 │  │ Port: 3000       │           │ Port: 3000 (same process)    │   │
 │  └──────────────────┘           └──────────────┬───────────────┘   │
+│                                                │                    │
+│  ┌──────────────────┐   HTTP (direct) ─────────┘                   │
+│  │ Mobile           │──────────────────────────────────────────┐   │
+│  │ Expo / RN 0.79   │  (see ADR below)                         │   │
+│  └──────────────────┘                                          │   │
 │                                                │ HTTP               │
 │                                  ┌─────────────▼──────────────┐    │
 │                                  │ Core BE                    │    │
@@ -55,6 +60,22 @@ External:
 | PostgreSQL | Postgres 16 | RDBMS chính: user, health records, nutrition logs |
 | Redis | Redis 7 | Cache query, pub/sub realtime, rate-limit, Celery broker |
 | Object Storage | MinIO (local) / S3 (prod) | Binary blobs: ảnh bữa ăn, tài liệu y tế |
+
+## ADR-001: Mobile → Core BE direct connection (C1 exemption)
+
+**Decision**: The mobile app (Expo/React Native) calls Core BE directly via `EXPO_PUBLIC_CORE_API_URL`, bypassing the Next.js BFF layer.
+
+**Rationale**:
+- Native mobile clients are a distinct deployment target from browser SPAs. The BFF pattern addresses browser-specific concerns (cookie-based session, CORS, SSR hydration) that do not apply to a native app with `expo-secure-store`.
+- Routing mobile traffic through the web BFF would introduce an unnecessary network hop and couple the mobile release cycle to the Next.js deployment.
+- Auth is handled natively: JWT stored in SecureStore, `Authorization: Bearer` header on every request.
+
+**Constraints**:
+- Mobile MUST use HTTPS in production (`getCoreApiBaseUrl()` warns if `http://` detected outside `__DEV__`).
+- Mobile MUST handle 401 with token refresh before hard logout (see H2 in code-review plan).
+- Any new Core BE endpoint must also be considered for BFF exposure if the web frontend needs it.
+
+**Status**: Accepted — 2026-05-15.
 
 ## Ports chuẩn (local dev)
 

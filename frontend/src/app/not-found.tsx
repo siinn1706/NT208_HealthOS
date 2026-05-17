@@ -12,7 +12,7 @@ import { routing } from "@/i18n/routing";
  * document shell; duplicating it causes hydration mismatches with the layout.
  */
 export default function RootNotFound() {
-  const home = `/${routing.defaultLocale}`;
+  const home = `/${routing.defaultLocale}/dashboard`;
   return (
     <div className="flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="mx-auto w-full max-w-md rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm">

@@ -4,29 +4,27 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { Button } from '../primitives/Button';
-import { Input } from '../primitives/input/Input';
-import { Checkbox } from '../primitives/input/Checkbox';
+import { Button } from '../primitives/button';
+import { Input } from '../primitives/input/input';
+import { Checkbox } from '../primitives/input/checkbox';
+import { ProgressBar } from '../primitives/progress-bar';
 import { authService } from '../../api/services';
-
-const PROGRESS = 0.5;
+import { setPendingSignup } from '../../auth/pending-signup';
 
 export function AuthSignUpScreen() {
   const t = useTheme();
   const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const passwordValid = password.length >= 8 && /\d/.test(password);
 
   function validate() {
     if (!name.trim()) return 'Full name is required.';
@@ -48,10 +46,11 @@ export function AuthSignUpScreen() {
         email: email.trim(),
         purpose: 'signup',
         name: name.trim(),
-        username: normalizeUsername(username || email),
+        username: normalizeUsername(email),
         password,
       });
-      router.push({ pathname: '/auth/otp', params: { email: email.trim(), password, purpose: 'signup' } });
+      setPendingSignup({ email: email.trim(), password, name: name.trim(), username: normalizeUsername(email) });
+      router.push({ pathname: '/auth/otp', params: { email: email.trim(), purpose: 'signup' } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to request OTP.');
     } finally {
@@ -60,43 +59,48 @@ export function AuthSignUpScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Progress bar */}
-        <View style={[styles.progressTrack, { backgroundColor: t.border }]}>
-          <View style={[styles.progressFill, { backgroundColor: t.brand, width: `${PROGRESS * 100}%` }]} />
-        </View>
+    <View>
+      {/* Progress bar */}
+      <View style={styles.progressWrap}>
+        <ProgressBar value={0.5} height={6} />
+      </View>
 
-        <Text style={[typography.title, { color: t.ink, marginTop: 20, marginBottom: 4 }]}>Create account</Text>
-        <Text style={[typography.body, { color: t.ink3, marginBottom: 24 }]}>Join HealthOS to get started</Text>
+      <Text style={[typography.title, { color: t.ink, marginTop: 20, marginBottom: 0 }]}>Create account</Text>
+      <Text style={[typography.caption, { color: t.ink3, marginTop: 4, marginBottom: 22 }]}>
+        Takes under 2 minutes ·{' '}
+        <Text style={{ color: t.ink2, fontFamily: 'Inter_600SemiBold' }}>Step 1 of 2</Text>
+      </Text>
 
-        {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
+      {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
 
-        <View style={styles.fieldGroup}>
-          <Input label="Full name" value={name} onChangeText={setName} autoComplete="name" textContentType="name" placeholder="Jane Doe" />
-          <Input label="Username (optional)" value={username} onChangeText={setUsername} autoCapitalize="none" placeholder="janedoe" />
-          <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" placeholder="you@example.com" />
-          <Input label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" placeholder="Min 8 characters" />
-        </View>
+      <View style={styles.fieldGroup}>
+        <Input label="Full name" value={name} onChangeText={setName} autoComplete="name" textContentType="name" placeholder="Jane Doe" />
+        <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" placeholder="you@example.com" />
+        <Input
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="new-password"
+          textContentType="newPassword"
+          placeholder="Min 8 characters"
+          helper="At least 8 characters with a number"
+          valid={passwordValid}
+        />
+      </View>
 
-        <TouchableOpacity style={styles.checkRow} onPress={() => setAgreed((v) => !v)} activeOpacity={0.7}>
-          <Checkbox value={agreed} onChange={setAgreed} />
-          <Text style={[typography.caption, { color: t.ink3, flex: 1, marginLeft: 10 }]}>
-            I agree to the{' '}
-            <Text style={{ color: t.brand }}>Terms of Service</Text>
-            {' '}and{' '}
-            <Text style={{ color: t.brand }}>Privacy Policy</Text>
-          </Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.checkRow} onPress={() => setAgreed((v) => !v)} activeOpacity={0.7} accessibilityRole="checkbox" accessibilityState={{ checked: agreed }} accessibilityLabel="Agree to terms and privacy policy">
+        <Checkbox value={agreed} onChange={setAgreed} />
+        <Text style={[typography.caption, { color: t.ink3, flex: 1, marginLeft: 10 }]}>
+          I agree to the{' '}
+          <Text style={{ color: t.brand, fontFamily: 'Inter_600SemiBold' }}>Terms</Text>
+          {' '}and acknowledge the{' '}
+          <Text style={{ color: t.brand, fontFamily: 'Inter_600SemiBold' }}>Privacy &amp; Health Data Policy</Text>
+        </Text>
+      </TouchableOpacity>
 
-        <Button label="Continue" size="lg" loading={loading} onPress={handleContinue} style={styles.mainBtn} />
-
-        <TouchableOpacity style={styles.switchRow} onPress={() => router.push('/auth/sign-in')}>
-          <Text style={[typography.caption, { color: t.ink3 }]}>Already have an account? </Text>
-          <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>Sign in</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Button label="Continue" size="lg" loading={loading} onPress={handleContinue} style={styles.mainBtn} />
+    </View>
   );
 }
 
@@ -107,12 +111,8 @@ function normalizeUsername(value: string) {
 }
 
 const styles = StyleSheet.create({
-  flex:          { flex: 1 },
-  scroll:        { paddingBottom: 40 },
-  progressTrack: { height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 4 },
-  progressFill:  { height: 4, borderRadius: 2 },
-  fieldGroup:    { gap: 12, marginBottom: 4 },
-  checkRow:      { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4, marginBottom: 4 },
-  mainBtn:       { marginTop: 16 },
-  switchRow:     { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  progressWrap: { marginTop: 12, marginBottom: 0 },
+  fieldGroup:   { gap: 12, marginBottom: 4 },
+  checkRow:     { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4, marginBottom: 4 },
+  mainBtn:      { marginTop: 16 },
 });

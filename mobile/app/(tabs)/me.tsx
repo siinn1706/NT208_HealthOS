@@ -1,16 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '../../src/components/layout/Screen';
-import { TopBar } from '../../src/components/layout/TopBar';
-import { IconButton } from '../../src/components/primitives/IconButton';
-import { Card } from '../../src/components/primitives/Card';
-import { Divider } from '../../src/components/primitives/Divider';
-import { ApiState } from '../../src/components/api/ApiState';
-import { IdentityCard } from '../../src/components/profile/IdentityCard';
-import { StatCell } from '../../src/components/profile/StatCell';
-import { EmergencyCard } from '../../src/components/profile/EmergencyCard';
-import { MenuGroup } from '../../src/components/profile/MenuGroup';
+import { Screen } from '../../src/components/layout/screen';
+import { TopBar } from '../../src/components/layout/top-bar';
+import { IconButton } from '../../src/components/primitives/icon-button';
+import { ApiState } from '../../src/components/api/api-state';
+import { IdentityCard } from '../../src/components/profile/identity-card';
+import { EmergencyCard } from '../../src/components/profile/emergency-card';
+import { MenuGroup } from '../../src/components/profile/menu-group';
 import {
   AppearanceSheet,
   SettingsSheet,
@@ -21,8 +18,8 @@ import {
 import { IconSettings } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
-import { useSession } from '../../src/auth/SessionProvider';
-import { profileMenuGroups, toIdentity, toProfileStats } from '../../src/api/viewModels';
+import { useSession } from '../../src/auth/session-provider';
+import { profileMenuGroups, toIdentity } from '../../src/api/viewModels';
 
 export default function MeScreen() {
   const t = useTheme();
@@ -30,7 +27,6 @@ export default function MeScreen() {
   const session = useSession();
 
   const identity = toIdentity(session.user);
-  const stats = toProfileStats(session.user);
 
   // Sheet / modal visibility
   const [appearanceOpen, setAppearanceOpen] = useState(false);
@@ -71,10 +67,11 @@ export default function MeScreen() {
     switch (id) {
       case 'appearance':  setAppearanceOpen(true); break;
       case 'profile':     router.push('/auth/setup'); break;
-      case 'devices':     openMissingApi('Connected devices API not yet available'); break;
+      case 'devices':     router.push('/profile/devices' as never); break;
       case 'emergency':   setEmergencyOpen(true); break;
-      case 'goals':       router.push('/home/today'); break;
-      case 'security':    openMissingApi('Security settings API not yet available'); break;
+      case 'goals':       router.push('/insights/goals' as never); break;
+      case 'achievements': router.push('/insights/goals/milestones' as never); break;
+      case 'security':    router.push('/profile/security' as never); break;
       // 'app-lock' toggle is handled inside MenuRow (local state only —
       //  UserPreference has no app_lock field, so we do not persist it)
       case 'notifications': router.push('/onboarding/permissions/notifications' as never); break;
@@ -91,6 +88,7 @@ export default function MeScreen() {
           title="Me"
           right={
             <IconButton
+              variant="subtle"
               icon={<IconSettings size={20} color={t.ink3} />}
               accessibilityLabel="Settings"
               onPress={() => setSettingsOpen(true)}
@@ -110,16 +108,7 @@ export default function MeScreen() {
 
         <IdentityCard {...identity} />
 
-        <Card style={styles.statsCard}>
-          {stats.map((s, i) => (
-            <React.Fragment key={s.label}>
-              {i > 0 && <Divider />}
-              <StatCell label={s.label} value={s.value} />
-            </React.Fragment>
-          ))}
-        </Card>
-
-        <EmergencyCard onShare={() => setEmergencyOpen(true)} />
+        <EmergencyCard variant="soft" onShare={() => setEmergencyOpen(true)} />
 
         {profileMenuGroups.map((g) => (
           <MenuGroup key={g.title} title={g.title} items={g.items} onItemPress={handleMenuPress} />
@@ -153,6 +142,4 @@ export default function MeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  statsCard: { flexDirection: 'row', paddingVertical: 0, paddingHorizontal: 0 },
-});
+const styles = StyleSheet.create({});

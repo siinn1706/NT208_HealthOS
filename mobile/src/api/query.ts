@@ -1,6 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-const memoryCache = new Map<string, unknown>();
+const MAX_CACHE = 100;
+const TTL_MS = 5 * 60 * 1000;
+
+interface CacheEntry { data: unknown; ts: number; }
+const memoryCache = new Map<string, CacheEntry>();
+
+function cacheGet(key: string): unknown | undefined {
+  const entry = memoryCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() - entry.ts > TTL_MS) { memoryCache.delete(key); return undefined; }
+  return entry.data;
+}
+
+function cacheSet(key: string, data: unknown) {
+  if (memoryCache.size >= MAX_CACHE) {
+    const oldest = memoryCache.keys().next().value;
+    if (oldest) memoryCache.delete(oldest);
+  }
+  memoryCache.set(key, { data, ts: Date.now() });
+}
 
 export interface ApiQueryResult<T> {
   data: T | null;
@@ -33,44 +52,50 @@ export function useApiQuery<T>(
   options: ApiQueryOptions<T> = {},
 ): ApiQueryResult<T> {
   const enabled = options.enabled ?? true;
-  const cached = memoryCache.has(key) ? (memoryCache.get(key) as T) : options.initialData ?? null;
-  const [data, setData] = useState<T | null>(cached);
+  const cached = cacheGet(key) as T | undefined;
+  const initial = cached !== undefined ? cached : (options.initialData ?? null);
+  const [data, setData] = useState<T | null>(initial);
   const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(enabled && !cached);
+  const [isLoading, setIsLoading] = useState(enabled && cached === undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const activeRef = useRef(true);
 
   const reload = useCallback(async () => {
     if (!enabled) return;
-    if (memoryCache.has(key)) setIsRefreshing(true);
+    const hasCached = cacheGet(key) !== undefined;
+    if (hasCached) setIsRefreshing(true);
     else setIsLoading(true);
     try {
       const next = await queryFn();
-      memoryCache.set(key, next);
+      if (!activeRef.current) return;
+      cacheSet(key, next);
       setData(next);
       setError(null);
     } catch (err) {
+      if (!activeRef.current) return;
       setError(err instanceof Error ? err : new Error('Request failed.'));
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (activeRef.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, [enabled, key, queryFn]);
 
   useEffect(() => {
-    let active = true;
+    activeRef.current = true;
     if (!enabled) {
       setIsLoading(false);
-      return undefined;
+      return () => { activeRef.current = false; };
     }
-    if (memoryCache.has(key)) {
-      setData(memoryCache.get(key) as T);
+    const hit = cacheGet(key);
+    if (hit !== undefined) {
+      setData(hit as T);
       setIsLoading(false);
     }
-    reload().finally(() => {
-      if (!active) return;
-    });
+    reload();
     return () => {
-      active = false;
+      activeRef.current = false;
     };
   }, [enabled, key, reload]);
 

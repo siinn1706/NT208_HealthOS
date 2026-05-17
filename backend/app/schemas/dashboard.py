@@ -48,6 +48,20 @@ class VitalPointDTO(BaseModel):
     diastolic: float | None = None
 
 
+class ExtendedVitalPointDTO(BaseModel):
+    date: str
+    heart_rate: float | None = None
+    systolic: float | None = None
+    diastolic: float | None = None
+    steps: float | None = None
+    sleep_minutes: float | None = None
+    weight_kg: float | None = None
+
+
+class ExtendedVitalsTimeseriesResponse(DataResponse[list[ExtendedVitalPointDTO]]):
+    ...
+
+
 class NutritionSuggestionDTO(BaseModel):
     id: str
     type: str
@@ -69,4 +83,19 @@ class VitalsTimeseriesResponse(DataResponse[list[VitalPointDTO]]):
 
 class NutritionSuggestionsResponse(DataResponse[list[NutritionSuggestionDTO]]):
     ...
+class ExerciseSuggestionDTO(BaseModel):
+    id: str
+    type: str          # "tip" | "warning" | "goal" | "success"
+    icon: str          # lucide icon name
+    title: str         # i18n key OR plain text (when source="ai")
+    message: str       # i18n key OR plain text (when source="ai")
+    message_params: dict[str, int | float | str] | None = None
+    priority: int
+    duration_minutes: int | None = None
+    intensity: str     # "low" | "medium" | "high"
+    category: str      # "cardio" | "strength" | "flexibility" | "balance"
+    source: str = "rule"  # "rule" | "ai"
 
+
+class ExerciseSuggestionsResponse(DataResponse[list[ExerciseSuggestionDTO]]):
+    ...

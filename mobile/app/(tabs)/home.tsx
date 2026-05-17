@@ -1,65 +1,71 @@
 import React, { useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { Screen } from '../../src/components/layout/Screen';
-import { TopBar } from '../../src/components/layout/TopBar';
-import { SectionHeader } from '../../src/components/layout/SectionHeader';
-import { IconButton } from '../../src/components/primitives/IconButton';
-import { Avatar } from '../../src/components/primitives/Avatar';
-import { ApiState } from '../../src/components/api/ApiState';
-import { KpiGridSkeleton, ChartSkeleton } from '../../src/components/api/Skeletons';
-import { HeroScoreCard } from '../../src/components/home/HeroScoreCard';
-import { KpiRingGrid } from '../../src/components/home/KpiRingGrid';
-import { NextUpRow } from '../../src/components/home/NextUpRow';
-import { AiInsightCard } from '../../src/components/home/AiInsightCard';
-import { VitalsMiniCard } from '../../src/components/home/VitalsMiniCard';
-import { QuickActionGrid } from '../../src/components/home/QuickActionGrid';
+import { Screen } from '../../src/components/layout/screen';
+import { TopBar } from '../../src/components/layout/top-bar';
+import { SectionHeader } from '../../src/components/layout/section-header';
+import { IconButton } from '../../src/components/primitives/icon-button';
+import { Avatar } from '../../src/components/primitives/avatar';
+import { ApiState } from '../../src/components/api/api-state';
+import { KpiGridSkeleton, ChartSkeleton } from '../../src/components/api/skeletons';
+import { HeroScoreCard } from '../../src/components/home/hero-score-card';
+import { KpiRingGrid } from '../../src/components/home/kpi-ring-grid';
+import { NextUpRow } from '../../src/components/home/next-up-row';
+import { AiInsightCard } from '../../src/components/home/ai-insight-card';
+import { VitalsMiniCard } from '../../src/components/home/vitals-mini-card';
+import { QuickActionGrid } from '../../src/components/home/quick-action-grid';
 import { IconSearch, IconBell } from '../../src/icons';
-import { useGreeting } from '../../src/hooks/use-greeting';
+import { useGreetingTitle } from '../../src/hooks/use-greeting';
 import { useTheme } from '../../src/theme/useTheme';
 import { useApiQuery } from '../../src/api/query';
 import { dashboardService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toHomeView } from '../../src/api/viewModels';
-import { useSession } from '../../src/auth/SessionProvider';
+import { useSession } from '../../src/auth/session-provider';
 import type { DashboardSummary, Reminder, VitalPoint } from '../../../shared/api-contracts';
 
 const quickActions = [
-  { id: 'meal', label: 'Meal', icon: 'IconCoffee', route: '/forms/intake' },
+  { id: 'meal', label: 'Meal', icon: 'IconCoffee', route: '/meals' },
   { id: 'vitals', label: 'Vitals', icon: 'IconActivity', route: '/home/vitals' },
   { id: 'ai', label: 'AI', icon: 'IconSparkle', route: '/(tabs)/chat' },
-  { id: 'sos', label: 'SOS', icon: 'IconHeartPulse', route: '/(tabs)/me' },
+  { id: 'insights', label: 'Insights', icon: 'IconTrendUp', route: '/insights' },
 ];
 
 export default function HomeScreen() {
   const t = useTheme();
   const { user } = useSession();
-  const greeting = useGreeting(user?.display_name?.split(' ')[0] ?? 'there');
+  const greetingTitle = useGreetingTitle();
+  const firstName = user?.display_name?.split(' ')[0] ?? 'there';
+  const dateLine = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   const loadHome = useCallback(async () => {
-    const [summary, reminders, vitalPoints] = await Promise.all([
+    const [summaryResult, remindersResult, vitalsResult] = await Promise.allSettled([
       dashboardService.summary(),
       dashboardService.upcomingReminders(),
       dashboardService.vitals(7),
     ]);
-    return { summary, reminders, vitalPoints };
+    return {
+      summary: summaryResult.status === 'fulfilled' ? summaryResult.value : null,
+      reminders: remindersResult.status === 'fulfilled' ? remindersResult.value : [],
+      vitalPoints: vitalsResult.status === 'fulfilled' ? vitalsResult.value : [],
+    };
   }, []);
   const home = useApiQuery<{
-    summary: DashboardSummary;
+    summary: DashboardSummary | null;
     reminders: Reminder[];
     vitalPoints: VitalPoint[];
   }>(queryKeys.dashboard, loadHome);
-  const model = home.data ? toHomeView(home.data.summary, home.data.reminders, home.data.vitalPoints) : null;
+  const model = home.data?.summary ? toHomeView(home.data.summary, home.data.reminders, home.data.vitalPoints) : null;
 
   return (
     <Screen>
       <TopBar
-        title={greeting}
-        subtitle="Synced with HealthOS Core"
+        title={greetingTitle}
+        subtitle={`${firstName} · ${dateLine}`}
         left={<Avatar name={user?.display_name ?? 'HealthOS User'} size={36} />}
         right={
           <View style={styles.actions}>
-            <IconButton icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel="Search" onPress={() => router.push('/home/today')} />
-            <IconButton icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel="Notifications" dot onPress={() => router.push('/home/today')} />
+            <IconButton variant="subtle" icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel="Search" onPress={() => router.push('/home/today')} />
+            <IconButton variant="subtle" icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel="Notifications" dot onPress={() => router.push('/home/today')} />
           </View>
         }
       />
@@ -108,7 +114,7 @@ export default function HomeScreen() {
 
           <SectionHeader title="AI Insight" />
           {model.aiInsight ? (
-            <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/home/today')} />
+            <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/insights' as never)} />
           ) : (
             <ApiState title="No AI insight yet" message="Insights appear after enough health signals are available." />
           )}

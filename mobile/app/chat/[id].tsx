@@ -1,20 +1,20 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet, Modal, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
-import { Bubble } from '../../src/components/chat/Bubble';
-import { DateChip } from '../../src/components/chat/DateChip';
-import { Composer } from '../../src/components/chat/Composer';
-import { IconButton } from '../../src/components/primitives/IconButton';
-import { ApiState, MissingApiState } from '../../src/components/api/ApiState';
+import { Bubble } from '../../src/components/chat/bubble';
+import { DateChip } from '../../src/components/chat/date-chip';
+import { Composer } from '../../src/components/chat/composer';
+import { IconButton } from '../../src/components/primitives/icon-button';
+import { ApiState, MissingApiState } from '../../src/components/api/api-state';
 import { ChevronLeft, IconMore, IconRobot } from '../../src/icons';
 import { useApiQuery, invalidateApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toBubble } from '../../src/api/viewModels';
-import { useSession } from '../../src/auth/SessionProvider';
+import { useSession } from '../../src/auth/session-provider';
 import type { Message } from '../../../shared/api-contracts';
 
 export default function AiConversationScreen() {
@@ -28,6 +28,7 @@ export default function AiConversationScreen() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
 
   // More options modal
   const [moreOpen, setMoreOpen] = useState(false);
@@ -36,8 +37,14 @@ export default function AiConversationScreen() {
   const [attachOpen, setAttachOpen] = useState(false);
 
   useEffect(() => {
-    setMessages(messageQuery.data ?? []);
-  }, [messageQuery.data]);
+    if (messageQuery.data && !sending) {
+      setMessages(messageQuery.data);
+    }
+  }, [messageQuery.data, sending]);
+
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }, [messages.length]);
 
   async function handleSend(text: string) {
     if (!conversationId) return;
@@ -48,8 +55,6 @@ export default function AiConversationScreen() {
       setMessages((prev) => [...prev, saved]);
       setDraft('');
       invalidateApiQuery(queryKeys.conversations);
-      invalidateApiQuery(queryKeys.messages(conversationId));
-      await messageQuery.reload();
     } catch (err: unknown) {
       // Restore draft so the user doesn't lose their message
       setDraft(text);
@@ -68,12 +73,15 @@ export default function AiConversationScreen() {
           onPress={() => router.back()}
           accessibilityLabel="Back"
         />
-        <View style={[styles.avatarWrap, { backgroundColor: t.brand, borderRadius: t.radius.md }]}>
-          <IconRobot size={20} color="#FFF" />
+        <View style={[styles.avatarWrap, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
+          <IconRobot size={20} color={t.brand} />
         </View>
         <View style={styles.headerInfo}>
-          <Text style={[typography.bodyMed, { color: t.ink }]}>HealthOS AI</Text>
-          <Text style={[typography.micro, { color: t.ink3 }]}>Core conversation</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[typography.h3, { color: t.ink, fontSize: 16, fontWeight: '700' }]}>HealthOS AI</Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: t.success }} />
+          </View>
+          <Text style={[typography.micro, { color: t.ink3 }]}>Always private · Never medical advice</Text>
         </View>
         <IconButton
           icon={<IconMore size={20} color={t.ink3} />}
@@ -84,7 +92,9 @@ export default function AiConversationScreen() {
 
       {/* Messages */}
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.messages}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <DateChip label="Today" />

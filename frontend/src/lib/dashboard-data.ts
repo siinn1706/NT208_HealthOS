@@ -36,6 +36,21 @@ export interface VitalPoint {
   diastolic?: number;
 }
 
+export interface ExerciseSuggestion {
+  id: string;
+  type: "tip" | "warning" | "goal" | "success";
+  icon: string;
+  title: string;
+  message: string;
+  message_params?: Record<string, number | string>;
+  priority: number;
+  duration_minutes: number | null;
+  intensity: "low" | "medium" | "high";
+  category: "cardio" | "strength" | "flexibility" | "balance";
+  /** "ai" = title/message are plain text; "rule" = title/message are i18n keys */
+  source?: "ai" | "rule";
+}
+
 export interface ReminderItem {
   id: string;
   type: "medicine" | "appointment" | "exercise";
@@ -240,6 +255,35 @@ export async function getUpcomingReminders(): Promise<DataSlice<ReminderItem[]>>
         message: err instanceof Error ? err.message : "Could not load reminders.",
       },
     };
+  }
+}
+
+export async function getExerciseSuggestions(): Promise<ExerciseSuggestion[]> {
+  try {
+    const reqHeaders = await headers();
+    const res = await fetch(`${APP_URL}/api/v1/dashboard/exercise-suggestions`, {
+      cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+    });
+    if (!res.ok) return [];
+    const json = await res.json().catch(() => null);
+    const data = json?.data;
+    if (!Array.isArray(data)) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return data.map((item: any) => ({
+      id: typeof item.id === "string" ? item.id : "",
+      type: ["tip", "warning", "goal", "success"].includes(item.type) ? item.type : "tip",
+      icon: typeof item.icon === "string" ? item.icon : "Info",
+      title: typeof item.title === "string" ? item.title : "",
+      message: typeof item.message === "string" ? item.message : "",
+      message_params: item.message_params ?? undefined,
+      priority: typeof item.priority === "number" ? item.priority : 99,
+      duration_minutes: typeof item.duration_minutes === "number" ? item.duration_minutes : null,
+      intensity: ["low", "medium", "high"].includes(item.intensity) ? item.intensity : "low",
+      category: ["cardio", "strength", "flexibility", "balance"].includes(item.category) ? item.category : "cardio",
+    }));
+  } catch {
+    return [];
   }
 }
 

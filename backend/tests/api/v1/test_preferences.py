@@ -138,3 +138,96 @@ async def test_patch_preferences_accepts_locale(authenticated_user, authenticate
         assert session.pref.locale == "vi"
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_notifications_preferences_defaults(authenticated_client):
+    class _Result:
+        def __init__(self, pref: Any):
+            self._pref = pref
+
+        def scalar_one_or_none(self):
+            return self._pref
+
+    class _FakeSession:
+        def __init__(self):
+            self.pref: UserPreference | None = None
+
+        async def execute(self, _stmt: object):
+            return _Result(self.pref)
+
+        def add(self, obj: UserPreference) -> None:
+            self.pref = obj
+
+        async def flush(self) -> None:
+            return None
+
+        async def commit(self) -> None:
+            return None
+
+    session = _FakeSession()
+
+    async def override_db():
+        yield session
+
+    app.dependency_overrides[get_db] = override_db
+    try:
+        res = await authenticated_client.get("/v1/notifications/preferences")
+        assert res.status_code == 200
+        payload = res.json()["data"]
+        assert payload["enabled"] is True
+        assert payload["categories"]["med"] is True
+        assert payload["channels"]["push"] is True
+        assert payload["quiet_hours"]["start"] == "22:00"
+        assert payload["snooze_options"] == [5, 10, 30]
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_notifications_preferences_patch_sanitizes_snooze_options(authenticated_client):
+    class _Result:
+        def __init__(self, pref: Any):
+            self._pref = pref
+
+        def scalar_one_or_none(self):
+            return self._pref
+
+    class _FakeSession:
+        def __init__(self):
+            self.pref: UserPreference | None = None
+
+        async def execute(self, _stmt: object):
+            return _Result(self.pref)
+
+        def add(self, obj: UserPreference) -> None:
+            self.pref = obj
+
+        async def flush(self) -> None:
+            return None
+
+        async def commit(self) -> None:
+            return None
+
+    session = _FakeSession()
+
+    async def override_db():
+        yield session
+
+    app.dependency_overrides[get_db] = override_db
+    try:
+        res = await authenticated_client.patch(
+            "/v1/notifications/preferences",
+            json={
+                "enabled": True,
+                "snooze_options": [15, 0, -1, 15, 9999],
+            },
+        )
+        assert res.status_code == 200
+        payload = res.json()["data"]
+        assert payload["snooze_options"] == [15]
+        assert session.pref is not None
+        assert isinstance(session.pref.appearance, dict)
+        assert session.pref.appearance["notification_preferences"]["snooze_options"] == [15]
+    finally:
+        app.dependency_overrides.pop(get_db, None)

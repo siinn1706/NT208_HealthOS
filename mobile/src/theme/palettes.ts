@@ -8,8 +8,9 @@ const shared = {
   danger: '#E54D4D',
   info: '#0284C7',
   warmGold: '#B97843',
-  warmPeach: '#E8A87C',
-  warmRose: '#D4849A',
+  warmGoldAccent: '#E7DEA7',
+  warmPeach: '#E3B79A',
+  warmRose: '#E8BDB7',
   radius: { sm: 10, md: 14, lg: 16, xl: 20, xxl: 24, pill: 100 },
   space: { 1: 4, 2: 8, 3: 12, 4: 14, 5: 16, 6: 18, 7: 20, 8: 24 },
   shadows,
@@ -32,6 +33,12 @@ export const calmPalette: ThemeTokens = {
   brandSoft: '#E8F8FD',
   accent: '#41BCE6',
   chip: '#E8F8FD',
+  successSoft: '#D1FAE5',
+  warningSoft: '#FEF3C7',
+  dangerSoft: '#FEE2E2',
+  toneWater: '#0EA5E9',
+  toneKcal: '#F97316',
+  toneSleep: '#8B5CF6',
 };
 
 export const nightPalette: ThemeTokens = {
@@ -50,6 +57,12 @@ export const nightPalette: ThemeTokens = {
   brandSoft: 'rgba(91,168,200,0.14)',
   accent: '#7EC8D8',
   chip: 'rgba(91,168,200,0.12)',
+  successSoft: 'rgba(5,150,105,0.15)',
+  warningSoft: 'rgba(217,119,6,0.15)',
+  dangerSoft: 'rgba(229,77,77,0.15)',
+  toneWater: '#38BDF8',
+  toneKcal: '#FB923C',
+  toneSleep: '#A78BFA',
 };
 
 export const warmPalette: ThemeTokens = {
@@ -68,6 +81,12 @@ export const warmPalette: ThemeTokens = {
   brandSoft: '#F6EADC',
   accent: '#D4A06A',
   chip: '#F4E7CE',
+  successSoft: 'rgba(5,150,105,0.12)',
+  warningSoft: 'rgba(217,119,6,0.12)',
+  dangerSoft: 'rgba(229,77,77,0.12)',
+  toneWater: '#B97843',
+  toneKcal: '#B97843',
+  toneSleep: '#8A7C63',
 };
 
 export const palettes: Record<import('./tokens').ThemeName, ThemeTokens> = {

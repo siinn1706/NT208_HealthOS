@@ -4,28 +4,31 @@ import { useTranslations } from "next-intl";
 import { EChartWrapper } from "@/components/charts/EChartWrapper";
 import type { TrendAnalysis, AnomalyPoint } from "@/types/api";
 import type { EChartsOption } from "echarts-for-react";
+import { getCssVar, cssRgba } from "@/lib/chart-colors";
 
 interface TrendChartProps {
   analysis: TrendAnalysis;
   height?: number;
 }
 
-// Bound to design tokens so the chart respects light/dark mode and the
-// user's accent. Hex values were Night-Sky-only and looked broken on the
-// new light theme.
-const COLORS = {
-  actual:     "var(--color-primary)",
-  trend:      "var(--color-warning)",
-  prediction: "var(--color-info)",
-  anomaly:    "var(--color-destructive)",
-  band:       "color-mix(in srgb, var(--color-info) 15%, transparent)",
-  grid:       "color-mix(in srgb, var(--color-foreground) 8%, transparent)",
-  axis:       "color-mix(in srgb, var(--color-foreground) 25%, transparent)",
-  axisLabel:  "var(--color-muted-foreground)",
-};
-
 export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
   const t = useTranslations("trends");
+
+  // Build canvas-safe colors at render time so CSS vars are resolved on the
+  // client. Canvas 2D API rejects color-mix() and var() inside colorStops.
+  const COLORS = {
+    actual:     getCssVar("--primary",     "#1965B3"),
+    trend:      getCssVar("--warning",     "#D97706"),
+    prediction: getCssVar("--info",        "#0284C7"),
+    anomaly:    getCssVar("--destructive", "#E54D4D"),
+    band:       cssRgba("--info",        0.15, "#0284C7"),
+    grid:       cssRgba("--foreground",  0.08, "#0F2743"),
+    axis:       cssRgba("--foreground",  0.25, "#0F2743"),
+    axisLabel:  getCssVar("--muted-foreground", "#5B90C4"),
+    areaTop:    cssRgba("--primary",     0.18, "#1965B3"),
+    areaBot:    cssRgba("--primary",     0.00, "#1965B3"),
+    zoomFill:   cssRgba("--primary",     0.15, "#1965B3"),
+  };
 
   const actualDates   = analysis.data_points.map((p) => p.date);
   const actualVals    = analysis.data_points.map((p) => p.value);
@@ -138,8 +141,8 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
         bottom: 4,
         height: 20,
         borderColor: "var(--color-border)",
-        fillerColor: "color-mix(in srgb, var(--color-primary) 15%, transparent)",
-        handleStyle: { color: "var(--color-primary)" },
+        fillerColor: COLORS.zoomFill,
+        handleStyle: { color: COLORS.actual },
         textStyle: { color: COLORS.axisLabel, fontSize: 9 },
         start: 0,
         end: 100,
@@ -167,7 +170,7 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
               showSymbol: false,
               lineStyle: { opacity: 0 },
               stack: "uncertaintyBand",
-              areaStyle: { color: COLORS.band },
+              areaStyle: { color: COLORS.band },  // cssRgba — canvas-safe
               tooltip: { show: false },
               silent: true,
             },
@@ -184,8 +187,8 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
         areaStyle: {
           color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: "color-mix(in srgb, var(--color-primary) 18%, transparent)" },
-              { offset: 1, color: "color-mix(in srgb, var(--color-primary) 0%, transparent)" },
+              { offset: 0, color: COLORS.areaTop },
+              { offset: 1, color: COLORS.areaBot },
             ],
           },
         },

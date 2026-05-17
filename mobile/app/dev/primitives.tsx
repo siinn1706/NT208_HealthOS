@@ -7,17 +7,17 @@ import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
-import { Button } from '../../src/components/primitives/Button';
-import { Badge } from '../../src/components/primitives/Badge';
-import { Input } from '../../src/components/primitives/input/Input';
-import { Checkbox } from '../../src/components/primitives/input/Checkbox';
-import { Radio } from '../../src/components/primitives/input/Radio';
-import { SegmentedControl } from '../../src/components/primitives/input/SegmentedControl';
-import { BottomSheet } from '../../src/components/primitives/sheet/BottomSheet';
-import { CenterDialog } from '../../src/components/primitives/sheet/CenterDialog';
-import { Skeleton, SkeletonGroup } from '../../src/components/primitives/feedback/Skeleton';
-import { EmptyState } from '../../src/components/primitives/feedback/EmptyState';
-import { useToast } from '../../src/components/primitives/feedback/Toast';
+import { Button } from '../../src/components/primitives/button';
+import { Badge } from '../../src/components/primitives/badge';
+import { Input } from '../../src/components/primitives/input/input';
+import { Checkbox } from '../../src/components/primitives/input/checkbox';
+import { Radio } from '../../src/components/primitives/input/radio';
+import { SegmentedControl } from '../../src/components/primitives/input/segmented-control';
+import { BottomSheet } from '../../src/components/primitives/sheet/bottom-sheet';
+import { CenterDialog } from '../../src/components/primitives/sheet/center-dialog';
+import { Skeleton, SkeletonGroup } from '../../src/components/primitives/feedback/skeleton';
+import { EmptyState } from '../../src/components/primitives/feedback/empty-state';
+import { useToast } from '../../src/components/primitives/feedback/toast';
 import { Heart } from 'lucide-react-native';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

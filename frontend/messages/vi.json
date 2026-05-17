@@ -690,7 +690,11 @@
       "bloodPressureSys": "Huyết áp tâm thu",
       "bloodPressureDia": "Huyết áp tâm trương",
       "loading": "Đang tải biểu đồ...",
-      "noData": "Chưa có dữ liệu chỉ số"
+      "noData": "Chưa có dữ liệu chỉ số",
+      "tabVitals": "Tim mạch",
+      "tabSteps": "Bước chân",
+      "tabSleep": "Giấc ngủ",
+      "tabWeight": "Cân nặng"
     },
     "calorieChart": {
       "title": "Lượng calo theo ngày",
@@ -2178,6 +2182,120 @@
         "emptyBody": "Khi có người quét QR, mục đó sẽ xuất hiện ở đây."
       },
       "previewTitleDraft": "Người ứng cứu sẽ thấy (chưa lưu)"
+    },
+    "trends": {
+      "title": "Xu hướng sức khỏe",
+      "subtitle": "Thay đổi theo thời gian",
+      "noData": "Chưa đủ dữ liệu để hiển thị xu hướng.",
+      "metrics": {
+        "heart_rate": "Nhịp tim",
+        "steps": "Bước chân",
+        "sleep": "Giấc ngủ",
+        "calories": "Calo",
+        "weight": "Cân nặng"
+      }
+    },
+    "anomalies": {
+      "title": "Cảnh báo bất thường",
+      "subtitle": "Chỉ số bất thường được phát hiện",
+      "live": "Trực tiếp",
+      "offline": "Ngoại tuyến",
+      "dismiss": "Bỏ qua",
+      "realtimeSection": "Thời gian thực",
+      "recentSection": "Gần đây (30 ngày)",
+      "viewAll": "Xem tất cả xu hướng",
+      "allClear": "Không có bất thường nào trong 30 ngày qua",
+      "statCritical": "Nghiêm trọng",
+      "statWarning": "Cảnh báo",
+      "statTotal": "Tổng (30 ngày)",
+      "metricBreakdown": "Theo chỉ số",
+      "critical": "Nghiêm trọng",
+      "warning": "Cảnh báo"
+    },
+    "exercise": {
+      "title": "Gợi ý luyện tập",
+      "subtitle": "Dựa trên dữ liệu sức khỏe của bạn",
+      "noData": "Ghi lại dữ liệu sức khỏe để nhận gợi ý luyện tập.",
+      "viewAll": "Xem tiến độ",
+      "minutes": "phút",
+      "tabRecommendations": "Gợi ý",
+      "tabWeekly": "Tuần này",
+      "weeklyPlanTitle": "Kế hoạch tuần",
+      "types": {
+        "warning": "Lưu ý",
+        "tip": "Mẹo",
+        "goal": "Mục tiêu",
+        "success": "Tốt"
+      },
+      "intensity": {
+        "low": "Nhẹ",
+        "medium": "Vừa",
+        "high": "Cao"
+      },
+      "categories": {
+        "cardio": "Cardio",
+        "strength": "Sức mạnh",
+        "flexibility": "Dẻo dai",
+        "balance": "Cân bằng"
+      },
+      "suggestions": {
+        "exercise-no-data": {
+          "title": "Thiết lập hành trình",
+          "message": "Ghi lại bước chân, giấc ngủ hoặc nhịp tim để nhận kế hoạch luyện tập cá nhân hóa."
+        },
+        "exercise-hr-breathing": {
+          "title": "Kỹ thuật thở 4-7-8",
+          "message": "Nhịp tim đang ở {heart_rate} bpm — cao hơn bình thường. Hít sâu 4 giây, giữ 7 giây, thở ra 8 giây để hạ nhịp tim hiệu quả."
+        },
+        "exercise-hr-elevated": {
+          "title": "Thiền hít thở có chủ đích",
+          "message": "Nhịp tim {heart_rate} bpm — hơi cao. 20 phút thiền chánh niệm hoặc yoga nhẹ giúp hệ thần kinh phó giao cảm hoạt động tốt hơn."
+        },
+        "exercise-bp-yoga": {
+          "title": "Yoga hạ huyết áp",
+          "message": "Huyết áp tâm thu {systolic} mmHg. Các tư thế yoga như Child's Pose, Legs-Up-The-Wall giúp giảm huyết áp tự nhiên sau 25 phút."
+        },
+        "exercise-walk-more": {
+          "title": "Đi bộ nhanh (Power Walk)",
+          "message": "Hôm nay mới đi {steps} bước — còn {remaining} bước nữa đến mục tiêu {target}. 30 phút đi bộ nhanh sau bữa tối đốt ~120 kcal và cải thiện đường huyết."
+        },
+        "exercise-walk-boost": {
+          "title": "Tăng tốc về đích",
+          "message": "Đã đi {steps} bước — còn {remaining} bước nữa. Một cuộc đi bộ 20 phút là đủ để về đích hôm nay."
+        },
+        "exercise-sleep-yoga": {
+          "title": "Giãn cơ phục hồi giấc ngủ",
+          "message": "Bạn chỉ ngủ {sleep_hours} giờ tối qua. Chuỗi giãn cơ nhẹ 20 phút trước khi ngủ — Child's Pose, Supine Twist — giúp giảm cortisol và cải thiện chất lượng giấc ngủ."
+        },
+        "exercise-burn-calories": {
+          "title": "Cardio đốt mỡ hiệu quả",
+          "message": "Đã nạp {calories} kcal hôm nay (vượt {deficit} kcal). 45 phút chạy bộ nhẹ hoặc đạp xe giúp đốt ~315 kcal và duy trì cân bằng năng lượng."
+        },
+        "exercise-strength": {
+          "title": "Tập sức mạnh toàn thân",
+          "message": "Xuất sắc! {steps} bước hôm nay cho thấy cơ thể đang trong trạng thái tốt. Đây là thời điểm lý tưởng cho 30 phút tập kháng lực — squat, push-up, plank."
+        },
+        "exercise-hiit": {
+          "title": "HIIT — Đốt mỡ đỉnh cao",
+          "message": "{steps} bước! Cơ thể đang ở đỉnh phong độ hôm nay. 20 phút HIIT (20 giây bứt tốc / 10 giây nghỉ) đốt gấp đôi lượng mỡ so với cardio thông thường."
+        },
+        "exercise-balanced-strength": {
+          "title": "Ngày Sức mạnh — Thứ 2 / Thứ 5",
+          "message": "Hôm nay là ngày lý tưởng cho tập kháng lực. 35 phút luyện tập với 3 hiệp: squat, deadlift, bench press giúp tăng cơ và đẩy nhanh trao đổi chất."
+        },
+        "exercise-balanced-cardio": {
+          "title": "Ngày Cardio — Thứ 3 / Thứ 6",
+          "message": "Hôm nay là ngày cardio. 30 phút chạy bộ nhẹ (zone 2 — có thể nói chuyện) hoặc đạp xe giúp tăng sức bền tim mạch mà không gây mệt cơ."
+        },
+        "exercise-balanced-flex": {
+          "title": "Ngày Dẻo dai — Thứ 4",
+          "message": "Giữa tuần là thời điểm hoàn hảo để phục hồi. 25 phút yoga hoặc dynamic stretching giúp cơ thể sẵn sàng cho các buổi tập nặng hơn cuối tuần."
+        },
+        "exercise-balanced-rest": {
+          "title": "Ngày Phục hồi Chủ động",
+          "message": "Cuối tuần là lúc cơ thể tái tạo. 20 phút đi bộ thư giãn hoặc giãn cơ nhẹ — không cần tập nặng — giúp cơ bắp phục hồi tối ưu cho tuần mới."
+        }
+      }
     }
   },
   "auth": {
