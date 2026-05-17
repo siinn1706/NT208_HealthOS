@@ -1,6 +1,8 @@
 import { apiRequest } from '../client';
 import type { Conversation, DataResponse, Message, MessageListResponse } from '../../../../shared/api-contracts';
 
+let msgSeq = 0;
+
 export const chatService = {
   async conversations() {
     const response = await apiRequest<{ data: Conversation[]; total: number }>('/v1/conversations');
@@ -31,7 +33,7 @@ export const chatService = {
       json: {
         content,
         content_type: 'text',
-        client_message_id: `mobile-${Date.now()}`,
+        client_message_id: `mobile-${Date.now()}-${++msgSeq}`,
       },
     });
     return response.data;

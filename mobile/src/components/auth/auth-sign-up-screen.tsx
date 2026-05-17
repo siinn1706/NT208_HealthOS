@@ -13,6 +13,7 @@ import { Input } from '../primitives/input/input';
 import { Checkbox } from '../primitives/input/checkbox';
 import { ProgressBar } from '../primitives/progress-bar';
 import { authService } from '../../api/services';
+import { setPendingSignup } from '../../auth/pending-signup';
 
 export function AuthSignUpScreen() {
   const t = useTheme();
@@ -48,7 +49,8 @@ export function AuthSignUpScreen() {
         username: normalizeUsername(email),
         password,
       });
-      router.push({ pathname: '/auth/otp', params: { email: email.trim(), password, purpose: 'signup' } });
+      setPendingSignup({ email: email.trim(), password, name: name.trim(), username: normalizeUsername(email) });
+      router.push({ pathname: '/auth/otp', params: { email: email.trim(), purpose: 'signup' } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to request OTP.');
     } finally {

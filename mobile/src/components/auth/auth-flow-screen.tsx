@@ -25,7 +25,7 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
   const t = useTheme();
   const isWelcome = kind === 'welcome';
   const showHeader = !isWelcome;
-  const showSkip = kind === 'setup' || kind === 'permissions';
+  const showSkip = kind === 'permissions';
 
   function renderInner() {
     switch (kind) {

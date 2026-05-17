@@ -31,6 +31,8 @@ let unauthorizedHandler: (() => void | Promise<void>) | null = null;
 let refreshHandler: (() => Promise<boolean>) | null = null;
 /** Deduplicates concurrent 401 refresh attempts — N parallel requests share one refresh call. */
 let refreshPromise: Promise<boolean> | null = null;
+/** Grace period after a successful refresh — skip re-refresh within 2s. */
+let refreshGraceUntil = 0;
 
 export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null) {
   unauthorizedHandler = handler;
@@ -44,6 +46,7 @@ export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | n
 export function setRefreshHandler(handler: (() => Promise<boolean>) | null) {
   refreshHandler = handler;
   refreshPromise = null;
+  refreshGraceUntil = 0;
 }
 
 export function getCoreApiBaseUrl(): string {
@@ -74,10 +77,11 @@ export function buildQuery(params: Record<string, string | number | boolean | nu
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const controller = options.signal ? null : new AbortController();
-  const timeout = controller
-    ? setTimeout(() => controller.abort(), options.timeoutMs ?? 30000)
-    : null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 30000);
+  if (options.signal) {
+    options.signal.addEventListener('abort', () => controller.abort());
+  }
 
   try {
     const headers: Record<string, string> = {
@@ -98,7 +102,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       method: options.method ?? 'GET',
       headers,
       body: options.json === undefined ? undefined : JSON.stringify(options.json),
-      signal: options.signal ?? controller?.signal,
+      signal: controller.signal,
     });
 
     if (response.status === 204) {
@@ -113,8 +117,12 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     if (!response.ok) {
       const err = normalizeError(payload, response.status);
       if (response.status === 401 && !options._retried && refreshHandler) {
+        if (Date.now() < refreshGraceUntil) {
+          return apiRequest<T>(path, { ...options, _retried: true });
+        }
         if (!refreshPromise) {
           refreshPromise = refreshHandler().catch(() => false).finally(() => {
+            refreshGraceUntil = Date.now() + 2000;
             refreshPromise = null;
           });
         }
@@ -139,7 +147,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     const isAbort = error instanceof Error && error.name === 'AbortError';
     throw new ApiError(isAbort ? 'Request timed out.' : 'Network request failed.', 0, isAbort ? 'TIMEOUT' : 'NETWORK_ERROR');
   } finally {
-    if (timeout) clearTimeout(timeout);
+    clearTimeout(timeout);
   }
 }
 

@@ -10,6 +10,7 @@ export const riskService = {
   async refresh() {
     const response = await apiRequest<DataResponse<RiskSummary>>('/v1/health/risk-predictions', {
       method: 'POST',
+      timeoutMs: 60000,
     });
     return response.data;
   },

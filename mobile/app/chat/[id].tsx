@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet, Modal, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -28,6 +28,7 @@ export default function AiConversationScreen() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
 
   // More options modal
   const [moreOpen, setMoreOpen] = useState(false);
@@ -36,8 +37,14 @@ export default function AiConversationScreen() {
   const [attachOpen, setAttachOpen] = useState(false);
 
   useEffect(() => {
-    setMessages(messageQuery.data ?? []);
-  }, [messageQuery.data]);
+    if (messageQuery.data && !sending) {
+      setMessages(messageQuery.data);
+    }
+  }, [messageQuery.data, sending]);
+
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }, [messages.length]);
 
   async function handleSend(text: string) {
     if (!conversationId) return;
@@ -48,8 +55,6 @@ export default function AiConversationScreen() {
       setMessages((prev) => [...prev, saved]);
       setDraft('');
       invalidateApiQuery(queryKeys.conversations);
-      invalidateApiQuery(queryKeys.messages(conversationId));
-      await messageQuery.reload();
     } catch (err: unknown) {
       // Restore draft so the user doesn't lose their message
       setDraft(text);
@@ -87,7 +92,9 @@ export default function AiConversationScreen() {
 
       {/* Messages */}
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.messages}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <DateChip label="Today" />

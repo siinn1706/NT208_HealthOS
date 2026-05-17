@@ -5,8 +5,13 @@ const TOKEN_KEY   = 'healthos.mobile.access_token';
 const REFRESH_KEY = 'healthos.mobile.refresh_token';
 const USER_KEY    = 'healthos.mobile.user';
 
+/** undefined = not yet loaded from SecureStore; null = confirmed absent */
+let cachedToken: string | null | undefined = undefined;
+
 export async function getAccessToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY);
+  if (cachedToken !== undefined) return cachedToken;
+  cachedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+  return cachedToken;
 }
 
 export async function getRefreshToken(): Promise<string | null> {
@@ -25,6 +30,7 @@ export async function getCachedUser(): Promise<CurrentUser | null> {
 }
 
 export async function saveAuthToken(token: AuthToken): Promise<void> {
+  cachedToken = token.access_token;
   await SecureStore.setItemAsync(TOKEN_KEY, token.access_token);
   if (token.refresh_token) {
     await SecureStore.setItemAsync(REFRESH_KEY, token.refresh_token);
@@ -50,6 +56,7 @@ export async function saveCurrentUser(user: CurrentUser): Promise<void> {
 }
 
 export async function clearStoredSession(): Promise<void> {
+  cachedToken = undefined;
   await SecureStore.deleteItemAsync(TOKEN_KEY);
   await SecureStore.deleteItemAsync(REFRESH_KEY);
   await SecureStore.deleteItemAsync(USER_KEY);

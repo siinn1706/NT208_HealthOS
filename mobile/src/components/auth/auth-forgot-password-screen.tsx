@@ -13,11 +13,9 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
 import { authService } from '../../api/services';
-import { useSession } from '../../auth/session-provider';
 
 export function AuthForgotPasswordScreen() {
   const t = useTheme();
-  const session = useSession();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -48,9 +46,8 @@ export function AuthForgotPasswordScreen() {
     setError(null);
     try {
       await authService.verifyOtp({ email: email.trim(), purpose: 'reset_password', code: code.trim() });
-      await authService.resetPassword(email.trim(), newPassword);
-      await session.refreshUser();
-      router.replace('/(tabs)/home');
+      await authService.resetPassword(email.trim(), newPassword, code.trim());
+      router.replace('/auth/sign-in');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to reset password.');
     } finally {

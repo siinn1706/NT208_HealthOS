@@ -191,7 +191,9 @@ export function toBubble(message: Message, currentUserId?: string | null) {
 
 export function toIdentity(user: CurrentUser | null) {
   const dob = user?.date_of_birth ? new Date(user.date_of_birth) : null;
-  const age = dob && !Number.isNaN(dob.getTime()) ? new Date().getFullYear() - dob.getFullYear() : 0;
+  const age = dob && !Number.isNaN(dob.getTime())
+    ? Math.floor((Date.now() - dob.getTime()) / (365.25 * 86400000))
+    : 0;
   return {
     name: user?.full_name ?? user?.display_name ?? 'HealthOS user',
     email: user?.email,
@@ -250,11 +252,12 @@ function average(values: number[]) {
 }
 
 function clampRatio(current: number, target: number) {
-  if (!target || target <= 0) return 0;
+  if (!target || target <= 0 || !Number.isFinite(current)) return 0;
   return Math.max(0, Math.min(1, current / target));
 }
 
 function normalizePercent(value: number) {
+  if (!Number.isFinite(value)) return 0;
   return value > 1 ? value / 100 : value;
 }
 
@@ -269,14 +272,14 @@ function formatMetric(value: number, key: string) {
 export function formatDate(value?: string | null) {
   if (!value) return 'Not scheduled';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return '--';
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function formatTime(value?: string | null) {
   if (!value) return '--';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return '--';
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 

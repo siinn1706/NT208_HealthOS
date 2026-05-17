@@ -36,21 +36,25 @@ export default function HomeScreen() {
   const { user } = useSession();
   const greetingTitle = useGreetingTitle();
   const firstName = user?.display_name?.split(' ')[0] ?? 'there';
-  const dateLine = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const dateLine = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   const loadHome = useCallback(async () => {
-    const [summary, reminders, vitalPoints] = await Promise.all([
+    const [summaryResult, remindersResult, vitalsResult] = await Promise.allSettled([
       dashboardService.summary(),
       dashboardService.upcomingReminders(),
       dashboardService.vitals(7),
     ]);
-    return { summary, reminders, vitalPoints };
+    return {
+      summary: summaryResult.status === 'fulfilled' ? summaryResult.value : null,
+      reminders: remindersResult.status === 'fulfilled' ? remindersResult.value : [],
+      vitalPoints: vitalsResult.status === 'fulfilled' ? vitalsResult.value : [],
+    };
   }, []);
   const home = useApiQuery<{
-    summary: DashboardSummary;
+    summary: DashboardSummary | null;
     reminders: Reminder[];
     vitalPoints: VitalPoint[];
   }>(queryKeys.dashboard, loadHome);
-  const model = home.data ? toHomeView(home.data.summary, home.data.reminders, home.data.vitalPoints) : null;
+  const model = home.data?.summary ? toHomeView(home.data.summary, home.data.reminders, home.data.vitalPoints) : null;
 
   return (
     <Screen>
