@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { MissingApiState } from '../api/api-state';
@@ -44,11 +45,12 @@ const AI_INSIGHT_ACTIONS = [
 
 function AiInsightDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   return (
     <Screen>
       <TopBar
-        title="AI Insight"
-        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>Back</Text>}
+        title={i18n('home.aiInsightTitle')}
+        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>{i18n('common.back')}</Text>}
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
         {/* Hero card */}
@@ -71,7 +73,7 @@ function AiInsightDetailScreen() {
 
         {/* Causes */}
         <Text style={[typography.caption, { color: t.ink3, letterSpacing: 0.6, textTransform: 'uppercase' }]}>
-          Why this matters
+          {i18n('home.whyThisMatters')}
         </Text>
         {AI_INSIGHT_CAUSES.map((cause, i) => (
           <View key={i} style={styles.causeRow}>
@@ -82,7 +84,7 @@ function AiInsightDetailScreen() {
 
         {/* Actions */}
         <Text style={[typography.caption, { color: t.ink3, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 4 }]}>
-          Recommendations
+          {i18n('home.recommendations')}
         </Text>
         <View style={[styles.actionList, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
           {AI_INSIGHT_ACTIONS.map((action, i) => (
@@ -99,7 +101,7 @@ function AiInsightDetailScreen() {
           ))}
         </View>
 
-        <Button label="View related metrics" variant="soft" onPress={() => router.back()} />
+        <Button label={i18n('home.viewRelatedMetrics')} variant="soft" onPress={() => router.back()} />
       </ScrollView>
     </Screen>
   );
@@ -107,11 +109,12 @@ function AiInsightDetailScreen() {
 
 function GuardedDetailScreen({ kind }: { kind: HomeDetailKind }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: t.bg }]}>
       <View style={styles.container}>
         <Text style={[styles.back, { color: t.brand }]} onPress={() => router.back()}>
-          ← Back
+          ← {i18n('common.back')}
         </Text>
         <Text style={[styles.title, { color: t.ink }]}>{TITLES[kind]}</Text>
         <MissingApiState title={`${TITLES[kind]} unavailable`} contract="existing API needs adaptation" />

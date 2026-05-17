@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { SectionHeader } from '../../layout/section-header';
 import { Card } from '../../primitives/card';
@@ -117,6 +118,7 @@ function iconForLabel(label: string, color: string) {
 
 export function RiskDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -171,7 +173,7 @@ export function RiskDetailScreen() {
   if (risk.isLoading) {
     return (
       <Screen>
-        <ApiState title="Loading risk detail" loading />
+        <ApiState title={i18n('api.loading')} loading />
       </Screen>
     );
   }
@@ -179,7 +181,7 @@ export function RiskDetailScreen() {
   if (risk.error) {
     return (
       <Screen>
-        <ApiState title="Risk detail unavailable" message={risk.error.message} actionLabel="Retry" onAction={risk.reload} />
+        <ApiState title={i18n('api.unavailable')} message={risk.error.message} actionLabel={i18n('common.retry')} onAction={risk.reload} />
       </Screen>
     );
   }
@@ -187,7 +189,7 @@ export function RiskDetailScreen() {
   if (model.notFound) {
     return (
       <Screen>
-        <ApiState title="Risk item not found" message="Risk id not present in current prediction payload." actionLabel="Back" onAction={() => router.back()} />
+        <ApiState title="Risk item not found" message="Risk id not present in current prediction payload." actionLabel={i18n('common.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -245,7 +247,7 @@ export function RiskDetailScreen() {
       </Card>
 
       {/* Driving factors with progress bars */}
-      <SectionHeader title="Driving factors" />
+      <SectionHeader title={i18n('insights.drivingFactors')} />
       {model.factors.length === 0 ? (
         <ApiState title="No factors returned" message="Risk payload has no factor details." />
       ) : (
@@ -257,7 +259,7 @@ export function RiskDetailScreen() {
       )}
 
       {/* What to do */}
-      <SectionHeader title="If you change one thing" />
+      <SectionHeader title={i18n('insights.ifYouChangeOne')} />
       {model.suggestions.length === 0 ? (
         <ApiState title="No suggestions returned" message="Risk payload has no tip details." />
       ) : (
@@ -278,13 +280,13 @@ export function RiskDetailScreen() {
       )}
 
       {/* Track over time — missing endpoint */}
-      <SectionHeader title="Track over time" />
+      <SectionHeader title={i18n('insights.trackOverTime')} />
       <Card tight style={styles.trackCard}>
         <MissingApiState title="Risk trend history unavailable" contract="TODO: add endpoint GET /v1/health/risk-predictions/{id}/history?period=30d" />
       </Card>
 
       <Button
-        label="Prevention plan"
+        label={i18n('insights.preventionPlan')}
         variant="solid"
         size="lg"
         style={{ marginTop: 20 }}

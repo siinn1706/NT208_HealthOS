@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -24,6 +25,7 @@ import { formatDate, formatTime } from '../../api/viewModels';
 
 export function AppointmentDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const appointmentId = (Array.isArray(id) ? id[0] : id) ?? '';
@@ -70,16 +72,16 @@ export function AppointmentDetailScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.topBarWrap}>
         <TopBar
-          title="Appointment"
+          title={i18n('care.appointmentDetail')}
           left={
             <Text style={[typography.bodyMed, { color: t.brand }]} onPress={() => router.back()}>
-              Back
+              {i18n('common.back')}
             </Text>
           }
           right={
             <IconButton
               icon={<IconMore size={20} color={t.ink3} />}
-              accessibilityLabel="More options"
+              accessibilityLabel={i18n('common.more')}
               onPress={() => setMoreOpen(true)}
             />
           }
@@ -87,18 +89,18 @@ export function AppointmentDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
-        {appointmentQuery.isLoading && <ApiState title="Loading appointment" loading />}
+        {appointmentQuery.isLoading && <ApiState title={i18n('care.loadingAppointments')} loading />}
         {appointmentQuery.error && (
           <ApiState
-            title="Appointment unavailable"
+            title={i18n('care.appointmentsUnavailable')}
             message={appointmentQuery.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={appointmentQuery.reload}
           />
         )}
         {!appointmentQuery.isLoading && !appointmentQuery.error && !appointment && (
           <ApiState
-            title="Appointment not found"
+            title={i18n('care.noAppointments')}
             message="No appointment found for this id."
           />
         )}
@@ -145,17 +147,17 @@ export function AppointmentDetailScreen() {
             <View style={s.dateTimeRow}>
               <View style={[s.dtCard, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
                 <IconCalendar size={16} color={t.brand} />
-                <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>Date</Text>
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>{i18n('forms.date')}</Text>
                 <Text style={[typography.h3, { color: t.ink }]}>{formatDate(appointment.appointment_date)}</Text>
               </View>
               <View style={[s.dtCard, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
                 <IconClock size={16} color={t.brand} />
-                <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>Time</Text>
+                <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>{i18n('forms.time')}</Text>
                 <Text style={[typography.h3, { color: t.ink }]}>{formatTime(appointment.appointment_date)}</Text>
               </View>
             </View>
 
-            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>Details</Text>
+            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.general')}</Text>
             <View style={[s.card, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
               <DetailRow icon={<IconVideo size={14} color={t.ink3} />} label="Status" value={appointment.status} t={t} />
               <View style={[s.divider, { backgroundColor: t.border }]} />
@@ -167,7 +169,7 @@ export function AppointmentDetailScreen() {
               <Text style={[typography.body, { color: t.ink2 }]}>{appointment.notes ?? appointment.diagnosis ?? 'No notes on this appointment.'}</Text>
             </View>
 
-            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>Attachments</Text>
+            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.attachments')}
             <MissingApiState title="General appointment attachments unavailable" contract="unclear and needs manual confirmation" />
 
             {appointment.has_prescription && (
@@ -198,13 +200,13 @@ export function AppointmentDetailScreen() {
 
             <View style={s.actions}>
               <Button
-                label="Reschedule"
+                label={i18n('care.prep')}
                 variant="ghost"
                 style={s.actionBtn}
                 onPress={() => setRescheduleOpen(true)}
               />
               <Button
-                label="Cancel"
+                label={i18n('common.cancel')}
                 variant="ghost"
                 labelColor={t.danger}
                 style={[s.actionBtn, { borderColor: t.danger }]}
@@ -235,7 +237,7 @@ export function AppointmentDetailScreen() {
       <BottomSheet visible={rescheduleOpen} onClose={() => setRescheduleOpen(false)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Reschedule UI pending date/time picker" contract="PATCH /v1/appointments/{id} is available" />
-          <Button label="Close" variant="soft" onPress={() => setRescheduleOpen(false)} style={{ marginTop: 8 }} />
+          <Button label={i18n('common.close')} variant="soft" onPress={() => setRescheduleOpen(false)} style={{ marginTop: 8 }} />
         </View>
       </BottomSheet>
 
@@ -243,7 +245,7 @@ export function AppointmentDetailScreen() {
       <BottomSheet visible={attachmentsOpen} onClose={() => setAttachmentsOpen(false)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Attachments unavailable" contract="unclear and needs manual confirmation" />
-          <Button label="Close" variant="soft" onPress={() => setAttachmentsOpen(false)} style={{ marginTop: 8 }} />
+          <Button label={i18n('common.close')} variant="soft" onPress={() => setAttachmentsOpen(false)} style={{ marginTop: 8 }} />
         </View>
       </BottomSheet>
 
@@ -280,14 +282,14 @@ export function AppointmentDetailScreen() {
             {/* Vertical actions — destructive first */}
             <View style={s.confirmActionsV}>
               <Button
-                label={cancelling ? 'Cancelling…' : 'Yes, cancel'}
+                label={cancelling ? 'Cancelling…' : i18n('common.confirm')}
                 variant="solid"
                 style={[s.confirmBtn, { backgroundColor: t.danger }]}
                 onPress={handleCancel}
                 disabled={cancelling}
               />
               <Button
-                label="Keep it"
+                label={i18n('common.cancel')}
                 variant="ghost"
                 style={s.confirmBtn}
                 onPress={() => { setCancelOpen(false); setCancelError(null); }}

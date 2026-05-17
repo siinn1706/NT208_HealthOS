@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
@@ -15,6 +16,7 @@ import { formatTime } from '../../api/viewModels';
 
 export function TakeMedConfirmScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
   const loadDoses = useCallback(() => medicationService.today(), []);
@@ -56,8 +58,8 @@ export function TakeMedConfirmScreen() {
           </View>
         </View>
 
-        {doses.isLoading && <ApiState title="Loading dose" loading />}
-        {doses.error && <ApiState title="Dose unavailable" message={doses.error.message} actionLabel="Retry" onAction={doses.reload} />}
+        {doses.isLoading && <ApiState title={i18n('api.loading')} loading />}
+        {doses.error && <ApiState title={i18n('api.unavailable')} message={doses.error.message} actionLabel={i18n('common.retry')} onAction={doses.reload} />}
         {!doses.isLoading && !doses.error && !dose && (
           <ApiState title="No dose found" message="There is no scheduled occurrence for this medication today." />
         )}
@@ -92,13 +94,13 @@ export function TakeMedConfirmScreen() {
             <View style={s.actions}>
               {done ? (
                 <>
-                  <Button label="Undo" variant="ghost" onPress={() => router.back()} style={s.flex} />
-                  <Button label="Done" variant="solid" onPress={() => router.back()} style={s.flex} />
+                  <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={s.flex} />
+                  <Button label={i18n('common.done')} variant="solid" onPress={() => router.back()} style={s.flex} />
                 </>
               ) : (
                 <>
-                  <Button label="Skip" variant="ghost" onPress={() => router.back()} style={[s.flex, saving && { opacity: 0.4 }]} />
-                  <Button label={saving ? '…' : 'Confirm'} variant="solid" onPress={saving ? undefined : confirm} style={[s.flex, saving && { opacity: 0.4 }]} />
+                  <Button label={i18n('meds.missed')} variant="ghost" onPress={() => router.back()} style={[s.flex, saving && { opacity: 0.4 }]} />
+                  <Button label={saving ? '…' : i18n('common.confirm')} variant="solid" onPress={saving ? undefined : confirm} style={[s.flex, saving && { opacity: 0.4 }]} />
                 </>
               )}
             </View>

@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -79,6 +80,7 @@ function VisitCard({ visit }: { visit: Appointment }) {
 
 export function MedicalHistoryScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const loadAppointments = useCallback(() => appointmentService.list(), []);
   const appointments = useApiQuery(`${queryKeys.appointments}.history`, loadAppointments);
@@ -96,10 +98,10 @@ export function MedicalHistoryScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.topBarWrap}>
         <TopBar
-          title="Visit History"
+          title={i18n('care.history')}
           left={
             <Text style={[typography.bodyMed, { color: t.brand }]} onPress={() => router.back()}>
-              Back
+              {i18n('common.back')}
             </Text>
           }
         />
@@ -107,18 +109,18 @@ export function MedicalHistoryScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
         {appointments.isLoading && (
-          <ApiState title="Loading visit history" loading skeleton={<TimelineSkeleton />} />
+          <ApiState title={i18n('care.loadingAppointments')} loading skeleton={<TimelineSkeleton />} />
         )}
         {appointments.error && (
           <ApiState
-            title="Visit history unavailable"
+            title={i18n('care.appointmentsUnavailable')}
             message={appointments.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={appointments.reload}
           />
         )}
         {!appointments.isLoading && !appointments.error && history.length === 0 && (
-          <ApiState title="No visit history" message="Completed appointments will appear here." />
+          <ApiState title={i18n('care.noAppointments')} message="Completed appointments will appear here." />
         )}
 
         {/* Mini stats row */}

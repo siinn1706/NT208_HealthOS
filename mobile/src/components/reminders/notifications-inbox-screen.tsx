@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Screen } from '../layout/screen';
@@ -126,6 +127,7 @@ function NotifRow({
 
 export function NotificationsInboxScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [tab, setTab] = useState<TabKey>('All');
 
   const load = useCallback(() => notificationService.list({ per_page: 100 }), []);
@@ -170,8 +172,8 @@ export function NotificationsInboxScreen() {
   return (
     <Screen scroll={false} padding={false}>
       <TopBar
-        title="Notifications"
-        subtitle={`${tabCounts.All} unread · all caught up tomorrow`}
+        title={i18n('reminders.notificationInbox')}
+        subtitle={`${tabCounts.All} ${i18n('reminders.unread')} · all caught up tomorrow`}
         right={
           <View style={styles.topBtns}>
             <TouchableOpacity
@@ -220,12 +222,12 @@ export function NotificationsInboxScreen() {
         })}
       </ScrollView>
 
-      {notifications.isLoading && <ApiState title="Loading notifications" loading />}
+      {notifications.isLoading && <ApiState title={i18n('api.loading')} loading />}
       {notifications.error && (
         <ApiState
-          title="Notifications unavailable"
+          title={i18n('api.unavailable')}
           message={notifications.error.message}
-          actionLabel="Retry"
+          actionLabel={i18n('common.retry')}
           onAction={notifications.reload}
         />
       )}
@@ -235,7 +237,7 @@ export function NotificationsInboxScreen() {
           {/* NEW section */}
           {newItems.length > 0 && (
             <>
-              <Text style={[styles.sectionLabel, { color: t.ink3 }]}>NEW</Text>
+              <Text style={[styles.sectionLabel, { color: t.ink3 }]}>{i18n('reminders.newReminder').toUpperCase()}</Text>
               <View style={[styles.groupCard, { backgroundColor: t.card, borderColor: t.border }]}>
                 {newItems.map((n, i) => (
                   <View key={n.id}>
@@ -250,7 +252,7 @@ export function NotificationsInboxScreen() {
           {/* EARLIER TODAY section */}
           {earlierItems.length > 0 && (
             <>
-              <Text style={[styles.sectionLabel, { color: t.ink3 }]}>EARLIER TODAY</Text>
+              <Text style={[styles.sectionLabel, { color: t.ink3 }]}>{i18n('reminders.today')}</Text>
               <View style={[styles.groupCard, { backgroundColor: t.card, borderColor: t.border }]}>
                 {earlierItems.map((n, i) => (
                   <View key={n.id}>
@@ -264,7 +266,7 @@ export function NotificationsInboxScreen() {
 
           {filtered.length === 0 && (
             <View style={styles.empty}>
-              <Text style={[typography.bodyMed, { color: t.ink3 }]}>No notifications in this category.</Text>
+              <Text style={[typography.bodyMed, { color: t.ink3 }]}>{i18n('reminders.noReminders')}</Text>
             </View>
           )}
 

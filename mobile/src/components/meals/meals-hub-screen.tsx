@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
 import { SectionHeader } from '../layout/section-header';
@@ -48,6 +49,7 @@ function fmtTime(value: string) {
 
 export function MealsHubScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   const today = useMemo(() => new Date(), []);
   const todayIso = isoDate(today);
@@ -135,16 +137,16 @@ export function MealsHubScreen() {
   return (
     <Screen>
       <TopBar
-        title="Meals"
-        subtitle={today.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+        title={i18n('meals.title')}
+        subtitle={today.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric' })}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconCalendar size={20} color={t.ink3} />} variant="subtle" accessibilityLabel="Calendar" />
+            <IconButton icon={<IconCalendar size={20} color={t.ink3} />} variant="subtle" accessibilityLabel={i18n('common.calendar')} />
             {/* Filled circle plus button */}
             <Pressable
               onPress={() => router.push('/meals/add' as never)}
               style={[styles.plusCircle, { backgroundColor: t.brand }]}
-              accessibilityLabel="Add meal"
+              accessibilityLabel={i18n('meals.addMeal')}
             >
               <IconPlus size={18} color="#fff" />
             </Pressable>
@@ -152,12 +154,12 @@ export function MealsHubScreen() {
         }
       />
 
-      {(meals.isLoading || calories.isLoading) && <ApiState title="Loading meals" loading />}
+      {(meals.isLoading || calories.isLoading) && <ApiState title={i18n('meals.loadingMeals')} loading />}
       {(meals.error || calories.error) && (
         <ApiState
-          title="Meals unavailable"
+          title={i18n('meals.mealsUnavailable')}
           message={meals.error?.message ?? calories.error?.message}
-          actionLabel="Retry"
+          actionLabel={i18n('common.retry')}
           onAction={() => {
             meals.reload();
             calories.reload();
@@ -192,21 +194,21 @@ export function MealsHubScreen() {
             <ProgressRing value={Math.min(todayTotals.kcal / DAILY_TARGET_KCAL, 1)} size={84} stroke={8} color="#fff" track="rgba(255,255,255,0.22)">
               <View style={styles.ringCenter}>
                 <Text style={[typography.title, tabularNums, { color: '#fff' }]}>{kcalLeft}</Text>
-                <Text style={[typography.micro, { color: 'rgba(255,255,255,0.7)' }]}>LEFT</Text>
+                <Text style={[typography.micro, { color: 'rgba(255,255,255,0.7)' }]}>{i18n('meals.left')}</Text>
               </View>
             </ProgressRing>
             <View style={styles.heroText}>
-              <Text style={[typography.micro, { color: 'rgba(255,255,255,0.6)', letterSpacing: 1 }]}>CALORIES TODAY</Text>
+              <Text style={[typography.micro, { color: 'rgba(255,255,255,0.6)', letterSpacing: 1 }]}>{i18n('meals.caloriesToday')}</Text>
               <Text style={[typography.h3, tabularNums, { color: '#fff' }]}>{Math.round(todayTotals.kcal)} / {DAILY_TARGET_KCAL} kcal</Text>
-              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.75)' }]}>{mealRows.length} meals logged</Text>
+              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.75)' }]}>{i18n('meals.mealsLogged', { count: mealRows.length })}</Text>
             </View>
           </View>
 
           <View style={styles.macroGrid}>
             {[
-              { label: 'Carbs',   consumed: todayTotals.carbs,   target: 240, color: '#E3B79A' },
-              { label: 'Protein', consumed: todayTotals.protein, target: 120, color: t.brand   },
-              { label: 'Fat',     consumed: todayTotals.fat,     target: 65,  color: '#5B90C4' },
+              { label: i18n('meals.carbs'),   consumed: todayTotals.carbs,   target: 240, color: '#E3B79A' },
+              { label: i18n('meals.protein'), consumed: todayTotals.protein, target: 120, color: t.brand   },
+              { label: i18n('meals.fat'),     consumed: todayTotals.fat,     target: 65,  color: '#5B90C4' },
             ].map((m) => {
               const pct = Math.min(m.consumed / m.target, 1);
               return (
@@ -239,9 +241,9 @@ export function MealsHubScreen() {
             </View>
           </Card>
 
-          <SectionHeader title="Today's meals" action="See all" onActionPress={() => router.push('/meals/trends' as never)} />
+          <SectionHeader title={i18n('meals.todaysMeals')} action={i18n('common.seeAll')} onActionPress={() => router.push('/meals/trends' as never)} />
           {mealRows.length === 0 ? (
-            <ApiState title="No meals logged yet" message="Add your first meal to see daily nutrition progress." />
+            <ApiState title={i18n('meals.noMealsLogged')} message={i18n('meals.addFirstMeal')} />
           ) : (
             <View style={styles.mealList}>
               {mealRows.map((m) => (
@@ -259,16 +261,16 @@ export function MealsHubScreen() {
               ))}
               <Pressable onPress={() => router.push('/meals/add' as never)} style={[styles.addMealRow, { borderColor: t.border, borderRadius: t.radius.lg }]}>
                 <IconPlus size={16} color={t.ink3} />
-                <Text style={[typography.caption, { color: t.ink3, marginLeft: 6 }]}>Add meal</Text>
+                <Text style={[typography.caption, { color: t.ink3, marginLeft: 6 }]}>{i18n('meals.addMeal')}</Text>
               </Pressable>
             </View>
           )}
 
-          <SectionHeader title="This week" action="Trends" onActionPress={() => router.push('/meals/trends' as never)} />
+          <SectionHeader title={i18n('meals.thisWeek')} action={i18n('meals.trends')} onActionPress={() => router.push('/meals/trends' as never)} />
           <Card tight>
             <View style={styles.weekRow}>
               <View>
-                <Text style={[typography.micro, { color: t.ink3 }]}>AVG DAILY</Text>
+                <Text style={[typography.micro, { color: t.ink3 }]}>{i18n('meals.avgDaily')}</Text>
                 <Text style={[typography.title, tabularNums, { color: t.ink }]}>{avgWeek} kcal</Text>
               </View>
               <Sparkline data={weekKcal} color={t.brand} width={140} height={44} fill />

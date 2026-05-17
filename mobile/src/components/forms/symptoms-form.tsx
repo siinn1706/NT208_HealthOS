@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
@@ -14,6 +15,7 @@ const SYMPTOM_OPTIONS = [
 
 export function SymptomsForm() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
   const [severity, setSeverity] = useState(5);
   const [notes, setNotes] = useState('');
@@ -57,25 +59,25 @@ export function SymptomsForm() {
   if (done) {
     return (
       <View style={s.center}>
-        <Text style={[typography.h3, { color: t.ink }]}>Symptoms logged</Text>
+        <Text style={[typography.h3, { color: t.ink }]}>{i18n('forms.symptomsLogged')}</Text>
         <Text style={[typography.caption, { color: t.ink3, marginTop: 6, textAlign: 'center' }]}>
-          Your symptom report has been recorded.
+          {i18n('forms.symptomsLoggedMessage')}
         </Text>
         {triageBucket && (
           <Text style={[typography.caption, { color: t.ink3, marginTop: 6, textAlign: 'center' }]}>
-            Triage: {triageBucket.replace(/_/g, ' ')}
+            {i18n('forms.triage')}: {triageBucket.replace(/_/g, ' ')}
           </Text>
         )}
-        <Button label="Done" variant="solid" onPress={() => router.back()} style={{ marginTop: 20 }} />
+        <Button label={i18n('common.done')} variant="solid" onPress={() => router.back()} style={{ marginTop: 20 }} />
       </View>
     );
   }
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
-      {error && <ApiState title="Validation error" message={error} />}
+      {error && <ApiState title={i18n('forms.validationError')} message={error} />}
 
-      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>SYMPTOMS</Text>
+      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.symptomsLabel')}</Text>
       <View style={s.chipGrid}>
         {SYMPTOM_OPTIONS.map(opt => {
           const active = selected.includes(opt);
@@ -98,7 +100,7 @@ export function SymptomsForm() {
         })}
       </View>
 
-      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>SEVERITY</Text>
+      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.severityLabel')}</Text>
       <View style={s.severityRow}>
         {Array.from({ length: 10 }, (_, i) => i + 1).map(n => {
           const active = severity === n;
@@ -123,22 +125,22 @@ export function SymptomsForm() {
         })}
       </View>
       <Text style={[typography.caption, { color: t.ink4, marginTop: 4 }]}>
-        {severity <= 3 ? 'Mild' : severity <= 6 ? 'Moderate' : 'Severe'} · {severity}/10
+        {severity <= 3 ? i18n('forms.mild') : severity <= 6 ? i18n('forms.moderate') : i18n('forms.severe')} · {severity}/10
       </Text>
 
-      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>NOTES (OPTIONAL)</Text>
+      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.notesOptional')}</Text>
       <TextInput
         value={notes}
         onChangeText={setNotes}
-        placeholder="Describe when symptoms started, triggers, etc."
+        placeholder={i18n('forms.notesPlaceholder')}
         placeholderTextColor={t.ink4}
         multiline
         numberOfLines={4}
         style={[s.notes, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.md, color: t.ink }]}
       />
 
-      <Button label={saving ? 'Submitting...' : 'Submit report'} variant="solid" onPress={saving ? undefined : handleSubmit} style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]} />
-      <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
+      <Button label={saving ? i18n('forms.submitting') : i18n('forms.submitReport')} variant="solid" onPress={saving ? undefined : handleSubmit} style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]} />
+      <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
     </ScrollView>
   );
 }

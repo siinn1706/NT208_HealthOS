@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Card } from '../primitives/card';
@@ -17,6 +18,7 @@ interface MedCardProps {
 
 export function MedCard({ name, dose, adherence, refillDays, onPress }: MedCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const pct = Math.round(adherence * 100);
   const content = (
     <>
@@ -35,7 +37,7 @@ export function MedCard({ name, dose, adherence, refillDays, onPress }: MedCardP
           </View>
         </View>
         <View style={styles.refill}>
-          <Text style={[{ fontSize: 10, color: t.ink4, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }]}>Refill</Text>
+          <Text style={[{ fontSize: 10, color: t.ink4, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }]}>{i18n('meds.refill')}</Text>
           <Text style={[{ fontSize: 13, fontWeight: '700', color: t.ink, fontVariant: ['tabular-nums'] as any, marginTop: 2 }]}>{refillDays}d</Text>
         </View>
       </View>

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { withOpacity } from '../../utils/color-mix';
 import { Screen } from '../layout/screen';
@@ -153,6 +154,7 @@ function OffHero({ onEnable }: { onEnable: () => void }) {
 
 export function ReminderPreferencesScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   const loadPreferences = useCallback(() => notificationService.preferences(), []);
   const preferences = useApiQuery(queryKeys.notificationPreferences, loadPreferences);
@@ -208,15 +210,15 @@ export function ReminderPreferencesScreen() {
   }
 
   if (preferences.isLoading && !preferences.data) {
-    return <Screen><ApiState title="Loading preferences" loading /></Screen>;
+    return <Screen><ApiState title={i18n('api.loading')} loading /></Screen>;
   }
   if (preferences.error && !preferences.data) {
     return (
       <Screen>
         <ApiState
-          title="Preferences unavailable"
+          title={i18n('api.unavailable')}
           message={preferences.error.message}
-          actionLabel="Retry"
+          actionLabel={i18n('common.retry')}
           onAction={preferences.reload}
         />
       </Screen>
@@ -229,7 +231,7 @@ export function ReminderPreferencesScreen() {
       <View style={[s.backBar, { paddingHorizontal: 20 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <ChevronLeft size={20} color={t.ink} />
-          <Text style={[s.backTitle, { color: t.ink }]}>Notifications</Text>
+          <Text style={[s.backTitle, { color: t.ink }]}>{i18n('reminders.notifications')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -250,7 +252,7 @@ export function ReminderPreferencesScreen() {
         {!master && <OffHero onEnable={() => setMaster(true)} />}
 
         {/* Categories */}
-        <GroupLabel text="Categories" />
+        <GroupLabel text={i18n('reminders.preferences')} />
         <GroupCard>
           {CAT_ROWS.map((row, i) => (
             <View key={row.key}>
@@ -263,7 +265,7 @@ export function ReminderPreferencesScreen() {
         </GroupCard>
 
         {/* Quiet hours */}
-        <GroupLabel text="Quiet hours" />
+        <GroupLabel text={i18n('reminders.quietHours')} />
         <View style={[s.quietCard, { backgroundColor: t.card, borderColor: t.border, marginHorizontal: 20 }]}>
           {/* Enable row */}
           <View style={[s.prefRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border }]}>
@@ -313,7 +315,7 @@ export function ReminderPreferencesScreen() {
           onPress={saving ? undefined : handleSave}
           style={[s.saveBtn, { backgroundColor: t.brand, marginHorizontal: 20 }]}
         >
-          <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save preferences'}</Text>
+          <Text style={s.saveBtnText}>{saving ? i18n('reminders.saving') : i18n('common.save')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={s.resetBtn}>

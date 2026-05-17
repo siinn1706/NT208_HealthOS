@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
 import { ApiState } from '../api/api-state';
@@ -31,6 +32,7 @@ function toChartPoints(data: VitalPoint[]) {
 
 export function VitalsDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { width } = useWindowDimensions();
   const [range, setRange] = useState<RangeKey>('7D');
   const selectedDays = RANGES.find((r) => r.key === range)?.days ?? 7;
@@ -50,8 +52,8 @@ export function VitalsDetailScreen() {
   return (
     <Screen>
       <TopBar
-        title="Vitals"
-        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>Back</Text>}
+        title={i18n('home.vitals')}
+        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>{i18n('common.back')}</Text>}
       />
 
       {/* Hero value */}
@@ -81,8 +83,8 @@ export function VitalsDetailScreen() {
       </View>
 
       {/* Chart */}
-      {vitals.isLoading && <ApiState title="Loading vitals" loading skeleton={<ChartSkeleton />} />}
-      {vitals.error && <ApiState title="Vitals unavailable" message={vitals.error.message} actionLabel="Retry" onAction={vitals.reload} />}
+      {vitals.isLoading && <ApiState title={i18n('home.loadingVitals')} loading skeleton={<ChartSkeleton />} />}
+      {vitals.error && <ApiState title={i18n('home.vitalsUnavailable')} message={vitals.error.message} actionLabel={i18n('common.retry')} onAction={vitals.reload} />}
       {!vitals.isLoading && !vitals.error && (
         <View style={[styles.chartCard, { backgroundColor: t.card, borderRadius: t.radius.lg, ...t.shadows.card }]}>
           <VitalsLineChart
@@ -98,7 +100,7 @@ export function VitalsDetailScreen() {
       {/* Stats row */}
       {!vitals.isLoading && avg > 0 && (
         <View style={[styles.statsRow, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
-          {[{ label: 'Avg', value: avg }, { label: 'Min', value: min }, { label: 'Max', value: max }].map((stat, idx, arr) => (
+          {[{ label: i18n('home.avg'), value: avg }, { label: i18n('home.min'), value: min }, { label: i18n('home.max'), value: max }].map((stat, idx, arr) => (
             <React.Fragment key={stat.label}>
               <View style={styles.statCell}>
                 <Text style={[typography.caption, { color: t.ink4 }]}>{stat.label}</Text>
@@ -113,7 +115,7 @@ export function VitalsDetailScreen() {
       {/* Recent readings */}
       {!vitals.isLoading && vitals.data && vitals.data.length > 0 && (
         <>
-          <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>Recent readings</Text>
+          <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>{i18n('home.recentReadings')}</Text>
           {vitals.data.slice(-5).reverse().map((point, i) => (
             <View key={i} style={[styles.readingRow, { borderBottomColor: t.border }]}>
               <Text style={[typography.caption, { color: t.ink4 }]}>

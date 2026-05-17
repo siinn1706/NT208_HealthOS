@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#F4FCFE"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.nt208.healthos"
@@ -40,7 +42,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#F4FCFE"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

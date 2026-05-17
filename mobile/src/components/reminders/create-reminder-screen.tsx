@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, Switch, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Screen } from '../layout/screen';
@@ -14,25 +15,31 @@ import { reminderService } from '../../api/services';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  { id: 'med',      label: 'Medication',  Icon: IconBell },
-  { id: 'appt',     label: 'Appointment', Icon: IconCalendar },
-  { id: 'vitals',   label: 'Vitals',      Icon: IconHeart },
-  { id: 'activity', label: 'Activity',    Icon: IconActivity },
-  { id: 'goal',     label: 'Goal',        Icon: IconTarget },
-  { id: 'care',     label: 'Care team',   Icon: IconStethoscope },
+const CATEGORY_KEYS = [
+  { id: 'med',      labelKey: 'categoryMed',      Icon: IconBell },
+  { id: 'appt',     labelKey: 'categoryAppt',     Icon: IconCalendar },
+  { id: 'vitals',   labelKey: 'categoryVitals',   Icon: IconHeart },
+  { id: 'activity', labelKey: 'categoryActivity', Icon: IconActivity },
+  { id: 'goal',     labelKey: 'categoryGoal',     Icon: IconTarget },
+  { id: 'care',     labelKey: 'categoryCare',     Icon: IconStethoscope },
 ] as const;
 
-type CategoryId = typeof CATEGORIES[number]['id'];
+type CategoryId = typeof CATEGORY_KEYS[number]['id'];
 
 const REPEAT_DAYS = ['M', 'T', 'W', 'T', 'F', 'Sa', 'Su'] as const;
 const REPEAT_TYPES = ['Daily', 'Weekdays', 'Custom'] as const;
+const REPEAT_TYPE_KEYS: Record<string, string> = {
+  Daily: 'repeatDaily',
+  Weekdays: 'repeatWeekdays',
+  Custom: 'repeatCustom',
+};
 const SNOOZE_OPTS  = ['5 min', '15 min', '30 min', '1 hour', 'Custom'] as const;
 
 // ─── component ───────────────────────────────────────────────────────────────
 
 export function CreateReminderScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   const [title,       setTitle]       = useState('');
   const [category,    setCategory]    = useState<CategoryId>('med');
@@ -84,11 +91,11 @@ export function CreateReminderScreen() {
       <View style={[styles.backBar, { paddingHorizontal: 20 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={20} color={t.ink} />
-          <Text style={[styles.backTitle, { color: t.ink }]}>New reminder</Text>
+          <Text style={[styles.backTitle, { color: t.ink }]}>{i18n('reminders.newReminder')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={saving ? undefined : handleSave}>
           <Text style={[styles.saveLink, { color: saving ? t.ink3 : t.brand }]}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? i18n('reminders.saving') : i18n('common.save')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -98,12 +105,12 @@ export function CreateReminderScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {error && <ApiState title="Reminder create failed" message={error} />}
+        {error && <ApiState title={i18n('reminders.reminderCreateFailed')} message={error} />}
 
         {/* Category 3×2 tile grid */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>Category</Text>
+        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldCategory')}</Text>
         <View style={styles.catGrid}>
-          {CATEGORIES.map(({ id, label, Icon }) => {
+          {CATEGORY_KEYS.map(({ id, labelKey, Icon }) => {
             const active = category === id;
             const color  = activeCatColor(id as CategoryId);
             return (
@@ -121,7 +128,7 @@ export function CreateReminderScreen() {
               >
                 <Icon size={20} color={active ? color : t.ink3} />
                 <Text style={[styles.catTileLabel, { color: active ? color : t.ink3 }]}>
-                  {label}
+                  {i18n(`reminders.${labelKey}` as any)}
                 </Text>
               </TouchableOpacity>
             );
@@ -129,24 +136,24 @@ export function CreateReminderScreen() {
         </View>
 
         {/* Title */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>Title</Text>
+        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldTitle')}</Text>
         <TextInput
           value={title}
           onChangeText={setTitle}
-          placeholder="e.g. Metformin 500 mg"
+          placeholder={i18n('reminders.titlePlaceholder')}
           placeholderTextColor={t.ink4}
           style={[styles.input, { backgroundColor: t.card, borderColor: t.border, color: t.ink }]}
         />
 
         {/* Time */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>Time</Text>
+        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldTime')}</Text>
         <View style={[styles.inputRow, { backgroundColor: t.card, borderColor: t.border }]}>
           <IconClock size={16} color={t.ink3} style={{ marginRight: 10 }} />
           <Text style={[styles.inputRowText, { color: t.ink }]}>07:30</Text>
         </View>
 
         {/* Repeat days */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>Repeat</Text>
+        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldRepeat')}</Text>
         <View style={styles.daysRow}>
           {REPEAT_DAYS.map((day, idx) => {
             const on = activeDays.includes(idx);
@@ -169,7 +176,7 @@ export function CreateReminderScreen() {
         </View>
 
         {/* Repeat type */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>Repeat type</Text>
+        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldRepeatType')}</Text>
         <View style={styles.repeatTypeRow}>
           {REPEAT_TYPES.map((r) => {
             const active = repeatType === r;
@@ -186,14 +193,16 @@ export function CreateReminderScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.repeatTileText, { color: active ? t.brand : t.ink3 }]}>{r}</Text>
+                <Text style={[styles.repeatTileText, { color: active ? t.brand : t.ink3 }]}>
+                  {i18n(`reminders.${REPEAT_TYPE_KEYS[r]}` as any)}
+                </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
         {/* Snooze options */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>Snooze options</Text>
+        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldSnooze')}</Text>
         <View style={styles.snoozeRow}>
           {SNOOZE_OPTS.map((s) => {
             const active = snooze === s;
@@ -216,11 +225,11 @@ export function CreateReminderScreen() {
         </View>
 
         {/* Notes */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>Notes (optional)</Text>
+        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldNotes')}</Text>
         <TextInput
           value={notes}
           onChangeText={setNotes}
-          placeholder="Anything to remember…"
+          placeholder={i18n('reminders.notesPlaceholder')}
           placeholderTextColor={t.ink4}
           multiline
           numberOfLines={3}
@@ -234,10 +243,10 @@ export function CreateReminderScreen() {
           </View>
           <View style={styles.pushText}>
             <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600', fontSize: 14 }]}>
-              Push notification
+              {i18n('reminders.pushNotification')}
             </Text>
             <Text style={[typography.body, { color: t.ink3, fontSize: 12 }]}>
-              Banner + sound at scheduled time
+              {i18n('reminders.pushNotificationSub')}
             </Text>
           </View>
           <Switch

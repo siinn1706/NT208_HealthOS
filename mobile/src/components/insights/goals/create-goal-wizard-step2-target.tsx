@@ -1,6 +1,7 @@
 // WizardStep2 — Target & active days step for CreateGoalScreen
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { Card } from '../../primitives/card';
@@ -19,6 +20,7 @@ export function WizardStep2({
   onDay: (d: string) => void;
 }) {
   const t      = useTheme();
+  const { t: i18n } = useTranslation();
   const unit   = category === 'Steps' ? 'STEPS / DAY' : category === 'Sleep' ? 'HRS / NIGHT' : category === 'Weight' ? 'KG TARGET' : 'UNITS / DAY';
   const numVal = parseInt(value, 10) || 0;
   const stepBy = category === 'Steps' ? 500 : 1;
@@ -33,10 +35,10 @@ export function WizardStep2({
   return (
     <View style={styles.stepBody}>
       <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }]}>
-        STEP 2 — TARGET
+        {i18n('insights.wizardStep2Label')}
       </Text>
       <Text style={[typography.display, { color: t.ink, marginBottom: 20, lineHeight: 32 }]}>
-        Set your daily{'\n'}target
+        {i18n('insights.wizardStep2Title')}
       </Text>
 
       <Card style={[s.targetCard, { borderColor: t.border }]}>
@@ -71,12 +73,12 @@ export function WizardStep2({
         <View style={[s.hintCard, { backgroundColor: t.success + '10', borderColor: t.success + '25', borderRadius: t.radius.md }]}>
           <IconCheck size={14} color={t.success} />
           <Text style={[typography.caption, { color: t.success, marginLeft: 6 }]}>
-            Great target! This aligns with health guidelines.
+            {i18n('insights.wizardGreatTarget')}
           </Text>
         </View>
       )}
 
-      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 20, marginBottom: 10 }]}>Active days</Text>
+      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 20, marginBottom: 10 }]}>{i18n('insights.wizardActiveDays')}</Text>
       <View style={s.daysRow}>
         {DAYS.map((d) => {
           const sel = days.includes(d);

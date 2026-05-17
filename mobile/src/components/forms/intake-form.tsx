@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Input } from '../primitives/input/input';
@@ -12,6 +13,7 @@ import { profileService } from '../../api/services';
 
 export function IntakeForm() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [form, setForm] = useState({ name: '', dob: '', phone: '', email: '', address: '' });
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -44,32 +46,32 @@ export function IntakeForm() {
   if (done) {
     return (
       <View style={s.center}>
-        <Text style={[typography.h3, { color: t.ink }]}>Intake submitted</Text>
+        <Text style={[typography.h3, { color: t.ink }]}>{i18n('forms.intakeSubmitted')}</Text>
         <Text style={[typography.caption, { color: t.ink3, marginTop: 6, textAlign: 'center' }]}>
-          Your intake information has been recorded.
+          {i18n('forms.intakeSubmittedMessage')}
         </Text>
-        <Button label="Done" variant="solid" onPress={() => router.back()} style={{ marginTop: 20 }} />
+        <Button label={i18n('common.done')} variant="solid" onPress={() => router.back()} style={{ marginTop: 20 }} />
       </View>
     );
   }
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
-      {error && <ApiState title="Validation error" message={error} />}
+      {error && <ApiState title={i18n('forms.validationError')} message={error} />}
 
-      <Input label="Full name" value={form.name} onChangeText={v => set('name', v)} placeholder="e.g. Nguyen Van A" style={s.field} />
-      <Input label="Date of birth" value={form.dob} onChangeText={v => set('dob', v)} placeholder="YYYY-MM-DD" keyboardType="numeric" style={s.field} />
-      <Input label="Phone number" value={form.phone} onChangeText={v => set('phone', v)} placeholder="+84 xxx xxx xxx" keyboardType="phone-pad" style={s.field} />
-      <Input label="Email" value={form.email} onChangeText={v => set('email', v)} placeholder="example@email.com" keyboardType="email-address" autoCapitalize="none" style={s.field} />
-      <Input label="Address" value={form.address} onChangeText={v => set('address', v)} placeholder="Street, City, Province" style={s.field} />
+      <Input label={i18n('forms.fullName')} value={form.name} onChangeText={v => set('name', v)} placeholder={i18n('forms.fullNamePlaceholder')} style={s.field} />
+      <Input label={i18n('forms.dateOfBirth')} value={form.dob} onChangeText={v => set('dob', v)} placeholder="YYYY-MM-DD" keyboardType="numeric" style={s.field} />
+      <Input label={i18n('forms.phoneNumber')} value={form.phone} onChangeText={v => set('phone', v)} placeholder="+84 xxx xxx xxx" keyboardType="phone-pad" style={s.field} />
+      <Input label={i18n('auth.email')} value={form.email} onChangeText={v => set('email', v)} placeholder={i18n('auth.emailPlaceholder')} keyboardType="email-address" autoCapitalize="none" style={s.field} />
+      <Input label={i18n('forms.address')} value={form.address} onChangeText={v => set('address', v)} placeholder={i18n('forms.addressPlaceholder')} style={s.field} />
 
       <Button
-        label={saving ? 'Submitting...' : 'Submit intake'}
+        label={saving ? i18n('forms.submitting') : i18n('forms.submitIntake')}
         variant="solid"
         onPress={saving ? undefined : handleSubmit}
         style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]}
       />
-      <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
+      <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
     </ScrollView>
   );
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Chip } from '../primitives/chip';
@@ -19,6 +20,7 @@ interface HeroAppointmentCardProps {
 
 export function HeroAppointmentCard({ countdown, doctor, specialty, location, type, onJoin, onMore }: HeroAppointmentCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   return (
     <LinearGradient
@@ -36,7 +38,7 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
       <Text style={[typography.caption, styles.sub]}>{location}</Text>
       <View style={styles.actions}>
         <Button
-          label="Join"
+          label={i18n('care.join')}
           variant="solid"
           icon={<IconVideo size={16} color={t.brand} />}
           onPress={onJoin}
@@ -47,7 +49,7 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
           <Pressable
             onPress={onMore}
             style={[styles.moreBtn, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: t.radius.pill }]}
-            accessibilityLabel="More options"
+            accessibilityLabel={i18n('common.more')}
           >
             <IconMore size={18} color="#FFF" />
           </Pressable>

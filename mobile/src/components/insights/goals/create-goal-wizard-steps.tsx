@@ -1,6 +1,7 @@
 // Types, CATEGORIES, and WizardStep1 for CreateGoalScreen
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import {
@@ -33,13 +34,14 @@ export const CATEGORIES: CategoryMeta[] = [
 
 export function WizardStep1({ value, onChange }: { value: Category | null; onChange: (c: Category) => void }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   return (
     <View style={styles.stepBody}>
       <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }]}>
-        STEP 1 — CATEGORY
+        {i18n('insights.wizardStep1Label')}
       </Text>
       <Text style={[typography.display, { color: t.ink, marginBottom: 6, lineHeight: 32 }]}>
-        What would you{'\n'}like to improve?
+        {i18n('insights.wizardStep1Title')}
       </Text>
 
       {/* 2-column category card grid */}
@@ -83,7 +85,7 @@ export function WizardStep1({ value, onChange }: { value: Category | null; onCha
           <IconSparkle size={14} color={t.brand} />
         </View>
         <Text style={[typography.caption, { color: t.ink3, flex: 1 }]}>
-          AI suggests <Text style={{ color: t.brand, fontWeight: '600' }}>Steps</Text> based on your activity history
+          {i18n('insights.wizardAiSuggests')} <Text style={{ color: t.brand, fontWeight: '600' }}>Steps</Text> {i18n('insights.wizardAiSuggestsSuffix')}
         </Text>
       </View>
     </View>

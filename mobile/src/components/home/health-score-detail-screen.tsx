@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
 import { ApiState, MissingApiState } from '../api/api-state';
@@ -20,6 +21,7 @@ function scoreColor(pct: number, t: ReturnType<typeof useTheme>): string {
 
 export function HealthScoreDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const loadSummary = useCallback(async () => {
     const [summary, reminders, vitals] = await Promise.all([
       dashboardService.summary(),
@@ -33,12 +35,12 @@ export function HealthScoreDetailScreen() {
   return (
     <Screen>
       <TopBar
-        title="Health Score"
-        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>Back</Text>}
+        title={i18n('home.healthScore')}
+        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>{i18n('common.back')}</Text>}
       />
 
-      {score.isLoading && <ApiState title="Loading score" loading />}
-      {score.error && <ApiState title="Score unavailable" message={score.error.message} actionLabel="Retry" onAction={score.reload} />}
+      {score.isLoading && <ApiState title={i18n('home.loadingScore')} loading />}
+      {score.error && <ApiState title={i18n('home.scoreUnavailable')} message={score.error.message} actionLabel={i18n('common.retry')} onAction={score.reload} />}
       {score.data && (
         <>
           <View style={[styles.scoreHeader, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
@@ -54,14 +56,14 @@ export function HealthScoreDetailScreen() {
                 <Text style={[typography.caption, { color: t.ink3, textAlign: 'center', marginTop: -2 }]}>/100</Text>
               </View>
             </ProgressRing>
-            <Text style={[typography.h3, { color: t.ink, marginTop: 16 }]}>Health Score</Text>
+            <Text style={[typography.h3, { color: t.ink, marginTop: 16 }]}>{i18n('home.healthScore')}</Text>
             <Text style={[typography.body, { color: t.ink3, marginTop: 4, textAlign: 'center' }]}>{score.data.score.copy}</Text>
           </View>
 
-          <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>Score inputs</Text>
+          <Text style={[typography.h3, styles.sectionTitle, { color: t.ink }]}>{i18n('home.scoreInputs')}</Text>
           <View style={[styles.categoriesCard, { backgroundColor: t.card, borderRadius: t.radius.md }]}>
             {score.data.kpis.length === 0 && (
-              <Text style={[typography.caption, { color: t.ink3 }]}>No KPI inputs returned by Core.</Text>
+              <Text style={[typography.caption, { color: t.ink3 }]}>{i18n('home.noKpiInputs')}</Text>
             )}
             {score.data.kpis.map((item) => (
               <View key={item.id} style={styles.catRow}>

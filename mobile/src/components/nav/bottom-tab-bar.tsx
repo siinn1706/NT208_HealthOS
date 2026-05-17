@@ -4,6 +4,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../theme/useTheme';
 import { useThemeContext } from '../../theme/theme-provider';
@@ -16,11 +17,11 @@ import { typography } from '../../theme/typography';
 import { TAB_BAR_CONTENT_HEIGHT } from './tab-bar-metrics';
 
 const TAB_ICONS = [
-  { key: 'home',  Icon: Home,          label: 'Home'  },
-  { key: 'care',  Icon: IconCalendar,  label: 'Care'  },
-  { key: 'chat',  Icon: IconChat,      label: 'Chat'  },
-  { key: 'meds',  Icon: IconPill,      label: 'Meds'  },
-  { key: 'me',    Icon: IconUser,      label: 'Me'    },
+  { key: 'home',  Icon: Home,          labelKey: 'nav.home' as const },
+  { key: 'care',  Icon: IconCalendar,  labelKey: 'nav.care' as const },
+  { key: 'chat',  Icon: IconChat,      labelKey: 'nav.chat' as const },
+  { key: 'meds',  Icon: IconPill,      labelKey: 'nav.meds' as const },
+  { key: 'me',    Icon: IconUser,      labelKey: 'nav.me'   as const },
 ];
 
 function TabItem({
@@ -64,6 +65,7 @@ function TabItem({
 
 export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { name: themeName } = useThemeContext();
   const insets = useSafeAreaInsets();
   const height = TAB_BAR_CONTENT_HEIGHT + insets.bottom;
@@ -84,7 +86,7 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
         {TAB_ICONS.map((tab, i) => (
           <TabItem
             key={tab.key}
-            label={tab.label}
+            label={i18n(tab.labelKey)}
             Icon={tab.Icon}
             active={state.index === i}
             badgeCount={tab.key === 'chat' ? (chatBadge > 0 ? chatBadge : undefined) : undefined}

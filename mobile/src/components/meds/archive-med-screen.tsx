@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
@@ -13,6 +14,7 @@ import { queryKeys } from '../../api/queryKeys';
 
 export function ArchiveMedScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
   const [confirmed, setConfirmed] = useState(false);
@@ -48,7 +50,7 @@ export function ArchiveMedScreen() {
           </View>
 
           <Text style={[typography.title, { color: t.ink, textAlign: 'center', marginTop: 12 }]}>
-            Archive medication?
+            {i18n('meds.archive')}?
           </Text>
           <Text style={[typography.caption, { color: t.ink3, textAlign: 'center', marginTop: 6, lineHeight: 18 }]}>
             Archiving moves this medication to your history. Reminders will stop and it will no longer appear in your active list.
@@ -77,13 +79,13 @@ export function ArchiveMedScreen() {
 
           {/* Archive button — full width red */}
           <Button
-            label={saving ? 'Archiving...' : 'Archive medication'}
+            label={saving ? i18n('meds.saving') : i18n('meds.archive')}
             variant="solid"
             onPress={(!confirmed || saving) ? undefined : handleArchive}
             style={[s.archiveBtn, { backgroundColor: t.danger }, (!confirmed || saving) && { opacity: 0.4 }]}
             labelColor="#fff"
           />
-          <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={s.cancelBtn} />
+          <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={s.cancelBtn} />
         </View>
       </View>
     </SafeAreaView>

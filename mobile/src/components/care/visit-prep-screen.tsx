@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
@@ -29,6 +30,7 @@ const CHECKLIST_ITEMS = [
 
 export function VisitPrepScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
@@ -49,12 +51,12 @@ export function VisitPrepScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.bar}>
         <TopBar
-          title="Visit prep"
+          title={i18n('care.prepForVisit')}
           left={
             <IconButton
               icon={<ChevronLeft size={22} color={t.ink} />}
               onPress={() => router.back()}
-              accessibilityLabel="Back"
+              accessibilityLabel={i18n('common.back')}
             />
           }
         />
@@ -80,12 +82,12 @@ export function VisitPrepScreen() {
         </LinearGradient>
 
         {/* Appointment context */}
-        {apptId && appointmentQuery.isLoading && <ApiState title="Loading appointment" loading />}
+        {apptId && appointmentQuery.isLoading && <ApiState title={i18n('care.loadingAppointments')} loading />}
         {apptId && appointmentQuery.error && (
           <ApiState
-            title="Appointment unavailable"
+            title={i18n('care.appointmentsUnavailable')}
             message={appointmentQuery.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={appointmentQuery.reload}
           />
         )}

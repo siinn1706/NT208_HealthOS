@@ -84,8 +84,8 @@ export const warmPalette: ThemeTokens = {
   successSoft: 'rgba(5,150,105,0.12)',
   warningSoft: 'rgba(217,119,6,0.12)',
   dangerSoft: 'rgba(229,77,77,0.12)',
-  toneWater: '#B97843',
-  toneKcal: '#B97843',
+  toneWater: '#5B8A72',
+  toneKcal: '#C4854A',
   toneSleep: '#8A7C63',
 };
 

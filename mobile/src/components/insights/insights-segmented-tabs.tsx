@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 
@@ -9,14 +10,15 @@ type InsightsTab = 'reports' | 'risk' | 'goals';
 
 interface InsightsSegmentedTabsProps { active: InsightsTab; }
 
-const TABS: { key: InsightsTab; label: string; route: string }[] = [
-  { key: 'reports', label: 'Reports', route: '/insights/reports' },
-  { key: 'risk',    label: 'Risks',   route: '/insights/risk'    },
-  { key: 'goals',   label: 'Goals',   route: '/insights/goals'   },
-];
-
 export function InsightsSegmentedTabs({ active }: InsightsSegmentedTabsProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
+
+  const TABS: { key: InsightsTab; label: string; route: string }[] = [
+    { key: 'reports', label: i18n('insights.tabReports'), route: '/insights/reports' },
+    { key: 'risk',    label: i18n('insights.tabRisks'),   route: '/insights/risk'    },
+    { key: 'goals',   label: i18n('insights.tabGoals'),   route: '/insights/goals'   },
+  ];
   return (
     <View style={[styles.container, { backgroundColor: t.brandSoft, borderRadius: t.radius.lg }]}>
       {TABS.map((tab) => {

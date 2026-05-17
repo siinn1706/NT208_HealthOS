@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Linking, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Toggle } from '../../primitives/toggle';
 import { reportService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
@@ -25,6 +26,7 @@ interface IncludeToggles {
 
 export function ReportExportScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   // Format state kept for export logic compatibility
   const [format, setFormat] = useState<ExportFormat>('pdf');
@@ -153,7 +155,7 @@ export function ReportExportScreen() {
         <View style={styles.handle} />
 
         {/* Title */}
-        <Text style={[typography.h3, { color: '#111' }]}>Share weekly report</Text>
+        <Text style={[typography.h3, { color: '#111' }]}>{i18n('insights.shareReport')}</Text>
         <Text style={[typography.caption, { color: '#888', marginTop: 4, marginBottom: 20 }]}>Apr 18 – Apr 24</Text>
 
         {/* Destination tiles */}
@@ -183,7 +185,7 @@ export function ReportExportScreen() {
 
         {/* Include toggles */}
         <Text style={[typography.micro, { color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }]}>
-          WHAT TO INCLUDE
+          {i18n('insights.whatToInclude')}
         </Text>
         <View style={styles.includeList}>
           {includeRows.map(({ key, label, sub }, idx) => (
@@ -232,7 +234,7 @@ export function ReportExportScreen() {
         {/* Action buttons */}
         <View style={styles.actionRow}>
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
-            <Text style={[typography.button, { color: '#333' }]}>Cancel</Text>
+            <Text style={[typography.button, { color: '#333' }]}>{i18n('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={exporting ? undefined : handleExport}
@@ -241,7 +243,7 @@ export function ReportExportScreen() {
             {exporting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={[typography.button, { color: '#fff' }]}>Share PDF</Text>
+              <Text style={[typography.button, { color: '#fff' }]}>{i18n('insights.sharePdf')}</Text>
             )}
           </Pressable>
         </View>
@@ -249,14 +251,14 @@ export function ReportExportScreen() {
         {/* Open download link if available */}
         {downloadUrl && (
           <Pressable onPress={handleOpenDownload} style={{ marginTop: 12, alignItems: 'center' }}>
-            <Text style={[typography.caption, { color: t.brand }]}>Open download link</Text>
+            <Text style={[typography.caption, { color: t.brand }]}>{i18n('insights.openDownload')}</Text>
           </Pressable>
         )}
 
         {/* Refresh status link if request started */}
         {requestId && !downloadUrl && (
           <Pressable onPress={handleRefreshStatus} style={{ marginTop: 8, alignItems: 'center' }}>
-            <Text style={[typography.caption, { color: t.brand }]}>Refresh export status</Text>
+            <Text style={[typography.caption, { color: t.brand }]}>{i18n('insights.refreshStatus')}</Text>
           </Pressable>
         )}
       </View>

@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Button } from '../../primitives/button';
 import { Card } from '../../primitives/card';
@@ -17,6 +18,7 @@ import { ChevronLeft, IconMore, IconBell, IconFire } from '../../../icons';
 
 export function GoalDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const routeId = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -29,7 +31,7 @@ export function GoalDetailScreen() {
   if (goal.isLoading || profile.isLoading) {
     return (
       <Screen>
-        <ApiState title="Loading goal" loading />
+        <ApiState title={i18n('insights.loadingGoals')} loading />
       </Screen>
     );
   }
@@ -37,7 +39,7 @@ export function GoalDetailScreen() {
   if (goal.error || profile.error) {
     return (
       <Screen>
-        <ApiState title="Goal unavailable" message={goal.error?.message ?? profile.error?.message} actionLabel="Retry" onAction={() => { goal.reload(); profile.reload(); }} />
+        <ApiState title={i18n('insights.goalsUnavailable')} message={goal.error?.message ?? profile.error?.message} actionLabel={i18n('common.retry')} onAction={() => { goal.reload(); profile.reload(); }} />
       </Screen>
     );
   }
@@ -45,7 +47,7 @@ export function GoalDetailScreen() {
   if (!goal.data) {
     return (
       <Screen>
-        <ApiState title="No goal configured" message="Create a health goal first." actionLabel="Back" onAction={() => router.back()} />
+        <ApiState title={i18n('insights.noGoalConfigured')} message={i18n('insights.noGoalMessage')} actionLabel={i18n('common.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -53,7 +55,7 @@ export function GoalDetailScreen() {
   if (routeId && routeId !== goal.data.id) {
     return (
       <Screen>
-        <ApiState title="Goal not found" message="Requested goal id does not match current single-goal contract." actionLabel="Back" onAction={() => router.back()} />
+        <ApiState title="Goal not found" message="Requested goal id does not match current single-goal contract." actionLabel={i18n('common.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -71,7 +73,7 @@ export function GoalDetailScreen() {
       <View style={styles.backBar}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={20} color={t.ink} />
-          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>Back</Text>
+          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>{i18n('common.back')}</Text>
         </Pressable>
         <View style={styles.headerActions}>
           <Pressable style={[styles.iconBtn, { borderColor: t.border }]} hitSlop={6}>
@@ -109,7 +111,7 @@ export function GoalDetailScreen() {
             <Text style={[styles.ringMain, { color: '#fff' }]}>
               {remaining !== null ? `${remaining.toFixed(1)}` : '--'}
             </Text>
-            <Text style={[typography.micro, { color: 'rgba(255,255,255,0.75)' }]}>to go</Text>
+            <Text style={[typography.micro, { color: 'rgba(255,255,255,0.75)' }]}>{i18n('insights.toGo')}</Text>
           </View>
         </ProgressRing>
 
@@ -124,30 +126,30 @@ export function GoalDetailScreen() {
           <Text style={styles.statEmoji}>🔥</Text>
           <Text style={[typography.h3, { color: t.ink }]}>--</Text>
           <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5 }]}>STREAK</Text>
-          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>Streak data unavailable</Text>
+          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{i18n('insights.streakUnavailable')}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statEmoji}>🏆</Text>
           <Text style={[typography.h3, { color: t.ink }]}>--</Text>
           <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5 }]}>BEST</Text>
-          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>Best data unavailable</Text>
+          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{i18n('insights.bestUnavailable')}</Text>
         </Card>
       </View>
 
-      <SectionHeader title="This Week" />
+      <SectionHeader title={i18n('insights.thisWeek')} />
       <Card>
         {/* TODO(api): GET /v1/health-goals/{id}/progress?period=7d */}
         <MissingApiState title="Weekly progress chart unavailable" contract="TODO: GET /v1/health-goals/{id}/progress?period=7d" />
       </Card>
 
-      <SectionHeader title="Check-in History" />
+      <SectionHeader title={i18n('insights.checkInHistory')} />
       <Card>
         {/* TODO(api): GET /v1/health-goals/{id}/checkins */}
         <MissingApiState title="Check-in history unavailable" contract="TODO: GET /v1/health-goals/{id}/checkins" />
       </Card>
 
       <View style={styles.footer}>
-        <Button label="Log Progress" disabled />
+        <Button label={i18n('insights.logProgress')} disabled />
       </View>
     </Screen>
   );

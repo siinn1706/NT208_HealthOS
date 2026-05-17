@@ -1,6 +1,7 @@
 // WizardStep3 — Reminders & tracking step for CreateGoalScreen
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { Card } from '../../primitives/card';
@@ -30,20 +31,21 @@ export function WizardStep3({
   onDay: (d: string) => void;
 }) {
   const t = useTheme();
-  const [duration, setDuration]       = useState('4 wk');
+  const { t: i18n } = useTranslation();
+  const [duration, setDuration] = useState('4 wk');
   const [trackingSource, setTracking] = useState<string>('wearable');
 
   return (
     <View style={styles.stepBody}>
       <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }]}>
-        STEP 3 — SCHEDULE
+        {i18n('insights.wizardStep3Label')}
       </Text>
       <Text style={[typography.display, { color: t.ink, marginBottom: 20, lineHeight: 32 }]}>
-        Set reminders{'\n'}& tracking
+        {i18n('insights.wizardStep3Title')}
       </Text>
 
       {/* Duration chips */}
-      <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 8 }]}>Duration</Text>
+      <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 8 }]}>{i18n('insights.wizardDuration')}</Text>
       <View style={s.chipRow}>
         {DURATIONS.map((d) => {
           const active = duration === d;
@@ -60,14 +62,14 @@ export function WizardStep3({
       </View>
 
       {/* Start date field */}
-      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 18, marginBottom: 8 }]}>Start date</Text>
+      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 18, marginBottom: 8 }]}>{i18n('insights.wizardStartDate')}</Text>
       <View style={[s.dateField, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.md }]}>
         <Text style={[typography.bodyMed, { color: t.ink }]}>Today — {new Date().toLocaleDateString()}</Text>
         <IconTarget size={16} color={t.ink4} />
       </View>
 
       {/* Reminders grouped list */}
-      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 18, marginBottom: 8 }]}>Reminders</Text>
+      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 18, marginBottom: 8 }]}>{i18n('insights.wizardReminders')}</Text>
       <Card tight>
         {REMINDER_ROWS.map((row, i) => (
           <View
@@ -87,7 +89,7 @@ export function WizardStep3({
       </Card>
 
       {/* Tracking source — 2-col cards */}
-      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 18, marginBottom: 8 }]}>Tracking source</Text>
+      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 18, marginBottom: 8 }]}>{i18n('insights.wizardTrackingSource')}</Text>
       <View style={s.sourceGrid}>
         {TRACKING_SOURCES.map((src) => {
           const active = trackingSource === src.key;

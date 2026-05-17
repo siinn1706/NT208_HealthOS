@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { TAB_BAR_CONTENT_HEIGHT } from '../nav/tab-bar-metrics';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -20,6 +21,7 @@ import { formatDate } from '../../api/viewModels';
 
 export function PrescriptionDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const appointmentId = (Array.isArray(id) ? id[0] : id) ?? '';
@@ -31,18 +33,18 @@ export function PrescriptionDetailScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.bar}>
         <TopBar
-          title="Prescription"
-          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel="Back" />}
+          title={i18n('care.prescriptionDetail')}
+          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel={i18n('common.back')} />}
         />
       </View>
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
-        {appointmentQuery.isLoading && <ApiState title="Loading prescription" loading />}
+        {appointmentQuery.isLoading && <ApiState title={i18n('care.loadingAppointments')} loading />}
         {appointmentQuery.error && (
           <ApiState
-            title="Prescription unavailable"
+            title={i18n('care.appointmentsUnavailable')}
             message={appointmentQuery.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={appointmentQuery.reload}
           />
         )}
@@ -109,7 +111,7 @@ export function PrescriptionDetailScreen() {
             {/* CTAs */}
             <View style={s.ctaRow}>
               <Button label="Share PDF" variant="ghost" style={s.ctaBtn} onPress={() => {}} />
-              <Button label="Refill" variant="solid" style={s.ctaBtn} onPress={() => router.push(`/meds/import?appointmentId=${appointmentId}` as never)} />
+              <Button label={i18n('meds.refill')} variant="solid" style={s.ctaBtn} onPress={() => router.push(`/meds/import?appointmentId=${appointmentId}` as never)} />
             </View>
             <MissingApiState title="Prescription asset download unavailable" contract="existing API needs adaptation" />
           </>

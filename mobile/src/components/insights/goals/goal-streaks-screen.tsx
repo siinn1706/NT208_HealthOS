@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Card } from '../../primitives/card';
 import { SectionHeader } from '../../layout/section-header';
@@ -21,6 +22,7 @@ const TOTAL_CELLS = WEEK_LABELS.length * DAY_LABELS.length; // 35
 
 export function GoalStreaksScreen() {
   const t    = useTheme();
+  const { t: i18n } = useTranslation();
   const { name: themeName } = useThemeContext();
   const isNight = themeName === 'night';
 
@@ -30,7 +32,7 @@ export function GoalStreaksScreen() {
   if (goal.isLoading) {
     return (
       <Screen>
-        <ApiState title="Loading streaks" loading />
+        <ApiState title={i18n('insights.loadingStreaks')} loading />
       </Screen>
     );
   }
@@ -38,7 +40,7 @@ export function GoalStreaksScreen() {
   if (goal.error) {
     return (
       <Screen>
-        <ApiState title="Streaks unavailable" message={goal.error.message} actionLabel="Retry" onAction={goal.reload} />
+        <ApiState title={i18n('insights.streaksUnavailable')} message={goal.error.message} actionLabel={i18n('common.retry')} onAction={goal.reload} />
       </Screen>
     );
   }
@@ -55,7 +57,7 @@ export function GoalStreaksScreen() {
     <Screen>
       <Pressable onPress={() => router.back()} style={styles.backBar}>
         <ChevronLeft size={20} color={t.ink} />
-        <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>Streaks</Text>
+        <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>{i18n('insights.streaks')}</Text>
       </Pressable>
 
       {/* Hero */}
@@ -76,7 +78,7 @@ export function GoalStreaksScreen() {
       </LinearGradient>
 
       {/* Last 5 weeks heatmap */}
-      <SectionHeader title="Last 5 weeks" />
+      <SectionHeader title={i18n('insights.last5Weeks')} />
       <Card style={styles.heatmapCard}>
         {/* Day labels row */}
         <View style={styles.heatmapHeader}>
@@ -133,7 +135,7 @@ export function GoalStreaksScreen() {
       </Card>
 
       {/* By goal */}
-      <SectionHeader title="By goal" />
+      <SectionHeader title={i18n('insights.byGoal')} />
       <Card tight>
         {[
           { emoji: '🎯', label: goal.data ? (goal.data as any).category ?? 'Active goal' : 'Goal 1' },

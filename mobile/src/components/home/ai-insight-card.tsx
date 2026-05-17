@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconSparkle } from '../../icons';
@@ -13,6 +14,7 @@ interface AiInsightCardProps {
 
 export function AiInsightCard({ title, body, onPress }: AiInsightCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const content = (
     <View style={[styles.card, { backgroundColor: t.brandSoft, borderRadius: t.radius.xl }]}>
       <View style={styles.header}>
@@ -20,7 +22,7 @@ export function AiInsightCard({ title, body, onPress }: AiInsightCardProps) {
           <IconSparkle size={18} color="#FFFFFF" />
         </View>
         <View style={styles.headerText}>
-          <Text style={[typography.micro, { color: t.brand }]}>AI INSIGHT</Text>
+          <Text style={[typography.micro, { color: t.brand }]}>{i18n('home.aiInsight')}</Text>
           <Text style={[typography.bodyMed, { color: t.ink, marginTop: 2 }]}>{title}</Text>
         </View>
       </View>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
@@ -14,6 +15,7 @@ const DURATION_OPTIONS = ['1 wk', '2 wks', '1 mo', 'Custom'];
 
 export function PauseMedScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
   const [selectedDuration, setSelectedDuration] = useState(0);
@@ -52,7 +54,7 @@ export function PauseMedScreen() {
             <Text style={{ fontSize: 20 }}>⏸</Text>
           </View>
           <View style={s.flex}>
-            <Text style={[typography.title, { color: t.ink }]}>Pause medication?</Text>
+            <Text style={[typography.title, { color: t.ink }]}>{i18n('meds.pause')}?</Text>
             <Text style={[typography.caption, { color: t.brand, marginTop: 2 }]}>
               Suspends all dose reminders for the selected duration
             </Text>
@@ -104,9 +106,9 @@ export function PauseMedScreen() {
 
         {/* Actions — ghost cancel + orange pause */}
         <View style={s.actions}>
-          <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={s.flex} />
+          <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={s.flex} />
           <Button
-            label={saving ? 'Pausing...' : 'Pause'}
+            label={saving ? i18n('meds.saving') : i18n('meds.pause')}
             variant="solid"
             onPress={saving ? undefined : handlePause}
             style={[s.flex, { backgroundColor: t.warning }, saving && { opacity: 0.4 }]}

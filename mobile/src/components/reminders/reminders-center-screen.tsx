@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Screen } from '../layout/screen';
@@ -16,14 +17,15 @@ import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { notificationService, reminderService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 
-const FILTERS = ['All', 'Medication', 'Appointment', 'Vitals', 'Activity'];
-const TYPE_BY_FILTER: Record<string, 'medicine' | 'appointment' | 'exercise' | null> = {
-  All: null,
-  Medication: 'medicine',
-  Appointment: 'appointment',
-  Vitals: null,
-  Activity: 'exercise',
-};
+const FILTER_KEYS = [
+  { key: 'filterAll',         type: null },
+  { key: 'filterMedication',  type: 'medicine' as const },
+  { key: 'filterAppointment', type: 'appointment' as const },
+  { key: 'filterVitals',      type: null },
+  { key: 'filterActivity',    type: 'exercise' as const },
+] as const;
+
+type FilterKey = typeof FILTER_KEYS[number]['key'];
 
 function timeLabel(value?: string | null, fallback?: string | null) {
   const source = value ?? fallback;
@@ -87,11 +89,12 @@ const railStyles = StyleSheet.create({
 
 export function RemindersCenterScreen() {
   const t = useTheme();
-  const [activeFilter, setActiveFilter] = useState('All');
+  const { t: i18n } = useTranslation();
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('filterAll');
 
   const loadReminders = useCallback(() => {
-    const type = TYPE_BY_FILTER[activeFilter];
-    return reminderService.list(type ?? undefined);
+    const entry = FILTER_KEYS.find((f) => f.key === activeFilter);
+    return reminderService.list(entry?.type ?? undefined);
   }, [activeFilter]);
   const loadUnread = useCallback(() => notificationService.unreadCount(), []);
 
@@ -140,12 +143,12 @@ export function RemindersCenterScreen() {
   return (
     <Screen>
       <TopBar
-        title="Reminders"
+        title={i18n('reminders.title')}
         subtitle={`${upcoming.length} due today · ${overdue.length} overdue`}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconFilter size={20} color={t.ink3} />} accessibilityLabel="Filter" />
-            <IconButton icon={<IconPlus size={20} color={t.brand} />} variant="filled" accessibilityLabel="New reminder" onPress={() => router.push('/reminders/create' as never)} />
+            <IconButton icon={<IconFilter size={20} color={t.ink3} />} accessibilityLabel={i18n('common.filter')} />
+            <IconButton icon={<IconPlus size={20} color={t.brand} />} variant="filled" accessibilityLabel={i18n('reminders.newReminder')} onPress={() => router.push('/reminders/create' as never)} />
           </View>
         }
       />
@@ -157,7 +160,7 @@ export function RemindersCenterScreen() {
             <Text style={{ fontSize: 17, fontWeight: '800', color: t.ink }}>{done.length}/{rows.length}</Text>
           </ProgressRing>
           <View style={styles.snapshotText}>
-            <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.8 }]}>TODAY</Text>
+            <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.8 }]}>{i18n('reminders.today')}</Text>
             <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '800', fontSize: 17, marginTop: 2 }]}>
               {done.length} done · {rows.length - done.length} left
             </Text>
@@ -171,12 +174,12 @@ export function RemindersCenterScreen() {
 
       {/* Filter chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-        {FILTERS.map((f) => {
-          const active = activeFilter === f;
+        {FILTER_KEYS.map((f) => {
+          const active = activeFilter === f.key;
           return (
             <TouchableOpacity
-              key={f}
-              onPress={() => setActiveFilter(f)}
+              key={f.key}
+              onPress={() => setActiveFilter(f.key)}
               style={[
                 styles.chip,
                 {
@@ -187,23 +190,22 @@ export function RemindersCenterScreen() {
               ]}
             >
               <Text style={[typography.body, { color: active ? '#fff' : t.ink3, fontWeight: active ? '600' : '400' }]}>
-                {f}
+                {i18n(`reminders.${f.key}` as any)}
               </Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {reminders.isLoading && <ApiState title="Loading reminders" loading />}
-      {reminders.error && <ApiState title="Reminders unavailable" message={reminders.error.message} actionLabel="Retry" onAction={reminders.reload} />}
+      {reminders.isLoading && <ApiState title={i18n('api.loading')} loading />}
+      {reminders.error && <ApiState title={i18n('api.unavailable')} message={reminders.error.message} actionLabel={i18n('common.retry')} onAction={reminders.reload} />}
       {!reminders.isLoading && !reminders.error && rows.length === 0 && (
-        <ApiState title="No reminders yet" message="Create your first reminder to track medications and appointments." />
+        <ApiState title={i18n('reminders.noReminders')} message={i18n('reminders.noRemindersMessage')} />
       )}
 
-      {/* Overdue section — pink-tinted joined card */}
       {overdue.length > 0 && (
         <>
-          <SectionHeader title="Overdue" />
+          <SectionHeader title={i18n('reminders.overdue')} />
           <Card style={[styles.joinedCard, { backgroundColor: `${t.danger}08`, borderColor: `${t.danger}30`, padding: 0, overflow: 'hidden' }]}>
             {overdue.map((r, i) => (
               <ReminderRow
@@ -222,7 +224,7 @@ export function RemindersCenterScreen() {
       {/* Up Next section — joined card */}
       {upcoming.length > 0 && (
         <>
-          <SectionHeader title="Up Next" />
+          <SectionHeader title={i18n('reminders.upNext')} />
           <Card style={[styles.joinedCard, { padding: 0, overflow: 'hidden' }]}>
             {upcoming.map((r, i) => (
               <ReminderRow
@@ -241,15 +243,15 @@ export function RemindersCenterScreen() {
 
       {done.length > 0 && (
         <>
-          <SectionHeader title="Done Today" />
+          <SectionHeader title={i18n('reminders.doneToday')} />
           {done.map((r) => <ReminderRow key={r.id} {...r} onPress={() => router.push(`/reminders/${r.id}` as never)} />)}
         </>
       )}
 
       <TouchableOpacity onPress={() => router.push('/reminders/notifications' as never)} style={[styles.inboxRow, { backgroundColor: t.card, borderColor: t.border }]}>
         <IconBell size={18} color={t.brand} />
-        <Text style={[typography.bodyMed, { color: t.ink, flex: 1, marginLeft: 10 }]}>Notification inbox</Text>
-        <Text style={[typography.body, { color: t.brand }]}>{unread.data ?? 0} unread →</Text>
+        <Text style={[typography.bodyMed, { color: t.ink, flex: 1, marginLeft: 10 }]}>{i18n('reminders.notificationInbox')}</Text>
+        <Text style={[typography.body, { color: t.brand }]}>{unread.data ?? 0} {i18n('reminders.unread')} →</Text>
       </TouchableOpacity>
     </Screen>
   );

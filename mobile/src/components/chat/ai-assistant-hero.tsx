@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconRobot } from '../../icons';
@@ -16,6 +17,7 @@ interface AiAssistantHeroProps {
 
 export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggestionPress }: AiAssistantHeroProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   return (
     <Pressable onPress={onPress}>
@@ -30,10 +32,10 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggesti
             <IconRobot size={22} color="#FFFFFF" />
           </View>
           <View style={styles.info}>
-            <Text style={[{ fontSize: 15, fontWeight: '700', color: t.ink }]}>HealthOS AI</Text>
+            <Text style={[{ fontSize: 15, fontWeight: '700', color: t.ink }]}>{i18n('chat.aiName')}</Text>
             <View style={styles.online}>
               <View style={[styles.dot, { backgroundColor: t.success }]} />
-              <Text style={[typography.micro, { color: t.ink3 }]}>Ready to help · Always private</Text>
+              <Text style={[typography.micro, { color: t.ink3 }]}>{i18n('chat.aiStatus')}</Text>
             </View>
           </View>
         </View>

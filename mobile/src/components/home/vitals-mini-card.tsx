@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Card } from '../primitives/card';
@@ -16,14 +17,15 @@ interface VitalsMiniCardProps {
 
 export function VitalsMiniCard({ avg, trend, deltaBpm, onPress }: VitalsMiniCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const isDown = deltaBpm < 0;
 
   const inner = (
     <View style={styles.row}>
       <View>
-        <Text style={[typography.caption, { color: t.ink3, fontWeight: '600' }]}>Heart rate · 7 days</Text>
+        <Text style={[typography.caption, { color: t.ink3, fontWeight: '600' }]}>{i18n('home.heartRate7Days')}</Text>
         <Text style={[styles.avgText, { color: t.ink }]}>
-          {avg}<Text style={[typography.caption, { color: t.ink3 }]}> bpm avg</Text>
+          {avg}<Text style={[typography.caption, { color: t.ink3 }]}> {i18n('home.bpmAvg')}</Text>
         </Text>
       </View>
       <View style={styles.right}>

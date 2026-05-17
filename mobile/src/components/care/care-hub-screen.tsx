@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { useThemeContext } from '../../theme/theme-provider';
 import { typography } from '../../theme/typography';
@@ -32,22 +33,23 @@ const HERO_GRADIENTS: Record<string, readonly [string, string]> = {
   warm:  ['#8C5A2A', '#C4854A'],
 };
 
-function fmtDate(value?: string | null) {
-  if (!value) return 'No date';
+function fmtDate(value?: string | null, noDateLabel = 'No date') {
+  if (!value) return noDateLabel;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-// Joined quick-access rows inside a single Card
-const QUICK_ROWS = [
-  { id: 'prescriptions', icon: <IconPill size={20} color="#41BCE6" />, iconBg: '#41BCE618', title: 'Prescriptions', subtitle: 'View active prescriptions', route: '/care/prescriptions' },
-  { id: 'scan',          icon: <IconTarget size={20} color="#D97706" />, iconBg: '#D9770618', title: 'Scan a meal', subtitle: 'AI-powered food scan', route: '/meals/scan' },
-  { id: 'book',          icon: <IconCalendar size={20} color="#7C3AED" />, iconBg: '#7C3AED18', title: 'Book appointment', subtitle: 'Schedule a consultation', route: '/care/appointments/new' },
+// Joined quick-access rows inside a single Card — titles/subtitles translated at render site
+const QUICK_ROW_DEFS = [
+  { id: 'prescriptions', icon: <IconPill size={20} color="#41BCE6" />, iconBg: '#41BCE618', titleKey: 'care.prescriptions', subtitleKey: 'care.viewActivePrescriptions', route: '/care/prescriptions' },
+  { id: 'scan',          icon: <IconTarget size={20} color="#D97706" />, iconBg: '#D9770618', titleKey: 'care.scanMeal', subtitleKey: 'care.aiPoweredFoodScan', route: '/meals/scan' },
+  { id: 'book',          icon: <IconCalendar size={20} color="#7C3AED" />, iconBg: '#7C3AED18', titleKey: 'care.bookAppointment', subtitleKey: 'care.scheduleConsultation', route: '/care/appointments/new' },
 ];
 
 export function CareHubScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { name: themeName } = useThemeContext();
 
   const loadAppointments = useCallback(() => appointmentService.list(), []);
@@ -81,28 +83,28 @@ export function CareHubScreen() {
 
   // 2×2 grid tiles
   const gridTiles = [
-    { id: 'appointments', icon: <IconCalendar size={20} color={t.brand} />, iconBg: t.brand + '18', title: 'Appointments', subtitle: `${upcomingCount} upcoming`, route: '/care/appointments', badge: null },
-    { id: 'history',      icon: <IconActivity size={20} color={t.success} />, iconBg: t.success + '18', title: 'Medical History', subtitle: lastCompleted ? `Last ${fmtDate(lastCompleted.appointment_date)}` : 'No previous visit', route: '/care/history', badge: null },
-    { id: 'meals',        icon: <IconUtensils size={20} color={t.warning} />, iconBg: t.warning + '18', title: 'Meals & Nutrition', subtitle: 'Daily nutrition logs', route: '/meals', badge: null },
-    { id: 'lab',          icon: <IconTarget size={20} color="#DC2626" />, iconBg: '#DC262618', title: 'Lab Reports', subtitle: 'View test results', route: '/care/lab-reports', badge: 3 },
+    { id: 'appointments', icon: <IconCalendar size={20} color={t.brand} />, iconBg: t.brand + '18', title: i18n('care.appointments'), subtitle: i18n('care.upcomingCount', { count: upcomingCount }), route: '/care/appointments', badge: null },
+    { id: 'history',      icon: <IconActivity size={20} color={t.success} />, iconBg: t.success + '18', title: i18n('care.medicalHistory'), subtitle: lastCompleted ? i18n('care.lastVisit', { date: fmtDate(lastCompleted.appointment_date) }) : i18n('care.noPreviousVisit'), route: '/care/history', badge: null },
+    { id: 'meals',        icon: <IconUtensils size={20} color={t.warning} />, iconBg: t.warning + '18', title: i18n('care.mealsNutrition'), subtitle: i18n('care.dailyNutritionLogs'), route: '/meals', badge: null },
+    { id: 'lab',          icon: <IconTarget size={20} color="#DC2626" />, iconBg: '#DC262618', title: i18n('care.labReports'), subtitle: i18n('care.viewTestResults'), route: '/care/lab-reports', badge: 3 },
   ];
 
   return (
     <Screen>
       <TopBar
-        title="Care"
-        subtitle="Appointments · Prep · History"
+        title={i18n('care.title')}
+        subtitle={i18n('care.subtitle')}
         right={
           <View style={styles.topBarIcons}>
-            <IconButton icon={<IconFilter size={20} color={t.ink2} />} onPress={() => {}} accessibilityLabel="Filter" />
-            <IconButton variant="filled" icon={<IconPlus size={20} color="#FFF" />} onPress={() => router.push('/care/appointments/new' as never)} accessibilityLabel="New" />
+            <IconButton icon={<IconFilter size={20} color={t.ink2} />} onPress={() => {}} accessibilityLabel={i18n('common.filter')} />
+            <IconButton variant="filled" icon={<IconPlus size={20} color="#FFF" />} onPress={() => router.push('/care/appointments/new' as never)} accessibilityLabel={i18n('common.new')} />
           </View>
         }
       />
 
-      {appointments.isLoading && <ApiState title="Loading care summary" loading />}
+      {appointments.isLoading && <ApiState title={i18n('care.loadingCareSummary')} loading />}
       {appointments.error && (
-        <ApiState title="Care summary unavailable" message={appointments.error.message} actionLabel="Retry" onAction={appointments.reload} />
+        <ApiState title={i18n('care.careSummaryUnavailable')} message={appointments.error.message} actionLabel={i18n('common.retry')} onAction={appointments.reload} />
       )}
 
       {!appointments.isLoading && !appointments.error && (
@@ -114,27 +116,27 @@ export function CareHubScreen() {
                 TODAY · {nextAppointment ? fmtDate(nextAppointment.appointment_date).toUpperCase() : '--:--'}
               </Text>
               <Text style={[typography.h3, { color: '#FFF', marginBottom: 2 }]}>
-                {nextAppointment?.doctor_name ?? 'No upcoming appointment'}
+                {nextAppointment?.doctor_name ?? i18n('care.noUpcomingAppointment')}
               </Text>
               <Text style={[typography.bodyMed, { color: 'rgba(255,255,255,0.8)', marginBottom: 16 }]}>
                 {nextAppointment
-                  ? `${nextAppointment.specialty ?? 'General'} · ${fmtDate(nextAppointment.appointment_date)}`
-                  : 'Book a consultation to keep your timeline up to date'}
+                  ? `${nextAppointment.specialty ?? i18n('care.general')} · ${fmtDate(nextAppointment.appointment_date)}`
+                  : i18n('care.bookConsultation')}
               </Text>
               <View style={styles.heroActions}>
                 {nextAppointment ? (
                   <>
                     <Pressable style={[styles.heroBtnPrimary]} onPress={() => router.push('/care/appointments' as never)}>
                       <IconVideo size={16} color="#1965B3" />
-                      <Text style={[typography.bodyMed, { color: '#1965B3', fontWeight: '700', marginLeft: 6 }]}>Join</Text>
+                      <Text style={[typography.bodyMed, { color: '#1965B3', fontWeight: '700', marginLeft: 6 }]}>{i18n('care.join')}</Text>
                     </Pressable>
                     <Pressable style={[styles.heroBtnGhost]} onPress={() => router.push('/care/appointments' as never)}>
-                      <Text style={[typography.bodyMed, { color: '#FFF', fontWeight: '600' }]}>Prep</Text>
+                      <Text style={[typography.bodyMed, { color: '#FFF', fontWeight: '600' }]}>{i18n('care.prep')}</Text>
                     </Pressable>
                   </>
                 ) : (
                   <Pressable style={[styles.heroBtnPrimary]} onPress={() => router.push('/care/appointments/new' as never)}>
-                    <Text style={[typography.bodyMed, { color: '#1965B3', fontWeight: '700' }]}>Book now</Text>
+                    <Text style={[typography.bodyMed, { color: '#1965B3', fontWeight: '700' }]}>{i18n('care.bookNow')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -171,9 +173,9 @@ export function CareHubScreen() {
           </View>
 
           {/* Quick Access section */}
-          <Text style={[styles.sectionLabel, { color: t.ink3 }]}>QUICK ACCESS</Text>
+          <Text style={[styles.sectionLabel, { color: t.ink3 }]}>{i18n('care.quickAccess')}</Text>
           <Card style={[styles.quickCard, { marginHorizontal: 16, overflow: 'hidden' }]}>
-            {QUICK_ROWS.map((row, idx) => (
+            {QUICK_ROW_DEFS.map((row, idx) => (
               <React.Fragment key={row.id}>
                 <TouchableOpacity
                   style={styles.quickRow}
@@ -184,12 +186,12 @@ export function CareHubScreen() {
                     {row.icon}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600' }]}>{row.title}</Text>
-                    <Text style={[typography.micro, { color: t.ink3 }]}>{row.subtitle}</Text>
+                    <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600' }]}>{i18n(row.titleKey as any)}</Text>
+                    <Text style={[typography.micro, { color: t.ink3 }]}>{i18n(row.subtitleKey as any)}</Text>
                   </View>
                   <ChevronRight size={16} color={t.ink3} />
                 </TouchableOpacity>
-                {idx < QUICK_ROWS.length - 1 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
+                {idx < QUICK_ROW_DEFS.length - 1 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
               </React.Fragment>
             ))}
           </Card>

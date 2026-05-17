@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { SectionHeader } from '../layout/section-header';
 import { Card } from '../primitives/card';
@@ -52,6 +53,7 @@ function BackBar({ title, right }: { title: string; right?: React.ReactNode }) {
 
 export function NutritionTrendsScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [period, setPeriod] = useState<Period>('Week');
 
   const donutSegments = [
@@ -63,7 +65,7 @@ export function NutritionTrendsScreen() {
   return (
     <Screen>
       <BackBar
-        title="Nutrition trends"
+        title={i18n('meals.nutritionTrends')}
         right={<Pressable hitSlop={8}><IconCalendar size={20} color={t.ink3} /></Pressable>}
       />
 
@@ -89,7 +91,7 @@ export function NutritionTrendsScreen() {
         <View style={styles.avgRow}>
           <View>
             {/* Renamed to AVG DAILY INTAKE */}
-            <Text style={[typography.micro, { color: t.ink3 }]}>AVG DAILY INTAKE</Text>
+            <Text style={[typography.micro, { color: t.ink3 }]}>{i18n('meals.avgDailyIntake')}</Text>
             <Text style={[typography.title, tabularNums, { color: t.ink, marginTop: 2 }]}>1,901 kcal</Text>
             {/* Target subtitle */}
             <Text style={[typography.caption, { color: t.ink3 }]}>Target · 2,100 kcal</Text>
@@ -123,7 +125,7 @@ export function NutritionTrendsScreen() {
       </Card>
 
       {/* Macro split */}
-      <SectionHeader title="Macro split" />
+      <SectionHeader title={i18n('meals.macroSplit')} />
       <Card tight>
         <View style={styles.macroSplit}>
           {/* MacroDonut with center text overlay */}
@@ -150,7 +152,7 @@ export function NutritionTrendsScreen() {
       </Card>
 
       {/* Insights — filled 36px icon square */}
-      <SectionHeader title="Insights" />
+      <SectionHeader title={i18n('meals.insights')} />
       {INSIGHTS.map((ins) => {
         const toneColor = ins.tone === 'success' ? t.success : ins.tone === 'warn' ? t.warning : t.brand;
         const bgColor = toneColor + '15';
@@ -173,7 +175,7 @@ export function NutritionTrendsScreen() {
       })}
 
       {/* Top foods */}
-      <SectionHeader title="Top foods" />
+      <SectionHeader title={i18n('meals.topFoods')} />
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
         {TOP_FOODS.map((f) => (
           <View key={f.name} style={[styles.topFoodRow, { borderBottomColor: t.border }]}>
