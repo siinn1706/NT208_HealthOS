@@ -16,6 +16,8 @@ import { typography } from '../../theme/typography';
 import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { deviceService, type ConnectedDevice } from '../../api/services/device-service';
+import { useHealthConnectSync } from '../../healthconnect/use-health-connect-sync';
+import type { HealthConnectSyncAdapter } from '../../healthconnect/orchestrator';
 
 type SyncState = 'ok' | 'failed' | 'stale' | 'syncing' | 'inactive';
 
@@ -27,6 +29,14 @@ const HEALTH_CONNECT_SCOPES = [
   'BloodPressure',
   'ExerciseSession',
 ] as const;
+
+function createLocalHealthConnectAdapter(scopes: string[]): HealthConnectSyncAdapter {
+  const snapshot = [...scopes];
+  return {
+    getGrantedPermissions: async () => snapshot,
+    readChanges: async () => ({ records: [], deletions: [] }),
+  };
+}
 
 function toSyncState(device: ConnectedDevice): SyncState {
   switch ((device.last_sync_status ?? '').toLowerCase()) {
@@ -83,10 +93,19 @@ export function DeviceDetailScreen() {
 
   const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [syncingNow, setSyncingNow] = useState(false);
+  const [syncingLegacy, setSyncingLegacy] = useState(false);
   const [resettingSyncState, setResettingSyncState] = useState(false);
   const [savingScopes, setSavingScopes] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const healthConnectAdapter = useMemo(
+    () => createLocalHealthConnectAdapter(device?.scopes ?? []),
+    [device?.scopes],
+  );
+  const {
+    sync: syncHealthConnectNow,
+    reset: resetHealthConnectNow,
+    isSyncing: syncingHealthConnect,
+  } = useHealthConnectSync(healthConnectAdapter);
 
   useEffect(() => {
     if (device?.scopes) setSelectedScopes(device.scopes);
@@ -157,12 +176,17 @@ export function DeviceDetailScreen() {
 
   const syncState = toSyncState(device);
   const isHealthConnect = device.provider === 'health_connect';
+  const syncingNow = isHealthConnect ? syncingHealthConnect : syncingLegacy;
 
   async function handleSync() {
-    setSyncingNow(true);
+    if (!isHealthConnect) setSyncingLegacy(true);
     setActionError(null);
     try {
-      await deviceService.sync(id);
+      if (isHealthConnect) {
+        await syncHealthConnectNow();
+      } else {
+        await deviceService.sync(id);
+      }
       invalidateApiQuery(queryKeys.devices);
       invalidateApiQuery(queryKeys.device(id));
       await devicesQuery.reload();
@@ -170,7 +194,7 @@ export function DeviceDetailScreen() {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not sync device.');
     } finally {
-      setSyncingNow(false);
+      if (!isHealthConnect) setSyncingLegacy(false);
     }
   }
 
@@ -208,11 +232,18 @@ export function DeviceDetailScreen() {
     setResettingSyncState(true);
     setActionError(null);
     try {
-      const tokens = entries.reduce<Record<string, string | null>>((acc, entry) => {
-        acc[entry.record_type] = null;
-        return acc;
-      }, {});
-      await deviceService.putSyncState(id, tokens);
+      if (isHealthConnect) {
+        await resetHealthConnectNow({
+          deviceId: id,
+          recordTypes: entries.map((entry) => entry.record_type),
+        });
+      } else {
+        const tokens = entries.reduce<Record<string, string | null>>((acc, entry) => {
+          acc[entry.record_type] = null;
+          return acc;
+        }, {});
+        await deviceService.putSyncState(id, tokens);
+      }
       await syncStateQuery.reload();
       setActionError(null);
     } catch (err) {

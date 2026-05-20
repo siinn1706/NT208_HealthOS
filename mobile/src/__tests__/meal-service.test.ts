@@ -21,6 +21,37 @@ const mockCreateUploadFormData = createUploadFormData as jest.MockedFunction<typ
 beforeEach(() => jest.clearAllMocks());
 
 describe('mealService photo analysis', () => {
+  it('creates a meal with JSON payload and idempotency header', async () => {
+    const meal = {
+      id: 'meal-1',
+      name: 'Lunch',
+      image_url: null,
+      job_id: null,
+      status: 'pending',
+      nutrition_result: null,
+      logged_at: '2026-05-20T12:00:00.000Z',
+      created_at: '2026-05-20T12:00:00.000Z',
+    };
+    mockApiRequest.mockResolvedValueOnce({ data: meal });
+
+    const result = await mealService.create({
+      name: 'Lunch',
+      notes: 'No onion',
+      logged_at: '2026-05-20T12:00:00.000Z',
+    }, { idempotencyKey: 'idem-json-1' });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': 'idem-json-1' },
+      json: {
+        name: 'Lunch',
+        notes: 'No onion',
+        logged_at: '2026-05-20T12:00:00.000Z',
+      },
+    });
+    expect(result).toEqual(meal);
+  });
+
   it('creates a meal with multipart image upload', async () => {
     const form = { _parts: [] } as unknown as FormData;
     const meal = {
@@ -41,7 +72,7 @@ describe('mealService photo analysis', () => {
       name: 'Lunch',
       logged_at: '2026-05-20T12:00:00.000Z',
       image: file,
-    });
+    }, { idempotencyKey: 'idem-multipart-1' });
 
     expect(mockCreateUploadFormData).toHaveBeenCalledWith(
       { name: 'Lunch', logged_at: '2026-05-20T12:00:00.000Z' },
@@ -50,6 +81,7 @@ describe('mealService photo analysis', () => {
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals', {
       method: 'POST',
       body: form,
+      headers: { 'Idempotency-Key': 'idem-multipart-1' },
     });
     expect(result).toEqual(meal);
   });
