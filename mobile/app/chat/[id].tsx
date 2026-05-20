@@ -16,16 +16,26 @@ import { queryKeys } from '../../src/api/queryKeys';
 import { toBubble } from '../../src/api/viewModels';
 import { useSession } from '../../src/auth/session-provider';
 import { useChatWebSocket } from '../../src/hooks/use-chat-websocket';
-import type { Message } from '../../../shared/api-contracts';
+import { mergeMessagesChronologically } from '../../src/chat/message-pagination';
+import type { Message, MessageListResponse } from '../../../shared/api-contracts';
+
+const CHAT_PAGE_SIZE = 50;
 
 export default function AiConversationScreen() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const conversationId = (Array.isArray(id) ? id[0] : id) ?? '';
   const { user } = useSession();
-  const loadMessages = useCallback(() => chatService.messages(conversationId), [conversationId]);
-  const messageQuery = useApiQuery<Message[]>(queryKeys.messages(conversationId), loadMessages, { enabled: Boolean(conversationId) });
+  const loadMessages = useCallback(
+    () => chatService.messages(conversationId, { limit: CHAT_PAGE_SIZE }),
+    [conversationId],
+  );
+  const messageQuery = useApiQuery<MessageListResponse>(queryKeys.messages(conversationId), loadMessages, { enabled: Boolean(conversationId) });
   const [messages, setMessages] = useState<Message[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -36,16 +46,25 @@ export default function AiConversationScreen() {
   const [attachOpen, setAttachOpen] = useState(false);
 
   useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      setHasMore(false);
+      setNextCursor(null);
+      setOlderError(null);
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
     if (messageQuery.data && !sending) {
-      setMessages(messageQuery.data);
+      setMessages(messageQuery.data.data);
+      setHasMore(messageQuery.data.has_more);
+      setNextCursor(messageQuery.data.next_cursor);
+      setOlderError(null);
     }
   }, [messageQuery.data, sending]);
 
   const handleRealtimeMessage = useCallback((message: Message) => {
-    setMessages((prev) => {
-      if (prev.some((item) => item.id === message.id)) return prev;
-      return [...prev, message].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    });
+    setMessages((prev) => mergeMessagesChronologically(prev, [message]));
     invalidateApiQuery(queryKeys.conversations);
   }, []);
 
@@ -61,7 +80,7 @@ export default function AiConversationScreen() {
     setSendError(null);
     try {
       const saved = await chatService.sendMessage(conversationId, text);
-      setMessages((prev) => [...prev, saved]);
+      setMessages((prev) => mergeMessagesChronologically(prev, [saved]));
       invalidateApiQuery(queryKeys.conversations);
     } catch (err: unknown) {
       setSendError(err instanceof Error ? err.message : 'Failed to send message. Please try again.');
@@ -69,6 +88,25 @@ export default function AiConversationScreen() {
       setSending(false);
     }
   }
+
+  const handleLoadOlder = useCallback(async () => {
+    if (!conversationId || !hasMore || !nextCursor || loadingOlder) return;
+    setLoadingOlder(true);
+    setOlderError(null);
+    try {
+      const olderPage = await chatService.messages(conversationId, {
+        before: nextCursor,
+        limit: CHAT_PAGE_SIZE,
+      });
+      setMessages((prev) => mergeMessagesChronologically(olderPage.data, prev));
+      setHasMore(olderPage.has_more);
+      setNextCursor(olderPage.next_cursor);
+    } catch (err: unknown) {
+      setOlderError(err instanceof Error ? err.message : 'Failed to load older messages.');
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [conversationId, hasMore, loadingOlder, nextCursor]);
 
   // FlatList inverted: reverse messages so newest is at bottom (index 0 = newest)
   const reversed = useMemo(() => [...messages].reverse(), [messages]);
@@ -142,7 +180,27 @@ export default function AiConversationScreen() {
           maxToRenderPerBatch={10}
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={sending ? <Bubble side="me" isTyping /> : null}
-          ListFooterComponent={<DateChip label="Today" />}
+          ListFooterComponent={(
+            <View style={styles.historyFooter}>
+              {hasMore && (
+                <Pressable
+                  style={[styles.loadOlderBtn, { borderColor: t.border, backgroundColor: t.card }]}
+                  onPress={handleLoadOlder}
+                  disabled={loadingOlder}
+                >
+                  <Text style={[typography.caption, { color: t.ink }]}>
+                    {loadingOlder ? 'Loading earlier messages...' : 'Load earlier messages'}
+                  </Text>
+                </Pressable>
+              )}
+              {olderError && (
+                <Text style={[typography.micro, { color: t.danger, textAlign: 'center', marginBottom: 8 }]}>
+                  {olderError}
+                </Text>
+              )}
+              <DateChip label="Today" />
+            </View>
+          )}
           contentContainerStyle={styles.messages}
         />
         <Composer
@@ -209,6 +267,8 @@ const styles = StyleSheet.create({
   avatarWrap:   { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   headerInfo:   { flex: 1 },
   messages:     { paddingHorizontal: 16, paddingBottom: 16 },
+  historyFooter:{ alignItems: 'center', marginTop: 8, gap: 6 },
+  loadOlderBtn: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalSheet:   { width: '100%', padding: 20 },
   optionBtn:    { paddingVertical: 14, paddingHorizontal: 16, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center' },

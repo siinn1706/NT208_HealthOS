@@ -1,7 +1,12 @@
-import { apiRequest } from '../client';
+import { apiRequest, buildQuery } from '../client';
 import type { Conversation, DataResponse, Message, MessageListResponse } from '../../../../shared/api-contracts';
 
 let msgSeq = 0;
+
+export interface ChatMessagesOptions {
+  before?: string | null;
+  limit?: number;
+}
 
 export const chatService = {
   async conversations() {
@@ -22,9 +27,17 @@ export const chatService = {
     return response.data;
   },
 
-  async messages(conversationId: string) {
-    const response = await apiRequest<MessageListResponse>(`/v1/conversations/${encodeURIComponent(conversationId)}/messages?limit=50`);
-    return response.data.slice().reverse();
+  async messages(conversationId: string, options: ChatMessagesOptions = {}) {
+    const response = await apiRequest<MessageListResponse>(
+      `/v1/conversations/${encodeURIComponent(conversationId)}/messages${buildQuery({
+        limit: options.limit ?? 50,
+        before: options.before,
+      })}`,
+    );
+    return {
+      ...response,
+      data: response.data.slice().reverse(),
+    };
   },
 
   async sendMessage(conversationId: string, content: string) {

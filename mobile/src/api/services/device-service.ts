@@ -57,7 +57,7 @@ export interface HealthIngestBatch {
   provider?: string;
   records?: HealthRecordIn[];
   deletions?: HealthDeletionIn[];
-  next_changes_tokens?: Record<string, string | null | undefined>;
+  next_changes_tokens?: Record<string, string>;
 }
 
 export interface HealthIngestResult {
@@ -96,9 +96,19 @@ export const deviceService = {
   },
 
   async ingest(deviceId: string, body: HealthIngestBatch, idempotencyKey: string) {
+    const sanitizedTokens = sanitizeNextChangeTokens((body as HealthIngestBatch & {
+      next_changes_tokens?: Record<string, string | null | undefined>;
+    }).next_changes_tokens);
+    const payload: HealthIngestBatch = {
+      ...body,
+      ...(sanitizedTokens ? { next_changes_tokens: sanitizedTokens } : {}),
+    };
+    if (!sanitizedTokens) {
+      delete (payload as { next_changes_tokens?: Record<string, string> }).next_changes_tokens;
+    }
     const response = await apiRequest<DataResponse<HealthIngestResult>>(`/v1/devices/${encodeURIComponent(deviceId)}/ingest`, {
       method: 'POST',
-      json: body,
+      json: payload,
       headers: { 'Idempotency-Key': idempotencyKey },
     });
     return response.data;
@@ -125,3 +135,15 @@ export const deviceService = {
     return response.data;
   },
 };
+
+function sanitizeNextChangeTokens(tokens?: Record<string, string | null | undefined>) {
+  if (!tokens) return undefined;
+  const sanitized: Record<string, string> = {};
+  for (const [rawKey, rawValue] of Object.entries(tokens)) {
+    const key = rawKey.trim();
+    const value = rawValue?.trim();
+    if (!key || !value) continue;
+    sanitized[key] = value;
+  }
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
