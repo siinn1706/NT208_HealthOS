@@ -10,7 +10,7 @@ import {
   saveAuthToken,
   saveCurrentUser,
 } from './session-store';
-import type { CurrentUser, UserProfileUpdate } from '../../../shared/api-contracts';
+import type { AuthLoginResult, AuthToken, CurrentUser, MfaLoginRequired, UserProfileUpdate } from '../types/api';
 
 interface SignInResult {
   mfaRequired: boolean;
@@ -32,6 +32,10 @@ interface SessionContextValue {
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+
+function isMfaChallenge(result: AuthLoginResult): result is MfaLoginRequired {
+  return 'mfa_required' in result && result.mfa_required === true;
+}
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -104,16 +108,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (identifier: string, password: string): Promise<SignInResult> => {
     const loginResult = await authService.login(identifier, password);
-    if ('mfa_required' in loginResult && loginResult.mfa_required) {
+    if (isMfaChallenge(loginResult)) {
       return {
         mfaRequired: true,
         challengeId: loginResult.challenge_id,
         expiresInSeconds: loginResult.expires_in_seconds,
       };
     }
+    const tokenResult = loginResult as AuthToken;
     invalidateApiQuery();
-    setApiSessionScope(loginResult.user_id);
-    await saveAuthToken(loginResult);
+    setApiSessionScope(tokenResult.user_id);
+    await saveAuthToken(tokenResult);
     await refreshUser();
     return { mfaRequired: false };
   }, [refreshUser]);

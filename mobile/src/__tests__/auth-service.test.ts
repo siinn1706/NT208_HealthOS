@@ -1,7 +1,8 @@
+/* eslint-env jest */
 import { authService } from '../api/services/auth-service';
 import { apiRequest } from '../api/client';
 import { clearStoredSession, getRefreshToken, saveAuthToken } from '../auth/session-store';
-import type { AuthLoginResult, AuthToken, DataResponse } from '../../../shared/api-contracts';
+import type { AuthLoginResult, AuthToken, DataResponse } from '../types/api';
 
 jest.mock('../api/client', () => ({ apiRequest: jest.fn() }));
 jest.mock('../auth/session-store', () => ({
@@ -79,15 +80,17 @@ describe('authService.verifyLoginMfa', () => {
 });
 
 describe('authService.resetPassword', () => {
-  it('submits reset payload without mutating stored session', async () => {
+  it('submits reset payload and stores returned token', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: mockToken });
-    await authService.resetPassword('a@b.com', 'newpass');
+    mockSaveAuthToken.mockResolvedValueOnce();
+    const result = await authService.resetPassword('a@b.com', 'newpass');
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/reset-password', {
       method: 'POST',
       auth: false,
       json: { email: 'a@b.com', new_password: 'newpass' },
     });
-    expect(mockSaveAuthToken).not.toHaveBeenCalled();
+    expect(mockSaveAuthToken).toHaveBeenCalledWith(mockToken);
+    expect(result).toEqual(mockToken);
   });
 });
 

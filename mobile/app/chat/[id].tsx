@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, FlatList, StyleSheet, Modal, Pressable, Text, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,6 +15,7 @@ import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toBubble } from '../../src/api/viewModels';
 import { useSession } from '../../src/auth/session-provider';
+import { useChatWebSocket } from '../../src/hooks/use-chat-websocket';
 import type { Message } from '../../../shared/api-contracts';
 
 export default function AiConversationScreen() {
@@ -39,6 +40,20 @@ export default function AiConversationScreen() {
       setMessages(messageQuery.data);
     }
   }, [messageQuery.data, sending]);
+
+  const handleRealtimeMessage = useCallback((message: Message) => {
+    setMessages((prev) => {
+      if (prev.some((item) => item.id === message.id)) return prev;
+      return [...prev, message].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    });
+    invalidateApiQuery(queryKeys.conversations);
+  }, []);
+
+  const realtime = useChatWebSocket({
+    conversationId,
+    enabled: Boolean(conversationId),
+    onMessage: handleRealtimeMessage,
+  });
 
   async function handleSend(text: string) {
     if (!conversationId) return;
@@ -80,9 +95,11 @@ export default function AiConversationScreen() {
         <View style={styles.headerInfo}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={[typography.h3, { color: t.ink, fontSize: 16, fontWeight: '700' }]}>HealthOS AI</Text>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: t.success }} />
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: realtime.isLive ? t.success : t.warning }} />
           </View>
-          <Text style={[typography.micro, { color: t.ink3 }]}>Always private · Never medical advice</Text>
+          <Text style={[typography.micro, { color: t.ink3 }]}>
+            {realtime.isLive ? 'Live updates' : 'REST fallback'} · Never medical advice
+          </Text>
         </View>
         <IconButton
           icon={<IconMore size={20} color={t.ink3} />}

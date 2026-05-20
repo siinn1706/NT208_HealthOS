@@ -57,4 +57,7 @@ export {
   Zap as IconFlash,
   TrendingUp as IconTrendUp,
   FlipHorizontal2 as IconFlip,
+  Download as IconDownload,
+  FileText as IconFileText,
+  Trash2 as IconTrash,
 } from 'lucide-react-native';

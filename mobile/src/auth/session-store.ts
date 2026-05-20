@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import type { AuthToken, CurrentUser } from '../../../shared/api-contracts';
+import type { AuthToken, CurrentUser } from '../types/api';
 
 const TOKEN_KEY   = 'healthos.mobile.access_token';
 const REFRESH_KEY = 'healthos.mobile.refresh_token';

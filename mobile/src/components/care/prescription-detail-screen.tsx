@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -11,13 +12,20 @@ import { Card } from '../primitives/card';
 import { Button } from '../primitives/button';
 import { TopBar } from '../layout/top-bar';
 import { IconButton } from '../primitives/icon-button';
-import { ApiState, MissingApiState } from '../api/api-state';
-import { ChevronLeft, IconClock, IconPill, IconUser } from '../../icons';
+import { ApiState } from '../api/api-state';
+import { ChevronLeft, IconClock, IconDownload, IconFileText, IconPill, IconTrash, IconUser } from '../../icons';
 import { BarcodePlaceholder } from './barcode-placeholder';
-import { useApiQuery } from '../../api/query';
-import { appointmentService } from '../../api/services';
+import { invalidateApiQuery, useApiQuery } from '../../api/query';
+import { appointmentService, prescriptionAssetService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { formatDate } from '../../api/viewModels';
+import { safeOpenUrl } from '../../utils/safe-url';
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function PrescriptionDetailScreen() {
   const t = useTheme();
@@ -27,7 +35,66 @@ export function PrescriptionDetailScreen() {
   const appointmentId = (Array.isArray(id) ? id[0] : id) ?? '';
   const loadAppointment = useCallback(() => appointmentService.detail(appointmentId), [appointmentId]);
   const appointmentQuery = useApiQuery(queryKeys.appointment(appointmentId), loadAppointment, { enabled: Boolean(appointmentId) });
+  const loadAssets = useCallback(() => prescriptionAssetService.list(appointmentId), [appointmentId]);
+  const assetsQuery = useApiQuery(queryKeys.prescriptionAssets(appointmentId), loadAssets, { enabled: Boolean(appointmentId) });
   const prescription = appointmentQuery.data?.prescription ?? null;
+  const [assetBusyId, setAssetBusyId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [assetError, setAssetError] = useState<string | null>(null);
+
+  async function handleUploadAsset() {
+    if (!appointmentId || uploading) return;
+    setUploading(true);
+    setAssetError(null);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      await prescriptionAssetService.upload(appointmentId, {
+        uri: asset.uri,
+        name: asset.name || 'prescription-asset',
+        type: asset.mimeType || 'application/octet-stream',
+      });
+      invalidateApiQuery(queryKeys.prescriptionAssets(appointmentId));
+      await assetsQuery.reload();
+    } catch (err) {
+      setAssetError(err instanceof Error ? err.message : 'Could not upload prescription file.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleOpenAsset(assetId: string) {
+    setAssetBusyId(assetId);
+    setAssetError(null);
+    try {
+      const signed = await prescriptionAssetService.signedUrl(appointmentId, assetId);
+      const opened = await safeOpenUrl(signed.url);
+      if (!opened) setAssetError('Could not open signed download URL.');
+    } catch (err) {
+      setAssetError(err instanceof Error ? err.message : 'Could not open prescription file.');
+    } finally {
+      setAssetBusyId(null);
+    }
+  }
+
+  async function handleDeleteAsset(assetId: string) {
+    setAssetBusyId(assetId);
+    setAssetError(null);
+    try {
+      await prescriptionAssetService.remove(appointmentId, assetId);
+      invalidateApiQuery(queryKeys.prescriptionAssets(appointmentId));
+      await assetsQuery.reload();
+    } catch (err) {
+      setAssetError(err instanceof Error ? err.message : 'Could not delete prescription file.');
+    } finally {
+      setAssetBusyId(null);
+    }
+  }
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -108,12 +175,65 @@ export function PrescriptionDetailScreen() {
               <Text style={[typography.micro, { color: t.ink3, marginTop: 8 }]}>Show this code at pharmacy</Text>
             </View>
 
+            <Text style={[typography.h3, { color: t.ink, marginTop: 4, marginBottom: 4 }]}>Prescription files</Text>
+            <Card style={s.assetCard}>
+              <Button
+                label={uploading ? 'Uploading...' : 'Upload prescription file'}
+                variant="ghost"
+                onPress={handleUploadAsset}
+                loading={uploading}
+              />
+              {assetError && <Text style={[typography.caption, { color: t.danger }]}>{assetError}</Text>}
+              {assetsQuery.isLoading && <ApiState title="Loading prescription files" loading />}
+              {assetsQuery.error && (
+                <ApiState
+                  title="Prescription files unavailable"
+                  message={assetsQuery.error.message}
+                  actionLabel={i18n('common.retry')}
+                  onAction={assetsQuery.reload}
+                />
+              )}
+              {!assetsQuery.isLoading && !assetsQuery.error && (assetsQuery.data ?? []).length === 0 && (
+                <ApiState title="No prescription files" message="Uploaded PDFs and images will appear here." />
+              )}
+              {!assetsQuery.isLoading && !assetsQuery.error && (assetsQuery.data ?? []).map((asset) => (
+                <View key={asset.id} style={[s.assetRow, { borderColor: t.border, borderRadius: t.radius.md }]}>
+                  <View style={[s.assetIcon, { backgroundColor: t.brandSoft, borderRadius: t.radius.sm }]}>
+                    <IconFileText size={16} color={t.brand} />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>
+                      {asset.original_filename ?? 'Prescription asset'}
+                    </Text>
+                    <Text style={[typography.micro, { color: t.ink3 }]}>
+                      {asset.mime_type} · {formatBytes(asset.size_bytes)}
+                    </Text>
+                  </View>
+                  <IconButton
+                    size={34}
+                    variant="subtle"
+                    disabled={assetBusyId === asset.id}
+                    icon={<IconDownload size={16} color={t.ink2} />}
+                    accessibilityLabel="Open prescription file"
+                    onPress={() => handleOpenAsset(asset.id)}
+                  />
+                  <IconButton
+                    size={34}
+                    variant="subtle"
+                    disabled={assetBusyId === asset.id}
+                    icon={<IconTrash size={16} color={t.danger} />}
+                    accessibilityLabel="Delete prescription file"
+                    onPress={() => handleDeleteAsset(asset.id)}
+                  />
+                </View>
+              ))}
+            </Card>
+
             {/* CTAs */}
             <View style={s.ctaRow}>
-              <Button label="Share PDF" variant="ghost" style={s.ctaBtn} onPress={() => {}} />
+              <Button label="Upload file" variant="ghost" style={s.ctaBtn} onPress={handleUploadAsset} loading={uploading} />
               <Button label={i18n('meds.refill')} variant="solid" style={s.ctaBtn} onPress={() => router.push(`/meds/import?appointmentId=${appointmentId}` as never)} />
             </View>
-            <MissingApiState title="Prescription asset download unavailable" contract="existing API needs adaptation" />
           </>
         )}
       </ScrollView>
@@ -147,4 +267,7 @@ const s = StyleSheet.create({
   chipRow:     { flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' },
   medCard:     { gap: 4 },
   infoRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  assetCard:   { gap: 10 },
+  assetRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: StyleSheet.hairlineWidth, padding: 10 },
+  assetIcon:   { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
 });

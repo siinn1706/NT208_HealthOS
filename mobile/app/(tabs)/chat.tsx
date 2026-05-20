@@ -29,7 +29,6 @@ export default function ChatScreen() {
   const { user } = useSession();
   const loadConversations = useCallback(() => chatService.conversations(), []);
   const conversations = useApiQuery(queryKeys.conversations, loadConversations);
-  const aiConversation = conversations.data?.find((c) => c.type === 'ai');
 
   // Search state
   const [searchOpen, setSearchOpen] = useState(false);

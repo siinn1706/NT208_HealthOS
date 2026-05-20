@@ -1,11 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconSparkle, IconCheck } from '../../icons';
+import { mealService } from '../../api/services';
 
 const BG = '#0B0F14';
 
@@ -67,14 +68,40 @@ export function MealScanAnalyzingScreen() {
   const router = useRouter();
   const t = useTheme();
   const { t: i18n } = useTranslation();
+  const params = useLocalSearchParams<{ mealId?: string | string[]; jobId?: string | string[] }>();
+  const mealId = Array.isArray(params.mealId) ? params.mealId[0] : params.mealId;
+  const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
   const scanLine = useRef(new Animated.Value(0)).current;
+  const [status, setStatus] = useState('processing');
+  const [error, setError] = useState<string | null>(null);
 
-  const STAGES: { label: string; status: StageStatus }[] = [
-    { label: i18n('meals.detectFood'),       status: 'done'    },
-    { label: i18n('meals.estimatePortions'), status: 'done'    },
-    { label: i18n('meals.lookUpNutrition'),  status: 'active'  },
-    { label: i18n('meals.matchGoals'),       status: 'pending' },
-  ];
+  const done = ['analyzed', 'ready', 'completed', 'done'].includes(status);
+  const failed = ['failed', 'error'].includes(status);
+
+  const STAGES: { label: string; status: StageStatus }[] = useMemo(() => {
+    if (done) {
+      return [
+        { label: i18n('meals.detectFood'),       status: 'done' },
+        { label: i18n('meals.estimatePortions'), status: 'done' },
+        { label: i18n('meals.lookUpNutrition'),  status: 'done' },
+        { label: i18n('meals.matchGoals'),       status: 'done' },
+      ];
+    }
+    if (status === 'pending') {
+      return [
+        { label: i18n('meals.detectFood'),       status: 'active' },
+        { label: i18n('meals.estimatePortions'), status: 'pending' },
+        { label: i18n('meals.lookUpNutrition'),  status: 'pending' },
+        { label: i18n('meals.matchGoals'),       status: 'pending' },
+      ];
+    }
+    return [
+      { label: i18n('meals.detectFood'),       status: 'done' },
+      { label: i18n('meals.estimatePortions'), status: 'done' },
+      { label: i18n('meals.lookUpNutrition'),  status: failed ? 'pending' : 'active' },
+      { label: i18n('meals.matchGoals'),       status: 'pending' },
+    ];
+  }, [done, failed, i18n, status]);
 
   useEffect(() => {
     Animated.loop(
@@ -83,11 +110,48 @@ export function MealScanAnalyzingScreen() {
         Animated.timing(scanLine, { toValue: 0, duration: 1600, useNativeDriver: true }),
       ])
     ).start();
+  }, [scanLine]);
 
-    // Auto-navigate after mock delay
-    const timer = setTimeout(() => router.push('/meals/scan-results' as never), 4000);
-    return () => clearTimeout(timer);
-  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    async function poll() {
+      if (!mealId && !jobId) {
+        setError('Missing meal analysis job.');
+        return;
+      }
+      try {
+        const result = mealId
+          ? await mealService.analysisStatus(mealId)
+          : await mealService.analysisStatusByJob(jobId ?? '');
+        if (cancelled) return;
+        const nextStatus = result.status.toLowerCase();
+        setStatus(nextStatus);
+        if (['analyzed', 'ready', 'completed', 'done'].includes(nextStatus)) {
+          if (mealId) {
+            router.replace(`/meals/scan-results?mealId=${encodeURIComponent(mealId)}` as never);
+          } else {
+            setError('Analysis finished, but the backend did not return a meal id.');
+          }
+          return;
+        }
+        if (['failed', 'error'].includes(nextStatus)) {
+          setError('Meal photo analysis failed. Please retake the photo.');
+          return;
+        }
+        timer = setTimeout(poll, 2500);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not check analysis status.');
+      }
+    }
+
+    poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [jobId, mealId, router]);
 
   const translateY = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, 160] });
 
@@ -122,6 +186,9 @@ export function MealScanAnalyzingScreen() {
           </View>
           <Text style={[typography.h3, { color: '#111', marginLeft: 10 }]}>{i18n('meals.analyzingPlate')}</Text>
         </View>
+        <Text style={[typography.caption, { color: failed ? t.danger : t.ink3, marginBottom: 10 }]}>
+          {error ?? `Backend status: ${status}`}
+        </Text>
         <View style={styles.stages}>
           {STAGES.map((s) => <StageRow key={s.label} {...s} />)}
         </View>

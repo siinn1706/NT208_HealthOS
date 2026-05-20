@@ -40,12 +40,12 @@ export function AuthSignInScreen() {
       setPassword('');
       if (result.mfaRequired && result.challengeId) {
         router.push({
-          pathname: '/auth/mfa',
+          pathname: '/auth/mfa' as never,
           params: {
             challenge_id: result.challengeId,
             expires_in_seconds: result.expiresInSeconds ? String(result.expiresInSeconds) : undefined,
           },
-        });
+        } as never);
         return;
       }
       router.replace('/(tabs)/home');

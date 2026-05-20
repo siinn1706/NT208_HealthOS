@@ -169,12 +169,12 @@ export function AppointmentDetailScreen() {
               <Text style={[typography.body, { color: t.ink2 }]}>{appointment.notes ?? appointment.diagnosis ?? 'No notes on this appointment.'}</Text>
             </View>
 
-            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.attachments')}
+            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.attachments')}</Text>
             <MissingApiState title="General appointment attachments unavailable" contract="unclear and needs manual confirmation" />
 
             {appointment.has_prescription && (
               <PressableCard
-                onPress={() => router.push(`/care/prescriptions/${appointment.prescription?.id ?? appointment.id}` as never)}
+                onPress={() => router.push(`/care/prescriptions/${appointment.id}` as never)}
                 style={[s.prepCard, { backgroundColor: t.brandSoft, borderRadius: t.radius.lg }]}
               >
                 <IconPaperclip size={18} color={t.brand} />

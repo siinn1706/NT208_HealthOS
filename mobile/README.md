@@ -39,6 +39,15 @@ npx expo start
 
 Open in Expo Go (iOS/Android) or press `i` / `a` for simulators.
 
+Set backend URLs with environment variables so physical devices can reach Core BE:
+
+```bash
+EXPO_PUBLIC_CORE_API_URL=http://192.168.1.10:8000
+EXPO_PUBLIC_CORE_WS_URL=ws://192.168.1.10:8000
+```
+
+Use your LAN IP for phones on the same network. For Android emulator, prefer `10.0.2.2` instead of `localhost`. See [`mobile/.env.example`](./.env.example).
+
 ## Themes
 
 Switch via **Me → Preferences → Appearance**:

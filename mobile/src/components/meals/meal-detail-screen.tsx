@@ -144,7 +144,9 @@ export function MealDetailScreen() {
 
   // Status subtitle — no raw status exposed
   function statusSubtitle(status: string) {
-    if (status === 'ready') return 'AI scan · nutrition verified';
+    if (status === 'ready' || status === 'analyzed') return 'AI scan · nutrition verified';
+    if (status === 'processing') return 'Nutrition analysis in progress';
+    if (status === 'failed') return 'Nutrition analysis failed';
     if (status === 'pending') return 'Nutrition pending';
     return 'Manual entry';
   }

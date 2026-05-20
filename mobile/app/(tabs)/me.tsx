@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
@@ -43,11 +43,6 @@ export default function MeScreen() {
   function openMissingApi(title: string) {
     setMissingApiTitle(title);
     setMissingApiOpen(true);
-  }
-
-  // Emergency share — no real share API yet
-  function handleEmergencyShare() {
-    openMissingApi('Emergency share not yet available');
   }
 
   const handleSignOut = useCallback(async () => {
@@ -124,7 +119,6 @@ export default function MeScreen() {
       <EmergencySheet
         visible={emergencyOpen}
         onClose={() => setEmergencyOpen(false)}
-        onShare={handleEmergencyShare}
       />
       <SignOutModal
         visible={signOutOpen}
@@ -142,4 +136,3 @@ export default function MeScreen() {
   );
 }
 
-const styles = StyleSheet.create({});
