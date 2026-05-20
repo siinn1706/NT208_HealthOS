@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
@@ -20,6 +21,7 @@ import { toMedicationDetailRows } from '../../api/viewModels';
 
 export function MedicationDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
   const loadMedication = useCallback(async () => {
@@ -53,14 +55,14 @@ export function MedicationDetailScreen() {
             <IconButton
               icon={<ChevronLeft size={22} color={t.ink} />}
               onPress={() => router.back()}
-              accessibilityLabel="Back"
+              accessibilityLabel={i18n('common.back')}
             />
           }
           right={
             <IconButton
               icon={<IconMore size={20} color={t.ink} />}
               onPress={() => setMoreOpen(true)}
-              accessibilityLabel="More options"
+              accessibilityLabel={i18n('common.more')}
             />
           }
         />
@@ -72,11 +74,11 @@ export function MedicationDetailScreen() {
           <View style={[s.sheet, { backgroundColor: t.bgElev, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
             <View style={[s.handle, { backgroundColor: t.borderStrong }]} />
             {[
-              { label: 'Edit', onPress: () => { setMoreOpen(false); detail && router.push(`/meds/edit/${detail.id}` as never); } },
-              { label: 'Refill', onPress: () => { setMoreOpen(false); detail && router.push(`/meds/refill/${detail.id}` as never); } },
-              { label: 'History', onPress: () => { setMoreOpen(false); router.push('/meds/history'); } },
-              { label: 'Archive', onPress: () => { setMoreOpen(false); detail && router.push(`/meds/archive?id=${detail.id}` as never); } },
-              { label: 'Close', onPress: () => setMoreOpen(false) },
+              { label: i18n('common.edit'), onPress: () => { setMoreOpen(false); detail && router.push(`/meds/edit/${detail.id}` as never); } },
+              { label: i18n('meds.refill'), onPress: () => { setMoreOpen(false); detail && router.push(`/meds/refill/${detail.id}` as never); } },
+              { label: i18n('meds.history'), onPress: () => { setMoreOpen(false); router.push('/meds/history'); } },
+              { label: i18n('meds.archive'), onPress: () => { setMoreOpen(false); detail && router.push(`/meds/archive?id=${detail.id}` as never); } },
+              { label: i18n('common.close'), onPress: () => setMoreOpen(false) },
             ].map((item) => (
               <Pressable
                 key={item.label}
@@ -93,12 +95,12 @@ export function MedicationDetailScreen() {
       </Modal>
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
-        {medication.isLoading && <ApiState title="Loading medication" loading />}
+        {medication.isLoading && <ApiState title={i18n('api.loading')} loading />}
         {medication.error && (
           <ApiState
-            title="Medication unavailable"
+            title={i18n('api.unavailable')}
             message={medication.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={medication.reload}
           />
         )}
@@ -127,7 +129,7 @@ export function MedicationDetailScreen() {
             <Card style={s.adherenceCard}>
               <View style={s.adherenceLeft}>
                 <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.5 }]}>
-                  Adherence · 30d
+                  {i18n('meds.adherence')} · 30d
                 </Text>
                 <Text style={[typography.display, { color: t.ink, marginTop: 2 }]}>
                   {Math.round(percent * 100)}%
@@ -187,7 +189,7 @@ export function MedicationDetailScreen() {
                       ]}
                     >
                       <Text style={[typography.micro, { color: t.brand }]}>
-                        {savingDoseId === dose.reminder_id ? '...' : 'Mark taken'}
+                        {savingDoseId === dose.reminder_id ? '...' : i18n('meds.take')}
                       </Text>
                     </Pressable>
                   )}
@@ -214,7 +216,7 @@ export function MedicationDetailScreen() {
             {pauseError && <ApiState title="Action failed" message={pauseError} />}
             <View style={[s.actions, { marginTop: 16 }]}>
               <Button
-                label={pauseSaving ? '...' : (detail.status === 'paused' ? 'Resume' : 'Pause')}
+                label={pauseSaving ? '...' : (detail.status === 'paused' ? i18n('meds.active') : i18n('meds.pause'))}
                 variant="ghost"
                 style={[s.flex, pauseSaving && { opacity: 0.4 }]}
                 onPress={pauseSaving ? undefined : async () => {
@@ -237,9 +239,9 @@ export function MedicationDetailScreen() {
                   }
                 }}
               />
-              <Button label="Mark taken" variant="solid" onPress={() => router.push(`/meds/${detail.id}/take` as never)} style={s.flex} />
+              <Button label={i18n('meds.take')} variant="solid" onPress={() => router.push(`/meds/${detail.id}/take` as never)} style={s.flex} />
             </View>
-            <Button label="Archive" variant="soft" onPress={() => router.push(`/meds/archive?id=${detail.id}` as never)} style={{ marginTop: 8 }} />
+            <Button label={i18n('meds.archive')} variant="soft" onPress={() => router.push(`/meds/archive?id=${detail.id}` as never)} style={{ marginTop: 8 }} />
           </>
         )}
       </ScrollView>

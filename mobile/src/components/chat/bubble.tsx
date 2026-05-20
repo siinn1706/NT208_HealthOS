@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../theme/useTheme';
@@ -16,7 +16,7 @@ interface BubbleProps {
   index?: number;
 }
 
-export function Bubble({ side, text, time, hasSparkline, isCaption, isTyping, index = 0 }: BubbleProps) {
+export const Bubble = memo(function Bubble({ side, text, time, hasSparkline, isCaption, isTyping, index = 0 }: BubbleProps) {
   const t = useTheme();
   const isMe = side === 'me';
 
@@ -24,9 +24,16 @@ export function Bubble({ side, text, time, hasSparkline, isCaption, isTyping, in
   const textColor = isMe ? '#FFF' : t.ink;
   const borderRadius = t.radius.xl;
 
+  // Animate only on first mount; skip re-entrance on re-renders
+  const hasEntered = useRef(false);
+  const animateIn = !hasEntered.current;
+  useEffect(() => { hasEntered.current = true; }, []);
+
+  const cappedDelay = Math.min(index, 5) * 60;
+
   return (
     <Animated.View
-      entering={FadeInDown.delay(index * 60).duration(220)}
+      entering={animateIn ? FadeInDown.delay(cappedDelay).duration(220) : undefined}
       style={[styles.wrap, isMe && styles.wrapMe]}
     >
       <View
@@ -63,7 +70,7 @@ export function Bubble({ side, text, time, hasSparkline, isCaption, isTyping, in
       )}
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap:      { marginVertical: 4, maxWidth: '82%', alignSelf: 'flex-start' },

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { Screen } from '../layout/screen';
 import { ApiState } from '../api/api-state';
@@ -72,6 +73,7 @@ const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export function ReminderDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const reminderId = Array.isArray(params.id) ? params.id[0] : params.id;
   const [isMarking, setIsMarking] = useState(false);
@@ -175,16 +177,16 @@ export function ReminderDetailScreen() {
   }
 
   if (!reminderId) {
-    return <Screen><ApiState title="Reminder not found" message="Missing reminder id in route." actionLabel="Back" onAction={() => router.back()} /></Screen>;
+    return <Screen><ApiState title={i18n('api.unavailable')} message="Missing reminder id in route." actionLabel={i18n('common.back')} onAction={() => router.back()} /></Screen>;
   }
   if (reminders.isLoading) {
-    return <Screen><ApiState title="Loading reminder" loading /></Screen>;
+    return <Screen><ApiState title={i18n('api.loading')} loading /></Screen>;
   }
   if (reminders.error) {
-    return <Screen><ApiState title="Reminder unavailable" message={reminders.error.message} actionLabel="Retry" onAction={reminders.reload} /></Screen>;
+    return <Screen><ApiState title={i18n('api.unavailable')} message={reminders.error.message} actionLabel={i18n('common.retry')} onAction={reminders.reload} /></Screen>;
   }
   if (!reminder) {
-    return <Screen><ApiState title="Reminder not found" message="Reminder id not present in current list." actionLabel="Back" onAction={() => router.back()} /></Screen>;
+    return <Screen><ApiState title={i18n('api.unavailable')} message="Reminder id not present in current list." actionLabel={i18n('common.back')} onAction={() => router.back()} /></Screen>;
   }
 
   const cat   = mapCat(reminder.type);
@@ -255,7 +257,7 @@ export function ReminderDetailScreen() {
               onPress={() => setActiveSheet('done')}
             >
               <IconCheck size={14} color="#fff" />
-              <Text style={[styles.nextBtnText, { color: '#fff' }]}>Done</Text>
+              <Text style={[styles.nextBtnText, { color: '#fff' }]}>{i18n('common.done')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.nextBtn, { backgroundColor: t.bgElev, borderColor: t.border, borderWidth: 1 }]}
@@ -269,7 +271,7 @@ export function ReminderDetailScreen() {
               onPress={() => setActiveSheet('skip')}
             >
               <IconX size={14} color={t.ink3} />
-              <Text style={[styles.nextBtnText, { color: t.ink3 }]}>Skip</Text>
+              <Text style={[styles.nextBtnText, { color: t.ink3 }]}>{i18n('meds.missed')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -315,8 +317,8 @@ export function ReminderDetailScreen() {
           </View>
         )}
 
-        {occurrences.isLoading && <ApiState title="Loading history" loading />}
-        {occurrences.error && <ApiState title="History unavailable" message={occurrences.error.message} actionLabel="Retry" onAction={occurrences.reload} />}
+        {occurrences.isLoading && <ApiState title={i18n('api.loading')} loading />}
+        {occurrences.error && <ApiState title={i18n('api.unavailable')} message={occurrences.error.message} actionLabel={i18n('common.retry')} onAction={occurrences.reload} />}
 
         {/* Settings group */}
         <Text style={[styles.groupLabel, { color: t.ink, paddingHorizontal: 20 }]}>Settings</Text>
@@ -372,7 +374,7 @@ export function ReminderDetailScreen() {
               <Text style={[styles.sheetBtnText, { color: t.ink }]}>Undo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.sheetBtn, { backgroundColor: t.brand }]} onPress={handleMarkDone}>
-              <Text style={[styles.sheetBtnText, { color: '#fff' }]}>Done</Text>
+              <Text style={[styles.sheetBtnText, { color: '#fff' }]}>{i18n('common.done')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -414,7 +416,7 @@ export function ReminderDetailScreen() {
           </View>
           <View style={styles.sheetBtns}>
             <TouchableOpacity style={[styles.sheetBtn, { borderColor: t.border, borderWidth: 1 }]} onPress={() => setActiveSheet(null)}>
-              <Text style={[styles.sheetBtnText, { color: t.ink }]}>Cancel</Text>
+              <Text style={[styles.sheetBtnText, { color: t.ink }]}>{i18n('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.sheetBtn, { backgroundColor: t.brand }]} onPress={handleSnooze}>
               <Text style={[styles.sheetBtnText, { color: '#fff' }]}>Snooze</Text>
@@ -437,7 +439,7 @@ export function ReminderDetailScreen() {
           </View>
           <View style={styles.sheetBtns}>
             <TouchableOpacity style={[styles.sheetBtn, { borderColor: t.border, borderWidth: 1 }]} onPress={() => setActiveSheet(null)}>
-              <Text style={[styles.sheetBtnText, { color: t.ink }]}>Cancel</Text>
+              <Text style={[styles.sheetBtnText, { color: t.ink }]}>{i18n('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.sheetBtn, { backgroundColor: `${t.danger}15`, borderColor: t.danger, borderWidth: 1 }]} onPress={() => setActiveSheet(null)}>
               <Text style={[styles.sheetBtnText, { color: t.danger }]}>Skip dose</Text>

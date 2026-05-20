@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
@@ -46,8 +47,9 @@ interface AddMedicationScreenProps {
   onSave?: (values: MedFormState) => Promise<void> | void;
 }
 
-export function AddMedicationScreen({ initialValues, screenTitle = 'Add medication', onSave }: AddMedicationScreenProps) {
+export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddMedicationScreenProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [form, setForm] = useState<MedFormState>({ ...EMPTY, ...initialValues });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,11 +102,11 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.bar}>
         <TopBar
-          title={screenTitle}
-          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel="Back" />}
+          title={screenTitle ?? i18n('meds.addMedication')}
+          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel={i18n('common.back')} />}
           right={
             <Pressable onPress={handleSave} hitSlop={8} disabled={saveDisabled}>
-              <Text style={[typography.bodyMed, { color: saveDisabled ? t.ink4 : t.brand }]}>Save</Text>
+              <Text style={[typography.bodyMed, { color: saveDisabled ? t.ink4 : t.brand }]}>{i18n('common.save')}</Text>
             </Pressable>
           }
         />
@@ -216,7 +218,7 @@ export function AddMedicationScreen({ initialValues, screenTitle = 'Add medicati
         </View>
 
         <Button
-          label={saving ? 'Saving...' : 'Save medication'}
+          label={saving ? i18n('meds.saving') : i18n('meds.addMedication')}
           variant="solid"
           onPress={saveDisabled ? undefined : handleSave}
           style={[{ marginTop: 8 }, saveDisabled && { opacity: 0.4 }]}

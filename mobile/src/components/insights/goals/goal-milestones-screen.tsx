@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Card } from '../../primitives/card';
 import { SectionHeader } from '../../layout/section-header';
@@ -20,13 +21,14 @@ const STAT_CELLS = [
 
 export function GoalMilestonesScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const loadGoal = useCallback(() => healthGoalService.current(), []);
   const goal = useApiQuery(queryKeys.healthGoal, loadGoal);
 
   if (goal.isLoading) {
     return (
       <Screen>
-        <ApiState title="Loading milestones" loading />
+        <ApiState title={i18n('insights.loadingMilestones')} loading />
       </Screen>
     );
   }
@@ -34,7 +36,7 @@ export function GoalMilestonesScreen() {
   if (goal.error) {
     return (
       <Screen>
-        <ApiState title="Milestones unavailable" message={goal.error.message} actionLabel="Retry" onAction={goal.reload} />
+        <ApiState title={i18n('insights.milestonesUnavailable')} message={goal.error.message} actionLabel={i18n('common.retry')} onAction={goal.reload} />
       </Screen>
     );
   }
@@ -43,7 +45,7 @@ export function GoalMilestonesScreen() {
     <Screen>
       <Pressable onPress={() => router.back()} style={styles.backBar}>
         <ChevronLeft size={20} color={t.ink} />
-        <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>Milestones</Text>
+        <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>{i18n('insights.milestones')}</Text>
       </Pressable>
 
       {/* Top stat strip: Earned / In Progress / Locked */}
@@ -62,7 +64,7 @@ export function GoalMilestonesScreen() {
       </Card>
 
       {/* Just earned */}
-      <SectionHeader title="Just earned" />
+      <SectionHeader title={i18n('insights.justEarned')} />
       <View style={[styles.earnedCard, { backgroundColor: t.successSoft, borderRadius: t.radius.xl }]}>
         <View style={[styles.badgeIcon, { backgroundColor: t.success + '22', borderRadius: t.radius.md }]}>
           <Text style={{ fontSize: 24 }}>🏅</Text>
@@ -79,7 +81,7 @@ export function GoalMilestonesScreen() {
       <MissingApiState title="Earned milestones unavailable" contract="TODO: GET /v1/health-goals/{id}/milestones" />
 
       {/* In progress */}
-      <SectionHeader title="In progress" />
+      <SectionHeader title={i18n('insights.inProgress')} />
       <Card tight>
         {[
           { emoji: '🚶', title: 'Step master',     sub: '7,500 / 10,000 steps/day for 7 d' },
@@ -111,7 +113,7 @@ export function GoalMilestonesScreen() {
       </Card>
 
       {/* All milestones badge grid */}
-      <SectionHeader title="All milestones" />
+      <SectionHeader title={i18n('insights.allMilestones')} />
       <Card style={styles.badgeGrid}>
         {['🏅', '🌟', '🔥', '💪', '🎯', '🏃'].map((em, i) => (
           <View

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Button } from '../../primitives/button';
 import { useTheme } from '../../../theme/useTheme';
@@ -35,6 +36,7 @@ function StepProgress({ current, total }: { current: number; total: number }) {
 
 export function CreateGoalScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [step, setStep]         = useState(1);
   const [category, setCategory] = useState<Category | null>(null);
   const [target, setTarget]     = useState('8000');
@@ -59,7 +61,7 @@ export function CreateGoalScreen() {
         <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
           <ChevronLeft size={22} color={t.ink} />
         </Pressable>
-        <Text style={[typography.h3, { flex: 1, color: t.ink, textAlign: 'center' }]}>New goal</Text>
+        <Text style={[typography.h3, { flex: 1, color: t.ink, textAlign: 'center' }]}>{i18n('insights.newGoalTitle')}</Text>
         <Text style={[typography.bodyMed, { color: t.ink3, minWidth: 40, textAlign: 'right' }]}>
           {step} / 4
         </Text>
@@ -78,7 +80,7 @@ export function CreateGoalScreen() {
       <View style={styles.footer}>
         {step > 1 && step < 4 && (
           <Button
-            label="Back"
+            label={i18n('common.back')}
             variant="ghost"
             size="lg"
             style={styles.footerBtn}
@@ -87,7 +89,7 @@ export function CreateGoalScreen() {
         )}
         {step < 4 ? (
           <Button
-            label="Continue"
+            label={i18n('insights.continue')}
             variant="solid"
             size="lg"
             style={step > 1 ? styles.footerBtn : styles.footerBtnFull}
@@ -96,7 +98,7 @@ export function CreateGoalScreen() {
           />
         ) : (
           <Button
-            label="Commit - Start tomorrow"
+            label={i18n('insights.commitStart')}
             variant="solid"
             size="lg"
             style={styles.footerBtnFull}

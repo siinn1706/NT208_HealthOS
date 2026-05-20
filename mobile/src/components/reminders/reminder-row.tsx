@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { IconCheck, IconBell, IconCalendar, IconActivity, IconHeart, IconMore } from '../../icons';
 
@@ -41,6 +42,7 @@ export function ReminderRow({
   onDone, onSnooze, onMore, onPress,
 }: Props) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   const catColor = overdue ? t.danger : category === 'activity' ? t.success : category === 'goal' ? t.warning : t.brand;
   const rowBg = overdue ? `${t.danger}0F` : done ? t.bgElev : t.card;
@@ -104,15 +106,15 @@ export function ReminderRow({
         {done ? (
           <View style={[styles.doneChip, { backgroundColor: `${t.success}15` }]}>
             <IconCheck size={10} color={t.success} />
-            <Text style={[styles.doneChipText, { color: t.success }]}>Done</Text>
+            <Text style={[styles.doneChipText, { color: t.success }]}>{i18n('reminders.done')}</Text>
           </View>
         ) : overdue && onDone ? (
           <TouchableOpacity onPress={onDone} style={[styles.actionPill, { backgroundColor: t.danger }]}>
-            <Text style={[styles.actionPillText, { color: '#fff' }]}>Resolve</Text>
+            <Text style={[styles.actionPillText, { color: '#fff' }]}>{i18n('reminders.resolve')}</Text>
           </TouchableOpacity>
         ) : !overdue && onDone ? (
           <TouchableOpacity onPress={onDone} style={[styles.actionPill, { backgroundColor: t.brand }]}>
-            <Text style={[styles.actionPillText, { color: '#fff' }]}>Done</Text>
+            <Text style={[styles.actionPillText, { color: '#fff' }]}>{i18n('reminders.done')}</Text>
           </TouchableOpacity>
         ) : onMore ? (
           <TouchableOpacity onPress={onMore} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>

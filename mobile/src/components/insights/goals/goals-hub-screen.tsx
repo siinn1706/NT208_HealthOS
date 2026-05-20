@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { TopBar } from '../../layout/top-bar';
 import { SectionHeader } from '../../layout/section-header';
@@ -34,6 +35,7 @@ function blobOpacity(themeName: string): number {
 
 export function GoalsHubScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { name: themeName } = useThemeContext();
 
   const loadGoal     = useCallback(() => healthGoalService.current(), []);
@@ -52,7 +54,7 @@ export function GoalsHubScreen() {
     const deadline = goal.data.deadline ? new Date(goal.data.deadline).toLocaleDateString() : 'No deadline';
     return {
       id: goal.data.id,
-      title: 'Target weight',
+      title: i18n('insights.targetWeight'),
       sub: current ? `${Math.round(current)} kg → ${Math.round(target)} kg` : `Target ${Math.round(target)} kg`,
       progress,
       streak: (reminders.data ?? []).filter((r) => r.done).length,
@@ -72,18 +74,18 @@ export function GoalsHubScreen() {
   return (
     <Screen>
       <TopBar
-        title="Insights"
-        subtitle="Reports · Risks · Goals"
+        title={i18n('insights.title')}
+        subtitle={i18n('insights.subtitle')}
         right={
           <View style={styles.topActions}>
             <IconButton
               icon={<IconBell size={20} color={t.ink3} />}
-              accessibilityLabel="Alerts"
+              accessibilityLabel={i18n('insights.alerts')}
               onPress={() => router.push('/reminders/notifications' as never)}
             />
             <IconButton
               icon={<IconPlus size={20} color={t.ink3} />}
-              accessibilityLabel="New goal"
+              accessibilityLabel={i18n('insights.newGoal')}
               onPress={() => router.push('/insights/goals/create' as never)}
             />
           </View>
@@ -92,12 +94,12 @@ export function GoalsHubScreen() {
 
       <InsightsSegmentedTabs active="goals" />
 
-      {loading && <ApiState title="Loading goals" loading />}
+      {loading && <ApiState title={i18n('insights.loadingGoals')} loading />}
       {error && (
         <ApiState
-          title="Goals unavailable"
+          title={i18n('insights.goalsUnavailable')}
           message={error.message}
-          actionLabel="Retry"
+          actionLabel={i18n('common.retry')}
           onAction={() => { goal.reload(); profile.reload(); reminders.reload(); }}
         />
       )}
@@ -132,16 +134,16 @@ export function GoalsHubScreen() {
                 >
                   <View style={styles.ringCenter}>
                     <Text style={[typography.title, { color: '#fff', lineHeight: 22 }]}>{doneChecks}</Text>
-                    <Text style={[typography.micro, { color: 'rgba(255,255,255,0.75)' }]}>of {Math.max(totalChecks, 1)}</Text>
+                    <Text style={[typography.micro, { color: 'rgba(255,255,255,0.75)' }]}>/ {Math.max(totalChecks, 1)}</Text>
                   </View>
                 </ProgressRing>
 
                 <View style={styles.heroText}>
                   <Text style={[typography.title, { color: '#fff' }]}>
-                    {doneChecks} of {totalChecks} check-ins done
+                    {i18n('insights.checkInsDone', { done: doneChecks, total: totalChecks })}
                   </Text>
                   <Text style={[typography.caption, { color: 'rgba(255,255,255,0.7)', marginTop: 4 }]}>
-                    Based on current reminder completion
+                    {i18n('insights.basedOnReminders')}
                   </Text>
                 </View>
               </View>
@@ -160,25 +162,25 @@ export function GoalsHubScreen() {
               <Text style={{ fontSize: 18 }}>🔥</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[typography.bodyMed, { color: t.ink }]}>{doneChecks}-day streak</Text>
-              <Text style={[typography.caption, { color: t.ink3 }]}>Keep tracking daily</Text>
+              <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n('insights.dayStreak', { count: doneChecks })}</Text>
+              <Text style={[typography.caption, { color: t.ink3 }]}>{i18n('insights.keepTracking')}</Text>
             </View>
             <View style={styles.streakRight}>
-              <Text style={[typography.caption, { color: t.brand }]}>Manage</Text>
+              <Text style={[typography.caption, { color: t.brand }]}>{i18n('common.manage')}</Text>
               <ChevronRight size={16} color={t.ink4} style={{ marginLeft: 2 }} />
             </View>
           </Pressable>
 
           <SectionHeader
-            title="Active Goals"
-            action="+ New"
+            title={i18n('insights.activeGoals')}
+            action={i18n('common.new')}
             onActionPress={() => router.push('/insights/goals/create' as never)}
           />
 
           {!goalCard && (
             <ApiState
-              title="No goal configured"
-              message="Create a health goal to track progress from real profile data."
+              title={i18n('insights.noGoalConfigured')}
+              message={i18n('insights.noGoalMessage')}
             />
           )}
           {goalCard && (
@@ -198,7 +200,7 @@ export function GoalsHubScreen() {
             onPress={() => router.push('/insights/goals/milestones' as never)}
             style={[styles.milestonesRow, { borderColor: t.border, borderRadius: t.radius.lg, backgroundColor: t.card }]}
           >
-            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>🏅 View Milestones</Text>
+            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{i18n('insights.viewMilestones')}</Text>
             <ChevronRight size={18} color={t.ink3} />
           </Pressable>
         </>

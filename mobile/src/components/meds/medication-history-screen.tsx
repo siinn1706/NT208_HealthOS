@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
@@ -17,6 +18,7 @@ import { formatDate } from '../../api/viewModels';
 
 export function MedicationHistoryScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const loadHistory = useCallback(() => medicationService.list('all'), []);
   const history = useApiQuery(`${queryKeys.medications}.history`, loadHistory);
   const archived = (history.data ?? []).filter((med) => med.status !== 'active');
@@ -30,19 +32,19 @@ export function MedicationHistoryScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.bar}>
         <TopBar
-          title="Medication history"
-          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel="Back" />}
-          right={<IconButton icon={<IconFilter size={18} color={t.ink3} />} accessibilityLabel="Filter" />}
+          title={i18n('meds.medicationHistory')}
+          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel={i18n('common.back')} />}
+          right={<IconButton icon={<IconFilter size={18} color={t.ink3} />} accessibilityLabel={i18n('common.filter')} />}
         />
       </View>
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
         {history.isLoading && (
-          <ApiState title="Loading medication history" loading skeleton={<TimelineSkeleton />} />
+          <ApiState title={i18n('api.loading')} loading skeleton={<TimelineSkeleton />} />
         )}
-        {history.error && <ApiState title="History unavailable" message={history.error.message} actionLabel="Retry" onAction={history.reload} />}
+        {history.error && <ApiState title={i18n('api.unavailable')} message={history.error.message} actionLabel={i18n('common.retry')} onAction={history.reload} />}
         {!history.isLoading && !history.error && archived.length === 0 && (
-          <ApiState title="No archived medications" message="Completed, cancelled, and paused medications will appear here." />
+          <ApiState title={i18n('meds.archived')} message="Completed, cancelled, and paused medications will appear here." />
         )}
 
         {/* Stats — single white card with three columns */}
@@ -72,7 +74,7 @@ export function MedicationHistoryScreen() {
         {archived.length > 0 && (
           <>
             <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }]}>
-              This week
+              {i18n('care.thisWeek')}
             </Text>
             <Card style={s.groupCard}>
               {archived.map((med, i) => (

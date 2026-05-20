@@ -151,6 +151,25 @@ class LoginBody(BaseModel):
     password: str = Field(min_length=1)
 
 
+class MfaLoginRequired(BaseModel):
+    mfa_required: Literal[True] = True
+    challenge_id: str
+    expires_in_seconds: int
+
+
+class MfaLoginVerifyBody(BaseModel):
+    challenge_id: str = Field(min_length=1)
+    code: str = Field(min_length=6, max_length=64)
+
+
+class RefreshTokenBody(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class LogoutBody(BaseModel):
+    refresh_token: str | None = None
+
+
 class CheckUsernameResponse(BaseModel):
     """Response for username availability check."""
 
@@ -239,6 +258,7 @@ class UserProfileUpdate(BaseModel):
 class AuthToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None
     user_id: str
     email: str
     username: Optional[str] = None
@@ -248,6 +268,10 @@ class AuthToken(BaseModel):
 
 
 class AuthTokenResponse(DataResponse[AuthToken]):
+    ...
+
+
+class AuthLoginResponse(DataResponse[AuthToken | MfaLoginRequired]):
     ...
 
 

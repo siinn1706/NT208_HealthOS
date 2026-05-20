@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { SectionHeader } from '../../layout/section-header';
 import { Card } from '../../primitives/card';
@@ -75,6 +76,7 @@ function periodLabel(period: '7d' | '30d' | '90d') {
 
 export function ReportDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
   const period = rawId === '7d' || rawId === '30d' || rawId === '90d' ? rawId : null;
@@ -150,7 +152,7 @@ export function ReportDetailScreen() {
   if (!period) {
     return (
       <Screen>
-        <ApiState title="Report not found" message="Supported report ids: 7d, 30d, 90d." actionLabel="Back" onAction={() => router.back()} />
+        <ApiState title="Report not found" message="Supported report ids: 7d, 30d, 90d." actionLabel={i18n('common.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -158,7 +160,7 @@ export function ReportDetailScreen() {
   if (report.isLoading) {
     return (
       <Screen>
-        <ApiState title="Loading report" loading />
+        <ApiState title={i18n('api.loading')} loading />
       </Screen>
     );
   }
@@ -166,7 +168,7 @@ export function ReportDetailScreen() {
   if (report.error) {
     return (
       <Screen>
-        <ApiState title="Report unavailable" message={report.error.message} actionLabel="Retry" onAction={report.reload} />
+        <ApiState title={i18n('api.unavailable')} message={report.error.message} actionLabel={i18n('common.retry')} onAction={report.reload} />
       </Screen>
     );
   }
@@ -174,7 +176,7 @@ export function ReportDetailScreen() {
   if (!model.sectionsCount) {
     return (
       <Screen>
-        <ApiState title="No report data" message="No report sections returned for this period." actionLabel="Back" onAction={() => router.back()} />
+        <ApiState title="No report data" message="No report sections returned for this period." actionLabel={i18n('common.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -235,7 +237,7 @@ export function ReportDetailScreen() {
       </View>
 
       {/* Key findings — tone cards */}
-      <SectionHeader title="Key findings" />
+      <SectionHeader title={i18n('insights.keyFindings')} />
       {model.bullets.map((bullet, i) => {
         const toneType = i === 0 ? 'success' : i === 2 ? 'warning' : 'info';
         const toneColor = toneType === 'success' ? t.success : toneType === 'warning' ? t.warning : t.brand;
@@ -265,7 +267,7 @@ export function ReportDetailScreen() {
       })}
 
       {/* Vitals section */}
-      <SectionHeader title="Vitals" />
+      <SectionHeader title={i18n('insights.vitals')} />
       <Card tight>
         {model.vitalsRows.map((row) => (
           <VitalRow key={row.label} {...row} />
@@ -273,7 +275,7 @@ export function ReportDetailScreen() {
       </Card>
 
       {/* Medications adherence */}
-      <SectionHeader title="Medications" />
+      <SectionHeader title={i18n('insights.medications')} />
       <Card tight style={{ backgroundColor: t.success + '10', borderColor: t.success + '30' }}>
         <View style={styles.medRow}>
           <View style={[styles.medIcon, { backgroundColor: t.success + '20', borderRadius: t.radius.sm }]}>

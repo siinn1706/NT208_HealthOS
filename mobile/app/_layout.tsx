@@ -1,6 +1,6 @@
+import '../src/i18n';
 import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -13,11 +13,32 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../src/theme/theme-provider';
-import { SessionProvider } from '../src/auth/session-provider';
+import { SessionProvider, useSession } from '../src/auth/session-provider';
 import { ToastProvider } from '../src/components/primitives/feedback/toast';
 import { OfflineBanner } from '../src/components/api/offline-banner';
+import { ThemedStatusBar } from '../src/components/primitives/themed-status-bar';
 
 SplashScreen.preventAutoHideAsync();
+
+function AuthGateStack() {
+  const segments = useSegments();
+  const { authenticated, booting } = useSession();
+  if (booting) return null;
+
+  const root = segments[0] ?? '';
+  const isPublic =
+    root === 'auth'
+    || root === 'onboarding'
+    || (__DEV__ && root === 'dev');
+
+  if (!authenticated && !isPublic) {
+    return <Redirect href="/auth/welcome" />;
+  }
+  if (authenticated && root === 'auth') {
+    return <Redirect href="/(tabs)/home" />;
+  }
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -40,8 +61,8 @@ export default function RootLayout() {
         <ThemeProvider>
           <SessionProvider>
             <ToastProvider>
-              <StatusBar style="auto" />
-              <Stack screenOptions={{ headerShown: false }} />
+              <ThemedStatusBar />
+              <AuthGateStack />
               <OfflineBanner />
             </ToastProvider>
           </SessionProvider>

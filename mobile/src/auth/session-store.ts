@@ -8,6 +8,11 @@ const USER_KEY    = 'healthos.mobile.user';
 /** undefined = not yet loaded from SecureStore; null = confirmed absent */
 let cachedToken: string | null | undefined = undefined;
 
+/** Incremented on every clearStoredSession call; used by refresh handler to detect logout races. */
+let sessionEpoch = 0;
+export function getSessionEpoch() { return sessionEpoch; }
+export function bumpSessionEpoch() { sessionEpoch += 1; }
+
 export async function getAccessToken(): Promise<string | null> {
   if (cachedToken !== undefined) return cachedToken;
   cachedToken = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -22,7 +27,12 @@ export async function getCachedUser(): Promise<CurrentUser | null> {
   const raw = await SecureStore.getItemAsync(USER_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as CurrentUser;
+    const obj = JSON.parse(raw) as unknown;
+    if (!obj || typeof obj !== 'object' || typeof (obj as Record<string, unknown>).id !== 'string' || typeof (obj as Record<string, unknown>).email !== 'string') {
+      await SecureStore.deleteItemAsync(USER_KEY);
+      return null;
+    }
+    return obj as CurrentUser;
   } catch {
     await SecureStore.deleteItemAsync(USER_KEY);
     return null;
@@ -56,6 +66,7 @@ export async function saveCurrentUser(user: CurrentUser): Promise<void> {
 }
 
 export async function clearStoredSession(): Promise<void> {
+  bumpSessionEpoch();
   cachedToken = undefined;
   await SecureStore.deleteItemAsync(TOKEN_KEY);
   await SecureStore.deleteItemAsync(REFRESH_KEY);

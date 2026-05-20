@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { TopBar } from '../../layout/top-bar';
 import { SectionHeader } from '../../layout/section-header';
@@ -53,6 +54,7 @@ const GENERATE_STEPS = [
 
 function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const activeStep = 1; // second step is in-progress
 
   return (
@@ -65,10 +67,10 @@ function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
       </ProgressRing>
 
       <Text style={[typography.display, { color: t.ink, marginTop: 20, textAlign: 'center' }]}>
-        Building report…
+        {i18n('insights.buildingReport')}
       </Text>
       <Text style={[typography.body, { color: t.ink3, textAlign: 'center', marginTop: 4, marginBottom: 20 }]}>
-        This usually takes 15–30 seconds
+        {i18n('insights.buildingReportSub')}
       </Text>
 
       {/* Step checklist */}
@@ -105,7 +107,7 @@ function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
       </Card>
 
       <Button
-        label="Cancel"
+        label={i18n('common.cancel')}
         variant="ghost"
         size="lg"
         style={{ marginTop: 20, minWidth: 160 }}
@@ -119,6 +121,7 @@ function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
 
 function ReportsEmptyState({ onLearn, onLog }: { onLearn?: () => void; onLog?: () => void }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const loggedDays = 3;
   const requiredDays = 5;
 
@@ -130,7 +133,7 @@ function ReportsEmptyState({ onLearn, onLog }: { onLearn?: () => void; onLog?: (
       </View>
 
       <Text style={[typography.h3, { color: t.ink, textAlign: 'center', marginTop: 16 }]}>
-        No reports yet
+        {i18n('insights.noReportsYet')}
       </Text>
       <Text style={[typography.body, { color: t.ink3, textAlign: 'center', marginTop: 6, lineHeight: 20 }]}>
         Log health data for at least{' '}
@@ -153,8 +156,8 @@ function ReportsEmptyState({ onLearn, onLog }: { onLearn?: () => void; onLog?: (
 
       {/* Dual CTAs */}
       <View style={emptyStyles.ctaRow}>
-        <Button label="Learn how" variant="ghost" size="lg" style={emptyStyles.cta} onPress={onLearn ?? (() => {})} />
-        <Button label="Log today" variant="solid" size="lg" style={emptyStyles.cta} onPress={onLog ?? (() => {})} />
+        <Button label={i18n('insights.learnHow')} variant="ghost" size="lg" style={emptyStyles.cta} onPress={onLearn ?? (() => {})} />
+        <Button label={i18n('insights.logToday')} variant="solid" size="lg" style={emptyStyles.cta} onPress={onLog ?? (() => {})} />
       </View>
 
       {/* Info note */}
@@ -288,6 +291,7 @@ function QuickTile({ icon, label, sub, onPress }: { icon: React.ReactNode; label
 
 export function ReportsHubScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const loadWeekly = useCallback(() => reportService.get('7d'), []);
   const loadMonthly = useCallback(() => reportService.get('30d'), []);
   const report7d = useApiQuery(queryKeys.reports('7d'), loadWeekly);
@@ -313,7 +317,7 @@ export function ReportsHubScreen() {
       const sections = asArray(data.sections).length;
       return {
         icon,
-        kind: period === '7d' ? 'Weekly summary' : 'Monthly summary',
+        kind: period === '7d' ? i18n('insights.weeklySummary') : i18n('insights.monthlySummary'),
         title: str(asRecord(asArray(data.sections)[0]).summary, sections > 0 ? `${sections} sections available` : 'No report sections yet'),
         subtitle: generated,
         tone,
@@ -324,7 +328,7 @@ export function ReportsHubScreen() {
       mapOne('30d', <IconActivity size={18} color="#3B82F6" />, 'info'),
       {
         icon: <IconShield size={18} color="#D97706" />,
-        kind: 'Risk report',
+        kind: i18n('insights.riskReport'),
         title: 'Open risk insights for full prevention plan',
         subtitle: 'Derived from health-risk endpoint',
         tone: 'warning' as Tone,
@@ -340,12 +344,12 @@ export function ReportsHubScreen() {
   return (
     <Screen>
       <TopBar
-        title="Insights"
-        subtitle="Reports · Risks · Goals"
+        title={i18n('insights.title')}
+        subtitle={i18n('insights.subtitle')}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconSearch size={20} color={t.ink3} />} variant="subtle" accessibilityLabel="Search" />
-            <IconButton icon={<IconFilter size={20} color={t.ink3} />} variant="subtle" accessibilityLabel="Filter" />
+            <IconButton icon={<IconSearch size={20} color={t.ink3} />} variant="subtle" accessibilityLabel={i18n('common.search')} />
+            <IconButton icon={<IconFilter size={20} color={t.ink3} />} variant="subtle" accessibilityLabel={i18n('common.filter')} />
           </View>
         }
       />
@@ -413,14 +417,14 @@ export function ReportsHubScreen() {
                 onPress={() => router.push('/insights/reports/7d' as never)}
                 style={[styles.heroBtnPrimary, { borderRadius: t.radius.pill }]}
               >
-                <Text style={[typography.button, { color: t.brand }]}>Read report</Text>
+                <Text style={[typography.button, { color: t.brand }]}>{i18n('insights.readReport')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => router.push('/insights/reports/export' as never)}
                 style={[styles.heroBtnGhost, { borderRadius: t.radius.pill, borderColor: 'rgba(255,255,255,0.5)', flexDirection: 'row', alignItems: 'center' }]}
               >
                 <IconPaperclip size={14} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={[typography.button, { color: '#fff' }]}>Share</Text>
+                <Text style={[typography.button, { color: '#fff' }]}>{i18n('insights.share')}</Text>
               </Pressable>
             </View>
           </LinearGradient>
@@ -434,7 +438,7 @@ export function ReportsHubScreen() {
                 <IconRefresh size={18} color={t.brand} />
               </View>
               <View style={styles.statusText}>
-                <Text style={[typography.bodyMed, { color: t.ink }]}>Monthly report queued</Text>
+                <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n('insights.monthlyQueued')}</Text>
                 <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
                   Will run {hero.subtitle ? 'soon' : 'on Apr 30'} · uses 30-day data
                 </Text>
@@ -446,19 +450,19 @@ export function ReportsHubScreen() {
           <View style={styles.quickGrid}>
             <QuickTile
               icon={<IconPlus size={18} color={t.brand} />}
-              label="Generate report"
+              label={i18n('insights.generateReport')}
               sub="On-demand"
               onPress={() => report30d.reload()}
             />
             <QuickTile
               icon={<IconHeartPulse size={18} color={t.brand} />}
-              label="Export PDF"
+              label={i18n('insights.exportPdf')}
               sub="For consultation"
               onPress={() => router.push('/insights/reports/export' as never)}
             />
           </View>
 
-          <SectionHeader title="Library" action="See all" onActionPress={() => router.push('/insights/reports/export' as never)} />
+          <SectionHeader title={i18n('insights.library')} action={i18n('common.seeAll')} onActionPress={() => router.push('/insights/reports/export' as never)} />
           <Card tight>
             {rows.map((row, i) => (
               <ReportRow

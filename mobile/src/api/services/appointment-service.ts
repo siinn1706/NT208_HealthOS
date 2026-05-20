@@ -12,7 +12,7 @@ export const appointmentService = {
   },
 
   async detail(id: string) {
-    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${id}`);
+    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${encodeURIComponent(id)}`);
     return response.data;
   },
 
@@ -25,7 +25,7 @@ export const appointmentService = {
   },
 
   async update(id: string, body: AppointmentUpdateBody) {
-    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${id}`, {
+    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       json: body,
     });
@@ -33,7 +33,7 @@ export const appointmentService = {
   },
 
   async updateStatus(id: string, status: Appointment['status']) {
-    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${id}/status`, {
+    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${encodeURIComponent(id)}/status`, {
       method: 'PATCH',
       json: { status },
     });

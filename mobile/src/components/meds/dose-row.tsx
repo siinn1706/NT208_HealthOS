@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconCheck } from '../../icons';
@@ -13,8 +14,9 @@ interface DoseRowProps {
   onTaken?: () => Promise<void> | void;
 }
 
-export function DoseRow({ time, name, state: currentState, onTaken }: DoseRowProps) {
+export const DoseRow = React.memo(function DoseRow({ time, name, state: currentState, onTaken }: DoseRowProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const taken = currentState === 'taken';
 
   return (
@@ -38,12 +40,12 @@ export function DoseRow({ time, name, state: currentState, onTaken }: DoseRowPro
           hitSlop={8}
           style={[styles.takeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
         >
-          <Text style={[{ fontSize: 12, fontWeight: '600', color: '#FFF' }]}>Take</Text>
+          <Text style={[{ fontSize: 12, fontWeight: '600', color: '#FFF' }]}>{i18n('meds.take')}</Text>
         </Pressable>
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth },

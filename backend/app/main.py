@@ -207,7 +207,7 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
     import logging
 
     from jose import JWTError
-    from app.core.security import JWT_BLACKLIST_PREFIX, decode_access_token
+    from app.core.security import JWT_BLACKLIST_PREFIX, decode_token_with_type
     from app.adapters.database import AsyncSessionLocal
     from app.adapters.redis_client import get_redis
 
@@ -225,10 +225,11 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
         return
 
     try:
-        payload = decode_access_token(token)
-        token_type = payload.get("typ")
-        if token_type != "ws_ticket":
-            raise JWTError("invalid token type for websocket")
+        payload = decode_token_with_type(
+            token,
+            expected_type="ws_ticket",
+            allow_legacy_access=False,
+        )
         # Check revocation blacklist (ws_tickets have a jti too)
         jti = payload.get("jti")
         if jti:

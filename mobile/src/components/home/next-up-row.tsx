@@ -21,7 +21,7 @@ interface NextUpRowProps {
   onPress?: () => void;
 }
 
-export function NextUpRow({ time, title, meta, icon, badge, onPress }: NextUpRowProps) {
+export const NextUpRow = React.memo(function NextUpRow({ time, title, meta, icon, badge, onPress }: NextUpRowProps) {
   const t = useTheme();
   const IconComp = ICON_MAP[icon];
 
@@ -41,7 +41,7 @@ export function NextUpRow({ time, title, meta, icon, badge, onPress }: NextUpRow
       <ChevronRight size={16} color={t.ink4} />
     </PressableCard>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth },

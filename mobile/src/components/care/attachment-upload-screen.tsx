@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
@@ -23,6 +24,7 @@ interface UploadSlot {
 
 export function AttachmentUploadScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const [activeSheet, setActiveSheet] = useState<ActionSheet>(null);
   const [slots] = useState<UploadSlot[]>([
@@ -35,12 +37,12 @@ export function AttachmentUploadScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.bar}>
         <TopBar
-          title="Attachments"
+          title={i18n('care.attachments')}
           left={
             <IconButton
               icon={<ChevronLeft size={22} color={t.ink} />}
               onPress={() => router.back()}
-              accessibilityLabel="Back"
+              accessibilityLabel={i18n('common.back')}
             />
           }
         />
@@ -94,14 +96,14 @@ export function AttachmentUploadScreen() {
       <BottomSheet visible={activeSheet === 'library'} onClose={() => setActiveSheet(null)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Photo library access unavailable" contract="requires expo-image-picker and media permissions" />
-          <Button label="Close" variant="soft" onPress={() => setActiveSheet(null)} style={{ marginTop: 8 }} />
+          <Button label={i18n('common.close')} variant="soft" onPress={() => setActiveSheet(null)} style={{ marginTop: 8 }} />
         </View>
       </BottomSheet>
 
       <BottomSheet visible={activeSheet === 'camera'} onClose={() => setActiveSheet(null)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Camera access unavailable" contract="requires expo-camera and camera permissions" />
-          <Button label="Close" variant="soft" onPress={() => setActiveSheet(null)} style={{ marginTop: 8 }} />
+          <Button label={i18n('common.close')} variant="soft" onPress={() => setActiveSheet(null)} style={{ marginTop: 8 }} />
         </View>
       </BottomSheet>
     </SafeAreaView>

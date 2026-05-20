@@ -3,12 +3,14 @@ import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { HeartPulse } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 
 export function AuthWelcomeScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   return (
     <View style={styles.root}>
@@ -33,10 +35,10 @@ export function AuthWelcomeScreen() {
       {/* Hero text */}
       <View style={styles.heroText}>
         <Text style={[typography.display, { color: t.ink, textAlign: 'center', fontFamily: 'Inter_800ExtraBold', lineHeight: 34 }]}>
-          {'Your health,\nin one calm place'}
+          {i18n('auth.heroTitle')}
         </Text>
         <Text style={[typography.body, { color: t.ink3, textAlign: 'center', marginTop: 10, lineHeight: 22 }]}>
-          Track vitals, manage medications, chat with care — all private, all yours.
+          {i18n('auth.heroSubtitle')}
         </Text>
       </View>
 
@@ -49,10 +51,10 @@ export function AuthWelcomeScreen() {
 
       {/* CTAs */}
       <View style={styles.ctas}>
-        <Button label="Get started" size="lg" onPress={() => router.push('/auth/sign-up')} />
-        <Button variant="text" label="I already have an account" size="md" onPress={() => router.push('/auth/sign-in')} />
+        <Button label={i18n('auth.getStarted')} size="lg" onPress={() => router.push('/auth/sign-up')} />
+        <Button variant="text" label={i18n('auth.iAlreadyHaveAccount')} size="md" onPress={() => router.push('/auth/sign-in')} />
         <Text style={[typography.caption, { color: t.ink4, textAlign: 'center', fontSize: 12, lineHeight: 16, marginTop: 8 }]}>
-          By continuing, you agree to our Terms &amp; Privacy Policy
+          {i18n('auth.termsNotice')}
         </Text>
       </View>
     </View>

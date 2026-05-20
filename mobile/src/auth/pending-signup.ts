@@ -1,5 +1,12 @@
-let pending: { email: string; password: string; name: string; username: string } | null = null;
+type PendingSignup = { email: string; password: string; name: string; username: string };
 
-export function setPendingSignup(data: typeof pending) { pending = data; }
-export function getPendingSignup() { return pending; }
-export function clearPendingSignup() { pending = null; }
+let pending: PendingSignup | null = null;
+
+export function setPendingSignup(data: PendingSignup) { pending = data; }
+
+/** Returns the pending signup data and immediately nulls the in-memory store (consume-once). */
+export function consumePendingSignup(): PendingSignup | null {
+  const data = pending;
+  pending = null;
+  return data;
+}

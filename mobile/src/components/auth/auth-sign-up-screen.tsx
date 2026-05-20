@@ -4,6 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '../../theme/useTheme';
@@ -28,7 +30,7 @@ export function AuthSignUpScreen() {
 
   function validate() {
     if (!name.trim()) return 'Full name is required.';
-    if (!email.trim() || !email.includes('@')) return 'A valid email is required.';
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return 'A valid email is required.';
     if (password.length < 8) return 'Password must be at least 8 characters.';
     if (!agreed) return 'Please accept the terms to continue.';
     return null;
@@ -59,6 +61,7 @@ export function AuthSignUpScreen() {
   }
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View>
       {/* Progress bar */}
       <View style={styles.progressWrap}>
@@ -101,6 +104,7 @@ export function AuthSignUpScreen() {
 
       <Button label="Continue" size="lg" loading={loading} onPress={handleContinue} style={styles.mainBtn} />
     </View>
+    </KeyboardAvoidingView>
   );
 }
 

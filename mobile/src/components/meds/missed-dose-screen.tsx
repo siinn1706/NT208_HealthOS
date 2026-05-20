@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
@@ -22,6 +23,7 @@ const OPTIONS = [
 
 export function MissedDoseScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
   const loadDoses = useCallback(() => medicationService.today(), []);
@@ -51,14 +53,14 @@ export function MissedDoseScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.bar}>
         <TopBar
-          title="Missed dose"
-          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel="Back" />}
+          title={i18n('meds.missedDose')}
+          left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel={i18n('common.back')} />}
         />
       </View>
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 40 }]}>
-        {doses.isLoading && <ApiState title="Loading dose" loading />}
-        {doses.error && <ApiState title="Dose unavailable" message={doses.error.message} actionLabel="Retry" onAction={doses.reload} />}
+        {doses.isLoading && <ApiState title={i18n('api.loading')} loading />}
+        {doses.error && <ApiState title={i18n('api.unavailable')} message={doses.error.message} actionLabel={i18n('common.retry')} onAction={doses.reload} />}
         {!doses.isLoading && !doses.error && !dose && (
           <ApiState title="No missed dose found" message="No scheduled occurrence is available for this medication today." />
         )}
@@ -77,7 +79,7 @@ export function MissedDoseScreen() {
               </View>
             </View>
 
-            <Text style={[typography.h3, { color: t.ink, marginBottom: 10, marginTop: 4 }]}>What do you want to do?</Text>
+            <Text style={[typography.h3, { color: t.ink, marginBottom: 10, marginTop: 4 }]}>{i18n('meds.whatToDo')}</Text>
 
             {choiceError && <ApiState title="Could not save choice" message={choiceError} />}
 
@@ -106,10 +108,10 @@ export function MissedDoseScreen() {
             {/* Guidance only shown when dose context is present */}
             <Card style={[s.guidanceCard, { backgroundColor: t.chip }]}>
               <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }]}>
-                Guidance
+                {i18n('meds.guidance')}
               </Text>
               <Text style={[typography.caption, { color: t.ink2, lineHeight: 18 }]}>
-                Do not double up unless your clinician told you to. Contact your care team if unsure.
+                {i18n('meds.guidanceText')}
               </Text>
             </Card>
           </>

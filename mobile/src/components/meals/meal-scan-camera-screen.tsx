@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { typography } from '../../theme/typography';
 import { IconX, IconFlash, IconBarcode, IconCamera, IconFlip } from '../../icons';
 
@@ -25,14 +27,15 @@ function CornerBracket({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
   );
 }
 
-const MODES = ['Photo', 'Multi-photo', 'Manual'];
-
 export function MealScanCameraScreen() {
   const router = useRouter();
+  const { t: i18n } = useTranslation();
+
+  const MODES = [i18n('meals.photo'), i18n('meals.multiPhoto'), i18n('meals.manual')];
 
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+      <StatusBar style="light" />
 
       {/* Top bar */}
       <View style={styles.topBar}>
@@ -53,7 +56,7 @@ export function MealScanCameraScreen() {
       <View style={styles.viewfinder}>
         {/* Hint chip — above the plate */}
         <View style={styles.hintChip}>
-          <Text style={[typography.caption, { color: WHITE }]}>✦ Center the plate in the frame</Text>
+          <Text style={[typography.caption, { color: WHITE }]}>✦ {i18n('meals.centerPlate')}</Text>
         </View>
 
         {/* Realistic food plate composition */}

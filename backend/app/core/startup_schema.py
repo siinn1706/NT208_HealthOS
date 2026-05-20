@@ -14,6 +14,7 @@ _startup_logger = logging.getLogger("healthos")
 
 _AUTH_CRITICAL_TABLES = {
     "oauth_accounts": "oauth_accounts table (migration 016)",
+    "refresh_token_sessions": "refresh_token_sessions table (migration 030)",
 }
 
 _AUTH_CRITICAL_COLUMNS = {

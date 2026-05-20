@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
@@ -21,6 +22,7 @@ const VISIT_VALUES: VisitType[] = ['video', 'in-person'];
 
 export function CreateAppointmentScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const [specialty, setSpecialty] = useState('');
   const [doctor, setDoctor]       = useState('');
@@ -70,10 +72,10 @@ export function CreateAppointmentScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.topBarWrap}>
         <TopBar
-          title="New Appointment"
+          title={i18n('care.createAppointment')}
           left={
             <Text style={[typography.bodyMed, { color: t.brand }]} onPress={() => !saving && router.back()}>
-              ← Back
+              ← {i18n('common.back')}
             </Text>
           }
           right={
@@ -81,7 +83,7 @@ export function CreateAppointmentScreen() {
               style={[typography.bodyMed, { color: saving ? t.ink4 : t.brand }]}
               onPress={saving ? undefined : handleCreate}
             >
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? i18n('common.working') : i18n('common.save')}
             </Text>
           }
         />
@@ -152,7 +154,7 @@ export function CreateAppointmentScreen() {
         </View>
 
         {/* Visit type */}
-        <Text style={[typography.caption, { color: t.ink3, marginBottom: 6 }]}>Visit type</Text>
+        <Text style={[typography.caption, { color: t.ink3, marginBottom: 6 }]}>{i18n('forms.category')}</Text>
         <SegmentedControl
           options={VISIT_LABELS}
           value={VISIT_LABELS[VISIT_VALUES.indexOf(visitType)]}
@@ -163,7 +165,7 @@ export function CreateAppointmentScreen() {
         />
 
         {/* Notes — multiline, styled to match Input */}
-        <Text style={[typography.caption, { color: t.ink3, marginBottom: 6 }]}>Notes (optional)</Text>
+        <Text style={[typography.caption, { color: t.ink3, marginBottom: 6 }]}>{i18n('forms.notes')} ({i18n('forms.optional')})</Text>
         <View style={[s.textareaWrap, { borderColor: t.border, borderRadius: t.radius.md, backgroundColor: t.card }]}>
           <TextInput
             style={[typography.body, s.textarea, { color: t.ink }]}
@@ -179,7 +181,7 @@ export function CreateAppointmentScreen() {
         </View>
 
         <Button
-          label={saving ? 'Booking…' : 'Book appointment'}
+          label={saving ? i18n('common.working') : i18n('care.bookNow')}
           variant="solid"
           onPress={handleCreate}
           style={s.submitBtn}
@@ -190,7 +192,7 @@ export function CreateAppointmentScreen() {
       <BottomSheet visible={doctorSheetOpen} onClose={() => setDoctorSheetOpen(false)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           <MissingApiState title="Provider search not yet available" contract="provider search API not implemented" />
-          <Button label="Close" variant="soft" onPress={() => setDoctorSheetOpen(false)} style={{ marginTop: 8 }} />
+          <Button label={i18n('common.close')} variant="soft" onPress={() => setDoctorSheetOpen(false)} style={{ marginTop: 8 }} />
         </View>
       </BottomSheet>
     </SafeAreaView>

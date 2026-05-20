@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
+import { IconCheck, IconAlert, IconX } from '../../icons';
 
 export type ChipVariant = 'default' | 'success' | 'warning' | 'danger' | 'brand';
 
@@ -10,6 +11,12 @@ interface ChipProps {
   variant?: ChipVariant;
   icon?: React.ReactNode;
 }
+
+const DEFAULT_ICONS: Partial<Record<ChipVariant, (color: string) => React.ReactNode>> = {
+  success: (color) => <IconCheck size={10} color={color} strokeWidth={2.5} />,
+  warning: (color) => <IconAlert size={10} color={color} strokeWidth={2.5} />,
+  danger:  (color) => <IconX     size={10} color={color} strokeWidth={2.5} />,
+};
 
 export function Chip({ label, variant = 'default', icon }: ChipProps) {
   const t = useTheme();
@@ -23,10 +30,11 @@ export function Chip({ label, variant = 'default', icon }: ChipProps) {
   };
 
   const { bg, text } = colors[variant];
+  const resolvedIcon = icon ?? DEFAULT_ICONS[variant]?.(text);
 
   return (
     <View style={[styles.chip, { backgroundColor: bg, borderRadius: t.radius.pill }]}>
-      {icon && <View style={styles.icon}>{icon}</View>}
+      {resolvedIcon && <View style={styles.icon}>{resolvedIcon}</View>}
       <Text style={[typography.micro, { color: text, fontWeight: '600', fontSize: 11 }]}>{label}</Text>
     </View>
   );

@@ -1,7 +1,7 @@
 import { authService } from '../api/services/auth-service';
 import { apiRequest } from '../api/client';
 import { clearStoredSession, getRefreshToken, saveAuthToken } from '../auth/session-store';
-import type { AuthToken, DataResponse } from '../../../shared/api-contracts';
+import type { AuthLoginResult, AuthToken, DataResponse } from '../../../shared/api-contracts';
 
 jest.mock('../api/client', () => ({ apiRequest: jest.fn() }));
 jest.mock('../auth/session-store', () => ({
@@ -30,10 +30,20 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('authService.login', () => {
   it('returns token data without calling saveAuthToken', async () => {
-    const resp: DataResponse<AuthToken> = { data: mockToken };
+    const resp: DataResponse<AuthLoginResult> = { data: mockToken };
     mockApiRequest.mockResolvedValueOnce(resp);
     const result = await authService.login('user', 'pass');
     expect(result).toEqual(mockToken);
+    expect(mockSaveAuthToken).not.toHaveBeenCalled();
+  });
+
+  it('returns MFA challenge when backend requires second factor', async () => {
+    const resp: DataResponse<AuthLoginResult> = {
+      data: { mfa_required: true, challenge_id: 'ch-1', expires_in_seconds: 300 },
+    };
+    mockApiRequest.mockResolvedValueOnce(resp);
+    const result = await authService.login('user', 'pass');
+    expect(result).toEqual(resp.data);
     expect(mockSaveAuthToken).not.toHaveBeenCalled();
   });
 });
@@ -53,13 +63,31 @@ describe('authService.verifyOtp', () => {
   });
 });
 
-describe('authService.resetPassword', () => {
-  it('saves token after successful reset', async () => {
+describe('authService.verifyLoginMfa', () => {
+  it('calls /v1/auth/login/mfa and stores returned session token', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: mockToken });
     mockSaveAuthToken.mockResolvedValueOnce();
-    const result = await authService.resetPassword('a@b.com', 'newpass');
+    const result = await authService.verifyLoginMfa('challenge-id', '123456');
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/login/mfa', {
+      method: 'POST',
+      auth: false,
+      json: { challenge_id: 'challenge-id', code: '123456' },
+    });
     expect(mockSaveAuthToken).toHaveBeenCalledWith(mockToken);
     expect(result).toEqual(mockToken);
+  });
+});
+
+describe('authService.resetPassword', () => {
+  it('submits reset payload without mutating stored session', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: mockToken });
+    await authService.resetPassword('a@b.com', 'newpass');
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/reset-password', {
+      method: 'POST',
+      auth: false,
+      json: { email: 'a@b.com', new_password: 'newpass' },
+    });
+    expect(mockSaveAuthToken).not.toHaveBeenCalled();
   });
 });
 
@@ -86,16 +114,26 @@ describe('authService.refreshToken', () => {
 
 describe('authService.logout', () => {
   it('clears session even when API call fails', async () => {
+    mockGetRefreshToken.mockResolvedValueOnce('rt-tok');
     mockApiRequest.mockRejectedValueOnce(new Error('network'));
     mockClearStoredSession.mockResolvedValueOnce();
     await authService.logout().catch(() => undefined);
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/logout', {
+      method: 'POST',
+      json: { refresh_token: 'rt-tok' },
+    });
     expect(mockClearStoredSession).toHaveBeenCalled();
   });
 
-  it('clears session on success', async () => {
+  it('clears session on success when no refresh token is stored', async () => {
+    mockGetRefreshToken.mockResolvedValueOnce(null);
     mockApiRequest.mockResolvedValueOnce(undefined);
     mockClearStoredSession.mockResolvedValueOnce();
     await authService.logout();
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/logout', {
+      method: 'POST',
+      json: {},
+    });
     expect(mockClearStoredSession).toHaveBeenCalled();
   });
 });

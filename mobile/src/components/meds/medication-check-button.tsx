@@ -7,6 +7,7 @@ import Animated, {
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconCheck } from '../../icons';
@@ -17,6 +18,7 @@ interface MedicationCheckButtonProps {
 
 export function MedicationCheckButton({ onTaken }: MedicationCheckButtonProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [taken, setTaken] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -58,7 +60,7 @@ export function MedicationCheckButton({ onTaken }: MedicationCheckButtonProps) {
         {taken ? (
           <IconCheck size={16} color="#FFF" />
         ) : (
-          <Text style={[typography.micro, { color: '#FFF' }]}>{saving ? 'Saving' : 'Take'}</Text>
+          <Text style={[typography.micro, { color: '#FFF' }]}>{saving ? i18n('meds.saving') : i18n('meds.take')}</Text>
         )}
       </Animated.View>
     </Pressable>

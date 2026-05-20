@@ -1,4 +1,4 @@
-import { apiRequest, ApiError, getCoreApiBaseUrl, buildQuery } from '../api/client';
+import { apiRequest, ApiError, getCoreApiBaseUrl, getCoreWsBaseUrl, buildQuery } from '../api/client';
 
 jest.mock('expo-constants', () => ({
   default: { expoConfig: { extra: {} } },
@@ -12,8 +12,15 @@ jest.mock('../auth/session-store', () => ({
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
+function setDevMode(value: boolean) {
+  Object.defineProperty(global, '__DEV__', { value, configurable: true });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  setDevMode(true);
+  delete process.env.EXPO_PUBLIC_CORE_API_URL;
+  delete process.env.EXPO_PUBLIC_CORE_WS_URL;
 });
 
 describe('buildQuery', () => {
@@ -31,10 +38,38 @@ describe('buildQuery', () => {
 });
 
 describe('getCoreApiBaseUrl', () => {
-  it('strips trailing slash', () => {
+  it('strips trailing slash in dev', () => {
     process.env.EXPO_PUBLIC_CORE_API_URL = 'http://localhost:8000/';
     expect(getCoreApiBaseUrl()).toBe('http://localhost:8000');
-    delete process.env.EXPO_PUBLIC_CORE_API_URL;
+  });
+
+  it('throws when production API URL is missing', () => {
+    setDevMode(false);
+    expect(() => getCoreApiBaseUrl()).toThrow('Missing EXPO_PUBLIC_CORE_API_URL');
+  });
+
+  it('throws when production API URL uses http://', () => {
+    setDevMode(false);
+    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://core.internal';
+    expect(() => getCoreApiBaseUrl()).toThrow('Production API URL must use HTTPS.');
+  });
+});
+
+describe('getCoreWsBaseUrl', () => {
+  it('strips trailing slash in dev', () => {
+    process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://localhost:8000/';
+    expect(getCoreWsBaseUrl()).toBe('ws://localhost:8000');
+  });
+
+  it('throws when production WS URL is missing', () => {
+    setDevMode(false);
+    expect(() => getCoreWsBaseUrl()).toThrow('Missing EXPO_PUBLIC_CORE_WS_URL');
+  });
+
+  it('throws when production WS URL uses ws://', () => {
+    setDevMode(false);
+    process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://core.internal/ws';
+    expect(() => getCoreWsBaseUrl()).toThrow('Production WebSocket URL must use WSS.');
   });
 });
 

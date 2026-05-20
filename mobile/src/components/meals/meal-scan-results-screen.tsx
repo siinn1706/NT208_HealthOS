@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { Card } from '../primitives/card';
 import { Button } from '../primitives/button';
@@ -39,6 +40,7 @@ function BackBar({ title, onBack, right }: { title: string; onBack: () => void; 
 export function MealScanResultsScreen() {
   const router = useRouter();
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   return (
     <Screen>
@@ -50,7 +52,7 @@ export function MealScanResultsScreen() {
             variant="subtle"
             size={40}
             icon={<IconRefresh size={20} color={t.ink3} />}
-            accessibilityLabel="Refresh"
+            accessibilityLabel={i18n('common.retry')}
           />
         }
       />
@@ -109,7 +111,7 @@ export function MealScanResultsScreen() {
       </Card>
 
       {/* Items detected */}
-      <Text style={[typography.h3, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>Items detected</Text>
+      <Text style={[typography.h3, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>{i18n('meals.ingredients')}</Text>
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
         {DETECTED.map((item) => (
           <View key={item.name} style={[styles.detectedRow, { borderBottomColor: t.border }]}>
@@ -146,8 +148,8 @@ export function MealScanResultsScreen() {
 
       {/* Action buttons */}
       <View style={styles.btnRow}>
-        <Button label="Retake" variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/scan' as never)} />
-        <Button label="Save meal" variant="solid" style={{ flex: 2 }} onPress={() => router.push('/meals' as never)} />
+        <Button label={i18n('meals.retake')} variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/scan' as never)} />
+        <Button label={i18n('meals.addToLog')} variant="solid" style={{ flex: 2 }} onPress={() => router.push('/meals' as never)} />
       </View>
     </Screen>
   );

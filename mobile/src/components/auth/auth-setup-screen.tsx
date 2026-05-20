@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Calendar } from 'lucide-react-native';
@@ -71,6 +73,7 @@ export function AuthSetupScreen() {
   }
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       {/* Segmented progress bar */}
       <View style={{ marginBottom: 20 }}>
@@ -157,6 +160,7 @@ export function AuthSetupScreen() {
 
       <Button label="Continue" size="lg" loading={loading} onPress={handleFinish} style={{ marginTop: 8 }} />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

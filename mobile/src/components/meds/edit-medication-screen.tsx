@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { AddMedicationScreen, toMedicationCreateBody, FREQ_OPTIONS, type MedFormState } from './add-medication-screen';
 import { Button } from '../primitives/button';
@@ -12,6 +13,7 @@ import { queryKeys } from '../../api/queryKeys';
 
 export function EditMedicationScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
   const loadMedication = useCallback(() => medicationService.detail(medicationId), [medicationId]);
@@ -37,7 +39,7 @@ export function EditMedicationScreen() {
   if (medication.isLoading) {
     return (
       <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
-        <View style={s.wrap}><ApiState title="Loading medication" loading /></View>
+        <View style={s.wrap}><ApiState title={i18n('api.loading')} loading /></View>
       </SafeAreaView>
     );
   }
@@ -47,9 +49,9 @@ export function EditMedicationScreen() {
       <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
         <View style={s.wrap}>
           <ApiState
-            title="Medication unavailable"
+            title={i18n('api.unavailable')}
             message={medication.error?.message ?? 'Medication not found.'}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={medication.reload}
           />
         </View>
@@ -60,21 +62,21 @@ export function EditMedicationScreen() {
   return (
     <View style={[s.safe, { backgroundColor: t.bg }]}>
       <AddMedicationScreen
-        screenTitle="Edit medication"
+        screenTitle={i18n('meds.editMed')}
         initialValues={initialValues}
         onSave={handleSave}
       />
 
       <View style={[s.footer, { backgroundColor: t.bg, borderTopColor: t.border }]}>
         <Button
-          label="Pause medication"
+          label={i18n('meds.pauseMedication')}
           variant="ghost"
           onPress={() => router.push(`/meds/pause/${medicationId}` as never)}
           style={[s.actionBtn, { borderColor: t.warning }]}
           labelColor={t.warning}
         />
         <Button
-          label="Archive medication"
+          label={i18n('meds.archiveMedication')}
           variant="ghost"
           onPress={() => router.push(`/meds/archive?id=${medicationId}` as never)}
           style={[s.actionBtn, { borderColor: t.danger }]}

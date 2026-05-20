@@ -49,10 +49,15 @@ export interface UserProfileUpdate {
   onboarding_completed?: boolean;
 }
 
+export interface MfaLoginRequired {
+  mfa_required: true;
+  challenge_id: string;
+  expires_in_seconds: number;
+}
+
 export interface AuthToken {
   access_token: string;
   token_type: string;
-  /** Present once backend adds refresh_token to /auth/login and /auth/verify-otp responses. */
   refresh_token?: string | null;
   user_id: string;
   email: string;
@@ -61,6 +66,8 @@ export interface AuthToken {
   avatar_url: string | null;
   onboarding_status: string;
 }
+
+export type AuthLoginResult = AuthToken | MfaLoginRequired;
 
 export interface KpiValue {
   current: number | null;

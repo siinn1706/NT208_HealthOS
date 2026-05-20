@@ -13,12 +13,12 @@ export const medicationService = {
   },
 
   async detail(id: string) {
-    const response = await apiRequest<DataResponse<MedicationPlanDetail>>(`/v1/medications/${id}`);
+    const response = await apiRequest<DataResponse<MedicationPlanDetail>>(`/v1/medications/${encodeURIComponent(id)}`);
     return response.data;
   },
 
   async adherence(id: string, period = '30d') {
-    const response = await apiRequest<DataResponse<Adherence>>(`/v1/medications/${id}/adherence${buildQuery({ period })}`);
+    const response = await apiRequest<DataResponse<Adherence>>(`/v1/medications/${encodeURIComponent(id)}/adherence${buildQuery({ period })}`);
     return response.data;
   },
 
@@ -31,7 +31,7 @@ export const medicationService = {
   },
 
   async update(id: string, body: Partial<MedicationPlanCreateBody>) {
-    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${id}`, {
+    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       json: body,
     });
@@ -39,21 +39,21 @@ export const medicationService = {
   },
 
   async pause(id: string) {
-    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${id}/pause`, { method: 'POST' });
+    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${encodeURIComponent(id)}/pause`, { method: 'POST' });
     return response.data;
   },
 
   async resume(id: string) {
-    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${id}/resume`, { method: 'POST' });
+    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${encodeURIComponent(id)}/resume`, { method: 'POST' });
     return response.data;
   },
 
   async archive(id: string) {
-    return apiRequest<void>(`/v1/medications/${id}`, { method: 'DELETE' });
+    return apiRequest<void>(`/v1/medications/${encodeURIComponent(id)}`, { method: 'DELETE' });
   },
 
   async refill(id: string, supplyUnits: number) {
-    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${id}/refill`, {
+    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${encodeURIComponent(id)}/refill`, {
       method: 'POST',
       json: { supply_units: supplyUnits },
     });
@@ -61,21 +61,21 @@ export const medicationService = {
   },
 
   async importFromAppointment(appointmentId: string) {
-    return apiRequest(`/v1/medications/import/${appointmentId}`, {
+    return apiRequest(`/v1/medications/import/${encodeURIComponent(appointmentId)}`, {
       method: 'POST',
       json: { default_dose_times: ['08:00'], default_repeat: 'daily' },
     });
   },
 
   async markDoseDone(reminderId: string, occurrenceId?: string) {
-    return apiRequest(`/v1/reminders/${reminderId}/done`, {
+    return apiRequest(`/v1/reminders/${encodeURIComponent(reminderId)}/done`, {
       method: 'POST',
       json: occurrenceId ? { occurrence_id: occurrenceId } : {},
     });
   },
 
   async skipDose(reminderId: string, occurrenceId?: string) {
-    return apiRequest(`/v1/reminders/${reminderId}/skip`, {
+    return apiRequest(`/v1/reminders/${encodeURIComponent(reminderId)}/skip`, {
       method: 'POST',
       json: occurrenceId ? { occurrence_id: occurrenceId } : {},
     });

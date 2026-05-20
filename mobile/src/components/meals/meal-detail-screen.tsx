@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { Card } from '../primitives/card';
 import { Button } from '../primitives/button';
@@ -40,6 +41,7 @@ function slotLabel(loggedAt: string) {
 export function MealDetailScreen() {
   const router = useRouter();
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const mealId = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -108,7 +110,7 @@ export function MealDetailScreen() {
   if (!mealId) {
     return (
       <Screen>
-        <ApiState title="Meal not found" message="Missing meal id in route." actionLabel="Back" onAction={() => router.back()} />
+        <ApiState title={i18n('api.unavailable')} message="Missing meal id in route." actionLabel={i18n('common.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -116,7 +118,7 @@ export function MealDetailScreen() {
   if (meal.isLoading) {
     return (
       <Screen>
-        <ApiState title="Loading meal" loading />
+        <ApiState title={i18n('api.loading')} loading />
       </Screen>
     );
   }
@@ -124,7 +126,7 @@ export function MealDetailScreen() {
   if (meal.error) {
     return (
       <Screen>
-        <ApiState title="Meal unavailable" message={meal.error.message} actionLabel="Retry" onAction={meal.reload} />
+        <ApiState title={i18n('api.unavailable')} message={meal.error.message} actionLabel={i18n('common.retry')} onAction={meal.reload} />
       </Screen>
     );
   }
@@ -132,7 +134,7 @@ export function MealDetailScreen() {
   if (!model) {
     return (
       <Screen>
-        <ApiState title="Meal not found" message="Backend returned empty meal payload." actionLabel="Back" onAction={() => router.back()} />
+        <ApiState title={i18n('api.unavailable')} message="Backend returned empty meal payload." actionLabel={i18n('common.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -219,14 +221,14 @@ export function MealDetailScreen() {
         </View>
       </Card>
 
-      <Text style={[typography.h3, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>What's in it</Text>
+      <Text style={[typography.h3, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>{i18n('meals.ingredients')}</Text>
       <Card tight>
-        {ingredients.isLoading && <ApiState title="Loading ingredients" loading />}
+        {ingredients.isLoading && <ApiState title={i18n('api.loading')} loading />}
         {ingredients.error && (
           <ApiState
-            title="Ingredients unavailable"
+            title={i18n('api.unavailable')}
             message={ingredients.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={ingredients.reload}
           />
         )}
@@ -246,7 +248,7 @@ export function MealDetailScreen() {
         ))}
       </Card>
 
-      <Text style={[typography.h3, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>Micronutrients</Text>
+      <Text style={[typography.h3, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>{i18n('meals.micronutrients')}</Text>
       <Card tight>
         {model.micronutrients.map((m) => {
           const pct = Math.min((m.value || 0) / m.max, 1);
@@ -270,7 +272,7 @@ export function MealDetailScreen() {
           <View style={styles.healthRow}>
             <IconHeartPulse size={18} color={t.warning} />
             <View style={styles.healthText}>
-              <Text style={[typography.bodyMed, { color: t.ink }]}>Nutrition note</Text>
+              <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n('meals.nutritionNote')}</Text>
               <Text style={[typography.caption, { color: t.ink2 }]}>
                 One or more micronutrients exceed recommended daily thresholds.
               </Text>
@@ -281,7 +283,7 @@ export function MealDetailScreen() {
 
       {isEditing && (
         <Card tight style={styles.editCard}>
-          <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 8 }]}>Meal name</Text>
+          <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 8 }]}>{i18n('meals.mealName')}</Text>
           <TextInput
             value={draftName}
             onChangeText={setDraftName}
@@ -294,10 +296,10 @@ export function MealDetailScreen() {
       )}
 
       <View style={styles.btnRow}>
-        <Button label="Duplicate" variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} />
-        {isEditing && <Button label="Cancel" variant="ghost" style={{ flex: 1 }} onPress={() => setIsEditing(false)} />}
+        <Button label={i18n('meals.duplicate')} variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} />
+        {isEditing && <Button label={i18n('common.cancel')} variant="ghost" style={{ flex: 1 }} onPress={() => setIsEditing(false)} />}
         <Button
-          label={isEditing ? (savingEdit ? 'Saving...' : 'Save edit') : 'Edit meal'}
+          label={isEditing ? (savingEdit ? i18n('common.working') : i18n('common.save')) : i18n('meals.editMeal')}
           variant="solid"
           style={{ flex: isEditing ? 1 : 2 }}
           onPress={isEditing ? handleSaveEdit : () => setIsEditing(true)}

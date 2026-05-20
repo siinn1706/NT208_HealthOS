@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { palettes } from './palettes';
@@ -20,32 +20,35 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [override, setOverride] = useState<ThemeName | null>(null);
   const [loaded, setLoaded] = useState(false);
-
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((val) => {
-      if (val === 'calm' || val === 'night' || val === 'warm') {
-        setOverride(val);
-      }
-      setLoaded(true);
-    });
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((val) => {
+        if (val === 'calm' || val === 'night' || val === 'warm') setOverride(val);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
   }, []);
 
   const setTheme = useCallback((name: ThemeName | 'system') => {
     if (name === 'system') {
       setOverride(null);
-      AsyncStorage.removeItem(STORAGE_KEY);
+      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     } else {
       setOverride(name);
-      AsyncStorage.setItem(STORAGE_KEY, name);
+      AsyncStorage.setItem(STORAGE_KEY, name).catch(() => {});
     }
   }, []);
 
-  const name = override ?? systemTheme;
+  // While AsyncStorage loads, render with the system theme to avoid a blank flash
+  const name = (loaded ? override : null) ?? systemTheme;
 
-  if (!loaded) return null;
+  const value = useMemo(
+    () => ({ name, tokens: palettes[name], setTheme }),
+    [name, setTheme],
+  );
 
   return (
-    <ThemeContext.Provider value={{ name, tokens: palettes[name], setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

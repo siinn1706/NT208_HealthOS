@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
 import { SectionHeader } from '../layout/section-header';
@@ -19,11 +20,11 @@ import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { makeWeekDays, toAppointmentRow, toHeroAppointment } from '../../api/viewModels';
 
-const TABS = ['Upcoming', 'Past', 'All'];
 type StatusFilter = 'All' | 'Upcoming' | 'Past';
 
 export function AppointmentsScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [tab, setTab] = useState('Upcoming');
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -51,31 +52,30 @@ export function AppointmentsScreen() {
     return rows;
   }, [appointments.data, tab, appliedFilter, selectedDate]);
 
+  const TABS = [i18n('care.upcoming'), i18n('care.past'), i18n('care.all')];
+
   const hero = filteredAppointments[0] ? toHeroAppointment(filteredAppointments[0]) : null;
   const weekDays = makeWeekDays(appointments.data ?? []);
   const upcomingCount = (appointments.data ?? []).filter((apt) => new Date(apt.appointment_date).getTime() >= Date.now()).length;
   const pastCount = (appointments.data ?? []).filter((apt) => new Date(apt.appointment_date).getTime() < Date.now()).length;
-  const emptyMessage = selectedDate !== null
-    ? `No ${tab.toLowerCase()} appointments on day ${selectedDate}.`
-    : `No ${tab.toLowerCase()} appointments.`;
 
   return (
     <Screen>
       <TopBar
-        title="Appointments"
-        subtitle={`${upcomingCount} upcoming · ${pastCount} past`}
+        title={i18n('care.appointments')}
+        subtitle={`${i18n('care.upcomingCount', { count: upcomingCount })} · ${i18n('care.pastCount', { count: pastCount })}`}
         right={
           <View style={styles.actions}>
             <IconButton
               variant="subtle"
               icon={<IconFilter size={20} color={appliedFilter !== 'All' ? t.brand : t.ink3} />}
-              accessibilityLabel="Filter"
+              accessibilityLabel={i18n('common.filter')}
               onPress={() => { setPendingFilter(appliedFilter); setFilterOpen(true); }}
             />
             <IconButton
               icon={<IconPlus size={20} color={t.brand} />}
               variant="filled"
-              accessibilityLabel="New appointment"
+              accessibilityLabel={i18n('care.createAppointment')}
               onPress={() => router.push('/care/appointments/new')}
             />
           </View>
@@ -84,16 +84,16 @@ export function AppointmentsScreen() {
       <WeekStrip days={weekDays} selectedDate={selectedDate ?? new Date().getDate()} onSelect={(d) => setSelectedDate((prev) => prev === d ? null : d)} />
       {selectedDate !== null && (
         <Pressable onPress={() => setSelectedDate(null)} style={[styles.resetDate, { backgroundColor: t.brandSoft }]}>
-          <Text style={{ color: t.brand, fontSize: 12 }}>Showing day {selectedDate} · Tap to reset</Text>
+          <Text style={{ color: t.brand, fontSize: 12 }}>{i18n('care.showingDay', { day: selectedDate })}</Text>
         </Pressable>
       )}
       <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
-      {appointments.isLoading && <ApiState title="Loading appointments" loading skeleton={<ApptListSkeleton />} />}
-      {appointments.error && <ApiState title="Appointments unavailable" message={appointments.error.message} actionLabel="Retry" onAction={appointments.reload} />}
+      {appointments.isLoading && <ApiState title={i18n('care.loadingAppointments')} loading skeleton={<ApptListSkeleton />} />}
+      {appointments.error && <ApiState title={i18n('care.appointmentsUnavailable')} message={appointments.error.message} actionLabel={i18n('common.retry')} onAction={appointments.reload} />}
       {hero && <HeroAppointmentCard {...hero} onJoin={() => router.push(`/care/video/${hero.id}` as never)} />}
-      <SectionHeader title={selectedDate !== null ? `Day ${selectedDate}` : 'This week'} />
+      <SectionHeader title={selectedDate !== null ? i18n('care.dayN', { day: selectedDate }) : i18n('care.thisWeek')} />
       {!appointments.isLoading && !appointments.error && filteredAppointments.length === 0 && (
-        <ApiState title="No appointments" message={emptyMessage} />
+        <ApiState title={i18n('care.noAppointments')} />
       )}
       {filteredAppointments.map((apt) => {
         const row = toAppointmentRow(apt);
@@ -103,22 +103,25 @@ export function AppointmentsScreen() {
       <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setFilterOpen(false)} />
         <View style={[styles.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
-          <Text style={{ color: t.ink, fontSize: 16, fontWeight: '600', marginBottom: 16 }}>Filter appointments</Text>
-          {(['All', 'Upcoming', 'Past'] as StatusFilter[]).map((opt) => (
-            <Pressable
-              key={opt}
-              onPress={() => setPendingFilter(opt)}
-              style={[styles.filterOption, { backgroundColor: pendingFilter === opt ? t.brandSoft : t.bg, borderColor: pendingFilter === opt ? t.brand : t.border }]}
-            >
-              <Text style={{ color: pendingFilter === opt ? t.brand : t.ink, fontWeight: pendingFilter === opt ? '600' : '400' }}>{opt}</Text>
-            </Pressable>
-          ))}
+          <Text style={{ color: t.ink, fontSize: 16, fontWeight: '600', marginBottom: 16 }}>{i18n('care.filterAppointments')}</Text>
+          {(['All', 'Upcoming', 'Past'] as StatusFilter[]).map((opt) => {
+            const label = opt === 'All' ? i18n('care.all') : opt === 'Upcoming' ? i18n('care.upcoming') : i18n('care.past');
+            return (
+              <Pressable
+                key={opt}
+                onPress={() => setPendingFilter(opt)}
+                style={[styles.filterOption, { backgroundColor: pendingFilter === opt ? t.brandSoft : t.bg, borderColor: pendingFilter === opt ? t.brand : t.border }]}
+              >
+                <Text style={{ color: pendingFilter === opt ? t.brand : t.ink, fontWeight: pendingFilter === opt ? '600' : '400' }}>{label}</Text>
+              </Pressable>
+            );
+          })}
           <View style={styles.filterActions}>
             <Pressable onPress={() => { setPendingFilter('All'); setAppliedFilter('All'); setFilterOpen(false); }} style={[styles.filterBtn, { backgroundColor: t.bg, borderColor: t.border }]}>
-              <Text style={{ color: t.ink3 }}>Clear</Text>
+              <Text style={{ color: t.ink3 }}>{i18n('common.clear')}</Text>
             </Pressable>
             <Pressable onPress={() => { setAppliedFilter(pendingFilter); setFilterOpen(false); }} style={[styles.filterBtn, { backgroundColor: t.brand, flex: 2 }]}>
-              <Text style={{ color: '#FFF', fontWeight: '600' }}>Apply</Text>
+              <Text style={{ color: '#FFF', fontWeight: '600' }}>{i18n('common.apply')}</Text>
             </Pressable>
           </View>
         </View>

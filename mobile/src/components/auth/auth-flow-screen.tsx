@@ -13,8 +13,9 @@ import { AuthOtpScreen } from './auth-otp-screen';
 import { AuthSetupScreen } from './auth-setup-screen';
 import { AuthForgotPasswordScreen } from './auth-forgot-password-screen';
 import { PermissionsScreen } from './permissions-screen';
+import { AuthMfaScreen } from './auth-mfa-screen';
 
-export type AuthKind = 'welcome' | 'sign-in' | 'sign-up' | 'otp' | 'setup' | 'forgot' | 'permissions';
+export type AuthKind = 'welcome' | 'sign-in' | 'sign-up' | 'otp' | 'mfa' | 'setup' | 'forgot' | 'permissions';
 
 interface AuthFlowScreenProps {
   kind: AuthKind;
@@ -33,6 +34,7 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
       case 'sign-in':     return <AuthSignInScreen />;
       case 'sign-up':     return <AuthSignUpScreen />;
       case 'otp':         return <AuthOtpScreen />;
+      case 'mfa':         return <AuthMfaScreen />;
       case 'setup':       return <AuthSetupScreen />;
       case 'forgot':      return <AuthForgotPasswordScreen />;
       case 'permissions': return <PermissionsScreen kind={permissionKind ?? 'notifications'} />;

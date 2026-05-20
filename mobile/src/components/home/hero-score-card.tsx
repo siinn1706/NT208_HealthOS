@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { ProgressRing } from '../charts/progress-ring';
@@ -15,6 +16,7 @@ interface HeroScoreCardProps {
 
 export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const ratio = value / target;
 
   const content = (
@@ -29,7 +31,7 @@ export function HeroScoreCard({ value, target, copy, onPress }: HeroScoreCardPro
       <View pointerEvents="none" style={styles.glowCircle2} />
       <View style={styles.inner}>
         <View style={styles.text}>
-          <Text style={[typography.caption, styles.label]}>TODAY'S HEALTH</Text>
+          <Text style={[typography.caption, styles.label]}>{i18n('home.todaysHealth')}</Text>
           <Text style={[typography.display, styles.score]}>
             {value}<Text style={styles.scoreTarget}>/{target}</Text>
           </Text>

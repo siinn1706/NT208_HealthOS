@@ -44,7 +44,7 @@ export const reminderService = {
   },
 
   async updateDone(reminderId: string, done: boolean) {
-    const response = await apiRequest<DataResponse<Reminder>>(`/v1/reminders/${reminderId}`, {
+    const response = await apiRequest<DataResponse<Reminder>>(`/v1/reminders/${encodeURIComponent(reminderId)}`, {
       method: 'PATCH',
       json: { done },
     });
@@ -52,7 +52,7 @@ export const reminderService = {
   },
 
   async delete(reminderId: string) {
-    return apiRequest<void>(`/v1/reminders/${reminderId}`, { method: 'DELETE' });
+    return apiRequest<void>(`/v1/reminders/${encodeURIComponent(reminderId)}`, { method: 'DELETE' });
   },
 
   async occurrences(params: { from?: string; to?: string; today?: boolean; tzid?: string; status?: string } = {}) {
@@ -67,7 +67,7 @@ export const reminderService = {
   },
 
   async markDone(reminderId: string, occurrence_id?: string) {
-    const response = await apiRequest<DataResponse<OccurrenceResult>>(`/v1/reminders/${reminderId}/done`, {
+    const response = await apiRequest<DataResponse<OccurrenceResult>>(`/v1/reminders/${encodeURIComponent(reminderId)}/done`, {
       method: 'POST',
       json: occurrence_id ? { occurrence_id } : {},
     });
@@ -75,7 +75,7 @@ export const reminderService = {
   },
 
   async skip(reminderId: string, occurrence_id?: string) {
-    const response = await apiRequest<DataResponse<OccurrenceResult>>(`/v1/reminders/${reminderId}/skip`, {
+    const response = await apiRequest<DataResponse<OccurrenceResult>>(`/v1/reminders/${encodeURIComponent(reminderId)}/skip`, {
       method: 'POST',
       json: occurrence_id ? { occurrence_id } : {},
     });
@@ -83,7 +83,7 @@ export const reminderService = {
   },
 
   async snooze(reminderId: string, body: { until?: string; minutes?: number; occurrence_id?: string }) {
-    const response = await apiRequest<DataResponse<OccurrenceResult & { snoozed_until?: string | null }>>(`/v1/reminders/${reminderId}/snooze`, {
+    const response = await apiRequest<DataResponse<OccurrenceResult & { snoozed_until?: string | null }>>(`/v1/reminders/${encodeURIComponent(reminderId)}/snooze`, {
       method: 'POST',
       json: body,
     });

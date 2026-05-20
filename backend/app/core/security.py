@@ -58,6 +58,7 @@ def create_access_token(
         "iat": now,
         "exp": expire,
         "jti": str(uuid.uuid4()),  # unique token ID for per-token revocation
+        "typ": "access",
     }
     if additional_claims:
         payload.update(additional_claims)
@@ -77,6 +78,25 @@ def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
 
 
+def decode_token_with_type(
+    token: str,
+    *,
+    expected_type: str,
+    allow_legacy_access: bool = True,
+) -> dict:
+    payload = decode_access_token(token)
+    token_type = payload.get("typ")
+    if expected_type == "access":
+        accepted_types: set[str | None] = {"access"}
+        if allow_legacy_access:
+            accepted_types.add(None)
+        if token_type not in accepted_types:
+            raise JWTError("invalid token type for access endpoint")
+    elif token_type != expected_type:
+        raise JWTError(f"invalid token type for {expected_type}")
+    return payload
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     db: AsyncSession = Depends(get_db),
@@ -91,7 +111,7 @@ async def get_current_user(
 
     token = credentials.credentials
     try:
-        payload = decode_access_token(token)
+        payload = decode_token_with_type(token, expected_type="access")
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -183,7 +203,7 @@ async def get_current_user_for_restore(
             detail={"code": "AUTH_REQUIRED", "message": "Authentication required."},
         )
     try:
-        payload = decode_access_token(credentials.credentials)
+        payload = decode_token_with_type(credentials.credentials, expected_type="access")
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

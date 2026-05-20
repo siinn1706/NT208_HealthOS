@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Card } from '../../primitives/card';
 import { useTheme } from '../../../theme/useTheme';
@@ -175,6 +176,7 @@ function SuggestionCard({ item, started, onToggle }: { item: ActionItem; started
 
 export function PreventionScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [startedIds, setStartedIds] = useState<Set<string>>(
     new Set(INITIAL_ACTIONS.filter((a) => a.priority === 'HIGH').map((a) => a.id))
@@ -195,7 +197,7 @@ export function PreventionScreen() {
 
   return (
     <Screen>
-      <BackBar title="Prevention" />
+      <BackBar title={i18n('insights.preventionTitle')} />
 
       {/* Filter chip bar */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={filterStyles.bar}>

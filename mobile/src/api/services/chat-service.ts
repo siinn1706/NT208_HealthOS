@@ -10,7 +10,7 @@ export const chatService = {
   },
 
   async conversation(id: string) {
-    const response = await apiRequest<DataResponse<Conversation>>(`/v1/conversations/${id}`);
+    const response = await apiRequest<DataResponse<Conversation>>(`/v1/conversations/${encodeURIComponent(id)}`);
     return response.data;
   },
 
@@ -23,12 +23,12 @@ export const chatService = {
   },
 
   async messages(conversationId: string) {
-    const response = await apiRequest<MessageListResponse>(`/v1/conversations/${conversationId}/messages?limit=50`);
+    const response = await apiRequest<MessageListResponse>(`/v1/conversations/${encodeURIComponent(conversationId)}/messages?limit=50`);
     return response.data.slice().reverse();
   },
 
   async sendMessage(conversationId: string, content: string) {
-    const response = await apiRequest<DataResponse<Message>>(`/v1/conversations/${conversationId}/messages`, {
+    const response = await apiRequest<DataResponse<Message>>(`/v1/conversations/${encodeURIComponent(conversationId)}/messages`, {
       method: 'POST',
       json: {
         content,

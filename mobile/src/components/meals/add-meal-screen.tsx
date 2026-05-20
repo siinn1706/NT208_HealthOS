@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { SectionHeader } from '../layout/section-header';
 import { Card } from '../primitives/card';
@@ -33,8 +34,22 @@ const METHOD_CARD_HISTORY = { label: 'From history', sub: 'Recent meals', Icon: 
 
 export function AddMealScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const router = useRouter();
   const [slot, setSlot] = useState<Slot>('Lunch');
+
+  const SLOT_LABELS: Record<Slot, string> = {
+    Breakfast: i18n('meals.breakfast'),
+    Lunch:     i18n('meals.lunch'),
+    Dinner:    i18n('meals.dinner'),
+    Snack:     i18n('meals.snack'),
+  };
+
+  const METHOD_CARDS_TOP_I18N = [
+    { label: i18n('meals.barcode'),      sub: i18n('meals.packagedFoods'), Icon: IconBarcode,  route: '/meals/scan' },
+    { label: i18n('meals.manualEntry'),  sub: i18n('meals.customDish'),    Icon: IconUtensils, route: '/meals/add'  },
+  ];
+  const METHOD_CARD_HISTORY_I18N = { label: i18n('meals.fromHistory'), sub: i18n('meals.recentMeals'), Icon: IconClock, route: '/meals/add' };
 
   return (
     <Screen>
@@ -43,12 +58,12 @@ export function AddMealScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.headerBtn}>
           <ChevronLeft size={24} color={t.ink} />
         </Pressable>
-        <Text style={[typography.h3, styles.headerTitle, { color: t.ink }]}>Add meal</Text>
+        <Text style={[typography.h3, styles.headerTitle, { color: t.ink }]}>{i18n('meals.addMeal')}</Text>
         <IconButton
           icon={<IconX size={18} color={t.ink} />}
           variant="subtle"
           onPress={() => router.back()}
-          accessibilityLabel="Close"
+          accessibilityLabel={i18n('common.close')}
         />
       </View>
 
@@ -68,7 +83,7 @@ export function AddMealScreen() {
               },
             ]}
           >
-            <Text style={[typography.chip, { color: slot === s ? '#fff' : t.ink2 }]}>{s}</Text>
+            <Text style={[typography.chip, { color: slot === s ? '#fff' : t.ink2 }]}>{SLOT_LABELS[s]}</Text>
           </Pressable>
         ))}
       </View>
@@ -78,7 +93,7 @@ export function AddMealScreen() {
         <IconSearch size={16} color={t.ink3} />
         <TextInput
           style={[typography.body, styles.searchInput, { color: t.ink }]}
-          placeholder="Search foods, brands, or meals..."
+          placeholder={i18n('meals.searchFoods')}
           placeholderTextColor={t.ink3}
         />
       </View>
@@ -96,12 +111,12 @@ export function AddMealScreen() {
         </View>
         {/* Text stack */}
         <View style={styles.flex}>
-          <Text style={[typography.bodyMed, { color: '#fff' }]}>Scan with AI</Text>
-          <Text style={[typography.caption, { color: 'rgba(255,255,255,0.75)', marginTop: 2 }]}>Snap your plate</Text>
+          <Text style={[typography.bodyMed, { color: '#fff' }]}>{i18n('meals.scanWithAi')}</Text>
+          <Text style={[typography.caption, { color: 'rgba(255,255,255,0.75)', marginTop: 2 }]}>{i18n('meals.snapYourPlate')}</Text>
         </View>
         {/* NEW badge — white bg, brand text, pill */}
         <View style={[styles.newBadge, { backgroundColor: '#fff', borderRadius: t.radius.pill }]}>
-          <Text style={[typography.micro, { color: t.brand }]}>NEW</Text>
+          <Text style={[typography.micro, { color: t.brand }]}>{i18n('meals.new')}</Text>
         </View>
       </Pressable>
 
@@ -109,7 +124,7 @@ export function AddMealScreen() {
       <View style={styles.methodGrid}>
         {/* Top row */}
         <View style={styles.methodTopRow}>
-          {METHOD_CARDS_TOP.map((m) => (
+          {METHOD_CARDS_TOP_I18N.map((m) => (
             <Pressable
               key={m.label}
               onPress={() => router.push(m.route as never)}
@@ -125,21 +140,21 @@ export function AddMealScreen() {
         </View>
         {/* Bottom row — full-width horizontal history card */}
         <Pressable
-          onPress={() => router.push(METHOD_CARD_HISTORY.route as never)}
+          onPress={() => router.push(METHOD_CARD_HISTORY_I18N.route as never)}
           style={[styles.methodCardFull, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}
         >
           <View style={[styles.methodIconSq, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
-            <METHOD_CARD_HISTORY.Icon size={22} color={t.brand} />
+            <METHOD_CARD_HISTORY_I18N.Icon size={22} color={t.brand} />
           </View>
           <View style={styles.methodCardFullText}>
-            <Text style={[typography.bodyMed, { color: t.ink }]}>{METHOD_CARD_HISTORY.label}</Text>
-            <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{METHOD_CARD_HISTORY.sub}</Text>
+            <Text style={[typography.bodyMed, { color: t.ink }]}>{METHOD_CARD_HISTORY_I18N.label}</Text>
+            <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{METHOD_CARD_HISTORY_I18N.sub}</Text>
           </View>
         </Pressable>
       </View>
 
       {/* Frequent */}
-      <SectionHeader title="Frequent for lunch" />
+      <SectionHeader title={i18n('meals.frequentForSlot', { slot: SLOT_LABELS[slot] })} />
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
         {FREQUENT.map((f) => (
           <FoodRow
@@ -154,7 +169,7 @@ export function AddMealScreen() {
       </Card>
 
       {/* Recent */}
-      <SectionHeader title="Recently logged" />
+      <SectionHeader title={i18n('meals.recentlyLogged')} />
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
         {RECENT.map((f) => <FoodRow key={f.name} {...f} />)}
       </Card>

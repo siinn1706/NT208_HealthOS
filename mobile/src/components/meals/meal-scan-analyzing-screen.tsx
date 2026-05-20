@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, ActivityIndicator } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconSparkle, IconCheck } from '../../icons';
@@ -8,13 +10,6 @@ import { IconSparkle, IconCheck } from '../../icons';
 const BG = '#0B0F14';
 
 type StageStatus = 'done' | 'active' | 'pending';
-
-const STAGES: { label: string; status: StageStatus }[] = [
-  { label: 'Detect food',          status: 'done'    },
-  { label: 'Estimate portions',    status: 'done'    },
-  { label: 'Look up nutrition',    status: 'active'  },
-  { label: 'Match to your goals',  status: 'pending' },
-];
 
 function StageRow({ label, status }: { label: string; status: StageStatus }) {
   const t = useTheme();
@@ -71,7 +66,15 @@ function DetectionBox({
 export function MealScanAnalyzingScreen() {
   const router = useRouter();
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const scanLine = useRef(new Animated.Value(0)).current;
+
+  const STAGES: { label: string; status: StageStatus }[] = [
+    { label: i18n('meals.detectFood'),       status: 'done'    },
+    { label: i18n('meals.estimatePortions'), status: 'done'    },
+    { label: i18n('meals.lookUpNutrition'),  status: 'active'  },
+    { label: i18n('meals.matchGoals'),       status: 'pending' },
+  ];
 
   useEffect(() => {
     Animated.loop(
@@ -90,7 +93,7 @@ export function MealScanAnalyzingScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+      <StatusBar style="light" />
 
       {/* Faux captured photo with scan animation */}
       <View style={styles.photoArea}>
@@ -117,7 +120,7 @@ export function MealScanAnalyzingScreen() {
           <View style={styles.headerIconSq}>
             <IconSparkle size={20} color="#fff" />
           </View>
-          <Text style={[typography.h3, { color: '#111', marginLeft: 10 }]}>Analyzing your plate…</Text>
+          <Text style={[typography.h3, { color: '#111', marginLeft: 10 }]}>{i18n('meals.analyzingPlate')}</Text>
         </View>
         <View style={styles.stages}>
           {STAGES.map((s) => <StageRow key={s.label} {...s} />)}
@@ -127,7 +130,7 @@ export function MealScanAnalyzingScreen() {
           onPress={() => router.back()}
           style={[styles.cancelBtn, { borderColor: 'rgba(0,0,0,0.15)' }]}
         >
-          <Text style={[typography.button, { color: '#111' }]}>Cancel</Text>
+          <Text style={[typography.button, { color: '#111' }]}>{i18n('common.cancel')}</Text>
         </Pressable>
       </View>
     </View>

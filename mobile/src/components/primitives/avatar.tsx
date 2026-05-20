@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
+import { safeImageUri } from '../../utils/safe-image-uri';
 
 interface AvatarProps {
   name?: string;
@@ -30,11 +31,12 @@ export function Avatar({ name = 'U', src, size = 40, color }: AvatarProps) {
   const t = useTheme();
   const bg = color ?? colorFromName(name);
   const fontSize = Math.round(size * 0.36);
+  const safeSrc = safeImageUri(src);
 
-  if (src) {
+  if (safeSrc) {
     return (
       <Image
-        source={{ uri: src }}
+        source={{ uri: safeSrc }}
         style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}
         accessibilityLabel={name}
       />

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { Screen } from '../layout/screen';
 import { ApiState } from '../api/api-state';
@@ -31,6 +32,7 @@ function EventIcon({ type, color }: { type: string; color: string }) {
 
 export function ReminderTimelineScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [view, setView] = useState<'Day' | 'Week'>('Day');
 
   const now       = useMemo(() => new Date(), []);
@@ -95,7 +97,7 @@ export function ReminderTimelineScreen() {
       <View style={[styles.backBar, { paddingHorizontal: 20 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={20} color={t.ink} />
-          <Text style={[styles.backTitle, { color: t.ink }]}>Timeline</Text>
+          <Text style={[styles.backTitle, { color: t.ink }]}>{i18n('reminders.timeline')}</Text>
         </TouchableOpacity>
         <View style={[styles.datePill, { backgroundColor: t.bgElev, borderColor: t.border }]}>
           <IconCalendar size={12} color={t.ink3} />
@@ -118,9 +120,9 @@ export function ReminderTimelineScreen() {
         ))}
       </View>
 
-      {occurrences.isLoading && <ApiState title="Loading timeline" loading />}
+      {occurrences.isLoading && <ApiState title={i18n('api.loading')} loading />}
       {occurrences.error && (
-        <ApiState title="Timeline unavailable" message={occurrences.error.message} actionLabel="Retry" onAction={occurrences.reload} />
+        <ApiState title={i18n('api.unavailable')} message={occurrences.error.message} actionLabel={i18n('common.retry')} onAction={occurrences.reload} />
       )}
 
       {view === 'Day' ? (

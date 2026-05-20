@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Input } from '../primitives/input/input';
@@ -15,6 +16,7 @@ const PROVIDERS = ['Bảo Hiểm Y Tế (BHYT)', 'AIA', 'Manulife', 'Prudential'
 
 export function InsuranceForm() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [provider, setProvider] = useState('');
   const [policyNum, setPolicyNum] = useState('');
   const [groupNum, setGroupNum] = useState('');
@@ -56,20 +58,20 @@ export function InsuranceForm() {
   if (done) {
     return (
       <View style={s.center}>
-        <Text style={[typography.h3, { color: t.ink }]}>Insurance saved</Text>
+        <Text style={[typography.h3, { color: t.ink }]}>{i18n('forms.insuranceSaved')}</Text>
         <Text style={[typography.caption, { color: t.ink3, marginTop: 6, textAlign: 'center' }]}>
-          Your insurance information has been recorded.
+          {i18n('forms.insuranceSavedMessage')}
         </Text>
-        <Button label="Done" variant="solid" onPress={() => router.back()} style={{ marginTop: 20 }} />
+        <Button label={i18n('common.done')} variant="solid" onPress={() => router.back()} style={{ marginTop: 20 }} />
       </View>
     );
   }
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
-      {error && <ApiState title="Validation error" message={error} />}
+      {error && <ApiState title={i18n('forms.validationError')} message={error} />}
 
-      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>PROVIDER</Text>
+      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.provider')}</Text>
       <View style={s.providerGrid}>
         {PROVIDERS.map(p => {
           const active = provider === p;
@@ -92,10 +94,10 @@ export function InsuranceForm() {
         })}
       </View>
 
-      <Input label="Policy number" value={policyNum} onChangeText={setPolicyNum} placeholder="e.g. HC-1234567890" style={s.field} />
-      <Input label="Group number (optional)" value={groupNum} onChangeText={setGroupNum} placeholder="e.g. GRP-001" style={s.field} />
+      <Input label={i18n('forms.policyNumber')} value={policyNum} onChangeText={setPolicyNum} placeholder={i18n('forms.policyNumberPlaceholder')} style={s.field} />
+      <Input label={i18n('forms.groupNumber')} value={groupNum} onChangeText={setGroupNum} placeholder={i18n('forms.groupNumberPlaceholder')} style={s.field} />
 
-      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>UPLOAD CARD</Text>
+      <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.uploadCard')}</Text>
       <View style={s.uploadRow}>
         <Pressable
           onPress={() => setFrontUploaded(true)}
@@ -110,7 +112,7 @@ export function InsuranceForm() {
         >
           <IconCamera size={24} color={frontUploaded ? t.success : t.ink3} />
           <Text style={[typography.caption, { color: frontUploaded ? t.success : t.ink3, marginTop: 6, textAlign: 'center' }]}>
-            {frontUploaded ? 'Front uploaded' : 'Card front'}
+            {frontUploaded ? i18n('forms.frontUploaded') : i18n('forms.cardFront')}
           </Text>
         </Pressable>
         <Pressable
@@ -126,13 +128,13 @@ export function InsuranceForm() {
         >
           <IconPaperclip size={24} color={backUploaded ? t.success : t.ink3} />
           <Text style={[typography.caption, { color: backUploaded ? t.success : t.ink3, marginTop: 6, textAlign: 'center' }]}>
-            {backUploaded ? 'Back uploaded' : 'Card back'}
+            {backUploaded ? i18n('forms.backUploaded') : i18n('forms.cardBack')}
           </Text>
         </Pressable>
       </View>
 
-      <Button label={saving ? 'Saving...' : 'Save insurance'} variant="solid" onPress={saving ? undefined : handleSubmit} style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]} />
-      <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
+      <Button label={saving ? i18n('common.working') : i18n('forms.saveInsurance')} variant="solid" onPress={saving ? undefined : handleSubmit} style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]} />
+      <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
     </ScrollView>
   );
 }

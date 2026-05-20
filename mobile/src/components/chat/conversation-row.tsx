@@ -15,7 +15,7 @@ interface ConversationRowProps {
   onPress?: () => void;
 }
 
-export function ConversationRow({ name, role, last, time, unread, onPress }: Omit<ConversationRowProps, 'online'> & { online?: boolean }) {
+export const ConversationRow = React.memo(function ConversationRow({ name, role, last, time, unread, onPress }: Omit<ConversationRowProps, 'online'> & { online?: boolean }) {
   const t = useTheme();
 
   return (
@@ -40,7 +40,7 @@ export function ConversationRow({ name, role, last, time, unread, onPress }: Omi
       </View>
     </PressableCard>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },

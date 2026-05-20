@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Card } from '../primitives/card';
@@ -16,15 +17,6 @@ import {
 } from 'lucide-react-native';
 
 type Action = { id: string; label: string; crumb: string; route: string; color: string; Icon: LucideIcon };
-
-const ACTIONS: Action[] = [
-  { id: 'scan',        label: 'Scan a meal',  crumb: 'Care → Meals → Scan',    route: '/meals/scan',              color: '#D97706', Icon: Utensils   },
-  { id: 'meds',        label: 'Log a dose',   crumb: 'Care → Meds → Log',      route: '/(tabs)/meds',             color: '#41BCE6', Icon: Pill       },
-  { id: 'vitals',      label: 'Log vitals',   crumb: 'Home → Vitals → Log',    route: '/home/vitals',             color: '#1965B3', Icon: HeartPulse },
-  { id: 'appointment', label: 'Book visit',   crumb: 'Care → Appointments',    route: '/care/appointments/new',   color: '#7C3AED', Icon: CalendarPlus },
-  { id: 'goal',        label: 'Add goal',     crumb: 'Insights → Goals → New', route: '/insights/goals/create',   color: '#12A88A', Icon: Target     },
-  { id: 'ai',          label: 'Ask the AI',   crumb: 'Chat → New message',     route: '/(tabs)/chat',             color: '#12A88A', Icon: Sparkles   },
-];
 
 function ActionCell({ label, crumb, route, color, Icon }: Action) {
   const t = useTheme();
@@ -47,6 +39,17 @@ function ActionCell({ label, crumb, route, color, Icon }: Action) {
 
 export function QuickActionSheetScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
+
+  const ACTIONS: Action[] = [
+    { id: 'scan',        label: i18n('home.quickScanMeal'),  crumb: i18n('home.quickScanCrumb'),    route: '/meals/scan',              color: '#D97706', Icon: Utensils   },
+    { id: 'meds',        label: i18n('home.quickLogDose'),   crumb: i18n('home.quickLogDoseCrumb'), route: '/(tabs)/meds',             color: '#41BCE6', Icon: Pill       },
+    { id: 'vitals',      label: i18n('home.quickLogVitals'), crumb: i18n('home.quickVitalsCrumb'),  route: '/home/vitals',             color: '#1965B3', Icon: HeartPulse },
+    { id: 'appointment', label: i18n('home.quickBookVisit'), crumb: i18n('home.quickBookCrumb'),    route: '/care/appointments/new',   color: '#7C3AED', Icon: CalendarPlus },
+    { id: 'goal',        label: i18n('home.quickAddGoal'),   crumb: i18n('home.quickGoalCrumb'),    route: '/insights/goals/create',   color: '#12A88A', Icon: Target     },
+    { id: 'ai',          label: i18n('home.quickAskAi'),     crumb: i18n('home.quickAiCrumb'),      route: '/(tabs)/chat',             color: '#12A88A', Icon: Sparkles   },
+  ];
+
   return (
     <SafeAreaView style={styles.scrim} edges={['bottom']}>
       <View style={[styles.sheet, { backgroundColor: t.card, ...t.shadows.sheet }]}>
@@ -57,8 +60,8 @@ export function QuickActionSheetScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.microLabel, { color: t.brand }]}>QUICK ACTIONS</Text>
-          <Text style={[typography.h3, { color: t.ink }]}>What do you want to do?</Text>
+          <Text style={[styles.microLabel, { color: t.brand }]}>{i18n('home.quickActions')}</Text>
+          <Text style={[typography.h3, { color: t.ink }]}>{i18n('home.whatDoYouWant')}</Text>
         </View>
 
         {/* 2×3 grid */}
@@ -70,9 +73,9 @@ export function QuickActionSheetScreen() {
         <Pressable
           style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.6 : 1 }]}
           onPress={() => router.back()}
-          accessibilityLabel="Cancel"
+          accessibilityLabel={i18n('common.cancel')}
         >
-          <Text style={[styles.cancelText, { color: t.brand }]}>Cancel</Text>
+          <Text style={[styles.cancelText, { color: t.brand }]}>{i18n('common.cancel')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

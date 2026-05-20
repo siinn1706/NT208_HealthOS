@@ -1,8 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronLeft, MoreHorizontal,
   TrendingUp, Heart, Activity,
@@ -22,11 +23,13 @@ import { ProgressRing } from '../charts/progress-ring';
 import type { ViewStyle } from 'react-native';
 
 function formatDate() {
-  return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date().toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
 }
 
 export function TodayOverviewScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
+  const dateLabel = useMemo(() => formatDate(), []);
 
   // ── existing data fetching — untouched ──────────────────────────────────
   const loadOverview = useCallback(async () => {
@@ -50,17 +53,17 @@ export function TodayOverviewScreen() {
           variant="subtle"
           icon={<ChevronLeft size={18} color={t.ink} />}
           onPress={() => router.back()}
-          accessibilityLabel="Back"
+          accessibilityLabel={i18n('common.back')}
           size={40}
         />
         <Text style={[typography.bodyMed, { color: t.ink }]}>
-          Today · {formatDate()}
+          {i18n('home.today', { date: dateLabel })}
         </Text>
         <IconButton
           variant="subtle"
           icon={<MoreHorizontal size={18} color={t.ink} />}
           onPress={() => {}}
-          accessibilityLabel="More"
+          accessibilityLabel={i18n('common.more')}
           size={40}
         />
       </View>
@@ -71,19 +74,19 @@ export function TodayOverviewScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Loading / error states */}
-        {overview.isLoading && <ApiState title="Loading overview" loading />}
+        {overview.isLoading && <ApiState title={i18n('home.loadingOverview')} loading />}
         {overview.error && (
           <ApiState
-            title="Overview unavailable"
+            title={i18n('home.overviewUnavailable')}
             message={overview.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={overview.reload}
           />
         )}
 
         {data && !overview.error && (() => {
           const score = data.score.value;
-          const scoreLabel = score >= 80 ? 'Looking good' : score >= 60 ? 'Getting there' : 'Needs attention';
+          const scoreLabel = score >= 80 ? i18n('home.lookingGood') : score >= 60 ? i18n('home.gettingThere') : i18n('home.needsAttention');
           const deltaBpm = data.vitals.deltaBpm;
           return (
             <>
@@ -100,7 +103,7 @@ export function TodayOverviewScreen() {
                   </ProgressRing>
                   <View style={styles.heroLabels}>
                     <Text style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_700Bold', letterSpacing: 1.2, fontSize: 11, marginBottom: 4 }}>
-                      HEALTH SCORE
+                      {i18n('home.todaysHealth')}
                     </Text>
                     <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_700Bold' }]}>
                       {scoreLabel}
@@ -114,21 +117,21 @@ export function TodayOverviewScreen() {
                   style={styles.heroBtn}
                   onPress={() => router.push('/(tabs)/home')}
                   accessibilityRole="button"
-                  accessibilityLabel="How is this health score calculated?"
+                  accessibilityLabel={i18n('home.howCalculated')}
                 >
                   <Text style={[typography.caption, { color: '#FFF', fontFamily: 'Inter_600SemiBold' }]}>
-                    How is this calculated?
+                    {i18n('home.howCalculated')}
                   </Text>
                 </Pressable>
               </LinearGradient>
 
               {/* Goals today */}
               <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
-                Goals today
+                {i18n('home.goalsToday')}
               </Text>
               <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
                 {data.kpis.length === 0 && (
-                  <ApiState title="No goals" message="Core dashboard goals will appear here." />
+                  <ApiState title={i18n('home.noGoals')} message={i18n('home.noGoalsMessage')} />
                 )}
                 {data.kpis.map((goal, i, arr) => (
                   <GoalItem
@@ -146,24 +149,24 @@ export function TodayOverviewScreen() {
 
               {/* What changed? */}
               <Text style={[typography.h3, styles.sectionTitle, { color: t.ink, paddingHorizontal: t.space[5] }]}>
-                What changed?
+                {i18n('home.whatChanged')}
               </Text>
               <Card style={StyleSheet.flatten([styles.sectionCard, { marginHorizontal: t.space[5] }]) as ViewStyle} tight>
                 <DeltaItem
                   t={t}
                   icon={<Heart size={14} color={deltaBpm >= 0 ? t.success : t.danger} />}
-                  label="Heart rate"
-                  delta={`${deltaBpm >= 0 ? '+' : ''}${deltaBpm} bpm this week`}
-                  value={`${data.vitals.avg} bpm`}
+                  label={i18n('home.heartRate')}
+                  delta={i18n('home.heartRateDelta', { delta: `${deltaBpm >= 0 ? '+' : ''}${deltaBpm}` })}
+                  value={`${data.vitals.avg} ${i18n('common.bpm')}`}
                   positive={deltaBpm >= 0}
                   last={false}
                 />
                 <DeltaItem
                   t={t}
                   icon={<TrendingUp size={14} color={t.success} />}
-                  label="Health score"
-                  delta="Based on this week's data"
-                  value={`${score} pts`}
+                  label={i18n('home.healthScore')}
+                  delta={i18n('home.healthScoreDelta')}
+                  value={`${score} ${i18n('common.pts')}`}
                   positive
                   last
                 />

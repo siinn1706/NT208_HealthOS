@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming,
@@ -37,6 +38,7 @@ function formatTimer(s: number) {
 
 export function JoinVideoVisitScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t: i18n } = useTranslation();
   const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
   const [elapsed, setElapsed] = useState(0);
   const [micOn, setMicOn] = useState(true);
@@ -60,7 +62,7 @@ export function JoinVideoVisitScreen() {
         <Pressable onPress={() => router.back()} style={s.backBtn}>
           <ChevronLeft size={22} color={nt.ink} />
         </Pressable>
-        <Text style={[typography.bodyMed, { color: nt.ink }]}>Video visit</Text>
+        <Text style={[typography.bodyMed, { color: nt.ink }]}>{i18n('care.joinVideoVisit')}</Text>
         <View style={{ width: 40 }} />
       </View>
 

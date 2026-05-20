@@ -1,22 +1,24 @@
-import { useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSharedValue, withSpring, useAnimatedProps } from 'react-native-reanimated';
-import { useFocusEffect } from 'expo-router';
 
 const SPRING = { damping: 16, stiffness: 80 };
 
 /**
  * Spring-entrance animation for SVG progress rings.
- * Returns animatedProps suitable for react-native-svg's AnimatedCircle.
+ * Plays once on mount; target updates animate without resetting to 0.
  */
 export function useRingEntrance(target: number, circumference: number) {
   const progress = useSharedValue(0);
+  const hasEntered = useRef(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      progress.value = 0;
+  useEffect(() => {
+    if (!hasEntered.current) {
+      hasEntered.current = true;
       progress.value = withSpring(target, SPRING);
-    }, [target]),
-  );
+    } else {
+      progress.value = withSpring(target, SPRING);
+    }
+  }, [target]);
 
   return useAnimatedProps(() => ({
     strokeDashoffset: circumference * (1 - progress.value),

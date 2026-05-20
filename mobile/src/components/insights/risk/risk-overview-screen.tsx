@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { TopBar } from '../../layout/top-bar';
 import { SectionHeader } from '../../layout/section-header';
@@ -137,6 +138,7 @@ function RiskRefreshState() {
 
 export function RiskOverviewScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const loadRisk = useCallback(() => riskService.summary(), []);
   const risk = useApiQuery(queryKeys.riskSummary, loadRisk);
 
@@ -158,12 +160,12 @@ export function RiskOverviewScreen() {
   return (
     <Screen>
       <TopBar
-        title="Insights"
-        subtitle={risk.isLoading ? 'Refreshing…' : 'Personalized risk profile'}
+        title={i18n('insights.title')}
+        subtitle={risk.isLoading ? i18n('insights.refreshing') : i18n('insights.personalizedRisk')}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel="Refresh" onPress={() => risk.reload()} />
-            <IconButton icon={<IconMore size={20} color={t.ink3} />} accessibilityLabel="More" />
+            <IconButton icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel={i18n('common.retry')} onPress={() => risk.reload()} />
+            <IconButton icon={<IconMore size={20} color={t.ink3} />} accessibilityLabel={i18n('common.more')} />
           </View>
         }
       />
@@ -175,9 +177,9 @@ export function RiskOverviewScreen() {
 
       {risk.error && (
         <ApiState
-          title="Risk profile unavailable"
+          title={i18n('insights.goalsUnavailable')}
           message={risk.error.message}
-          actionLabel="Retry"
+          actionLabel={i18n('common.retry')}
           onAction={risk.reload}
         />
       )}
@@ -190,7 +192,7 @@ export function RiskOverviewScreen() {
               <RiskGauge value={Math.max(0, Math.min(1, (100 - parsed.overallScore) / 100))} size={150} />
               <View style={styles.heroText}>
                 <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.8 }]}>
-                  Overall risk
+                  {i18n('insights.overallRisk')}
                 </Text>
                 <Text style={[typography.title, { color: t.ink, marginTop: 4 }]}>
                   {parsed.top ? String(parsed.top.level ?? 'unknown') : 'No data'}
@@ -202,7 +204,7 @@ export function RiskOverviewScreen() {
             </View>
           </Card>
 
-          <SectionHeader title="Top concern" />
+          <SectionHeader title={i18n('insights.topConcern')} />
           {parsed.top ? (
             <Card style={{ ...styles.concernCard, backgroundColor: t.warning + '10', borderColor: t.warning + '30' }}>
               <View style={styles.concernHeader}>
@@ -232,7 +234,7 @@ export function RiskOverviewScreen() {
               </View>
 
               <Button
-                label="Open full report"
+                label={i18n('insights.openFullReport')}
                 variant="soft"
                 size="sm"
                 style={{ marginTop: 14, alignSelf: 'flex-start' }}
@@ -243,7 +245,7 @@ export function RiskOverviewScreen() {
             <ApiState title="No risk data yet" message="Connect more health signals to generate predictions." />
           )}
 
-          <SectionHeader title="Other areas" />
+          <SectionHeader title={i18n('insights.otherAreas')} />
           <Card tight>
             {parsed.others.map((row, i) => {
               const level = String(row.level ?? 'unknown');

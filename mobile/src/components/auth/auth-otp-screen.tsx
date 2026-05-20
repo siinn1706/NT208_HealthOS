@@ -18,7 +18,7 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { authService } from '../../api/services';
 import { useSession } from '../../auth/session-provider';
-import { getPendingSignup, clearPendingSignup } from '../../auth/pending-signup';
+import { consumePendingSignup } from '../../auth/pending-signup';
 
 const OTP_LEN = 6;
 const COUNTDOWN_SEC = 60;
@@ -118,12 +118,14 @@ export function AuthOtpScreen() {
     }
   }
 
+  useEffect(() => () => { consumePendingSignup(); }, []);
+
   async function handleVerify() {
     if (!params.email || !isComplete) return;
     setLoading(true);
     setError(null);
     try {
-      const pending = getPendingSignup();
+      const pending = consumePendingSignup();
       const result = await authService.verifyOtp({
         email: params.email!,
         password: pending?.password,
@@ -135,7 +137,6 @@ export function AuthOtpScreen() {
         router.replace('/auth/sign-in');
         return;
       }
-      clearPendingSignup();
       await session.refreshUser();
       if (params.purpose === 'reset_password') router.replace('/auth/sign-in');
       else if (params.purpose === 'login') router.replace('/(tabs)/home');

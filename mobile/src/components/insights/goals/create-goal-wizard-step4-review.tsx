@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { Card } from '../../primitives/card';
@@ -25,6 +26,7 @@ export function WizardStep4({
   days?: string[];
 }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [pactChecked, setPactChecked] = useState(false);
   const cat = CATEGORIES.find((c) => c.key === category);
 
@@ -39,10 +41,10 @@ export function WizardStep4({
   return (
     <View style={styles.stepBody}>
       <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }]}>
-        STEP 4 · REVIEW
+        {i18n('insights.wizardStep4Label')}
       </Text>
       <Text style={[typography.display, { color: t.ink, marginBottom: 16, lineHeight: 32 }]}>
-        Ready to commit?
+        {i18n('insights.wizardStep4Title')}
       </Text>
 
       {/* Summary gradient card */}
@@ -81,7 +83,7 @@ export function WizardStep4({
       </LinearGradient>
 
       {/* Expected impact */}
-      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>Expected impact</Text>
+      <Text style={[typography.bodyMed, { color: t.ink, marginTop: 16, marginBottom: 8 }]}>{i18n('insights.wizardExpectedImpact')}</Text>
       <Card tight>
         {IMPACT_ROWS.map((row, i) => (
           <View
@@ -108,9 +110,9 @@ export function WizardStep4({
           {pactChecked && <IconCheck size={13} color="#fff" />}
         </View>
         <Text style={[typography.caption, { color: t.ink3, flex: 1, lineHeight: 18 }]}>
-          I commit to this goal and want you to{' '}
-          <Text style={{ color: t.ink, fontWeight: '700' }}>nudge me twice</Text>
-          {' '}daily until I hit my target.
+          {i18n('insights.wizardPactText')}{' '}
+          <Text style={{ color: t.ink, fontWeight: '700' }}>{i18n('insights.wizardPactBold')}</Text>
+          {' '}{i18n('insights.wizardPactSuffix')}
         </Text>
       </Pressable>
     </View>

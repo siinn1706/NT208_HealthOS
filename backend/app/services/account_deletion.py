@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import JWT_BLACKLIST_PREFIX, decode_access_token, hash_password, verify_password
 from app.models.audit import AuditLog
 from app.models.core import User
+from app.services.refresh_tokens import revoke_refresh_tokens_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ async def request_deletion(
     # B7 P1-5 — also stamp the global token cutoff so every device's JWT is
     # invalidated immediately, not only the caller's current one.
     user.tokens_invalidated_at = now
+    await revoke_refresh_tokens_for_user(db, user_id=user.id)
     await db.flush()
     return user
 
