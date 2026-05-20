@@ -49,14 +49,42 @@ export function setRefreshHandler(handler: (() => Promise<boolean>) | null) {
   refreshGraceUntil = 0;
 }
 
+function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined): string {
+  const normalized = (url ?? '').trim().replace(/\/+$/, '');
+  if (!normalized) {
+    throw new ApiError(
+      kind === 'api'
+        ? 'Missing EXPO_PUBLIC_CORE_API_URL for production build.'
+        : 'Missing EXPO_PUBLIC_CORE_WS_URL for production build.',
+      0,
+      kind === 'api' ? 'CORE_API_URL_MISSING' : 'CORE_WS_URL_MISSING',
+    );
+  }
+  if (kind === 'api' && normalized.startsWith('http://')) {
+    throw new ApiError(
+      'Production API URL must use HTTPS.',
+      0,
+      'INSECURE_API_URL',
+    );
+  }
+  if (kind === 'ws' && normalized.startsWith('ws://')) {
+    throw new ApiError(
+      'Production WebSocket URL must use WSS.',
+      0,
+      'INSECURE_WS_URL',
+    );
+  }
+  return normalized;
+}
+
 export function getCoreApiBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as { coreApiUrl?: string } | undefined;
   const configured = process.env.EXPO_PUBLIC_CORE_API_URL ?? extra?.coreApiUrl;
   const fallback = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
-  const url = (configured || fallback).replace(/\/+$/, '');
-  if (!__DEV__ && url.startsWith('http://')) {
-    console.warn('[HealthOS] Core API URL is not HTTPS in production:', url);
+  if (!__DEV__) {
+    return assertProductionSecureUrl('api', configured);
   }
+  const url = (configured || fallback).replace(/\/+$/, '');
   return url;
 }
 
@@ -64,6 +92,9 @@ export function getCoreWsBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as { coreWsUrl?: string } | undefined;
   const configured = process.env.EXPO_PUBLIC_CORE_WS_URL ?? extra?.coreWsUrl;
   const fallback = Platform.OS === 'android' ? 'ws://10.0.2.2:8000' : 'ws://localhost:8000';
+  if (!__DEV__) {
+    return assertProductionSecureUrl('ws', configured);
+  }
   return (configured || fallback).replace(/\/+$/, '');
 }
 
@@ -79,8 +110,21 @@ export function buildQuery(params: Record<string, string | number | boolean | nu
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 30000);
+  const onAbort = () => controller.abort();
   if (options.signal) {
-    options.signal.addEventListener('abort', () => controller.abort());
+    options.signal.addEventListener('abort', onAbort);
+  }
+
+  // Refuse authenticated requests over plain HTTP in production
+  if (!__DEV__ && options.auth !== false) {
+    const baseUrl = getCoreApiBaseUrl();
+    if (baseUrl.startsWith('http://')) {
+      throw new ApiError(
+        'Refusing to send authenticated request over plain HTTP in production.',
+        0,
+        'INSECURE_TRANSPORT',
+      );
+    }
   }
 
   try {
@@ -148,6 +192,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     throw new ApiError(isAbort ? 'Request timed out.' : 'Network request failed.', 0, isAbort ? 'TIMEOUT' : 'NETWORK_ERROR');
   } finally {
     clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', onAbort);
   }
 }
 

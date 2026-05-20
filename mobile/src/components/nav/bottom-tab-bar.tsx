@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import Animated from 'react-native-reanimated';
@@ -70,18 +70,22 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const height = TAB_BAR_CONTENT_HEIGHT + insets.bottom;
 
-  const conversations = useApiQuery(queryKeys.conversations, chatService.conversations);
+  const conversations = useApiQuery(queryKeys.conversations, () => chatService.conversations());
   const chatBadge = conversations.data
     ? conversations.data.filter((c) => c.unread_count > 0).length
     : 0;
 
   return (
     <View style={[styles.container, { height, borderTopColor: t.border }]}>
-      <BlurView
-        intensity={80}
-        tint={themeName === 'night' ? 'dark' : 'light'}
-        style={[StyleSheet.absoluteFill, { backgroundColor: `${t.bgElev}EB` }]}
-      />
+      {Platform.OS === 'android' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: `${t.bgElev}EB` }]} />
+      ) : (
+        <BlurView
+          intensity={80}
+          tint={themeName === 'night' ? 'dark' : 'light'}
+          style={[StyleSheet.absoluteFill, { backgroundColor: `${t.bgElev}EB` }]}
+        />
+      )}
       <View style={styles.tabs}>
         {TAB_ICONS.map((tab, i) => (
           <TabItem

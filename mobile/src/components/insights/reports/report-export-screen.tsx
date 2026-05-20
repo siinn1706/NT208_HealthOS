@@ -1,6 +1,5 @@
-// Export / share sheet for a health report — bottom-sheet style with destination tiles and include toggles
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Toggle } from '../../primitives/toggle';
@@ -8,6 +7,7 @@ import { reportService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { IconHeartPulse, IconPaperclip, IconUser, IconShield } from '../../../icons';
+import { safeOpenUrl } from '../../../utils/safe-url';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,11 +94,8 @@ export function ReportExportScreen() {
 
   async function handleOpenDownload() {
     if (!downloadUrl) return;
-    try {
-      await Linking.openURL(downloadUrl);
-    } catch {
-      setError('Could not open download link.');
-    }
+    const opened = await safeOpenUrl(downloadUrl);
+    if (!opened) setError('Could not open download link. URL must use HTTPS.');
   }
 
   async function handleRefreshStatus() {

@@ -2,6 +2,14 @@
 
 Expo / React Native app recreating the NT208 HealthOS handoff across 3 visual themes (Calm Clinic · Night Sky · Warm Care) with tab screens plus auth, drill-down, care-flow, meds-flow, and reusable form routes.
 
+## Scope
+
+**This is an iOS/Android mobile app only.** There is no web target.
+
+- No `expo start --web`, no web bundles, no `app.json` web block.
+- `@react-native-community/netinfo`, `expo-haptics`, and other native modules are not web-compatible by design.
+- For the web dashboard see `../frontend/`.
+
 ## Screens
 
 ### Core tabs

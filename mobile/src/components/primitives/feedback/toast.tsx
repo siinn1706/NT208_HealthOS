@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -9,6 +9,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePathname } from 'expo-router';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 
@@ -90,14 +91,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const counter = useRef(0);
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+
+  // Dismiss all toasts on navigation
+  useEffect(() => {
+    setToasts([]);
+  }, [pathname]);
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const show = useCallback((message: string, variant: ToastVariant = 'info') => {
-    const id = String(++counter.current);
-    setToasts((prev) => [...prev.slice(-2), { id, message, variant }]);
+    setToasts((prev) => {
+      // Dedup: skip if identical toast already visible
+      if (prev.some((t) => t.message === message && t.variant === variant)) return prev;
+      const id = String(++counter.current);
+      return [...prev.slice(-2), { id, message, variant }];
+    });
   }, []);
 
   return (

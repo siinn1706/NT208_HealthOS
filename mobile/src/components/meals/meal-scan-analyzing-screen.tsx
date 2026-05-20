@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, ActivityIndicator } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
@@ -92,7 +93,7 @@ export function MealScanAnalyzingScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+      <StatusBar style="light" />
 
       {/* Faux captured photo with scan animation */}
       <View style={styles.photoArea}>

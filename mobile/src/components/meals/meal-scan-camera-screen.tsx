@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { typography } from '../../theme/typography';
@@ -34,7 +35,7 @@ export function MealScanCameraScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+      <StatusBar style="light" />
 
       {/* Top bar */}
       <View style={styles.topBar}>

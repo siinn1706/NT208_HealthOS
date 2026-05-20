@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, Modal, Pressable, Text } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, FlatList, StyleSheet, Modal, Pressable, Text, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../src/theme/useTheme';
@@ -27,8 +27,6 @@ export default function AiConversationScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
-  const scrollRef = useRef<ScrollView>(null);
 
   // More options modal
   const [moreOpen, setMoreOpen] = useState(false);
@@ -42,10 +40,6 @@ export default function AiConversationScreen() {
     }
   }, [messageQuery.data, sending]);
 
-  useEffect(() => {
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [messages.length]);
-
   async function handleSend(text: string) {
     if (!conversationId) return;
     setSending(true);
@@ -53,16 +47,23 @@ export default function AiConversationScreen() {
     try {
       const saved = await chatService.sendMessage(conversationId, text);
       setMessages((prev) => [...prev, saved]);
-      setDraft('');
       invalidateApiQuery(queryKeys.conversations);
     } catch (err: unknown) {
-      // Restore draft so the user doesn't lose their message
-      setDraft(text);
       setSendError(err instanceof Error ? err.message : 'Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }
   }
+
+  // FlatList inverted: reverse messages so newest is at bottom (index 0 = newest)
+  const reversed = useMemo(() => [...messages].reverse(), [messages]);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: Message; index: number }) => (
+      <Bubble {...toBubble(item, user?.id)} index={messages.length - 1 - index} />
+    ),
+    [messages.length, user?.id],
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} edges={['top', 'bottom']}>
@@ -91,14 +92,10 @@ export default function AiConversationScreen() {
       </View>
 
       {/* Messages */}
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.messages}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <DateChip label="Today" />
-        {messageQuery.isLoading && <ApiState title="Loading messages" loading />}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {messageQuery.isLoading && (
+          <ApiState title="Loading messages" loading />
+        )}
         {messageQuery.error && (
           <ApiState
             title="Messages unavailable"
@@ -107,13 +104,9 @@ export default function AiConversationScreen() {
             onAction={messageQuery.reload}
           />
         )}
-        {!messageQuery.isLoading && !messageQuery.error && messages.length === 0 && (
+        {!messageQuery.isLoading && !messageQuery.error && messages.length === 0 && !sending && (
           <ApiState title="No messages yet" message="Start the conversation below." />
         )}
-        {messages.map((m, i) => (
-          <Bubble key={m.id} {...toBubble(m, user?.id)} index={i} />
-        ))}
-        {sending && <Bubble side="me" isTyping />}
         {sendError && (
           <ApiState
             title="Send failed"
@@ -122,12 +115,24 @@ export default function AiConversationScreen() {
             onAction={() => setSendError(null)}
           />
         )}
-      </ScrollView>
-
-      <Composer
-        onSend={handleSend}
-        onAttach={() => setAttachOpen(true)}
-      />
+        <FlatList
+          data={reversed}
+          inverted
+          keyExtractor={(m) => m.id}
+          renderItem={renderItem}
+          initialNumToRender={15}
+          windowSize={10}
+          maxToRenderPerBatch={10}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={sending ? <Bubble side="me" isTyping /> : null}
+          ListFooterComponent={<DateChip label="Today" />}
+          contentContainerStyle={styles.messages}
+        />
+        <Composer
+          onSend={handleSend}
+          onAttach={() => setAttachOpen(true)}
+        />
+      </KeyboardAvoidingView>
 
       {/* More options modal */}
       <Modal

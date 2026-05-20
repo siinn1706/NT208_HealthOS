@@ -33,8 +33,7 @@ export function Composer({ onSend, onAttach }: ComposerProps) {
         style={[styles.input, { color: t.ink, backgroundColor: t.bgElev, borderColor: t.border, borderRadius: t.radius.pill }]}
         multiline
         maxLength={1000}
-        returnKeyType="send"
-        onSubmitEditing={handleSend}
+        blurOnSubmit={false}
       />
       <Pressable
         onPress={handleSend}

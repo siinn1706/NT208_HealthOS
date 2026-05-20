@@ -7,7 +7,6 @@
     "preandroid": "adb start-server",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
@@ -16,6 +15,7 @@
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
     "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-community/netinfo": "11.4.1",
     "expo": "~53.0.0",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.8",

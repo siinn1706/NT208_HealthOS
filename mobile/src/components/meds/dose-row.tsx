@@ -14,7 +14,7 @@ interface DoseRowProps {
   onTaken?: () => Promise<void> | void;
 }
 
-export function DoseRow({ time, name, state: currentState, onTaken }: DoseRowProps) {
+export const DoseRow = React.memo(function DoseRow({ time, name, state: currentState, onTaken }: DoseRowProps) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const taken = currentState === 'taken';
@@ -45,7 +45,7 @@ export function DoseRow({ time, name, state: currentState, onTaken }: DoseRowPro
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth },

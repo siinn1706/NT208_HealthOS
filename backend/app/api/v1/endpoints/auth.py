@@ -1,11 +1,11 @@
 """Auth endpoints — OAuth session exchange, email OTP, and current user."""
 import asyncio
 import hmac
+import json
 import logging
 import random
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
@@ -30,6 +30,7 @@ from app.exceptions import (
 )
 from app.models.core import User
 from app.schemas.auth import (
+    AuthLoginResponse,
     AuthToken,
     AuthTokenResponse,
     CheckEmailResponse,
@@ -37,6 +38,9 @@ from app.schemas.auth import (
     CurrentUser,
     CurrentUserResponse,
     LoginBody,
+    LogoutBody,
+    MfaLoginRequired,
+    MfaLoginVerifyBody,
     OAuthLinkAttachBody,
     OAuthLinkDTO,
     OAuthLinkListResponse,
@@ -47,6 +51,7 @@ from app.schemas.auth import (
     OtpVerified,
     OtpVerifiedResponse,
     RequestOtpBody,
+    RefreshTokenBody,
     ResetPasswordBody,
     VerifyOtpBody,
     WsTicket,
@@ -72,6 +77,15 @@ from app.services.auth import (
     get_user_by_identifier,
     validate_username,
 )
+from app.services.mfa import totp_service
+from app.services.refresh_tokens import (
+    RefreshTokenError,
+    RefreshTokenReuseError,
+    issue_refresh_token,
+    revoke_refresh_token,
+    revoke_refresh_tokens_for_user,
+    rotate_refresh_token,
+)
 from app.services.security_logging import log_security_event
 from app.services.audit import audit
 from app.services import oauth_links as oauth_link_svc
@@ -83,6 +97,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
 
 WS_TICKET_EXPIRES_SECONDS = 120
+MFA_LOGIN_CHALLENGE_TTL_SECONDS = 5 * 60
+MFA_LOGIN_MAX_ATTEMPTS = 5
 
 
 async def _redis_getdel_compat(redis: Redis, key: str) -> bytes | str | None:
@@ -99,6 +115,35 @@ async def _redis_getdel_compat(redis: Redis, key: str) -> bytes | str | None:
             1,
             key,
         )
+
+
+def _mfa_login_challenge_key(challenge_id: str) -> str:
+    return f"auth:mfa:login:{challenge_id}"
+
+
+async def _issue_auth_token(
+    *,
+    db: AsyncSession,
+    user: User,
+    request: Request | None,
+) -> AuthToken:
+    access_token = create_user_access_token(user)
+    refresh_token = await issue_refresh_token(
+        db,
+        user_id=user.id,
+        ip_address=request.client.host if request and request.client else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+    )
+    return AuthToken(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user_id=str(user.id),
+        email=user.email,
+        username=user.username,
+        display_name=user.display_name,
+        avatar_url=user.profile.avatar_url if user.profile is not None else None,
+        onboarding_status=user.onboarding_status,
+    )
 
 
 @router.get(
@@ -120,7 +165,7 @@ async def issue_ws_ticket(
 
 @router.post(
     "/login",
-    response_model=AuthTokenResponse,
+    response_model=AuthLoginResponse,
     responses={
         401: {"model": ErrorResponse},
         429: {"model": ErrorResponse},
@@ -130,8 +175,9 @@ async def login_with_password(
     body: LoginBody,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     _rate: None = Depends(rate_limit_login),
-) -> AuthTokenResponse:
+) -> AuthLoginResponse:
     """
     Authenticate with email or username + password and return a JWT access token.
 
@@ -207,7 +253,24 @@ async def login_with_password(
             },
         )
 
-    # Success - reset failed attempts
+    if user.mfa_enabled:
+        challenge_id = str(uuid.uuid4())
+        challenge_payload = {
+            "user_id": str(user.id),
+            "attempts_left": MFA_LOGIN_MAX_ATTEMPTS,
+        }
+        await redis.setex(
+            _mfa_login_challenge_key(challenge_id),
+            MFA_LOGIN_CHALLENGE_TTL_SECONDS,
+            json.dumps(challenge_payload),
+        )
+        return AuthLoginResponse(
+            data=MfaLoginRequired(
+                challenge_id=challenge_id,
+                expires_in_seconds=MFA_LOGIN_CHALLENGE_TTL_SECONDS,
+            )
+        )
+
     await reset_failed_login_attempts(db, user)
     await log_security_event(
         db,
@@ -216,17 +279,120 @@ async def login_with_password(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    token = await _issue_auth_token(db=db, user=user, request=request)
+    await db.commit()
+    return AuthLoginResponse(data=token)
 
-    access_token = create_user_access_token(user)
-    token = AuthToken(
-        access_token=access_token,
-        user_id=str(user.id),
-        email=user.email,
-        username=user.username,
-        display_name=user.display_name,
-        avatar_url=user.profile.avatar_url if user.profile is not None else None,
-        onboarding_status=user.onboarding_status,
+
+@router.post(
+    "/login/mfa",
+    response_model=AuthTokenResponse,
+    responses={401: {"model": ErrorResponse}},
+)
+async def login_with_mfa(
+    body: MfaLoginVerifyBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> AuthTokenResponse:
+    from app.services.auth import record_failed_login, reset_failed_login_attempts
+
+    challenge_key = _mfa_login_challenge_key(body.challenge_id)
+    raw_payload = await redis.get(challenge_key)
+    if not raw_payload:
+        raise UnauthorizedException(
+            code="MFA_CHALLENGE_INVALID",
+            message="MFA challenge is invalid or expired.",
+        )
+
+    try:
+        payload = json.loads(raw_payload)
+        user_id = uuid.UUID(str(payload.get("user_id")))
+        attempts_left = int(payload.get("attempts_left", 0))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        await redis.delete(challenge_key)
+        raise UnauthorizedException(
+            code="MFA_CHALLENGE_INVALID",
+            message="MFA challenge is invalid or expired.",
+        )
+
+    if attempts_left <= 0:
+        await redis.delete(challenge_key)
+        raise UnauthorizedException(
+            code="MFA_CHALLENGE_LOCKED",
+            message="MFA challenge was locked. Request a new login challenge.",
+        )
+
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.profile))
+        .where(User.id == user_id)
+        .with_for_update()
     )
+    user = result.scalar_one_or_none()
+    if user is None or not user.mfa_enabled or not user.mfa_secret:
+        await redis.delete(challenge_key)
+        raise UnauthorizedException(
+            code="MFA_NOT_ENABLED",
+            message="MFA is not enabled for this account.",
+        )
+
+    method = None
+    if user.mfa_recovery_codes:
+        valid_recovery, remaining = totp_service.verify_recovery_code(body.code, user.mfa_recovery_codes)
+        if valid_recovery:
+            user.mfa_recovery_codes = remaining
+            method = "recovery_code"
+
+    if method is None and totp_service.verify(user.mfa_secret, body.code):
+        method = "totp"
+
+    if method is None:
+        remaining_attempts = attempts_left - 1
+        if remaining_attempts <= 0:
+            await redis.delete(challenge_key)
+        else:
+            ttl = await redis.ttl(challenge_key)
+            ttl_seconds = int(ttl) if isinstance(ttl, int) and ttl > 0 else MFA_LOGIN_CHALLENGE_TTL_SECONDS
+            await redis.setex(
+                challenge_key,
+                ttl_seconds,
+                json.dumps({"user_id": str(user.id), "attempts_left": remaining_attempts}),
+            )
+        await record_failed_login(db, user)
+        await log_security_event(
+            db,
+            AuditEventTypeEnum.MFA_FAILED,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"reason": "invalid_login_mfa_code"},
+        )
+        raise UnauthorizedException(
+            code="INVALID_TOTP_CODE",
+            message="Invalid verification code.",
+        )
+
+    await redis.delete(challenge_key)
+    await reset_failed_login_attempts(db, user)
+    await log_security_event(
+        db,
+        AuditEventTypeEnum.MFA_VERIFIED,
+        user_id=user.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"method": method, "context": "login"},
+    )
+    await log_security_event(
+        db,
+        AuditEventTypeEnum.LOGIN_SUCCESS,
+        user_id=user.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"mfa_method": method},
+    )
+    token = await _issue_auth_token(db=db, user=user, request=request)
+    await db.commit()
     return AuthTokenResponse(data=token)
 
 
@@ -303,6 +469,7 @@ def verify_bff_secret(request: Request) -> None:
 )
 async def exchange_oauth_profile_for_token(
     body: OAuthProfile,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _bff: None = Depends(verify_bff_secret),
 ) -> AuthTokenResponse:
@@ -341,17 +508,8 @@ async def exchange_oauth_profile_for_token(
                 },
             },
         ) from exc
+    token = await _issue_auth_token(db=db, user=user, request=request)
     await db.commit()
-    access_token = create_user_access_token(user)
-
-    token = AuthToken(
-        access_token=access_token,
-        user_id=str(user.id),
-        email=user.email,
-        display_name=user.display_name,
-        avatar_url=user.profile.avatar_url if user.profile is not None else None,
-        onboarding_status=user.onboarding_status,
-    )
     return AuthTokenResponse(data=token)
 
 
@@ -659,6 +817,7 @@ async def request_email_otp(
 )
 async def verify_email_otp(
     body: VerifyOtpBody,
+    request: Request,
     redis: Redis = Depends(get_redis),
     db: AsyncSession = Depends(get_db),
 ):
@@ -750,16 +909,8 @@ async def verify_email_otp(
         # Mark email as verified (OTP proves email ownership)
         if user.email_verified_at is None:
             user.email_verified_at = datetime.now(timezone.utc)
-            await db.commit()
-        access_token = create_user_access_token(user)
-        token = AuthToken(
-            access_token=access_token,
-            user_id=str(user.id),
-            email=user.email,
-            display_name=user.display_name,
-            avatar_url=user.profile.avatar_url if user.profile is not None else None,
-            onboarding_status=user.onboarding_status,
-        )
+        token = await _issue_auth_token(db=db, user=user, request=request)
+        await db.commit()
         return AuthTokenResponse(data=token)
 
     # ── signup: create / fetch user and issue JWT ────────────────────────────
@@ -839,7 +990,7 @@ async def verify_email_otp(
         user.display_name = name
 
     try:
-        await db.commit()
+        await db.flush()
     except IntegrityError as exc:
         await db.rollback()
         # Username collision: another user registered the same username between
@@ -855,21 +1006,10 @@ async def verify_email_otp(
             message="Đã xảy ra xung đột dữ liệu. Vui lòng thử lại.",
         ) from exc
 
-    # Clean up Redis signup data
+    token = await _issue_auth_token(db=db, user=user, request=request)
+    await db.commit()
     if signup_data_raw:
         await redis.delete(signup_key)
-
-    access_token = create_user_access_token(user)
-
-    token = AuthToken(
-        access_token=access_token,
-        user_id=str(user.id),
-        email=user.email,
-        username=user.username,
-        display_name=user.display_name,
-        avatar_url=user.profile.avatar_url if user.profile is not None else None,
-        onboarding_status=user.onboarding_status,
-    )
     return AuthTokenResponse(data=token)
 
 
@@ -884,6 +1024,7 @@ async def verify_email_otp(
 )
 async def reset_password(
     body: ResetPasswordBody,
+    request: Request,
     redis: Redis = Depends(get_redis),
     db: AsyncSession = Depends(get_db),
 ) -> AuthTokenResponse:
@@ -929,15 +1070,9 @@ async def reset_password(
 
     user.hashed_password = hash_password(body.new_password)
     user.has_password = True
-
-    access_token = create_user_access_token(user)
-    token = AuthToken(
-        access_token=access_token,
-        user_id=str(user.id),
-        email=user.email,
-        display_name=user.display_name,
-        avatar_url=user.profile.avatar_url if user.profile is not None else None,
-    )
+    await revoke_refresh_tokens_for_user(db, user_id=user.id)
+    token = await _issue_auth_token(db=db, user=user, request=request)
+    await db.commit()
     return AuthTokenResponse(data=token)
 
 
@@ -1047,12 +1182,53 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 
 @router.post(
+    "/refresh",
+    response_model=AuthTokenResponse,
+    responses={401: {"model": ErrorResponse}},
+)
+async def refresh_access_token(
+    body: RefreshTokenBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> AuthTokenResponse:
+    try:
+        user, next_refresh_token = await rotate_refresh_token(
+            db,
+            refresh_token=body.refresh_token,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except RefreshTokenReuseError as exc:
+        await db.commit()
+        raise UnauthorizedException(code=exc.code, message=exc.message)
+    except RefreshTokenError as exc:
+        await db.commit()
+        raise UnauthorizedException(code=exc.code, message=exc.message)
+
+    access_token = create_user_access_token(user)
+    token = AuthToken(
+        access_token=access_token,
+        refresh_token=next_refresh_token,
+        user_id=str(user.id),
+        email=user.email,
+        username=user.username,
+        display_name=user.display_name,
+        avatar_url=user.profile.avatar_url if user.profile is not None else None,
+        onboarding_status=user.onboarding_status,
+    )
+    await db.commit()
+    return AuthTokenResponse(data=token)
+
+
+@router.post(
     "/logout",
     responses={200: {"model": dict}},
 )
 async def logout(
+    body: LogoutBody | None = None,
     credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     redis: Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Revoke the current JWT by adding its jti to the Redis blacklist.
 
@@ -1060,7 +1236,10 @@ async def logout(
     Does not require a valid session (no get_current_user dependency) so retry
     after network failure still succeeds.
     """
+    if body and body.refresh_token:
+        await revoke_refresh_token(db, refresh_token=body.refresh_token)
     if credentials and credentials.credentials:
         await revoke_token(credentials.credentials, redis)
+    await db.commit()
     return {"data": {"success": True}}
 

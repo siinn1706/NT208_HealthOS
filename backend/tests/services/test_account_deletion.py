@@ -19,6 +19,9 @@ from app.services.account_deletion import (
 class _FakeAsyncSession:
     """Minimal async session — only `flush` is touched by `request_deletion`."""
 
+    async def execute(self, _stmt):
+        return None
+
     async def flush(self):
         return None
 

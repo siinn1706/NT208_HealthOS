@@ -4,6 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -13,7 +15,6 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
-import { authService } from '../../api/services';
 import { useSession } from '../../auth/session-provider';
 import { GoogleMark } from '../../icons/oauth/google-mark';
 import { AppleMark } from '../../icons/oauth/apple-mark';
@@ -35,7 +36,18 @@ export function AuthSignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      await session.signIn(email.trim(), password);
+      const result = await session.signIn(email.trim(), password);
+      setPassword('');
+      if (result.mfaRequired && result.challengeId) {
+        router.push({
+          pathname: '/auth/mfa',
+          params: {
+            challenge_id: result.challengeId,
+            expires_in_seconds: result.expiresInSeconds ? String(result.expiresInSeconds) : undefined,
+          },
+        });
+        return;
+      }
       router.replace('/(tabs)/home');
     } catch (err) {
       setError(err instanceof Error ? err.message : i18n('auth.unableToSignIn'));
@@ -45,6 +57,7 @@ export function AuthSignInScreen() {
   }
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View>
       {/* Logo */}
       <View style={styles.logoRow}>
@@ -119,6 +132,7 @@ export function AuthSignInScreen() {
         <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>{i18n('auth.createAccount')}</Text>
       </TouchableOpacity>
     </View>
+    </KeyboardAvoidingView>
   );
 }
 

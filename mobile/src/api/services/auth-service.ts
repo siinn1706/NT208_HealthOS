@@ -1,10 +1,10 @@
 import { apiRequest } from '../client';
 import { clearStoredSession, getRefreshToken, saveAuthToken } from '../../auth/session-store';
-import type { AuthToken, DataResponse } from '../../../../shared/api-contracts';
+import type { AuthLoginResult, AuthToken, DataResponse } from '../../../../shared/api-contracts';
 
 export const authService = {
   async login(identifier: string, password: string) {
-    const response = await apiRequest<DataResponse<AuthToken>>('/v1/auth/login', {
+    const response = await apiRequest<DataResponse<AuthLoginResult>>('/v1/auth/login', {
       method: 'POST',
       auth: false,
       json: { identifier, password },
@@ -12,9 +12,19 @@ export const authService = {
     return response.data;
   },
 
+  async verifyLoginMfa(challenge_id: string, code: string): Promise<AuthToken> {
+    const response = await apiRequest<DataResponse<AuthToken>>('/v1/auth/login/mfa', {
+      method: 'POST',
+      auth: false,
+      json: { challenge_id, code },
+    });
+    await saveAuthToken(response.data);
+    return response.data;
+  },
+
   async requestOtp(body: {
     email: string;
-    purpose: 'signup' | 'reset_password' | 'login';
+    purpose: 'signup' | 'reset_password' | 'login' | 'delete_account';
     name?: string;
     username?: string;
     password?: string;
@@ -53,7 +63,11 @@ export const authService = {
 
   async logout() {
     try {
-      await apiRequest('/v1/auth/logout', { method: 'POST' });
+      const refresh_token = await getRefreshToken();
+      await apiRequest('/v1/auth/logout', {
+        method: 'POST',
+        json: refresh_token ? { refresh_token } : {},
+      });
     } finally {
       await clearStoredSession().catch((e: unknown) => {
         if (__DEV__) console.warn('[authService] clearStoredSession failed during logout:', e);
@@ -61,7 +75,6 @@ export const authService = {
     }
   },
 
-  /** Exchange stored refresh_token for new access_token. TODO: requires backend to emit refresh_token in AuthToken responses. */
   async refreshToken(): Promise<AuthToken> {
     const refresh_token = await getRefreshToken();
     if (!refresh_token) throw new Error('No refresh token stored.');

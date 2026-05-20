@@ -19,10 +19,11 @@ export function Checkbox({ value, onChange, disabled, accessibilityLabel }: Chec
       accessibilityRole="checkbox"
       accessibilityState={{ checked: value, disabled }}
       accessibilityLabel={accessibilityLabel}
+      hitSlop={11}
       style={[
         styles.box,
         {
-          borderRadius: t.radius.sm - 4,
+          borderRadius: t.radius.xs,
           backgroundColor: value ? t.brand : 'transparent',
           borderColor: value ? t.brand : t.border,
           opacity: disabled ? 0.45 : 1,

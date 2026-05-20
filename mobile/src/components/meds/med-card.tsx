@@ -16,7 +16,7 @@ interface MedCardProps {
   onPress?: () => void;
 }
 
-export function MedCard({ name, dose, adherence, refillDays, onPress }: MedCardProps) {
+export const MedCard = React.memo(function MedCard({ name, dose, adherence, refillDays, onPress }: MedCardProps) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const pct = Math.round(adherence * 100);
@@ -46,7 +46,7 @@ export function MedCard({ name, dose, adherence, refillDays, onPress }: MedCardP
 
   const card = <Card style={styles.card}>{content}</Card>;
   return onPress ? <PressableCard onPress={onPress}>{card}</PressableCard> : card;
-}
+});
 
 const styles = StyleSheet.create({
   card:     { marginBottom: 8 },

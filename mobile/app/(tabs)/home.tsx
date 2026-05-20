@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/layout/screen';
@@ -36,7 +36,10 @@ export default function HomeScreen() {
   const { user } = useSession();
   const greetingTitle = useGreetingTitle();
   const firstName = user?.display_name?.split(' ')[0] ?? 'there';
-  const dateLine = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const dateLine = useMemo(
+    () => new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
+    [],
+  );
   const loadHome = useCallback(async () => {
     const [summaryResult, remindersResult, vitalsResult] = await Promise.allSettled([
       dashboardService.summary(),

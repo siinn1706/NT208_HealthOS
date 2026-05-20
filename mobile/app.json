@@ -26,11 +26,6 @@
       },
       "package": "com.nt208.healthos"
     },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/icons/favicon.png"
-    },
     "plugins": [
       "expo-router",
       "expo-font",

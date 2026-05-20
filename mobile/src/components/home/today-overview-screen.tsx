@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +29,7 @@ function formatDate() {
 export function TodayOverviewScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
+  const dateLabel = useMemo(() => formatDate(), []);
 
   // ── existing data fetching — untouched ──────────────────────────────────
   const loadOverview = useCallback(async () => {
@@ -56,7 +57,7 @@ export function TodayOverviewScreen() {
           size={40}
         />
         <Text style={[typography.bodyMed, { color: t.ink }]}>
-          {i18n('home.today', { date: formatDate() })}
+          {i18n('home.today', { date: dateLabel })}
         </Text>
         <IconButton
           variant="subtle"

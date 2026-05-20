@@ -20,13 +20,17 @@ export interface ThemeTokens {
   brand: string;
   brandDeep: string;
   brandSoft: string;
+  onBrand: string;   // text/icon colour on brand-coloured surfaces
   accent: string;
   chip: string;
   // semantic
   success: string;
   warning: string;
   danger: string;
+  onDanger: string;  // text/icon colour on danger-coloured surfaces
   info: string;
+  // scrim / overlay
+  scrim: string;
   // warm accents (used cross-theme in KPIs & chat avatars)
   warmGold: string;
   warmGoldAccent: string;  // pale cream gold (#E7DEA7) — goals gradient, badge highlights
@@ -42,6 +46,7 @@ export interface ThemeTokens {
   toneSleep: string;
   // radius
   radius: {
+    xs: number;
     sm: number;
     md: number;
     lg: number;

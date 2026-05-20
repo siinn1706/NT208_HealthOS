@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Modal, Pressable, TextInput, View, StyleSheet, Text } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { FlatList, Modal, Pressable, TextInput, View, StyleSheet, Text } from 'react-native';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
 import { SectionHeader } from '../../src/components/layout/section-header';
@@ -42,12 +42,16 @@ export default function ChatScreen() {
   const [aiError, setAiError] = useState<string | null>(null);
   const creatingAiRef = useRef(false);
 
-  const allRows = (conversations.data ?? []).map((c) => toConversationRow(c, user?.id));
-  const filteredRows = searchOpen && searchText.trim()
-    ? allRows.filter((row) =>
-        row.name?.toLowerCase().includes(searchText.toLowerCase())
-      )
-    : allRows;
+  const allRows = useMemo(
+    () => (conversations.data ?? []).map((c) => toConversationRow(c, user?.id)),
+    [conversations.data, user?.id],
+  );
+  const filteredRows = useMemo(
+    () => searchOpen && searchText.trim()
+      ? allRows.filter((row) => row.name?.toLowerCase().includes(searchText.toLowerCase()))
+      : allRows,
+    [allRows, searchOpen, searchText],
+  );
 
   async function openAiConversation(initialMessage?: string) {
     if (creatingAiRef.current) return;
@@ -73,8 +77,15 @@ export default function ChatScreen() {
     openAiConversation(text);
   }
 
-  return (
-    <Screen>
+  const renderRow = useCallback(({ item }: { item: ReturnType<typeof toConversationRow> }) => (
+    <ConversationRow
+      {...item}
+      onPress={() => router.push(`/chat/${item.id}` as never)}
+    />
+  ), []);
+
+  const listHeader = (
+    <>
       <TopBar
         title="Chat"
         subtitle="Care team & AI assistant"
@@ -98,8 +109,6 @@ export default function ChatScreen() {
           </View>
         }
       />
-
-      {/* Inline search bar */}
       {searchOpen && (
         <TextInput
           value={searchText}
@@ -114,7 +123,6 @@ export default function ChatScreen() {
           clearButtonMode="while-editing"
         />
       )}
-
       <AiAssistantHero
         suggestions={AI_SUGGESTIONS}
         onPress={() => openAiConversation()}
@@ -129,7 +137,6 @@ export default function ChatScreen() {
           onAction={() => openAiConversation()}
         />
       )}
-
       <SectionHeader title="Conversations" />
       {conversations.isLoading && (
         <ApiState title="Loading conversations" loading skeleton={<ChatListSkeleton />} />
@@ -142,16 +149,24 @@ export default function ChatScreen() {
           onAction={conversations.reload}
         />
       )}
-      {!conversations.isLoading && !conversations.error && conversations.data?.length === 0 && (
-        <ApiState title="No conversations" message="Accepted care-team and AI conversations will appear here." />
-      )}
-      {filteredRows.map((row) => (
-        <ConversationRow
-          key={row.id}
-          {...row}
-          onPress={() => router.push(`/chat/${row.id}` as never)}
-        />
-      ))}
+    </>
+  );
+
+  return (
+    <Screen scroll={false} padding={false}>
+      <FlatList
+        data={filteredRows}
+        keyExtractor={(item) => item.id}
+        renderItem={renderRow}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          !conversations.isLoading && !conversations.error
+            ? <ApiState title="No conversations" message="Accepted care-team and AI conversations will appear here." />
+            : null
+        }
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+      />
 
       {/* New chat modal */}
       <Modal
@@ -185,4 +200,5 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalSheet:   { width: '100%', padding: 20 },
   closeBtn:     { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
+  listContent:  { paddingBottom: 120 },
 });

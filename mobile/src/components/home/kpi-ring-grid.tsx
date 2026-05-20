@@ -35,7 +35,7 @@ interface KpiRingGridProps {
   onItemPress?: (id: string) => void;
 }
 
-function KpiCell({ item, onItemPress }: { item: KpiItem; onItemPress?: (id: string) => void }) {
+const KpiCell = React.memo(function KpiCell({ item, onItemPress }: { item: KpiItem; onItemPress?: (id: string) => void }) {
   const t = useTheme();
   const IconComp = item.icon ? ICON_MAP[item.icon] : ICON_MAP['IconActivity'];
   return (
@@ -51,7 +51,7 @@ function KpiCell({ item, onItemPress }: { item: KpiItem; onItemPress?: (id: stri
       </Text>
     </PressableCard>
   );
-}
+});
 
 export function KpiRingGrid({ items, onItemPress }: KpiRingGridProps) {
   return (

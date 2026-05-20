@@ -62,12 +62,12 @@ export function BottomSheet({ visible, onClose, children, maxHeightRatio = 0.85 
     })
     .onEnd((e) => {
       if (e.translationY > DRAG_CLOSE_THRESHOLD || e.velocityY > 500) {
-        translateY.value = withTiming(maxH, { duration: 200, easing: ease });
-        scrimOpacity.value = withTiming(0, { duration: 200, easing: ease });
+        translateY.value = withTiming(maxH, { duration: t.motion.durations.base, easing: ease });
+        scrimOpacity.value = withTiming(0, { duration: t.motion.durations.base, easing: ease });
         runOnJS(onClose)();
       } else {
-        translateY.value = withTiming(0, { duration: 200, easing: ease });
-        scrimOpacity.value = withTiming(1, { duration: 200, easing: ease });
+        translateY.value = withTiming(0, { duration: t.motion.durations.base, easing: ease });
+        scrimOpacity.value = withTiming(1, { duration: t.motion.durations.base, easing: ease });
       }
     });
 

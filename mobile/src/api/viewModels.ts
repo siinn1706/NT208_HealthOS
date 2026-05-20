@@ -228,7 +228,6 @@ export const profileMenuGroups = [
     title: 'Privacy',
     items: [
       { id: 'security', label: 'Security', icon: 'IconShield', type: 'nav' as const },
-      { id: 'app-lock', label: 'App lock', icon: 'IconLock', type: 'toggle' as const, defaultVal: false },
     ],
   },
   {

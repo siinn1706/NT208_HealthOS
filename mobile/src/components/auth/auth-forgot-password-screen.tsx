@@ -24,7 +24,7 @@ export function AuthForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
 
   async function requestReset() {
-    if (!email.trim() || !email.includes('@')) { setError('A valid email is required.'); return; }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) { setError('A valid email is required.'); return; }
     setLoading(true);
     setError(null);
     try {

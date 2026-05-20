@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import Animated, {
   useSharedValue,
   withTiming,
@@ -9,36 +10,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 
-/** Polls connectivity every 5s using a lightweight HEAD request to the API base. */
 function useIsOffline(): boolean {
   const [offline, setOffline] = useState(false);
 
   useEffect(() => {
-    let active = true;
-
-    async function check() {
-      try {
-        // Lightweight reachability probe — just needs to resolve
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 3000);
-        await fetch('https://www.gstatic.com/generate_204', {
-          method: 'HEAD',
-          signal: ctrl.signal,
-          cache: 'no-store',
-        });
-        clearTimeout(timer);
-        if (active) setOffline(false);
-      } catch {
-        if (active) setOffline(true);
-      }
-    }
-
-    check();
-    const interval = setInterval(check, 5000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setOffline(!(state.isConnected && state.isInternetReachable !== false));
+    });
+    return unsubscribe;
   }, []);
 
   return offline;
