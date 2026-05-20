@@ -118,7 +118,21 @@ export function useApiQuery<T>(
   const reload = useCallback(async () => {
     if (!enabled) return;
     if (inflight.has(scopedKey)) {
-      try { await inflight.get(scopedKey); } catch { /* error handled by owning call */ }
+      try {
+        await inflight.get(scopedKey);
+        if (!activeRef.current) return;
+        const shared = cacheGet(scopedKey) as T | undefined;
+        setData(shared !== undefined ? shared : (options.initialData ?? null));
+        setError(null);
+      } catch (err) {
+        if (!activeRef.current) return;
+        setError(err instanceof Error ? err : new Error('Request failed.'));
+      } finally {
+        if (activeRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
+      }
       return;
     }
     const hasCached = cacheGet(scopedKey) !== undefined;
@@ -144,7 +158,7 @@ export function useApiQuery<T>(
         setIsRefreshing(false);
       }
     }
-  }, [enabled, scopedKey, queryFn]);
+  }, [enabled, options.initialData, scopedKey, queryFn]);
 
   useEffect(() => {
     if (!enabled) {

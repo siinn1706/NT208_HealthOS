@@ -2,9 +2,17 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { clearStoredSession, getAccessToken } from '../auth/session-store';
 
+export interface UploadFilePart {
+  fieldName: string;
+  uri: string;
+  name: string;
+  type: string;
+}
+
 interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   json?: unknown;
+  body?: unknown;
   headers?: Record<string, string>;
   auth?: boolean;
   signal?: AbortSignal;
@@ -107,6 +115,26 @@ export function buildQuery(params: Record<string, string | number | boolean | nu
   return text ? `?${text}` : '';
 }
 
+export function createUploadFormData(
+  fields: Record<string, string | number | boolean | null | undefined>,
+  file?: UploadFilePart,
+): FormData {
+  const form = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      form.append(key, String(value));
+    }
+  });
+  if (file) {
+    form.append(file.fieldName, {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    } as unknown as Blob);
+  }
+  return form;
+}
+
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 30000);
@@ -128,6 +156,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   }
 
   try {
+    if (options.json !== undefined && options.body !== undefined) {
+      throw new ApiError('Use either json or body, not both.', 0, 'INVALID_REQUEST_BODY');
+    }
+
     const headers: Record<string, string> = {
       Accept: 'application/json',
       ...options.headers,
@@ -145,7 +177,9 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     const response = await fetch(`${getCoreApiBaseUrl()}${path}`, {
       method: options.method ?? 'GET',
       headers,
-      body: options.json === undefined ? undefined : JSON.stringify(options.json),
+      body: options.body !== undefined
+        ? options.body as any
+        : options.json === undefined ? undefined : JSON.stringify(options.json),
       signal: controller.signal,
     });
 

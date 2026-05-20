@@ -1,6 +1,14 @@
 import { apiRequest } from '../client';
 import { clearStoredSession, getRefreshToken, saveAuthToken } from '../../auth/session-store';
-import type { AuthLoginResult, AuthToken, DataResponse } from '../../../../shared/api-contracts';
+import type {
+  AuthLoginResult,
+  AuthToken,
+  DataResponse,
+  OtpNextStep,
+  OtpRequested,
+  RequestOtpBody,
+  VerifyOtpBody,
+} from '../../types/api';
 
 export const authService = {
   async login(identifier: string, password: string) {
@@ -22,27 +30,16 @@ export const authService = {
     return response.data;
   },
 
-  async requestOtp(body: {
-    email: string;
-    purpose: 'signup' | 'reset_password' | 'login' | 'delete_account';
-    name?: string;
-    username?: string;
-    password?: string;
-  }) {
-    return apiRequest<DataResponse<{ delivery: 'email'; expires_in_seconds: number; otp?: string }>>('/v1/auth/request-otp', {
+  async requestOtp(body: RequestOtpBody) {
+    return apiRequest<DataResponse<OtpRequested>>('/v1/auth/request-otp', {
       method: 'POST',
       auth: false,
       json: body,
     });
   },
 
-  async verifyOtp(body: {
-    email: string;
-    purpose: 'signup' | 'reset_password' | 'login';
-    code: string;
-    password?: string;
-  }) {
-    const response = await apiRequest<DataResponse<AuthToken | { email: string; next_step: string }>>('/v1/auth/verify-otp', {
+  async verifyOtp(body: VerifyOtpBody) {
+    const response = await apiRequest<DataResponse<AuthToken | OtpNextStep>>('/v1/auth/verify-otp', {
       method: 'POST',
       auth: false,
       json: body,
@@ -53,12 +50,14 @@ export const authService = {
     return response.data;
   },
 
-  async resetPassword(email: string, newPassword: string, code?: string) {
-    await apiRequest<DataResponse<AuthToken>>('/v1/auth/reset-password', {
+  async resetPassword(email: string, newPassword: string): Promise<AuthToken> {
+    const response = await apiRequest<DataResponse<AuthToken>>('/v1/auth/reset-password', {
       method: 'POST',
       auth: false,
-      json: { email, new_password: newPassword, ...(code ? { code } : {}) },
+      json: { email, new_password: newPassword },
     });
+    await saveAuthToken(response.data);
+    return response.data;
   },
 
   async logout() {

@@ -1,3 +1,4 @@
+/* eslint-env jest */
 import * as SecureStore from 'expo-secure-store';
 import {
   getAccessToken,
@@ -7,7 +8,7 @@ import {
   saveCurrentUser,
   clearStoredSession,
 } from '../auth/session-store';
-import type { AuthToken, CurrentUser } from '../../../shared/api-contracts';
+import type { AuthToken, CurrentUser } from '../types/api';
 
 jest.mock('expo-secure-store');
 
@@ -38,7 +39,9 @@ const mockUser: CurrentUser = {
   onboarding_completed_at: null,
 };
 
-beforeEach(() => {
+beforeEach(async () => {
+  jest.clearAllMocks();
+  await clearStoredSession();
   jest.clearAllMocks();
 });
 

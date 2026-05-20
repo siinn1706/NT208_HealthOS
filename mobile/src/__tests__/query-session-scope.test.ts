@@ -1,4 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+/* eslint-env jest */
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { invalidateApiQuery, setApiSessionScope, useApiQuery } from '../api/query';
 
 beforeEach(() => {
@@ -38,5 +39,51 @@ describe('session scoped api query cache', () => {
     const second = renderHook(() => useApiQuery('me', query));
     await waitFor(() => expect(second.result.current.data).toEqual({ status: 'after-clear' }));
     expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it('hydrates all callers from cache when multiple hooks join one in-flight request', async () => {
+    let resolveRequest: ((value: { owner: string }) => void) | null = null;
+    const pending = new Promise<{ owner: string }>((resolve) => {
+      resolveRequest = resolve;
+    });
+    const query = jest.fn(() => pending);
+
+    setApiSessionScope('user-a');
+    const first = renderHook(() => useApiQuery('dashboard:summary', query));
+    const second = renderHook(() => useApiQuery('dashboard:summary', query));
+
+    expect(query).toHaveBeenCalledTimes(1);
+    act(() => {
+      resolveRequest?.({ owner: 'A' });
+    });
+
+    await waitFor(() => expect(first.result.current.data).toEqual({ owner: 'A' }));
+    await waitFor(() => expect(second.result.current.data).toEqual({ owner: 'A' }));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    await waitFor(() => expect(second.result.current.isLoading).toBe(false));
+    expect(first.result.current.error).toBeNull();
+    expect(second.result.current.error).toBeNull();
+  });
+
+  it('propagates shared request errors and clears loading for all joined callers', async () => {
+    let rejectRequest: ((reason?: unknown) => void) | null = null;
+    const pending = new Promise<{ owner: string }>((_resolve, reject) => {
+      rejectRequest = reject;
+    });
+    const query = jest.fn(() => pending);
+
+    setApiSessionScope('user-a');
+    const first = renderHook(() => useApiQuery('dashboard:summary', query));
+    const second = renderHook(() => useApiQuery('dashboard:summary', query));
+
+    expect(query).toHaveBeenCalledTimes(1);
+    act(() => {
+      rejectRequest?.(new Error('boom'));
+    });
+
+    await waitFor(() => expect(first.result.current.error?.message).toBe('boom'));
+    await waitFor(() => expect(second.result.current.error?.message).toBe('boom'));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    await waitFor(() => expect(second.result.current.isLoading).toBe(false));
   });
 });

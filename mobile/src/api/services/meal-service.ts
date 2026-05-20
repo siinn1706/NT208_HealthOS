@@ -1,5 +1,25 @@
-import { apiRequest, buildQuery } from '../client';
-import type { CalorieSummaryPoint, DataResponse, Meal, MealIngredient, PaginatedResponse } from '../../../../shared/api-contracts';
+import { apiRequest, buildQuery, createUploadFormData } from '../client';
+import type { CalorieSummaryPoint, DataResponse, Meal, MealIngredient, MealNutritionResult, PaginatedResponse } from '../../../../shared/api-contracts';
+
+export interface MobileUploadFile {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+export interface MealCreateInput {
+  name: string;
+  notes?: string | null;
+  logged_at?: string | null;
+  image?: MobileUploadFile | null;
+}
+
+export interface MealAnalysisStatus {
+  meal_id?: string;
+  job_id: string | null;
+  status: string;
+  nutrition_result?: MealNutritionResult | null;
+}
 
 export const mealService = {
   async list(params: { page?: number; per_page?: number; date_from?: string; date_to?: string } = {}) {
@@ -9,6 +29,34 @@ export const mealService = {
       date_from: params.date_from,
       date_to: params.date_to,
     })}`);
+    return response.data;
+  },
+
+  async create(input: MealCreateInput) {
+    if (input.image) {
+      const form = createUploadFormData(
+        {
+          name: input.name,
+          notes: input.notes,
+          logged_at: input.logged_at,
+        },
+        { fieldName: 'image', ...input.image },
+      );
+      const response = await apiRequest<DataResponse<Meal>>('/v1/meals', {
+        method: 'POST',
+        body: form,
+      });
+      return response.data;
+    }
+
+    const response = await apiRequest<DataResponse<Meal>>('/v1/meals', {
+      method: 'POST',
+      json: {
+        name: input.name,
+        notes: input.notes,
+        logged_at: input.logged_at,
+      },
+    });
     return response.data;
   },
 
@@ -23,6 +71,18 @@ export const mealService = {
       json: body,
     });
     return response.data;
+  },
+
+  async delete(id: string) {
+    return apiRequest<void>(`/v1/meals/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  async analysisStatus(id: string) {
+    return apiRequest<MealAnalysisStatus>(`/v1/meals/${encodeURIComponent(id)}/analysis-status`);
+  },
+
+  async analysisStatusByJob(jobId: string) {
+    return apiRequest<MealAnalysisStatus>(`/v1/meals/analyze-photo/${encodeURIComponent(jobId)}`);
   },
 
   async ingredients(id: string) {

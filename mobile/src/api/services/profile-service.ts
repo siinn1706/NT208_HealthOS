@@ -1,5 +1,5 @@
 import { apiRequest } from '../client';
-import type { CurrentUser, DataResponse, UserProfileUpdate } from '../../../../shared/api-contracts';
+import type { CurrentUser, DataResponse, UserProfileUpdate } from '../../types/api';
 
 export const profileService = {
   async me() {

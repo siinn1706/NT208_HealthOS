@@ -1,3 +1,4 @@
+/* eslint-env jest */
 import { apiRequest, ApiError, getCoreApiBaseUrl, getCoreWsBaseUrl, buildQuery } from '../api/client';
 
 jest.mock('expo-constants', () => ({
@@ -131,5 +132,22 @@ describe('apiRequest', () => {
     await apiRequest('/v1/test', { auth: false });
     const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
     expect(headers.Authorization).toBeUndefined();
+  });
+
+  it('sends FormData bodies without overriding multipart Content-Type', async () => {
+    const form = { _parts: [] } as unknown as FormData;
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ data: { ok: true } }),
+    });
+
+    await apiRequest('/v1/upload', { method: 'POST', body: form } as any);
+
+    const request = mockFetch.mock.calls[0][1];
+    const headers = request.headers as Record<string, string>;
+    expect(request.body).toBe(form);
+    expect(headers['Content-Type']).toBeUndefined();
   });
 });
