@@ -149,7 +149,7 @@ def upgrade() -> None:
         );
     """)
     op.execute("CREATE INDEX IF NOT EXISTS ix_notifications_user_id ON notifications (user_id);")
-
+    op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255)")
 
 def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS notifications")

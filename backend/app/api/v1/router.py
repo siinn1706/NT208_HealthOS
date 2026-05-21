@@ -1,6 +1,7 @@
 """v1 API router — aggregates all endpoint routers."""
 from fastapi import APIRouter
 
+from app.api.v1 import chat_rest, chat_ws
 from app.api.v1.endpoints import (
     appointments,
     auth,
@@ -58,3 +59,5 @@ router.include_router(visit_briefs.router)
 router.include_router(chat.router)
 router.include_router(emergency.router)
 router.include_router(emergency_public.router)
+router.include_router(chat_rest.router)
+router.include_router(chat_ws.router)

@@ -1,6 +1,6 @@
 """B7 P1 — extend notifications: kind/reference_id/link/read_at + indexes.
 
-Revision ID: 014_b7_notifications_columns_and_indexes
+Revision ID: 014_b7_notif_cols_idx
 Revises: 013_add_user_preferences
 Create Date: 2026-04-19
 
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "014_b7_notifications_columns_and_indexes"
+revision: str = "014_b7_notif_cols_idx"
 down_revision: Union[str, None] = "013_add_user_preferences"
 branch_labels = None
 depends_on = None
