@@ -19,6 +19,7 @@ import { useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { makeWeekDays, toAppointmentRow, toHeroAppointment } from '../../api/viewModels';
+import { humanizeError } from '../../api/error-message';
 
 type StatusFilter = 'All' | 'Upcoming' | 'Past';
 
@@ -89,11 +90,15 @@ export function AppointmentsScreen() {
       )}
       <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
       {appointments.isLoading && <ApiState title={i18n('care.loadingAppointments')} loading skeleton={<ApptListSkeleton />} />}
-      {appointments.error && <ApiState title={i18n('care.appointmentsUnavailable')} message={appointments.error.message} actionLabel={i18n('common.retry')} onAction={appointments.reload} />}
+      {appointments.error && <ApiState title={i18n('care.appointmentsUnavailable')} message={humanizeError(appointments.error)} actionLabel={i18n('common.retry')} onAction={appointments.reload} />}
       {hero && <HeroAppointmentCard {...hero} onJoin={() => router.push(`/care/video/${hero.id}` as never)} />}
       <SectionHeader title={selectedDate !== null ? i18n('care.dayN', { day: selectedDate }) : i18n('care.thisWeek')} />
       {!appointments.isLoading && !appointments.error && filteredAppointments.length === 0 && (
-        <ApiState title={i18n('care.noAppointments')} />
+        <ApiState
+          title={i18n('care.noAppointments')}
+          actionLabel={i18n('care.bookAppointmentCta')}
+          onAction={() => router.push('/care/appointments/new')}
+        />
       )}
       {filteredAppointments.map((apt) => {
         const row = toAppointmentRow(apt);

@@ -45,7 +45,7 @@ export const MedCard = React.memo(function MedCard({ name, dose, adherence, refi
   );
 
   const card = <Card style={styles.card}>{content}</Card>;
-  return onPress ? <PressableCard onPress={onPress}>{card}</PressableCard> : card;
+  return onPress ? <PressableCard onPress={onPress} accessibilityLabel={`${name}, ${dose}`}>{card}</PressableCard> : card;
 });
 
 const styles = StyleSheet.create({

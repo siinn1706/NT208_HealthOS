@@ -238,7 +238,7 @@ export function RiskOverviewScreen() {
                 variant="soft"
                 size="sm"
                 style={{ marginTop: 14, alignSelf: 'flex-start' }}
-                onPress={() => router.push('/insights/risk/1' as never)}
+                onPress={() => router.push(`/insights/risk/${(parsed.top as Record<string, unknown>).id as string | undefined ?? '1'}` as never)}
               />
             </Card>
           ) : (
@@ -252,7 +252,7 @@ export function RiskOverviewScreen() {
               const condition = String(row.condition ?? 'Unknown');
               const color = riskVariant(level) === 'danger' ? t.danger : riskVariant(level) === 'warning' ? t.warning : t.success;
               return (
-                <Pressable key={`${condition}-${i}`} onPress={() => router.push('/insights/risk/1' as never)} style={[styles.riskRow, { borderBottomColor: t.border }]}>
+                <Pressable key={`${condition}-${i}`} onPress={() => router.push(`/insights/risk/${(row.id as string | undefined) ?? String(i + 1)}` as never)} style={[styles.riskRow, { borderBottomColor: t.border }]}>
                   <View style={[styles.riskIcon, { backgroundColor: color + '18', borderRadius: t.radius.md }]}>
                     {iconForCondition(condition, color)}
                   </View>

@@ -148,7 +148,26 @@
     "viewRelatedMetrics": "View related metrics",
     "nextUp": "Next up",
     "aiInsightCard": "AI Insight",
-    "vitalsMiniCard": "Vitals"
+    "vitalsMiniCard": "Vitals",
+    "loadingDashboard": "Loading dashboard",
+    "dashboardUnavailable": "Dashboard unavailable",
+    "noDashboardData": "No dashboard data",
+    "noKpis": "No KPI data",
+    "nothingScheduled": "Nothing scheduled",
+    "noAiInsight": "No AI insight yet",
+    "noVitals": "No vitals yet",
+    "reportAction": "Report",
+    "quickActionMeal": "Meal",
+    "quickActionVitals": "Vitals",
+    "quickActionAi": "AI",
+    "quickActionInsights": "Insights",
+    "searchAccessibility": "Search",
+    "notificationsAccessibility": "Notifications",
+    "dashboardEmptyMessage": "Core returned no dashboard summary for this account.",
+    "noKpisMessage": "Connect health data or goals to populate this section.",
+    "nothingScheduledMessage": "Upcoming reminders will appear here.",
+    "noAiInsightMessage": "Insights appear after enough health signals are available.",
+    "noVitalsMessage": "Vitals from Core will appear after sync or manual entry."
   },
   "care": {
     "title": "Care",
@@ -195,7 +214,9 @@
     "joinVideoVisit": "Join video visit",
     "appointmentDetail": "Appointment detail",
     "createAppointment": "Create appointment",
-    "prescriptionDetail": "Prescription detail"
+    "prescriptionDetail": "Prescription detail",
+    "bookAppointmentCta": "Book appointment",
+    "noAppointmentsCta": "No appointments found. Try a different filter or book a new one."
   },
   "meals": {
     "title": "Meals",
@@ -305,7 +326,18 @@
     "searchDrugDatabase": "Search drug database",
     "searchDrugDatabaseSub": "Find by brand name or active ingredient",
     "enterManually": "Enter manually",
-    "enterManuallySub": "Type in medication details yourself"
+    "enterManuallySub": "Type in medication details yourself",
+    "loadingMedications": "Loading medications",
+    "medicationsUnavailable": "Medications unavailable",
+    "activeAdherence": "{{count}} active · {{pct}}% adherence",
+    "todaysDoses": "Today's doses",
+    "noDosesToday": "No doses today",
+    "activeMedications": "Active medications",
+    "noActiveMedications": "No active medications",
+    "medicationReminders": "Medication reminders",
+    "disclaimer": "Not a substitute for medical advice. Always follow your doctor's instructions.",
+    "noDosesTodayMessage": "Today's medication schedule is empty.",
+    "noActiveMedicationsMessage": "Add a medication or import one from a prescription."
   },
   "reminders": {
     "title": "Reminders",
@@ -477,7 +509,20 @@
     "aiStatus": "Ready to help · Always private",
     "attachFile": "Attach file",
     "messagePlaceholder": "Message HealthOS…",
-    "sendMessage": "Send message"
+    "sendMessage": "Send message",
+    "subtitle": "Care team & AI assistant",
+    "searchPlaceholder": "Search conversations…",
+    "newChat": "New chat",
+    "startingAiConversation": "Starting AI conversation",
+    "aiConversationUnavailable": "AI conversation unavailable",
+    "loadingConversations": "Loading conversations",
+    "conversationsUnavailable": "Conversations unavailable",
+    "noConversations": "No conversations",
+    "startNewConversation": "Start new conversation",
+    "aiConversationError": "Could not open AI conversation.",
+    "searchAccessibility": "Search",
+    "noConversationsMessage": "Accepted care-team and AI conversations will appear here.",
+    "createConversationUnavailable": "Create conversation API not yet available."
   },
   "me": {
     "title": "Me",
@@ -488,7 +533,12 @@
     "addDevice": "Add device",
     "deviceDetail": "Device detail",
     "emergencyCard": "Emergency card",
-    "statCell": "Stats"
+    "statCell": "Stats",
+    "loadingProfile": "Loading profile",
+    "profileSyncIssue": "Profile sync issue",
+    "languageUnavailable": "Language settings not yet available",
+    "signOutError": "Sign out failed. Please try again.",
+    "versionLine": "NT208 HealthOS · v0.1.0 (mobile)"
   },
   "forms": {
     "insurance": "Insurance",

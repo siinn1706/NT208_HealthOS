@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
 import { IconButton } from '../../src/components/primitives/icon-button';
@@ -25,6 +26,7 @@ export default function MeScreen() {
   const t = useTheme();
   const router = useRouter();
   const session = useSession();
+  const { t: i18n } = useTranslation();
 
   const identity = toIdentity(session.user);
 
@@ -52,11 +54,11 @@ export default function MeScreen() {
       await session.signOut();
       router.replace('/auth/welcome');
     } catch {
-      setSignOutError('Sign out failed. Please try again.');
+      setSignOutError(i18n('me.signOutError'));
     } finally {
       setSignOutLoading(false);
     }
-  }, [session, router]);
+  }, [session, router, i18n]);
 
   function handleMenuPress(id: string) {
     switch (id) {
@@ -70,7 +72,7 @@ export default function MeScreen() {
       // 'app-lock' toggle is handled inside MenuRow (local state only —
       //  UserPreference has no app_lock field, so we do not persist it)
       case 'notifications': router.push('/onboarding/permissions/notifications' as never); break;
-      case 'language':    openMissingApi('Language settings not yet available'); break;
+      case 'language':    openMissingApi(i18n('me.languageUnavailable')); break;
       case 'logout':      setSignOutOpen(true); break;
       default: break;
     }
@@ -80,23 +82,23 @@ export default function MeScreen() {
     <>
       <Screen>
         <TopBar
-          title="Me"
+          title={i18n('me.title')}
           right={
             <IconButton
               variant="subtle"
               icon={<IconSettings size={20} color={t.ink3} />}
-              accessibilityLabel="Settings"
+              accessibilityLabel={i18n('me.settings')}
               onPress={() => setSettingsOpen(true)}
             />
           }
         />
 
-        {session.booting && <ApiState title="Loading profile" loading />}
+        {session.booting && <ApiState title={i18n('me.loadingProfile')} loading />}
         {session.error && (
           <ApiState
-            title="Profile sync issue"
+            title={i18n('me.profileSyncIssue')}
             message={session.error}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={session.refreshUser}
           />
         )}
@@ -110,7 +112,7 @@ export default function MeScreen() {
         ))}
 
         <Text style={[typography.micro, { color: t.ink4, textAlign: 'center', marginTop: 20 }]}>
-          NT208 HealthOS · v0.1.0 (mobile)
+          {i18n('me.versionLine')}
         </Text>
       </Screen>
 

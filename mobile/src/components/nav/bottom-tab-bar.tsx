@@ -49,7 +49,7 @@ function TabItem({
   const color = active ? t.brand : t.ink4;
 
   return (
-    <Pressable onPress={handlePress} style={styles.tabItem} accessibilityRole="tab" accessibilityLabel={label}>
+    <Pressable onPress={handlePress} style={styles.tabItem} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: active }}>
       <Animated.View style={[styles.iconWrap, bounce.style]}>
         <Icon size={22} color={color} strokeWidth={active ? 2.2 : 1.8} />
         {badgeCount !== undefined && badgeCount > 0 && (

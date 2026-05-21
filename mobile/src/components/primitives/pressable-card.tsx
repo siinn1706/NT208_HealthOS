@@ -12,11 +12,13 @@ interface PressableCardProps {
   style?: StyleProp<ViewStyle>;
   haptic?: boolean;
   ripple?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function PressableCard({ children, onPress, style, haptic = false, ripple = false }: PressableCardProps) {
+export function PressableCard({ children, onPress, style, haptic = false, ripple = false, accessibilityLabel, accessibilityHint }: PressableCardProps) {
   const t = useTheme();
   const press = usePressSpring();
   const rippleAnim = useRipple();
@@ -32,6 +34,9 @@ export function PressableCard({ children, onPress, style, haptic = false, ripple
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       style={[press.style, style, ripple && styles.overflow]}
     >
       {ripple && (
