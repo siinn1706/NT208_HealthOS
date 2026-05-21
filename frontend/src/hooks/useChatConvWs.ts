@@ -1,72 +1,52 @@
 "use client";
 
 /**
- * useChatWs — manages the WebSocket connection to Core BE.
+ * useChatConvWs — manages a per-conversation WebSocket connection to Core BE.
  *
- * Usage:
- *   const { sendEvent, isConnected } = useChatWs({ onEvent });
+ * Mirrors useChatWs but targets the per-conversation endpoint at
+ * `${CORE_WS_URL}/v1/chat/ws/{conversation_id}?token=<JWT>` instead of the
+ * global `/ws`. The backend auto-joins the `conv:{id}` room on connect, so the
+ * client does NOT need to send a `conv:join` event.
  *
- * The server sends frames:
- *   { event: string, payload: Record<string, unknown>, timestamp: string }
- *
- * Client sends frames:
- *   { event: string, payload: Record<string, unknown> }
+ * The auth token is the raw access JWT (vended by /api/v1/auth/ws-jwt) — the
+ * per-conv endpoint decodes it as a JWT, not as a short-lived ws_ticket.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { WsFrame, WsStatus } from "@/hooks/useChatWs";
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 
-export type WsStatus = "connecting" | "connected" | "disconnected" | "error";
-
-export type WsFrame = {
-  event: string;
-  payload: Record<string, unknown>;
-  timestamp?: string;
-};
-
-type UseChatWsOptions = {
+type UseChatConvWsOptions = {
+  /** Conversation to open the socket for. Null/empty → hook does nothing. */
+  conversationId: string | null;
   /** Called on every frame received from the server. */
   onEvent: (frame: WsFrame) => void;
   /** Whether the hook should attempt to connect at all. */
   enabled?: boolean;
-  /**
-   * Fired the first time the socket opens AFTER a transient drop (i.e. once
-   * `reconnectAttemptsRef` was non-zero on the previous open). Consumers
-   * use this to refetch any state that may have changed while the WS was
-   * offline — e.g. the active conversation's messages so a stuck "streaming"
-   * AI bubble gets replaced with the final DB row (CRITICAL C6 in the FE
-   * review). Does NOT fire on the initial connect.
-   */
+  /** Fired on a successful reconnect (not the initial connect). */
   onReconnect?: () => void;
 };
 
-type UseChatWsResult = {
+type UseChatConvWsResult = {
   status: WsStatus;
   isConnected: boolean;
-  /** Send an event frame to the server. */
   sendEvent: (event: string, payload?: Record<string, unknown>) => void;
-  /** Manually close and stop reconnecting. */
   disconnect: () => void;
-  /**
-   * True after the server closed the socket with code 4001 (token expired or
-   * session ended). The UI must surface a re-auth banner instead of pretending
-   * the connection is just flaky.
-   */
   sessionExpired: boolean;
-  /** True while we are actively retrying after a drop. */
   isReconnecting: boolean;
-  /** Trigger a manual reconnect (resets the backoff counter). */
   reconnectNow: () => void;
 };
 
-export function useChatWs({
+export function useChatConvWs({
+  conversationId,
   onEvent,
   enabled = true,
   onReconnect,
-}: UseChatWsOptions): UseChatWsResult {
+}: UseChatConvWsOptions): UseChatConvWsResult {
   const [status, setStatus] = useState<WsStatus>("disconnected");
   const [sessionExpired, setSessionExpired] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -77,10 +57,8 @@ export function useChatWs({
   const intentionalCloseRef = useRef(false);
   const onEventRef = useRef(onEvent);
   const onReconnectRef = useRef(onReconnect);
-  // Ref to hold latest connect function — avoids circular useCallback dependency
   const connectRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
-  // Keep callback refs in sync so we don't need them as connect() deps.
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
@@ -97,7 +75,7 @@ export function useChatWs({
 
   const fetchToken = useCallback(async (): Promise<string | null> => {
     try {
-      const res = await fetch("/api/v1/auth/ws-token");
+      const res = await fetch("/api/v1/auth/ws-jwt");
       if (!res.ok) return null;
       const data = (await res.json()) as { token?: string };
       return data.token ?? null;
@@ -108,9 +86,9 @@ export function useChatWs({
 
   const connect = useCallback(async () => {
     if (!enabled) return;
+    if (!conversationId) return;
     intentionalCloseRef.current = false;
 
-    // Get (or re-use) the auth token
     if (!tokenRef.current) {
       tokenRef.current = await fetchToken();
     }
@@ -122,7 +100,9 @@ export function useChatWs({
     const wsBase =
       process.env.NEXT_PUBLIC_CORE_WS_URL ??
       `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
-    const wsUrl = `${wsBase}/ws?token=${encodeURIComponent(tokenRef.current)}`;
+    const wsUrl =
+      `${wsBase}/v1/chat/ws/${encodeURIComponent(conversationId)}` +
+      `?token=${encodeURIComponent(tokenRef.current)}`;
 
     setStatus("connecting");
 
@@ -130,8 +110,6 @@ export function useChatWs({
     wsRef.current = ws;
 
     ws.onopen = () => {
-      // Snapshot BEFORE we reset the counter so we can tell whether this
-      // open is a fresh subscribe or a recovery from a transient drop.
       const wasReconnect = reconnectAttemptsRef.current > 0;
 
       setStatus("connected");
@@ -139,14 +117,6 @@ export function useChatWs({
       setIsReconnecting(false);
       reconnectAttemptsRef.current = 0;
 
-      // Send handshake
-      ws.send(JSON.stringify({ event: "client:hello", payload: {} }));
-
-      // Tell the consumer to refetch any state that may have changed while
-      // the WS was offline (active conversation messages, unread counts, …).
-      // Critically rescues stuck `streaming` AI bubbles: the worker may have
-      // landed `ai:completed` while we were disconnected, and the only way
-      // to get the final content is to GET the message list again.
       if (wasReconnect) {
         try {
           onReconnectRef.current?.();
@@ -160,7 +130,6 @@ export function useChatWs({
       try {
         const frame = JSON.parse(evt.data as string) as WsFrame;
 
-        // Handle server ping — reply pong
         if (frame.event === "ping") {
           ws.send(JSON.stringify({ event: "pong", payload: {} }));
           return;
@@ -168,7 +137,7 @@ export function useChatWs({
 
         onEventRef.current(frame);
       } catch {
-        // Ignore malformed frames
+        /* ignore malformed frames */
       }
     };
 
@@ -182,10 +151,6 @@ export function useChatWs({
 
       if (intentionalCloseRef.current) return;
 
-      // 4001 — token expired or session ended. Surface a re-auth banner via
-      // `sessionExpired` and STOP retrying; the user must explicitly sign in
-      // again. Auto-reconnecting here would either spam the server or silently
-      // hide the auth issue.
       if (evt.code === 4001) {
         tokenRef.current = null;
         setSessionExpired(true);
@@ -193,23 +158,26 @@ export function useChatWs({
         return;
       }
 
-      // Reconnect with exponential backoff
       if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
         const delay = Math.min(
           RECONNECT_BASE_MS * 2 ** reconnectAttemptsRef.current,
-          RECONNECT_MAX_MS
+          RECONNECT_MAX_MS,
         );
         reconnectAttemptsRef.current += 1;
         setIsReconnecting(true);
-        reconnectTimerRef.current = setTimeout(() => connectRef.current?.(), delay);
+        reconnectTimerRef.current = setTimeout(
+          () => connectRef.current?.(),
+          delay,
+        );
       } else {
         setIsReconnecting(false);
       }
     };
-  }, [enabled, fetchToken]);  
+  }, [enabled, conversationId, fetchToken]);
 
-  // Keep connectRef in sync with the latest connect function
-  useEffect(() => { connectRef.current = connect; }, [connect]);
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const sendEvent = useCallback(
     (event: string, payload: Record<string, unknown> = {}) => {
@@ -217,7 +185,7 @@ export function useChatWs({
         wsRef.current.send(JSON.stringify({ event, payload }));
       }
     },
-    []
+    [],
   );
 
   const disconnect = useCallback(() => {
@@ -240,8 +208,8 @@ export function useChatWs({
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (enabled) {
-      connect();
+    if (enabled && conversationId) {
+      void connect();
     }
     return () => {
       clearReconnectTimer();
@@ -249,7 +217,7 @@ export function useChatWs({
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
 
   return {
