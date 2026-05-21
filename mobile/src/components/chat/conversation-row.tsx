@@ -19,7 +19,11 @@ export const ConversationRow = React.memo(function ConversationRow({ name, role,
   const t = useTheme();
 
   return (
-    <PressableCard onPress={onPress} style={[styles.row, { borderBottomColor: t.border }]}>
+    <PressableCard
+      onPress={onPress}
+      accessibilityLabel={`${name}${role ? `, ${role}` : ''}`}
+      style={[styles.row, { borderBottomColor: t.border }]}
+    >
       <Avatar name={name} size={46} />
       <View style={styles.mid}>
         <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{name}</Text>

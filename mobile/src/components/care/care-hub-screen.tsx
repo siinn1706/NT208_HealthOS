@@ -12,15 +12,15 @@ import { Card } from '../primitives/card';
 import { IconButton } from '../primitives/icon-button';
 import { ApiState } from '../api/api-state';
 import { useApiQuery } from '../../api/query';
-import { appointmentService, medicationService } from '../../api/services';
+import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
+import { humanizeError } from '../../api/error-message';
 import {
   IconCalendar,
   ChevronRight,
   IconUtensils,
   IconPill,
   IconActivity,
-  IconFilter,
   IconPlus,
   IconVideo,
   IconTarget,
@@ -33,6 +33,18 @@ const HERO_GRADIENTS: Record<string, readonly [string, string]> = {
   warm:  ['#8C5A2A', '#C4854A'],
 };
 
+const HERO_FG: Record<string, string> = {
+  calm:  '#1965B3',
+  night: '#1A4060',
+  warm:  '#6B4520',
+};
+
+const QUICK_ROW_DEFS = [
+  { id: 'prescriptions', IconComponent: IconPill,     colorKey: 'info',    titleKey: 'care.prescriptions',   subtitleKey: 'care.viewActivePrescriptions', route: '/care/prescriptions' },
+  { id: 'scan',          IconComponent: IconTarget,   colorKey: 'warning', titleKey: 'care.scanMeal',         subtitleKey: 'care.aiPoweredFoodScan',       route: '/meals/scan' },
+  { id: 'book',          IconComponent: IconCalendar, colorKey: 'accent',  titleKey: 'care.bookAppointment',  subtitleKey: 'care.scheduleConsultation',    route: '/care/appointments/new' },
+] as const;
+
 function fmtDate(value?: string | null, noDateLabel = 'No date') {
   if (!value) return noDateLabel;
   const date = new Date(value);
@@ -40,23 +52,13 @@ function fmtDate(value?: string | null, noDateLabel = 'No date') {
   return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-// Joined quick-access rows inside a single Card — titles/subtitles translated at render site
-const QUICK_ROW_DEFS = [
-  { id: 'prescriptions', icon: <IconPill size={20} color="#41BCE6" />, iconBg: '#41BCE618', titleKey: 'care.prescriptions', subtitleKey: 'care.viewActivePrescriptions', route: '/care/prescriptions' },
-  { id: 'scan',          icon: <IconTarget size={20} color="#D97706" />, iconBg: '#D9770618', titleKey: 'care.scanMeal', subtitleKey: 'care.aiPoweredFoodScan', route: '/meals/scan' },
-  { id: 'book',          icon: <IconCalendar size={20} color="#7C3AED" />, iconBg: '#7C3AED18', titleKey: 'care.bookAppointment', subtitleKey: 'care.scheduleConsultation', route: '/care/appointments/new' },
-];
-
 export function CareHubScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const { name: themeName } = useThemeContext();
 
   const loadAppointments = useCallback(() => appointmentService.list(), []);
-  const loadMeds = useCallback(() => medicationService.list('active'), []);
-
   const appointments = useApiQuery(queryKeys.appointments, loadAppointments);
-  const meds = useApiQuery(queryKeys.medications, loadMeds);
 
   const now = Date.now();
 
@@ -80,13 +82,13 @@ export function CareHubScreen() {
   );
 
   const gradient = HERO_GRADIENTS[themeName] ?? HERO_GRADIENTS.calm;
+  const heroFg = HERO_FG[themeName] ?? HERO_FG.calm;
 
-  // 2×2 grid tiles
   const gridTiles = [
-    { id: 'appointments', icon: <IconCalendar size={20} color={t.brand} />, iconBg: t.brand + '18', title: i18n('care.appointments'), subtitle: i18n('care.upcomingCount', { count: upcomingCount }), route: '/care/appointments', badge: null },
-    { id: 'history',      icon: <IconActivity size={20} color={t.success} />, iconBg: t.success + '18', title: i18n('care.medicalHistory'), subtitle: lastCompleted ? i18n('care.lastVisit', { date: fmtDate(lastCompleted.appointment_date) }) : i18n('care.noPreviousVisit'), route: '/care/history', badge: null },
-    { id: 'meals',        icon: <IconUtensils size={20} color={t.warning} />, iconBg: t.warning + '18', title: i18n('care.mealsNutrition'), subtitle: i18n('care.dailyNutritionLogs'), route: '/meals', badge: null },
-    { id: 'lab',          icon: <IconTarget size={20} color="#DC2626" />, iconBg: '#DC262618', title: i18n('care.labReports'), subtitle: i18n('care.viewTestResults'), route: '/care/lab-reports', badge: 3 },
+    { id: 'appointments', icon: <IconCalendar size={20} color={t.brand} />,   iconBg: t.brand   + '18', title: i18n('care.appointments'),  subtitle: i18n('care.upcomingCount', { count: upcomingCount }), route: '/care/appointments' },
+    { id: 'history',      icon: <IconActivity size={20} color={t.success} />, iconBg: t.success + '18', title: i18n('care.medicalHistory'), subtitle: lastCompleted ? i18n('care.lastVisit', { date: fmtDate(lastCompleted.appointment_date) }) : i18n('care.noPreviousVisit'), route: '/care/history' },
+    { id: 'meals',        icon: <IconUtensils size={20} color={t.warning} />, iconBg: t.warning + '18', title: i18n('care.mealsNutrition'), subtitle: i18n('care.dailyNutritionLogs'), route: '/meals' },
+    { id: 'lab',          icon: <IconTarget size={20} color={t.danger} />,    iconBg: t.danger  + '18', title: i18n('care.labReports'),     subtitle: i18n('care.viewTestResults'),    route: '/care/lab-reports' },
   ];
 
   return (
@@ -95,16 +97,13 @@ export function CareHubScreen() {
         title={i18n('care.title')}
         subtitle={i18n('care.subtitle')}
         right={
-          <View style={styles.topBarIcons}>
-            <IconButton icon={<IconFilter size={20} color={t.ink2} />} onPress={() => {}} accessibilityLabel={i18n('common.filter')} />
-            <IconButton variant="filled" icon={<IconPlus size={20} color="#FFF" />} onPress={() => router.push('/care/appointments/new' as never)} accessibilityLabel={i18n('common.new')} />
-          </View>
+          <IconButton variant="filled" icon={<IconPlus size={20} color={t.onBrand} />} onPress={() => router.push('/care/appointments/new' as never)} accessibilityLabel={i18n('common.new')} />
         }
       />
 
       {appointments.isLoading && <ApiState title={i18n('care.loadingCareSummary')} loading />}
       {appointments.error && (
-        <ApiState title={i18n('care.careSummaryUnavailable')} message={appointments.error.message} actionLabel={i18n('common.retry')} onAction={appointments.reload} />
+        <ApiState title={i18n('care.careSummaryUnavailable')} message={humanizeError(appointments.error, i18n('care.careSummaryUnavailable'))} actionLabel={i18n('common.retry')} onAction={appointments.reload} />
       )}
 
       {!appointments.isLoading && !appointments.error && (
@@ -127,8 +126,8 @@ export function CareHubScreen() {
                 {nextAppointment ? (
                   <>
                     <Pressable style={[styles.heroBtnPrimary]} onPress={() => router.push('/care/appointments' as never)}>
-                      <IconVideo size={16} color="#1965B3" />
-                      <Text style={[typography.bodyMed, { color: '#1965B3', fontWeight: '700', marginLeft: 6 }]}>{i18n('care.join')}</Text>
+                      <IconVideo size={16} color={heroFg} />
+                      <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700', marginLeft: 6 }]}>{i18n('care.join')}</Text>
                     </Pressable>
                     <Pressable style={[styles.heroBtnGhost]} onPress={() => router.push('/care/appointments' as never)}>
                       <Text style={[typography.bodyMed, { color: '#FFF', fontWeight: '600' }]}>{i18n('care.prep')}</Text>
@@ -136,7 +135,7 @@ export function CareHubScreen() {
                   </>
                 ) : (
                   <Pressable style={[styles.heroBtnPrimary]} onPress={() => router.push('/care/appointments/new' as never)}>
-                    <Text style={[typography.bodyMed, { color: '#1965B3', fontWeight: '700' }]}>{i18n('care.bookNow')}</Text>
+                    <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700' }]}>{i18n('care.bookNow')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -152,15 +151,12 @@ export function CareHubScreen() {
                   style={[styles.tile, { backgroundColor: t.card, borderColor: t.border }]}
                   onPress={() => router.push(tile.route as never)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={tile.title}
                 >
                   <View style={[styles.tileIcon, { backgroundColor: tile.iconBg }]}>
                     {tile.icon}
                   </View>
-                  {tile.badge != null && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{tile.badge}</Text>
-                    </View>
-                  )}
                   <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '700', fontSize: 14, marginTop: 8 }]}>
                     {tile.title}
                   </Text>
@@ -175,25 +171,31 @@ export function CareHubScreen() {
           {/* Quick Access section */}
           <Text style={[styles.sectionLabel, { color: t.ink3 }]}>{i18n('care.quickAccess')}</Text>
           <Card style={[styles.quickCard, { marginHorizontal: 16, overflow: 'hidden' }]}>
-            {QUICK_ROW_DEFS.map((row, idx) => (
-              <React.Fragment key={row.id}>
-                <TouchableOpacity
-                  style={styles.quickRow}
-                  onPress={() => router.push(row.route as never)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.quickIcon, { backgroundColor: row.iconBg }]}>
-                    {row.icon}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600' }]}>{i18n(row.titleKey as any)}</Text>
-                    <Text style={[typography.micro, { color: t.ink3 }]}>{i18n(row.subtitleKey as any)}</Text>
-                  </View>
-                  <ChevronRight size={16} color={t.ink3} />
-                </TouchableOpacity>
-                {idx < QUICK_ROW_DEFS.length - 1 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
-              </React.Fragment>
-            ))}
+            {QUICK_ROW_DEFS.map((row, idx) => {
+              const color = t[row.colorKey as keyof typeof t] as string ?? t.brand;
+              const iconBg = color + '18';
+              return (
+                <React.Fragment key={row.id}>
+                  <TouchableOpacity
+                    style={styles.quickRow}
+                    onPress={() => router.push(row.route as never)}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={i18n(row.titleKey as any)}
+                  >
+                    <View style={[styles.quickIcon, { backgroundColor: iconBg }]}>
+                      <row.IconComponent size={20} color={color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600' }]}>{i18n(row.titleKey as any)}</Text>
+                      <Text style={[typography.micro, { color: t.ink3 }]}>{i18n(row.subtitleKey as any)}</Text>
+                    </View>
+                    <ChevronRight size={16} color={t.ink3} />
+                  </TouchableOpacity>
+                  {idx < QUICK_ROW_DEFS.length - 1 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
+                </React.Fragment>
+              );
+            })}
           </Card>
         </>
       )}
@@ -202,7 +204,6 @@ export function CareHubScreen() {
 }
 
 const styles = StyleSheet.create({
-  topBarIcons: { flexDirection: 'row', gap: 2 },
   heroWrap:    { marginHorizontal: 16, marginTop: 8, marginBottom: 20 },
   heroGradient:{ borderRadius: 16, padding: 20 },
   heroActions: { flexDirection: 'row', gap: 10 },
@@ -212,8 +213,6 @@ const styles = StyleSheet.create({
   grid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile:        { width: '47%', borderRadius: 16, borderWidth: 1, padding: 14, position: 'relative' },
   tileIcon:    { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  badge:       { position: 'absolute', top: 10, right: 10, backgroundColor: '#DC2626', borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  badgeText:   { color: '#FFF', fontSize: 9, fontWeight: '700' },
   sectionLabel:{ fontSize: 11, fontWeight: '600', letterSpacing: 0.8, marginHorizontal: 16, marginBottom: 8 },
   quickCard:   { marginBottom: 24 },
   quickRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },

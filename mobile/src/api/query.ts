@@ -115,6 +115,13 @@ export function useApiQuery<T>(
   const [isRefreshing, setIsRefreshing] = useState(false);
   const activeRef = useRef(true);
 
+  // Ref-based capture: callers can pass inline arrows without triggering reload loops.
+  // Re-fetching on data change is keyed by `key`, not by function identity.
+  const queryFnRef = useRef(queryFn);
+  useEffect(() => { queryFnRef.current = queryFn; });
+  const initialDataRef = useRef(options.initialData);
+  useEffect(() => { initialDataRef.current = options.initialData; });
+
   const reload = useCallback(async () => {
     if (!enabled) return;
     if (inflight.has(scopedKey)) {
@@ -122,7 +129,7 @@ export function useApiQuery<T>(
         await inflight.get(scopedKey);
         if (!activeRef.current) return;
         const shared = cacheGet(scopedKey) as T | undefined;
-        setData(shared !== undefined ? shared : (options.initialData ?? null));
+        setData(shared !== undefined ? shared : (initialDataRef.current ?? null));
         setError(null);
       } catch (err) {
         if (!activeRef.current) return;
@@ -139,7 +146,7 @@ export function useApiQuery<T>(
     if (hasCached) setIsRefreshing(true);
     else setIsLoading(true);
     const promise = (async () => {
-      const next = await queryFn();
+      const next = await queryFnRef.current();
       if (!activeRef.current) return;
       cacheSet(scopedKey, next);
       setData(next);
@@ -158,22 +165,22 @@ export function useApiQuery<T>(
         setIsRefreshing(false);
       }
     }
-  }, [enabled, options.initialData, scopedKey, queryFn]);
+  }, [enabled, scopedKey]);
 
   useEffect(() => {
     if (!enabled) {
-      setData(options.initialData ?? null);
+      setData(initialDataRef.current ?? null);
       setError(null);
       setIsLoading(false);
       setIsRefreshing(false);
       return;
     }
     const hit = cacheGet(scopedKey) as T | undefined;
-    setData(hit !== undefined ? hit : (options.initialData ?? null));
+    setData(hit !== undefined ? hit : (initialDataRef.current ?? null));
     setError(null);
     setIsLoading(hit === undefined);
     setIsRefreshing(false);
-  }, [enabled, options.initialData, scopedKey]);
+  }, [enabled, scopedKey]);
 
   useEffect(() => {
     activeRef.current = true;

@@ -21,15 +21,19 @@ export function MenuRow({ label, icon, type, val, defaultVal = false, onPress, s
   const t = useTheme();
   const [toggled, setToggled] = useState(defaultVal);
   const isDanger = type === 'danger';
+  const isToggle = type === 'toggle';
 
   return (
     <Pressable
-      onPress={type !== 'toggle' ? onPress : undefined}
+      onPress={isToggle ? undefined : onPress}
+      accessibilityRole={isToggle ? 'switch' : 'button'}
+      accessibilityLabel={label}
+      accessibilityState={isToggle ? { checked: toggled } : undefined}
       style={({ pressed }) => [
         styles.row,
         { borderBottomColor: t.border },
         showDivider && styles.divider,
-        pressed && type !== 'toggle' && { opacity: 0.7 },
+        pressed && !isToggle && { opacity: 0.7 },
       ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: isDanger ? `${t.danger}18` : t.brandSoft, borderRadius: t.radius.sm }]}>

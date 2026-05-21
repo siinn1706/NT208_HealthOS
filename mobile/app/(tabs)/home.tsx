@@ -17,28 +17,33 @@ import { QuickActionGrid } from '../../src/components/home/quick-action-grid';
 import { IconSearch, IconBell } from '../../src/icons';
 import { useGreetingTitle } from '../../src/hooks/use-greeting';
 import { useTheme } from '../../src/theme/useTheme';
+import { useTranslation } from 'react-i18next';
 import { useApiQuery } from '../../src/api/query';
 import { dashboardService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toHomeView } from '../../src/api/viewModels';
+import { humanizeError } from '../../src/api/error-message';
 import { useSession } from '../../src/auth/session-provider';
 import type { DashboardSummary, Reminder, VitalPoint } from '../../../shared/api-contracts';
 
-const quickActions = [
-  { id: 'meal', label: 'Meal', icon: 'IconCoffee', route: '/meals' },
-  { id: 'vitals', label: 'Vitals', icon: 'IconActivity', route: '/home/vitals' },
-  { id: 'ai', label: 'AI', icon: 'IconSparkle', route: '/(tabs)/chat' },
-  { id: 'insights', label: 'Insights', icon: 'IconTrendUp', route: '/insights' },
-];
-
 export default function HomeScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { user } = useSession();
   const greetingTitle = useGreetingTitle();
   const firstName = user?.display_name?.split(' ')[0] ?? 'there';
   const dateLine = useMemo(
     () => new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
     [],
+  );
+  const quickActions = useMemo(
+    () => [
+      { id: 'meal', label: i18n('home.quickActionMeal'), icon: 'IconCoffee', route: '/meals' },
+      { id: 'vitals', label: i18n('home.quickActionVitals'), icon: 'IconActivity', route: '/home/vitals' },
+      { id: 'ai', label: i18n('home.quickActionAi'), icon: 'IconSparkle', route: '/(tabs)/chat' },
+      { id: 'insights', label: i18n('home.quickActionInsights'), icon: 'IconTrendUp', route: '/insights' },
+    ],
+    [i18n],
   );
   const loadHome = useCallback(async () => {
     const [summaryResult, remindersResult, vitalsResult] = await Promise.allSettled([
@@ -67,25 +72,25 @@ export default function HomeScreen() {
         left={<Avatar name={user?.display_name ?? 'HealthOS User'} size={36} />}
         right={
           <View style={styles.actions}>
-            <IconButton variant="subtle" icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel="Search" onPress={() => router.push('/home/today')} />
-            <IconButton variant="subtle" icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel="Notifications" dot onPress={() => router.push('/home/today')} />
+            <IconButton variant="subtle" icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel={i18n('home.searchAccessibility')} onPress={() => router.push('/home/today')} />
+            <IconButton variant="subtle" icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel={i18n('home.notificationsAccessibility')} dot onPress={() => router.push('/home/today')} />
           </View>
         }
       />
 
       {home.isLoading && (
-        <ApiState title="Loading dashboard" loading skeleton={<><KpiGridSkeleton /><ChartSkeleton /></>} />
+        <ApiState title={i18n('home.loadingDashboard')} loading skeleton={<><KpiGridSkeleton /><ChartSkeleton /></>} />
       )}
       {home.error && (
         <ApiState
-          title="Dashboard unavailable"
-          message={home.error.message}
-          actionLabel="Retry"
+          title={i18n('home.dashboardUnavailable')}
+          message={humanizeError(home.error)}
+          actionLabel={i18n('common.retry')}
           onAction={home.reload}
         />
       )}
       {!home.isLoading && !home.error && !model && (
-        <ApiState title="No dashboard data" message="Core returned no dashboard summary for this account." />
+        <ApiState title={i18n('home.noDashboardData')} message={i18n('home.dashboardEmptyMessage')} />
       )}
 
       {model && (
@@ -95,10 +100,10 @@ export default function HomeScreen() {
           {model.kpis.length > 0 ? (
             <KpiRingGrid items={model.kpis} onItemPress={() => router.push('/home/today')} />
           ) : (
-            <ApiState title="No KPI data" message="Connect health data or goals to populate this section." />
+            <ApiState title={i18n('home.noKpis')} message={i18n('home.noKpisMessage')} />
           )}
 
-          <SectionHeader title="Next up" action="See all" onActionPress={() => router.push('/home/today')} />
+          <SectionHeader title={i18n('home.nextUp')} action={i18n('common.seeAll')} onActionPress={() => router.push('/home/today')} />
           {model.nextUp.length > 0 ? (
             model.nextUp.map((item) => (
               <NextUpRow
@@ -112,26 +117,26 @@ export default function HomeScreen() {
               />
             ))
           ) : (
-            <ApiState title="Nothing scheduled" message="Upcoming reminders will appear here." />
+            <ApiState title={i18n('home.nothingScheduled')} message={i18n('home.nothingScheduledMessage')} />
           )}
 
-          <SectionHeader title="AI Insight" />
+          <SectionHeader title={i18n('home.aiInsightCard')} />
           {model.aiInsight ? (
             <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/insights' as never)} />
           ) : (
-            <ApiState title="No AI insight yet" message="Insights appear after enough health signals are available." />
+            <ApiState title={i18n('home.noAiInsight')} message={i18n('home.noAiInsightMessage')} />
           )}
 
-          <SectionHeader title="Vitals" action="Report" onActionPress={() => router.push('/home/vitals')} />
+          <SectionHeader title={i18n('home.vitals')} action={i18n('home.reportAction')} onActionPress={() => router.push('/home/vitals')} />
           {model.vitals.avg > 0 ? (
             <VitalsMiniCard avg={model.vitals.avg} trend={model.vitals.trend} deltaBpm={model.vitals.deltaBpm} onPress={() => router.push('/home/vitals')} />
           ) : (
-            <ApiState title="No vitals yet" message="Vitals from Core will appear after sync or manual entry." />
+            <ApiState title={i18n('home.noVitals')} message={i18n('home.noVitalsMessage')} />
           )}
         </>
       )}
 
-      <SectionHeader title="Quick actions" />
+      <SectionHeader title={i18n('home.quickActions')} />
       <QuickActionGrid
         actions={quickActions}
         onPress={(id) => {

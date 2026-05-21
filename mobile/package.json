@@ -10,7 +10,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
-    "test:coverage": "jest --coverage --passWithNoTests"
+    "test:coverage": "jest --coverage --passWithNoTests",
+    "check:routes": "node scripts/check-route-matrix.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",

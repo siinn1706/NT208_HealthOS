@@ -10,11 +10,13 @@ import { AiAssistantHero } from '../../src/components/chat/ai-assistant-hero';
 import { ConversationRow } from '../../src/components/chat/conversation-row';
 import { IconSearch, IconPlus } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { invalidateApiQuery, useApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toConversationRow } from '../../src/api/viewModels';
+import { humanizeError } from '../../src/api/error-message';
 import { useSession } from '../../src/auth/session-provider';
 import { typography } from '../../src/theme/typography';
 
@@ -26,6 +28,7 @@ const AI_SUGGESTIONS = [
 
 export default function ChatScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { user } = useSession();
   const loadConversations = useCallback(() => chatService.conversations(), []);
   const conversations = useApiQuery(queryKeys.conversations, loadConversations);
@@ -65,7 +68,7 @@ export default function ChatScreen() {
       invalidateApiQuery(queryKeys.conversations);
       router.push(`/chat/${created.id}` as never);
     } catch (err) {
-      setAiError(err instanceof Error ? err.message : 'Could not open AI conversation.');
+      setAiError(err instanceof Error ? err.message : i18n('chat.aiConversationError'));
     } finally {
       creatingAiRef.current = false;
       setCreatingAi(false);
@@ -86,14 +89,14 @@ export default function ChatScreen() {
   const listHeader = (
     <>
       <TopBar
-        title="Chat"
-        subtitle="Care team & AI assistant"
+        title={i18n('chat.title')}
+        subtitle={i18n('chat.subtitle')}
         right={
           <View style={styles.actions}>
             <IconButton
               variant="subtle"
               icon={<IconSearch size={20} color={t.ink3} />}
-              accessibilityLabel="Search"
+              accessibilityLabel={i18n('chat.searchAccessibility')}
               onPress={() => {
                 setSearchOpen((v) => !v);
                 if (searchOpen) setSearchText('');
@@ -102,7 +105,7 @@ export default function ChatScreen() {
             <IconButton
               icon={<IconPlus size={20} color={t.brand} />}
               variant="filled"
-              accessibilityLabel="New chat"
+              accessibilityLabel={i18n('chat.newChat')}
               onPress={() => setNewChatOpen(true)}
             />
           </View>
@@ -112,7 +115,7 @@ export default function ChatScreen() {
         <TextInput
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search conversations…"
+          placeholder={i18n('chat.searchPlaceholder')}
           placeholderTextColor={t.ink4}
           autoFocus
           style={[
@@ -127,24 +130,24 @@ export default function ChatScreen() {
         onPress={() => openAiConversation()}
         onSuggestionPress={handleSuggestionPress}
       />
-      {creatingAi && <ApiState title="Starting AI conversation" loading />}
+      {creatingAi && <ApiState title={i18n('chat.startingAiConversation')} loading />}
       {aiError && (
         <ApiState
-          title="AI conversation unavailable"
+          title={i18n('chat.aiConversationUnavailable')}
           message={aiError}
-          actionLabel="Retry"
+          actionLabel={i18n('common.retry')}
           onAction={() => openAiConversation()}
         />
       )}
-      <SectionHeader title="Conversations" />
+      <SectionHeader title={i18n('chat.conversations')} />
       {conversations.isLoading && (
-        <ApiState title="Loading conversations" loading skeleton={<ChatListSkeleton />} />
+        <ApiState title={i18n('chat.loadingConversations')} loading skeleton={<ChatListSkeleton />} />
       )}
       {conversations.error && (
         <ApiState
-          title="Conversations unavailable"
-          message={conversations.error.message}
-          actionLabel="Retry"
+          title={i18n('chat.conversationsUnavailable')}
+          message={humanizeError(conversations.error)}
+          actionLabel={i18n('common.retry')}
           onAction={conversations.reload}
         />
       )}
@@ -160,7 +163,7 @@ export default function ChatScreen() {
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
           !conversations.isLoading && !conversations.error
-            ? <ApiState title="No conversations" message="Accepted care-team and AI conversations will appear here." />
+            ? <ApiState title={i18n('chat.noConversations')} message={i18n('chat.noConversationsMessage')} />
             : null
         }
         showsVerticalScrollIndicator={false}
@@ -177,14 +180,14 @@ export default function ChatScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
             <MissingApiState
-              title="Start new conversation"
-              contract="Create conversation API not yet available."
+              title={i18n('chat.startNewConversation')}
+              contract={i18n('chat.createConversationUnavailable')}
             />
             <Pressable
               onPress={() => setNewChatOpen(false)}
               style={[styles.closeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
             >
-              <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>
+              <Text style={[typography.bodyMed, { color: '#FFF' }]}>{i18n('common.close')}</Text>
             </Pressable>
           </View>
         </View>
