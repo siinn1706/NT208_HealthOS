@@ -113,6 +113,7 @@ function normalizeReport(raw: unknown, period: ReportPeriod): HealthReport {
     status: VALID_STATUSES.has(r.status as string) ? (r.status as HealthStatus) : "normal",
     sections: Array.isArray(r.sections) ? r.sections.map(normalizeSection) : [],
     alerts: Array.isArray(r.alerts) ? r.alerts.map(normalizeAlert) : [],
+    ai_summary: typeof r.ai_summary === "string" ? r.ai_summary : null,
   };
 }
 

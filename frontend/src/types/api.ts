@@ -692,6 +692,8 @@ export interface HealthReport {
   status: HealthStatus; // overall worst status across sections
   sections: ReportSection[];
   alerts: ReportAlert[]; // all alerts flattened
+  /** AI-generated overall summary (Gemini). null when AI unavailable. */
+  ai_summary?: string | null;
 }
 
 export interface AnomalyPoint {

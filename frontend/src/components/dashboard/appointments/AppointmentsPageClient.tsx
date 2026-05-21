@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/navigation";
 
 import { AppointmentCreateSheet } from "@/components/dashboard/appointments/AppointmentCreateSheet";
+import { AppointmentDetailSheet } from "@/components/dashboard/appointments/AppointmentDetailSheet";
 import { AppointmentHistoryTable } from "@/components/dashboard/appointments/AppointmentHistoryTable";
 import { PageHeader } from "@/components/shared/page";
 import type { Appointment } from "@/types/api";
@@ -21,6 +22,10 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
   const tVp = useTranslations("dashboard.visitPrep");
   const [appointments, setAppointments] = useState<Appointment[]>(initial);
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const selectedAppointment = appointments.find((a) => a.id === selectedId) ?? null;
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -69,6 +74,16 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(created) => setAppointments((prev) => [created, ...prev])}
+      />
+      <AppointmentDetailSheet
+        appointment={selectedAppointment}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onUpdated={(updated) =>
+          setAppointments((prev) =>
+            prev.map((a) => (a.id === updated.id ? updated : a)),
+          )
+        }
       />
       <div className="max-w-[1400px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
       {/* ── Summary strip ── */}
@@ -123,7 +138,13 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
       </Link>
 
       {/* ── Table ── */}
-      <AppointmentHistoryTable appointments={appointments} />
+      <AppointmentHistoryTable
+        appointments={appointments}
+        onSelect={(appt) => {
+          setSelectedId(appt.id);
+          setDetailOpen(true);
+        }}
+      />
 
       {/* ── Disclaimer ── */}
       <div className="rounded-xl border border-border bg-muted/20 px-5 py-4">
