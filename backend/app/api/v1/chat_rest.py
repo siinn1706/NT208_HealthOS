@@ -23,8 +23,13 @@ from app.schemas.chat import (
     ConversationResponse,
     ConversationSettingsBody,
     CreateDirectConversationBody,
+    EditMessageBody,
+    MarkReadBody,
     MessageListResponse,
+    MessageResponse,
     PinnedMessageListResponse,
+    ReactMessageBody,
+    SendMessageBody,
     UserLookupResponse,
 )
 from app.services import chat as chat_svc
@@ -37,6 +42,22 @@ def _err(status_code: int, code: str, msg: str) -> HTTPException:
     return HTTPException(
         status_code=status_code,
         detail={"error": {"code": code, "message": msg}},
+    )
+
+
+async def _notify_conversation(
+    conversation_id: uuid.UUID,
+    event: str,
+    payload: dict,
+) -> None:
+    """Broadcast a WS event to all sockets joined to the conv:{id} room."""
+    await ws_manager.broadcast(
+        room=f"conv:{conversation_id}",
+        message={
+            "event": event,
+            "payload": payload,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        },
     )
 
 
@@ -100,6 +121,23 @@ async def list_pending_conversations(
     return ConversationListResponse(data=convs, total=len(convs))
 
 
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationResponse,
+    summary="Get a single conversation",
+)
+async def get_conversation(
+    conversation_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationResponse:
+    conv = await chat_svc.get_conversation_by_id(db, conversation_id, current_user.id)
+    if conv is None:
+        raise _err(404, "CHAT_NOT_FOUND", "Conversation not found.")
+    dto = await chat_svc._build_conversation_dto(db, conv, current_user.id)
+    return ConversationResponse(data=dto)
+
+
 @router.post(
     "/conversations/{conversation_id}/accept",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -152,6 +190,144 @@ async def get_messages(
         raise _err(403, "CHAT_FORBIDDEN", str(exc))
     next_cursor = msgs[-1].created_at.isoformat() if msgs and has_more else None
     return MessageListResponse(data=msgs, has_more=has_more, next_cursor=next_cursor)
+
+
+@router.post(
+    "/conversations/{conversation_id}/messages",
+    response_model=MessageResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Send a message (REST fallback; prefer WebSocket for real-time)",
+)
+async def send_message(
+    conversation_id: uuid.UUID,
+    body: SendMessageBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MessageResponse:
+    try:
+        msg = await chat_svc.send_message(
+            db,
+            conversation_id=conversation_id,
+            sender_id=current_user.id,
+            content=body.content,
+            content_type=body.content_type,
+            client_message_id=body.client_message_id,
+            reply_to_id=body.reply_to_id,
+            attachments=body.attachments,
+        )
+    except PermissionError as exc:
+        raise _err(403, "CHAT_FORBIDDEN", str(exc))
+    except ValueError as exc:
+        raise _err(400, "CHAT_ERROR", str(exc))
+
+    await _notify_conversation(
+        conversation_id, "chat.message.sent", msg.model_dump(mode="json")
+    )
+    return MessageResponse(data=msg)
+
+
+@router.patch(
+    "/conversations/{conversation_id}/messages/{message_id}",
+    response_model=MessageResponse,
+    summary="Edit a message",
+)
+async def edit_message(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    body: EditMessageBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MessageResponse:
+    try:
+        msg = await chat_svc.edit_message(
+            db, message_id, conversation_id, current_user.id, body.content
+        )
+    except PermissionError as exc:
+        raise _err(403, "CHAT_FORBIDDEN", str(exc))
+    except ValueError as exc:
+        raise _err(400, "CHAT_ERROR", str(exc))
+
+    await _notify_conversation(
+        conversation_id, "chat.message.edited", msg.model_dump(mode="json")
+    )
+    return MessageResponse(data=msg)
+
+
+@router.delete(
+    "/conversations/{conversation_id}/messages/{message_id}",
+    response_model=MessageResponse,
+    summary="Recall (soft-delete) a message",
+)
+async def recall_message(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    for_everyone: Annotated[bool, Query()] = True,
+) -> MessageResponse:
+    try:
+        msg = await chat_svc.recall_message(
+            db, message_id, conversation_id, current_user.id, for_everyone
+        )
+    except PermissionError as exc:
+        raise _err(403, "CHAT_FORBIDDEN", str(exc))
+    except ValueError as exc:
+        raise _err(400, "CHAT_ERROR", str(exc))
+
+    await _notify_conversation(
+        conversation_id, "chat.message.recalled", msg.model_dump(mode="json")
+    )
+    return MessageResponse(data=msg)
+
+
+@router.post(
+    "/conversations/{conversation_id}/messages/{message_id}/reactions",
+    response_model=MessageResponse,
+    summary="Toggle an emoji reaction on a message",
+)
+async def react_to_message(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    body: ReactMessageBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MessageResponse:
+    try:
+        msg = await chat_svc.react_to_message(
+            db, message_id, conversation_id, current_user.id, body.emoji
+        )
+    except ValueError as exc:
+        raise _err(403, "CHAT_FORBIDDEN", str(exc))
+
+    await _notify_conversation(
+        conversation_id, "chat.message.reacted", msg.model_dump(mode="json")
+    )
+    return MessageResponse(data=msg)
+
+
+@router.post(
+    "/conversations/{conversation_id}/read",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Mark messages as read up to a cursor",
+)
+async def mark_read(
+    conversation_id: uuid.UUID,
+    body: MarkReadBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    await chat_svc.mark_conversation_read(
+        db, conversation_id, current_user.id, body.last_read_message_id
+    )
+    await _notify_conversation(
+        conversation_id,
+        "chat.message.read",
+        {
+            "user_id": str(current_user.id),
+            "last_read_message_id": str(body.last_read_message_id),
+            "conversation_id": str(conversation_id),
+        },
+    )
 
 
 @router.get(
