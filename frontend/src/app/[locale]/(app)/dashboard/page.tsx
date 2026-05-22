@@ -77,7 +77,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <QuickActionsWidget />
 
       {/* ── Row 3: Vitals Chart | Anomaly + Reminders + Doses ── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-stretch">
         {/* Vitals chart + Upgrade banner — spans 2 of 3 columns */}
         <div className="lg:col-span-2 flex flex-col gap-4">
           <Suspense fallback={<ChartSkeleton />}>
