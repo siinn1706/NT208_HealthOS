@@ -468,3 +468,77 @@ async def generate_exercise_suggestions(
         valid.append(item)
 
     return valid
+
+
+# ── Report Summary ─────────────────────────────────────────────────────────────
+
+_REPORT_SUMMARY_SYSTEM_PROMPT = """\
+Bạn là bác sĩ AI của HealthOS. Dựa trên dữ liệu báo cáo sức khoẻ thực tế, \
+hãy viết một đoạn tóm tắt tổng quan ngắn gọn cho người dùng.
+
+Nguyên tắc bắt buộc:
+- Dựa 100% vào dữ liệu thật — KHÔNG bịa số liệu, KHÔNG thêm thông tin không có trong dữ liệu.
+- Nếu section không có dữ liệu (data rỗng hoặc giá trị = 0), nói rõ "chưa có dữ liệu" cho phần đó.
+- Nhận xét trạng thái tổng quan: bình thường / cần lưu ý / cần cảnh báo.
+- Nêu cụ thể 1-2 chỉ số nổi bật nhất (tốt hoặc xấu) với số liệu thật.
+- Đưa 1-2 khuyến nghị ngắn, cụ thể, khả thi.
+- KHÔNG chẩn đoán bệnh, KHÔNG kê thuốc.
+- Viết tối đa 4 câu, ngôn ngữ thân thiện, dễ hiểu.
+- Trả lời bằng tiếng Việt nếu locale=vi, tiếng Anh nếu locale=en.
+- Trả về plain text thuần — KHÔNG markdown, KHÔNG bullet points.
+"""
+
+
+def _sync_generate_report_summary(
+    report_data: dict[str, Any],
+    locale: str,
+) -> str:
+    """Blocking Gemini call for report summary."""
+    import google.generativeai as genai
+
+    _ensure_configured()
+    genai.configure(api_key=settings.gemini_api_key)
+
+    ctx_json = json.dumps(report_data, ensure_ascii=False, default=str)
+    user_message = (
+        f"Dữ liệu báo cáo sức khoẻ (locale={locale}):\n{ctx_json}\n\n"
+        "Viết tóm tắt tổng quan cho báo cáo này. Chỉ trả về plain text, không markdown."
+    )
+
+    model = genai.GenerativeModel(
+        model_name=settings.gemini_chat_model,
+        system_instruction=_REPORT_SUMMARY_SYSTEM_PROMPT,
+        generation_config={
+            "temperature": 0.3,
+            "max_output_tokens": 512,
+        },
+    )
+
+    response = model.generate_content(
+        contents=[{"role": "user", "parts": [{"text": user_message}]}],
+        request_options={"timeout": settings.ai_chat_timeout_seconds},
+    )
+    return (getattr(response, "text", "") or "").strip()
+
+
+async def generate_report_summary(
+    report_data: dict[str, Any],
+    locale: str = "vi",
+) -> str:
+    """Generate AI-powered report summary.
+
+    Returns a plain text summary string.
+    Raises on API errors — callers should fall back to static text.
+    """
+    _ensure_configured()
+
+    raw_text = await asyncio.wait_for(
+        asyncio.to_thread(_sync_generate_report_summary, report_data, locale),
+        timeout=settings.ai_chat_timeout_seconds + 5.0,
+    )
+    # Strip markdown fences if any
+    text = raw_text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        text = "\n".join(line for line in lines if not line.startswith("```")).strip()
+    return text

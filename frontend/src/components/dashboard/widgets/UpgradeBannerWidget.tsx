@@ -23,13 +23,30 @@ const STATS = [
   { value: "99K",    label: "đồng / tháng" },
 ];
 
+const HIGHLIGHTS = [
+  "Theo dõi xu hướng sức khoẻ 90 ngày với biểu đồ nâng cao",
+  "Nhận cảnh báo bất thường theo thời gian thực qua push notification",
+  "Xuất báo cáo PDF / Excel để mang đi khám bác sĩ",
+  "Huấn luyện viên AI cá nhân hoá theo chỉ số của bạn",
+];
+
+const SIDE_HIGHLIGHTS = [
+  "Nhắc nhở thuốc thông minh theo lịch cá nhân",
+  "Đồng bộ lịch khám và lịch tập tự động",
+  "Thông báo liều qua push notification real-time",
+  "Xem lịch sử uống thuốc và lịch trình đầy đủ",
+];
+
 interface Props {
   variant?: "default" | "compact";
   fill?: boolean;
+  /** Narrow column layout (dashboard sidebar) */
+  narrow?: boolean;
 }
 
-export function UpgradeBannerWidget({ variant = "default", fill = false }: Props) {
+export function UpgradeBannerWidget({ variant = "default", fill = false, narrow = false }: Props) {
   const locale = useLocale();
+  const highlights = narrow ? SIDE_HIGHLIGHTS : HIGHLIGHTS;
 
   /* ── Fill mode (tall card, vertical layout) ──────────────────────────── */
   if (fill) {
@@ -37,29 +54,42 @@ export function UpgradeBannerWidget({ variant = "default", fill = false }: Props
       <div className={cn(
         "relative rounded-xl overflow-hidden border border-violet-200/60 dark:border-violet-800/40",
         "bg-gradient-to-b from-violet-950/60 via-indigo-950/50 to-purple-950/60",
-        "h-full flex flex-col",
+        "h-full min-h-[280px] flex flex-col",
       )}>
         <div className="pointer-events-none absolute -top-12 -right-12 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-12 -left-12 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 rounded-full bg-purple-500/5 blur-2xl" aria-hidden />
 
-        <div className="relative flex flex-col flex-1 px-6 py-5 gap-5">
-          {/* Header */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30 flex-shrink-0">
-              <Crown className="w-5 h-5 text-white" aria-hidden />
+        <div className={cn(
+          "relative flex flex-col flex-1 gap-4 justify-between",
+          narrow ? "px-4 py-4" : "px-6 py-5",
+        )}>
+          {/* Header + tagline */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30 flex-shrink-0">
+                <Crown className="w-5 h-5 text-white" aria-hidden />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-300" aria-hidden />
+                  HealthOS Pro
+                </p>
+                <p className="text-[11px] text-white/50">Mở khoá toàn bộ tính năng</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-violet-300" aria-hidden />
-                HealthOS Pro
-              </p>
-              <p className="text-[11px] text-white/50">Mở khoá toàn bộ tính năng</p>
-            </div>
+            <p className="text-xs text-white/60 leading-relaxed">
+              {narrow
+                ? "Pro giúp bạn không bỏ lỡ liều thuốc, lịch khám và các nhắc nhở quan trọng mỗi ngày."
+                : "Nâng cấp để xem đầy đủ xu hướng chỉ số, dự báo AI và báo cáo chuyên sâu — giúp bạn chủ động hơn trong việc chăm sóc sức khoẻ mỗi ngày."}
+            </p>
           </div>
 
           {/* Features grid */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 flex-1">
+          <div className={cn(
+            "grid gap-x-4 gap-y-3 flex-1 content-start",
+            narrow ? "grid-cols-1" : "grid-cols-2",
+          )}>
             {FEATURES.map(({ icon: Icon, label, desc }) => (
               <div key={label} className="flex items-start gap-2 min-w-0">
                 <div className="flex-shrink-0 mt-0.5 w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
@@ -73,8 +103,18 @@ export function UpgradeBannerWidget({ variant = "default", fill = false }: Props
             ))}
           </div>
 
+          {/* Highlight bullets */}
+          <ul className="space-y-1.5 rounded-lg bg-white/5 border border-white/10 px-4 py-3">
+            {highlights.map((text) => (
+              <li key={text} className="flex items-start gap-2 text-[11px] text-white/55 leading-snug">
+                <Sparkles className="w-3 h-3 text-violet-400 flex-shrink-0 mt-0.5" aria-hidden />
+                {text}
+              </li>
+            ))}
+          </ul>
+
           {/* Stats row */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className={cn("grid gap-2", narrow ? "grid-cols-1" : "grid-cols-3")}>
             {STATS.map(({ value, label }) => (
               <div key={label} className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-center">
                 <p className="text-sm font-bold text-violet-300 tabular-nums leading-none">{value}</p>

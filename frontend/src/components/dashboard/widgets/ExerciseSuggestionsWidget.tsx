@@ -19,17 +19,17 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Lightbulb, Target, Info,
 };
 
-// ── Category config: gradient + muscles ───────────────────────────────────────
+// ── Category config: gradient + muscle i18n keys ──────────────────────────────
 const CAT_CONFIG: Record<string, {
   gradient: string;
   light: string;
-  muscles: string[];
+  muscleKeys: string[];
   days: number[];
 }> = {
-  cardio:      { gradient: "from-orange-500 to-red-500",    light: "bg-orange-50 dark:bg-orange-950/30",  muscles: ["Toàn thân", "Tim mạch", "Phổi"],  days: [1, 4] },
-  strength:    { gradient: "from-blue-600 to-indigo-600",   light: "bg-blue-50 dark:bg-blue-950/30",     muscles: ["Ngực", "Lưng", "Tay", "Chân"],   days: [0, 3] },
-  flexibility: { gradient: "from-purple-500 to-violet-500", light: "bg-purple-50 dark:bg-purple-950/30", muscles: ["Cột sống", "Hông", "Vai", "Gân"],  days: [2] },
-  balance:     { gradient: "from-teal-500 to-cyan-500",     light: "bg-teal-50 dark:bg-teal-950/30",     muscles: ["Lõi", "Cân bằng", "Thần kinh"],  days: [5, 6] },
+  cardio:      { gradient: "from-orange-500 to-red-500",    light: "bg-orange-50 dark:bg-orange-950/30",  muscleKeys: ["fullBody", "cardiovascular", "lungs"],  days: [1, 4] },
+  strength:    { gradient: "from-blue-600 to-indigo-600",   light: "bg-blue-50 dark:bg-blue-950/30",     muscleKeys: ["chest", "back", "arms", "legs"],       days: [0, 3] },
+  flexibility: { gradient: "from-purple-500 to-violet-500", light: "bg-purple-50 dark:bg-purple-950/30", muscleKeys: ["spine", "hips", "shoulders", "tendons"], days: [2] },
+  balance:     { gradient: "from-teal-500 to-cyan-500",     light: "bg-teal-50 dark:bg-teal-950/30",     muscleKeys: ["core", "balance", "nervous"],           days: [5, 6] },
 };
 
 // ── Type config: badge color ───────────────────────────────────────────────────
@@ -42,14 +42,14 @@ const TYPE_CONFIG: Record<string, { badge: string; border: string; dot: string }
 
 // ── Intensity ──────────────────────────────────────────────────────────────────
 const INTENSITY_CONFIG = {
-  low:    { label: "Nhẹ",  bars: 1, color: "bg-emerald-500" },
-  medium: { label: "Vừa",  bars: 2, color: "bg-amber-500"   },
-  high:   { label: "Cao",  bars: 3, color: "bg-red-500"      },
+  low:    { key: "low",    bars: 1, color: "bg-emerald-500" },
+  medium: { key: "medium", bars: 2, color: "bg-amber-500"   },
+  high:   { key: "high",   bars: 3, color: "bg-red-500"      },
 } as const;
 
 const KCAL_PER_MIN: Record<string, number> = { low: 4, medium: 7, high: 10 };
 
-const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
+const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function estCal(s: ExerciseSuggestion) {
@@ -151,7 +151,7 @@ function SuggestionCard({ s, t }: { s: ExerciseSuggestion; t: ReturnType<typeof 
           )}
           <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground bg-muted/50 dark:bg-muted/30 px-2 py-1 rounded-full">
             <IntensityBars intensity={s.intensity} />
-            {icfg.label}
+            {t(`intensity.${icfg.key}` as Parameters<typeof t>[0])}
           </span>
           <span className={cn(
             "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full",
@@ -162,11 +162,11 @@ function SuggestionCard({ s, t }: { s: ExerciseSuggestion; t: ReturnType<typeof 
         </div>
 
         {/* Row 3: Muscle chips */}
-        {cat.muscles.length > 0 && (
+        {cat.muscleKeys.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {cat.muscles.map((m) => (
-              <span key={m} className="text-[9px] px-1.5 py-0.5 rounded-full bg-background dark:bg-muted border border-border/60 text-muted-foreground">
-                {m}
+            {cat.muscleKeys.map((key) => (
+              <span key={key} className="text-[9px] px-1.5 py-0.5 rounded-full bg-background dark:bg-muted border border-border/60 text-muted-foreground">
+                {t(`muscles.${key}` as Parameters<typeof t>[0])}
               </span>
             ))}
           </div>
@@ -199,7 +199,7 @@ function DayCell({
         {label}
       </span>
       {rest ? (
-        <span className="text-[8px] text-muted-foreground/40 text-center leading-tight mt-auto">Nghỉ</span>
+        <span className="text-[8px] text-muted-foreground/40 text-center leading-tight mt-auto">{t("restDay")}</span>
       ) : Icon && cat ? (
         <>
           <div className={cn("w-6 h-6 rounded-full flex items-center justify-center", `bg-gradient-to-br ${cat.gradient}`)}>
@@ -225,8 +225,9 @@ export function ExerciseSuggestionsWidget({ suggestions }: Props) {
   const [tab, setTab] = useState<Tab>("rec");
 
   const todayIdx = (new Date().getDay() + 6) % 7;  // 0=Mon
+  const dayLabels = DAY_KEYS.map((key) => t(`days.${key}` as Parameters<typeof t>[0]));
 
-  const weeklyPlan = DAYS.map((label, idx) => {
+  const weeklyPlan = dayLabels.map((label, idx) => {
     if (idx === 6) return { label, items: [] as ExerciseSuggestion[], rest: true };
     const dayNums = Object.entries(CAT_CONFIG).flatMap(([cat, cfg]) =>
       cfg.days.includes(idx) ? suggestions.filter((s) => s.category === cat) : []
@@ -261,7 +262,7 @@ export function ExerciseSuggestionsWidget({ suggestions }: Props) {
             <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 tabular-nums">
               ~{totalKcalWeekly.toLocaleString()} kcal
             </span>
-            <span className="text-[9px] text-muted-foreground">/tuần</span>
+            <span className="text-[9px] text-muted-foreground">{t("perWeek")}</span>
           </div>
         )}
       </div>
@@ -324,23 +325,23 @@ export function ExerciseSuggestionsWidget({ suggestions }: Props) {
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl bg-muted/30 dark:bg-muted/10 border border-border p-3">
                 <p className="text-lg font-bold tabular-nums text-foreground leading-none">{activeCount}</p>
-                <p className="text-[10px] text-muted-foreground mt-1 leading-none">ngày luyện tập</p>
+                <p className="text-[10px] text-muted-foreground mt-1 leading-none">{t("trainingDays")}</p>
               </div>
               <div className="rounded-xl bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-900/40 p-3">
                 <p className="text-lg font-bold tabular-nums text-orange-500 leading-none">~{totalKcalWeekly.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground mt-1 leading-none">kcal ước tính</p>
+                <p className="text-[10px] text-muted-foreground mt-1 leading-none">{t("estimatedKcal")}</p>
               </div>
             </div>
 
             {/* Per-suggestion breakdown */}
             {suggestions.length > 0 && (
               <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2.5">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Chi tiết kế hoạch</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("planDetails")}</p>
                 {suggestions.slice(0, 4).map((s) => {
                   const cat  = CAT_CONFIG[s.category] ?? CAT_CONFIG.cardio;
                   const Icon = ICON_MAP[s.icon] ?? Info;
                   const cal  = estCal(s) * (cat.days.length ?? 1);
-                  const days = cat.days.map((d) => DAYS[d]).join(", ");
+                  const days = cat.days.map((d) => dayLabels[d]).join(", ");
                   const title = t.has(`suggestions.${s.id}.title` as never)
                     ? t(`suggestions.${s.id}.title` as never)
                     : s.title;

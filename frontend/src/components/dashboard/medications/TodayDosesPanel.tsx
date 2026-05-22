@@ -11,10 +11,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { MedicationDose } from "@/types/api";
 
 interface TodayDosesPanelProps {
-  /** Render at most N entries (compact dashboard variant). */
+  /** Render at most N entries (compact dashboard variant). Ignored when `fill`. */
   limit?: number;
   /** Hide the header / "view all" link when used inline on the Hub itself. */
   variant?: "card" | "inline";
+  /** Stretch to fill remaining column height (dashboard layout). */
+  fill?: boolean;
 }
 
 /**
@@ -23,7 +25,7 @@ interface TodayDosesPanelProps {
  * `/api/v1/reminders/{id}/done` endpoint so all firing semantics stay in one
  * place.
  */
-export function TodayDosesPanel({ limit, variant = "card" }: TodayDosesPanelProps) {
+export function TodayDosesPanel({ limit, variant = "card", fill = false }: TodayDosesPanelProps) {
   const t = useTranslations("dashboard.medications");
   const locale = useLocale();
   const [doses, setDoses] = React.useState<MedicationDose[]>([]);
@@ -61,8 +63,9 @@ export function TodayDosesPanel({ limit, variant = "card" }: TodayDosesPanelProp
   }, [fetchDoses]);
 
   const visible = React.useMemo(() => {
+    if (fill) return doses;
     return typeof limit === "number" ? doses.slice(0, limit) : doses;
-  }, [doses, limit]);
+  }, [doses, limit, fill]);
 
   const done = doses.filter((d) => d.status === "done").length;
   const pending = doses.length - done;
@@ -109,12 +112,105 @@ export function TodayDosesPanel({ limit, variant = "card" }: TodayDosesPanelProp
 
   const containerClass =
     variant === "card"
-      ? "rounded-xl border border-border bg-card overflow-hidden"
+      ? cn(
+          "rounded-xl border border-border bg-card overflow-hidden",
+          fill ? "h-full flex flex-col min-h-0" : "shrink-0",
+        )
       : "rounded-xl border border-border bg-background";
+
+  const listBody = loading ? (
+    <div className="divide-y divide-border">
+      {Array.from({ length: fill ? 5 : 3 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-5 py-3">
+          <Skeleton className="w-8 h-8 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3 w-2/3 rounded" />
+            <Skeleton className="h-3 w-1/3 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : error ? (
+    <div className="flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground">
+      <Bell className="w-4 h-4 opacity-40 flex-shrink-0" />
+      <p className="text-xs">{t("todayLoadError")}</p>
+    </div>
+  ) : visible.length === 0 ? (
+    <div className={cn(
+      "flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground",
+      fill && "flex-1",
+    )}>
+      <Pill className="w-4 h-4 opacity-40 flex-shrink-0" />
+      <p className="text-xs">{t("todayEmpty")}</p>
+    </div>
+  ) : (
+    <ul className="divide-y divide-border">
+      {visible.map((d) => {
+        const isDone = d.status === "done";
+        const time = new Date(d.scheduled_at).toLocaleTimeString(locale, {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return (
+          <li
+            key={d.occurrence_id}
+            className={cn(
+              "flex items-center gap-3 px-5 py-3 transition-colors",
+              isDone && "opacity-60",
+            )}
+          >
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(231, 222, 167, 0.18)" }}
+              aria-hidden
+            >
+              <Pill className="w-4 h-4" style={{ color: "#C9A95A" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <Link
+                href={
+                  `/dashboard/medications/${d.medication_plan_id}` as never
+                }
+                className={cn(
+                  "text-sm font-medium text-foreground hover:underline",
+                  isDone && "line-through",
+                )}
+              >
+                {d.plan_name}
+                {d.strength && (
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    {d.strength}
+                  </span>
+                )}
+              </Link>
+              <p className="text-[11px] text-muted-foreground mt-0.5 inline-flex items-center gap-1">
+                <Clock className="w-3 h-3" aria-hidden />
+                {time}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => markDone(d)}
+              disabled={isDone || busy === d.occurrence_id}
+              aria-label={isDone ? t("todayMarkedAria") : t("todayMarkAria")}
+              className={cn(
+                "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                isDone
+                  ? "text-muted-foreground"
+                  : "text-emerald-500 hover:bg-emerald-500/10 cursor-pointer",
+              )}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
     <section className={containerClass} aria-label={t("today")}>
-      <header className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
+      <header className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border shrink-0">
         <div>
           <p className="text-sm font-semibold text-foreground">{t("today")}</p>
           {!loading && (
@@ -123,7 +219,7 @@ export function TodayDosesPanel({ limit, variant = "card" }: TodayDosesPanelProp
             </p>
           )}
         </div>
-        {typeof limit === "number" && doses.length > limit && (
+        {(fill ? doses.length > 0 : typeof limit === "number" && doses.length > limit) && (
           <Link
             href={"/dashboard/medications" as never}
             className="text-xs text-primary hover:underline"
@@ -133,92 +229,9 @@ export function TodayDosesPanel({ limit, variant = "card" }: TodayDosesPanelProp
         )}
       </header>
 
-      {loading ? (
-        <div className="divide-y divide-border">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
-              <Skeleton className="w-8 h-8 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-3 w-2/3 rounded" />
-                <Skeleton className="h-3 w-1/3 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground">
-          <Bell className="w-4 h-4 opacity-40 flex-shrink-0" />
-          <p className="text-xs">{t("todayLoadError")}</p>
-        </div>
-      ) : visible.length === 0 ? (
-        <div className="flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground">
-          <Pill className="w-4 h-4 opacity-40 flex-shrink-0" />
-          <p className="text-xs">{t("todayEmpty")}</p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-border">
-          {visible.map((d) => {
-            const isDone = d.status === "done";
-            const time = new Date(d.scheduled_at).toLocaleTimeString(locale, {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            return (
-              <li
-                key={d.occurrence_id}
-                className={cn(
-                  "flex items-center gap-3 px-5 py-3 transition-colors",
-                  isDone && "opacity-60",
-                )}
-              >
-                <div
-                  className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ background: "rgba(231, 222, 167, 0.18)" }}
-                  aria-hidden
-                >
-                  <Pill className="w-4 h-4" style={{ color: "#C9A95A" }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={
-                      `/dashboard/medications/${d.medication_plan_id}` as never
-                    }
-                    className={cn(
-                      "text-sm font-medium text-foreground hover:underline",
-                      isDone && "line-through",
-                    )}
-                  >
-                    {d.plan_name}
-                    {d.strength && (
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        {d.strength}
-                      </span>
-                    )}
-                  </Link>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 inline-flex items-center gap-1">
-                    <Clock className="w-3 h-3" aria-hidden />
-                    {time}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => markDone(d)}
-                  disabled={isDone || busy === d.occurrence_id}
-                  aria-label={isDone ? t("todayMarkedAria") : t("todayMarkAria")}
-                  className={cn(
-                    "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                    isDone
-                      ? "text-muted-foreground"
-                      : "text-emerald-500 hover:bg-emerald-500/10 cursor-pointer",
-                  )}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className={cn(fill && "flex-1 min-h-0 overflow-y-auto")}>
+        {listBody}
+      </div>
     </section>
   );
 }
