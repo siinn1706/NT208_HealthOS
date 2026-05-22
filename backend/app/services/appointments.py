@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import Appointment, AppointmentStatusEnum
+from app.services._ownership import get_owned
 from app.schemas.appointments import (
     AppointmentCreateBody,
     AppointmentDTO,
@@ -168,12 +169,7 @@ async def get_appointment(
     user_id: uuid.UUID,
     appointment_id: uuid.UUID,
 ) -> AppointmentDTO | None:
-    stmt = select(Appointment).where(
-        Appointment.id == appointment_id,
-        Appointment.user_id == user_id,
-    )
-    result = await db.execute(stmt)
-    item = result.scalar_one_or_none()
+    item = await get_owned(db, Appointment, id_=appointment_id, user_id=user_id)
     if item is None:
         return None
     return _to_dto(item)
@@ -185,12 +181,7 @@ async def update_appointment(
     appointment_id: uuid.UUID,
     body: AppointmentUpdateBody,
 ) -> AppointmentDTO | None:
-    stmt = select(Appointment).where(
-        Appointment.id == appointment_id,
-        Appointment.user_id == user_id,
-    )
-    result = await db.execute(stmt)
-    appt = result.scalar_one_or_none()
+    appt = await get_owned(db, Appointment, id_=appointment_id, user_id=user_id)
     if appt is None:
         return None
 
@@ -248,12 +239,7 @@ async def update_appointment_status(
     target: AppointmentStatusEnum,
 ) -> AppointmentDTO | None:
     """Apply a status transition; raises InvalidStatusTransition on bad input."""
-    stmt = select(Appointment).where(
-        Appointment.id == appointment_id,
-        Appointment.user_id == user_id,
-    )
-    result = await db.execute(stmt)
-    appt = result.scalar_one_or_none()
+    appt = await get_owned(db, Appointment, id_=appointment_id, user_id=user_id)
     if appt is None:
         return None
 

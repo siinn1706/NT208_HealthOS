@@ -16,6 +16,7 @@ from app.models.core import (
     ReminderTypeEnum,
 )
 from app.schemas.reminders import ReminderCreateBody, ReminderDTO
+from app.services._ownership import get_owned
 from app.services.reminder_recurrence import (
     DEFAULT_TZID,
     compute_next_n,
@@ -170,7 +171,7 @@ async def materialize_for_reminder(
     return inserted
 
 
-async def _next_pending_slot(
+async def _next_pending_slot(  # idor-ok: private helper — reminder ownership verified by caller
     db: AsyncSession,
     reminder_id: uuid.UUID,
     *,
@@ -196,14 +197,7 @@ async def update_reminder_done(
     reminder_id: uuid.UUID,
     done: bool,
 ) -> ReminderDTO | None:
-    item = (
-        await db.execute(
-            select(Reminder).where(
-                Reminder.id == reminder_id,
-                Reminder.user_id == user_id,
-            )
-        )
-    ).scalar_one_or_none()
+    item = await get_owned(db, Reminder, id_=reminder_id, user_id=user_id)
     if item is None:
         return None
 
@@ -218,14 +212,7 @@ async def delete_reminder(
     user_id: uuid.UUID,
     reminder_id: uuid.UUID,
 ) -> bool:
-    item = (
-        await db.execute(
-            select(Reminder).where(
-                Reminder.id == reminder_id,
-                Reminder.user_id == user_id,
-            )
-        )
-    ).scalar_one_or_none()
+    item = await get_owned(db, Reminder, id_=reminder_id, user_id=user_id)
     if item is None:
         return False
 

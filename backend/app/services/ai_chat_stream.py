@@ -187,7 +187,7 @@ async def stream_assistant_response(
     )
 
 
-async def _finalize_assistant(
+async def _finalize_assistant(  # idor-ok: private — updates the bot's own message row, no user-data cross-access
     message_id: uuid.UUID,
     final_text: str,
     status: MessageStatusEnum,

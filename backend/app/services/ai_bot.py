@@ -89,7 +89,7 @@ async def ensure_ai_bot_member(
     return bot_id
 
 
-async def is_ai_conversation(
+async def is_ai_conversation(  # idor-ok: membership gate enforced by caller before this is reached
     db: AsyncSession,
     conversation_id: uuid.UUID,
 ) -> bool:

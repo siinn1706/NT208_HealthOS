@@ -55,5 +55,6 @@ async def list_security_logs(
                 "created_at": log.created_at.isoformat(),
             }
             for log in logs
+            if log.event_type != AuditEventTypeEnum.SECURITY_ACCESS_DENIED
         ]
     }

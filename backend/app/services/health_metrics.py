@@ -8,6 +8,7 @@ from sqlalchemy import Select, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import HealthMetric, MetricTypeEnum, WearableSourceEnum
+from app.services._ownership import get_owned
 from app.schemas.health_metrics import (
     HealthMetricCreate,
     HealthMetricUpdate,
@@ -387,8 +388,8 @@ async def update_health_metric(
     user_id: uuid.UUID,
     data: HealthMetricUpdate,
 ) -> HealthMetric | None:
-    metric = await db.get(HealthMetric, metric_id)
-    if not metric or metric.user_id != user_id:
+    metric = await get_owned(db, HealthMetric, id_=metric_id, user_id=user_id)
+    if metric is None:
         return None
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(metric, field, value)

@@ -108,6 +108,11 @@ class Settings(BaseSettings):
     ai_chat_max_concurrent_per_user: int = 1
     ai_chat_streaming_enabled: bool = True
     ai_bot_email: str = "ai-bot@healthos.local"
+    # Group conversation invite acceptance gate.
+    # True  = non-creator members start with is_accepted=False (safe default for test/dev).
+    # False = legacy behaviour (all members auto-accepted) — set in production until
+    #         the FE invite-acceptance surface ships.
+    group_conv_require_accept: bool = True
 
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8")
 

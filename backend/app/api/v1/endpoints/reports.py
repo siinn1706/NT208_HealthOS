@@ -27,6 +27,7 @@ from app.schemas.report_export import (
 from app.services import insights as insight_svc
 from app.services import report_export as report_export_svc
 from app.services.audit import audit
+from app.services.security_logging import log_resource_access_denied
 
 
 # B7 review P1-10 — per-user rate limit on PDF export. WeasyPrint is CPU-heavy
@@ -180,6 +181,13 @@ async def get_report_pdf_status(
 ) -> ReportExportRequestResponse:
     req = await report_export_svc.get_report_request(db, current_user.id, request_id)
     if req is None:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="reports",
+            resource_id=str(request_id),
+            http_method="GET",
+            route="/reports/export-pdf/{request_id}",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "PDF export request not found."},
@@ -205,6 +213,13 @@ async def get_report_pdf_download(
 ) -> ReportExportSignedUrlResponse:
     req = await report_export_svc.get_report_request(db, current_user.id, request_id)
     if req is None:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="reports",
+            resource_id=str(request_id),
+            http_method="GET",
+            route="/reports/export-pdf/{request_id}/download",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "PDF export request not found."},

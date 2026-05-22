@@ -1,13 +1,17 @@
 """Security logging service for audit trail."""
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditEventTypeEnum, AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 async def log_security_event(
@@ -54,6 +58,51 @@ async def log_security_event(
         # surrounding commit.
         await db.flush()
     return entry
+
+
+async def log_resource_access_denied(
+    *,
+    user_id: uuid.UUID,
+    module: str,
+    resource_id: str,
+    http_method: str,
+    route: str,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+) -> None:
+    """Log a cross-user ownership denial without disrupting the caller's transaction.
+
+    Opens a separate session so the audit row is committed even if the caller's
+    transaction is rolled back (e.g. during a 404 response path). Silently
+    swallows IntegrityError on duplicate (user_id, event_type, created_at).
+    """
+    from app.adapters.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as audit_db:
+            entry = AuditLog(
+                user_id=user_id,
+                event_type=AuditEventTypeEnum.SECURITY_ACCESS_DENIED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={
+                    "module": module,
+                    "resource_id": resource_id,
+                    "method": http_method,
+                    "route": route,
+                },
+            )
+            audit_db.add(entry)
+            await audit_db.commit()
+    except IntegrityError:
+        pass
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "Failed to write SECURITY_ACCESS_DENIED log for user=%s module=%s resource=%s",
+            user_id,
+            module,
+            resource_id,
+        )
 
 
 async def get_audit_logs(

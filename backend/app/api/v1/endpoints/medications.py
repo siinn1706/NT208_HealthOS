@@ -37,6 +37,7 @@ from app.schemas.medications import (
 from app.services import medications as med_svc
 from app.services.audit import audit
 from app.services.reminder_recurrence import DEFAULT_TZID
+from app.services.security_logging import log_resource_access_denied
 
 router = APIRouter(prefix="/medications", tags=["Medications"])
 
@@ -179,6 +180,13 @@ async def get_medication(
 ) -> MedicationPlanDetailResponse:
     detail = await med_svc.get_plan_detail(db, current_user.id, plan_id)
     if detail is None:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="medications",
+            resource_id=str(plan_id),
+            http_method="GET",
+            route="/medications/{plan_id}",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Medication plan not found."},

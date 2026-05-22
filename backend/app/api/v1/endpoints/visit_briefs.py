@@ -69,6 +69,7 @@ from app.schemas.visit_briefs import (
 )
 from app.services import question_bank as qb_svc
 from app.services import visit_briefs as svc
+from app.services.security_logging import log_resource_access_denied
 from app.services.visit_brief_pdf import PdfRenderUnavailable, render_pdf
 from app.services.visit_briefs import (
     AppointmentNotFound,
@@ -277,6 +278,13 @@ async def get_brief(
             db=db, user_id=current_user.id, brief_id=brief_id
         )
     except BriefNotFound as exc:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="visit_briefs",
+            resource_id=str(brief_id),
+            http_method="GET",
+            route="/visit-briefs/{brief_id}",
+        )
         raise _http_404("BRIEF_NOT_FOUND", "Visit brief not found.") from exc
     return VisitBriefResponse(data=_hydrate_brief_dto(brief, latest))
 
