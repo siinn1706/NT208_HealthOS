@@ -17,11 +17,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/bff-fetch-utils";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ prefix: string }> },
 ) {
+  const limited = await enforceRateLimit(req, RATE_LIMITS["auth:pwned_range_get"]);
+  if (limited) return limited;
+
   const { prefix } = await ctx.params;
   if (!/^[0-9A-Fa-f]{5}$/.test(prefix)) {
     return NextResponse.json(

@@ -8,8 +8,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/bff-fetch-utils";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
+import { normalizeCoreError } from "@/lib/bff-error-normalize";
 
 export async function GET(req: NextRequest) {
+  const limited = await enforceRateLimit(req, RATE_LIMITS["auth:availability_email"]);
+  if (limited) return limited;
+
   const { searchParams } = new URL(req.url);
   const email = searchParams.get("email");
 
@@ -39,6 +44,10 @@ export async function GET(req: NextRequest) {
       { error: { code: "UPSTREAM_ERROR", message: "Core API returned invalid JSON." } },
       { status: 502 }
     );
+  }
+
+  if (!res.ok) {
+    return NextResponse.json(normalizeCoreError(data, res.status), { status: res.status });
   }
 
   return NextResponse.json(data, { status: res.status });

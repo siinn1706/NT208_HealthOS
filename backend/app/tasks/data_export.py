@@ -87,6 +87,14 @@ def build_user_export(self, user_id: str, request_id: str) -> dict:
         req = db.get(DataExportRequest, request_uuid)
         if req is None:
             return {"status": "missing"}
+        if req.user_id != user_uuid:
+            logger.warning(
+                "build_user_export: user_id mismatch request=%s expected=%s got=%s",
+                request_uuid,
+                user_uuid,
+                req.user_id,
+            )
+            return {"status": "forbidden"}
         req.status = DataExportStatusEnum.RUNNING.value
         db.flush()
 

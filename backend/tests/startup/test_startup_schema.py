@@ -60,7 +60,7 @@ def test_auth_critical_schema_missing_raises_clear_startup_error():
 
 def test_optional_ai_schema_can_degrade_without_blocking_auth_validation():
     result = evaluate_schema_snapshot(
-        tables={"users", "messages", "oauth_accounts"},
+        tables={"users", "messages", "oauth_accounts", "refresh_token_sessions"},
         columns={
             "users": {"is_system", "has_password", "tokens_invalidated_at"},
             "messages": set(),
@@ -76,4 +76,4 @@ def test_optional_ai_schema_can_degrade_without_blocking_auth_validation():
 def test_alembic_repository_has_a_single_canonical_head():
     versions_dir = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 
-    assert _alembic_heads(versions_dir) == {"029_merge_auth_and_ai_heads"}
+    assert _alembic_heads(versions_dir) == {"030_add_refresh_token_sessions"}

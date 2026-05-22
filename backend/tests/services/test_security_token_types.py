@@ -15,6 +15,8 @@ def test_access_tokens_include_access_type_claim():
     token = create_access_token("00000000-0000-0000-0000-000000000001")
     payload = decode_token_with_type(token, expected_type="access")
     assert payload.get("typ") == "access"
+    assert payload.get("iss") == settings.auth_issuer
+    assert payload.get("aud") == settings.auth_audience
 
 
 def test_websocket_ticket_is_rejected_by_access_decoder():
@@ -29,14 +31,64 @@ def test_access_token_is_rejected_by_ws_decoder():
         decode_token_with_type(token, expected_type="ws_ticket", allow_legacy_access=False)
 
 
-def test_legacy_access_token_without_type_is_temporarily_accepted():
+def test_token_with_wrong_issuer_is_rejected():
     now = datetime.now(timezone.utc)
     payload = {
         "sub": "00000000-0000-0000-0000-000000000001",
         "iat": now,
         "exp": now + timedelta(minutes=5),
-        "jti": "legacy-token",
+        "jti": "wrong-issuer-token",
+        "typ": "access",
+        "iss": "not-healthos-core",
+        "aud": settings.auth_audience,
+    }
+    token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+    with pytest.raises(JWTError):
+        decode_token_with_type(token, expected_type="access", allow_legacy_access=False)
+
+
+def test_token_with_wrong_audience_is_rejected():
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": "00000000-0000-0000-0000-000000000001",
+        "iat": now,
+        "exp": now + timedelta(minutes=5),
+        "jti": "wrong-audience-token",
+        "typ": "access",
+        "iss": settings.auth_issuer,
+        "aud": "not-healthos-clients",
+    }
+    token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+    with pytest.raises(JWTError):
+        decode_token_with_type(token, expected_type="access", allow_legacy_access=False)
+
+
+def test_legacy_access_token_without_iss_aud_is_accepted_in_local_mode(monkeypatch):
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("NODE_ENV", raising=False)
+
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": "00000000-0000-0000-0000-000000000001",
+        "iat": now,
+        "exp": now + timedelta(minutes=5),
+        "jti": "legacy-token-local",
     }
     legacy_token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
     decoded = decode_token_with_type(legacy_token, expected_type="access", allow_legacy_access=True)
     assert decoded.get("sub") == payload["sub"]
+
+
+def test_legacy_access_token_without_iss_aud_is_rejected_in_production(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": "00000000-0000-0000-0000-000000000001",
+        "iat": now,
+        "exp": now + timedelta(minutes=5),
+        "jti": "legacy-token-production",
+    }
+    legacy_token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+    with pytest.raises(JWTError):
+        decode_token_with_type(legacy_token, expected_type="access", allow_legacy_access=True)

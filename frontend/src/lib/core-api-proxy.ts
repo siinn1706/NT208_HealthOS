@@ -13,17 +13,52 @@
 
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { createHash } from "node:crypto";
+import { REFRESH_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import {
+  applyAuthCookies,
+  clearAuthCookies,
+  refreshCoreAuth,
+} from "@/lib/bff-auth-session";
 import { CORE_API_URL } from "@/lib/env";
 
-/** Read the Core BE JWT from the session cookie (set by /api/v1/auth on login). */
-async function getSessionToken(): Promise<string | null> {
+type AuthCookies = {
+  accessToken: string | null;
+  refreshToken: string | null;
+};
+
+/** Read session and refresh cookies used by BFF auth routes. */
+async function getAuthCookies(): Promise<AuthCookies> {
   try {
     const cookieStore = await cookies();
-    return cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+    return {
+      accessToken: cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null,
+      refreshToken: cookieStore.get(REFRESH_COOKIE_NAME)?.value ?? null,
+    };
   } catch {
-    return null;
+    return { accessToken: null, refreshToken: null };
   }
+}
+
+type RefreshResult = Awaited<ReturnType<typeof refreshCoreAuth>>;
+const inFlightRefreshes = new Map<string, Promise<RefreshResult>>();
+
+function refreshLockKey(refreshToken: string): string {
+  return createHash("sha256").update(refreshToken).digest("hex");
+}
+
+async function refreshWithLock(refreshToken: string): Promise<RefreshResult> {
+  const key = refreshLockKey(refreshToken);
+  const existing = inFlightRefreshes.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const nextRefresh = refreshCoreAuth(refreshToken).finally(() => {
+    inFlightRefreshes.delete(key);
+  });
+  inFlightRefreshes.set(key, nextRefresh);
+  return nextRefresh;
 }
 
 type ProxyOptions = {
@@ -171,6 +206,22 @@ function normalizeUpstreamError(
   return { error: { code: fallbackCode, message: fallbackMessage } };
 }
 
+function buildCoreProxyResponse(status: number, responseData: unknown): NextResponse {
+  if (status >= 500) {
+    return NextResponse.json(
+      { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error" } },
+      { status },
+    );
+  }
+
+  if (status >= 400) {
+    const normalized = normalizeUpstreamError(responseData, status);
+    return NextResponse.json(normalized, { status });
+  }
+
+  return NextResponse.json(responseData ?? {}, { status });
+}
+
 /**
  * Proxy a Next.js route handler request to the Core BE and return the response.
  *
@@ -183,11 +234,11 @@ export async function coreProxy(
   corePath: string,
   options: ProxyOptions = {}
 ): Promise<NextResponse> {
-  const token = await getSessionToken();
+  const { accessToken, refreshToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
   const method = options.method ?? req.method;
 
-  if (requireAuth && !token) {
+  if (requireAuth && !accessToken) {
     return NextResponse.json(
       { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
       { status: 401 }
@@ -206,9 +257,6 @@ export async function coreProxy(
     if (incomingCt) headers["Content-Type"] = incomingCt;
   } else {
     headers["Content-Type"] = "application/json";
-  }
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
   }
 
   // Build query string from original request
@@ -259,55 +307,99 @@ export async function coreProxy(
     }
   }
 
-  // 30-second upstream timeout prevents indefinite BFF hangs
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  type ProxyAttemptResult =
+    | { kind: "http"; status: number; data: unknown }
+    | { kind: "transport"; status: number; code: string; message: string };
 
-  try {
-    const upstream = await fetch(url.toString(), {
-      method,
-      headers,
-      body: bodyForFetch,
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-
-    const responseData = await upstream.json().catch(() => null);
-
-    // Sanitize 5xx responses — do not leak stack traces or internal paths to the browser
-    if (upstream.status >= 500) {
-      return NextResponse.json(
-        { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error" } },
-        { status: upstream.status }
-      );
+  async function executeCoreRequest(authToken: string | null): Promise<ProxyAttemptResult> {
+    const requestHeaders: Record<string, string> = { ...headers };
+    if (authToken) {
+      requestHeaders.Authorization = `Bearer ${authToken}`;
     }
 
-    // Normalize 4xx responses to the canonical { error: { code, message, ... } } shape.
-    // FastAPI sometimes returns { "detail": "..." } or { "detail": { ... } }; the
-    // browser-side parseApiError handles both, but normalising at the proxy edge
-    // means every consumer in the app sees the same contract.
-    if (upstream.status >= 400) {
-      const normalized = normalizeUpstreamError(responseData, upstream.status);
-      return NextResponse.json(normalized, { status: upstream.status });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+    try {
+      const upstream = await fetch(url.toString(), {
+        method,
+        headers: requestHeaders,
+        body: bodyForFetch,
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return {
+        kind: "http",
+        status: upstream.status,
+        data: await upstream.json().catch(() => null),
+      };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const isTimeout = err instanceof Error && err.name === "AbortError";
+      return {
+        kind: "transport",
+        status: isTimeout ? 504 : 503,
+        code: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
+        message: isTimeout
+          ? "Core service request timed out."
+          : "Core service is temporarily unavailable.",
+      };
     }
+  }
 
-    return NextResponse.json(responseData ?? {}, { status: upstream.status });
-  } catch (err) {
-    clearTimeout(timeoutId);
-    const isTimeout = err instanceof Error && err.name === "AbortError";
+  const firstAttempt = await executeCoreRequest(accessToken);
+  if (firstAttempt.kind === "transport") {
     return NextResponse.json(
-      {
-        error: {
-          code: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
-          message: isTimeout
-            ? "Core service request timed out."
-            : "Core service is temporarily unavailable.",
-        },
-      },
-      { status: isTimeout ? 504 : 503 }
+      { error: { code: firstAttempt.code, message: firstAttempt.message } },
+      { status: firstAttempt.status },
     );
   }
+
+  if (firstAttempt.status !== 401 || !requireAuth) {
+    return buildCoreProxyResponse(firstAttempt.status, firstAttempt.data);
+  }
+
+  if (!refreshToken) {
+    const response = NextResponse.json(
+      { error: { code: "AUTH_REQUIRED", message: "Session expired. Please sign in again." } },
+      { status: 401 },
+    );
+    clearAuthCookies(response);
+    return response;
+  }
+
+  const refreshed = await refreshWithLock(refreshToken);
+  if (!refreshed.ok) {
+    const response = NextResponse.json(
+      { error: { code: "AUTH_REQUIRED", message: "Session expired. Please sign in again." } },
+      { status: 401 },
+    );
+    clearAuthCookies(response);
+    return response;
+  }
+
+  const retryAttempt = await executeCoreRequest(refreshed.auth.access_token);
+  if (retryAttempt.kind === "transport") {
+    const response = NextResponse.json(
+      { error: { code: retryAttempt.code, message: retryAttempt.message } },
+      { status: retryAttempt.status },
+    );
+    applyAuthCookies(response, refreshed.auth);
+    return response;
+  }
+
+  if (retryAttempt.status === 401) {
+    const response = NextResponse.json(
+      { error: { code: "AUTH_REQUIRED", message: "Session expired. Please sign in again." } },
+      { status: 401 },
+    );
+    clearAuthCookies(response);
+    return response;
+  }
+
+  const response = buildCoreProxyResponse(retryAttempt.status, retryAttempt.data);
+  applyAuthCookies(response, refreshed.auth);
+  return response;
 }
 
 /**
@@ -341,9 +433,9 @@ export async function coreFetchStream(
   corePath: string,
   options: { method?: string; bodySizeLimit?: number; requireAuth?: boolean } = {},
 ): Promise<Response> {
-  const token = await getSessionToken();
+  const { accessToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
-  if (requireAuth && !token) {
+  if (requireAuth && !accessToken) {
     return new Response(
       JSON.stringify({
         error: { code: "AUTH_REQUIRED", message: "Authentication required." },
@@ -357,7 +449,7 @@ export async function coreFetchStream(
     "Content-Type": "application/json",
     Accept: "text/event-stream",
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
   const url = new URL(corePath, CORE_API_URL);
   req.nextUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));

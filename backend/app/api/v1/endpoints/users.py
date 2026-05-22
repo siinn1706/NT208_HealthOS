@@ -40,6 +40,7 @@ from app.services import data_export as export_svc
 from app.services.account_deletion import AlreadyPendingDeletion, IdentityCheckFailed
 from app.services.audit import audit
 from app.services.data_export import ExportRateLimited
+from app.services.security_logging import log_resource_access_denied
 from app.services.otp import (
     decrement_attempts,
     get_latest_active_otp,
@@ -299,6 +300,13 @@ async def get_data_export_status(
 ) -> DataExportRequestResponse:
     req = await export_svc.get_request(db, current_user.id, request_id)
     if req is None:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="users",
+            resource_id=str(request_id),
+            http_method="GET",
+            route="/users/me/export/{request_id}",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Export request not found."},
@@ -327,6 +335,13 @@ async def get_data_export_download(
 
     req = await export_svc.get_request(db, current_user.id, request_id)
     if req is None:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="users",
+            resource_id=str(request_id),
+            http_method="GET",
+            route="/users/me/export/{request_id}/download",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Export request not found."},

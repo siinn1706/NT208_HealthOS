@@ -33,6 +33,7 @@ from app.schemas.prescriptions import (
 from app.services import prescription_assets as asset_svc
 from app.services.audit import audit
 from app.services.prescription_assets import AssetMimeNotAllowed, AssetTooLargeError
+from app.services.security_logging import log_resource_access_denied
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,13 @@ async def get_prescription_asset_url(
         db=db, user=current_user, appointment_id=appointment_id, asset_id=asset_id
     )
     if asset is None:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="prescriptions",
+            resource_id=str(asset_id),
+            http_method="GET",
+            route="/appointments/{appointment_id}/prescription/assets/{asset_id}/url",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Asset not found."},

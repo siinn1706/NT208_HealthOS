@@ -7,8 +7,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 from app.core.config import settings
-from app.models import health_goal  # noqa: F401
-from app.models.core import Base
+import app.models  # noqa: F401 — ensure all mappers register
+from app.models import Base
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +36,15 @@ SyncSessionLocal = sessionmaker(bind=sync_engine)
 
 @asynccontextmanager
 async def get_db_context():
-    """Async context manager for FastAPI."""
+    """Async context manager for FastAPI.
+
+    Callers MUST `await session.commit()` after mutations. Read-only callers
+    leave the transaction to implicit-rollback at session close (no-op).
+    Exceptions roll back automatically.
+    """
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            await session.commit()
         except Exception:
             logger.exception("Transaction rolled back")
             await session.rollback()
@@ -49,7 +53,12 @@ async def get_db_context():
 
 @contextmanager
 def get_sync_db_context():
-    """Sync context manager for Celery tasks."""
+    """Sync context manager for Celery tasks.
+
+    # NOTE: sync session keeps auto-commit-on-success for Celery — caller owns
+    # full-task transactions; see plans/260522-1717-db-session-tx-safety-alembic/
+    # Intentionally asymmetric with get_db / get_db_context (async FastAPI sessions).
+    """
     session = SyncSessionLocal()
     try:
         yield session
@@ -63,11 +72,15 @@ def get_sync_db_context():
 
 
 async def get_db() -> AsyncSession:
-    """FastAPI dependency — yields an async DB session."""
+    """FastAPI dependency — yields an async DB session.
+
+    Callers MUST `await db.commit()` after mutations. Read-only handlers
+    leave the transaction to implicit-rollback at session close (no-op).
+    Exceptions roll back automatically.
+    """
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            await session.commit()
         except Exception:
             logger.exception("Transaction rolled back")
             await session.rollback()

@@ -2,26 +2,32 @@
  * BFF Auth — session endpoint.
  *
  * GET    /api/v1/auth/session  → return current user from httpOnly cookie
- * POST   /api/v1/auth/session  → login with email+password, set httpOnly cookie
- * DELETE /api/v1/auth/session  → logout, clear httpOnly cookie
+ * POST   /api/v1/auth/session  → login with email+password, set httpOnly cookies
+ * DELETE /api/v1/auth/session  → logout, clear auth cookies
  */
-
-// TODO: Add per-IP rate limiting (e.g., @upstash/ratelimit) to auth endpoints
 
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import {
   META_COOKIE_NAME,
+  REFRESH_COOKIE_NAME,
   SESSION_COOKIE_MAX_AGE,
   SESSION_COOKIE_NAME,
-  SESSION_COOKIE_SECURE,
 } from "@/lib/bff-auth-cookie";
+import {
+  applyAuthCookies,
+  clearAuthCookies,
+  readCoreAuthPayload,
+  revokeCoreSession,
+  sessionUserFromCoreAuth,
+} from "@/lib/bff-auth-session";
 import { CORE_API_URL } from "@/lib/env";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
+import { normalizeCoreError } from "@/lib/bff-error-normalize";
 
 // ── Dev bypass ───────────────────────────────────────────────────────────────
-// Set DEV_BYPASS_CREDENTIALS in .env.local as "email:password" pairs
-// e.g.  DEV_BYPASS_CREDENTIALS=admin:admin,test@x.com:pass
-// Falls back to a built-in "admin"/"admin" shortcut when NODE_ENV !== production.
+// Set DEV_BYPASS_CREDENTIALS in .env.local as "identifier:password" pairs.
+// Example: DEV_BYPASS_CREDENTIALS=admin:admin,test@x.com:pass
 const DEV_BYPASS_PREFIX = "DEV_BYPASS:";
 
 function getDevBypassMap(): Map<string, { email: string; display_name: string }> {
@@ -29,7 +35,7 @@ function getDevBypassMap(): Map<string, { email: string; display_name: string }>
   if (process.env.NODE_ENV === "production") return map;
 
   const raw = process.env.DEV_BYPASS_CREDENTIALS;
-  if (!raw) return map;  // No credentials configured, no bypass
+  if (!raw) return map;
   for (const entry of raw.split(",")) {
     const [loginId, password] = entry.trim().split(":");
     if (loginId && password) {
@@ -56,49 +62,15 @@ export async function GET() {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
-    // #region agent log
-    fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
-      body: JSON.stringify({
-        sessionId: "462cac",
-        runId: "chat-session-pre-fix",
-        hypothesisId: "H3",
-        location: "api/v1/auth/route.ts:59",
-        message: "Session request missing cookie token",
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     return NextResponse.json(
       { error: { code: "AUTH_REQUIRED", message: "No active session." } },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  // Dev bypass — only active outside production; never trust DEV_BYPASS tokens in prod
   if (process.env.NODE_ENV !== "production") {
     const devUser = parseDevToken(token);
     if (devUser) {
-      // #region agent log
-      fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
-        body: JSON.stringify({
-          sessionId: "462cac",
-          runId: "chat-session-pre-fix",
-          hypothesisId: "H1",
-          location: "api/v1/auth/route.ts:72",
-          message: "Session response from dev bypass",
-          data: {
-            hasUserIdField: true,
-            hasIdField: false,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       return NextResponse.json({
         data: {
           user_id: "00000000-0000-0000-0000-000000000001",
@@ -119,35 +91,12 @@ export async function GET() {
     });
 
     const data = await res.json().catch(() => null);
-    // #region agent log
-    fetch("http://127.0.0.1:7381/ingest/d2543e7e-56f7-498b-ad41-376a106f7a6b", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "462cac" },
-      body: JSON.stringify({
-        sessionId: "462cac",
-        runId: "chat-session-pre-fix",
-        hypothesisId: "H1",
-        location: "api/v1/auth/route.ts:104",
-        message: "Session upstream payload shape",
-        data: {
-          upstreamOk: res.ok,
-          upstreamStatus: res.status,
-          hasData: Boolean(data?.data),
-          hasUserIdField: typeof data?.data?.user_id === "string",
-          hasIdField: typeof data?.data?.id === "string",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     if (!res.ok) {
-      // Token invalid/expired — clear both session and meta cookies
       const response = NextResponse.json(
         data ?? { error: { code: "AUTH_REQUIRED", message: "Session expired." } },
-        { status: 401 }
+        { status: 401 },
       );
-      response.cookies.delete(SESSION_COOKIE_NAME);
-      response.cookies.delete(META_COOKIE_NAME);
+      clearAuthCookies(response);
       return response;
     }
 
@@ -155,22 +104,22 @@ export async function GET() {
   } catch {
     return NextResponse.json(
       { error: { code: "UPSTREAM_ERROR", message: "Could not reach Core API." } },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }
 
-// ── POST /api/v1/auth/session → Login, set cookie ───────────────────────────
+// ── POST /api/v1/auth/session → Login, set cookies ──────────────────────────
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body?.identifier || !body?.password) {
     return NextResponse.json(
       { error: { code: "VALIDATION_ERROR", message: "identifier and password are required." } },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // Dev bypass — short-circuit backend when credentials match
+  // Pre-bypass: dev-only short-circuit MUST run before limiter so hot-reload login loop is not throttled (RT-11).
   if (process.env.NODE_ENV !== "production") {
     const devMap = getDevBypassMap();
     const key = `${body.identifier}::${body.password}`;
@@ -188,7 +137,7 @@ export async function POST(req: NextRequest) {
       });
       response.cookies.set(SESSION_COOKIE_NAME, makeDevToken(devUser.email), {
         httpOnly: true,
-        secure: false, // dev bypass always insecure
+        secure: false,
         sameSite: "lax",
         maxAge: SESSION_COOKIE_MAX_AGE,
         path: "/",
@@ -196,13 +145,17 @@ export async function POST(req: NextRequest) {
       response.cookies.set(
         META_COOKIE_NAME,
         JSON.stringify({ onboarding_status: "completed" }),
-        { httpOnly: true, secure: false, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
+        { httpOnly: true, secure: false, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" },
       );
+      response.cookies.delete(REFRESH_COOKIE_NAME);
       return response;
     }
   }
 
   try {
+    const limited = await enforceRateLimit(req, RATE_LIMITS["auth:login"]);
+    if (limited) return limited;
+
     const coreRes = await fetch(`${CORE_API_URL}/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -213,77 +166,42 @@ export async function POST(req: NextRequest) {
     const data = await coreRes.json().catch(() => null);
     if (!coreRes.ok) {
       return NextResponse.json(
-        data ?? { error: { code: "AUTH_FAILED", message: "Login failed." } },
-        { status: coreRes.status }
+        normalizeCoreError(data, coreRes.status),
+        { status: coreRes.status },
       );
     }
 
-    const accessToken: string | undefined = data?.data?.access_token;
-    if (!accessToken) {
+    const auth = readCoreAuthPayload(data);
+    if (!auth) {
       return NextResponse.json(
         { error: { code: "UPSTREAM_ERROR", message: "Core API returned no token." } },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
     const response = NextResponse.json(
-      {
-        data: {
-          user_id: data.data.user_id,
-          email: data.data.email,
-          username: data.data.username ?? null,
-          display_name: data.data.display_name,
-          avatar_url: data.data.avatar_url ?? null,
-          onboarding_status: data.data.onboarding_status ?? "pending",
-        },
-      },
-      { status: 200 }
+      { data: sessionUserFromCoreAuth(auth) },
+      { status: 200 },
     );
-
-    response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
-      httpOnly: true,
-      secure: SESSION_COOKIE_SECURE,
-      sameSite: "lax",
-      maxAge: SESSION_COOKIE_MAX_AGE,
-      path: "/",
-    });
-
-    // httpOnly meta cookie consumed only by src/proxy.ts for the onboarding gate.
-    response.cookies.set(
-      META_COOKIE_NAME,
-      JSON.stringify({ onboarding_status: data.data.onboarding_status ?? "pending" }),
-      { httpOnly: true, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
-    );
-
+    applyAuthCookies(response, auth);
     return response;
   } catch {
     return NextResponse.json(
       { error: { code: "UPSTREAM_ERROR", message: "Could not reach Core API." } },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }
 
-// ── DELETE /api/v1/auth/session → Logout, clear cookie + revoke JWT on Core ─
+// ── DELETE /api/v1/auth/session → Logout, clear cookies ─────────────────────
 export async function DELETE() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value ?? null;
 
-  // Best-effort: notify Core to blacklist the JWT
-  if (token) {
-    try {
-      await fetch(`${CORE_API_URL}/v1/auth/logout`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-    } catch {
-      // Proceed with cookie deletion even if Core is unreachable
-    }
-  }
+  await revokeCoreSession(accessToken, refreshToken);
 
   const response = NextResponse.json({ data: { success: true } }, { status: 200 });
-  response.cookies.delete(SESSION_COOKIE_NAME);
-  response.cookies.delete(META_COOKIE_NAME);
+  clearAuthCookies(response);
   return response;
 }

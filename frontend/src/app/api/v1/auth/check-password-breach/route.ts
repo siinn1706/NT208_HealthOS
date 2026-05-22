@@ -2,14 +2,20 @@
  * BFF Auth — check if password has been in a data breach (HIBP).
  * POST /api/v1/auth/check-password-breach
  *
- * Calls Core BE: POST /v1/auth/check-password-breach
+ * Deprecated: use GET /check-password-breach/range/[prefix] instead.
+ * Kept for backwards compatibility with lower rate-limit cap.
  */
 import { NextRequest, NextResponse } from "next/server";
 
 import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout, parseJsonBody } from "@/lib/bff-fetch-utils";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
+import { normalizeCoreError } from "@/lib/bff-error-normalize";
 
 export async function POST(req: NextRequest) {
+  const limited = await enforceRateLimit(req, RATE_LIMITS["auth:pwned_range_post_legacy"]);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await parseJsonBody(req);
@@ -44,5 +50,8 @@ export async function POST(req: NextRequest) {
   }
 
   const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    return NextResponse.json(normalizeCoreError(data, res.status), { status: res.status });
+  }
   return NextResponse.json(data, { status: res.status });
 }

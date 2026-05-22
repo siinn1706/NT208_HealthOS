@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
-from app.core.config import settings
+from app.core.config import is_production, settings
 from app.models.core import User
 
 
@@ -57,6 +57,8 @@ def create_access_token(
         # so we can revoke every device's session in one stroke (B7 P1-5).
         "iat": now,
         "exp": expire,
+        "iss": settings.auth_issuer,
+        "aud": settings.auth_audience,
         "jti": str(uuid.uuid4()),  # unique token ID for per-token revocation
         "typ": "access",
     }
@@ -74,8 +76,39 @@ def create_ws_ticket(subject: str | Any, expires_seconds: int = 120) -> str:
 
 
 def decode_access_token(token: str) -> dict:
-    """Raises JWTError if token is invalid or expired."""
-    return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    """Decode and validate JWT claims.
+
+    In local/non-production mode we allow a short compatibility path for legacy
+    tokens that predate `iss`/`aud`, but only when BOTH claims are absent.
+    """
+    strict_decode_options = {
+        "require_iss": True,
+        "require_aud": True,
+    }
+    try:
+        return jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+            issuer=settings.auth_issuer,
+            audience=settings.auth_audience,
+            options=strict_decode_options,
+        )
+    except JWTError as strict_error:
+        if is_production():
+            raise
+
+        legacy_payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+            options={"verify_iss": False, "verify_aud": False},
+        )
+        # Only allow compatibility for truly legacy tokens where BOTH claims
+        # are absent. Tokens with present-but-wrong claims must still fail.
+        if "iss" in legacy_payload or "aud" in legacy_payload:
+            raise strict_error
+        return legacy_payload
 
 
 def decode_token_with_type(

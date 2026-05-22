@@ -63,6 +63,9 @@ infra/logs/*
 frontend/test-results/
 TEST-MANIFEST.md
 
+# Generated OpenAPI dumps (regenerate via backend/scripts/dump_openapi.py)
+contracts/openapi/_generated/*.yaml
+
 # AI local model cache (model is distributed via Google Drive)
 services/ai-worker/models/
 

@@ -154,6 +154,7 @@ async def create_direct_conversation(
         conv = await chat_svc.create_direct_conversation(db, current_user.id, body.target_user_id)
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
+    await db.commit()
     dto = await chat_svc._build_conversation_dto(db, conv, current_user.id)
 
     # Notify the target user that a new conversation was created
@@ -186,6 +187,7 @@ async def create_group_conversation(
         )
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
+    await db.commit()
     return ConversationResponse(data=await chat_svc._build_conversation_dto(db, conv, current_user.id))
 
 
@@ -226,6 +228,7 @@ async def accept_conversation(
         await chat_svc.accept_conversation(db, conversation_id, current_user.id)
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
 
 @router.post(
@@ -243,6 +246,7 @@ async def reject_conversation(
         await chat_svc.reject_conversation(db, conversation_id, current_user.id)
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
 
 @router.patch(
@@ -328,6 +332,7 @@ async def send_message(
         )
     except (ValueError, PermissionError) as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+    await db.commit()
 
     # Broadcast to all members in the conversation room
     await _notify_conversation(
@@ -432,6 +437,7 @@ async def edit_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
     await _notify_conversation(conversation_id, "chat.message.edited", msg.model_dump(mode="json"))
     return MessageResponse(data=msg)
@@ -458,6 +464,7 @@ async def recall_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
     await _notify_conversation(conversation_id, "chat.message.recalled", msg.model_dump(mode="json"))
     return MessageResponse(data=msg)
@@ -482,8 +489,9 @@ async def react_to_message(
         msg = await chat_svc.react_to_message(
             db, message_id, conversation_id, current_user.id, body.emoji
         )
-    except ValueError as exc:
+    except (ValueError, PermissionError) as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+    await db.commit()
 
     await _notify_conversation(conversation_id, "chat.message.reacted", msg.model_dump(mode="json"))
     return MessageResponse(data=msg)
@@ -525,6 +533,7 @@ async def pin_message(
         await chat_svc.pin_message(db, message_id, conversation_id, current_user.id)
     except ValueError as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+    await db.commit()
     await _notify_conversation(
         conversation_id,
         "chat.message.pinned",
@@ -548,6 +557,7 @@ async def unpin_message(
         await chat_svc.unpin_message(db, message_id, conversation_id, current_user.id)
     except ValueError as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+    await db.commit()
     await _notify_conversation(
         conversation_id,
         "chat.message.unpinned",
@@ -569,9 +579,13 @@ async def mark_read(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    await chat_svc.mark_conversation_read(
-        db, conversation_id, current_user.id, body.last_read_message_id
-    )
+    try:
+        await chat_svc.mark_conversation_read(
+            db, conversation_id, current_user.id, body.last_read_message_id
+        )
+    except ValueError as exc:
+        raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+    await db.commit()
     # Notify room so senders see double-tick
     await _notify_conversation(
         conversation_id,
