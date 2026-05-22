@@ -13,7 +13,8 @@ from alembic import context
 
 # ── Import all models so autogenerate can see them ──────────────────────────
 from app.core.config import settings
-from app.models.core import Base  # noqa: F401 — registers all ORM metadata
+import app.models  # noqa: F401 — registers all ORM metadata
+from app.models import Base
 
 # ── Alembic Config object ────────────────────────────────────────────────────
 config = context.config

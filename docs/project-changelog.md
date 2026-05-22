@@ -8,6 +8,12 @@
 
 ### Added
 
+#### DB Session Transaction Safety & Alembic Model Registry (2026-05-22)
+- **Transaction safety refactor**: Removed implicit `await session.commit()` from `get_db()` and `get_db_context()` dependency injectors. Write paths now explicitly commit; read paths do not. Rollback-on-exception preserved.
+- **Model registry consolidation**: Created `backend/app/models/__init__.py` as single source of truth for ORM registration. `alembic/env.py` now imports `app.models` package, ensuring Alembic autogenerate sees all tables (audit, emergency, health_goal, etc.) without FastAPI app import side-effects.
+- **Missing commit audit**: Identified and fixed 11 conversation handlers in `api/v1/endpoints/conversations.py` that relied on implicit commit. All handlers now explicitly call `await db.commit()` on success path.
+- **Safety tests**: Added `tests/api/v1/test_get_db_transaction_safety.py` (test read endpoint doesn't persist mutations; write endpoint persists through new transaction shape) + `tests/startup/test_model_registry.py` (metadata includes all non-device ORM tables). 354 backend tests pass. No device sync semantics changed.
+
 #### BFF Auth Rate-Limit Security Hardening (2026-05-22)
 - **AST-based debug fetch guard** (`frontend/src/app/api/v1/auth/__tests__/no-debug-fetch-guard.test.ts`) — TypeScript compiler walks all auth route.ts files, blocks localhost/debug fetch calls at compile-time via allow-list contract validation
 - **Rate-limit primitive** (`frontend/src/lib/bff-rate-limit.ts`) — Per-IP rate limiting with Redis store (atomic Lua INCR+PEXPIRE+PTTL) + memory fallback; table-driven limits config (login/register/OTP); test mode helpers gated on `VITEST=true`
