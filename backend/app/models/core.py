@@ -37,6 +37,7 @@ class MetricTypeEnum(str, Enum):
     WEIGHT_KG = "weight_kg"
     BLOOD_PRESSURE_SYSTOLIC = "blood_pressure_systolic"
     BLOOD_PRESSURE_DIASTOLIC = "blood_pressure_diastolic"
+    WATER_ML = "water_ml"
 
 
 class WearableSourceEnum(str, Enum):

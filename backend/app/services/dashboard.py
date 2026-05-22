@@ -103,6 +103,59 @@ def _sum_nutrition_value(meals: list[Meal], key: str) -> float:
     return total
 
 
+async def _today_water_ml(db: AsyncSession, user_id: uuid.UUID) -> float:
+    """Sum all water_ml metrics recorded within UTC today."""
+    start, end = _today_window()
+    rows = (
+        await db.execute(
+            select(HealthMetric.value).where(
+                and_(
+                    HealthMetric.user_id == user_id,
+                    HealthMetric.metric_type == MetricTypeEnum.WATER_ML,
+                    HealthMetric.recorded_at >= start,
+                    HealthMetric.recorded_at <= end,
+                    HealthMetric.is_deleted.is_(False),
+                )
+            )
+        )
+    ).scalars().all()
+    return sum(float(v) for v in rows)
+
+
+async def _load_goal_targets(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> dict[str, float]:
+    """Load user-specific goal targets from user_health_goals.
+
+    Returns a dict like {"water_ml": 2000, "steps": 10000, "calories": 2000}.
+    Falls back to built-in defaults for missing goals.
+    """
+    from sqlalchemy import text
+
+    defaults: dict[str, float] = {
+        "water_ml": 2000.0,
+        "steps": 10000.0,
+        "calories": 2000.0,
+    }
+    try:
+        rows = (
+            await db.execute(
+                text(
+                    "SELECT metric_type, target_value FROM user_health_goals "
+                    "WHERE user_id = :uid AND period_type = 'daily'"
+                ),
+                {"uid": user_id},
+            )
+        ).fetchall()
+        for metric_type, target_value in rows:
+            if metric_type in defaults and isinstance(target_value, (int, float)):
+                defaults[metric_type] = float(target_value)
+    except Exception:
+        _LOGGER.debug("user_health_goals lookup failed, using defaults")
+    return defaults
+
+
 async def get_dashboard_summary(
     db: AsyncSession,
     user: User,
@@ -123,6 +176,9 @@ async def get_dashboard_summary(
         if sleep_minutes is not None
         else None
     )
+
+    water_ml = await _today_water_ml(db, user.id)
+    goal_targets = await _load_goal_targets(db, user.id)
 
     alerts: list[DashboardAlert] = []
     if heart_rate is not None and heart_rate > 100:
@@ -158,7 +214,7 @@ async def get_dashboard_summary(
 
     ai_insight: DashboardAiInsight | None = None
     if calories_intake > 0:
-        ratio = calories_intake / 2000.0
+        ratio = calories_intake / goal_targets["calories"]
         if ratio < 0.6:
             insight_text = "CALORIE_LOW"
             insight_code = "CALORIE_LOW"
@@ -183,31 +239,31 @@ async def get_dashboard_summary(
         user_name=_safe_display_name(user),
         alerts=alerts,
         kpis={
-            "caloriesBurned": KpiValue(current=calories_burned, target=2000),
+            "caloriesBurned": KpiValue(current=calories_burned, target=goal_targets["calories"]),
             "sleepScore": KpiValue(current=sleep_score, target=100),
             "heartRate": KpiValue(current=heart_rate, target=100),
-            "steps": KpiValue(current=steps, target=10000),
+            "steps": KpiValue(current=steps, target=goal_targets["steps"]),
         },
         goals=[
             DashboardGoal(
                 id="goal-water",
                 key="water",
-                current=None,
-                target=2000,
+                current=water_ml if water_ml > 0 else None,
+                target=goal_targets["water_ml"],
                 unit="ml",
             ),
             DashboardGoal(
                 id="goal-steps",
                 key="steps",
                 current=steps,
-                target=10000,
+                target=goal_targets["steps"],
                 unit="steps",
             ),
             DashboardGoal(
                 id="goal-calories",
                 key="calories",
                 current=calories_intake if calories_intake > 0 else None,
-                target=2000,
+                target=goal_targets["calories"],
                 unit="kcal",
             ),
         ],

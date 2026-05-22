@@ -84,37 +84,37 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 
 BREAKFAST_POOL = [
-    {"name": "Pho bo demo bowl", "calories": 450, "protein_g": 28, "carbs_g": 55, "fat_g": 12},
-    {"name": "Egg banh mi demo", "calories": 310, "protein_g": 14, "carbs_g": 40, "fat_g": 11},
-    {"name": "Chicken congee demo", "calories": 280, "protein_g": 18, "carbs_g": 38, "fat_g": 6},
-    {"name": "Hue noodle demo", "calories": 520, "protein_g": 32, "carbs_g": 60, "fat_g": 14},
-    {"name": "Sticky rice chicken demo", "calories": 420, "protein_g": 22, "carbs_g": 58, "fat_g": 10},
-    {"name": "Rice roll demo", "calories": 350, "protein_g": 16, "carbs_g": 48, "fat_g": 9},
-    {"name": "Clear noodle demo", "calories": 390, "protein_g": 20, "carbs_g": 52, "fat_g": 10},
+    {"name": "Phở bò tái nạm", "calories": 450, "protein_g": 28, "carbs_g": 55, "fat_g": 12},
+    {"name": "Bánh mì trứng ốp la", "calories": 310, "protein_g": 14, "carbs_g": 40, "fat_g": 11},
+    {"name": "Cháo gà", "calories": 280, "protein_g": 18, "carbs_g": 38, "fat_g": 6},
+    {"name": "Bún bò Huế", "calories": 520, "protein_g": 32, "carbs_g": 60, "fat_g": 14},
+    {"name": "Xôi gà", "calories": 420, "protein_g": 22, "carbs_g": 58, "fat_g": 10},
+    {"name": "Bánh cuốn nhân thịt", "calories": 350, "protein_g": 16, "carbs_g": 48, "fat_g": 9},
+    {"name": "Hủ tiếu Nam Vang", "calories": 390, "protein_g": 20, "carbs_g": 52, "fat_g": 10},
 ]
 LUNCH_POOL = [
-    {"name": "Rice with grilled pork demo", "calories": 680, "protein_g": 38, "carbs_g": 75, "fat_g": 20},
-    {"name": "Broken rice combo demo", "calories": 720, "protein_g": 40, "carbs_g": 78, "fat_g": 22},
-    {"name": "Crispy chicken rice demo", "calories": 650, "protein_g": 36, "carbs_g": 70, "fat_g": 18},
-    {"name": "Vermicelli pork demo", "calories": 560, "protein_g": 30, "carbs_g": 65, "fat_g": 15},
-    {"name": "Seafood noodles demo", "calories": 590, "protein_g": 28, "carbs_g": 68, "fat_g": 16},
-    {"name": "Fried rice demo", "calories": 630, "protein_g": 22, "carbs_g": 80, "fat_g": 18},
-    {"name": "Pork sandwich demo", "calories": 420, "protein_g": 22, "carbs_g": 50, "fat_g": 14},
+    {"name": "Cơm sườn nướng", "calories": 680, "protein_g": 38, "carbs_g": 75, "fat_g": 20},
+    {"name": "Cơm tấm bì chả", "calories": 720, "protein_g": 40, "carbs_g": 78, "fat_g": 22},
+    {"name": "Cơm gà chiên giòn", "calories": 650, "protein_g": 36, "carbs_g": 70, "fat_g": 18},
+    {"name": "Bún thịt nướng chả giò", "calories": 560, "protein_g": 30, "carbs_g": 65, "fat_g": 15},
+    {"name": "Mì xào hải sản", "calories": 590, "protein_g": 28, "carbs_g": 68, "fat_g": 16},
+    {"name": "Cơm chiên dương châu", "calories": 630, "protein_g": 22, "carbs_g": 80, "fat_g": 18},
+    {"name": "Bánh mì thịt nguội", "calories": 420, "protein_g": 22, "carbs_g": 50, "fat_g": 14},
 ]
 DINNER_POOL = [
-    {"name": "Rice and sour soup demo", "calories": 580, "protein_g": 32, "carbs_g": 68, "fat_g": 16},
-    {"name": "Chicken hotpot demo", "calories": 500, "protein_g": 38, "carbs_g": 42, "fat_g": 18},
-    {"name": "Braised fish rice demo", "calories": 540, "protein_g": 35, "carbs_g": 62, "fat_g": 14},
-    {"name": "Grilled chicken salad demo", "calories": 480, "protein_g": 42, "carbs_g": 30, "fat_g": 16},
-    {"name": "Tomato crab noodle demo", "calories": 430, "protein_g": 24, "carbs_g": 55, "fat_g": 12},
-    {"name": "Tom yum noodle demo", "calories": 460, "protein_g": 22, "carbs_g": 58, "fat_g": 14},
-    {"name": "Egg fried rice demo", "calories": 520, "protein_g": 18, "carbs_g": 70, "fat_g": 15},
+    {"name": "Cơm canh chua cá lóc", "calories": 580, "protein_g": 32, "carbs_g": 68, "fat_g": 16},
+    {"name": "Lẩu gà lá giang", "calories": 500, "protein_g": 38, "carbs_g": 42, "fat_g": 18},
+    {"name": "Cơm cá kho tộ", "calories": 540, "protein_g": 35, "carbs_g": 62, "fat_g": 14},
+    {"name": "Salad ức gà nướng", "calories": 480, "protein_g": 42, "carbs_g": 30, "fat_g": 16},
+    {"name": "Bún riêu cua", "calories": 430, "protein_g": 24, "carbs_g": 55, "fat_g": 12},
+    {"name": "Miến gà", "calories": 460, "protein_g": 22, "carbs_g": 58, "fat_g": 14},
+    {"name": "Cơm rang trứng", "calories": 520, "protein_g": 18, "carbs_g": 70, "fat_g": 15},
 ]
 SNACK_POOL = [
-    {"name": "Fruit yogurt demo", "calories": 180, "protein_g": 6, "carbs_g": 32, "fat_g": 3},
-    {"name": "Coffee biscuits demo", "calories": 220, "protein_g": 4, "carbs_g": 35, "fat_g": 8},
-    {"name": "Mango passionfruit demo", "calories": 150, "protein_g": 2, "carbs_g": 36, "fat_g": 1},
-    {"name": "Avocado smoothie demo", "calories": 260, "protein_g": 4, "carbs_g": 22, "fat_g": 16},
+    {"name": "Sữa chua trái cây", "calories": 180, "protein_g": 6, "carbs_g": 32, "fat_g": 3},
+    {"name": "Bánh quy cà phê", "calories": 220, "protein_g": 4, "carbs_g": 35, "fat_g": 8},
+    {"name": "Sinh tố xoài chanh dây", "calories": 150, "protein_g": 2, "carbs_g": 36, "fat_g": 1},
+    {"name": "Sinh tố bơ", "calories": 260, "protein_g": 4, "carbs_g": 22, "fat_g": 16},
 ]
 
 
@@ -288,6 +288,15 @@ def metric_value(options: SeedOptions, day: dt.date, idx: int, metric: str) -> f
     if metric == "weight":
         start_weight = 69.2 if options.scenario == "risk" else 68.5
         return round(start_weight - (idx * 0.025) + rng.uniform(-0.25, 0.25), 1)
+    if metric == "water_am":
+        # Morning water intake 400-700 ml
+        return round(rng.uniform(400, 700))
+    if metric == "water_pm":
+        # Afternoon/evening water intake 500-900 ml
+        return round(rng.uniform(500, 900))
+    if metric == "water_eve":
+        # Evening top-up 200-500 ml
+        return round(rng.uniform(200, 500))
     raise ValueError(metric)
 
 
@@ -397,7 +406,7 @@ async def seed_devices(db: AsyncSession, user: User, options: SeedOptions, count
         user_id=user.id,
         provider=WearableProviderEnum.HEALTH_CONNECT,
         external_account_id=key,
-        device_label=f"HealthOS Demo Device ({options.scenario})",
+        device_label=f"Thiết bị HealthOS ({options.scenario})",
         scopes=scopes,
         last_sync_status="partial" if options.scenario == "risk" else "ok",
         last_sync_error="LOW_ACTIVITY_SAMPLE" if options.scenario == "risk" else None,
@@ -452,6 +461,9 @@ async def seed_vitals(db: AsyncSession, user: User, options: SeedOptions, counte
                     "sleep",
                 ),
                 (MetricTypeEnum.WEIGHT_KG, metric_value(options, day, idx, "weight"), "kg", at_utc(day, 7), "weight"),
+                (MetricTypeEnum.WATER_ML, metric_value(options, day, idx, "water_am"), "ml", at_utc(day, 8), "water-am"),
+                (MetricTypeEnum.WATER_ML, metric_value(options, day, idx, "water_pm"), "ml", at_utc(day, 13), "water-pm"),
+                (MetricTypeEnum.WATER_ML, metric_value(options, day, idx, "water_eve"), "ml", at_utc(day, 20), "water-eve"),
             ]
         )
     for metric_type, value, unit, recorded_at, label in rows:
@@ -523,32 +535,32 @@ async def seed_meals(db: AsyncSession, user: User, options: SeedOptions, counter
 
 def appointment_templates(options: SeedOptions) -> list[dict]:
     base = [
-        {"offset": -24, "doctor": "Demo Clinician A", "specialty": "Primary Care", "reason": "Routine wellness review"},
-        {"offset": -10, "doctor": "Demo Clinician B", "specialty": "Cardiology", "reason": "Blood pressure follow-up"},
-        {"offset": 4, "doctor": "Demo Clinician C", "specialty": "Nutrition", "reason": "Nutrition check-in"},
-        {"offset": 14, "doctor": "Demo Clinician D", "specialty": "Internal Medicine", "reason": "Medication review"},
+        {"offset": -24, "doctor": "BS. Nguyễn Văn An", "specialty": "Đa khoa", "reason": "Khám tổng quát định kỳ"},
+        {"offset": -10, "doctor": "BS. Trần Thị Mai", "specialty": "Tim mạch", "reason": "Tái khám huyết áp"},
+        {"offset": 4, "doctor": "BS. Lê Hoàng Nam", "specialty": "Dinh dưỡng", "reason": "Tư vấn chế độ ăn"},
+        {"offset": 14, "doctor": "BS. Phạm Minh Tuấn", "specialty": "Nội khoa", "reason": "Đánh giá lại đơn thuốc"},
     ]
     if options.scenario in {"risk", "med-heavy"}:
-        base.append({"offset": 28, "doctor": "Demo Clinician E", "specialty": "Endocrinology", "reason": "Metabolic risk review"})
+        base.append({"offset": 28, "doctor": "BS. Võ Thanh Hà", "specialty": "Nội tiết", "reason": "Kiểm tra rối loạn chuyển hóa"})
     return base
 
 
 def prescription_payload(options: SeedOptions, idx: int, appt: dict, issued_at: dt.datetime) -> dict:
     meds = [
-        {"name": "Demo Lisinopril", "dosage": "10 mg tablet", "frequency": "once daily", "duration": "30 days", "notes": "Synthetic local testing row."},
-        {"name": "Demo Vitamin D", "dosage": "1000 IU capsule", "frequency": "once daily", "duration": "60 days", "notes": "Synthetic supplement example."},
+        {"name": "Lisinopril", "dosage": "10 mg viên nén", "frequency": "1 lần/ngày", "duration": "30 ngày", "notes": "Uống buổi sáng, theo dõi huyết áp."},
+        {"name": "Vitamin D3", "dosage": "1000 IU viên nang", "frequency": "1 lần/ngày", "duration": "60 ngày", "notes": "Bổ sung vitamin D, uống sau ăn."},
     ]
     if options.scenario == "med-heavy" or idx == 1:
-        meds.append({"name": "Demo Metformin", "dosage": "500 mg tablet", "frequency": "twice a day", "duration": "90 days", "notes": "Synthetic medication example."})
+        meds.append({"name": "Metformin", "dosage": "500 mg viên nén", "frequency": "2 lần/ngày", "duration": "90 ngày", "notes": "Uống sau ăn sáng và tối."})
     return {
         "_seed_tag": SEED_TAG,
         "id": seed_key("prescriptions", options.scenario, options.seed, f"rx:{idx}"),
         "issued_at": issued_at.isoformat(),
         "doctor": appt["doctor"],
-        "clinic": "HealthOS Demo Clinic",
+        "clinic": "Phòng khám Đa khoa Sài Gòn",
         "diagnosis": appt["reason"],
         "medicines": meds,
-        "notes": "Synthetic prescription JSON for local web testing only.",
+        "notes": "Đơn thuốc kê theo kết quả khám.",
     }
 
 
@@ -566,10 +578,10 @@ async def seed_appointments(db: AsyncSession, user: User, options: SeedOptions, 
             appointment_date=appt_at,
             doctor_name=tpl["doctor"],
             specialty=tpl["specialty"],
-            clinic="HealthOS Demo Clinic",
+            clinic="Phòng khám Đa khoa Sài Gòn",
             diagnosis=tpl["reason"],
             status=status,
-            notes=f"{SEED_TAG} synthetic appointment {idx}; no real care data.",
+            notes=f"{SEED_TAG} Lịch khám {tpl['specialty']} — {tpl['reason']}.",
             prescription=prescription_payload(options, idx, tpl, appt_at) if idx in {1, 3} or options.scenario == "med-heavy" else None,
         )
         await add_if_missing(db, appointment, counters, "appointments")
@@ -579,17 +591,17 @@ async def seed_appointments(db: AsyncSession, user: User, options: SeedOptions, 
 
 def medication_templates(options: SeedOptions) -> list[dict]:
     templates = [
-        {"name": "Demo Lisinopril", "strength": "10 mg", "times": ["08:00"], "supply": 16, "status": "active"},
-        {"name": "Demo Vitamin D", "strength": "1000 IU", "times": ["08:00"], "supply": 45, "status": "active"},
-        {"name": "Demo Allergy Relief", "strength": "10 mg", "times": ["20:00"], "supply": 0, "status": "completed"},
+        {"name": "Lisinopril", "strength": "10 mg", "times": ["08:00"], "supply": 16, "status": "active"},
+        {"name": "Vitamin D3", "strength": "1000 IU", "times": ["08:00"], "supply": 45, "status": "active"},
+        {"name": "Cetirizine (dị ứng)", "strength": "10 mg", "times": ["20:00"], "supply": 0, "status": "completed"},
     ]
     if options.scenario in {"risk", "med-heavy"}:
-        templates.append({"name": "Demo Metformin", "strength": "500 mg", "times": ["08:00", "20:00"], "supply": 12, "status": "active"})
+        templates.append({"name": "Metformin", "strength": "500 mg", "times": ["08:00", "20:00"], "supply": 12, "status": "active"})
     if options.scenario == "med-heavy":
         templates.extend(
             [
-                {"name": "Demo Statin", "strength": "20 mg", "times": ["21:00"], "supply": 7, "status": "paused"},
-                {"name": "Demo Antibiotic", "strength": "500 mg", "times": ["07:00", "15:00", "23:00"], "supply": 0, "status": "cancelled"},
+                {"name": "Atorvastatin", "strength": "20 mg", "times": ["21:00"], "supply": 7, "status": "paused"},
+                {"name": "Amoxicillin", "strength": "500 mg", "times": ["07:00", "15:00", "23:00"], "supply": 0, "status": "cancelled"},
             ]
         )
     return templates
@@ -667,9 +679,9 @@ async def seed_medications(
             generic_name=None,
             strength=tpl["strength"],
             form="tablet",
-            instructions="Synthetic local testing schedule.",
-            prescriber="Demo Clinician B",
-            clinic="HealthOS Demo Clinic",
+            instructions="Uống theo chỉ định của bác sĩ.",
+            prescriber="BS. Trần Thị Mai",
+            clinic="Phòng khám Đa khoa Sài Gòn",
             start_date=start,
             end_date=end_date,
             status=status,
@@ -680,7 +692,7 @@ async def seed_medications(
             next_refill_estimated_at=next_refill,
             review_due_at=utc_today() + dt.timedelta(days=35) if active else None,
             dedupe_key=key,
-            notes=f"{SEED_TAG} synthetic medication plan.",
+            notes=f"{SEED_TAG} Kê theo đơn tái khám.",
         )
         await add_if_missing(db, plan, counters, "medications")
         plan_ids.append(plan.id)
@@ -694,7 +706,7 @@ async def seed_medications(
                 title=tpl["name"],
                 remind_time=dose_time,
                 repeat=ReminderRepeatEnum.DAILY,
-                note=f"{SEED_TAG} dose reminder for synthetic medication.",
+                note=f"{SEED_TAG} Nhắc uống thuốc đúng giờ.",
                 done=not active,
                 tzid=DEFAULT_TZID,
                 time_of_day=dt.time(hour, minute),
@@ -711,9 +723,9 @@ async def seed_medications(
 
 async def seed_reminders(db: AsyncSession, user: User, options: SeedOptions, counters: Counter) -> list[uuid.UUID]:
     reminders = [
-        {"type": ReminderTypeEnum.EXERCISE, "title": "Demo evening walk", "time": "18:30", "repeat": ReminderRepeatEnum.DAILY},
-        {"type": ReminderTypeEnum.APPOINTMENT, "title": "Demo prepare questions", "time": "09:00", "repeat": ReminderRepeatEnum.WEEKLY},
-        {"type": ReminderTypeEnum.MEDICINE, "title": "Demo refill check", "time": "20:30", "repeat": ReminderRepeatEnum.WEEKLY},
+        {"type": ReminderTypeEnum.EXERCISE, "title": "Đi bộ buổi tối", "time": "18:30", "repeat": ReminderRepeatEnum.DAILY},
+        {"type": ReminderTypeEnum.APPOINTMENT, "title": "Chuẩn bị câu hỏi cho bác sĩ", "time": "09:00", "repeat": ReminderRepeatEnum.WEEKLY},
+        {"type": ReminderTypeEnum.MEDICINE, "title": "Kiểm tra thuốc còn lại", "time": "20:30", "repeat": ReminderRepeatEnum.WEEKLY},
     ]
     ids: list[uuid.UUID] = []
     for idx, tpl in enumerate(reminders):
@@ -726,7 +738,7 @@ async def seed_reminders(db: AsyncSession, user: User, options: SeedOptions, cou
             title=tpl["title"],
             remind_time=tpl["time"],
             repeat=tpl["repeat"],
-            note=f"{SEED_TAG} synthetic ad-hoc reminder.",
+            note=f"{SEED_TAG} Nhắc nhở hàng ngày.",
             done=False,
             tzid=DEFAULT_TZID,
             time_of_day=dt.time(hour, minute),
@@ -753,10 +765,10 @@ async def seed_notifications(
         return
 
     items = [
-        ("Demo health summary ready", "Your synthetic health summary is ready for local testing.", NotificationKindEnum.INFO, "/dashboard/reports"),
-        ("Demo medication reminder", "A synthetic medication dose is due soon.", NotificationKindEnum.REMINDER, "/dashboard/medications"),
-        ("Demo appointment update", "A synthetic appointment is coming up.", NotificationKindEnum.APPOINTMENT, "/dashboard/appointments"),
-        ("Demo device sync", "Synthetic Health Connect data synced.", NotificationKindEnum.INFO, "/dashboard/settings/devices"),
+        ("Báo cáo sức khỏe đã sẵn sàng", "Báo cáo sức khỏe tuần này đã được tạo xong, bạn có thể xem ngay.", NotificationKindEnum.INFO, "/dashboard/reports"),
+        ("Nhắc uống thuốc", "Sắp đến giờ uống Lisinopril 10 mg buổi sáng.", NotificationKindEnum.REMINDER, "/dashboard/medications"),
+        ("Lịch hẹn sắp tới", "Bạn có lịch khám với BS. Lê Hoàng Nam vào tuần sau.", NotificationKindEnum.APPOINTMENT, "/dashboard/appointments"),
+        ("Đồng bộ thiết bị", "Dữ liệu Health Connect đã được đồng bộ thành công.", NotificationKindEnum.INFO, "/dashboard/settings/devices"),
     ]
     now = dt.datetime.now(dt.timezone.utc)
     for idx, (title, body, kind, link) in enumerate(items):
@@ -777,18 +789,40 @@ async def seed_notifications(
 
 
 async def seed_goal(db: AsyncSession, user: User, options: SeedOptions, counters: Counter) -> None:
+    # ── BMI / weight goal (user_bmi_goals table) ──
     existing = (await db.execute(select(HealthGoal).where(HealthGoal.user_id == user.id))).scalar_one_or_none()
     if existing is not None:
         counters["goals.skipped_existing_user_goal"] += 1
-        return
-    target_weight = 66.5 if options.scenario != "risk" else 67.0
-    goal = HealthGoal(
-        id=stable_uuid(user.id, seed_key("goals", options.scenario, options.seed, "bmi-goal")),
-        user_id=user.id,
-        target_weight_kg=target_weight,
-        deadline=utc_today() + dt.timedelta(days=90),
-    )
-    await add_if_missing(db, goal, counters, "goals")
+    else:
+        target_weight = 66.5 if options.scenario != "risk" else 67.0
+        goal = HealthGoal(
+            id=stable_uuid(user.id, seed_key("goals", options.scenario, options.seed, "bmi-goal")),
+            user_id=user.id,
+            target_weight_kg=target_weight,
+            deadline=utc_today() + dt.timedelta(days=90),
+        )
+        await add_if_missing(db, goal, counters, "goals")
+
+    # ── Daily health goals (user_health_goals table) ──
+    from sqlalchemy import text
+
+    daily_goals = [
+        ("water_ml", 2000.0),
+        ("steps", 10000.0),
+        ("calories", 2000.0),
+    ]
+    now = dt.datetime.now(dt.timezone.utc)
+    for metric_type, target_value in daily_goals:
+        goal_id = stable_uuid(user.id, seed_key("goals", options.scenario, options.seed, f"daily-{metric_type}"))
+        await db.execute(
+            text(
+                "INSERT INTO user_health_goals (id, user_id, metric_type, target_value, period_type, created_at, updated_at) "
+                "VALUES (:id, :uid, :mt, :tv, 'daily', :now, :now) "
+                "ON CONFLICT (user_id, metric_type, period_type) DO NOTHING"
+            ),
+            {"id": goal_id, "uid": user.id, "mt": metric_type, "tv": target_value, "now": now},
+        )
+        counters["goals.daily_goal_upserted"] += 1
 
 
 async def seed_reports(db: AsyncSession, user: User, options: SeedOptions, counters: Counter) -> list[uuid.UUID]:
@@ -802,14 +836,14 @@ async def seed_reports(db: AsyncSession, user: User, options: SeedOptions, count
             status=status,
             period="30d",
             sections=["vitals", "nutrition", "activity", "sleep", "medication"],
-            locale="en",
+            locale="vi",
             include_sensitive=False,
             requested_at=now - dt.timedelta(days=idx + 1),
             completed_at=now - dt.timedelta(days=idx + 1, minutes=-4) if status == "failed" else None,
             expires_at=None,
             bytes=None,
             sha256=None,
-            error=f"{SEED_TAG}: synthetic PDF export failure" if status == "failed" else f"{SEED_TAG}: synthetic pending export",
+            error=f"{SEED_TAG}: Xuất báo cáo PDF thất bại — vui lòng thử lại" if status == "failed" else f"{SEED_TAG}: Đang xử lý xuất báo cáo",
         )
         await add_if_missing(db, req, counters, "reports")
         ids.append(req.id)

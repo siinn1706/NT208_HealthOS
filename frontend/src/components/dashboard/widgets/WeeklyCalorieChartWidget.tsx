@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import type { EChartsOption } from "echarts";
@@ -59,6 +59,16 @@ export function WeeklyCalorieChartWidget({
   const [isPending, startTransition] = useTransition();
 
   const periodDays = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+
+  // Fetch data on mount when no static/initial data provided
+  useEffect(() => {
+    if (staticData || initialData.length > 0) return;
+    startTransition(async () => {
+      const fresh = await fetchMealCalories(periodDays);
+      setChartData(fresh);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
     if (newPeriod === "custom") return;

@@ -76,14 +76,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {/* ── Row 2: Quick Actions ── */}
       <QuickActionsWidget />
 
-      {/* ── Row 3: Vitals Chart | Anomaly + Doses ── */}
+      {/* ── Row 3: Vitals Chart + Reminders | Anomaly + Doses ── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-stretch">
-        {/* Left: chart + Pro banner + today's schedule */}
+        {/* Left: chart + today's schedule */}
         <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
           <Suspense fallback={<ChartSkeleton />}>
             <VitalsChartWidget initialData={vitals} initialPeriod={period} />
           </Suspense>
-          <UpgradeBannerWidget />
           <div className="flex-1 min-h-0">
             <UpcomingRemindersWidget reminders={reminders} fill />
           </div>
@@ -98,13 +97,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </div>
 
-      {/* ── Row 4: Trend Summary ── */}
+      {/* ── Row 4: HealthOS Pro banner (full-width) ── */}
+      <UpgradeBannerWidget />
+
+      {/* ── Row 5: Trend Summary ── */}
       <TrendSummaryWidget initialPeriod={period} />
 
-      {/* Row 5: Weekly Calorie Chart */}
+      {/* Row 6: Weekly Calorie Chart */}
       <WeeklyCalorieChartWidget initialPeriod={period} />
 
-      {/* Row 6: Goals + AI Insight + Exercise Suggestions */}
+      {/* Row 7: Goals + AI Insight + Exercise Suggestions */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3 items-stretch">
         <GoalProgressWidget goals={summary.goals} />
         <AiInsightWidget insight={summary.aiInsight} />

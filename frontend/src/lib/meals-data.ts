@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import type { Meal, DailyNutritionSummary, NutritionSuggestion, WeeklyCaloriePoint } from "@/types/api";
+import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { CORE_API_URL } from "@/lib/env";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const DEFAULT_CALORIE_TARGET = 2000;
 
 function startOfDayISO(date: Date): string {
@@ -61,27 +62,52 @@ function normalizeMeal(row: any): Meal {
   };
 }
 
+/** Read JWT from the session cookie for direct Core BE calls. */
+async function getToken(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    return store.get(SESSION_COOKIE_NAME)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchMeals(
   dateFrom: string,
   dateTo: string,
-  perPage = 200
+  perPage = 100
 ): Promise<Meal[]> {
   try {
-    const reqHeaders = await headers();
-    const params = new URLSearchParams({
-      page: "1",
-      per_page: String(perPage),
-      date_from: dateFrom,
-      date_to: dateTo,
-    });
-    const res = await fetch(`${APP_URL}/api/v1/meals?${params.toString()}`, {
-      cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
-    });
-    if (!res.ok) return [];
-    const json = await res.json().catch(() => null);
-    if (!Array.isArray(json?.data)) return [];
-    return json.data.map(normalizeMeal);
+    const token = await getToken();
+    if (!token) return [];
+
+    // Core BE caps per_page at 100 — paginate when more are needed
+    const cap = Math.min(perPage, 100);
+    let allMeals: Meal[] = [];
+    let page = 1;
+    let total = Infinity;
+
+    while (allMeals.length < total) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(cap),
+        date_from: dateFrom,
+        date_to: dateTo,
+      });
+      const res = await fetch(`${CORE_API_URL}/v1/meals?${params.toString()}`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return allMeals;
+      const json = await res.json().catch(() => null);
+      if (!Array.isArray(json?.data)) return allMeals;
+      allMeals = allMeals.concat(json.data.map(normalizeMeal));
+      total = typeof json?.meta?.total === "number" ? json.meta.total : allMeals.length;
+      if (json.data.length < cap) break; // last page
+      page++;
+      if (page > 20) break; // safety limit
+    }
+    return allMeals;
   } catch {
     return [];
   }
@@ -151,10 +177,11 @@ export async function getWeeklyCalorieChart(): Promise<WeeklyCaloriePoint[]> {
 /** Return nutrition suggestions based on today's intake */
 export async function getNutritionSuggestions(): Promise<NutritionSuggestion[]> {
   try {
-    const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/nutrition/suggestions`, {
+    const token = await getToken();
+    if (!token) return [];
+    const res = await fetch(`${CORE_API_URL}/v1/nutrition/suggestions`, {
       cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return [];
     const json = await res.json().catch(() => null);

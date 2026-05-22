@@ -1,8 +1,8 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 
 import type { DataSlice } from "@/types/data-slice";
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { CORE_API_URL } from "@/lib/env";
 
 export interface DashboardSummary {
   userName: string;
@@ -59,6 +59,15 @@ export interface ReminderItem {
   done?: boolean;
 }
 
+async function getToken(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    return store.get(SESSION_COOKIE_NAME)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function emptySummary(): DashboardSummary {
   return {
     userName: "",
@@ -81,10 +90,11 @@ function numOrNull(value: any): number | null {
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   try {
-    const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/dashboard/summary`, {
+    const token = await getToken();
+    if (!token) return emptySummary();
+    const res = await fetch(`${CORE_API_URL}/v1/dashboard/summary`, {
       cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return emptySummary();
 
@@ -160,10 +170,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 
 export async function getVitalsTimeseries(days: number = 7): Promise<VitalPoint[]> {
   try {
-    const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/vitals/timeseries?days=${days}`, {
+    const token = await getToken();
+    if (!token) return [];
+    const res = await fetch(`${CORE_API_URL}/v1/vitals/timeseries?days=${days}`, {
       cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return [];
     const json = await res.json().catch(() => null);
@@ -194,10 +205,13 @@ export async function getVitalsTimeseries(days: number = 7): Promise<VitalPoint[
  */
 export async function getUpcomingReminders(): Promise<DataSlice<ReminderItem[]>> {
   try {
-    const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/reminders/upcoming`, {
+    const token = await getToken();
+    if (!token) {
+      return { status: "recoverable_error", error: { code: "AUTH_REQUIRED", message: "Authentication required." } };
+    }
+    const res = await fetch(`${CORE_API_URL}/v1/reminders/upcoming`, {
       cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     if (!res.ok) {
@@ -260,10 +274,11 @@ export async function getUpcomingReminders(): Promise<DataSlice<ReminderItem[]>>
 
 export async function getExerciseSuggestions(): Promise<ExerciseSuggestion[]> {
   try {
-    const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/dashboard/exercise-suggestions`, {
+    const token = await getToken();
+    if (!token) return [];
+    const res = await fetch(`${CORE_API_URL}/v1/dashboard/exercise-suggestions`, {
       cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return [];
     const json = await res.json().catch(() => null);
