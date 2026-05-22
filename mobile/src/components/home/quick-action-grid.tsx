@@ -3,13 +3,14 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { PressableCard } from '../primitives/pressable-card';
-import { IconCoffee, IconActivity, IconSparkle, IconHeartPulse } from '../../icons';
+import { IconCoffee, IconActivity, IconSparkle, IconHeartPulse, IconTrendUp } from '../../icons';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size: number; color: string }>> = {
-  IconCoffee:    IconCoffee,
-  IconActivity:  IconActivity,
-  IconSparkle:   IconSparkle,
-  IconHeartPulse:IconHeartPulse,
+  IconCoffee:     IconCoffee,
+  IconActivity:   IconActivity,
+  IconSparkle:    IconSparkle,
+  IconHeartPulse: IconHeartPulse,
+  IconTrendUp:    IconTrendUp,
 };
 
 interface QuickAction {
@@ -37,6 +38,7 @@ export function QuickActionGrid({ actions, onPress }: QuickActionGridProps) {
             key={a.id}
             onPress={() => onPress?.(a.id)}
             haptic
+            accessibilityLabel={a.label}
             style={[styles.tile, { backgroundColor: bg, borderRadius: t.radius.lg }]}
           >
             <View style={[styles.iconBox, { backgroundColor: isDanger ? `${t.danger}28` : t.brandSoft }]}>

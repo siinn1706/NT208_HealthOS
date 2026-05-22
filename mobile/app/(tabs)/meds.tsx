@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
 import { SectionHeader } from '../../src/components/layout/section-header';
@@ -16,6 +17,7 @@ import { IconRefresh, IconPlus, IconBell, ChevronRight } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
 import { useApiQuery, invalidateApiQuery } from '../../src/api/query';
+import { humanizeError } from '../../src/api/error-message';
 import { medicationService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
 import { toDoseRow, toMedicationCard } from '../../src/api/viewModels';
@@ -23,6 +25,7 @@ import type { Adherence, MedicationDose, MedicationPlan } from '../../../shared/
 
 export default function MedsScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const loadMeds = useCallback(async () => {
     const [plansResult, dosesResult] = await Promise.allSettled([
       medicationService.list('active'),
@@ -59,15 +62,15 @@ export default function MedsScreen() {
   return (
     <Screen>
       <TopBar
-        title="Medications"
-        subtitle={`${plans.length} active · ${overallAdherence ? Math.round(overallAdherence.percent) : 0}% adherence`}
+        title={i18n('meds.title')}
+        subtitle={i18n('meds.activeAdherence', { count: plans.length, pct: overallAdherence ? Math.round(overallAdherence.percent) : 0 })}
         right={
           <View style={styles.actions}>
-            <IconButton variant="subtle" icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel="Refresh" onPress={meds.reload} />
+            <IconButton variant="subtle" icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel={i18n('common.retry')} onPress={meds.reload} />
             <IconButton
               icon={<IconPlus size={20} color={t.brand} />}
               variant="filled"
-              accessibilityLabel="Add medication"
+              accessibilityLabel={i18n('meds.addMedication')}
               onPress={() => router.push('/meds/add')}
             />
           </View>
@@ -75,13 +78,13 @@ export default function MedsScreen() {
       />
 
       {meds.isLoading && (
-        <ApiState title="Loading medications" loading skeleton={<MedListSkeleton />} />
+        <ApiState title={i18n('meds.loadingMedications')} loading skeleton={<MedListSkeleton />} />
       )}
       {meds.error && (
         <ApiState
-          title="Medications unavailable"
-          message={meds.error.message}
-          actionLabel="Retry"
+          title={i18n('meds.medicationsUnavailable')}
+          message={humanizeError(meds.error)}
+          actionLabel={i18n('common.retry')}
           onAction={meds.reload}
         />
       )}
@@ -103,10 +106,10 @@ export default function MedsScreen() {
         />
       )}
 
-      <SectionHeader title="Today's doses" action="View all" onActionPress={() => router.push('/meds/history')} />
+      <SectionHeader title={i18n('meds.todaysDoses')} action={i18n('common.viewAll')} onActionPress={() => router.push('/meds/history')} />
       <Card tight>
         {doses.length === 0 && !meds.isLoading ? (
-          <ApiState title="No doses today" message="Today's medication schedule is empty." />
+          <ApiState title={i18n('meds.noDosesToday')} message={i18n('meds.noDosesTodayMessage')} />
         ) : (
           doses.map((dose) => {
             const row = toDoseRow(dose);
@@ -125,9 +128,14 @@ export default function MedsScreen() {
         )}
       </Card>
 
-      <SectionHeader title="Active medications" />
+      <SectionHeader title={i18n('meds.activeMedications')} />
       {plans.length === 0 && !meds.isLoading && !meds.error && (
-        <ApiState title="No active medications" message="Add a medication or import one from a prescription." />
+        <ApiState
+          title={i18n('meds.noActiveMedications')}
+          message={i18n('meds.noActiveMedicationsMessage')}
+          actionLabel={i18n('meds.addMedication')}
+          onAction={() => router.push('/meds/add')}
+        />
       )}
       {plans.map((plan) => (
         <MedCard
@@ -137,18 +145,18 @@ export default function MedsScreen() {
         />
       ))}
 
-      <SectionHeader title="Reminders" />
+      <SectionHeader title={i18n('reminders.title')} />
       <Pressable
         onPress={() => router.push('/reminders' as never)}
         style={[styles.remindersRow, { backgroundColor: t.card, borderColor: t.border }]}
       >
         <IconBell size={20} color={t.brand} />
-        <Text style={[typography.bodyMed, { color: t.ink, flex: 1, marginLeft: 12 }]}>Medication reminders</Text>
+        <Text style={[typography.bodyMed, { color: t.ink, flex: 1, marginLeft: 12 }]}>{i18n('meds.medicationReminders')}</Text>
         <ChevronRight size={18} color={t.ink3} />
       </Pressable>
 
       <Text style={[typography.micro, { color: t.ink4, textAlign: 'center', marginTop: 16 }]}>
-        Not a substitute for medical advice. Always follow your doctor's instructions.
+        {i18n('meds.disclaimer')}
       </Text>
     </Screen>
   );

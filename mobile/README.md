@@ -63,3 +63,7 @@ Switch via **Me → Preferences → Appearance**:
 - Mobile-native Core API client under `src/api/`
 - Bearer session storage via `expo-secure-store`
 - Backend gaps are guarded in-screen instead of backed by local mock fixtures
+
+## Shared API contracts
+
+Mobile imports Core API types from `../shared/api-contracts`. `metro.config.js` watches the repository root and resolves modules from `mobile/node_modules` first, so Expo can bundle those shared TypeScript files without copying them into `mobile/src`. `tsconfig.json` includes `../shared/**/*.ts` so strict type-checking sees the same contract source Metro bundles.

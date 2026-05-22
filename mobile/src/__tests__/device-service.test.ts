@@ -75,6 +75,37 @@ describe('deviceService', () => {
     });
   });
 
+  it('strips empty and null next_changes_tokens before ingest serialization', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { inserted: 0, updated: 0, deleted: 0, skipped: 0, errors: [] } } as never);
+
+    await expect(
+      deviceService.ingest(
+        'dev-1',
+        {
+          provider: 'health_connect',
+          next_changes_tokens: {
+            Steps: 'token-steps',
+            HeartRate: '',
+            SleepSession: '   ',
+            Weight: null as unknown as string,
+          },
+        } as never,
+        'idem-2',
+      ),
+    ).resolves.toEqual({ inserted: 0, updated: 0, deleted: 0, skipped: 0, errors: [] });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev-1/ingest', {
+      method: 'POST',
+      json: {
+        provider: 'health_connect',
+        next_changes_tokens: {
+          Steps: 'token-steps',
+        },
+      },
+      headers: { 'Idempotency-Key': 'idem-2' },
+    });
+  });
+
   it('updates Health Connect permission scopes', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: { id: 'dev-3', scopes: ['Steps', 'HeartRate'] } } as never);
 

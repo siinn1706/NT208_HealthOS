@@ -14,6 +14,10 @@ export interface MealCreateInput {
   image?: MobileUploadFile | null;
 }
 
+export interface MealCreateOptions {
+  idempotencyKey?: string | null;
+}
+
 export interface MealAnalysisStatus {
   meal_id?: string;
   job_id: string | null;
@@ -32,7 +36,11 @@ export const mealService = {
     return response.data;
   },
 
-  async create(input: MealCreateInput) {
+  async create(input: MealCreateInput, options: MealCreateOptions = {}) {
+    const headers = options.idempotencyKey
+      ? { 'Idempotency-Key': options.idempotencyKey }
+      : undefined;
+
     if (input.image) {
       const form = createUploadFormData(
         {
@@ -45,12 +53,14 @@ export const mealService = {
       const response = await apiRequest<DataResponse<Meal>>('/v1/meals', {
         method: 'POST',
         body: form,
+        headers,
       });
       return response.data;
     }
 
     const response = await apiRequest<DataResponse<Meal>>('/v1/meals', {
       method: 'POST',
+      headers,
       json: {
         name: input.name,
         notes: input.notes,

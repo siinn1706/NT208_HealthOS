@@ -148,7 +148,26 @@
     "viewRelatedMetrics": "Xem các chỉ số liên quan",
     "nextUp": "Tiếp theo",
     "aiInsightCard": "Thông tin AI",
-    "vitalsMiniCard": "Sinh hiệu"
+    "vitalsMiniCard": "Sinh hiệu",
+    "loadingDashboard": "Đang tải bảng điều khiển",
+    "dashboardUnavailable": "Bảng điều khiển không khả dụng",
+    "noDashboardData": "Không có dữ liệu bảng điều khiển",
+    "noKpis": "Không có dữ liệu KPI",
+    "nothingScheduled": "Không có lịch",
+    "noAiInsight": "Chưa có thông tin AI",
+    "noVitals": "Chưa có sinh hiệu",
+    "reportAction": "Báo cáo",
+    "quickActionMeal": "Bữa ăn",
+    "quickActionVitals": "Sinh hiệu",
+    "quickActionAi": "AI",
+    "quickActionInsights": "Phân tích",
+    "searchAccessibility": "Tìm kiếm",
+    "notificationsAccessibility": "Thông báo",
+    "dashboardEmptyMessage": "Hệ thống chưa có dữ liệu tổng quan cho tài khoản này.",
+    "noKpisMessage": "Kết nối dữ liệu sức khỏe hoặc mục tiêu để hiển thị phần này.",
+    "nothingScheduledMessage": "Các nhắc nhở sắp tới sẽ hiển thị ở đây.",
+    "noAiInsightMessage": "Thông tin chi tiết sẽ xuất hiện khi có đủ tín hiệu sức khỏe.",
+    "noVitalsMessage": "Sinh hiệu từ hệ thống sẽ xuất hiện sau khi đồng bộ hoặc nhập tay."
   },
   "care": {
     "title": "Chăm sóc",
@@ -195,7 +214,9 @@
     "joinVideoVisit": "Tham gia khám video",
     "appointmentDetail": "Chi tiết lịch hẹn",
     "createAppointment": "Tạo lịch hẹn",
-    "prescriptionDetail": "Chi tiết đơn thuốc"
+    "prescriptionDetail": "Chi tiết đơn thuốc",
+    "bookAppointmentCta": "Đặt lịch hẹn",
+    "noAppointmentsCta": "Không tìm thấy lịch hẹn. Thử bộ lọc khác hoặc đặt lịch mới."
   },
   "meals": {
     "title": "Bữa ăn",
@@ -305,7 +326,18 @@
     "searchDrugDatabase": "Tìm kiếm cơ sở dữ liệu thuốc",
     "searchDrugDatabaseSub": "Tìm theo tên thương hiệu hoặc hoạt chất",
     "enterManually": "Nhập thủ công",
-    "enterManuallySub": "Tự nhập thông tin thuốc"
+    "enterManuallySub": "Tự nhập thông tin thuốc",
+    "loadingMedications": "Đang tải thuốc",
+    "medicationsUnavailable": "Thuốc không khả dụng",
+    "activeAdherence": "{{count}} đang dùng · {{pct}}% tuân thủ",
+    "todaysDoses": "Liều hôm nay",
+    "noDosesToday": "Không có liều hôm nay",
+    "activeMedications": "Thuốc đang dùng",
+    "noActiveMedications": "Không có thuốc đang dùng",
+    "medicationReminders": "Nhắc nhở thuốc",
+    "disclaimer": "Không thay thế lời khuyên y tế. Luôn làm theo hướng dẫn của bác sĩ.",
+    "noDosesTodayMessage": "Lịch dùng thuốc hôm nay đang trống.",
+    "noActiveMedicationsMessage": "Thêm thuốc hoặc nhập từ đơn thuốc."
   },
   "reminders": {
     "title": "Nhắc nhở",
@@ -477,7 +509,20 @@
     "aiStatus": "Sẵn sàng hỗ trợ · Luôn riêng tư",
     "attachFile": "Đính kèm tệp",
     "messagePlaceholder": "Nhắn tin HealthOS…",
-    "sendMessage": "Gửi tin nhắn"
+    "sendMessage": "Gửi tin nhắn",
+    "subtitle": "Nhóm chăm sóc & Trợ lý AI",
+    "searchPlaceholder": "Tìm kiếm cuộc trò chuyện…",
+    "newChat": "Trò chuyện mới",
+    "startingAiConversation": "Đang bắt đầu trò chuyện AI",
+    "aiConversationUnavailable": "Trò chuyện AI không khả dụng",
+    "loadingConversations": "Đang tải cuộc trò chuyện",
+    "conversationsUnavailable": "Cuộc trò chuyện không khả dụng",
+    "noConversations": "Không có cuộc trò chuyện",
+    "startNewConversation": "Bắt đầu cuộc trò chuyện mới",
+    "aiConversationError": "Không thể mở trò chuyện AI.",
+    "searchAccessibility": "Tìm kiếm",
+    "noConversationsMessage": "Các cuộc trò chuyện với đội chăm sóc và AI đã chấp nhận sẽ hiển thị ở đây.",
+    "createConversationUnavailable": "Tính năng tạo cuộc trò chuyện chưa khả dụng."
   },
   "me": {
     "title": "Tôi",
@@ -488,7 +533,12 @@
     "addDevice": "Thêm thiết bị",
     "deviceDetail": "Chi tiết thiết bị",
     "emergencyCard": "Thẻ khẩn cấp",
-    "statCell": "Thống kê"
+    "statCell": "Thống kê",
+    "loadingProfile": "Đang tải hồ sơ",
+    "profileSyncIssue": "Vấn đề đồng bộ hồ sơ",
+    "languageUnavailable": "Cài đặt ngôn ngữ chưa khả dụng",
+    "signOutError": "Đăng xuất thất bại. Vui lòng thử lại.",
+    "versionLine": "NT208 HealthOS · v0.1.0 (di động)"
   },
   "forms": {
     "insurance": "Bảo hiểm",

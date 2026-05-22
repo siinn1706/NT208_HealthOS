@@ -32,15 +32,17 @@ export const DoseRow = React.memo(function DoseRow({ time, name, state: currentS
       <Text style={[{ fontSize: 14, fontWeight: '600', color: t.ink, flex: 1, marginRight: 8 }]} numberOfLines={1}>{name}</Text>
       {taken ? (
         <View style={[styles.takenBadge, { backgroundColor: t.success }]}>
-          <IconCheck size={14} color="#FFF" />
+          <IconCheck size={14} color={t.onBrand} />
         </View>
       ) : (
         <Pressable
           onPress={onTaken as () => void}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={i18n('meds.take')}
           style={[styles.takeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
         >
-          <Text style={[{ fontSize: 12, fontWeight: '600', color: '#FFF' }]}>{i18n('meds.take')}</Text>
+          <Text style={[{ fontSize: 12, fontWeight: '600', color: t.onBrand }]}>{i18n('meds.take')}</Text>
         </Pressable>
       )}
     </View>

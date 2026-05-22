@@ -9,4 +9,10 @@ module.exports = {
     'react/prop-types': 'off',
   },
   ignorePatterns: ['node_modules/', '.expo/', 'dist/'],
+  overrides: [
+    {
+      files: ['__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+      env: { jest: true },
+    },
+  ],
 };

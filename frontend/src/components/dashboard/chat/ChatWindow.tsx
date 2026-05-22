@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useMessages, useTypingState, findAiBotUserId } from "@/hooks/useChat";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
+import { useChatConvWs } from "@/hooks/useChatConvWs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
 import { PinnedMessages } from "./PinnedMessages";
@@ -206,18 +207,27 @@ export function ChatWindow({
     onAiStreamCompleted,
   ]);
 
+  // Global WS: kept for receiving broadcast events when it connects.
+  // Not used for isConnected/sendEvent — Turbopack does not proxy WS upgrades
+  // via rewrites(), so this socket is best-effort in dev.
+  useChatWs({
+    onEvent: handleWsEvent,
+    enabled: wsEnabled,
+    onReconnect: refetchActiveConversation,
+  });
+
+  // Per-conversation socket: authoritative connection for this chat window.
+  // Backend auto-joins conv:{id} on connect — no conv:join handshake needed.
   const {
     sendEvent,
     isConnected,
     sessionExpired,
     isReconnecting,
     reconnectNow,
-  } = useChatWs({
+  } = useChatConvWs({
+    conversationId: convId,
     onEvent: handleWsEvent,
     enabled: wsEnabled,
-    // After a transient WS drop, refetch the active conversation so any AI
-    // bot reply that completed while we were offline replaces the stuck
-    // `streaming` placeholder with the final DB row (FE review C6).
     onReconnect: refetchActiveConversation,
   });
 
@@ -231,20 +241,6 @@ export function ChatWindow({
         });
       },
     });
-
-  useEffect(() => {
-    if (!wsEnabled || !isConnected) return;
-    const conversationIds = Array.from(
-      new Set(
-        conversations
-          .map((item) => item.id)
-          .filter((id) => /^[0-9a-fA-F-]{36}$/.test(id))
-      )
-    );
-    for (const id of conversationIds) {
-      sendEvent("conv:join", { conversation_id: id });
-    }
-  }, [wsEnabled, isConnected, sendEvent, convId, conversations]);
 
   const { onKeyPress } = useTypingState(convId, sendEvent);
 
