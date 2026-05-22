@@ -2,7 +2,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +21,8 @@ _startup_logger = logging.getLogger("healthos")
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
+    from app.core.logging_setup import configure_logging
+    configure_logging(settings)
     try:
         await verify_startup_schema(application, engine)
     except RuntimeError:
@@ -83,6 +85,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     _startup_logger.exception("Unhandled exception: %s", exc)
+    from app.core.event_logging import log_event
+    log_event("http.5xx", "unhandled", "error",
+              route=request.url.path, exception_class=exc.__class__.__name__, status=500)
     return JSONResponse(
         status_code=500,
         content={
@@ -102,6 +107,25 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept", "Accept-Language", "X-Request-ID"],
 )
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    """Bind X-Request-ID for the request lifecycle; echo on response."""
+    import re
+    import uuid
+    from app.core.request_context import request_id_var
+
+    _RE = re.compile(r"^[A-Za-z0-9._\-]{1,128}$")
+    raw = request.headers.get("X-Request-ID", "")
+    rid = raw if _RE.match(raw) else uuid.uuid4().hex
+    token = request_id_var.set(rid)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_var.reset(token)
+    response.headers["X-Request-ID"] = rid
+    return response
 
 
 @app.middleware("http")
@@ -130,7 +154,24 @@ app.include_router(v1_router)
 app.include_router(chat_ws_router)
 
 
-@app.get("/metrics", include_in_schema=False)
+def _metrics_guard(request: Request) -> None:
+    """Allow /metrics only from trusted sources; 404 otherwise (don't advertise existence)."""
+    token = settings.metrics_token
+    if token and request.headers.get("X-Metrics-Token") == token:
+        return
+    if settings.metrics_allow_local:
+        client_host = request.client.host if request.client else ""
+        if (
+            client_host in {"127.0.0.1", "::1", "localhost"}
+            or client_host.startswith("10.")
+            or client_host.startswith("172.")
+            or client_host.startswith("192.168.")
+        ):
+            return
+    raise HTTPException(status_code=404)
+
+
+@app.get("/metrics", include_in_schema=False, dependencies=[Depends(_metrics_guard)])
 async def metrics() -> "Response":  # type: ignore[name-defined]
     """B7 review — Prometheus scrape endpoint.
 
@@ -155,6 +196,13 @@ async def metrics() -> "Response":  # type: ignore[name-defined]
 
 @app.get("/health")
 async def health() -> JSONResponse:
+    """Liveness probe — always 200 while process is running."""
+    return JSONResponse(content={"status": "ok"}, status_code=200)
+
+
+@app.get("/health/ready")
+async def health_ready() -> JSONResponse:
+    """Readiness probe — 503 if DB or Redis unreachable."""
     from app.adapters.redis_client import get_redis
     from app.adapters.database import engine
     from sqlalchemy import text

@@ -92,6 +92,7 @@ from app.services import oauth_links as oauth_link_svc
 from app.services.oauth_links import LastSignInMethodError, OAuthLinkConflict
 from app.models.audit import AuditEventTypeEnum
 from app.services.hibp import check_password_breach
+from app.core.event_logging import hash_email, log_event
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
@@ -194,10 +195,10 @@ async def login_with_password(
 
     user = await get_user_by_identifier(db, body.identifier)
     if user is None:
-        # Run a dummy bcrypt verify to equalise response time regardless of
-        # whether the identifier exists, preventing timing-based user enumeration.
         from app.core.security import verify_password as _vp, DUMMY_HASH as _DH
         _vp(body.password, _DH)
+        log_event("auth", "login_password", "invalid_credentials",
+                  email_hash=hash_email(body.identifier), ip=request.client.host if request.client else None)
         raise UnauthorizedException(
             message="Tên đăng nhập hoặc mật khẩu không đúng",
             code="INVALID_CREDENTIALS",
@@ -218,6 +219,8 @@ async def login_with_password(
             user_agent=request.headers.get("user-agent"),
             details={"locked_minutes": locked_minutes},
         )
+        log_event("auth", "login_password", "locked",
+                  user_id=str(user.id), ip=request.client.host if request.client else None)
         raise UnauthorizedException(
             code="ACCOUNT_LOCKED",
             message=f"Tài khoản đã bị khóa tạm thời. Vui lòng thử lại sau {locked_minutes} phút.",
@@ -233,6 +236,8 @@ async def login_with_password(
             user_agent=request.headers.get("user-agent"),
             details={"reason": "invalid_password"},
         )
+        log_event("auth", "login_password", "invalid_credentials",
+                  user_id=str(user.id), ip=request.client.host if request.client else None)
         raise UnauthorizedException(
             message="Tên đăng nhập hoặc mật khẩu không đúng",
             code="INVALID_CREDENTIALS",
@@ -264,6 +269,7 @@ async def login_with_password(
             MFA_LOGIN_CHALLENGE_TTL_SECONDS,
             json.dumps(challenge_payload),
         )
+        log_event("auth", "login_password", "mfa_required", user_id=str(user.id))
         return AuthLoginResponse(
             data=MfaLoginRequired(
                 challenge_id=challenge_id,
@@ -279,6 +285,8 @@ async def login_with_password(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    log_event("auth", "login_password", "ok",
+              user_id=str(user.id), ip=request.client.host if request.client else None)
     token = await _issue_auth_token(db=db, user=user, request=request)
     await db.commit()
     return AuthLoginResponse(data=token)
@@ -494,9 +502,8 @@ async def exchange_oauth_profile_for_token(
     try:
         user = await get_or_create_user_from_oauth(body, db)
     except UserPendingDeletion as exc:
-        # B7 review P0-3 — refuse OAuth sign-in for soft-deleted users so the
-        # BFF can route them to /login?restore=… instead of a JWT bounce.
         await db.rollback()
+        log_event("auth.oauth", "token_exchange", "account_pending_deletion", provider=body.provider)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
@@ -508,6 +515,8 @@ async def exchange_oauth_profile_for_token(
                 },
             },
         ) from exc
+    log_event("auth.oauth", "token_exchange", "ok",
+              user_id=str(user.id), provider=body.provider)
     token = await _issue_auth_token(db=db, user=user, request=request)
     await db.commit()
     return AuthTokenResponse(data=token)
@@ -779,6 +788,8 @@ async def request_email_otp(
             message="Không thể gửi email OTP. Vui lòng thử lại sau.",
         ) from exc
 
+    log_event("auth", "otp_request", "ok", email_hash=hash_email(body.email))
+
     # Best-effort DB audit (hybrid mode): Redis remains source of truth for OTP check.
     # If DB write fails, OTP flow still works via Redis.
     try:
@@ -857,7 +868,7 @@ async def verify_email_otp(
             await db.commit()
             if remaining_attempts <= 0:
                 await redis.delete(key)
-
+        log_event("auth", "otp_verify", "invalid", email_hash=hash_email(body.email))
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_INVALID",
@@ -906,9 +917,9 @@ async def verify_email_otp(
                 message="Không tìm thấy tài khoản với email này",
                 code="INVALID_CREDENTIALS",
             )
-        # Mark email as verified (OTP proves email ownership)
         if user.email_verified_at is None:
             user.email_verified_at = datetime.now(timezone.utc)
+        log_event("auth", "otp_verify", "ok", user_id=str(user.id))
         token = await _issue_auth_token(db=db, user=user, request=request)
         await db.commit()
         return AuthTokenResponse(data=token)
