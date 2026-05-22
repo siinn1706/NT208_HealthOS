@@ -1,0 +1,12 @@
+{
+  "name": "openapi-route-extractor",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AST-based Core API call-site extractor using ts-morph",
+  "scripts": {
+    "extract": "node extract-routes.mjs"
+  },
+  "dependencies": {
+    "ts-morph": "^22.0.0"
+  }
+}
