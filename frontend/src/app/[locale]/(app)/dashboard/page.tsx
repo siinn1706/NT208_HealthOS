@@ -76,23 +76,25 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {/* ── Row 2: Quick Actions ── */}
       <QuickActionsWidget />
 
-      {/* ── Row 3: Vitals Chart | Anomaly + Reminders + Doses ── */}
+      {/* ── Row 3: Vitals Chart | Anomaly + Doses ── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-stretch">
-        {/* Vitals chart + Upgrade banner — spans 2 of 3 columns */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+        {/* Left: chart + Pro banner + today's schedule */}
+        <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
           <Suspense fallback={<ChartSkeleton />}>
             <VitalsChartWidget initialData={vitals} initialPeriod={period} />
           </Suspense>
-          <div className="flex-1">
-            <UpgradeBannerWidget fill />
+          <UpgradeBannerWidget />
+          <div className="flex-1 min-h-0">
+            <UpcomingRemindersWidget reminders={reminders} fill />
           </div>
         </div>
 
-        {/* Right column: Anomaly alerts + Reminders + Doses */}
-        <div className="flex flex-col gap-4">
+        {/* Right: anomaly alerts + today's doses (fills column) */}
+        <div className="flex flex-col gap-4 min-h-0">
           <RealtimeAnomalyWidget />
-          <UpcomingRemindersWidget reminders={reminders} />
-          <TodayDosesPanel limit={3} variant="card" />
+          <div className="flex-1 min-h-0">
+            <TodayDosesPanel variant="card" fill />
+          </div>
         </div>
       </div>
 
