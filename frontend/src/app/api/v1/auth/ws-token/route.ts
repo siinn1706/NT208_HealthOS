@@ -3,13 +3,17 @@
  * GET → exchange session cookie for a short-lived Core WS ticket.
  */
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
 import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/bff-fetch-utils";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const limited = await enforceRateLimit(req, RATE_LIMITS["auth:ws_token"]);
+  if (limited) return limited;
+
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
 

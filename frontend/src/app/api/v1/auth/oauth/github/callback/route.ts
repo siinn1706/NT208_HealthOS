@@ -4,12 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeGitHubCodeForToken, getGitHubUserInfo, getGitHubEmails } from "@/lib/oauth/github";
-import {
-  META_COOKIE_NAME,
-  SESSION_COOKIE_MAX_AGE,
-  SESSION_COOKIE_NAME,
-  SESSION_COOKIE_SECURE,
-} from "@/lib/bff-auth-cookie";
+import { applyAuthCookies, readCoreAuthPayload } from "@/lib/bff-auth-session";
 import { CORE_API_URL } from "@/lib/env";
 import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
 import {
@@ -136,10 +131,12 @@ export async function GET(request: NextRequest) {
       throw new Error("Core BE authentication failed");
     }
 
-    const coreData = await coreRes.json();
-    const accessToken = coreData.data.access_token;
-
-    const onboardingStatus: string = coreData.data?.onboarding_status ?? "pending";
+    const coreData = await coreRes.json().catch(() => null);
+    const auth = readCoreAuthPayload(coreData);
+    if (!auth) {
+      throw new Error("Core BE returned no token payload");
+    }
+    const onboardingStatus = auth.onboarding_status ?? "pending";
 
     // ─── Create Session and Redirect ─────────────────────────────────────────
     const redirectTo = onboardingStatus === "completed"
@@ -150,21 +147,7 @@ export async function GET(request: NextRequest) {
       : buildLocalizedAppUrl(context, "/onboarding");
     const response = NextResponse.redirect(redirectTo);
 
-    // Session cookie (httpOnly — carries JWT)
-    response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
-      httpOnly: true,
-      secure: SESSION_COOKIE_SECURE,
-      sameSite: "lax",
-      maxAge: SESSION_COOKIE_MAX_AGE,
-      path: "/",
-    });
-
-    // Meta cookie (httpOnly — carries onboarding_status for src/proxy.ts)
-    response.cookies.set(
-      META_COOKIE_NAME,
-      JSON.stringify({ onboarding_status: onboardingStatus }),
-      { httpOnly: true, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
-    );
+    applyAuthCookies(response, auth);
 
     // Clear temporary OAuth cookies
     return withGitHubCookieCleanup(response);

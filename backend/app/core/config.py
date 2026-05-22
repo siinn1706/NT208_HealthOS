@@ -14,11 +14,26 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILE = BACKEND_ROOT / ".env"
 
+PRODUCTION_BLOCKED_SECRET_KEYS = {
+    "dev-secret-key-change-in-production",
+    "dev-secret-key-change-in-production-min-32-chars",
+}
+PRODUCTION_BLOCKED_STORAGE_CREDENTIALS = {
+    "minioadmin",
+    "change-me",
+    "changeme",
+}
+
 
 def _is_production() -> bool:
     """Check if running in production mode."""
     env = os.environ.get("APP_ENV", os.environ.get("NODE_ENV", "")).lower()
     return env == "production"
+
+
+def is_production() -> bool:
+    """Public helper for production-only guards across modules."""
+    return _is_production()
 
 
 class Settings(BaseSettings):
@@ -27,6 +42,8 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
     log_level: str = "info"
+    app_env: str = "development"
+    node_env: str = ""
 
     # Database
     database_url: str = ""
@@ -35,9 +52,6 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     # Accepted so .env files with a stray key do not break Settings; not applied to redis_url (local Redis often has no password).
     redis_password: str | None = None
-
-    # Shared secret for BFF↔Core hardening (optional; reserved for future request signing).
-    bff_shared_secret: str | None = None
 
     # Object Storage (MinIO / S3)
     storage_endpoint: str = "http://localhost:9000"
@@ -73,8 +87,8 @@ class Settings(BaseSettings):
     # CORS
     allowed_origins: list[str] = ["http://localhost:3000"]
 
-    # BFF shared secret — gates /v1/auth/token so only the BFF can mint tokens
-    # Must be a non-empty string in production; empty string disables the endpoint
+    # BFF shared secret — gates /v1/auth/token so only the BFF can mint tokens.
+    # Must be a non-empty string in production/staging.
     bff_shared_secret: str = ""
 
     # Service URLs
@@ -97,14 +111,24 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8")
 
+    def resolved_runtime_env(self) -> str:
+        app_value = self.app_env.strip().lower()
+        if app_value:
+            return app_value
+        node_value = self.node_env.strip().lower()
+        if node_value:
+            return node_value
+        return "development"
+
     def model_post_init(self, __context: Any) -> None:
         # Accept common legacy env keys.
         if self.smtp_password is None and self.smtp_pass is not None:
             self.smtp_password = self.smtp_pass
         if self.smtp_from is None and self.from_email is not None:
             self.smtp_from = self.from_email
+        runtime_env = self.resolved_runtime_env()
         # Warn in non-production if FERNET_KEY is unset — TOTP secrets will be stored unencrypted
-        if not _is_production() and not self.fernet_key:
+        if runtime_env not in {"production", "staging"} and not self.fernet_key:
             _config_logger.warning(
                 "FERNET_KEY is not set — TOTP secrets will NOT be encrypted at rest. "
                 "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
@@ -113,17 +137,38 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
         """Validate required secrets in production mode."""
-        if _is_production():
+        runtime_env = self.resolved_runtime_env()
+        if runtime_env in {"production", "staging"} and not self.bff_shared_secret.strip():
+            raise ValueError(
+                "BFF_SHARED_SECRET must be set in production/staging. "
+                "Generate a strong random secret and configure both BFF and Core BE."
+            )
+        if runtime_env == "production":
             if not self.secret_key:
                 raise ValueError("SECRET_KEY must be set in production")
             if len(self.secret_key) < 32:
                 raise ValueError("SECRET_KEY must be at least 32 characters in production")
+            if self.secret_key.strip().lower() in PRODUCTION_BLOCKED_SECRET_KEYS:
+                raise ValueError(
+                    "SECRET_KEY uses an insecure development default in production. "
+                    "Set a unique high-entropy value."
+                )
             if not self.database_url:
                 raise ValueError("DATABASE_URL must be set in production")
             if not self.storage_access_key:
                 raise ValueError("STORAGE_ACCESS_KEY must be set in production")
+            if self.storage_access_key.strip().lower() in PRODUCTION_BLOCKED_STORAGE_CREDENTIALS:
+                raise ValueError(
+                    "STORAGE_ACCESS_KEY uses insecure default credentials in production. "
+                    "Set a unique storage access key."
+                )
             if not self.storage_secret_key:
                 raise ValueError("STORAGE_SECRET_KEY must be set in production")
+            if self.storage_secret_key.strip().lower() in PRODUCTION_BLOCKED_STORAGE_CREDENTIALS:
+                raise ValueError(
+                    "STORAGE_SECRET_KEY uses insecure default credentials in production. "
+                    "Set a unique storage secret key."
+                )
             if not self.fernet_key:
                 raise ValueError(
                     "FERNET_KEY must be set in production to encrypt TOTP secrets at rest. "

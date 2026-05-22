@@ -33,6 +33,7 @@ export function RegisterForm() {
   const confirmPasswordRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
   const emailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCheckedEmailRef = useRef<string>("");
   const latestEmailRef = useRef<string>("");
 
@@ -131,6 +132,17 @@ export function RegisterForm() {
     setUsernameAvailable(null);
     if (fieldErrors.username) {
       setFieldErrors((prev) => ({ ...prev, username: "" }));
+    }
+
+    if (usernameDebounceRef.current) {
+      clearTimeout(usernameDebounceRef.current);
+      usernameDebounceRef.current = null;
+    }
+
+    if (sanitized && sanitized.length >= 3) {
+      usernameDebounceRef.current = setTimeout(() => {
+        void checkUsernameAvailability(sanitized);
+      }, 350);
     }
   }
 
@@ -271,6 +283,9 @@ export function RegisterForm() {
     return () => {
       if (emailDebounceRef.current) {
         clearTimeout(emailDebounceRef.current);
+      }
+      if (usernameDebounceRef.current) {
+        clearTimeout(usernameDebounceRef.current);
       }
     };
   }, []);

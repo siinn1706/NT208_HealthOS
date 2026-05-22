@@ -124,9 +124,11 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 CORE_API_URL=http://localhost:8000
 NEXT_PUBLIC_CORE_WS_URL=ws://localhost:8000
 ALLOWED_DEV_ORIGINS=localhost,127.0.0.1,healthos-dev.example.com
+BFF_SHARED_SECRET=dev-bff-secret-change-in-production
 ```
 
 Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
+Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 
 ### Public OAuth Testing via Cloudflare Tunnel
 

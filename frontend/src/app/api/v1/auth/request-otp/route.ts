@@ -8,8 +8,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout, parseJsonBody } from "@/lib/bff-fetch-utils";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
+import { normalizeCoreError } from "@/lib/bff-error-normalize";
 
 export async function POST(req: NextRequest) {
+  const limited = await enforceRateLimit(req, RATE_LIMITS["auth:otp_request"]);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await parseJsonBody(req);
@@ -48,6 +53,10 @@ export async function POST(req: NextRequest) {
       { error: { code: "UPSTREAM_ERROR", message: "Core API returned invalid JSON." } },
       { status: 502 }
     );
+  }
+
+  if (!res.ok) {
+    return NextResponse.json(normalizeCoreError(data, res.status), { status: res.status });
   }
 
   return NextResponse.json(data, { status: res.status });

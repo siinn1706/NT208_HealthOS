@@ -7,7 +7,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    env: { VITEST: 'true' },
     setupFiles: ['./src/__tests__/setup-vitest.ts'],
+    globalSetup: ['./src/__tests__/setup-rate-limit-global.ts'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
   resolve: {

@@ -8,16 +8,20 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
-  META_COOKIE_NAME,
-  SESSION_COOKIE_MAX_AGE,
-  SESSION_COOKIE_NAME,
-  SESSION_COOKIE_SECURE,
-} from "@/lib/bff-auth-cookie";
+  applyAuthCookies,
+  readCoreAuthPayload,
+  sessionUserFromCoreAuth,
+} from "@/lib/bff-auth-session";
 
 import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout, parseJsonBody } from "@/lib/bff-fetch-utils";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
+import { normalizeCoreError } from "@/lib/bff-error-normalize";
 
 export async function POST(req: NextRequest) {
+  const limited = await enforceRateLimit(req, RATE_LIMITS["auth:otp_verify"]);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await parseJsonBody(req);
@@ -58,42 +62,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // For signup/login: Core BE returns access_token — store in httpOnly cookie.
+  if (!res.ok) {
+    return NextResponse.json(normalizeCoreError(data, res.status), { status: res.status });
+  }
+
+  // For signup/login: Core BE returns tokens — store them in httpOnly cookies.
   const bodyObj = body as Record<string, unknown>;
-  const accessToken: string | undefined = (data as Record<string, unknown> & { data?: Record<string, unknown> })?.data?.access_token as string | undefined;
-  if (res.ok && accessToken && bodyObj.purpose !== "reset_password") {
+  const auth = readCoreAuthPayload(data);
+  if (bodyObj.purpose !== "reset_password" && !auth) {
+    return NextResponse.json(
+      { error: { code: "UPSTREAM_ERROR", message: "Core API returned no token." } },
+      { status: 502 },
+    );
+  }
+  if (auth && bodyObj.purpose !== "reset_password") {
     const response = NextResponse.json(
-      {
-        data: {
-          user_id: (data as { data: { user_id: string } }).data.user_id,
-          email: (data as { data: { email: string } }).data.email,
-          username: (data as { data: { username?: string } }).data.username ?? null,
-          display_name: (data as { data: { display_name: string } }).data.display_name,
-          avatar_url: (data as { data: { avatar_url?: string } }).data.avatar_url ?? null,
-          onboarding_status: (data as { data: { onboarding_status?: string } }).data.onboarding_status ?? "pending",
-        },
-      },
-      { status: res.status }
+      { data: sessionUserFromCoreAuth(auth) },
+      { status: res.status },
     );
-
-    response.cookies.set(SESSION_COOKIE_NAME, accessToken, {
-      httpOnly: true,
-      secure: SESSION_COOKIE_SECURE,
-      sameSite: "lax",
-      maxAge: SESSION_COOKIE_MAX_AGE,
-      path: "/",
-    });
-
-    // httpOnly meta cookie for the middleware onboarding gate (proxy.ts)
-    response.cookies.set(
-      META_COOKIE_NAME,
-      JSON.stringify({ onboarding_status: (data as { data: { onboarding_status?: string } }).data.onboarding_status ?? "pending" }),
-      { httpOnly: true, secure: SESSION_COOKIE_SECURE, sameSite: "lax", maxAge: SESSION_COOKIE_MAX_AGE, path: "/" }
-    );
-
+    applyAuthCookies(response, auth);
     return response;
   }
 
-  // reset_password or error — proxy as-is
+  // reset_password — proxy as-is
   return NextResponse.json(data, { status: res.status });
 }

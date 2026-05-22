@@ -11,10 +11,14 @@ import {
   getOAuthCookieOptions,
   setOAuthContextCookie,
 } from "@/lib/oauth/flow-context";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 
 const COOKIE_MAX_AGE = 600; // 10 minutes
 
 export async function GET(request: NextRequest) {
+  const limited = await enforceRateLimit(request, RATE_LIMITS["auth:oauth_start"]);
+  if (limited) return limited;
+
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 

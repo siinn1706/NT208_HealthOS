@@ -117,6 +117,7 @@ services:
       AI_WORKER_URL: ${AI_WORKER_URL:-http://ai-worker:8001}
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-healthos_dev_pass}@redis:6379/2
       DEBUG: "true"
+      BFF_SHARED_SECRET: ${BFF_SHARED_SECRET:-dev-bff-secret-change-in-production}
     depends_on:
       postgres:
         condition: service_healthy
@@ -248,6 +249,7 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-nextauth-secret}
       NEXT_PUBLIC_CORE_WS_URL: ws://localhost:8000
+      BFF_SHARED_SECRET: ${BFF_SHARED_SECRET:-dev-bff-secret-change-in-production}
     depends_on:
       core-be:
         condition: service_healthy

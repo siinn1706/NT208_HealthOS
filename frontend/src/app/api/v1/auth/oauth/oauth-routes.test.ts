@@ -3,12 +3,15 @@ import { NextRequest } from "next/server";
 import { GET as googleInit } from "@/app/api/v1/auth/oauth/google/route";
 import { GET as githubInit } from "@/app/api/v1/auth/oauth/github/route";
 import { GET as googleCallback } from "@/app/api/v1/auth/oauth/google/callback/route";
+import { GET as githubCallback } from "@/app/api/v1/auth/oauth/github/callback/route";
 import { GET as githubLinkCallback } from "@/app/api/v1/auth/oauth/github/link/callback/route";
 import {
   decodeOAuthContext,
   encodeOAuthContext,
 } from "@/lib/oauth/flow-context";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import * as googleOAuth from "@/lib/oauth/google";
+import * as githubOAuth from "@/lib/oauth/github";
 
 function makeRequest(
   url: string,
@@ -36,6 +39,13 @@ function makeSessionToken(userId: string) {
   return `header.${payload}.signature`;
 }
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 describe("OAuth route handlers", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -47,6 +57,7 @@ describe("OAuth route handlers", () => {
       "http://localhost:3000/api/v1/auth/oauth/google/callback";
     process.env.OAUTH_GITHUB_CALLBACK_URL =
       "http://localhost:3000/api/v1/auth/oauth/github/callback";
+    process.env.BFF_SHARED_SECRET = "test-bff-secret";
   });
 
   it("builds a Google redirect_uri from the forwarded tunnel origin", async () => {
@@ -151,6 +162,109 @@ describe("OAuth route handlers", () => {
 
     expect(response.headers.get("location")).toBe(
       "https://healthos-dev.example.com/vi/dashboard/profile?link_error=user_mismatch",
+    );
+  });
+
+  it("sends X-BFF-Secret header in Google OAuth callback token exchange", async () => {
+    vi.spyOn(googleOAuth, "exchangeGoogleCodeForToken").mockResolvedValue({
+      access_token: "provider-access-token",
+      expires_in: 3600,
+      token_type: "Bearer",
+      scope: "email profile",
+    });
+    vi.spyOn(googleOAuth, "getGoogleUserInfo").mockResolvedValue({
+      id: "google-user-id",
+      email: "google@example.com",
+      name: "Google User",
+      verified_email: true,
+    });
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          data: {
+            access_token: "core-access-token",
+            onboarding_status: "completed",
+          },
+        },
+        200,
+      ),
+    );
+
+    await googleCallback(
+      makeRequest(
+        "http://localhost:3000/api/v1/auth/oauth/google/callback?code=oauth-code&state=expected-state",
+        {
+          cookies: {
+            oauth_context_google: encodeOAuthContext({
+              initiatedOrigin: "http://localhost:3000",
+              locale: "en",
+              postLoginPath: "/dashboard",
+            }),
+            oauth_state_google: "expected-state",
+            oauth_verifier_google: "pkce-verifier",
+          },
+        },
+      ),
+    );
+
+    const call = fetchSpy.mock.calls.find(([url]) =>
+      String(url).endsWith("/v1/auth/token"),
+    );
+    expect(call).toBeDefined();
+    const init = call?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>)["X-BFF-Secret"]).toBe(
+      "test-bff-secret",
+    );
+  });
+
+  it("sends X-BFF-Secret header in GitHub OAuth callback token exchange", async () => {
+    vi.spyOn(githubOAuth, "exchangeGitHubCodeForToken").mockResolvedValue({
+      access_token: "provider-access-token",
+      token_type: "bearer",
+      scope: "read:user user:email",
+    });
+    vi.spyOn(githubOAuth, "getGitHubUserInfo").mockResolvedValue({
+      id: 42,
+      login: "gh-user",
+      name: "GitHub User",
+      email: "github@example.com",
+      avatar_url: "https://example.com/avatar.png",
+    });
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          data: {
+            access_token: "core-access-token",
+            onboarding_status: "completed",
+          },
+        },
+        200,
+      ),
+    );
+
+    await githubCallback(
+      makeRequest(
+        "http://localhost:3000/api/v1/auth/oauth/github/callback?code=oauth-code&state=expected-state",
+        {
+          cookies: {
+            oauth_context_github: encodeOAuthContext({
+              initiatedOrigin: "http://localhost:3000",
+              locale: "en",
+              postLoginPath: "/dashboard",
+            }),
+            oauth_state_github: "expected-state",
+          },
+        },
+      ),
+    );
+
+    const call = fetchSpy.mock.calls.find(([url]) =>
+      String(url).endsWith("/v1/auth/token"),
+    );
+    expect(call).toBeDefined();
+    const init = call?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>)["X-BFF-Secret"]).toBe(
+      "test-bff-secret",
     );
   });
 });
