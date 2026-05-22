@@ -147,6 +147,9 @@ async def rotate_refresh_token(
                 family_id=session.family_id,
                 revoked_at=now,
             )
+            from app.core.event_logging import log_event
+            log_event("auth.refresh", "rotate", "reuse_detected",
+                      user_id=str(session.user_id))
             raise RefreshTokenReuseError()
         raise RefreshTokenError()
 
@@ -184,4 +187,6 @@ async def rotate_refresh_token(
     session.replaced_by_id = replacement.id
     session.last_used_at = now
     await db.flush()
+    from app.core.event_logging import log_event
+    log_event("auth.refresh", "rotate", "ok", user_id=str(user.id))
     return user, replacement_plaintext

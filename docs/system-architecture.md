@@ -204,6 +204,62 @@ Browser/Mobile receives message (real-time)
 
 ---
 
+## Observability & Logging
+
+### Structured Logging Layer
+Core API emits structured JSON logs with request context:
+```
+{
+  "timestamp": "2026-05-22T10:15:30.123Z",
+  "level": "INFO",
+  "request_id": "uuid-1234",
+  "event": "auth.login_success",
+  "user_id": "abc123",
+  "duration_ms": 145,
+  "ip": "192.168.1.1"
+}
+```
+
+**Key settings** (`backend/app/core/config.py`):
+- `log_format` — "json" (production) or "text" (dev)
+- `metrics_token` — Bearer token for /metrics access
+- `metrics_allow_local` — Allow /metrics from localhost (dev safety)
+
+### Request Context & Tracing
+- **Request ID**: UUID v4 generated on browser (frontend) or request entry (BFF/Core)
+- **X-Request-ID header**: Propagated BFF → Core via `coreProxy()`
+- **Context var**: `ContextVar request_id_var` available in all handlers + services
+- **RequestIdFilter**: Auto-injects into every log record
+
+### Health Checks (Liveness vs Readiness)
+```
+GET /health               → 200 OK (always — liveness probe)
+GET /health/ready         → 200 OK / 500 (depends on DB + Redis — readiness probe)
+```
+
+**Docker Compose integration**:
+- Container healthcheck: calls `/health/ready`
+- Depends-on: waits for readiness before starting dependent services
+- Smoke tests: validate both endpoints before app-ready
+
+### Metrics Endpoint
+```
+GET /metrics              → Prometheus format (guarded by metrics_token)
+```
+
+**Access control**:
+- Requires `Authorization: Bearer {metrics_token}` header
+- If `metrics_allow_local=true`: localhost/127.0.0.1 bypass token check
+- Metric types: request latency, error rates, DB pool stats, cache hit rates
+
+### PHI Logging Safety
+- **Email masking**: `hash_email()` in `event_logging.py` — SHA-256 hashed, salted
+- **Sensitive fields**: Not logged (passwords, tokens, credit cards)
+- **Audit log**: Separate table (AuditLog model) for compliance tracking
+- **Log rotation**: Daily + size-based via `logging.handlers.RotatingFileHandler`
+
+---
+
 ## Service Ports Reference
 
 | Service | Port | Protocol | Purpose |

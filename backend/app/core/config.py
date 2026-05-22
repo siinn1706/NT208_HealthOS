@@ -91,6 +91,15 @@ class Settings(BaseSettings):
     # Must be a non-empty string in production/staging.
     bff_shared_secret: str = ""
 
+    # Metrics endpoint access control (Phase 1)
+    # METRICS_TOKEN: when set, callers must send X-Metrics-Token: <value>
+    # METRICS_ALLOW_LOCAL: allow scraping from loopback/RFC-1918 without token
+    metrics_token: str | None = None
+    metrics_allow_local: bool = True
+
+    # Logging format: "text" (dev) or "json" (prod/structured) (Phase 3)
+    log_format: str = "text"
+
     # Service URLs
     ai_worker_url: str = "http://localhost:8001"
     celery_broker_url: str = "redis://localhost:6379/2"

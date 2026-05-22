@@ -197,6 +197,7 @@ GitHub Actions workflows (`.github/workflows/`):
 **Note:** Release config is dynamic (`.releaserc.cjs`). Verify deployment platform and artifact targets before first production run.
 
 See [Deployment Guide](./docs/deployment-guide.md) for workflow setup, monitoring/checklist gaps, and troubleshooting.
+See [Production Checklist](./docs/production-checklist.md) for required env vars before deploying.
 
 ## Git Workflow
 

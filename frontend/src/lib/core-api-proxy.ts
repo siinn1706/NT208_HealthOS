@@ -21,6 +21,7 @@ import {
   refreshCoreAuth,
 } from "@/lib/bff-auth-session";
 import { CORE_API_URL } from "@/lib/env";
+import { REQUEST_ID_HEADER, getOrCreateRequestId } from "@/lib/request-id";
 
 type AuthCookies = {
   accessToken: string | null;
@@ -206,20 +207,21 @@ function normalizeUpstreamError(
   return { error: { code: fallbackCode, message: fallbackMessage } };
 }
 
-function buildCoreProxyResponse(status: number, responseData: unknown): NextResponse {
+function buildCoreProxyResponse(status: number, responseData: unknown, requestId: string): NextResponse {
+  let response: NextResponse;
   if (status >= 500) {
-    return NextResponse.json(
+    response = NextResponse.json(
       { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error" } },
       { status },
     );
-  }
-
-  if (status >= 400) {
+  } else if (status >= 400) {
     const normalized = normalizeUpstreamError(responseData, status);
-    return NextResponse.json(normalized, { status });
+    response = NextResponse.json(normalized, { status });
+  } else {
+    response = NextResponse.json(responseData ?? {}, { status });
   }
-
-  return NextResponse.json(responseData ?? {}, { status });
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
 }
 
 /**
@@ -234,15 +236,18 @@ export async function coreProxy(
   corePath: string,
   options: ProxyOptions = {}
 ): Promise<NextResponse> {
+  const requestId = getOrCreateRequestId(req);
   const { accessToken, refreshToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
   const method = options.method ?? req.method;
 
   if (requireAuth && !accessToken) {
-    return NextResponse.json(
+    const resp = NextResponse.json(
       { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
       { status: 401 }
     );
+    resp.headers.set(REQUEST_ID_HEADER, requestId);
+    return resp;
   }
 
   const isMultipart = options.multipart === true;
@@ -316,6 +321,7 @@ export async function coreProxy(
     if (authToken) {
       requestHeaders.Authorization = `Bearer ${authToken}`;
     }
+    requestHeaders[REQUEST_ID_HEADER] = requestId;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30_000);
@@ -349,14 +355,16 @@ export async function coreProxy(
 
   const firstAttempt = await executeCoreRequest(accessToken);
   if (firstAttempt.kind === "transport") {
-    return NextResponse.json(
+    const resp = NextResponse.json(
       { error: { code: firstAttempt.code, message: firstAttempt.message } },
       { status: firstAttempt.status },
     );
+    resp.headers.set(REQUEST_ID_HEADER, requestId);
+    return resp;
   }
 
   if (firstAttempt.status !== 401 || !requireAuth) {
-    return buildCoreProxyResponse(firstAttempt.status, firstAttempt.data);
+    return buildCoreProxyResponse(firstAttempt.status, firstAttempt.data, requestId);
   }
 
   if (!refreshToken) {
@@ -364,6 +372,7 @@ export async function coreProxy(
       { error: { code: "AUTH_REQUIRED", message: "Session expired. Please sign in again." } },
       { status: 401 },
     );
+    response.headers.set(REQUEST_ID_HEADER, requestId);
     clearAuthCookies(response);
     return response;
   }
@@ -374,16 +383,14 @@ export async function coreProxy(
       { error: { code: "AUTH_REQUIRED", message: "Session expired. Please sign in again." } },
       { status: 401 },
     );
+    response.headers.set(REQUEST_ID_HEADER, requestId);
     clearAuthCookies(response);
     return response;
   }
 
   const retryAttempt = await executeCoreRequest(refreshed.auth.access_token);
   if (retryAttempt.kind === "transport") {
-    const response = NextResponse.json(
-      { error: { code: retryAttempt.code, message: retryAttempt.message } },
-      { status: retryAttempt.status },
-    );
+    const response = buildCoreProxyResponse(retryAttempt.status, null, requestId);
     applyAuthCookies(response, refreshed.auth);
     return response;
   }
@@ -393,11 +400,12 @@ export async function coreProxy(
       { error: { code: "AUTH_REQUIRED", message: "Session expired. Please sign in again." } },
       { status: 401 },
     );
+    response.headers.set(REQUEST_ID_HEADER, requestId);
     clearAuthCookies(response);
     return response;
   }
 
-  const response = buildCoreProxyResponse(retryAttempt.status, retryAttempt.data);
+  const response = buildCoreProxyResponse(retryAttempt.status, retryAttempt.data, requestId);
   applyAuthCookies(response, refreshed.auth);
   return response;
 }
@@ -433,6 +441,7 @@ export async function coreFetchStream(
   corePath: string,
   options: { method?: string; bodySizeLimit?: number; requireAuth?: boolean } = {},
 ): Promise<Response> {
+  const requestId = getOrCreateRequestId(req);
   const { accessToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
   if (requireAuth && !accessToken) {
@@ -440,7 +449,7 @@ export async function coreFetchStream(
       JSON.stringify({
         error: { code: "AUTH_REQUIRED", message: "Authentication required." },
       }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
+      { status: 401, headers: { "Content-Type": "application/json", [REQUEST_ID_HEADER]: requestId } },
     );
   }
 
@@ -448,6 +457,7 @@ export async function coreFetchStream(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "text/event-stream",
+    [REQUEST_ID_HEADER]: requestId,
   };
   if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
