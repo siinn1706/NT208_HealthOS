@@ -196,6 +196,49 @@ async def exercise_suggestions(payload: ExerciseSuggestionsRequest) -> ExerciseS
         ) from exc
 
 
+# ── /api/ai/report-summary ───────────────────────────────────────────────────
+
+class ReportSummaryRequest(BaseModel):
+    report_data: dict[str, Any]
+    locale: str = "vi"
+
+
+class ReportSummaryResponse(BaseModel):
+    summary: str
+
+
+@router.post("/report-summary", response_model=ReportSummaryResponse)
+async def report_summary(payload: ReportSummaryRequest) -> ReportSummaryResponse:
+    """Generate AI-powered summary for a health report."""
+    try:
+        text = await gemini_chat_service.generate_report_summary(
+            report_data=payload.report_data,
+            locale=payload.locale,
+        )
+        return ReportSummaryResponse(summary=text)
+    except GeminiChatUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "AI_UNCONFIGURED", "message": str(exc)},
+        ) from exc
+    except GeminiChatTimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail={"code": "AI_TIMEOUT", "message": str(exc)},
+        ) from exc
+    except GeminiChatBlockedError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "AI_SAFETY_BLOCKED", "message": str(exc)},
+        ) from exc
+    except Exception as exc:
+        _LOGGER.exception("report_summary_failed")
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "AI_UPSTREAM_ERROR", "message": str(exc)},
+        ) from exc
+
+
 # ── /api/ai/generate (legacy adapter) ─────────────────────────────────────────
 @router.post("/generate", response_model=AIGenerateResponse, deprecated=True)
 async def generate_ai_reply(payload: AIGenerateRequest) -> AIGenerateResponse:

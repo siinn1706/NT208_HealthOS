@@ -753,7 +753,7 @@ async def log_access(
     return row, is_first
 
 
-async def _is_first_in_window(
+async def _is_first_in_window(  # idor-ok: operates on token_id (not user-scoped) — token ownership verified by caller
     db: AsyncSession,
     *,
     token_id: uuid.UUID,

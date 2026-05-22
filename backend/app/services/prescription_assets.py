@@ -73,7 +73,7 @@ def _key_for(user_id: uuid.UUID, appointment_id: uuid.UUID, asset_id: uuid.UUID,
     return f"prescriptions/{user_id}/{appointment_id}/{asset_id}.{ext}"
 
 
-async def list_assets(
+async def list_assets(  # idor-ok: ownership checked via _get_owned_appointment(db, user.id, appointment_id) inside body
     db: AsyncSession,
     user: User,
     appointment_id: uuid.UUID,
@@ -138,7 +138,7 @@ async def upload_asset(
     return asset
 
 
-async def get_asset(
+async def get_asset(  # idor-ok: ownership checked via _get_owned_appointment(db, user.id, appointment_id) inside body
     db: AsyncSession,
     user: User,
     appointment_id: uuid.UUID,

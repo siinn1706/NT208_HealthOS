@@ -15,7 +15,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const CORE_WS_URL = process.env.NEXT_PUBLIC_CORE_WS_URL ?? "ws://localhost:8000";
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -120,7 +119,10 @@ export function useChatWs({
       return;
     }
 
-    const wsUrl = `${CORE_WS_URL}/ws?token=${encodeURIComponent(tokenRef.current)}`;
+    const wsBase =
+      process.env.NEXT_PUBLIC_CORE_WS_URL ??
+      `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+    const wsUrl = `${wsBase}/ws?token=${encodeURIComponent(tokenRef.current)}`;
 
     setStatus("connecting");
 

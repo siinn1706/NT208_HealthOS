@@ -489,7 +489,7 @@ async def react_to_message(
         msg = await chat_svc.react_to_message(
             db, message_id, conversation_id, current_user.id, body.emoji
         )
-    except ValueError as exc:
+    except (ValueError, PermissionError) as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     await db.commit()
 
@@ -579,9 +579,12 @@ async def mark_read(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    await chat_svc.mark_conversation_read(
-        db, conversation_id, current_user.id, body.last_read_message_id
-    )
+    try:
+        await chat_svc.mark_conversation_read(
+            db, conversation_id, current_user.id, body.last_read_message_id
+        )
+    except ValueError as exc:
+        raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     await db.commit()
     # Notify room so senders see double-tick
     await _notify_conversation(

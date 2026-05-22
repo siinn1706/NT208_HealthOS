@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 import datetime
+import json
+import logging
 import math
 import statistics
 import uuid
 from collections import defaultdict
 
+import httpx
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.core import HealthMetric, Meal, MetricTypeEnum, Reminder, ReminderTypeEnum, User
+
+_LOGGER = logging.getLogger(__name__)
 
 
 REPORT_PERIOD_DAYS: dict[str, int] = {
@@ -618,7 +624,7 @@ async def get_health_report(
     for section in sections:
         all_alerts.extend(section["alerts"])
 
-    return {
+    report = {
         "id": f"report-{period}-{_utc_now().date().isoformat()}",
         "user_id": str(user.id),
         "period": period,
@@ -626,7 +632,85 @@ async def get_health_report(
         "status": report_status,
         "sections": sections,
         "alerts": all_alerts,
+        "ai_summary": None,
     }
+
+    # ── AI summary (best-effort, never blocks the report) ──────────────
+    report["ai_summary"] = await _get_report_ai_summary(report, user.id)
+
+    return report
+
+
+_REPORT_SUMMARY_CACHE_TTL = 3600  # 1 hour
+
+
+async def _get_report_ai_summary(
+    report: dict,
+    user_id: uuid.UUID,
+    locale: str = "vi",
+) -> str | None:
+    """Call AI Worker for a report summary. Returns None on any failure."""
+    from app.adapters.redis_client import get_redis
+
+    cache_key = f"ai:report_summary:{user_id}:{report['period']}"
+
+    # 1. Check cache
+    try:
+        redis = await get_redis()
+        cached = await redis.get(cache_key)
+        if cached:
+            return cached.decode() if isinstance(cached, bytes) else str(cached)
+    except Exception as exc:  # noqa: BLE001
+        _LOGGER.debug("report_summary_cache_read_failed reason=%s", exc)
+
+    # 2. Build slim context for AI (only stats + alerts, not raw timeseries)
+    slim_sections = []
+    for sec in report.get("sections", []):
+        slim_sections.append({
+            "category": sec.get("category"),
+            "status": sec.get("status"),
+            "stats": sec.get("stats"),
+            "alerts": [
+                {"metric": a.get("metric"), "message": a.get("message"),
+                 "value": a.get("value"), "unit": a.get("unit")}
+                for a in sec.get("alerts", [])
+            ],
+        })
+
+    ai_payload = {
+        "period": report.get("period"),
+        "status": report.get("status"),
+        "sections": slim_sections,
+    }
+
+    # 3. Call AI Worker
+    try:
+        url = f"{settings.ai_worker_url.rstrip('/')}/api/ai/report-summary"
+        timeout = httpx.Timeout(settings.ai_worker_timeout_seconds)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.post(url, json={
+                "report_data": ai_payload,
+                "locale": locale,
+            })
+            resp.raise_for_status()
+            data = resp.json()
+
+        summary = data.get("summary", "")
+        if not summary or not isinstance(summary, str):
+            return None
+
+        # 4. Cache
+        try:
+            redis = await get_redis()
+            await redis.setex(cache_key, _REPORT_SUMMARY_CACHE_TTL, summary)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.debug("report_summary_cache_write_failed reason=%s", exc)
+
+        return summary
+
+    except Exception as exc:  # noqa: BLE001
+        _LOGGER.warning("report_ai_summary_failed reason=%s", exc)
+        return None
 
 
 def _trend_direction(change_percent: int, higher_is_better: bool) -> str:

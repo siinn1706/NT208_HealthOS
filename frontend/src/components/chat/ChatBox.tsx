@@ -8,10 +8,10 @@ type ChatMessage = {
 };
 
 type ChatBoxProps = {
-  userId: string;
+  conversationId: string;
 };
 
-export default function ChatBox({ userId }: ChatBoxProps) {
+export default function ChatBox({ conversationId }: ChatBoxProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [isConnected, setIsConnected] = useState(false);
@@ -20,10 +20,11 @@ export default function ChatBox({ userId }: ChatBoxProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const wsUrl = useMemo(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_CORE_WS_URL ?? "ws://localhost:8000";
-    const normalized = baseUrl.replace(/\/$/, "");
-    return `${normalized}/ws/chat/${encodeURIComponent(userId)}`;
-  }, [userId]);
+    const wsBase =
+      process.env.NEXT_PUBLIC_CORE_WS_URL ??
+      `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+    return `${wsBase}/v1/chat/ws/${encodeURIComponent(conversationId)}`;
+  }, [conversationId]);
 
   useEffect(() => {
     const ws = new WebSocket(wsUrl);

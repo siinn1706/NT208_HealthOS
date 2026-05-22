@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
-import { FileBarChart2 } from "lucide-react";
+import { FileBarChart2, Sparkles } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiOverview } from "@/components/dashboard/reports/KpiOverview";
@@ -62,6 +62,21 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       >
         <KpiOverview initialPeriod={period} />
       </Suspense>
+
+      {/* AI Summary */}
+      {report.ai_summary && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
+              <Sparkles className="w-4 h-4 text-white" aria-hidden />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground mb-1">{t("aiSummaryTitle")}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{report.ai_summary}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auto-share banner + share/export quick actions live inside the wrapper
           so the page itself can stay a Server Component. */}

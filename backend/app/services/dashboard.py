@@ -573,7 +573,6 @@ async def get_exercise_suggestions(
     user: User | None = None,
     locale: str = "vi",
 ) -> list[ExerciseSuggestionDTO]:
-    _LOGGER.warning("EXERCISE_DEBUG_MARKER_v2: enter get_exercise_suggestions")
     """Return AI-powered exercise suggestions (Gemini + RAG), with rule-based fallback.
 
     Flow:
@@ -633,5 +632,3 @@ async def get_exercise_suggestions(
     except Exception as exc:  # noqa: BLE001
         _LOGGER.warning("exercise_ai_failed reason=%s — falling back to rule-based", exc)
         return await _rule_based_exercise_suggestions(db, user_id)
-# reload trigger 1777657545
-# reload 1777657803

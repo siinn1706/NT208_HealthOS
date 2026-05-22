@@ -163,7 +163,7 @@ def _symptom_entry_to_input(sym: SymptomEntry) -> SymptomInput:
     )
 
 
-async def _latest_triage(
+async def _latest_triage(  # idor-ok: private helper — brief ownership verified by caller via get_brief(user_id=...)
     db: AsyncSession, brief_id: uuid.UUID
 ) -> Optional[TriageOutcome]:
     row = await db.execute(
@@ -798,7 +798,7 @@ async def _deactivate_pre_visit_reminder(
     await db.flush()
 
 
-async def _deactivate_other_active_links(
+async def _deactivate_other_active_links(  # idor-ok: operates on appointment_id already verified by caller; deactivates only previously-owned links
     db: AsyncSession,
     *,
     appointment_id: uuid.UUID,

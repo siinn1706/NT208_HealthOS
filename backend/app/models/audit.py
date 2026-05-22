@@ -78,6 +78,9 @@ class AuditEventTypeEnum(str, Enum):
     EMERGENCY_TOKEN_REVOKED = "emergency_token_revoked"
     EMERGENCY_PUBLIC_ACCESS_FIRST = "emergency_public_access_first"
     EMERGENCY_PROFILE_UPDATED = "emergency_profile_updated"
+    # Cross-user IDOR denial — logged when an authenticated user attempts to
+    # access a resource they do not own. Filtered from user-facing log list.
+    SECURITY_ACCESS_DENIED = "security_access_denied"
 
 
 class AuditLog(Base):
