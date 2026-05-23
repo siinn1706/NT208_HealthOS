@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "test:coverage": "jest --coverage --passWithNoTests",
     "check:routes": "node scripts/check-route-matrix.mjs"
   },

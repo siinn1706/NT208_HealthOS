@@ -1,58 +1,45 @@
-"""Notification dispatch core — validate, fan-out, aggregate results.
+"""Notification dispatch core: validate, fan out, and aggregate results.
 
-PHI safety: log lines NEVER include recipient email/phone/push_token, template
-variables, or rendered subject/body. Only event_id, correlation_id, user_id,
-channel, template.id, priority, channel status, and error class name are logged.
-
-logger.exception() is BANNED in this module — it auto-includes exc.args which
-can contain PHI from the envelope. Use logger.error() with explicit fields only.
+PHI safety: log lines never include recipient email/phone/push token or rendered
+message bodies. Only event_id, user_id, channel, status, and reason class are
+logged here.
 """
 from __future__ import annotations
 
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ── Contract path (resolved at import time) ──────────────────────────────────
-import json
-import os
-_SCHEMA_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..", "..", "..", "contracts", "events", "notification-requested.json",
-)
-
-try:
-    import jsonschema as _jsonschema
-    with open(os.path.normpath(_SCHEMA_PATH)) as _f:
-        _ENVELOPE_SCHEMA = json.load(_f)
-    _JSONSCHEMA_AVAILABLE = True
-except Exception:
-    _JSONSCHEMA_AVAILABLE = False
-    _ENVELOPE_SCHEMA = {}
-
-
-# ── Exceptions ────────────────────────────────────────────────────────────────
 
 class EnvelopeValidationError(ValueError):
-    """Raised when the notification.requested envelope fails JSON Schema validation."""
+    """Raised when a notification dispatch request is missing required fields."""
 
 
-# ── Result types ──────────────────────────────────────────────────────────────
+@dataclass(frozen=True)
+class NormalizedNotification:
+    event_id: str
+    recipient_id: str
+    recipient_email: str | None
+    title: str
+    body: str
+    channels: list[str]
+    kind: str
+
 
 @dataclass
 class ChannelResult:
     channel: str
-    status: str  # delivered | provider_missing | failed
-    error: Optional[str] = None  # error class name only, never message
+    status: str
+    reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"channel": self.channel, "status": self.status}
-        if self.error:
-            d["error"] = self.error
-        return d
+        data: dict[str, Any] = {"channel": self.channel, "status": self.status}
+        if self.reason:
+            data["reason"] = self.reason
+        return data
 
 
 @dataclass
@@ -60,143 +47,211 @@ class DispatchResult:
     event_id: str
     results: list[ChannelResult] = field(default_factory=list)
 
+    @property
+    def status(self) -> str:
+        statuses = {result.status for result in self.results}
+        if not statuses:
+            return "failed"
+        if statuses == {"delivered"}:
+            return "delivered"
+        if statuses == {"skipped"}:
+            return "skipped"
+        if statuses == {"failed"}:
+            return "failed"
+        return "partial"
+
     def to_dict(self) -> dict[str, Any]:
-        return {"event_id": self.event_id, "results": [r.to_dict() for r in self.results]}
+        data: dict[str, Any] = {
+            "event_id": self.event_id,
+            "status": self.status,
+            "results": [result.to_dict() for result in self.results],
+        }
+        if len(self.results) == 1:
+            only = self.results[0]
+            data["channel"] = only.channel
+            if only.reason:
+                data["reason"] = only.reason
+        return data
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _strip_crlf(s: str) -> str:
-    return s.replace("\r", "").replace("\n", "")
+def _strip_crlf(value: str) -> str:
+    return value.replace("\r", "").replace("\n", "")
 
 
-def validate_envelope(event: dict) -> None:
-    """Raise EnvelopeValidationError if the event does not match the contract."""
-    if _JSONSCHEMA_AVAILABLE:
-        try:
-            _jsonschema.validate(instance=event, schema=_ENVELOPE_SCHEMA)
-        except _jsonschema.ValidationError as exc:
-            raise EnvelopeValidationError(str(exc.message)) from None
+def _string(value: object | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _mapping(value: object | None) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _channels(raw: object | None) -> list[str]:
+    if isinstance(raw, str):
+        values = [raw]
+    elif isinstance(raw, list):
+        values = [_string(item) for item in raw]
     else:
-        # Minimal structural check when jsonschema is unavailable
-        for key in ("event", "version", "payload", "metadata"):
-            if key not in event:
-                raise EnvelopeValidationError(f"Missing required key: {key}")
-        if event.get("event") != "notification.requested":
-            raise EnvelopeValidationError("event must be 'notification.requested'")
-        if "event_id" not in event.get("metadata", {}):
-            raise EnvelopeValidationError("metadata.event_id is required")
+        values = []
+
+    normalized = [
+        item.lower().replace("-", "_")
+        for item in values
+        if item
+    ]
+    return normalized
 
 
-# ── Channel dispatchers ───────────────────────────────────────────────────────
+def _first_string(*values: object | None) -> str | None:
+    for value in values:
+        text = _string(value)
+        if text:
+            return text
+    return None
 
-def _dispatch_in_app(payload: dict, metadata: dict, db=None) -> ChannelResult:
-    """Insert a Notification row using a sync Session (Celery-safe)."""
+
+def normalize_event(event: dict[str, Any]) -> NormalizedNotification:
+    metadata = _mapping(event.get("metadata"))
+    payload = _mapping(event.get("payload"))
+    recipient = _mapping(event.get("recipient")) or _mapping(payload.get("recipient"))
+    template = _mapping(event.get("template")) or _mapping(payload.get("template"))
+    variables = _mapping(template.get("variables")) or _mapping(payload.get("variables"))
+
+    event_id = _first_string(event.get("event_id"), metadata.get("event_id"))
+    recipient_id = _first_string(
+        event.get("recipient_id"),
+        event.get("user_id"),
+        recipient.get("user_id"),
+        recipient.get("id"),
+        metadata.get("user_id"),
+    )
+    title = _first_string(
+        event.get("title"),
+        payload.get("title"),
+        variables.get("title"),
+        variables.get("subject"),
+        template.get("id"),
+    )
+    body = _first_string(
+        event.get("body"),
+        event.get("message"),
+        payload.get("body"),
+        payload.get("message"),
+        variables.get("body"),
+        variables.get("message"),
+        variables.get("text_body"),
+    )
+    channels = _channels(
+        event.get("channel")
+        or event.get("channels")
+        or payload.get("channel")
+        or payload.get("channels")
+    )
+
+    missing = [
+        name
+        for name, value in (
+            ("event_id", event_id),
+            ("recipient_id", recipient_id),
+            ("title", title),
+            ("body", body),
+            ("channel", channels),
+        )
+        if not value
+    ]
+    if missing:
+        raise EnvelopeValidationError(f"Missing required field(s): {', '.join(missing)}")
+
+    return NormalizedNotification(
+        event_id=event_id or "",
+        recipient_id=recipient_id or "",
+        recipient_email=_first_string(event.get("email"), recipient.get("email")),
+        title=title or "",
+        body=body or "",
+        channels=channels,
+        kind=_first_string(event.get("kind"), payload.get("kind"), template.get("id")) or "info",
+    )
+
+
+def _dispatch_in_app(notification: NormalizedNotification, db=None) -> ChannelResult:
     channel = "in_app"
-    event_id = metadata.get("event_id", "")
     try:
-        user_id_str = payload.get("recipient", {}).get("user_id")
-        if not user_id_str:
-            return ChannelResult(channel=channel, status="failed", error="MissingRecipientUserId")
-
-        template = payload.get("template", {})
-        variables = template.get("variables") or {}
-        title = variables.get("subject") or template.get("id", "Notification")
-        body = variables.get("text_body") or f"{template.get('id', 'notification')}"
-
-        if db is not None:
-            session = db
-            own_session = False
-        else:
-            from app.adapters.database import get_sync_db_context
-            own_session = True
-
         from app.models.core import Notification
 
-        if own_session:
-            from app.adapters.database import get_sync_db_context
-            with get_sync_db_context() as session:
-                notif = Notification(
-                    user_id=uuid.UUID(user_id_str),
-                    title=_strip_crlf(title)[:255],
-                    body=_strip_crlf(body)[:2000],
-                    kind=template.get("id", "info")[:32],
-                )
-                session.add(notif)
-                session.flush()
-        else:
-            notif = Notification(
-                user_id=uuid.UUID(user_id_str),
-                title=_strip_crlf(title)[:255],
-                body=_strip_crlf(body)[:2000],
-                kind=template.get("id", "info")[:32],
-            )
-            db.add(notif)
+        user_id = uuid.UUID(notification.recipient_id)
+        title = _strip_crlf(notification.title)[:255]
+        body = _strip_crlf(notification.body)[:2000]
+        kind = _strip_crlf(notification.kind)[:32] or "info"
+
+        if db is not None:
+            db.add(Notification(user_id=user_id, title=title, body=body, kind=kind))
             db.flush()
+        else:
+            from app.adapters.database import get_sync_db_context
 
-        logger.info("channel=in_app status=delivered event_id=%s user_id=%s", event_id, user_id_str)
+            with get_sync_db_context() as session:
+                session.add(Notification(user_id=user_id, title=title, body=body, kind=kind))
+                session.flush()
+
+        logger.info(
+            "channel=in_app status=delivered event_id=%s user_id=%s",
+            notification.event_id,
+            notification.recipient_id,
+        )
         return ChannelResult(channel=channel, status="delivered")
-
+    except ValueError:
+        logger.info("channel=in_app status=failed event_id=%s reason=invalid_recipient_id", notification.event_id)
+        return ChannelResult(channel=channel, status="failed", reason="invalid_recipient_id")
     except Exception as exc:
         logger.error(
             "channel=in_app status=failed event_id=%s exc=%s",
-            event_id,
+            notification.event_id,
             type(exc).__name__,
         )
-        return ChannelResult(channel=channel, status="failed", error=type(exc).__name__)
+        return ChannelResult(channel=channel, status="failed", reason=type(exc).__name__)
 
 
-def _dispatch_email(payload: dict, metadata: dict) -> ChannelResult:
-    """Send via SMTP. Returns provider_missing when SMTP is unconfigured or recipient email absent."""
+def _dispatch_email(notification: NormalizedNotification) -> ChannelResult:
     channel = "email"
-    event_id = metadata.get("event_id", "")
     try:
-        from app.core.config import settings
         from app.adapters import email_client
+        from app.core.config import settings
 
-        recipient_email = payload.get("recipient", {}).get("email")
+        if not notification.recipient_email:
+            return ChannelResult(channel=channel, status="skipped", reason="missing_recipient_email")
+
         smtp_ready = bool(settings.smtp_host and settings.smtp_user and settings.smtp_password)
-
-        if not smtp_ready or not recipient_email:
-            reason = "smtp_not_configured" if not smtp_ready else "no_recipient_email"
-            logger.info("channel=email status=provider_missing event_id=%s reason=%s", event_id, reason)
-            return ChannelResult(channel=channel, status="provider_missing", error=reason)
-
-        template = payload.get("template", {})
-        variables = template.get("variables") or {}
-        subject = _strip_crlf(variables.get("subject") or f"HealthOS — {template.get('id', 'notification')}")
-        text_body = variables.get("text_body") or f"{template.get('id', 'notification')}"
-        html_body = variables.get("html_body")
+        if not smtp_ready:
+            return ChannelResult(channel=channel, status="skipped", reason="smtp_not_configured")
 
         email_client.send_email(
-            to_email=recipient_email,
-            subject=subject,
-            text_body=_strip_crlf(text_body),
-            html_body=_strip_crlf(html_body) if html_body else None,
+            to_email=notification.recipient_email,
+            subject=_strip_crlf(notification.title),
+            text_body=_strip_crlf(notification.body),
+            html_body=None,
         )
-
-        logger.info("channel=email status=delivered event_id=%s", event_id)
+        logger.info("channel=email status=delivered event_id=%s", notification.event_id)
         return ChannelResult(channel=channel, status="delivered")
-
     except Exception as exc:
         logger.error(
             "channel=email status=failed event_id=%s exc=%s",
-            event_id,
+            notification.event_id,
             type(exc).__name__,
         )
-        return ChannelResult(channel=channel, status="failed", error=type(exc).__name__)
+        return ChannelResult(channel=channel, status="failed", reason=type(exc).__name__)
 
 
-def _dispatch_push(payload: dict, metadata: dict) -> ChannelResult:
-    event_id = metadata.get("event_id", "")
-    logger.info("channel=push status=provider_missing event_id=%s", event_id)
-    return ChannelResult(channel="push", status="provider_missing", error="push_adapter_not_configured")
+def _dispatch_push(notification: NormalizedNotification) -> ChannelResult:
+    logger.info("channel=push status=skipped event_id=%s reason=provider_not_configured", notification.event_id)
+    return ChannelResult(channel="push", status="skipped", reason="provider_not_configured")
 
 
-def _dispatch_sms(payload: dict, metadata: dict) -> ChannelResult:
-    event_id = metadata.get("event_id", "")
-    logger.info("channel=sms status=provider_missing event_id=%s", event_id)
-    return ChannelResult(channel="sms", status="provider_missing", error="sms_adapter_not_configured")
+def _dispatch_sms(notification: NormalizedNotification) -> ChannelResult:
+    logger.info("channel=sms status=skipped event_id=%s reason=provider_not_configured", notification.event_id)
+    return ChannelResult(channel="sms", status="skipped", reason="provider_not_configured")
 
 
 _CHANNEL_HANDLERS = {
@@ -207,45 +262,30 @@ _CHANNEL_HANDLERS = {
 }
 
 
-# ── Public entry point ────────────────────────────────────────────────────────
+def dispatch(event: dict[str, Any], db=None) -> DispatchResult:
+    notification = normalize_event(event)
+    result = DispatchResult(event_id=notification.event_id)
 
-def dispatch(event: dict, db=None) -> DispatchResult:
-    """Validate and fan-out a notification.requested event.
-
-    `db` is an optional sync Session for the in_app channel; if None the
-    dispatcher opens its own session via get_sync_db_context.
-
-    Producers that only need in_app can still call services.notifications.enqueue
-    directly — the dispatcher is for multi-channel fan-out.
-    """
-    validate_envelope(event)
-
-    metadata = event.get("metadata", {})
-    payload = event.get("payload", {})
-    event_id = metadata.get("event_id", "")
-    channels: list[str] = payload.get("channels", [])
-
-    result = DispatchResult(event_id=event_id)
-    for channel in channels:
+    for channel in notification.channels:
         handler = _CHANNEL_HANDLERS.get(channel)
         if handler is None:
             result.results.append(
-                ChannelResult(channel=channel, status="provider_missing", error="unknown_channel")
+                ChannelResult(channel=channel, status="skipped", reason="unsupported_channel")
             )
             continue
         try:
             if channel == "in_app":
-                ch_result = handler(payload, metadata, db)
+                channel_result = handler(notification, db)
             else:
-                ch_result = handler(payload, metadata)
+                channel_result = handler(notification)
         except Exception as exc:
             logger.error(
                 "channel=%s status=failed event_id=%s exc=%s",
                 channel,
-                event_id,
+                notification.event_id,
                 type(exc).__name__,
             )
-            ch_result = ChannelResult(channel=channel, status="failed", error=type(exc).__name__)
-        result.results.append(ch_result)
+            channel_result = ChannelResult(channel=channel, status="failed", reason=type(exc).__name__)
+        result.results.append(channel_result)
 
     return result

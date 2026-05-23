@@ -15,15 +15,21 @@ async def health() -> dict:
 async def dispatch_endpoint(event: dict) -> dict:
     """Dispatch a notification event.
 
-    Validates against contracts/events/notification-requested.json schema.
-    Idempotency: not guaranteed — producers must not re-publish the same event_id.
+    Accepts either the notification.requested envelope or the demo-friendly
+    flat shape with event_id, recipient/user id, title/body/message, and
+    channel(s). Idempotency is not guaranteed.
     """
     try:
         result = dispatch(event)
     except EnvelopeValidationError as exc:
-        event_id = (event.get("metadata") or {}).get("event_id")
+        event_id = event.get("event_id") or (event.get("metadata") or {}).get("event_id")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "INVALID_ENVELOPE", "message": "Invalid event envelope.", "event_id": event_id},
+            detail={
+                "code": "INVALID_ENVELOPE",
+                "message": "Invalid notification payload.",
+                "event_id": event_id,
+                "reason": str(exc),
+            },
         ) from None
     return result.to_dict()

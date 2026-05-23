@@ -1,6 +1,6 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.3-docs | **Last Updated**: 2026-05-22
+> **Version**: 1.3.4-demo | **Last Updated**: 2026-05-23
 
 ---
 
@@ -8,13 +8,19 @@
 
 ### Added
 
+#### Final Demo Readiness (2026-05-23)
+- **BFF routing policy guard**: Added a frontend test preventing production `/v1/:path*` and `/ws` Next.js rewrites to Core. Documented WebSocket ticket expectations as the realtime exception.
+- **Admin maintenance scripts**: `seed_admin.py` now reads `SEED_ADMIN_*` env vars and refuses missing passwords; `delete_seed_admin.py --confirm` removes the configured account.
+- **Notification dispatch demo path**: Core notification dispatch persists `in_app` notifications; standalone notification service validates dispatch payloads, supports optional SMTP email, and returns explicit `skipped` reasons for unsupported/unconfigured channels.
+- **Demo documentation**: Added `docs/current-status.md`, `docs/demo/demo-checklist.md`, and `docs/demo/demo-script.md`.
+
 #### Documentation Audit & Hardening (2026-05-23)
 - **Documentation sync pass**: Verified stale claims in security.md, system-architecture.md, project-roadmap.md, project-changelog.md against current codebase state
 - **JWT iss/aud claim correction**: Updated security.md to reflect that JWT `iss`/`aud` validation is already enforced via `decode_access_token()` (not a TODO). Updated roadmap to mark as completed.
 - **Meal analysis documentation**: Updated system-architecture.md to clarify meal analysis task source: `backend/app/tasks/meal_analysis.py` (Celery-based, runs in Core BE, not queue-worker service)
 - **Queue worker tasks cleanup**: Documented that meal_tasks.py and notification_tasks.py were deleted from queue-worker service; meal and notification tasks now live in backend/app/tasks/
 - **Verified implemented endpoints**: Confirmed `/v1/plans` endpoint exists (endpoints/plans.py); confirmed `/v1/users/me/onboarding-draft` endpoint exists (endpoints/users.py)
-- **MFA enforcement status**: Confirmed MFA enforcement on password login remains TODO (code path still bypasses MFA challenge when password path taken)
+- **MFA enforcement status**: Password login now returns an MFA challenge when `mfa_enabled=true`; stale MFA-gap docs were corrected during the final demo readiness pass.
 
 #### DB Session Transaction Safety & Alembic Model Registry (2026-05-22)
 - **Transaction safety refactor**: Removed implicit `await session.commit()` from `get_db()` and `get_db_context()` dependency injectors. Write paths now explicitly commit; read paths do not. Rollback-on-exception preserved.
@@ -98,7 +104,7 @@
   - Added note that both dev-sync workflows can fire on the same qualifying release commit
 - Aligned `security.md` with current implementation details:
   - Corrected method/strategy specifics for rate-limited endpoints
-  - Updated cookie SameSite note to `Lax` and documented additional known gaps (legacy WS deprecation route, `/api/v1/plans` drift, notification dispatch stub)
+  - Updated cookie SameSite note to `Lax` and documented additional known gaps (legacy WS deprecation route, `/api/v1/plans` drift, notification provider gaps)
 - Refreshed metadata/version stamps for updated core docs to `1.2.3-docs` / `2026-04-21`.
 
 #### Frontend

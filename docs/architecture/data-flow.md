@@ -62,9 +62,10 @@ Queue Worker:
   → normalize + validate
   → upsert vào PostgreSQL (health_metrics)
   → kiểm tra rule-based alert
-  → nếu vi phạm ngưỡng: enqueue "send_notification" task
-Notification Worker:
-  → gọi Notification Gateway (email / push / SMS)
+  → nếu vi phạm ngưỡng: enqueue notification_dispatch task
+Notification Dispatch:
+  → persist in-app notification hoặc gửi SMTP nếu cấu hình
+  → push/SMS provider chưa cấu hình: skipped với reason rõ ràng
 ```
 
 ## Luồng 4: Truy vấn lịch sử sức khỏe
