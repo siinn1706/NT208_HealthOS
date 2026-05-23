@@ -57,6 +57,27 @@ def upload_file(
     return f"{settings.storage_endpoint}/{bucket}/{key}"
 
 
+def storage_url_to_bucket_key(url: str | None) -> tuple[str, str] | None:
+    if not url:
+        return None
+    prefix = settings.storage_endpoint.rstrip("/") + "/"
+    if not url.startswith(prefix):
+        return None
+    remainder = url[len(prefix):]
+    bucket, sep, key = remainder.partition("/")
+    if not sep or not bucket or not key:
+        return None
+    return bucket, key
+
+
+def presign_storage_url(url: str | None, expires_s: int = DEFAULT_GET_EXPIRY_S) -> str | None:
+    parsed = storage_url_to_bucket_key(url)
+    if parsed is None:
+        return url
+    bucket, key = parsed
+    return get_presigned_get_url(bucket=bucket, key=key, expires_s=expires_s)
+
+
 def get_presigned_url(bucket: str, key: str, expires: int = 3600) -> str:
     """Backwards-compatible alias of `get_presigned_get_url`.
 

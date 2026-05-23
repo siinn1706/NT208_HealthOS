@@ -47,6 +47,13 @@ from app.services.otp import (
     hash_otp_code,
     mark_otp_consumed,
 )
+from app.services.upload_security import (
+    UploadTooLargeError,
+    detect_image_mime,
+    extension_for_mime,
+    normalize_content_type,
+    read_upload_bounded,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -117,8 +124,8 @@ async def upload_profile_avatar(
     file: UploadFile = File(...),
 ) -> CurrentUserResponse:
     """Upload a profile image to object storage and persist URL on ``user_profiles.avatar_url``."""
-    content_type = (file.content_type or "").split(";")[0].strip().lower()
-    if content_type not in _ALLOWED_AVATAR_TYPES:
+    declared_type = normalize_content_type(file.content_type)
+    if declared_type not in _ALLOWED_AVATAR_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -126,26 +133,40 @@ async def upload_profile_avatar(
                 "message": "Avatar must be JPEG, PNG, or WebP.",
             },
         )
-    raw = await file.read()
+    try:
+        raw = await read_upload_bounded(file, _MAX_AVATAR_BYTES)
+    except UploadTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "AVATAR_TOO_LARGE", "message": "Avatar must be at most 2 MiB."},
+        ) from exc
     if len(raw) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "EMPTY_FILE", "message": "Empty upload."},
         )
-    if len(raw) > _MAX_AVATAR_BYTES:
+    detected_type = detect_image_mime(raw[:32])
+    if detected_type not in _ALLOWED_AVATAR_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "AVATAR_TOO_LARGE", "message": "Avatar must be at most 2 MiB."},
+            detail={"code": "INVALID_AVATAR_CONTENT", "message": "Avatar bytes must be a valid image."},
         )
-    suffix_by_type = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-    suffix = suffix_by_type.get(content_type, ".jpg")
+    if detected_type != declared_type:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "AVATAR_MIME_MISMATCH",
+                "message": "Avatar content does not match the declared file type.",
+            },
+        )
+    suffix = f".{extension_for_mime(detected_type, 'jpg')}"
     key = f"profile-avatars/{current_user.id}/{uuid.uuid4()}{suffix}"
     try:
         public_url = upload_file(
             settings.storage_bucket_meals,
             key,
             raw,
-            content_type=content_type,
+            content_type=detected_type,
         )
     except RuntimeError as exc:
         raise HTTPException(

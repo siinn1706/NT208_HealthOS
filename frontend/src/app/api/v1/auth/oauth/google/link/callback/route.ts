@@ -10,6 +10,7 @@ import { exchangeGoogleCodeForToken, getGoogleUserInfo } from "@/lib/oauth/googl
 import { getUserIdFromSession } from "@/lib/oauth/session-helpers";
 import { CORE_API_URL } from "@/lib/env";
 import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
+import { buildSignedBffOAuthProfile } from "@/lib/oauth/bff-exchange-signature";
 import {
   buildLocalizedAppUrl,
   buildOAuthCallbackUrlFromContext,
@@ -107,13 +108,13 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         user_id: sessionUserId,
-        profile: {
+        profile: buildSignedBffOAuthProfile({
           provider: "google",
           provider_account_id: googleUser.id,
           email: googleUser.email,
           name: googleUser.name,
           avatar_url: googleUser.picture ?? null,
-        },
+        }),
       }),
     });
 

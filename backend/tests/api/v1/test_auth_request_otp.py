@@ -1,8 +1,11 @@
 """Regression tests for auth OTP request flow."""
 
+import inspect
+
 import pytest
 from sqlalchemy import select
 
+from app.api.v1.endpoints import auth as auth_endpoints
 from app.api.v1.endpoints.auth import OTP_TTL_SECONDS, request_email_otp
 from app.models.core import User
 from app.schemas.auth import RequestOtpBody
@@ -55,3 +58,10 @@ async def test_request_otp_reset_password_unknown_email_returns_generic_success(
     assert res.data.expires_in_seconds == OTP_TTL_SECONDS
     assert res.data.otp is None
     assert redis.values["auth:otp:cooldown:reset_password:unknown@example.com"] == "1"
+
+
+def test_request_otp_uses_cryptographic_rng():
+    source = inspect.getsource(auth_endpoints.request_email_otp)
+
+    assert "secrets.randbelow" in source
+    assert "random.randint" not in source

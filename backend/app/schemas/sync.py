@@ -12,6 +12,7 @@ need the external_id, no fake metric_type / value placeholder.
 from __future__ import annotations
 
 import datetime
+import re
 import uuid
 from typing import Optional
 
@@ -19,6 +20,25 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.core import MetricTypeEnum, WearableSourceEnum
 from app.schemas.common import DataResponse
+
+
+SYNC_TOKEN_MAX_COUNT = 32
+SYNC_TOKEN_KEY_MAX_LENGTH = 64
+SYNC_TOKEN_VALUE_MAX_LENGTH = 4096
+_SYNC_TOKEN_KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.:-]{0,63}$")
+
+
+def validate_sync_token_map(tokens: dict[str, str | None]) -> dict[str, str | None]:
+    if len(tokens) > SYNC_TOKEN_MAX_COUNT:
+        raise ValueError(f"at most {SYNC_TOKEN_MAX_COUNT} sync tokens are allowed")
+    for key, value in tokens.items():
+        if len(key) > SYNC_TOKEN_KEY_MAX_LENGTH:
+            raise ValueError(f"sync token key exceeds {SYNC_TOKEN_KEY_MAX_LENGTH} characters")
+        if not _SYNC_TOKEN_KEY_RE.fullmatch(key):
+            raise ValueError("sync token keys must start with a letter and contain only letters, digits, _, ., :, or -")
+        if value is not None and len(value) > SYNC_TOKEN_VALUE_MAX_LENGTH:
+            raise ValueError(f"sync token value exceeds {SYNC_TOKEN_VALUE_MAX_LENGTH} characters")
+    return tokens
 
 
 # ── Per-record payload ──────────────────────────────────────────────────
@@ -107,6 +127,11 @@ class HealthIngestBatch(BaseModel):
     #   (stretch) "BloodPressure" | "ExerciseSession"
     next_changes_tokens: dict[str, str] = Field(default_factory=dict)
 
+    @field_validator("next_changes_tokens")
+    @classmethod
+    def validate_next_changes_tokens(cls, tokens: dict[str, str]) -> dict[str, str]:
+        return validate_sync_token_map(tokens)  # type: ignore[return-value]
+
 
 class HealthIngestErrorRow(BaseModel):
     external_id: str
@@ -147,3 +172,8 @@ class SyncStateUpdateBody(BaseModel):
     leaves untouched record types alone."""
 
     tokens: dict[str, Optional[str]] = Field(default_factory=dict)
+
+    @field_validator("tokens")
+    @classmethod
+    def validate_tokens(cls, tokens: dict[str, Optional[str]]) -> dict[str, Optional[str]]:
+        return validate_sync_token_map(tokens)

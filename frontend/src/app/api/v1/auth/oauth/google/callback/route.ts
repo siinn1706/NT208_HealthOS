@@ -7,6 +7,7 @@ import { exchangeGoogleCodeForToken, getGoogleUserInfo } from "@/lib/oauth/googl
 import { applyAuthCookies, readCoreAuthPayload } from "@/lib/bff-auth-session";
 import { CORE_API_URL } from "@/lib/env";
 import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
+import { buildSignedBffOAuthProfile } from "@/lib/oauth/bff-exchange-signature";
 import {
   buildLocalizedAppUrl,
   buildOAuthCallbackUrlFromContext,
@@ -135,13 +136,13 @@ export async function GET(request: NextRequest) {
         "Content-Type": "application/json",
         "X-BFF-Secret": process.env.BFF_SHARED_SECRET ?? "",
       },
-      body: JSON.stringify({
+      body: JSON.stringify(buildSignedBffOAuthProfile({
         provider: "google",
         provider_account_id: googleUser.id,
         email: googleUser.email,
         name: googleUser.name,
         avatar_url: googleUser.picture ?? null,
-      }),
+      })),
     });
 
     if (!coreRes.ok) {

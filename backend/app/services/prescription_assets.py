@@ -23,6 +23,7 @@ from app.adapters.storage import (
 )
 from app.core.config import settings
 from app.models.core import Appointment, PrescriptionAsset, User
+from app.services.upload_security import sanitize_response_filename
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ async def upload_asset(
         mime_type=mime_type,
         size_bytes=len(file_bytes),
         sha256=digest,
-        original_filename=original_filename,
+        original_filename=sanitize_response_filename(original_filename, fallback="prescription"),
     )
     db.add(asset)
     await db.flush()
@@ -185,7 +186,9 @@ def mint_signed_url(asset: PrescriptionAsset, expires_s: int = DEFAULT_GET_EXPIR
         key=asset.key,
         expires_s=expires_s,
         response_content_disposition=(
-            f'inline; filename="{asset.original_filename}"' if asset.original_filename else None
+            f'inline; filename="{sanitize_response_filename(asset.original_filename, fallback="prescription")}"'
+            if asset.original_filename
+            else None
         ),
         response_content_type=asset.mime_type,
     )
