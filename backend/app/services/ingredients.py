@@ -57,7 +57,7 @@ async def search_ingredients(
     return list(rows), total
 
 
-async def get_by_id(db: AsyncSession, ingredient_id: uuid.UUID) -> Optional[Ingredient]:
+async def get_by_id(db: AsyncSession, ingredient_id: uuid.UUID) -> Optional[Ingredient]:  # idor-ok: ingredients are shared catalog rows with no user ownership
     return (
         await db.execute(select(Ingredient).where(Ingredient.id == ingredient_id))
     ).scalar_one_or_none()

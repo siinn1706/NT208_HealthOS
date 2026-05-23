@@ -124,6 +124,7 @@ async def _vitals_7d(db: AsyncSession, user_id: uuid.UUID) -> dict[str, Any]:
                 and_(
                     HealthMetric.user_id == user_id,
                     HealthMetric.recorded_at >= start,
+                    HealthMetric.is_deleted.is_(False),
                 )
             )
         )

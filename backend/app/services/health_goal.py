@@ -65,13 +65,9 @@ class HealthGoalService:
         goal: HealthGoal,
         data: HealthGoalUpdate,
         current_user_id: uuid.UUID,
-    ) -> HealthGoal:
+    ) -> HealthGoal | None:
         if goal.user_id != current_user_id:
-            raise ApiException(
-                status_code=403,
-                code="FORBIDDEN",
-                message="You do not have permission to update this health goal",
-            )
+            return None
 
         try:
             if data.target_weight_kg is not None:
@@ -101,11 +97,7 @@ class HealthGoalService:
         self, db: AsyncSession, goal: HealthGoal, current_user_id: uuid.UUID
     ) -> None:
         if goal.user_id != current_user_id:
-            raise ApiException(
-                status_code=403,
-                code="FORBIDDEN",
-                message="You do not have permission to delete this health goal",
-            )
+            return None
 
         try:
             await db.delete(goal)

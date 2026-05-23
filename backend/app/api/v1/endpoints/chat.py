@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger("healthos.ws.legacy_chat")
 
 
 @router.websocket("/ws/chat/{user_id}")
-async def deprecated_websocket_chat(user_id: str, ws: WebSocket) -> None:
+async def deprecated_websocket_chat(user_id: str, ws: WebSocket) -> None:  # idor-ok: immediately rejects with 4410 — no resource access
     """Reject connections politely — direct callers to the canonical ``/ws`` route."""
     await ws.accept()
     await ws.send_json({

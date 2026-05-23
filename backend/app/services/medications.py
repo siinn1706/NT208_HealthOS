@@ -221,7 +221,7 @@ async def _load_plan(
     return result.scalar_one_or_none()
 
 
-async def _load_plan_reminders(
+async def _load_plan_reminders(  # idor-ok: private helper — plan ownership verified by caller before this is invoked
     db: AsyncSession,
     plan_id: uuid.UUID,
 ) -> list[Reminder]:

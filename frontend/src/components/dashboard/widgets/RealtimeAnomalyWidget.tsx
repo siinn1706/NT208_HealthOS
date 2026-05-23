@@ -136,7 +136,7 @@ export function RealtimeAnomalyWidget() {
   const meta = (key: string) => ALL_METRICS.find((m) => m.key === key);
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden shrink-0">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 pt-3.5 pb-3 border-b border-border">

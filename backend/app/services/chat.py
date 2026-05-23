@@ -7,11 +7,13 @@ No direct SQLAlchemy queries in endpoints.
 from __future__ import annotations
 
 import datetime
+import logging
 import uuid
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.models.core import (
     Conversation,
     ConversationMember,
@@ -35,6 +37,8 @@ from app.schemas.chat import (
 )
 
 AI_CONVERSATION_TITLE = "HealthOS AI Assistant"
+
+_LOGGER = logging.getLogger("healthos.chat")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -560,12 +564,14 @@ async def create_group_conversation(
     db.add(conv)
     await db.flush()
 
+    _settings = get_settings()
+    require_accept = _settings.group_conv_require_accept
     members = [
         ConversationMember(
             conversation_id=conv.id,
             user_id=uid,
             role="owner" if uid == creator_id else "member",
-            is_accepted=True,
+            is_accepted=True if (uid == creator_id or not require_accept) else False,
         )
         for uid in {creator_id, *member_ids}
     ]
@@ -672,7 +678,7 @@ async def update_conversation_settings(
     return member
 
 
-async def _reload_conversation(db: AsyncSession, conv_id: uuid.UUID) -> Conversation:
+async def _reload_conversation(db: AsyncSession, conv_id: uuid.UUID) -> Conversation:  # idor-ok: private helper — caller already verified membership via assert_member
     result = await db.execute(
         select(Conversation)
         .options(
@@ -708,7 +714,7 @@ async def assert_member(
 # Message operations
 # ──────────────────────────────────────────────────────────────────────────────
 
-async def _get_pinned_ids(db: AsyncSession, conversation_id: uuid.UUID) -> set[uuid.UUID]:
+async def _get_pinned_ids(db: AsyncSession, conversation_id: uuid.UUID) -> set[uuid.UUID]:  # idor-ok: private helper — caller already verified membership via assert_member
     result = await db.execute(
         select(PinnedMessage.message_id).where(
             PinnedMessage.conversation_id == conversation_id
@@ -823,7 +829,7 @@ async def send_message(
     return await _load_message_dto(db, msg.id, conversation_id)
 
 
-async def _load_message_dto(
+async def _load_message_dto(  # idor-ok: private helper — scoped to conversation_id which caller already authorized
     db: AsyncSession, message_id: uuid.UUID, conversation_id: uuid.UUID
 ) -> MessageDTO:
     result = await db.execute(
@@ -833,9 +839,11 @@ async def _load_message_dto(
             selectinload(Message.reactions).selectinload(MessageReaction.user),
             selectinload(Message.reply_to).selectinload(Message.sender),
         )
-        .where(Message.id == message_id)
+        .where(Message.id == message_id, Message.conversation_id == conversation_id)
     )
-    msg = result.scalar_one()
+    msg = result.scalar_one_or_none()
+    if msg is None:
+        raise PermissionError("Message does not belong to this conversation.")
     pinned_ids = await _get_pinned_ids(db, conversation_id)
     return _build_message_dto(msg, pinned_ids)
 
@@ -847,6 +855,15 @@ async def edit_message(
     user_id: uuid.UUID,
     content: str,
 ) -> MessageDTO:
+    try:
+        await assert_member(db, conversation_id, user_id)
+    except ValueError:
+        _LOGGER.warning(
+            "edit_message denied: reason=not_member message_id=%s user_id=%s",
+            message_id, user_id,
+        )
+        raise PermissionError("Forbidden.")
+
     result = await db.execute(
         select(Message).where(
             and_(
@@ -858,9 +875,17 @@ async def edit_message(
     )
     msg = result.scalar_one_or_none()
     if not msg:
-        raise ValueError("Message not found.")
+        _LOGGER.warning(
+            "edit_message denied: reason=not_found message_id=%s user_id=%s",
+            message_id, user_id,
+        )
+        raise PermissionError("Forbidden.")
     if msg.sender_id != user_id:
-        raise PermissionError("You can only edit your own messages.")
+        _LOGGER.warning(
+            "edit_message denied: reason=not_sender message_id=%s user_id=%s",
+            message_id, user_id,
+        )
+        raise PermissionError("Forbidden.")
     if msg.is_recalled:
         raise ValueError("Cannot edit a recalled message.")
 
@@ -877,6 +902,15 @@ async def recall_message(
     user_id: uuid.UUID,
     delete_for_everyone: bool = True,
 ) -> MessageDTO:
+    try:
+        await assert_member(db, conversation_id, user_id)
+    except ValueError:
+        _LOGGER.warning(
+            "recall_message denied: reason=not_member message_id=%s user_id=%s",
+            message_id, user_id,
+        )
+        raise PermissionError("Forbidden.")
+
     result = await db.execute(
         select(Message).where(
             and_(
@@ -888,9 +922,17 @@ async def recall_message(
     )
     msg = result.scalar_one_or_none()
     if not msg:
-        raise ValueError("Message not found.")
+        _LOGGER.warning(
+            "recall_message denied: reason=not_found message_id=%s user_id=%s",
+            message_id, user_id,
+        )
+        raise PermissionError("Forbidden.")
     if msg.sender_id != user_id:
-        raise PermissionError("You can only recall your own messages.")
+        _LOGGER.warning(
+            "recall_message denied: reason=not_sender message_id=%s user_id=%s",
+            message_id, user_id,
+        )
+        raise PermissionError("Forbidden.")
 
     if delete_for_everyone:
         msg.is_recalled = True
@@ -910,6 +952,15 @@ async def react_to_message(
 ) -> MessageDTO:
     """Toggle: add reaction if not present, remove if already present."""
     await assert_member(db, conversation_id, user_id)
+
+    msg_check = (await db.execute(
+        select(Message).where(
+            Message.id == message_id,
+            Message.conversation_id == conversation_id,
+        )
+    )).scalar_one_or_none()
+    if msg_check is None:
+        raise ValueError("Message does not belong to this conversation.")
 
     result = await db.execute(
         select(MessageReaction).where(
@@ -941,6 +992,16 @@ async def pin_message(
     user_id: uuid.UUID,
 ) -> None:
     await assert_member(db, conversation_id, user_id)
+
+    msg_check = (await db.execute(
+        select(Message).where(
+            Message.id == message_id,
+            Message.conversation_id == conversation_id,
+        )
+    )).scalar_one_or_none()
+    if msg_check is None:
+        raise ValueError("Message does not belong to this conversation.")
+
     # Check if already pinned
     result = await db.execute(
         select(PinnedMessage).where(
@@ -968,6 +1029,16 @@ async def unpin_message(
     user_id: uuid.UUID,
 ) -> None:
     await assert_member(db, conversation_id, user_id)
+
+    msg_check = (await db.execute(
+        select(Message).where(
+            Message.id == message_id,
+            Message.conversation_id == conversation_id,
+        )
+    )).scalar_one_or_none()
+    if msg_check is None:
+        raise ValueError("Message does not belong to this conversation.")
+
     await db.execute(
         delete(PinnedMessage).where(
             and_(
@@ -1023,6 +1094,7 @@ async def mark_conversation_read(
     last_read_message_id: uuid.UUID,
 ) -> None:
     """Set member.last_read_at to the timestamp of the specified message."""
+    await assert_member(db, conversation_id, user_id)
     msg_result = await db.execute(
         select(Message.created_at).where(Message.id == last_read_message_id)
     )

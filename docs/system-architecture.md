@@ -1,7 +1,7 @@
 # NT208 HealthOS — System Architecture
 
-> **Version**: 1.2.2  
-> **Last Updated**: 2026-05-21  
+> **Version**: 1.3.0  
+> **Last Updated**: 2026-05-22  
 > **Scope**: Web + Mobile + Microservices + Background Tasks
 
 ---
@@ -595,6 +595,15 @@ Mobile app displays nutrition breakdown
 - Performance: O(1) counter increment
 - TTL support: Counters auto-expire after time window
 - Fail closed: If Redis down, reject requests (safer than allowing)
+
+### 7. Resource Ownership (IDOR Protection)
+**Rationale**:
+- Every service function that fetches a user-owned resource (appointments, reminders, meals, health metrics, etc.) filters by `user_id` in the WHERE clause — returning `None` / `404 NOT_FOUND` on ownership mismatch rather than `403`, to avoid leaking resource existence.
+- The `get_owned(db, Model, id_=..., user_id=...)` helper in `app/services/_ownership.py` centralises this pattern; services call it instead of writing raw `select().where(id == ...).where(user_id == ...)`.
+- Chat endpoints enforce membership via `assert_member(db, conversation_id, user_id)` before any read or write; the WS dispatcher wraps every message handler with the same gate.
+- Celery tasks verify `req.user_id == user_uuid` immediately after loading the job row to prevent broker-level argument tampering.
+- Ownership denials are logged as `SECURITY_ACCESS_DENIED` audit events in a separate session (so the log row persists even if the caller transaction rolls back). These rows are filtered from the user-facing `/security-logs` endpoint.
+- A static guardrail script (`backend/scripts/check_idor.py`) scans endpoint handlers, service functions, and the WS dispatcher for missing ownership checks; it runs in CI and locally before push.
 
 ---
 

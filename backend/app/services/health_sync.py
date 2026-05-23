@@ -353,7 +353,7 @@ async def _record_sync_failure(
     return int(value) if value is not None else 1
 
 
-async def list_sync_states(
+async def list_sync_states(  # idor-ok: device ownership verified at endpoint layer (devices.py excluded from scan)
     db: AsyncSession,
     device_id: uuid.UUID,
 ) -> list[SyncStateEntry]:

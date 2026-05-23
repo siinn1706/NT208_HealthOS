@@ -7,6 +7,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import Meal, MealStatusEnum
+from app.services._ownership import get_owned
 
 
 def _safe_float(value: object) -> float:
@@ -93,8 +94,7 @@ async def get_meal_by_id(
     user_id: uuid.UUID,
     meal_id: uuid.UUID,
 ) -> Meal | None:
-    stmt = select(Meal).where(Meal.id == meal_id, Meal.user_id == user_id)
-    return (await db.execute(stmt)).scalar_one_or_none()
+    return await get_owned(db, Meal, id_=meal_id, user_id=user_id)
 
 
 async def update_meal(

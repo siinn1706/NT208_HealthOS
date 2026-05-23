@@ -362,7 +362,7 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
   );
 
   return (
-    <div className="rounded-xl border border-border bg-card h-full flex flex-col overflow-hidden">
+    <div className="rounded-xl border border-border bg-card flex flex-col overflow-hidden shrink-0">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border gap-2">
@@ -432,15 +432,15 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
         )}
       </div>
 
-      {/* ── Chart area ── */}
-      <div className="flex-1 px-3 pb-3 min-h-[200px]">
+      {/* ── Chart area (fixed height — remaining column space goes to Pro banner) ── */}
+      <div className="px-3 pb-3">
         {isPending ? (
-          <div className="flex items-center justify-center h-full min-h-[200px] text-sm text-muted-foreground gap-2">
+          <div className="flex items-center justify-center h-[220px] text-sm text-muted-foreground gap-2">
             <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             {t("loading")}
           </div>
         ) : isEmpty ? (
-          <div className="flex flex-col items-center justify-center h-full min-h-[200px] gap-2 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-[220px] gap-2 text-muted-foreground">
             <Activity className="w-8 h-8 opacity-30" />
             <p className="text-sm">{t("noData")}</p>
           </div>

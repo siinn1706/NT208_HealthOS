@@ -38,6 +38,7 @@ from app.services.upload_security import (
     detect_prescription_mime,
     read_upload_bounded,
 )
+from app.services.security_logging import log_resource_access_denied
 
 logger = logging.getLogger(__name__)
 
@@ -162,6 +163,13 @@ async def get_prescription_asset_url(
         db=db, user=current_user, appointment_id=appointment_id, asset_id=asset_id
     )
     if asset is None:
+        await log_resource_access_denied(
+            user_id=current_user.id,
+            module="prescriptions",
+            resource_id=str(asset_id),
+            http_method="GET",
+            route="/appointments/{appointment_id}/prescription/assets/{asset_id}/url",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Asset not found."},

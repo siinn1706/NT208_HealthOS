@@ -24,9 +24,10 @@ import { PrescriptionViewerDialog } from "./PrescriptionViewerDialog";
 
 interface AppointmentHistoryTableProps {
   appointments: Appointment[];
+  onSelect?: (appointment: Appointment) => void;
 }
 
-export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTableProps) {
+export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentHistoryTableProps) {
   const t = useTranslations("dashboard.appointments");
   const tStatus = useTranslations("dashboard.appointments.status");
   const locale = useLocale();
@@ -190,9 +191,11 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
               return (
                 <li
                   key={appt.id}
+                  onClick={() => onSelect?.(appt)}
                   className={cn(
                     "px-5 py-4 flex items-start gap-4",
-                    (appt.status === "cancelled" || appt.status === "no_show") && "opacity-60"
+                    (appt.status === "cancelled" || appt.status === "no_show") && "opacity-60",
+                    onSelect && "cursor-pointer hover:bg-muted/30 transition-colors",
                   )}
                 >
                   {/* Date column */}
@@ -251,13 +254,14 @@ export function AppointmentHistoryTable({ appointments }: AppointmentHistoryTabl
                       )}
                       {appt.hasPrescription && appt.prescription && (
                         <button
-                          onClick={() =>
+                          onClick={(e) => {
+                            e.stopPropagation();
                             appt.prescription &&
-                            setOpenPrescription({
-                              prescription: appt.prescription,
-                              appointmentId: appt.id,
-                            })
-                          }
+                              setOpenPrescription({
+                                prescription: appt.prescription,
+                                appointmentId: appt.id,
+                              });
+                          }}
                           className={cn(
                             "ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5",
                             "text-[11px] font-medium text-primary bg-primary/10",

@@ -118,10 +118,14 @@ export function TrendChart({ analysis, height = 360 }: TrendChartProps) {
       axisLabel: {
         color: COLORS.axisLabel,
         fontSize: 10,
-        interval: Math.floor(allDates.length / 7),
+        // Base interval on actual (non-prediction) dates only so prediction
+        // extension doesn't halve the label density.
+        interval: Math.max(0, Math.floor(actualDates.length / 7) - 1),
         formatter: (val: string) => {
-          const d = new Date(val);
-          return `${d.getDate()}/${d.getMonth() + 1}`;
+          // Split instead of new Date() to avoid UTC-midnight timezone shift
+          // turning "2026-04-27" into "26/4" in negative-offset browsers.
+          const [, m, d] = val.split("-");
+          return `${parseInt(d)}/${parseInt(m)}`;
         },
       },
       splitLine: { show: false },

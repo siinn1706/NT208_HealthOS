@@ -288,7 +288,7 @@ async def handle_ws_event(
 
         try:
             msg_dto = await chat_svc.react_to_message(db, msg_id, conv_id, user_id, emoji)
-        except ValueError as exc:
+        except (ValueError, PermissionError) as exc:
             await ack_error("CHAT_ERROR", str(exc))
             return
 
@@ -311,7 +311,7 @@ async def handle_ws_event(
 
         try:
             await chat_svc.pin_message(db, msg_id, conv_id, user_id)
-        except ValueError as exc:
+        except (ValueError, PermissionError) as exc:
             await ack_error("CHAT_ERROR", str(exc))
             return
 
@@ -333,7 +333,7 @@ async def handle_ws_event(
 
         try:
             await chat_svc.unpin_message(db, msg_id, conv_id, user_id)
-        except ValueError as exc:
+        except (ValueError, PermissionError) as exc:
             await ack_error("CHAT_ERROR", str(exc))
             return
 
@@ -353,7 +353,11 @@ async def handle_ws_event(
             await ack_error("INVALID_PAYLOAD", "msg:read requires valid UUIDs.")
             return
 
-        await chat_svc.mark_conversation_read(db, conv_id, user_id, last_msg_id)
+        try:
+            await chat_svc.mark_conversation_read(db, conv_id, user_id, last_msg_id)
+        except ValueError:
+            await ack_error("CHAT_FORBIDDEN", "You are not a member of this conversation.")
+            return
         await db.commit()
 
         read_payload = {

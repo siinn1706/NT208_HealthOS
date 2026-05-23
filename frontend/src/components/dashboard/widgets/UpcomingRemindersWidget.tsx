@@ -25,6 +25,8 @@ interface UpcomingRemindersWidgetProps {
    * which hid real network/auth failures from the user. (UX plan §G.)
    */
   reminders: DataSlice<Reminder[]>;
+  /** Stretch to fill remaining column height (dashboard layout). */
+  fill?: boolean;
 }
 
 const TYPE_CONFIG = {
@@ -45,7 +47,7 @@ const TYPE_CONFIG = {
   },
 };
 
-export function UpcomingRemindersWidget({ reminders }: UpcomingRemindersWidgetProps) {
+export function UpcomingRemindersWidget({ reminders, fill = false }: UpcomingRemindersWidgetProps) {
   const t = useTranslations("dashboard.reminders");
   const tTypes = useTranslations("dashboard.reminders.types");
   const [items, setItems] = useState<Reminder[]>(reminders.data ?? []);
@@ -77,13 +79,19 @@ export function UpcomingRemindersWidget({ reminders }: UpcomingRemindersWidgetPr
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card h-full">
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
+    <div className={cn(
+      "rounded-xl border border-border bg-card",
+      fill ? "h-full flex flex-col min-h-0" : "shrink-0",
+    )}>
+      <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border shrink-0">
         <p className="text-sm font-semibold text-foreground">{t("title")}</p>
         <Clock className="w-4 h-4 text-muted-foreground" />
       </div>
 
-      <div className="overflow-y-auto max-h-[320px]">
+      <div className={cn(
+        "overflow-y-auto",
+        fill ? "flex-1 min-h-0" : "max-h-[320px]",
+      )}>
         <DataState
           // Once the user has started ack'ing items, `items` is the source of
           // truth for the rendered list — re-derive a success slice so the
@@ -113,7 +121,7 @@ export function UpcomingRemindersWidget({ reminders }: UpcomingRemindersWidgetPr
               </p>
             </div>
           }
-          minHeight={120}
+          minHeight={fill ? 0 : 120}
         >
           {(list) => (
             <ul className="divide-y divide-border">
