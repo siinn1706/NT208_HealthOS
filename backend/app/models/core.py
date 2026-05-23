@@ -286,6 +286,12 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    onboarding_draft: Mapped["OnboardingDraft | None"] = relationship(
+        "OnboardingDraft", back_populates="user", uselist=False, cascade="all, delete-orphan",
+    )
+    plans: Mapped[list["Plan"]] = relationship(
+        "Plan", back_populates="user", cascade="all, delete-orphan",
+    )
 
 
 class RefreshTokenSession(Base):
@@ -1724,3 +1730,64 @@ class Ingredient(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class OnboardingDraft(Base):
+    """Per-user JSONB mirror of the onboarding wizard autosave.
+
+    Single row per user (UNIQUE on user_id). Expires 30 days after last write.
+    """
+
+    __tablename__ = "onboarding_drafts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
+    )
+    expires_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="onboarding_draft")
+
+
+class PlanStatusEnum(str, Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class Plan(Base):
+    """User-owned wellness/health plan with optional JSONB items array."""
+
+    __tablename__ = "plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'active'"),
+    )
+    items: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
+    )
+    archived_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="plans")

@@ -181,8 +181,8 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 **v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
 **v1.2.0**: User accent color customization and theming.
 
-- **Implemented**: Auth (email/OTP/OAuth), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications (`/v1/notifications` + read/read-all + unread-count), AI meal analysis (`/analyze`).
-- **Known gaps / partial**: Password login does not enforce MFA challenge even when `mfa_enabled=true`; JWT decoder does not enforce `iss`/`aud`; notification dispatch service remains stub (`/dispatch` => queued); some UX paths remain TODO.
+- **Implemented**: Auth (email/OTP/OAuth), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications (`/v1/notifications` + read/read-all + unread-count), AI meal analysis (`/analyze`), plans (`/v1/plans`), onboarding drafts (`/v1/users/me/onboarding-draft`).
+- **Known gaps / partial**: Password login does not enforce MFA challenge even when `mfa_enabled=true`; notification dispatch service remains stub (`/dispatch` => queued); some UX paths remain TODO.
 
 ## CI/CD Pipeline
 

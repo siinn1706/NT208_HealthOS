@@ -370,7 +370,7 @@ Mobile App (POST /api/v1/meals/analyze-photo)
 Core API (POST /v1/meals/analyze)
     ├─ Validate JWT token
     ├─ Fetch image from request
-    ├─ Enqueue async task: process_meal_image(user_id, image_data)
+    ├─ Enqueue async task: meal_analysis(user_id, image_data) [Celery task in backend/app/tasks/meal_analysis.py]
     └─ Return { job_id: "uuid", status: "processing" }
         ↓
 Mobile App
@@ -378,8 +378,8 @@ Mobile App
     ├─ Poll (GET /api/v1/meals/analyze-photo/[job_id]) every 1-2 sec
     └─ Show loading spinner
         ↓
-Celery Worker (async)
-    ├─ Receive task: process_meal_image
+Celery Worker (async, backend/app/tasks/meal_analysis.py)
+    ├─ Receive task: meal_analysis
     ├─ Call AI Worker (port 8001, POST /analyze)
     │   ├─ Send: image bytes
     │   └─ Receive: { detected_items: [...], nutrition: {...} }

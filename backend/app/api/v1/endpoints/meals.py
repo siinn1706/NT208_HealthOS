@@ -295,9 +295,18 @@ async def get_meal_ingredients(
     )
 
 
+class MealAnalysisError(BaseModel):
+    code: str  # AI_WORKER_FAILED | AI_WORKER_TIMEOUT | UNKNOWN
+    message: str
+
+
 class AnalysisJobResponse(BaseModel):
     job_id: str
     status: str
+    meal_id: uuid.UUID | None = None
+    nutrition_result: dict | None = None
+    result: dict | None = None  # alias of nutrition_result; remove after FE migrates
+    error: MealAnalysisError | None = None
 
 
 @router.post(
@@ -359,7 +368,7 @@ async def analyze_meal_photo(
     await db.execute(stmt)
     await db.commit()
 
-    return AnalysisJobResponse(job_id=job.id, status="processing")
+    return AnalysisJobResponse(job_id=job.id, status="processing", meal_id=meal.id)
 
 
 @router.get(
@@ -385,7 +394,37 @@ async def get_analysis_status_by_job(
             detail={"code": "NOT_FOUND", "message": "Analysis job not found."},
         )
 
-    return AnalysisJobResponse(job_id=job_id, status=meal.status.value)
+    nutrition_result: dict | None = None
+    result: dict | None = None
+    error: MealAnalysisError | None = None
+
+    if meal.status == MealStatusEnum.ANALYZED:
+        # Strip any accidental __error__ key from success rows
+        nr = {k: v for k, v in (meal.nutrition_result or {}).items() if k != "__error__"}
+        nutrition_result = nr or None
+        result = nutrition_result
+    elif meal.status == MealStatusEnum.FAILED:
+        raw_err = (meal.nutrition_result or {}).get("__error__")
+        if isinstance(raw_err, dict):
+            allowed_codes = {"AI_WORKER_FAILED", "AI_WORKER_TIMEOUT", "UNKNOWN"}
+            code = raw_err.get("code", "UNKNOWN")
+            if code not in allowed_codes:
+                code = "UNKNOWN"
+            error = MealAnalysisError(
+                code=code,
+                message=raw_err.get("message", "Analysis failed"),
+            )
+        else:
+            error = MealAnalysisError(code="UNKNOWN", message="Analysis failed")
+
+    return AnalysisJobResponse(
+        job_id=job_id,
+        status=meal.status.value,
+        meal_id=meal.id,
+        nutrition_result=nutrition_result,
+        result=result,
+        error=error,
+    )
 
 
 @router.get(

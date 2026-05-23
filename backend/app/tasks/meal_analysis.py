@@ -1,8 +1,11 @@
 """Meal analysis Celery tasks."""
+import logging
 import uuid
 
 import httpx
 from celery import Task
+
+logger = logging.getLogger(__name__)
 
 from app.adapters.database import get_sync_db_context
 from app.core.config import settings
@@ -59,6 +62,7 @@ def update_meal_status_sync(
 def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
     """Analyze meal image via AI Worker and update meal record."""
     meal_uuid = uuid.UUID(meal_id)
+    logger.info("meal_analysis started meal_id=%s attempt=%s", meal_id, self.request.retries + 1)
 
     try:
         # Call AI Worker
@@ -77,6 +81,7 @@ def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
             MealStatusEnum.ANALYZED,
             nutrition,
         )
+        logger.info("meal_analysis completed meal_id=%s status=ANALYZED", meal_id)
 
         return {
             "meal_id": meal_id,
@@ -85,9 +90,38 @@ def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
         }
 
     except httpx.HTTPError as exc:
-        # Mark as failed
-        update_meal_status_sync(meal_uuid, MealStatusEnum.FAILED, None)
+        # Keep PROCESSING during retries; only stamp FAILED on terminal attempt.
+        if self.request.retries >= self.max_retries:
+            update_meal_status_sync(
+                meal_uuid,
+                MealStatusEnum.FAILED,
+                {"__error__": {"code": "AI_WORKER_FAILED", "message": "AI worker returned error"}},
+            )
+            logger.error(
+                "meal_analysis failed meal_id=%s attempt=%s exc_type=%s",
+                meal_id, self.request.retries + 1, type(exc).__name__,
+            )
+        else:
+            logger.warning(
+                "meal_analysis retry meal_id=%s attempt=%s/%s exc_type=%s",
+                meal_id, self.request.retries + 1, self.max_retries, type(exc).__name__,
+            )
         raise self.retry(exc=exc)
     except Exception as exc:
-        update_meal_status_sync(meal_uuid, MealStatusEnum.FAILED, None)
+        # Stamp FAILED only on terminal attempt — same guard as httpx.HTTPError branch.
+        if self.request.retries >= self.max_retries:
+            update_meal_status_sync(
+                meal_uuid,
+                MealStatusEnum.FAILED,
+                {"__error__": {"code": "UNKNOWN", "message": "Analysis task failed"}},
+            )
+            logger.error(
+                "meal_analysis failed meal_id=%s attempt=%s exc_type=%s",
+                meal_id, self.request.retries + 1, type(exc).__name__,
+            )
+        else:
+            logger.warning(
+                "meal_analysis retry meal_id=%s attempt=%s/%s exc_type=%s",
+                meal_id, self.request.retries + 1, self.max_retries, type(exc).__name__,
+            )
         raise self.retry(exc=exc)

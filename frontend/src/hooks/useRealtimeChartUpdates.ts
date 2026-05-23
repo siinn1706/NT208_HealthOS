@@ -14,6 +14,8 @@ interface RealtimeConfig {
  * When a new metric reading arrives, calls onDataPoint to update chart.
  */
 export function useRealtimeChartUpdates(configs: RealtimeConfig[]) {
+  // No enabled arg: this hook is only mounted inside authenticated chart
+  // components; useChatWs handles token-fetch failure and 4001 gracefully.
   const { status, lastMessage } = useHealthAlerts();
   const isConnected = status === "connected";
 

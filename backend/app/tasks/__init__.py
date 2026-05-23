@@ -16,6 +16,7 @@ celery_app = Celery(
         "app.tasks.account_purge",
         "app.tasks.report_pdf",
         "app.tasks.maintenance",
+        "app.tasks.notification_dispatch",
     ],
 )
 

@@ -8,6 +8,14 @@
 
 ### Added
 
+#### Documentation Audit & Hardening (2026-05-23)
+- **Documentation sync pass**: Verified stale claims in security.md, system-architecture.md, project-roadmap.md, project-changelog.md against current codebase state
+- **JWT iss/aud claim correction**: Updated security.md to reflect that JWT `iss`/`aud` validation is already enforced via `decode_access_token()` (not a TODO). Updated roadmap to mark as completed.
+- **Meal analysis documentation**: Updated system-architecture.md to clarify meal analysis task source: `backend/app/tasks/meal_analysis.py` (Celery-based, runs in Core BE, not queue-worker service)
+- **Queue worker tasks cleanup**: Documented that meal_tasks.py and notification_tasks.py were deleted from queue-worker service; meal and notification tasks now live in backend/app/tasks/
+- **Verified implemented endpoints**: Confirmed `/v1/plans` endpoint exists (endpoints/plans.py); confirmed `/v1/users/me/onboarding-draft` endpoint exists (endpoints/users.py)
+- **MFA enforcement status**: Confirmed MFA enforcement on password login remains TODO (code path still bypasses MFA challenge when password path taken)
+
 #### DB Session Transaction Safety & Alembic Model Registry (2026-05-22)
 - **Transaction safety refactor**: Removed implicit `await session.commit()` from `get_db()` and `get_db_context()` dependency injectors. Write paths now explicitly commit; read paths do not. Rollback-on-exception preserved.
 - **Model registry consolidation**: Created `backend/app/models/__init__.py` as single source of truth for ORM registration. `alembic/env.py` now imports `app.models` package, ensuring Alembic autogenerate sees all tables (audit, emergency, health_goal, etc.) without FastAPI app import side-effects.
