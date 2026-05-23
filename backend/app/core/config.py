@@ -123,6 +123,27 @@ class Settings(BaseSettings):
     #         the FE invite-acceptance surface ships.
     group_conv_require_accept: bool = True
 
+    # ── Wearable sync — Google Health API (Luồng B) ───────────────────────
+    # Obtain client_id + client_secret from https://console.cloud.google.com/
+    # (APIs & Services → Credentials → OAuth 2.0 Client ID, Web app type).
+    # `redirect_uri` MUST be registered in the Cloud Console exactly as
+    # configured here. Empty strings disable the connect flow (the
+    # endpoints will 503 with a helpful message); useful for local dev
+    # without a Google project.
+    google_health_client_id: str = ""
+    google_health_client_secret: str = ""
+    google_health_redirect_uri: str = (
+        "http://localhost:3000/api/v1/wearables/google/callback"
+    )
+    # HMAC secret used to verify push notifications, when Google Health
+    # webhook support is available. Empty disables webhook validation
+    # (the receiver endpoint then rejects every incoming request).
+    google_health_webhook_secret: str = ""
+    # How often the Celery Beat poller drains pending Google Health data
+    # for every active connection. 15 min is a balance between freshness
+    # on the dashboard and burning quota / 429s from Google.
+    wearable_sync_interval_minutes: int = 15
+
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8")
 
     def resolved_runtime_env(self) -> str:
