@@ -59,9 +59,31 @@ components:
       type: object
     AnalysisJobResponse:
       properties:
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/MealAnalysisError'
+          - type: 'null'
         job_id:
           title: Job Id
           type: string
+        meal_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Meal Id
+        nutrition_result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Nutrition Result
+        result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Result
         status:
           title: Status
           type: string
@@ -2231,6 +2253,19 @@ components:
       - last_read_message_id
       title: MarkReadBody
       type: object
+    MealAnalysisError:
+      properties:
+        code:
+          title: Code
+          type: string
+        message:
+          title: Message
+          type: string
+      required:
+      - code
+      - message
+      title: MealAnalysisError
+      type: object
     MealDataResponse:
       properties:
         data:
@@ -3647,6 +3682,40 @@ components:
           format: email
           title: Email
           type: string
+        exchange_audience:
+          anyOf:
+          - maxLength: 64
+            type: string
+          - type: 'null'
+          title: Exchange Audience
+        exchange_expires_at:
+          anyOf:
+          - maxLength: 64
+            type: string
+          - type: 'null'
+          title: Exchange Expires At
+        exchange_issuer:
+          anyOf:
+          - maxLength: 64
+            type: string
+          - type: 'null'
+          title: Exchange Issuer
+        exchange_nonce:
+          anyOf:
+          - maxLength: 128
+            minLength: 16
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+          - type: 'null'
+          title: Exchange Nonce
+        exchange_signature:
+          anyOf:
+          - maxLength: 128
+            minLength: 64
+            pattern: ^[A-Fa-f0-9]+$
+            type: string
+          - type: 'null'
+          title: Exchange Signature
         name:
           title: Name
           type: string
@@ -3662,6 +3731,44 @@ components:
       - email
       - name
       title: OAuthProfile
+      type: object
+    OnboardingDraftData:
+      properties:
+        data:
+          additionalProperties: true
+          title: Data
+          type: object
+        expires_at:
+          format: date-time
+          title: Expires At
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+      required:
+      - data
+      - updated_at
+      - expires_at
+      title: OnboardingDraftData
+      type: object
+    OnboardingDraftPutBody:
+      properties:
+        data:
+          additionalProperties: true
+          title: Data
+          type: object
+      required:
+      - data
+      title: OnboardingDraftPutBody
+      type: object
+    OnboardingDraftResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/OnboardingDraftData'
+      required:
+      - data
+      title: OnboardingDraftResponse
       type: object
     OtpRequested:
       properties:
@@ -3821,6 +3928,198 @@ components:
       required:
       - data
       title: PinnedMessageListResponse
+      type: object
+    PlanCreateBody:
+      properties:
+        category:
+          anyOf:
+          - maxLength: 64
+            type: string
+          - type: 'null'
+          title: Category
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        end_date:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: End Date
+        items:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          title: Items
+        start_date:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Start Date
+        title:
+          maxLength: 255
+          minLength: 1
+          title: Title
+          type: string
+      required:
+      - title
+      title: PlanCreateBody
+      type: object
+    PlanDTO:
+      properties:
+        archived_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Archived At
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        end_date:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: End Date
+        id:
+          format: uuid
+          title: Id
+          type: string
+        items:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          title: Items
+        start_date:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Start Date
+        status:
+          title: Status
+          type: string
+        title:
+          title: Title
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        user_id:
+          format: uuid
+          title: User Id
+          type: string
+      required:
+      - id
+      - user_id
+      - title
+      - status
+      - created_at
+      - updated_at
+      title: PlanDTO
+      type: object
+    PlanListMeta:
+      properties:
+        has_more:
+          default: false
+          title: Has More
+          type: boolean
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+        per_page:
+          default: 20
+          title: Per Page
+          type: integer
+      title: PlanListMeta
+      type: object
+    PlanListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/PlanDTO'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/PlanListMeta'
+      required:
+      - data
+      - meta
+      title: PlanListResponse
+      type: object
+    PlanResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/PlanDTO'
+      required:
+      - data
+      title: PlanResponse
+      type: object
+    PlanUpdateBody:
+      properties:
+        category:
+          anyOf:
+          - maxLength: 64
+            type: string
+          - type: 'null'
+          title: Category
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        end_date:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: End Date
+        items:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          title: Items
+        start_date:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Start Date
+        title:
+          anyOf:
+          - maxLength: 255
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Title
+      title: PlanUpdateBody
       type: object
     PrescriptionAssetDTO:
       properties:
@@ -5859,6 +6158,7 @@ openapi: 3.1.0
 paths:
   /health:
     get:
+      description: Liveness probe — always 200 while process is running.
       operationId: health_health_get
       responses:
         '200':
@@ -5899,6 +6199,49 @@ paths:
       security:
       - bearerAuth: []
       summary: Health
+  /health/ready:
+    get:
+      description: Readiness probe — 503 if DB or Redis unreachable.
+      operationId: health_ready_health_ready_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Health Ready
   /v1/appointments:
     get:
       operationId: list_appointments_v1_appointments_get
@@ -7503,12 +7846,9 @@ paths:
     post:
       description: "Exchange an OAuth profile (from BFF) for a Core BE JWT.\n\nFlow:\n  1. BFF calls this endpoint after OAuth\
         \ login succeeds.\n  2. Core BE finds or creates a User.\n  3. Core BE returns a JWT access token bound to the user.id.\n\
-        \nACCEPTED LIMITATION — OAuth ID token local signature verification (#11):\n  The Core BE trusts the OAuthProfile\
-        \ payload forwarded by the BFF without\n  independently verifying the original OAuth provider's ID token signature.\n\
-        \  Security relies on: (a) this endpoint being BFF-internal (not browser-exposed),\n  (b) network-level isolation\
-        \ between BFF and Core BE.\n  Resolution path: pass the raw id_token through the BFF and have Core BE\n  verify it\
-        \ using the provider's JWKS endpoint before accepting the profile.\n  For the current student deployment where BFF\
-        \ and Core run in the same\n  Docker network, this is an acceptable trade-off."
+        \nProduction/staging require the BFF to sign a short-lived exchange envelope.\nCore validates issuer, audience, expiry,\
+        \ nonce replay, and the profile\nfields before minting Core tokens. Provider JWKS verification can replace\nthis interim\
+        \ trust boundary later without changing the user-facing flow."
       operationId: exchange_oauth_profile_for_token_v1_auth_token_post
       requestBody:
         content:
@@ -9648,6 +9988,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
         '422':
           content:
             application/json:
@@ -12817,6 +13163,417 @@ paths:
       summary: Get nutrition suggestions
       tags:
       - Nutrition
+  /v1/plans:
+    get:
+      operationId: list_plans_v1_plans_get
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - in: query
+        name: per_page
+        required: false
+        schema:
+          default: 20
+          maximum: 100
+          minimum: 1
+          title: Per Page
+          type: integer
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cursor
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: List the current user's wellness plans
+      tags:
+      - Plans
+    post:
+      operationId: create_plan_v1_plans_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanCreateBody'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Create a wellness plan
+      tags:
+      - Plans
+  /v1/plans/{plan_id}:
+    delete:
+      operationId: delete_plan_v1_plans__plan_id__delete
+      parameters:
+      - in: path
+        name: plan_id
+        required: true
+        schema:
+          format: uuid
+          title: Plan Id
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Hard delete a wellness plan
+      tags:
+      - Plans
+    get:
+      operationId: get_plan_v1_plans__plan_id__get
+      parameters:
+      - in: path
+        name: plan_id
+        required: true
+        schema:
+          format: uuid
+          title: Plan Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get a wellness plan by ID
+      tags:
+      - Plans
+    patch:
+      operationId: update_plan_v1_plans__plan_id__patch
+      parameters:
+      - in: path
+        name: plan_id
+        required: true
+        schema:
+          format: uuid
+          title: Plan Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanUpdateBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Partially update a wellness plan
+      tags:
+      - Plans
+  /v1/plans/{plan_id}/archive:
+    post:
+      operationId: archive_plan_v1_plans__plan_id__archive_post
+      parameters:
+      - in: path
+        name: plan_id
+        required: true
+        schema:
+          format: uuid
+          title: Plan Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Archive a wellness plan (soft delete, idempotent)
+      tags:
+      - Plans
   /v1/preferences/me:
     get:
       description: Return current user preferences. Returns defaults if no row exists.
@@ -15045,6 +15802,165 @@ paths:
       security:
       - bearerAuth: []
       summary: Mint a fresh 5-minute signed download URL for a completed export.
+      tags:
+      - Users
+  /v1/users/me/onboarding-draft:
+    delete:
+      operationId: delete_onboarding_draft_v1_users_me_onboarding_draft_delete
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Delete the current user's onboarding draft
+      tags:
+      - Users
+    get:
+      operationId: get_onboarding_draft_v1_users_me_onboarding_draft_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingDraftResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get the current user's onboarding draft
+      tags:
+      - Users
+    put:
+      operationId: put_onboarding_draft_v1_users_me_onboarding_draft_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingDraftPutBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingDraftResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Upsert the current user's onboarding draft
       tags:
       - Users
   /v1/users/me/restore:

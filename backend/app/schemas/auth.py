@@ -19,6 +19,21 @@ class OAuthProfile(BaseModel):
     email: EmailStr
     name: str
     avatar_url: Optional[str] = None
+    exchange_issuer: Optional[str] = Field(default=None, max_length=64)
+    exchange_audience: Optional[str] = Field(default=None, max_length=64)
+    exchange_expires_at: Optional[str] = Field(default=None, max_length=64)
+    exchange_nonce: Optional[str] = Field(
+        default=None,
+        min_length=16,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+    )
+    exchange_signature: Optional[str] = Field(
+        default=None,
+        min_length=64,
+        max_length=128,
+        pattern=r"^[A-Fa-f0-9]+$",
+    )
 
 
 # ─── B7 P3 — OAuth Linked Accounts (settings → linked accounts) ──────────────

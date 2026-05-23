@@ -1,11 +1,12 @@
 """Auth endpoints — OAuth session exchange, email OTP, and current user."""
 import asyncio
+import hashlib
 import hmac
 import json
 import logging
-import random
+import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
@@ -100,6 +101,8 @@ logger = logging.getLogger(__name__)
 WS_TICKET_EXPIRES_SECONDS = 120
 MFA_LOGIN_CHALLENGE_TTL_SECONDS = 5 * 60
 MFA_LOGIN_MAX_ATTEMPTS = 5
+BFF_EXCHANGE_NONCE_PREFIX = "auth:bff_exchange_nonce:"
+BFF_EXCHANGE_REQUIRED_ENVS = {"production", "staging"}
 
 
 async def _redis_getdel_compat(redis: Redis, key: str) -> bytes | str | None:
@@ -470,6 +473,114 @@ def verify_bff_secret(request: Request) -> None:
         )
 
 
+def _runtime_requires_bff_exchange_signature() -> bool:
+    configured = getattr(settings, "bff_exchange_signing_required", None)
+    if configured is not None:
+        return bool(configured)
+    resolved = getattr(settings, "resolved_runtime_env", None)
+    runtime_env = resolved() if callable(resolved) else getattr(settings, "app_env", "development")
+    return str(runtime_env).strip().lower() in BFF_EXCHANGE_REQUIRED_ENVS
+
+
+def _canonical_bff_exchange_payload(body: OAuthProfile) -> bytes:
+    payload = {
+        "avatar_url": body.avatar_url,
+        "email": str(body.email),
+        "exchange_audience": body.exchange_audience,
+        "exchange_expires_at": body.exchange_expires_at,
+        "exchange_issuer": body.exchange_issuer,
+        "exchange_nonce": body.exchange_nonce,
+        "name": body.name,
+        "provider": body.provider,
+        "provider_account_id": body.provider_account_id,
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def _parse_exchange_expiry(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+async def verify_bff_exchange_payload(body: OAuthProfile, redis: Redis) -> None:
+    """Validate the signed BFF OAuth exchange envelope when required or present."""
+    signature_fields = (
+        body.exchange_issuer,
+        body.exchange_audience,
+        body.exchange_expires_at,
+        body.exchange_nonce,
+        body.exchange_signature,
+    )
+    if not _runtime_requires_bff_exchange_signature() and not any(signature_fields):
+        return
+
+    if not all(signature_fields):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "BFF_EXCHANGE_SIGNATURE_REQUIRED",
+                "message": "Signed BFF exchange payload is required.",
+            },
+        )
+
+    expected_issuer = getattr(settings, "bff_exchange_issuer", "healthos-bff")
+    expected_audience = getattr(settings, "bff_exchange_audience", "healthos-core")
+    if body.exchange_issuer != expected_issuer or body.exchange_audience != expected_audience:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "BFF_EXCHANGE_CLAIMS_INVALID",
+                "message": "BFF exchange issuer or audience is invalid.",
+            },
+        )
+
+    now = datetime.now(timezone.utc)
+    expires_at = _parse_exchange_expiry(body.exchange_expires_at)
+    max_age = int(getattr(settings, "bff_exchange_max_age_seconds", 300) or 300)
+    if expires_at is None or expires_at <= now or expires_at > now + timedelta(seconds=max_age):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "BFF_EXCHANGE_EXPIRED",
+                "message": "BFF exchange payload is expired or outside the allowed window.",
+            },
+        )
+
+    secret = getattr(settings, "bff_shared_secret", "")
+    expected_signature = hmac.new(
+        secret.encode("utf-8"),
+        _canonical_bff_exchange_payload(body),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(body.exchange_signature or "", expected_signature):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "BFF_EXCHANGE_SIGNATURE_INVALID",
+                "message": "BFF exchange signature is invalid.",
+            },
+        )
+
+    ttl_seconds = max(1, int((expires_at - now).total_seconds()))
+    replay_key = f"{BFF_EXCHANGE_NONCE_PREFIX}{body.exchange_nonce}"
+    stored = await redis.set(replay_key, "1", nx=True, ex=ttl_seconds)
+    if not stored:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "BFF_EXCHANGE_REPLAYED",
+                "message": "BFF exchange nonce has already been used.",
+            },
+        )
+
+
 @router.post(
     "/token",
     response_model=AuthTokenResponse,
@@ -479,6 +590,7 @@ async def exchange_oauth_profile_for_token(
     body: OAuthProfile,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     _bff: None = Depends(verify_bff_secret),
 ) -> AuthTokenResponse:
     """
@@ -489,16 +601,12 @@ async def exchange_oauth_profile_for_token(
       2. Core BE finds or creates a User.
       3. Core BE returns a JWT access token bound to the user.id.
 
-    ACCEPTED LIMITATION — OAuth ID token local signature verification (#11):
-      The Core BE trusts the OAuthProfile payload forwarded by the BFF without
-      independently verifying the original OAuth provider's ID token signature.
-      Security relies on: (a) this endpoint being BFF-internal (not browser-exposed),
-      (b) network-level isolation between BFF and Core BE.
-      Resolution path: pass the raw id_token through the BFF and have Core BE
-      verify it using the provider's JWKS endpoint before accepting the profile.
-      For the current student deployment where BFF and Core run in the same
-      Docker network, this is an acceptable trade-off.
+    Production/staging require the BFF to sign a short-lived exchange envelope.
+    Core validates issuer, audience, expiry, nonce replay, and the profile
+    fields before minting Core tokens. Provider JWKS verification can replace
+    this interim trust boundary later without changing the user-facing flow.
     """
+    await verify_bff_exchange_payload(body, redis)
     try:
         user = await get_or_create_user_from_oauth(body, db)
     except UserPendingDeletion as exc:
@@ -554,6 +662,7 @@ async def attach_oauth_link(
     body: OAuthLinkAttachBody,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     _bff: None = Depends(verify_bff_secret),
 ) -> OAuthLinkResponse:
     """Server-to-server endpoint guarded by `X-BFF-Secret`.
@@ -562,6 +671,7 @@ async def attach_oauth_link(
     cookie, and posts here with the resolved `user_id` + the OAuth profile.
     Core enforces the conflict and last-method invariants.
     """
+    await verify_bff_exchange_payload(body.profile, redis)
     user = await db.get(User, body.user_id)
     if user is None:
         raise HTTPException(
@@ -739,7 +849,7 @@ async def request_email_otp(
             )
         )
 
-    code = f"{random.randint(0, 999999):06d}"
+    code = f"{secrets.randbelow(1_000_000):06d}"
     otp_key = f"auth:otp:{body.purpose}:{body.email}"
 
     # For signup: HIBP-check and hash the password before storing in Redis
@@ -1253,4 +1363,3 @@ async def logout(
         await revoke_token(credentials.credentials, redis)
     await db.commit()
     return {"data": {"success": True}}
-

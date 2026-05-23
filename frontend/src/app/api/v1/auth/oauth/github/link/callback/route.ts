@@ -10,6 +10,7 @@ import { exchangeGitHubCodeForToken, getGitHubEmails, getGitHubUserInfo } from "
 import { getUserIdFromSession } from "@/lib/oauth/session-helpers";
 import { CORE_API_URL } from "@/lib/env";
 import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
+import { buildSignedBffOAuthProfile } from "@/lib/oauth/bff-exchange-signature";
 import {
   buildLocalizedAppUrl,
   buildOAuthCallbackUrlFromContext,
@@ -90,13 +91,13 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         user_id: sessionUserId,
-        profile: {
+        profile: buildSignedBffOAuthProfile({
           provider: "github",
           provider_account_id: String(githubUser.id),
           email: primaryEmail,
           name: githubUser.name ?? githubUser.login,
           avatar_url: githubUser.avatar_url ?? null,
-        },
+        }),
       }),
     });
 

@@ -159,6 +159,10 @@ def _metrics_guard(request: Request) -> None:
     token = settings.metrics_token
     if token and request.headers.get("X-Metrics-Token") == token:
         return
+    resolved = getattr(settings, "resolved_runtime_env", None)
+    runtime_env = resolved() if callable(resolved) else getattr(settings, "app_env", "development")
+    if str(runtime_env).strip().lower() in {"production", "staging"}:
+        raise HTTPException(status_code=404)
     if settings.metrics_allow_local:
         client_host = request.client.host if request.client else ""
         if (

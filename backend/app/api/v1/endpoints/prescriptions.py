@@ -33,33 +33,15 @@ from app.schemas.prescriptions import (
 from app.services import prescription_assets as asset_svc
 from app.services.audit import audit
 from app.services.prescription_assets import AssetMimeNotAllowed, AssetTooLargeError
+from app.services.upload_security import (
+    UploadTooLargeError,
+    detect_prescription_mime,
+    read_upload_bounded,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/appointments", tags=["Prescriptions"])
-
-
-def _detect_mime(header: bytes, declared: str | None) -> str:
-    """Magic-byte sniff; trust the declared MIME only if it matches the bytes.
-
-    Reuses the JPEG/PNG/GIF/WEBP signatures from `imghdr` and adds a manual PDF
-    check (`%PDF-` prefix). Any mismatch falls back to the detected type so a
-    file lying about being a PDF cannot bypass the allow-list.
-    """
-    if header.startswith(b"%PDF-"):
-        return "application/pdf"
-    import imghdr
-
-    detected = imghdr.what(None, h=header)
-    mapping = {
-        "jpeg": "image/jpeg",
-        "png": "image/png",
-        "webp": "image/webp",
-    }
-    if detected in mapping:
-        return mapping[detected]
-    # Last resort: trust the declared MIME (validated again by the service).
-    return declared or "application/octet-stream"
 
 
 @router.post(
@@ -81,14 +63,20 @@ async def upload_prescription_asset(
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
 ) -> PrescriptionAssetResponse:
-    file_bytes = await file.read()
+    try:
+        file_bytes = await read_upload_bounded(file, asset_svc.MAX_BYTES)
+    except UploadTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={"code": "PAYLOAD_TOO_LARGE", "message": str(exc)},
+        ) from exc
     if not file_bytes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "EMPTY_FILE", "message": "Uploaded file is empty."},
         )
 
-    mime_type = _detect_mime(file_bytes[:32], file.content_type)
+    mime_type = detect_prescription_mime(file_bytes[:32], file.content_type)
 
     try:
         asset = await asset_svc.upload_asset(

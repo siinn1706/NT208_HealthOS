@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import datetime
-import io
 import uuid
 from typing import Annotated
 
@@ -14,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
-from app.adapters.storage import upload_file
+from app.adapters.storage import presign_storage_url, upload_file
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.core import Meal, MealStatusEnum, User
@@ -31,26 +30,25 @@ from app.core.metrics import record_idempotency_outcome
 from app.services import idempotency as idem_svc
 from app.services import meals as meal_svc
 from app.services.idempotency import IdempotencyOutcome
+from app.services.upload_security import (
+    UploadTooLargeError,
+    detect_image_mime,
+    extension_for_mime,
+    normalize_content_type,
+    read_upload_bounded,
+)
 from app.tasks.meal_analysis import analyze_meal_image
 
 router = APIRouter(prefix="/meals", tags=["Meals"])
 
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-# Magic-byte signatures: first N bytes → detected type (imghdr names)
-_ALLOWED_MAGIC_TYPES = {"jpeg", "png", "gif", "webp"}
 
 
 class _MealCreateJsonBody(BaseModel):
     name: str = Field(min_length=1)
     notes: str | None = None
     logged_at: datetime.datetime | None = None
-
-
-def _detect_image_type(header: bytes) -> str | None:
-    """Return imghdr-style type string from the first bytes of a file, or None."""
-    import imghdr
-    return imghdr.what(None, h=header)
 
 
 def _bad_request(message: str) -> HTTPException:
@@ -61,6 +59,34 @@ def _bad_request(message: str) -> HTTPException:
             "message": message,
         },
     )
+
+
+def _to_meal_response(meal: Meal) -> MealResponse:
+    response = MealResponse.model_validate(meal)
+    if response.image_url:
+        response.image_url = presign_storage_url(response.image_url)
+    return response
+
+
+async def _read_validated_meal_image(image: UploadFile) -> tuple[bytes, str, str]:
+    try:
+        image_bytes = await read_upload_bounded(image, _MAX_UPLOAD_BYTES)
+    except UploadTooLargeError as exc:
+        raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.") from exc
+    if not image_bytes:
+        raise _bad_request("image file is empty")
+
+    detected_mime = detect_image_mime(image_bytes[:32])
+    if detected_mime not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=422, detail="Invalid image content detected.")
+
+    declared_mime = normalize_content_type(image.content_type)
+    if declared_mime and declared_mime not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail=f"Unsupported file type: {declared_mime}")
+    if declared_mime and declared_mime != detected_mime:
+        raise HTTPException(status_code=422, detail="Image content does not match declared Content-Type.")
+
+    return image_bytes, detected_mime, extension_for_mime(detected_mime, "jpg")
 
 
 @router.get(
@@ -87,7 +113,7 @@ async def list_meals(
         date_to=date_to,
     )
     return MealListResponse(
-        data=[MealResponse.model_validate(item) for item in meals],
+        data=[_to_meal_response(item) for item in meals],
         meta=PaginationMeta(page=page, per_page=per_page, total=total),
     )
 
@@ -161,20 +187,7 @@ async def create_meal(
 
         # Handle image upload
         if image and image.filename:
-            image_bytes = await image.read()
-            if len(image_bytes) > _MAX_UPLOAD_BYTES:
-                raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
-
-            # Validate magic bytes — reject files that lie about their Content-Type
-            detected = _detect_image_type(image_bytes[:32])
-            if detected not in _ALLOWED_MAGIC_TYPES:
-                raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
-
-            content_type = image.content_type or "image/jpeg"
-            if content_type not in _ALLOWED_IMAGE_TYPES:
-                raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
-
-            file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
+            image_bytes, content_type, file_ext = await _read_validated_meal_image(image)
             key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
             image_url = upload_file(
                 bucket=settings.storage_bucket_meals,
@@ -203,7 +216,7 @@ async def create_meal(
             await db.commit()
             meal.job_id = job.id
 
-        response = MealDataResponse(data=MealResponse.model_validate(meal))
+        response = MealDataResponse(data=_to_meal_response(meal))
         if idem_key:
             # Cache the response envelope so subsequent retries with the same key
             # (within 24h, per api-conventions.md) collapse to this exact result.
@@ -240,7 +253,7 @@ async def get_meal(
                 "message": "Meal not found.",
             },
         )
-    return MealDataResponse(data=MealResponse.model_validate(meal))
+    return MealDataResponse(data=_to_meal_response(meal))
 
 @router.patch(
     "/{meal_id}",
@@ -267,7 +280,7 @@ async def update_meal(
             detail={"code": "NOT_FOUND", "message": "Meal not found."},
         )
     await db.commit()
-    return MealDataResponse(data=MealResponse.model_validate(meal))
+    return MealDataResponse(data=_to_meal_response(meal))
 
 @router.get(
     "/{meal_id}/ingredients",
@@ -326,21 +339,7 @@ async def analyze_meal_photo(
     if not image.filename:
         raise _bad_request("image file is required")
 
-    # Upload image to storage
-    image_bytes = await image.read()
-    if len(image_bytes) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.")
-
-    # Validate magic bytes — reject files that lie about their Content-Type
-    detected = _detect_image_type(image_bytes[:32])
-    if detected not in _ALLOWED_MAGIC_TYPES:
-        raise HTTPException(status_code=422, detail=f"Invalid image content detected: {detected}")
-
-    content_type = image.content_type or "image/jpeg"
-    if content_type not in _ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=415, detail=f"Unsupported file type: {content_type}")
-    
-    file_ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
+    image_bytes, content_type, file_ext = await _read_validated_meal_image(image)
     key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
     image_url = upload_file(
         bucket=settings.storage_bucket_meals,

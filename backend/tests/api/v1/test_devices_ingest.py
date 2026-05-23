@@ -138,6 +138,16 @@ async def test_ingest_rejects_oversized_body(authenticated_client):
 
 
 @pytest.mark.asyncio
+async def test_sync_state_rejects_oversized_body(authenticated_client):
+    payload = {"tokens": {"Steps": "x" * 70_000}}
+    res = await authenticated_client.put(
+        f"/v1/devices/{uuid.uuid4()}/sync-state",
+        json=payload,
+    )
+    assert res.status_code == 413
+
+
+@pytest.mark.asyncio
 async def test_ingest_rate_limit_kicks_in_at_seven_calls(authenticated_client):
     """6 req/min/IP — the 7th call inside the same window must 429.
     The fake Redis keeps a monotonically-increasing counter per key, so

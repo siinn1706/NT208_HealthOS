@@ -40,6 +40,7 @@ from app.schemas.sync import (
     HealthIngestResult,
     HealthRecordIn,
     SyncStateEntry,
+    validate_sync_token_map,
 )
 
 logger = logging.getLogger(__name__)
@@ -255,7 +256,7 @@ async def upsert_batch(
 
     # Persist the new tokens. We treat an empty-string token the same as
     # null so the device can explicitly invalidate state without DELETE.
-    for record_type, token in batch.next_changes_tokens.items():
+    for record_type, token in validate_sync_token_map(batch.next_changes_tokens).items():
         await _upsert_sync_state_success(db, device.id, record_type, token)
 
     skipped = max(0, len(upserts) - inserted - updated)
@@ -374,7 +375,7 @@ async def replace_sync_states(
     """Standalone endpoint for the device to PUT a full bundle of tokens
     (e.g. after a permission re-grant where the orchestrator wants to
     re-init all record types)."""
-    for record_type, token in tokens.items():
+    for record_type, token in validate_sync_token_map(tokens).items():
         await _upsert_sync_state_success(db, device_id, record_type, token)
     return await list_sync_states(db, device_id)
 

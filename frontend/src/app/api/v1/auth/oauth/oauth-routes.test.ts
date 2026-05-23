@@ -215,6 +215,11 @@ describe("OAuth route handlers", () => {
     expect((init.headers as Record<string, string>)["X-BFF-Secret"]).toBe(
       "test-bff-secret",
     );
+    const body = JSON.parse(String(init.body));
+    expect(body.exchange_issuer).toBe("healthos-bff");
+    expect(body.exchange_audience).toBe("healthos-core");
+    expect(body.exchange_nonce).toMatch(/^[a-f0-9]{48}$/);
+    expect(body.exchange_signature).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("sends X-BFF-Secret header in GitHub OAuth callback token exchange", async () => {
@@ -266,5 +271,10 @@ describe("OAuth route handlers", () => {
     expect((init.headers as Record<string, string>)["X-BFF-Secret"]).toBe(
       "test-bff-secret",
     );
+    const body = JSON.parse(String(init.body));
+    expect(body.exchange_issuer).toBe("healthos-bff");
+    expect(body.exchange_audience).toBe("healthos-core");
+    expect(body.exchange_nonce).toMatch(/^[a-f0-9]{48}$/);
+    expect(body.exchange_signature).toMatch(/^[a-f0-9]{64}$/);
   });
 });

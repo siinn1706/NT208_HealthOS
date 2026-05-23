@@ -76,4 +76,5 @@ def test_optional_ai_schema_can_degrade_without_blocking_auth_validation():
 def test_alembic_repository_has_a_single_canonical_head():
     versions_dir = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 
-    assert _alembic_heads(versions_dir) == {"030_add_refresh_token_sessions"}
+    heads = _alembic_heads(versions_dir)
+    assert len(heads) == 1

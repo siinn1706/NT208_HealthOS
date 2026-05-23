@@ -222,8 +222,8 @@ Core API emits structured JSON logs with request context:
 
 **Key settings** (`backend/app/core/config.py`):
 - `log_format` — "json" (production) or "text" (dev)
-- `metrics_token` — Bearer token for /metrics access
-- `metrics_allow_local` — Allow /metrics from localhost (dev safety)
+- `metrics_token` — `X-Metrics-Token` secret for /metrics access
+- `metrics_allow_local` — Allow /metrics from localhost in development only
 
 ### Request Context & Tracing
 - **Request ID**: UUID v4 generated on browser (frontend) or request entry (BFF/Core)
@@ -248,8 +248,8 @@ GET /metrics              → Prometheus format (guarded by metrics_token)
 ```
 
 **Access control**:
-- Requires `Authorization: Bearer {metrics_token}` header
-- If `metrics_allow_local=true`: localhost/127.0.0.1 bypass token check
+- Requires `X-Metrics-Token: {metrics_token}` in staging/production
+- If `metrics_allow_local=true`: localhost/127.0.0.1 bypass token check in development only
 - Metric types: request latency, error rates, DB pool stats, cache hit rates
 
 ### PHI Logging Safety

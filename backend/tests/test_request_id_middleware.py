@@ -56,5 +56,5 @@ def test_concurrent_requests_do_not_leak_ids():
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
             await asyncio.gather(hit(c, "id-aaa"), hit(c, "id-bbb"))
 
-    asyncio.get_event_loop().run_until_complete(run())
+    asyncio.run(run())
     assert set(ids) == {"id-aaa", "id-bbb"}
