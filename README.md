@@ -70,12 +70,23 @@ bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
 
 Create an initial admin user for testing (run after setup):
 
-```bash
+```powershell
 cd backend
+$env:SEED_ADMIN_EMAIL="admin@healthos.local"
+$env:SEED_ADMIN_PASSWORD="change-me"
+$env:SEED_ADMIN_DISPLAY_NAME="Admin Test"
 .\.venv\Scripts\python.exe seed_admin.py
 ```
 
-Creates: email `admin@healthos.local` with a pre-configured password. Script lives at `backend/seed_admin.py`.
+The script reads `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and
+`SEED_ADMIN_DISPLAY_NAME`. `SEED_ADMIN_PASSWORD` is required and is never
+printed. To remove the same seeded account:
+
+```powershell
+cd backend
+$env:SEED_ADMIN_EMAIL="admin@healthos.local"
+.\.venv\Scripts\python.exe delete_seed_admin.py --confirm
+```
 
 ### Option A: Docker (recommended)
 
@@ -182,7 +193,7 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 **v1.2.0**: User accent color customization and theming.
 
 - **Implemented**: Auth (email/OTP/OAuth), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications (`/v1/notifications` + read/read-all + unread-count), AI meal analysis (`/analyze`), plans (`/v1/plans`), onboarding drafts (`/v1/users/me/onboarding-draft`).
-- **Known gaps / partial**: Password login does not enforce MFA challenge even when `mfa_enabled=true`; notification dispatch service remains stub (`/dispatch` => queued); some UX paths remain TODO.
+- **Known gaps / partial**: Notification dispatch supports Core in-app persistence through the backend task and optional SMTP dispatch in the standalone notification service, but push/SMS providers are not configured; wearable sync remains outside this demo-readiness task; some UX paths remain TODO.
 
 ## CI/CD Pipeline
 
@@ -216,6 +227,9 @@ See [Production Checklist](./docs/production-checklist.md) for required env vars
 - [Security](./docs/security.md)
 - [Project Changelog](./docs/project-changelog.md)
 - [Project Roadmap](./docs/project-roadmap.md)
+- [Current Status](./docs/current-status.md)
+- [Final Demo Checklist](./docs/demo/demo-checklist.md)
+- [Final Demo Script](./docs/demo/demo-script.md)
 - [Deployment Guide](./docs/deployment-guide.md)
 - [Design Guidelines](./docs/design-guidelines.md)
 - [Folder Convention](./docs/standards/folder-convention.md)

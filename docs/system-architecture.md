@@ -176,8 +176,8 @@ Browser/Mobile receives message (real-time)
 │         ↓                                         │
 │  Celery Worker(s)                                │
 │    ├─ process_meal_image (→ AI Worker)           │
-│    ├─ send_notification (→ Notification service) │
-│    └─ sync_wearable_data (stub)                  │
+│    ├─ notification_dispatch (Core in-app/SMTP)   │
+│    └─ wearable sync tasks (owned separately)     │
 │                                                   │
 └────────────────────────────────────────────────────┘
 
@@ -190,8 +190,8 @@ Browser/Mobile receives message (real-time)
 │    • Gemini API fallback for chat                │
 │                                                    │
 │  Notification Service (port 8002)                │
-│    • Push notifications (FCM, APNs) [stub]       │
-│    • Email dispatch (SendGrid) [stub]            │
+│    • /dispatch validation + optional SMTP demo   │
+│    • Push/SMS providers return skipped reasons   │
 │                                                    │
 │  External APIs                                    │
 │    • Google OAuth                                 │
@@ -340,19 +340,19 @@ Celery Worker
     ├─ Dequeue task
     ├─ For each reminder:
     │   ├─ Fetch user preference (notification channel)
-    │   ├─ Enqueue task: send_notification(user_id, reminder_id)
+    │   ├─ Enqueue task: notification_dispatch(event)
     │   └─ Mark occurrence as fired (PostgreSQL)
     └─ Return
         ↓
-Redis Task Queue (send_notification job)
+Redis Task Queue (notification_dispatch job)
         ↓
 Celery Worker
-    ├─ Call Notification Service (port 8002)
-    ├─ Request: { type: 'push' | 'email', user_id, reminder_id }
+    ├─ Persist Core in-app notification or call optional provider path
+    ├─ Request: { event_id, recipient_id, title, body, channel }
     └─ Return
         ↓
 Notification Service
-    ├─ Queue notification (database)
+    ├─ Validate /dispatch payload and optional SMTP email
     ├─ Call external service (FCM, SendGrid) [stub for now]
     └─ Return
         ↓
@@ -510,7 +510,7 @@ Celery Beat (TICK every minute)
     ├─ Check trigger: every minute
     │   └─ Task: fire_reminders
     │       • Query due ReminderOccurrence (past due_time)
-    │       • For each: enqueue send_notification
+    │       • For each: enqueue notification_dispatch
     │       • Mark as fired
     │
     ├─ Check trigger: is_06_00? (daily at 6 AM)
