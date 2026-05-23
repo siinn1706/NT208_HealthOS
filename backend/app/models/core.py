@@ -31,12 +31,55 @@ class MealStatusEnum(str, Enum):
 
 
 class MetricTypeEnum(str, Enum):
+    # Legacy core metrics — present since the original schema, surfaced
+    # directly on the dashboard KPI cards.
     HEART_RATE = "heart_rate"
     STEPS = "steps"
     SLEEP_MINUTES = "sleep_minutes"
     WEIGHT_KG = "weight_kg"
     BLOOD_PRESSURE_SYSTOLIC = "blood_pressure_systolic"
     BLOOD_PRESSURE_DIASTOLIC = "blood_pressure_diastolic"
+    # Wearable sync expansion (migration 030). Each value maps 1:1 to a
+    # Health Connect record type or Google Health API data type — see
+    # ``app/services/wearable_sync/normalizer.py`` for the canonical mapping.
+    # Cardiovascular
+    HEART_RATE_RESTING = "heart_rate_resting"
+    HEART_RATE_MAX = "heart_rate_max"
+    HRV_RMSSD = "hrv_rmssd"
+    # Respiratory
+    SPO2 = "spo2"
+    RESPIRATORY_RATE = "respiratory_rate"
+    VO2_MAX = "vo2_max"
+    # Activity
+    DISTANCE_M = "distance_m"
+    CALORIES_ACTIVE = "calories_active"
+    CALORIES_TOTAL = "calories_total"
+    FLOORS_CLIMBED = "floors_climbed"
+    ACTIVE_MINUTES = "active_minutes"
+    EXERCISE_SESSION_MINUTES = "exercise_session_minutes"
+    # Sleep stages (sleep_minutes above is the legacy total — these are
+    # the per-stage breakdown).
+    SLEEP_LIGHT = "sleep_light"
+    SLEEP_DEEP = "sleep_deep"
+    SLEEP_REM = "sleep_rem"
+    SLEEP_AWAKE = "sleep_awake"
+    SLEEP_EFFICIENCY = "sleep_efficiency"
+    # Body composition
+    BODY_FAT_PERCENTAGE = "body_fat_percentage"
+    LEAN_BODY_MASS = "lean_body_mass"
+    BONE_MASS = "bone_mass"
+    BODY_WATER = "body_water"
+    BMI = "bmi"
+    HEIGHT_CM = "height_cm"
+    # Temperature
+    BODY_TEMPERATURE = "body_temperature"
+    SKIN_TEMPERATURE_DELTA = "skin_temperature_delta"
+    # Misc
+    BLOOD_GLUCOSE = "blood_glucose"
+    HYDRATION_ML = "hydration_ml"
+    STRESS_SCORE = "stress_score"
+    MENSTRUAL_FLOW = "menstrual_flow"
+    MINDFULNESS_MINUTES = "mindfulness_minutes"
 
 
 class WearableSourceEnum(str, Enum):
@@ -50,6 +93,10 @@ class WearableSourceEnum(str, Enum):
     # `source_app` column on health_metrics records which app inside HC
     # produced each row (Samsung Health, Pixel, Strava, etc.).
     HEALTH_CONNECT = "health_connect"
+    # Server-side Google Health API (Luồng B). Tokens stored encrypted on
+    # the connected_devices row; Celery Beat polls every N minutes and
+    # ingests via the normalizer + existing health_sync.upsert_batch path.
+    GOOGLE_HEALTH = "google_health"
 
 
 class WearableProviderEnum(str, Enum):
@@ -58,6 +105,8 @@ class WearableProviderEnum(str, Enum):
     GARMIN = "garmin"
     FITBIT = "fitbit"
     HEALTH_CONNECT = "health_connect"
+    # See WearableSourceEnum.GOOGLE_HEALTH above for context.
+    GOOGLE_HEALTH = "google_health"
 
 
 class AppointmentStatusEnum(str, Enum):
@@ -587,6 +636,35 @@ class ConnectedDevice(Base):
     )
     last_synced_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # ── Server-side OAuth (Luồng B — Google Health API). Migration 030. ──
+    # All nullable so health_connect rows (Luồng A, tokens live on the
+    # device) and legacy stub rows are unaffected. The application layer
+    # encrypts/decrypts via ``services/wearable_sync/token_crypto.py``;
+    # the DB just holds Fernet ciphertext.
+    access_token_encrypted: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    refresh_token_encrypted: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    token_expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    # Distinct from `scopes` above — that one holds Health Connect record-type
+    # names (["Steps","HeartRate",...]); `oauth_scopes` holds Google Health
+    # scope URIs (["https://www.googleapis.com/auth/fitness.activity.read",
+    # ...]). Used by the sync task to skip data types the user didn't grant.
+    oauth_scopes: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    # Populated only if Google Health supports push notifications for the
+    # connected account; null when we fall back to Celery Beat polling.
+    webhook_subscription_id: Mapped[str | None] = mapped_column(
+        String(128),
         nullable=True,
     )
 
