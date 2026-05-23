@@ -103,6 +103,11 @@ function DeviationPill({ dev, severity }: { dev: number; severity: "critical" | 
 export function RealtimeAnomalyWidget() {
   const t      = useTranslations("dashboard.anomalies");
   const locale = useLocale();
+  // No `enabled` arg needed: this component lives inside the (app) layout which
+  // server-redirects unauthenticated users before render. useChatWs handles any
+  // residual unauthenticated cases autonomously — fetchToken() failure sets
+  // status="error" without opening a socket; code 4001 sets sessionExpired=true
+  // and stops retrying. Default enabled=true is therefore safe here.
   const { alerts: rtAlerts, dismissAlert, status } = useHealthAlerts();
 
   const [metricData, setMetricData] = useState<MetricAnomalyData[]>([]);

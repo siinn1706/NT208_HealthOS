@@ -524,3 +524,80 @@ async def restore_account(
     )
     await db.commit()
     return {"data": {"status": "active"}}
+
+
+# ── Onboarding draft ──────────────────────────────────────────────────────────
+
+from app.schemas.onboarding_draft import (
+    OnboardingDraftPutBody,
+    OnboardingDraftData,
+    OnboardingDraftResponse,
+    enforce_max_draft_size,
+)
+from app.services import onboarding_draft as draft_svc
+
+
+@router.get(
+    "/me/onboarding-draft",
+    response_model=OnboardingDraftResponse,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Get the current user's onboarding draft",
+)
+async def get_onboarding_draft(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OnboardingDraftResponse:
+    draft = await draft_svc.get_draft(db, current_user.id)
+    if draft is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "No onboarding draft found."},
+        )
+    return OnboardingDraftResponse(
+        data=OnboardingDraftData(
+            data=draft.data,
+            updated_at=draft.updated_at,
+            expires_at=draft.expires_at,
+        )
+    )
+
+
+@router.put(
+    "/me/onboarding-draft",
+    response_model=OnboardingDraftResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+    },
+    summary="Upsert the current user's onboarding draft",
+    dependencies=[Depends(enforce_max_draft_size)],
+)
+async def put_onboarding_draft(
+    body: OnboardingDraftPutBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OnboardingDraftResponse:
+    draft = await draft_svc.upsert_draft(db, current_user.id, body.data)
+    await db.commit()
+    await db.refresh(draft)
+    return OnboardingDraftResponse(
+        data=OnboardingDraftData(
+            data=draft.data,
+            updated_at=draft.updated_at,
+            expires_at=draft.expires_at,
+        )
+    )
+
+
+@router.delete(
+    "/me/onboarding-draft",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={401: {"model": ErrorResponse}},
+    summary="Delete the current user's onboarding draft",
+)
+async def delete_onboarding_draft(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await draft_svc.delete_draft(db, current_user.id)
+    await db.commit()

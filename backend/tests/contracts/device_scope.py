@@ -17,10 +17,7 @@ CANONICAL_ERROR_CODES: frozenset[str] = frozenset(
 # These are documented stubs — BFF calls them but Core returns 404 until shipped.
 # Tracked here so they produce a visible warning rather than a test error.
 # Remove an entry once the Core endpoint is implemented and appears in the contract.
-PENDING_STUB_BFF_PATHS: frozenset[str] = frozenset({
-    "/v1/plans",                        # health/wellness plans endpoint (not yet in Core)
-    "/v1/users/me/onboarding-draft",    # onboarding draft persistence (not yet in Core)
-})
+PENDING_STUB_BFF_PATHS: frozenset[str] = frozenset()
 
 
 def is_device_path(path: str) -> bool:

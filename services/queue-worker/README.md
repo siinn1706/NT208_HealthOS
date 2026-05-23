@@ -3,10 +3,13 @@
 ## Mô tả
 
 Celery workers xử lý async jobs:
-- `process_meal_image` — trigger AI Worker để phân tích ảnh, cập nhật kết quả về Core BE
 - `sync_wearable_data` — gọi Wearable APIs, normalize, upsert vào DB qua Core BE
-- `send_notification` — forward notification.requested event tới Notification service
 - `celery beat` — scheduler cho sync định kỳ
+
+**Note:** Meal analysis and notification dispatch have been moved to the Core backend.
+- **Meal analysis** runs in `backend/app/tasks/meal_analysis.py` (Celery task in Core BE)
+- **Notification dispatch** runs in `backend/app/tasks/notification_dispatch.py` (Celery task in Core BE)
+- Old task files (`meal_tasks.py`, `notification_tasks.py`) were deleted from queue-worker service.
 
 ## Cấu trúc thư mục
 
@@ -16,9 +19,7 @@ app/
 ├── celery_app.py     # Celery app factory (broker, beat_schedule)
 ├── tasks/
 │   ├── __init__.py
-│   ├── meal_tasks.py         # process_meal_image
-│   ├── wearable_tasks.py     # sync_wearable_data
-│   └── notification_tasks.py # send_notification
+│   └── wearable_tasks.py     # sync_wearable_data
 ├── schemas/
 │   └── __init__.py
 └── adapters/
