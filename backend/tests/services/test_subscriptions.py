@@ -10,6 +10,8 @@ from app.adapters.database import AsyncSessionLocal, engine
 from app.models.core import User
 from app.models.rbac import UserRole
 from app.models.subscriptions import SubscriptionPlan, UserSubscription
+from app.schemas.auth import OAuthProfile
+from app.services import auth as auth_service
 from app.services import subscriptions as subscription_service
 
 pytestmark = pytest.mark.skipif(
@@ -164,3 +166,33 @@ async def test_legacy_user_without_subscription_resolves_to_virtual_free_without
         )
     ).scalar_one()
     assert row_count == 0
+
+
+async def test_new_oauth_user_gets_real_free_subscription(pg_db):
+    db, user_ids, _plan_codes = pg_db
+    await subscription_service.seed_default_subscription_plans(db, commit=False)
+    email = f"oauth-sub-{uuid.uuid4().hex[:8]}@test.local"
+
+    user = await auth_service.get_or_create_user_from_oauth(
+        OAuthProfile(
+            provider="otp",
+            provider_account_id=email,
+            email=email,
+            name="OAuth Sub User",
+            avatar_url=None,
+        ),
+        db,
+    )
+    user_ids.append(user.id)
+    await db.commit()
+
+    subscription = (
+        await db.execute(
+            select(UserSubscription).where(UserSubscription.user_id == user.id)
+        )
+    ).scalar_one()
+    plan = await db.get(SubscriptionPlan, subscription.plan_id)
+
+    assert subscription.status == "active"
+    assert plan is not None
+    assert plan.code == "free"

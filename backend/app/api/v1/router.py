@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     reminders,
     reports,
     security_logs,
+    subscriptions,
     users,
     visit_briefs,
     vitals,
@@ -56,6 +57,7 @@ router.include_router(mfa.router)
 router.include_router(security_logs.router)
 router.include_router(preferences.router)
 router.include_router(notifications.router)
+router.include_router(subscriptions.router)
 router.include_router(prescriptions.router)
 router.include_router(medications.router)
 router.include_router(plans.router)

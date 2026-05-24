@@ -228,6 +228,9 @@ async def get_or_create_user_from_oauth(
         db.add(user_profile)
         await db.flush()
         user.profile = user_profile
+        from app.services.subscriptions import ensure_user_default_subscription
+
+        await ensure_user_default_subscription(db, user.id)
     else:
         # Optionally keep basic info in sync (only when not stomping on a real user-set value).
         user.display_name = profile.name

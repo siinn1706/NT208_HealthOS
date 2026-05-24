@@ -16,7 +16,17 @@ from app.schemas.admin import (
     AdminUserListResponse,
 )
 from app.schemas.common import ErrorResponse
+from app.schemas.subscriptions import (
+    SubscriptionPlanCreateBody,
+    SubscriptionPlanDTO,
+    SubscriptionPlanListResponse,
+    SubscriptionPlanResponse,
+    SubscriptionPlanUpdateBody,
+    UserSubscriptionResponse,
+    UserSubscriptionUpdateBody,
+)
 from app.services import admin as admin_service
+from app.services import subscriptions as subscription_service
 
 router = APIRouter(
     prefix="/admin",
@@ -80,6 +90,111 @@ async def get_admin_user_detail(
             detail={"code": "NOT_FOUND", "message": "User not found."},
         )
     return AdminUserDetailResponse(data=detail)
+
+
+@router.get(
+    "/subscription-plans",
+    response_model=SubscriptionPlanListResponse,
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
+)
+async def list_admin_subscription_plans(
+    _admin: Annotated[User, Depends(require_permission("admin.subscriptions.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SubscriptionPlanListResponse:
+    plans = await subscription_service.list_admin_subscription_plans(db)
+    return SubscriptionPlanListResponse(data=[SubscriptionPlanDTO.model_validate(plan) for plan in plans])
+
+
+@router.post(
+    "/subscription-plans",
+    response_model=SubscriptionPlanResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+)
+async def create_admin_subscription_plan(
+    body: SubscriptionPlanCreateBody,
+    _admin: Annotated[User, Depends(require_permission("admin.subscriptions.update"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SubscriptionPlanResponse:
+    plan = await subscription_service.create_subscription_plan(db, body)
+    await db.commit()
+    await db.refresh(plan)
+    return SubscriptionPlanResponse(data=SubscriptionPlanDTO.model_validate(plan))
+
+
+@router.patch(
+    "/subscription-plans/{plan_id}",
+    response_model=SubscriptionPlanResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+)
+async def update_admin_subscription_plan(
+    plan_id: uuid.UUID,
+    body: SubscriptionPlanUpdateBody,
+    _admin: Annotated[User, Depends(require_permission("admin.subscriptions.update"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SubscriptionPlanResponse:
+    plan = await subscription_service.update_subscription_plan(db, plan_id, body)
+    await db.commit()
+    await db.refresh(plan)
+    return SubscriptionPlanResponse(data=SubscriptionPlanDTO.model_validate(plan))
+
+
+@router.get(
+    "/users/{user_id}/subscription",
+    response_model=UserSubscriptionResponse,
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+)
+async def get_admin_user_subscription(
+    user_id: uuid.UUID,
+    _admin: Annotated[User, Depends(require_permission("admin.subscriptions.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserSubscriptionResponse:
+    detail = await admin_service.get_user_detail(db, user_id)
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "User not found."},
+        )
+    summary = await subscription_service.get_user_subscription_summary(db, user_id)
+    return UserSubscriptionResponse(data=summary)
+
+
+@router.patch(
+    "/users/{user_id}/subscription",
+    response_model=UserSubscriptionResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+)
+async def update_admin_user_subscription(
+    user_id: uuid.UUID,
+    body: UserSubscriptionUpdateBody,
+    admin: Annotated[User, Depends(require_permission("admin.subscriptions.update"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserSubscriptionResponse:
+    summary = await subscription_service.update_user_subscription(
+        db,
+        target_user_id=user_id,
+        body=body,
+        assigned_by_admin_id=admin.id,
+    )
+    await db.commit()
+    return UserSubscriptionResponse(data=summary)
 
 
 @router.post(

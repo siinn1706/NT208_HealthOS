@@ -21,7 +21,7 @@ class AdminOverview(BaseModel):
 
 
 class AdminCurrentSubscriptionSummary(BaseModel):
-    id: uuid.UUID
+    id: uuid.UUID | None = None
     plan_code: str
     plan_name: str
     status: str

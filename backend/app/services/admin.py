@@ -14,6 +14,7 @@ from app.models.audit import AuditEventTypeEnum
 from app.models.core import RefreshTokenSession, User, UserProfile
 from app.models.rbac import Role, UserRole
 from app.schemas.admin import (
+    AdminCurrentSubscriptionSummary,
     AdminLoginSessionSummary,
     AdminOverview,
     AdminProfileSummary,
@@ -24,6 +25,7 @@ from app.schemas.common import PaginationMeta
 from app.services.account_status import is_active_ban, normalize_datetime, utc_now
 from app.services.audit import audit
 from app.services.refresh_tokens import revoke_refresh_tokens_for_user
+from app.services import subscriptions as subscription_service
 
 AdminUserStatus = Literal["all", "active", "banned", "deleted"]
 AdminUserSort = Literal["created_at_desc", "created_at_asc", "email_asc"]
@@ -111,7 +113,11 @@ async def _session_summary(db: AsyncSession, user_id: uuid.UUID, user: User) -> 
     )
 
 
-def _list_item(user: User, roles: list[str]) -> AdminUserListItem:
+def _list_item(
+    user: User,
+    roles: list[str],
+    current_subscription: AdminCurrentSubscriptionSummary | None = None,
+) -> AdminUserListItem:
     return AdminUserListItem(
         id=user.id,
         email=user.email,
@@ -124,18 +130,24 @@ def _list_item(user: User, roles: list[str]) -> AdminUserListItem:
         banned_at=user.banned_at,
         banned_reason=user.banned_reason,
         roles=roles,
-        current_subscription=None,
+        current_subscription=current_subscription,
         last_seen_at=user.last_seen_at,
     )
 
 
-async def _detail(db: AsyncSession, user: User, roles: list[str], now: datetime) -> AdminUserDetail:
+async def _detail(
+    db: AsyncSession,
+    user: User,
+    roles: list[str],
+    now: datetime,
+    current_subscription: AdminCurrentSubscriptionSummary | None = None,
+) -> AdminUserDetail:
     session_summary = await _session_summary(db, user.id, user)
-    base = _list_item(user, roles)
+    base = _list_item(user, roles, current_subscription)
     return AdminUserDetail(
         **base.model_dump(),
         profile_summary=_profile_summary(user.profile),
-        subscription=None,
+        subscription=current_subscription,
         login_session_summary=session_summary,
         account_status=_account_status(user, now),
         is_system=user.is_system,
@@ -186,8 +198,8 @@ async def get_admin_overview(db: AsyncSession, *, now: datetime | None = None) -
         banned_users=banned_users,
         soft_deleted_users=soft_deleted_users,
         online_users_estimate=online_users_estimate,
-        total_subscription_plans=0,
-        total_active_subscriptions=0,
+        total_subscription_plans=await subscription_service.count_active_subscription_plans(db),
+        total_active_subscriptions=await subscription_service.count_active_user_subscriptions(db, now=effective_now),
         created_at=effective_now,
     )
 
@@ -240,9 +252,15 @@ async def list_users(
         )
     ).scalars().all()
     users = list(rows)
-    roles = await _roles_by_user_id(db, [user.id for user in users])
+    user_ids = [user.id for user in users]
+    roles = await _roles_by_user_id(db, user_ids)
+    subscriptions = await subscription_service.current_subscription_summaries_by_user_id(
+        db,
+        user_ids,
+        now=effective_now,
+    )
     return (
-        [_list_item(user, roles.get(user.id, [])) for user in users],
+        [_list_item(user, roles.get(user.id, []), subscriptions.get(user.id)) for user in users],
         PaginationMeta(page=page, per_page=per_page, total=total),
     )
 
@@ -261,7 +279,19 @@ async def get_user_detail(
     if user is None:
         return None
     role_map = await _roles_by_user_id(db, [user.id])
-    return await _detail(db, user, role_map.get(user.id, []), normalize_datetime(now or utc_now()))
+    effective_now = normalize_datetime(now or utc_now())
+    subscriptions = await subscription_service.current_subscription_summaries_by_user_id(
+        db,
+        [user.id],
+        now=effective_now,
+    )
+    return await _detail(
+        db,
+        user,
+        role_map.get(user.id, []),
+        effective_now,
+        subscriptions.get(user.id),
+    )
 
 
 async def ban_user(

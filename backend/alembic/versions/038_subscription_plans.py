@@ -112,6 +112,7 @@ def upgrade() -> None:
                         features_vi = EXCLUDED.features_vi,
                         features_en = EXCLUDED.features_en,
                         limits = EXCLUDED.limits,
+                        is_active = EXCLUDED.is_active,
                         is_recommended = EXCLUDED.is_recommended,
                         sort_order = EXCLUDED.sort_order,
                         updated_at = now()
