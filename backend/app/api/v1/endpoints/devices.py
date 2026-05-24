@@ -34,6 +34,7 @@ from app.services import health_sync as sync_svc
 from app.services import idempotency as idem_svc
 from app.services.audit import audit
 from app.services.idempotency import IdempotencyOutcome, build_scoped_ingest_key
+from app.services.wearable_sync.ws_publish import publish_vitals_updated
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
@@ -377,6 +378,14 @@ async def ingest_health_data(
         # + completed audit. If anything above raised mid-flight the
         # whole transaction rolls back together.
         await db.commit()
+
+        # WS push happens after commit — never before — so the dashboard
+        # refresh triggered by the event sees committed data.
+        await publish_vitals_updated(
+            current_user.id,
+            source="health_connect",
+            count=result.inserted + result.updated,
+        )
 
         record_health_sync_outcome(
             "health_connect", "partial" if result.errors else "ok"

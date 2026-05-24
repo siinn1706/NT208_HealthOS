@@ -18,6 +18,7 @@ from app.schemas.sync import HealthIngestBatch
 from app.services import health_sync as sync_svc
 from app.services.audit import audit
 from app.services.wearable_sync import google_health
+from app.services.wearable_sync.ws_publish import publish_vitals_updated
 from app.services.wearable_sync.normalizer import (
     _GOOGLE_HEALTH_TYPE_MAP,
     normalize_google_health,
@@ -250,7 +251,6 @@ async def _sync_one_device_async(connection_id: uuid.UUID) -> dict[str, Any]:
                         device.user_id,
                         device,
                         batch,
-                        ws_source="google_health",
                     )
                 except Exception as exc:
                     logger.exception("upsert_batch failed for connection %s", device.id)
@@ -291,6 +291,15 @@ async def _sync_one_device_async(connection_id: uuid.UUID) -> dict[str, Any]:
                 commit=False,
             )
             await db.commit()
+
+            # WS push after commit — same ordering guarantee as the mobile
+            # ingest endpoint.
+            if result is not None:
+                await publish_vitals_updated(
+                    device.user_id,
+                    source="google_health",
+                    count=result.inserted + result.updated,
+                )
 
             return {
                 "status": "ok",

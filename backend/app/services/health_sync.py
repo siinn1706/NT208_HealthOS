@@ -42,7 +42,6 @@ from app.schemas.sync import (
     HealthRecordIn,
     SyncStateEntry,
 )
-from app.services.wearable_sync.ws_publish import publish_vitals_updated
 
 logger = logging.getLogger(__name__)
 
@@ -336,17 +335,12 @@ async def upsert_batch(
     user_id: uuid.UUID,
     device: ConnectedDevice,
     batch: HealthIngestBatch,
-    *,
-    ws_source: str = "health_connect",
 ) -> HealthIngestResult:
-    """Top-level entrypoint. Persists rows + per-record-type tokens in
-    a single transaction (the surrounding endpoint owns the commit).
+    """Persist rows + per-record-type tokens in a single transaction.
 
-    ``ws_source`` tags the ``vitals.updated`` WS event so the dashboard
-    can distinguish a mobile-foreground sync from a server-side Google
-    Health poll. Defaults to ``"health_connect"`` because the only
-    in-tree caller other than the Celery task is the mobile ingest
-    endpoint.
+    The surrounding endpoint owns the commit AND the WS publish — callers
+    must call publish_vitals_updated AFTER await db.commit() so the push
+    never races ahead of a successful write.
     """
     batch = validate_ingest_batch(device, batch)
     upserts, deletion_ids = _split(user_id, device.id, batch.records, batch.deletions)
@@ -391,16 +385,6 @@ async def upsert_batch(
         device.last_sync_status = "partial"
     else:
         device.last_sync_status = "ok"
-
-    # WS fan-out so the web dashboard refreshes without a reload. Best
-    # effort — `publish_vitals_updated` swallows delivery errors so a
-    # WS hiccup can't undo a successful DB transaction. The endpoint
-    # commits AFTER this call returns, but the dashboard re-fetches
-    # from /v1/vitals on the event (no PHI on the wire), so the tiny
-    # race between push and commit is benign.
-    await publish_vitals_updated(
-        user_id, source=ws_source, count=inserted + updated
-    )
 
     return HealthIngestResult(
         inserted=inserted,

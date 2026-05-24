@@ -297,3 +297,44 @@ def test_sync_state_update_accepts_known_keys():
     body = SyncStateUpdateBody(tokens={"Steps": "tok-ok", "HeartRate": None})
     assert body.tokens["Steps"] == "tok-ok"
     assert body.tokens["HeartRate"] is None
+
+
+# ── fix 8: WS publish is NOT called inside upsert_batch ─────────────
+
+
+@pytest.mark.asyncio
+async def test_upsert_batch_does_not_publish_ws(monkeypatch):
+    """publish_vitals_updated must NOT fire inside upsert_batch — only the
+    surrounding endpoint/task may call it, after a successful db.commit().
+    """
+    from app.services.wearable_sync import ws_publish
+
+    publish_calls: list = []
+    monkeypatch.setattr(
+        ws_publish, "publish_vitals_updated", lambda *a, **kw: publish_calls.append((a, kw))
+    )
+
+    # Minimal fake DB that does nothing.
+    class _FakeExec:
+        def __init__(self): self.rowcount = 0
+        def scalars(self): return self
+        def all(self): return []
+    class _FakeDb:
+        async def execute(self, *a, **kw): return _FakeExec()
+        async def flush(self): pass
+        def add(self, *a): pass
+
+    from app.models.core import ConnectedDevice, WearableProviderEnum
+    from app.services.health_sync import upsert_batch
+    import uuid as _uuid
+
+    device = ConnectedDevice(
+        id=_uuid.uuid4(),
+        user_id=_uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+    )
+    batch = HealthIngestBatch(records=[], deletions=[])
+
+    # Call upsert_batch — if it triggers publish the test will fail.
+    await upsert_batch(_FakeDb(), device.user_id, device, batch)
+    assert publish_calls == [], "upsert_batch must not publish WS events directly"
