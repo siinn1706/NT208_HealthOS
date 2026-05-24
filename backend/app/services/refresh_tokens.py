@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.models.core import RefreshTokenSession, User
+from app.services.account_status import is_active_ban
 
 
 class RefreshTokenError(Exception):
@@ -21,6 +22,11 @@ class RefreshTokenError(Exception):
 class RefreshTokenReuseError(RefreshTokenError):
     code = "REFRESH_TOKEN_REUSE_DETECTED"
     message = "Refresh token reuse detected. Please sign in again."
+
+
+class RefreshTokenUserBannedError(RefreshTokenError):
+    code = "ACCOUNT_BANNED"
+    message = "Your account has been banned."
 
 
 def hash_refresh_token(token: str) -> str:
@@ -169,6 +175,10 @@ async def rotate_refresh_token(
         session.revoked_at = now
         await db.flush()
         raise RefreshTokenError()
+    if is_active_ban(user, now=now):
+        session.revoked_at = now
+        await db.flush()
+        raise RefreshTokenUserBannedError()
 
     replacement_plaintext = _generate_refresh_token()
     replacement = RefreshTokenSession(

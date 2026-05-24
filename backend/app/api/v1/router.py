@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import chat_rest, chat_ws
 from app.api.v1.endpoints import (
+    admin,
     appointments,
     auth,
     conversations,
@@ -26,6 +27,7 @@ from app.api.v1.endpoints import (
     reminders,
     reports,
     security_logs,
+    subscriptions,
     users,
     visit_briefs,
     vitals,
@@ -36,6 +38,7 @@ router = APIRouter(prefix="/v1")
 
 router.include_router(health.router)
 router.include_router(auth.router)
+router.include_router(admin.router)
 router.include_router(users.router)
 router.include_router(meals.router)
 router.include_router(health_metrics.router)
@@ -54,6 +57,7 @@ router.include_router(mfa.router)
 router.include_router(security_logs.router)
 router.include_router(preferences.router)
 router.include_router(notifications.router)
+router.include_router(subscriptions.router)
 router.include_router(prescriptions.router)
 router.include_router(medications.router)
 router.include_router(plans.router)

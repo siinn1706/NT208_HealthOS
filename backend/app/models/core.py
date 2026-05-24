@@ -245,6 +245,28 @@ class User(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    banned_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    banned_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    banned_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    banned_until: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    last_seen_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
 
     profile: Mapped[UserProfile | None] = relationship(
         back_populates="user",

@@ -29,6 +29,7 @@ from app.core.security import hash_password
 from app.models.core import User, UserProfile
 from app.services.rbac import DEFAULT_ROLE_ADMIN, ensure_default_roles_and_permissions, grant_role
 from app.services.auth import RESERVED_USERNAMES
+from app.services.subscriptions import seed_default_subscription_plans
 
 
 def _env_value(name: str, default: str | None = None) -> str | None:
@@ -92,6 +93,7 @@ async def seed() -> None:
     async with AsyncSessionLocal() as db:
         try:
             await ensure_default_roles_and_permissions(db, commit=False)
+            await seed_default_subscription_plans(db, commit=False)
 
             for email in emails:
                 result = await db.execute(select(User).where(User.email == email))

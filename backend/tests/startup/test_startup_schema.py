@@ -52,6 +52,8 @@ def test_auth_critical_schema_missing_raises_clear_startup_error():
 
     assert "users.has_password (migration 023)" in result.auth_missing
     assert "users.tokens_invalidated_at (migration 023)" in result.auth_missing
+    assert "users.banned_at (migration 037)" in result.auth_missing
+    assert "users.last_seen_at (migration 037)" in result.auth_missing
     assert "oauth_accounts table (migration 016)" in result.auth_missing
 
     with pytest.raises(RuntimeError, match="Run `alembic upgrade head`"):
@@ -62,7 +64,16 @@ def test_optional_ai_schema_can_degrade_without_blocking_auth_validation():
     result = evaluate_schema_snapshot(
         tables={"users", "messages", "oauth_accounts", "refresh_token_sessions"},
         columns={
-            "users": {"is_system", "has_password", "tokens_invalidated_at"},
+            "users": {
+                "is_system",
+                "has_password",
+                "tokens_invalidated_at",
+                "banned_at",
+                "banned_reason",
+                "banned_by_id",
+                "banned_until",
+                "last_seen_at",
+            },
             "messages": set(),
         },
     )

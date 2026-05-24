@@ -1,0 +1,135 @@
+[
+  {
+    "code": "free",
+    "name_vi": "Miễn phí",
+    "name_en": "Free",
+    "price_vnd": 0,
+    "billing_period": "free",
+    "is_recommended": false,
+    "sort_order": 1,
+    "description_vi": "Bắt đầu hành trình sức khỏe với các tính năng cơ bản.",
+    "description_en": null,
+    "features_vi": [
+      "Hồ sơ y tế cơ bản (20 hồ sơ)",
+      "Nhật ký dinh dưỡng (30 ngày lịch sử)",
+      "Theo dõi bước chân & calo",
+      "Cảnh báo thuốc (3 nhắc nhở)",
+      "Kết nối 1 wearable"
+    ],
+    "features_en": null,
+    "limits": {
+      "medical_records": 20,
+      "nutrition_history_days": 30,
+      "medication_reminders": 3,
+      "wearable_connections": 1,
+      "ai_meal_scan_per_month": 0,
+      "family_members": 1,
+      "doctor_consultations_per_month": 0,
+      "pdf_reports": false,
+      "api_access": false
+    }
+  },
+  {
+    "code": "basic",
+    "name_vi": "Cơ bản",
+    "name_en": "Basic",
+    "price_vnd": 99000,
+    "billing_period": "monthly",
+    "is_recommended": true,
+    "sort_order": 2,
+    "description_vi": "Đủ mạnh cho nhu cầu theo dõi sức khỏe cá nhân toàn diện với AI.",
+    "description_en": null,
+    "features_vi": [
+      "Hồ sơ y tế không giới hạn",
+      "Nhật ký dinh dưỡng (lịch sử 1 năm)",
+      "AI Meal Scan (50 lần/tháng)",
+      "Phân tích dinh dưỡng AI",
+      "Cảnh báo thuốc không giới hạn",
+      "Kết nối 2 wearable",
+      "Báo cáo sức khỏe tuần"
+    ],
+    "features_en": null,
+    "limits": {
+      "medical_records": null,
+      "nutrition_history_days": 365,
+      "medication_reminders": null,
+      "wearable_connections": 2,
+      "ai_meal_scan_per_month": 50,
+      "family_members": 1,
+      "doctor_consultations_per_month": 0,
+      "weekly_health_report": true,
+      "pdf_reports": false,
+      "api_access": false
+    }
+  },
+  {
+    "code": "family",
+    "name_vi": "Gia đình",
+    "name_en": "Family",
+    "price_vnd": 199000,
+    "billing_period": "monthly",
+    "is_recommended": false,
+    "sort_order": 3,
+    "description_vi": "Bảo vệ sức khỏe cho cả gia đình với tính năng chia sẻ hồ sơ và theo dõi.",
+    "description_en": null,
+    "features_vi": [
+      "Tất cả tính năng Cơ bản",
+      "Lên đến 5 thành viên gia đình",
+      "Chia sẻ hồ sơ gia đình",
+      "AI Meal Scan không giới hạn",
+      "Kết nối không giới hạn wearable",
+      "Cảnh báo realtime cho toàn gia đình",
+      "Dashboard gia đình"
+    ],
+    "features_en": null,
+    "limits": {
+      "medical_records": null,
+      "nutrition_history_days": null,
+      "medication_reminders": null,
+      "wearable_connections": null,
+      "ai_meal_scan_per_month": null,
+      "family_members": 5,
+      "family_dashboard": true,
+      "realtime_family_alerts": true,
+      "doctor_consultations_per_month": 0,
+      "pdf_reports": false,
+      "api_access": false
+    }
+  },
+  {
+    "code": "professional",
+    "name_vi": "Chuyên nghiệp",
+    "name_en": "Professional",
+    "price_vnd": 299000,
+    "billing_period": "monthly",
+    "is_recommended": false,
+    "sort_order": 4,
+    "description_vi": "Giải pháp toàn diện nhất với AI nâng cao, tư vấn bác sĩ trực tuyến và báo cáo chuyên nghiệp.",
+    "description_en": null,
+    "features_vi": [
+      "Tất cả tính năng Gia đình",
+      "Tư vấn bác sĩ trực tuyến (4 lần/tháng)",
+      "AI nâng cao & dự báo rủi ro",
+      "Phân tích giấc ngủ chi tiết",
+      "Lịch sử dữ liệu không giới hạn",
+      "Xuất báo cáo PDF chuyên nghiệp",
+      "API tích hợp hệ thống bệnh viện",
+      "Hỗ trợ ưu tiên 24/7"
+    ],
+    "features_en": null,
+    "limits": {
+      "medical_records": null,
+      "nutrition_history_days": null,
+      "medication_reminders": null,
+      "wearable_connections": null,
+      "ai_meal_scan_per_month": null,
+      "family_members": 5,
+      "doctor_consultations_per_month": 4,
+      "advanced_ai_risk_prediction": true,
+      "detailed_sleep_analysis": true,
+      "professional_pdf_reports": true,
+      "hospital_api_access": true,
+      "priority_support": true
+    }
+  }
+]
