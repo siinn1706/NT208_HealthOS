@@ -16,6 +16,7 @@ celery_app = Celery(
         "app.tasks.account_purge",
         "app.tasks.report_pdf",
         "app.tasks.maintenance",
+        "app.tasks.sync_wearables",
     ],
 )
 
@@ -81,5 +82,13 @@ celery_app.conf.beat_schedule = {
     "compute_medication_signals": {
         "task": "app.tasks.medications.compute_medication_signals",
         "schedule": crontab(hour=6, minute=0),  # daily at 06:00 UTC
+    },
+    # Wearables (Luồng B) — poll Google Health for every active connection.
+    # Interval is settings-driven so ops can dial back during quota crunches
+    # without a code change. Per-device sweep is sequential within the task;
+    # parallelism comes from worker count.
+    "sync_google_health_all": {
+        "task": "app.tasks.sync_wearables.sync_google_health_all",
+        "schedule": settings.wearable_sync_interval_minutes * 60,
     },
 }
