@@ -13,6 +13,12 @@
  */
 import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("emergencyCard") };
+}
 import { HeartPulse } from "lucide-react";
 
 import { ConsentExplainer } from "@/components/dashboard/emergency-card/ConsentExplainer";

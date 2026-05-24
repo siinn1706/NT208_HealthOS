@@ -58,6 +58,9 @@
     }
   },
   "onboarding": {
+    "meta": {
+      "title": "Thiết lập hồ sơ của bạn"
+    },
     "welcome": {
       "title": "Chào mừng đến với HealthOS",
       "subtitle": "Chúng tôi sẽ thiết lập hồ sơ của bạn qua năm bước ngắn. Mỗi bước thường mất chưa đến một phút, và bạn có thể quay lại bất cứ khi nào — tiến trình được lưu tự động.",

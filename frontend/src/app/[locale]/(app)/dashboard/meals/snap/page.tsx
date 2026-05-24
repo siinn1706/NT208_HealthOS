@@ -1,6 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import { Camera } from "lucide-react";
 import { Link } from "@/navigation";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.meals");
+  return { title: t("snapPage") };
+}
 import { CameraCapture } from "@/components/dashboard/meals/CameraCapture";
 import { PageHeader } from "@/components/shared/page";
 

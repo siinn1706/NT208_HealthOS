@@ -1,6 +1,12 @@
 import { getTranslations, getLocale } from "next-intl/server";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { Target, Flame, Award, TrendingUp } from "lucide-react";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("achievements") };
+}
 import { StreakHeatmap } from "@/components/charts/StreakHeatmap";
 import { getGamificationSummary } from "@/lib/gamification-data";
 import { formatDate, formatNumber, getUnitLabel } from "@/lib/format-utils";

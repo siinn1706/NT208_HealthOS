@@ -494,7 +494,7 @@ def _canonical_bff_exchange_payload(body: OAuthProfile) -> bytes:
         "provider": body.provider,
         "provider_account_id": body.provider_account_id,
     }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
 def _parse_exchange_expiry(value: str | None) -> datetime | None:

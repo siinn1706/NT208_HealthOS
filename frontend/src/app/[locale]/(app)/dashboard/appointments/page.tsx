@@ -1,5 +1,11 @@
 import { Stethoscope, Plus } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("appointments") };
+}
 import { AppointmentHistoryTable } from "@/components/dashboard/appointments/AppointmentHistoryTable";
 import { AppointmentsPageClient } from "@/components/dashboard/appointments/AppointmentsPageClient";
 import { headers } from "next/headers";

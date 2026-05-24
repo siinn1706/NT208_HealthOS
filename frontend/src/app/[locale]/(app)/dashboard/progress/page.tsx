@@ -3,6 +3,13 @@ import { ProgressPageClient } from "@/components/dashboard/progress/ProgressPage
 import { getUserBmiData } from "@/lib/gamification-data";
 import { getAggregatedMetrics } from "@/lib/analytics-data";
 import type { ReportPeriod } from "@/types/api";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("goals") };
+}
 
 function Skeleton() {
   return <div className="animate-pulse rounded-xl bg-muted h-64" />;
