@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import asyncio
 import enum
+import hashlib
 import json
 import logging
+import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -54,6 +56,25 @@ class IdempotencyResult:
 
 def _key(key: str, scope: str) -> str:
     return f"idem:{scope}:{key}"
+
+
+def build_scoped_ingest_key(
+    user_id: uuid.UUID,
+    device_id: uuid.UUID,
+    raw_body: bytes,
+) -> str:
+    """Content-addressed idempotency key for health-connect ingest.
+
+    Scoped to (user, device, body) so two users supplying the same
+    Idempotency-Key header value cannot cross-replay each other's data,
+    and re-posting a different body with the same header produces a fresh
+    slot rather than replaying the old result.
+
+    The SHA-256 digest is truncated to 32 hex chars (128 bits of collision
+    resistance) to keep the Redis key at a manageable length.
+    """
+    body_digest = hashlib.sha256(raw_body).hexdigest()[:32]
+    return f"{user_id}:{device_id}:{body_digest}"
 
 
 async def try_acquire(redis: Redis, key: str, scope: str) -> bool:

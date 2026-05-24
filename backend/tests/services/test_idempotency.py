@@ -105,3 +105,58 @@ async def test_replay_skips_pending_sentinel():
     redis = _FakeRedis()
     await try_acquire(redis, "k", "scope")
     assert await replay(redis, "k", "scope") is None
+
+
+# ── fix 7: scoped ingest idempotency key ────────────────────────────
+
+
+def test_build_scoped_ingest_key_is_deterministic():
+    """Same (user, device, body) always produces the same key."""
+    import uuid as _uuid
+    from app.services.idempotency import build_scoped_ingest_key
+
+    u = _uuid.uuid4()
+    d = _uuid.uuid4()
+    body = b'{"records":[]}'
+    k1 = build_scoped_ingest_key(u, d, body)
+    k2 = build_scoped_ingest_key(u, d, body)
+    assert k1 == k2
+    assert str(u) in k1
+    assert str(d) in k1
+
+
+def test_build_scoped_ingest_key_differs_by_user():
+    """Different users must not share an idempotency slot even for identical bodies."""
+    import uuid as _uuid
+    from app.services.idempotency import build_scoped_ingest_key
+
+    device = _uuid.uuid4()
+    body = b'{"records":[]}'
+    k_a = build_scoped_ingest_key(_uuid.uuid4(), device, body)
+    k_b = build_scoped_ingest_key(_uuid.uuid4(), device, body)
+    assert k_a != k_b
+
+
+def test_build_scoped_ingest_key_differs_by_device():
+    """Different devices for the same user must not share a slot."""
+    import uuid as _uuid
+    from app.services.idempotency import build_scoped_ingest_key
+
+    user = _uuid.uuid4()
+    body = b'{"records":[]}'
+    k1 = build_scoped_ingest_key(user, _uuid.uuid4(), body)
+    k2 = build_scoped_ingest_key(user, _uuid.uuid4(), body)
+    assert k1 != k2
+
+
+def test_build_scoped_ingest_key_differs_by_body():
+    """Different bodies must produce different slots — changing content is
+    not a replay of the previous call."""
+    import uuid as _uuid
+    from app.services.idempotency import build_scoped_ingest_key
+
+    user = _uuid.uuid4()
+    device = _uuid.uuid4()
+    k1 = build_scoped_ingest_key(user, device, b'{"records":[]}')
+    k2 = build_scoped_ingest_key(user, device, b'{"records":[{"external_id":"x"}]}')
+    assert k1 != k2
