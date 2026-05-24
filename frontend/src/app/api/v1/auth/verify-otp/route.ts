@@ -15,10 +15,14 @@ import {
 
 import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout, parseJsonBody } from "@/lib/bff-fetch-utils";
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 import { normalizeCoreError } from "@/lib/bff-error-normalize";
 
 export async function POST(req: NextRequest) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   const limited = await enforceRateLimit(req, RATE_LIMITS["auth:otp_verify"]);
   if (limited) return limited;
 

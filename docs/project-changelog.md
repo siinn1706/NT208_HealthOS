@@ -8,6 +8,18 @@
 
 ### Added
 
+#### BFF CSRF Origin Guard & Route Protection Hardening (2026-05-24)
+- **CSRF origin guard primitive** (`frontend/src/lib/bff-origin-guard.ts`): `assertSameOrigin()` validates Origin/Referer headers on all BFF mutating routes (POST/PUT/PATCH/DELETE). Wired into `coreProxy()`, `coreFetchStream()`, and 15 direct-fetch route handlers.
+- **Origin validation**: Compares host:port against `BFF_TRUSTED_ORIGINS` env (comma-separated). Non-production: implicit localhost:* and 127.0.0.1:* allowed. Production: fail-closed on empty config.
+- **Guard mode**: `BFF_CSRF_GUARD_MODE` env controls `dry-run` (log, forward) or `enforce` (reject with 403). Default enforce in production.
+- **Route protection audit** (`frontend/src/__tests__/proxy-protected-routes.fixture.ts`): Regression test enumerates all 42 app pages, classifies 29 as private (/dashboard), 13 as public. CI fails if new page added without classification.
+- **Protected routes** (`PROTECTED_PREFIXES`): /dashboard (authenticated app), /onboarding (session required). Public routes: /, /login, /register, /verify, /forgot-password, /about, /articles, /plans, /services, /legal/*, /e/[token], OAuth callbacks.
+- **Deprecated endpoint deprecation** (`POST /v1/auth/check-password-breach`): Removed BFF passthrough route `frontend/src/app/api/v1/auth/check-password-breach/route.ts`. Backend now returns HTTP 410 Gone, directing clients to `GET /v1/auth/check-password-breach/range/{prefix}` (HIBP k-anonymity). Rate-limit key `auth:pwned_range_post_legacy` removed.
+- **Error normalization**: `defaultCodeForStatus()` handles 410 → "ENDPOINT_GONE" code.
+- **Configuration**: New env vars `BFF_TRUSTED_ORIGINS` and `BFF_CSRF_GUARD_MODE` documented in `frontend/.env.example`.
+- **Test coverage**: AST tests verify mutating handlers have guards (`mutating-handlers-have-guard.test.ts`), OAuth init routes remain GET-only (`init-routes-get-only.test.ts`), route protection fixtures classify all pages (`proxy-protected-routes.test.ts`).
+- **Files modified**: `frontend/src/lib/bff-origin-guard.ts` (new), `frontend/src/lib/core-api-proxy.ts`, 10+ BFF route handlers, `frontend/.env.example` (new), `backend/app/api/v1/endpoints/auth.py`, `backend/contracts/openapi/core-api.yaml`, `docs/system-architecture.md`.
+
 #### Final Demo Readiness (2026-05-23)
 - **BFF routing policy guard**: Added a frontend test preventing production `/v1/:path*` and `/ws` Next.js rewrites to Core. Documented WebSocket ticket expectations as the realtime exception.
 - **Admin maintenance scripts**: `seed_admin.py` now reads `SEED_ADMIN_*` env vars and refuses missing passwords; `delete_seed_admin.py --confirm` removes the configured account.
