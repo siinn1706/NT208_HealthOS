@@ -45,6 +45,32 @@ class _FakeDevice:
         self.last_sync_count = None
 
 
+class _FakeRedis:
+    def __init__(self):
+        self.values: dict[str, str] = {}
+        self.eval_calls: list[tuple[str, str]] = []
+
+    async def set(
+        self,
+        key: str,
+        value: str,
+        *,
+        nx: bool = False,
+        ex: int | None = None,
+    ):
+        if nx and key in self.values:
+            return None
+        self.values[key] = value
+        return True
+
+    async def eval(self, _script: str, _numkeys: int, key: str, token: str):
+        self.eval_calls.append((key, token))
+        if self.values.get(key) == token:
+            self.values.pop(key, None)
+            return 1
+        return 0
+
+
 @pytest.fixture
 def passthrough_fernet(monkeypatch):
     """Skip real Fernet so we can read what the helper actually persists.
@@ -146,3 +172,53 @@ async def test_mark_error_sets_status_without_touching_tokens():
     # Token columns untouched — this is the whole point.
     assert device.access_token_encrypted == original_access
     assert device.refresh_token_encrypted == original_refresh
+
+
+@pytest.mark.asyncio
+async def test_sync_one_device_skips_when_lock_is_already_held(monkeypatch):
+    connection_id = uuid.uuid4()
+    redis = _FakeRedis()
+    redis.values[f"wearable-sync:{connection_id}"] = "someone-else"
+
+    async def fake_get_redis():
+        return redis
+
+    class _ShouldNotOpenSession:
+        async def __aenter__(self):
+            raise AssertionError("DB session should not open when lock is busy")
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(sync_wearables, "get_redis", fake_get_redis)
+    monkeypatch.setattr(
+        sync_wearables, "AsyncSessionLocal", lambda: _ShouldNotOpenSession()
+    )
+
+    result = await sync_wearables._sync_one_device_async(connection_id)
+    assert result == {"status": "skipped", "reason": "locked"}
+
+
+@pytest.mark.asyncio
+async def test_sync_one_device_releases_lock_on_exception(monkeypatch):
+    connection_id = uuid.uuid4()
+    redis = _FakeRedis()
+
+    async def fake_get_redis():
+        return redis
+
+    class _BrokenSession:
+        async def __aenter__(self):
+            raise RuntimeError("boom")
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(sync_wearables, "get_redis", fake_get_redis)
+    monkeypatch.setattr(sync_wearables, "AsyncSessionLocal", lambda: _BrokenSession())
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await sync_wearables._sync_one_device_async(connection_id)
+
+    assert redis.values == {}
+    assert redis.eval_calls
