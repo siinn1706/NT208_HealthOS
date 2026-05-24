@@ -70,6 +70,7 @@ from app.services.otp import (
     otp_expiry_time,
 )
 from app.services.auth import (
+    UserBanned,
     UserPendingDeletion,
     check_email_availability,
     check_username_availability,
@@ -82,11 +83,13 @@ from app.services.mfa import totp_service
 from app.services.refresh_tokens import (
     RefreshTokenError,
     RefreshTokenReuseError,
+    RefreshTokenUserBannedError,
     issue_refresh_token,
     revoke_refresh_token,
     revoke_refresh_tokens_for_user,
     rotate_refresh_token,
 )
+from app.services.account_status import is_active_ban
 from app.services.security_logging import log_security_event
 from app.services.audit import audit
 from app.services import oauth_links as oauth_link_svc
@@ -125,12 +128,29 @@ def _mfa_login_challenge_key(challenge_id: str) -> str:
     return f"auth:mfa:login:{challenge_id}"
 
 
+def _raise_if_account_banned(user: User) -> None:
+    if not is_active_ban(user):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "ACCOUNT_BANNED",
+            "message": "Your account has been banned.",
+            "details": {
+                "user_id": str(user.id),
+                "banned_until": user.banned_until.isoformat() if user.banned_until else None,
+            },
+        },
+    )
+
+
 async def _issue_auth_token(
     *,
     db: AsyncSession,
     user: User,
     request: Request | None,
 ) -> AuthToken:
+    _raise_if_account_banned(user)
     access_token = create_user_access_token(user)
     refresh_token = await issue_refresh_token(
         db,
@@ -172,6 +192,7 @@ async def issue_ws_ticket(
     response_model=AuthLoginResponse,
     responses={
         401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         429: {"model": ErrorResponse},
     },
 )
@@ -246,6 +267,8 @@ async def login_with_password(
             code="INVALID_CREDENTIALS",
         )
 
+    _raise_if_account_banned(user)
+
     # B7 review P0-3 — soft-deleted users get a typed 403 with the restore
     # link instead of a fresh JWT they can't use.
     if user.deleted_at is not None:
@@ -298,7 +321,7 @@ async def login_with_password(
 @router.post(
     "/login/mfa",
     response_model=AuthTokenResponse,
-    responses={401: {"model": ErrorResponse}},
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
 )
 async def login_with_mfa(
     body: MfaLoginVerifyBody,
@@ -347,6 +370,9 @@ async def login_with_mfa(
             code="MFA_NOT_ENABLED",
             message="MFA is not enabled for this account.",
         )
+    if is_active_ban(user):
+        await redis.delete(challenge_key)
+        _raise_if_account_banned(user)
 
     method = None
     if user.mfa_recovery_codes:
@@ -623,6 +649,20 @@ async def exchange_oauth_profile_for_token(
                 },
             },
         ) from exc
+    except UserBanned as exc:
+        await db.rollback()
+        log_event("auth.oauth", "token_exchange", "account_banned", provider=body.provider)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "ACCOUNT_BANNED",
+                "message": "Your account has been banned.",
+                "details": {
+                    "user_id": str(exc.user_id),
+                    "banned_until": exc.banned_until.isoformat() if exc.banned_until else None,
+                },
+            },
+        ) from exc
     log_event("auth.oauth", "token_exchange", "ok",
               user_id=str(user.id), provider=body.provider)
     token = await _issue_auth_token(db=db, user=user, request=request)
@@ -768,6 +808,7 @@ async def remove_oauth_link(
     response_model=OtpRequestedResponse,
     responses={
         400: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         429: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
@@ -829,6 +870,8 @@ async def request_email_otp(
                     message="Email đã được sử dụng",
                     field_errors={"email": "Email đã được sử dụng"},
                 )
+            if body.purpose in {"login", "reset_password"} and existing_user is not None:
+                _raise_if_account_banned(existing_user)
 
     # Per-email cooldown: same semantics as real OTP sends (incl. login probe for unknown email).
     # Enforced before expensive work; fake login success must still set cooldown to limit enumeration.
@@ -932,6 +975,7 @@ async def request_email_otp(
     responses={
         200: {"model": AuthTokenResponse},
         400: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
     },
@@ -1001,12 +1045,14 @@ async def verify_email_otp(
     # ── reset_password: verify only — do NOT create a new user ──────────────
     if body.purpose == "reset_password":
         result = await db.execute(select(User).where(User.email == body.email))
-        if result.scalar_one_or_none() is None:
+        user = result.scalar_one_or_none()
+        if user is None:
             raise NotFoundException(
                 resource="Email",
                 message="Không tìm thấy tài khoản với email này",
                 code="ACCOUNT_NOT_FOUND_EMAIL",
             )
+        _raise_if_account_banned(user)
         # Store a "verified" marker so reset-password can proceed (TTL 5 min)
         verified_key = f"auth:otp:reset_verified:{body.email}"
         await redis.setex(verified_key, OTP_TTL_SECONDS, "1")
@@ -1027,6 +1073,7 @@ async def verify_email_otp(
                 message="Không tìm thấy tài khoản với email này",
                 code="INVALID_CREDENTIALS",
             )
+        _raise_if_account_banned(user)
         if user.email_verified_at is None:
             user.email_verified_at = datetime.now(timezone.utc)
         log_event("auth", "otp_verify", "ok", user_id=str(user.id))
@@ -1083,6 +1130,19 @@ async def verify_email_otp(
         )
 
         user = result.scalar_one()
+    except UserBanned as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "ACCOUNT_BANNED",
+                "message": "Your account has been banned.",
+                "details": {
+                    "user_id": str(exc.user_id),
+                    "banned_until": exc.banned_until.isoformat() if exc.banned_until else None,
+                },
+            },
+        ) from exc
     except Exception as exc:
         from app.exceptions import ServerException
         raise ServerException(
@@ -1139,6 +1199,7 @@ async def verify_email_otp(
     response_model=AuthTokenResponse,
     responses={
         400: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
     },
@@ -1188,6 +1249,7 @@ async def reset_password(
             message="Không tìm thấy tài khoản với email này",
             code="ACCOUNT_NOT_FOUND_EMAIL",
         )
+    _raise_if_account_banned(user)
 
     user.hashed_password = hash_password(body.new_password)
     user.has_password = True
@@ -1295,7 +1357,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 @router.post(
     "/refresh",
     response_model=AuthTokenResponse,
-    responses={401: {"model": ErrorResponse}},
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
 )
 async def refresh_access_token(
     body: RefreshTokenBody,
@@ -1309,6 +1371,12 @@ async def refresh_access_token(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
+    except RefreshTokenUserBannedError as exc:
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc
     except RefreshTokenReuseError as exc:
         await db.commit()
         raise UnauthorizedException(code=exc.code, message=exc.message)
@@ -1316,6 +1384,7 @@ async def refresh_access_token(
         await db.commit()
         raise UnauthorizedException(code=exc.code, message=exc.message)
 
+    _raise_if_account_banned(user)
     access_token = create_user_access_token(user)
     token = AuthToken(
         access_token=access_token,

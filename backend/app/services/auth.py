@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.core.security import create_access_token, hash_password
 from app.models.core import User, UserProfile
 from app.schemas.auth import OAuthProfile
+from app.services.account_status import is_active_ban
 
 
 # ─── Constants ─────────────────────────────────────────────────────────────────
@@ -146,6 +147,13 @@ class UserPendingDeletion(Exception):
         super().__init__("Account is pending deletion.")
 
 
+class UserBanned(Exception):
+    def __init__(self, user_id: uuid.UUID, banned_until):
+        self.user_id = user_id
+        self.banned_until = banned_until
+        super().__init__("Account is banned.")
+
+
 async def get_or_create_user_from_oauth(
     profile: OAuthProfile,
     db: AsyncSession,
@@ -193,6 +201,9 @@ async def get_or_create_user_from_oauth(
     # the endpoint can route the user to a "restore your account" prompt.
     if user is not None and user.deleted_at is not None:
         raise UserPendingDeletion(user_id=user.id, purge_at=user.purge_at)
+
+    if user is not None and is_active_ban(user):
+        raise UserBanned(user_id=user.id, banned_until=user.banned_until)
 
     if user is None:
         # 3. Create a fresh user.

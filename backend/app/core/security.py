@@ -16,6 +16,7 @@ from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
 from app.core.config import is_production, settings
 from app.models.core import User
+from app.services.account_status import is_active_ban
 
 
 # Convert a datetime to a Unix epoch (seconds) — used for `iat`/`exp` math
@@ -130,6 +131,19 @@ def decode_token_with_type(
     return payload
 
 
+def _account_banned_exception(user: User) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "ACCOUNT_BANNED",
+            "message": "Your account has been banned.",
+            "details": {
+                "banned_until": user.banned_until.isoformat() if user.banned_until else None,
+            },
+        },
+    )
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     db: AsyncSession = Depends(get_db),
@@ -185,6 +199,9 @@ async def get_current_user(
             detail={"code": "AUTH_NOT_FOUND", "message": "User not found."},
         )
 
+    if is_active_ban(user):
+        raise _account_banned_exception(user)
+
     # B7 P1-5 — global per-user JWT cutoff. Any token with `iat <
     # users.tokens_invalidated_at` is rejected. Tokens issued before this
     # function existed (no `iat` claim) bypass the check by design — they
@@ -217,6 +234,8 @@ async def get_current_user(
             },
         )
 
+    from app.services import auth_touch
+    await auth_touch.touch_user_last_seen(user.id)
     return user
 
 
@@ -270,6 +289,8 @@ async def get_current_user_for_restore(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "AUTH_NOT_FOUND", "message": "User not found."},
         )
+    if is_active_ban(user):
+        raise _account_banned_exception(user)
     return user
 
 

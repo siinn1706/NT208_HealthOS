@@ -84,6 +84,9 @@ class AuditEventTypeEnum(str, Enum):
     # RBAC — role grant/revoke; written in same transaction as user_roles change.
     RBAC_ROLE_GRANTED = "rbac_role_granted"
     RBAC_ROLE_REVOKED = "rbac_role_revoked"
+    # Admin account controls — target user id lives in details, actor in user_id.
+    ADMIN_USER_BANNED = "admin_user_banned"
+    ADMIN_USER_UNBANNED = "admin_user_unbanned"
 
 
 class AuditLog(Base):

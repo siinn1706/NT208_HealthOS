@@ -22,6 +22,11 @@ _AUTH_CRITICAL_COLUMNS = {
         "is_system": "users.is_system (migration 014)",
         "has_password": "users.has_password (migration 023)",
         "tokens_invalidated_at": "users.tokens_invalidated_at (migration 023)",
+        "banned_at": "users.banned_at (migration 037)",
+        "banned_reason": "users.banned_reason (migration 037)",
+        "banned_by_id": "users.banned_by_id (migration 037)",
+        "banned_until": "users.banned_until (migration 037)",
+        "last_seen_at": "users.last_seen_at (migration 037)",
     }
 }
 
