@@ -41,6 +41,7 @@ from app.schemas.sync import (
     HealthRecordIn,
     SyncStateEntry,
 )
+from app.services.wearable_sync.ws_publish import publish_vitals_updated
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +272,16 @@ async def upsert_batch(
         device.last_sync_status = "partial"
     else:
         device.last_sync_status = "ok"
+
+    # WS fan-out so the web dashboard refreshes without a reload. Best
+    # effort — `publish_vitals_updated` swallows delivery errors so a
+    # WS hiccup can't undo a successful DB transaction. The endpoint
+    # commits AFTER this call returns, but the dashboard re-fetches
+    # from /v1/vitals on the event (no PHI on the wire), so the tiny
+    # race between push and commit is benign.
+    await publish_vitals_updated(
+        user_id, source="health_connect", count=inserted + updated
+    )
 
     return HealthIngestResult(
         inserted=inserted,
