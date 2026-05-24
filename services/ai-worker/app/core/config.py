@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     ai_enable_gemini_fallback: bool = True
     ai_gemini_timeout_seconds: float = 20.0
 
+    # Image download security
+    ai_max_image_download_bytes: int = 10 * 1024 * 1024  # 10 MiB, matches backend upload cap
+    ai_max_image_pixels: int = 24_000_000  # ~24 MP, PIL decompression-bomb threshold
+    ai_allowed_image_hosts: str = ""  # comma-separated; empty = any non-private host
+    ai_image_download_timeout_seconds: float = 15.0
+    ai_block_private_networks: bool = True
+
     ai_yolo_model_path: str = str(_DEFAULT_MODEL_PATH)
     ai_class_names_path: str = str(_DEFAULT_CLASS_NAMES_PATH)
     gemini_api_key: str = ""
@@ -45,6 +52,13 @@ class Settings(BaseSettings):
     ai_chat_temperature: float = 0.6
     ai_chat_timeout_seconds: float = 30.0
     ai_chat_stream_chunk_min_chars: int = 1
+
+    @property
+    def allowed_image_hosts_set(self) -> frozenset[str]:
+        raw = (self.ai_allowed_image_hosts or "").strip()
+        if not raw:
+            return frozenset()
+        return frozenset(h.strip().lower() for h in raw.split(",") if h.strip())
 
     @property
     def yolo_model_path(self) -> Path:
