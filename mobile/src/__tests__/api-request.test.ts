@@ -5,6 +5,7 @@ import {
   getCoreApiBaseUrl,
   getCoreWsBaseUrl,
   buildQuery,
+  createIdempotencyKey,
   setRefreshHandler,
   setUnauthorizedHandler,
 } from '../api/client';
@@ -33,6 +34,19 @@ beforeEach(() => {
   setDevMode(true);
   delete process.env.EXPO_PUBLIC_CORE_API_URL;
   delete process.env.EXPO_PUBLIC_CORE_WS_URL;
+});
+
+describe('createIdempotencyKey', () => {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  it('returns a valid v4 UUID', () => {
+    expect(createIdempotencyKey()).toMatch(UUID_RE);
+  });
+
+  it('produces unique values on each call', () => {
+    const keys = new Set(Array.from({ length: 20 }, () => createIdempotencyKey()));
+    expect(keys.size).toBe(20);
+  });
 });
 
 describe('buildQuery', () => {
