@@ -225,9 +225,18 @@ async def upsert_batch(
     user_id: uuid.UUID,
     device: ConnectedDevice,
     batch: HealthIngestBatch,
+    *,
+    ws_source: str = "health_connect",
 ) -> HealthIngestResult:
     """Top-level entrypoint. Persists rows + per-record-type tokens in
-    a single transaction (the surrounding endpoint owns the commit)."""
+    a single transaction (the surrounding endpoint owns the commit).
+
+    ``ws_source`` tags the ``vitals.updated`` WS event so the dashboard
+    can distinguish a mobile-foreground sync from a server-side Google
+    Health poll. Defaults to ``"health_connect"`` because the only
+    in-tree caller other than the Celery task is the mobile ingest
+    endpoint.
+    """
     upserts, deletion_ids = _split(
         user_id, device.id, batch.records, batch.deletions
     )
@@ -280,7 +289,7 @@ async def upsert_batch(
     # from /v1/vitals on the event (no PHI on the wire), so the tiny
     # race between push and commit is benign.
     await publish_vitals_updated(
-        user_id, source="health_connect", count=inserted + updated
+        user_id, source=ws_source, count=inserted + updated
     )
 
     return HealthIngestResult(

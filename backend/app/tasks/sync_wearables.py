@@ -47,7 +47,6 @@ from app.services.wearable_sync.token_crypto import (
     decrypt_token,
     encrypt_token,
 )
-from app.services.wearable_sync.ws_publish import publish_vitals_updated
 from app.tasks import celery_app
 
 logger = logging.getLogger(__name__)
@@ -295,15 +294,12 @@ async def _sync_one_device_async(connection_id: uuid.UUID) -> dict[str, Any]:
                 next_changes_tokens={},
             )
             try:
-                # `upsert_batch` stamps last_synced_at, last_sync_count,
-                # last_sync_status and also fires `publish_vitals_updated`
-                # internally — but it tags those as `source="health_connect"`.
-                # We want `source="google_health"` for the WS payload, so
-                # we suppress its push by passing through and re-emitting
-                # below with the correct source. (See note in upsert_batch:
-                # the call is best-effort and a second push is fine.)
+                # `upsert_batch` stamps last_synced_at / last_sync_count /
+                # last_sync_status AND fires `publish_vitals_updated` with
+                # the correct `ws_source` tag. We don't double-emit here.
                 result = await sync_svc.upsert_batch(
-                    db, device.user_id, device, batch
+                    db, device.user_id, device, batch,
+                    ws_source="google_health",
                 )
             except Exception as exc:
                 logger.exception("upsert_batch failed for connection %s", device.id)
@@ -347,17 +343,6 @@ async def _sync_one_device_async(connection_id: uuid.UUID) -> dict[str, Any]:
             commit=False,
         )
         await db.commit()
-
-        # Re-emit with the correct source tag. `upsert_batch` already
-        # pushed `health_connect`; this push tells the dashboard the
-        # update came from the server-side poller. Both events are
-        # idempotent on the client (re-fetch from /v1/vitals on either).
-        if result is not None:
-            await publish_vitals_updated(
-                device.user_id,
-                source="google_health",
-                count=result.inserted + result.updated,
-            )
 
         return {
             "status": "ok",
