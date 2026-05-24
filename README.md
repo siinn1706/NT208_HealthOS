@@ -1,27 +1,69 @@
-# NT208_HealthOS — Virtual Personal Doctor
+<div align="center">
 
-Health management platform with FE+BFF, Core API, workers, and data services.
+<h1>NT208_HealthOS</h1>
+
+<p><strong>Virtual Personal Doctor</strong></p>
+
+<p>Health management platform with Web/BFF, Core API, workers, mobile app, and data services.</p>
+
+<p>
+  <strong>Frontend / BFF</strong><br />
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=20232A" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" />
+  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" />
+  <img alt="next-intl" src="https://img.shields.io/badge/next--intl-4-000000?style=flat-square" />
+</p>
+
+<p>
+  <strong>Backend / Data</strong><br />
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.128-009688?style=flat-square&logo=fastapi&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img alt="SQLAlchemy" src="https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=flat-square" />
+  <img alt="Alembic" src="https://img.shields.io/badge/Alembic-1.18-6BA539?style=flat-square" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
+  <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" />
+  <img alt="Celery" src="https://img.shields.io/badge/Celery-5-37814A?style=flat-square&logo=celery&logoColor=white" />
+  <img alt="MinIO" src="https://img.shields.io/badge/MinIO-S3--compatible-C72E49?style=flat-square&logo=minio&logoColor=white" />
+</p>
+
+<p>
+  <strong>Mobile / Infra / Quality</strong><br />
+  <img alt="Expo" src="https://img.shields.io/badge/Expo-53-000020?style=flat-square&logo=expo&logoColor=white" />
+  <img alt="React Native" src="https://img.shields.io/badge/React_Native-0.79-61DAFB?style=flat-square&logo=react&logoColor=20232A" />
+  <img alt="Expo Router" src="https://img.shields.io/badge/Expo_Router-5-000020?style=flat-square&logo=expo&logoColor=white" />
+  <img alt="Docker Compose" src="https://img.shields.io/badge/Docker_Compose-dev-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-4-6E9F18?style=flat-square&logo=vitest&logoColor=white" />
+  <img alt="Playwright" src="https://img.shields.io/badge/Playwright-1.59-2EAD33?style=flat-square&logo=playwright&logoColor=white" />
+  <img alt="Pytest" src="https://img.shields.io/badge/Pytest-8-0A9EDC?style=flat-square&logo=pytest&logoColor=white" />
+  <img alt="Jest" src="https://img.shields.io/badge/Jest-29-C21325?style=flat-square&logo=jest&logoColor=white" />
+</p>
+
+</div>
 
 ## Tech Stack
 
 | Layer | Stack | Notes |
 |---|---|---|
-| FE + BFF | Next.js 16, React 19, Tailwind 4, next-intl | BFF Route Handlers under `/api/v1/**` |
-| Core BE | FastAPI + SQLAlchemy async | Router prefix `/v1` |
+| Frontend + BFF | Next.js 16, React 19, TypeScript, Tailwind CSS 4, next-intl 4 | BFF Route Handlers under `/api/v1/**`; browser traffic enters here |
+| Core API | FastAPI, Python 3.12, SQLAlchemy async, Alembic | Router prefix `/v1`; not called directly by browser code |
+| Mobile | Expo SDK 53, React Native 0.79, Expo Router 5, TypeScript | Native app surface with its own Expo Router entry |
 | Database | PostgreSQL 16 + asyncpg | Core persistent data |
-| Cache/Queue | Redis 7 + Celery | Cache + async task broker |
-| Storage | MinIO (dev) / S3-compatible | Object storage |
+| Cache + Queue | Redis 7 + Celery 5 | Cache, rate limits, broker, and async jobs |
+| Storage | MinIO / S3-compatible | Object storage for local development and S3-style deployments |
 | Workers | AI Worker (8001), Notification (8002), Queue Worker | Queue worker runs from backend; optional `queue-worker-service` profile in dev |
+| Infra + Dev | Docker Compose | Local infrastructure orchestration |
+| Testing + Quality | Vitest, Playwright, Pytest, Jest | Frontend unit, E2E, backend, and mobile test surfaces |
 
 ## Architecture (Critical Rule)
 
-Browser **never** calls Core directly.
+> Browser code must call the Next.js BFF at `/api/v1/**`. It must not call the Core API at `/v1/**` directly.
 
-```
-Browser -> Next.js BFF (/api/v1/**) -> Core BE (/v1/**) -> PostgreSQL/Redis/MinIO
+```text
+Browser -> Next.js BFF (/api/v1/**) -> Core API (/v1/**) -> PostgreSQL / Redis / MinIO
 ```
 
-- BFF handlers: `frontend/src/app/api/v1/**/route.ts`
+- Required browser path: `frontend/src/app/api/v1/**/route.ts`
 - BFF proxy helper: `frontend/src/lib/core-api-proxy.ts`
 - Core router: `backend/app/api/v1/router.py`
 
