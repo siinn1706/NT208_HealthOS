@@ -259,9 +259,13 @@ async def update_current_user_profile(
         current_user.onboarding_status = OnboardingStatusEnum.IN_PROGRESS.value
 
     await db.commit()
-    await db.refresh(current_user)
-
-    return _to_current_user_response(current_user)
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.profile))
+        .where(User.id == current_user.id)
+    )
+    user = result.scalar_one()
+    return _to_current_user_response(user)
 
 
 # ─── B7 P8 — Account data export ─────────────────────────────────────────

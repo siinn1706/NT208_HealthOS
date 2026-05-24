@@ -3,6 +3,12 @@ import { headers } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { VisitBriefDetail } from "@/types/api";
 import { PrintableBrief } from "@/components/dashboard/visit-prep/PrintableBrief";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("visitPrep") };
+}
 
 async function fetchBrief(id: string): Promise<VisitBriefDetail | null> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

@@ -1,4 +1,4 @@
-"""Add security_access_denied to auditeventtypeenum.
+"""Add security_access_denied to audit_event_type_enum.
 
 Revision ID: 031_add_security_access_denied_enum
 Revises: 030_add_refresh_token_sessions
@@ -15,7 +15,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TYPE auditeventtypeenum ADD VALUE IF NOT EXISTS 'security_access_denied'")
+    with op.get_context().autocommit_block():
+        op.execute(
+            "ALTER TYPE audit_event_type_enum ADD VALUE IF NOT EXISTS 'security_access_denied'"
+        )
 
 
 def downgrade() -> None:

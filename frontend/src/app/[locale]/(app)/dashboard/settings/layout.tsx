@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { ComingSoon } from "@/components/ui/ComingSoon";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("dashboard.nav");
-  return { title: t("leaderboard") };
+  return { title: t("settings") };
 }
 
-export default function LeaderboardPage() {
-  return <ComingSoon />;
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }

@@ -1,6 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import { Watch } from "lucide-react";
 import { headers } from "next/headers";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("settings") };
+}
 import { DevicesPageClient } from "@/components/dashboard/settings/DevicesPageClient";
 import type { Device } from "@/components/dashboard/settings/DeviceConnectionCard";
 import { PageHeader } from "@/components/shared/page";

@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { CirclePlus } from "lucide-react";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("nutrition") };
+}
 import { getMealsToday, getWeeklyCalorieChart, getNutritionSuggestions } from "@/lib/meals-data";
 import { TodayMealsWidget } from "@/components/dashboard/widgets/TodayMealsWidget";
 import { WeeklyCalorieChartWidget } from "@/components/dashboard/widgets/WeeklyCalorieChartWidget";

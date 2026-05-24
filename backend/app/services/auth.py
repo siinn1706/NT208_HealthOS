@@ -223,6 +223,16 @@ async def get_or_create_user_from_oauth(
         if user.profile is not None:
             user.profile.full_name = profile.name
             user.profile.avatar_url = profile.avatar_url
+        else:
+            # Profile row missing for existing user — create it with OAuth data.
+            user_profile = UserProfile(
+                user_id=user.id,
+                full_name=profile.name,
+                avatar_url=profile.avatar_url,
+            )
+            db.add(user_profile)
+            await db.flush()
+            user.profile = user_profile
 
     # Upsert the link row.
     if link is None:

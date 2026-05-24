@@ -132,29 +132,26 @@ if not versions_dir.exists():
 nodes = {}
 parents = set()
 
+def read_literal_assignment(module, name):
+    for stmt in module.body:
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name) and stmt.target.id == name:
+            return ast.literal_eval(stmt.value)
+        if isinstance(stmt, ast.Assign):
+            for target in stmt.targets:
+                if isinstance(target, ast.Name) and target.id == name:
+                    return ast.literal_eval(stmt.value)
+    return None
+
 for path in sorted(versions_dir.glob("*.py")):
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    revision = None
-    down_revisions = []
-
-    for stmt in tree.body:
-        if not isinstance(stmt, ast.Assign):
-            continue
-
-        for target in stmt.targets:
-            if not isinstance(target, ast.Name):
-                continue
-
-            if target.id == "revision":
-                revision = ast.literal_eval(stmt.value)
-            elif target.id == "down_revision":
-                value = ast.literal_eval(stmt.value)
-                if value is None:
-                    down_revisions = []
-                elif isinstance(value, tuple):
-                    down_revisions = [item for item in value if item]
-                else:
-                    down_revisions = [value]
+    revision = read_literal_assignment(tree, "revision")
+    value = read_literal_assignment(tree, "down_revision")
+    if value is None:
+        down_revisions = []
+    elif isinstance(value, tuple):
+        down_revisions = [item for item in value if item]
+    else:
+        down_revisions = [value]
 
     if revision:
         nodes[revision] = {

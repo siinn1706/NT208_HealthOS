@@ -69,7 +69,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://images.unsplash.com https://unsplash.com https://randomuser.me",
+      "img-src 'self' data: https://images.unsplash.com https://unsplash.com https://randomuser.me https://lh3.googleusercontent.com https://avatars.githubusercontent.com",
       "font-src 'self' data:",
       "connect-src 'self' https://accounts.google.com https://github.com",
       "frame-ancestors 'none'",
@@ -91,6 +91,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "unsplash.com" },
       { protocol: "https", hostname: "randomuser.me" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "avatars.githubusercontent.com" },
     ],
   },
   async headers() {
