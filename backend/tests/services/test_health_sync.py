@@ -248,3 +248,52 @@ def test_split_folds_dedicated_deletions_with_legacy():
     )
     assert {u.external_id for u in upserts} == {"keep-1"}
     assert set(deletion_ids) == {"legacy-tomb", "new-tomb-1", "new-tomb-2"}
+
+
+# ── fix 6: HC record-type key validation ────────────────────────────
+
+
+def test_ingest_batch_rejects_unknown_token_key():
+    """next_changes_tokens must only contain _HC_RECORD_TYPES keys."""
+    with pytest.raises(Exception):  # pydantic ValidationError
+        HealthIngestBatch(
+            records=[],
+            deletions=[],
+            next_changes_tokens={"UnknownType": "tok-abc"},
+        )
+
+
+def test_ingest_batch_accepts_known_token_keys():
+    """All six known HC record-type strings should pass validation."""
+    batch = HealthIngestBatch(
+        records=[],
+        deletions=[],
+        next_changes_tokens={
+            "Steps": "tok-1",
+            "HeartRate": "tok-2",
+            "Weight": "tok-3",
+        },
+    )
+    assert batch.next_changes_tokens["Steps"] == "tok-1"
+
+
+def test_ingest_batch_accepts_empty_token_map():
+    """An absent / empty token map is always valid (most batches omit it)."""
+    batch = HealthIngestBatch(records=[], deletions=[])
+    assert batch.next_changes_tokens == {}
+
+
+def test_sync_state_update_rejects_unknown_token_key():
+    """SyncStateUpdateBody.tokens must also enforce the record-type allowlist."""
+    from app.schemas.sync import SyncStateUpdateBody
+
+    with pytest.raises(Exception):  # pydantic ValidationError
+        SyncStateUpdateBody(tokens={"EvilType": "tok-xyz"})
+
+
+def test_sync_state_update_accepts_known_keys():
+    from app.schemas.sync import SyncStateUpdateBody
+
+    body = SyncStateUpdateBody(tokens={"Steps": "tok-ok", "HeartRate": None})
+    assert body.tokens["Steps"] == "tok-ok"
+    assert body.tokens["HeartRate"] is None
