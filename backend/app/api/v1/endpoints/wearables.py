@@ -264,7 +264,7 @@ async def google_callback(
             user_id=current_user.id,
             provider=WearableProviderEnum.GOOGLE_HEALTH,
             external_account_id=google_sub,
-            device_label=profile.get("email") or "Google Health",
+            device_label="Google Health",
             access_token_encrypted=access_ciphertext,
             refresh_token_encrypted=refresh_ciphertext,
             token_expires_at=token_expires_at,
@@ -282,8 +282,7 @@ async def google_callback(
         existing.refresh_token_encrypted = refresh_ciphertext
         existing.token_expires_at = token_expires_at
         existing.oauth_scopes = granted_scopes
-        if profile.get("email"):
-            existing.device_label = profile["email"]
+        existing.device_label = "Google Health"
         existing.last_sync_status = "pending"
         existing.last_sync_error = None
         existing.connected_at = now

@@ -298,3 +298,45 @@ async def test_webhook_accepts_valid_signature_unknown_sub(
         headers={"X-Goog-Signature": sig},
     )
     assert res.status_code == 204
+
+
+# ─────────────────────────────────────────────────────────────────────
+# fix 9: minimize wearable identifier exposure
+# ───────────────────────────────────────────────────────��─────────────
+
+
+def test_connected_device_dto_redacts_external_account_id():
+    """external_account_id must serialize as null regardless of the stored
+    value so the Google OAuth sub never appears in API responses."""
+    from app.schemas.devices import ConnectedDeviceDTO
+
+    dto = ConnectedDeviceDTO(
+        id=uuid.uuid4(),
+        provider="google_health",
+        name="Google Health",
+        connected=True,
+        external_account_id="google-sub-12345",
+    )
+    serialized = dto.model_dump()
+    assert serialized["external_account_id"] is None
+
+    json_str = dto.model_dump_json()
+    assert "google-sub-12345" not in json_str
+
+
+def test_wearables_device_to_dto_does_not_expose_account_id():
+    """_device_to_dto must also emit null for external_account_id."""
+    from app.api.v1.endpoints.wearables import _device_to_dto
+    from app.models.core import ConnectedDevice, WearableProviderEnum
+
+    device = ConnectedDevice(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        provider=WearableProviderEnum.GOOGLE_HEALTH,
+        external_account_id="google-sub-secret",
+        device_label="Google Health",
+        last_sync_status="ok",
+    )
+    dto = _device_to_dto(device)
+    serialized = dto.model_dump()
+    assert serialized["external_account_id"] is None
