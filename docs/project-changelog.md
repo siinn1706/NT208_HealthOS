@@ -1,6 +1,6 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.4-demo | **Last Updated**: 2026-05-23
+> **Version**: 1.3.5-hardening | **Last Updated**: 2026-05-24
 
 ---
 
@@ -13,6 +13,15 @@
 - **Admin maintenance scripts**: `seed_admin.py` now reads `SEED_ADMIN_*` env vars and refuses missing passwords; `delete_seed_admin.py --confirm` removes the configured account.
 - **Notification dispatch demo path**: Core notification dispatch persists `in_app` notifications; standalone notification service validates dispatch payloads, supports optional SMTP email, and returns explicit `skipped` reasons for unsupported/unconfigured channels.
 - **Demo documentation**: Added `docs/current-status.md`, `docs/demo/demo-checklist.md`, and `docs/demo/demo-script.md`.
+
+#### AI Worker SSRF & DoS Hardening (2026-05-24)
+- **SSRF protection**: Image URL scheme allowlist (http/https only), host allowlist enforcement with case-insensitive matching, private/loopback/link-local/metadata IP blocking (169.254.169.254, CGNAT 100.64.0.0/10).
+- **Redirect validation**: Manual per-hop re-validation (cap 3 redirects) mitigates DNS rebinding attacks.
+- **DoS protection**: Streamed byte-cap download (10 MiB default, matches backend meal upload cap), PIL `DecompressionBombError` caught, decoded dimension validation against `MAX_IMAGE_PIXELS` (24 MP).
+- **Configuration**: 5 new Settings fields in `services/ai-worker/app/core/config.py` with sensible defaults; `.env.example` documents each knob for dev/prod tightening.
+- **Error sanitization**: No URLs or secrets leaked in `ImageLoadError` messages (full URLs logged at DEBUG only).
+- **Test coverage**: 14 new security tests + existing suite verified; 16 total tests in `test_image_loader_security.py`.
+- **Files modified**: `services/ai-worker/app/services/image_loader.py`, `services/ai-worker/app/core/config.py`, `services/ai-worker/.env.example`, `services/ai-worker/tests/test_image_loader_security.py`.
 
 #### Documentation Audit & Hardening (2026-05-23)
 - **Documentation sync pass**: Verified stale claims in security.md, system-architecture.md, project-roadmap.md, project-changelog.md against current codebase state

@@ -188,12 +188,21 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 
 ## Current Status
 
-**v1.2.2 (Current)**: Data layer refactor, documentation audit, chat E2E review (unreleased).
-**v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
-**v1.2.0**: User accent color customization and theming.
+HealthOS is a demo-oriented full-stack project with separate web, Core API, worker, and native mobile surfaces.
 
-- **Implemented**: Auth (email/OTP/OAuth), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications (`/v1/notifications` + read/read-all + unread-count), AI meal analysis (`/analyze`), plans (`/v1/plans`), onboarding drafts (`/v1/users/me/onboarding-draft`).
-- **Known gaps / partial**: Notification dispatch supports Core in-app persistence through the backend task and optional SMTP dispatch in the standalone notification service, but push/SMS providers are not configured; wearable sync remains outside this demo-readiness task; some UX paths remain TODO.
+- **Web**: Browser traffic goes through the Next.js BFF under `/api/v1/**`; Core remains a server-side `/v1/**` target.
+- **Core backend**: FastAPI provides auth, profile/dashboard, meals, reports, appointments, reminders, medications, plans, onboarding drafts, chat/WebSocket, devices, notification list/read/unread routes, and audit/security flows.
+- **Workers/services**: AI meal analysis is available when Core, MinIO, and the AI worker are configured. Notification dispatch supports Core in-app persistence and optional SMTP email through the standalone notification service.
+- **Mobile**: The Expo app calls Core directly with bearer-token auth and uses the shared API contracts where available.
+
+## Known Limitations
+
+- Browser code must not call Core `/v1/**` directly; use BFF `/api/v1/**`.
+- Push notifications and SMS providers are not configured.
+- WebSocket presence is still single-process/in-memory.
+- Wearable sync remains outside the demo scope and is stubbed in the worker surface.
+- Some native mobile UI affordances are partial workflows rather than production-complete flows.
+- These docs do not assert a clean global build or test run; run the relevant scripts for the surface you are changing.
 
 ## CI/CD Pipeline
 
@@ -220,11 +229,13 @@ See [Production Checklist](./docs/production-checklist.md) for required env vars
 
 ## Documentation
 
+- [Frontend + BFF README](./frontend/README.md)
+- [Mobile README](./mobile/README.md)
+- [Backend/Core Architecture](./docs/system-architecture.md)
+- [Backend Security](./docs/security.md)
 - [Project Overview + PDR](./docs/project-overview-pdr.md)
 - [Codebase Summary](./docs/codebase-summary.md)
 - [Code Standards](./docs/code-standards.md)
-- [System Architecture](./docs/system-architecture.md)
-- [Security](./docs/security.md)
 - [Project Changelog](./docs/project-changelog.md)
 - [Project Roadmap](./docs/project-roadmap.md)
 - [Current Status](./docs/current-status.md)
