@@ -3,11 +3,16 @@ from __future__ import annotations
 import datetime
 import uuid
 
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import ConnectedDevice, WearableProviderEnum
 from app.schemas.devices import ConnectedDeviceDTO, DeviceConnectBody
+
+
+logger = logging.getLogger(__name__)
 
 
 PROVIDER_LABELS: dict[WearableProviderEnum, str] = {
@@ -241,6 +246,35 @@ async def disconnect_device(
     ).scalar_one_or_none()
     if item is None:
         return False
+
+    # ── Revoke the Google Health refresh token before deleting the row.
+    # Best-effort: a failed revoke (Google down, token already invalid)
+    # must not block local deletion — otherwise the user is stuck with
+    # a dangling row they can't clear. Imports are local so importing
+    # `devices.py` doesn't pull in httpx + Fernet for callers that don't
+    # touch Google Health at all (e.g. the device list endpoint).
+    if item.provider == WearableProviderEnum.GOOGLE_HEALTH and item.refresh_token_encrypted:
+        try:
+            from app.services.wearable_sync import google_health
+            from app.services.wearable_sync.token_crypto import (
+                TokenCryptoUnavailableError,
+                decrypt_token,
+            )
+
+            refresh_plain = decrypt_token(item.refresh_token_encrypted)
+            await google_health.revoke_token(refresh_plain)
+        except (google_health.GoogleHealthError, TokenCryptoUnavailableError):
+            # Don't surface — the user clicked "disconnect" and we want
+            # the local effect (row gone, no more polls) regardless of
+            # whether Google's API was reachable. The next Beat sweep
+            # won't pick this row up because it's deleted below.
+            logger.warning(
+                "Best-effort Google token revoke failed for device %s", device_id
+            )
+        except Exception:  # pragma: no cover — defensive
+            logger.exception(
+                "Unexpected error revoking Google token for device %s", device_id
+            )
 
     await db.delete(item)
     await db.flush()
