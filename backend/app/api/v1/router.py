@@ -28,6 +28,7 @@ from app.api.v1.endpoints import (
     users,
     visit_briefs,
     vitals,
+    wearables,
     chat,
 )
 
@@ -42,6 +43,7 @@ router.include_router(conversations.router)
 router.include_router(appointments.router)
 router.include_router(reminders.router)
 router.include_router(devices.router)
+router.include_router(wearables.router)
 router.include_router(dashboard.router)
 router.include_router(vitals.router)
 router.include_router(nutrition.router)
