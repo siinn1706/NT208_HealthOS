@@ -27,6 +27,7 @@ from app.models.core import (
 from app.schemas.sync import (
     HealthIngestBatch,
     HealthRecordIn,
+    SyncStateUpdateBody,
 )
 from app.services.health_sync import _split, validate_ingest_batch
 
@@ -120,6 +121,26 @@ def test_ingest_batch_accepts_empty_payload():
     assert batch.records == []
     assert batch.next_changes_tokens == {}
     assert batch.provider == "health_connect"
+
+
+def test_sync_state_rejects_too_many_tokens():
+    with pytest.raises(Exception):
+        SyncStateUpdateBody.model_validate(
+            {"tokens": {f"Token{i}": "value" for i in range(33)}}
+        )
+
+
+def test_sync_state_rejects_long_key_and_value():
+    with pytest.raises(Exception):
+        SyncStateUpdateBody.model_validate({"tokens": {"x" * 65: "value"}})
+
+    with pytest.raises(Exception):
+        SyncStateUpdateBody.model_validate({"tokens": {"Steps": "x" * 4097}})
+
+
+def test_sync_state_rejects_malformed_key():
+    with pytest.raises(Exception):
+        SyncStateUpdateBody.model_validate({"tokens": {"../Steps": "value"}})
 
 
 def test_validate_ingest_batch_overrides_client_source_and_namespaces_ids():

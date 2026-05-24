@@ -1,7 +1,7 @@
 # NT208 HealthOS — System Architecture
 
-> **Version**: 1.3.0  
-> **Last Updated**: 2026-05-22  
+> **Version**: 1.3.1  
+> **Last Updated**: 2026-05-24  
 > **Scope**: Web + Mobile + Microservices + Background Tasks
 
 ---
@@ -176,8 +176,8 @@ Browser/Mobile receives message (real-time)
 │         ↓                                         │
 │  Celery Worker(s)                                │
 │    ├─ process_meal_image (→ AI Worker)           │
-│    ├─ send_notification (→ Notification service) │
-│    └─ sync_wearable_data (stub)                  │
+│    ├─ notification_dispatch (Core in-app/SMTP)   │
+│    └─ wearable sync tasks (owned separately)     │
 │                                                   │
 └────────────────────────────────────────────────────┘
 
@@ -190,8 +190,8 @@ Browser/Mobile receives message (real-time)
 │    • Gemini API fallback for chat                │
 │                                                    │
 │  Notification Service (port 8002)                │
-│    • Push notifications (FCM, APNs) [stub]       │
-│    • Email dispatch (SendGrid) [stub]            │
+│    • /dispatch validation + optional SMTP demo   │
+│    • Push/SMS providers return skipped reasons   │
 │                                                    │
 │  External APIs                                    │
 │    • Google OAuth                                 │
@@ -222,8 +222,8 @@ Core API emits structured JSON logs with request context:
 
 **Key settings** (`backend/app/core/config.py`):
 - `log_format` — "json" (production) or "text" (dev)
-- `metrics_token` — Bearer token for /metrics access
-- `metrics_allow_local` — Allow /metrics from localhost (dev safety)
+- `metrics_token` — `X-Metrics-Token` secret for /metrics access
+- `metrics_allow_local` — Allow /metrics from localhost in development only
 
 ### Request Context & Tracing
 - **Request ID**: UUID v4 generated on browser (frontend) or request entry (BFF/Core)
@@ -248,8 +248,8 @@ GET /metrics              → Prometheus format (guarded by metrics_token)
 ```
 
 **Access control**:
-- Requires `Authorization: Bearer {metrics_token}` header
-- If `metrics_allow_local=true`: localhost/127.0.0.1 bypass token check
+- Requires `X-Metrics-Token: {metrics_token}` in staging/production
+- If `metrics_allow_local=true`: localhost/127.0.0.1 bypass token check in development only
 - Metric types: request latency, error rates, DB pool stats, cache hit rates
 
 ### PHI Logging Safety
@@ -340,19 +340,19 @@ Celery Worker
     ├─ Dequeue task
     ├─ For each reminder:
     │   ├─ Fetch user preference (notification channel)
-    │   ├─ Enqueue task: send_notification(user_id, reminder_id)
+    │   ├─ Enqueue task: notification_dispatch(event)
     │   └─ Mark occurrence as fired (PostgreSQL)
     └─ Return
         ↓
-Redis Task Queue (send_notification job)
+Redis Task Queue (notification_dispatch job)
         ↓
 Celery Worker
-    ├─ Call Notification Service (port 8002)
-    ├─ Request: { type: 'push' | 'email', user_id, reminder_id }
+    ├─ Persist Core in-app notification or call optional provider path
+    ├─ Request: { event_id, recipient_id, title, body, channel }
     └─ Return
         ↓
 Notification Service
-    ├─ Queue notification (database)
+    ├─ Validate /dispatch payload and optional SMTP email
     ├─ Call external service (FCM, SendGrid) [stub for now]
     └─ Return
         ↓
@@ -370,7 +370,7 @@ Mobile App (POST /api/v1/meals/analyze-photo)
 Core API (POST /v1/meals/analyze)
     ├─ Validate JWT token
     ├─ Fetch image from request
-    ├─ Enqueue async task: process_meal_image(user_id, image_data)
+    ├─ Enqueue async task: meal_analysis(user_id, image_data) [Celery task in backend/app/tasks/meal_analysis.py]
     └─ Return { job_id: "uuid", status: "processing" }
         ↓
 Mobile App
@@ -378,8 +378,8 @@ Mobile App
     ├─ Poll (GET /api/v1/meals/analyze-photo/[job_id]) every 1-2 sec
     └─ Show loading spinner
         ↓
-Celery Worker (async)
-    ├─ Receive task: process_meal_image
+Celery Worker (async, backend/app/tasks/meal_analysis.py)
+    ├─ Receive task: meal_analysis
     ├─ Call AI Worker (port 8001, POST /analyze)
     │   ├─ Send: image bytes
     │   └─ Receive: { detected_items: [...], nutrition: {...} }
@@ -472,6 +472,39 @@ Backend
   even when mfa_enabled=true (TODO v1.3)
 ```
 
+### CSRF Origin Guard
+
+All BFF mutating routes (POST/PUT/PATCH/DELETE) enforce an Origin/Referer guard via `assertSameOrigin()` in `src/lib/bff-origin-guard.ts`. Guard is wired into:
+
+- Core proxy layer: `coreProxy()` and `coreFetchStream()` for all proxy routes
+- Direct-fetch handlers: auth/route.ts, auth/refresh/route.ts, auth/reset-password/route.ts, auth/request-otp/route.ts, auth/verify-otp/route.ts, auth/check-username/route.ts, auth/check-email/route.ts, auth/ws-token/route.ts, users/me/avatar/route.ts, meals/route.ts, health/route.ts, health-data/route.ts, health-data/meal/route.ts, health-goals/route.ts, analytics/gamification-summary/route.ts
+
+**Validation logic:**
+- Extract Origin/Referer header
+- Compare host:port against `BFF_TRUSTED_ORIGINS` (env-configured, comma-separated)
+- Non-production: implicit localhost:*, 127.0.0.1:* allowed
+- Production: empty origins = fail-closed (reject all mutating requests lacking matching Origin)
+
+**Guard mode** (`BFF_CSRF_GUARD_MODE` env):
+- `dry-run`: Log rejection, forward anyway (migration window)
+- `enforce` (default production): Return 403 with `{error: {code: "CSRF_ORIGIN_REJECTED"}}`
+
+**Public exceptions:** `/api/v1/public/**` paths exempt via `EXEMPT_PATH_PREFIXES` allow-list. OAuth init routes (GET-only) return null (no-op). Callbacks exempt by being GET.
+
+### Route Protection
+
+The Next.js middleware (`src/proxy.ts`) gates every private page before the request reaches the app.
+
+**Protected prefixes** (defined in `PROTECTED_PREFIXES`):
+- `/dashboard` — all authenticated app pages
+- `/onboarding` — handled separately (session required; completed users are bounced to dashboard)
+
+**Public pages** (no session required): `/`, `/login`, `/register`, `/verify`, `/forgot-password`, `/about`, `/articles`, `/plans`, `/services`, `/legal/*`, `/e/[token]`, `/dev/kitchensink`.
+
+**Source of truth:** `src/__tests__/proxy-protected-routes.fixture.ts` enumerates every page classified as private or public. The companion test globs `app/[locale]/**/page.tsx` at test time and fails CI if any new page is added without a classification entry. Adding a private page outside `/dashboard` requires both a fixture update and a new entry in `PROTECTED_PREFIXES`.
+
+**Security note:** The middleware redirect is a UX gate, not an authorization boundary. The Core BE validates the JWT on every request; the `(app)` layout also revalidates the session for defence-in-depth.
+
 ### Rate Limiting Strategy
 
 ```
@@ -510,7 +543,7 @@ Celery Beat (TICK every minute)
     ├─ Check trigger: every minute
     │   └─ Task: fire_reminders
     │       • Query due ReminderOccurrence (past due_time)
-    │       • For each: enqueue send_notification
+    │       • For each: enqueue notification_dispatch
     │       • Mark as fired
     │
     ├─ Check trigger: is_06_00? (daily at 6 AM)
@@ -650,6 +683,77 @@ Core API Replicas (3+ instances, port 8000)
     ├─ Celery Worker Pool (scaling)
     └─ Celery Beat (single instance, backup standby)
 ```
+
+---
+
+## Authorization (RBAC)
+
+### Tables
+
+| Table | Purpose |
+|-------|---------|
+| `roles` | Named roles (`user`, `admin`). `code` is unique slug. |
+| `permissions` | Flat permission codes (e.g. `admin.users.read`). |
+| `user_roles` | (user_id, role_id) assignment. `user_id` FK is `RESTRICT` — role must be explicitly revoked before a user row can be hard-deleted. |
+| `role_permissions` | (role_id, permission_id) linking. |
+
+### Default Data (seeded by `seed_admin.py`)
+
+**Roles:** `user`, `admin`
+
+**Permissions (admin role):** `admin.access`, `admin.users.read`, `admin.users.update`, `admin.users.ban`, `admin.subscriptions.read`, `admin.subscriptions.update`, `admin.metrics.read`
+
+### Gating a Route
+
+```python
+from app.core.rbac_deps import require_permission
+
+@router.get("/admin/users", dependencies=[Depends(require_permission("admin.users.read"))])
+async def list_users(...):
+    ...
+```
+
+`require_role("admin")` and `require_permission("admin.access")` both raise `ForbiddenException` (code `FORBIDDEN`, HTTP 403) — single generic message, no role/permission enumeration.
+
+### Admin Status
+
+Admin status is derived entirely from the `user_roles` table — there is no `is_admin` column on `users`. Use `is_admin_user(user, db)` from `app.core.rbac_deps` for non-HTTP contexts (Celery beats, scripts).
+
+### Soft-Delete Safety
+
+`has_role()` and `has_permission()` filter `User.deleted_at IS NULL`. A soft-deleted user with a retained `user_roles` row does **not** pass authorization. `account_deletion.request_deletion()` must revoke all role grants before soft-deleting a user.
+
+### Seed & Revoke
+
+```bash
+# Create/update admin — idempotent
+SEED_ADMIN_EMAIL=admin@healthos.local SEED_ADMIN_PASSWORD='changeme' python seed_admin.py
+
+# Multi-email
+SEED_ADMIN_EMAILS=a@x.com,b@x.com SEED_ADMIN_PASSWORD='changeme' python seed_admin.py
+
+# Revoke admin role only (keep user row)
+SEED_ADMIN_EMAIL=admin@healthos.local python delete_seed_admin.py --revoke-role
+
+# Legacy: delete user row entirely
+SEED_ADMIN_EMAIL=admin@healthos.local python delete_seed_admin.py --confirm
+```
+
+Emails are normalized to lowercase. Local-part `admin` is rewritten to `admin_seed` to avoid the reserved username.
+
+### Rollback Runbook
+
+**If migration applied but seed failed mid-loop:**
+1. Inspect stderr to identify failed email.
+2. Re-run `seed_admin.py` — single-commit transaction; partial role/permission rows are idempotent.
+
+**Full rollback (Red Team #12 — coupled pair):**
+1. **Code revert first**: revert `User.roles` relationship in `app/models/core.py` and the re-export in `app/models/__init__.py`.
+2. Deploy the reverted code.
+3. Then: `cd backend && alembic downgrade 035_merge_security_and_app_heads`
+4. Verify: `python -c "from app.main import app; print('ok')"`
+
+> **Order matters.** Running `alembic downgrade` before reverting code causes app boot crash — SQLAlchemy tries to reflect the now-dropped `user_roles` table via `User.roles`.
 
 ---
 

@@ -51,6 +51,18 @@ def test_metrics_blocked_with_wrong_token(monkeypatch):
     assert resp.status_code == 404
 
 
+def test_metrics_local_bypass_ignored_in_production(monkeypatch):
+    from app.core import config as cfg
+    monkeypatch.setattr(cfg.settings, "app_env", "production")
+    monkeypatch.setattr(cfg.settings, "node_env", "")
+    monkeypatch.setattr(cfg.settings, "metrics_token", None)
+    monkeypatch.setattr(cfg.settings, "metrics_allow_local", True)
+    from app.main import app
+    with TestClient(app, raise_server_exceptions=False) as c:
+        resp = c.get("/metrics")
+    assert resp.status_code == 404
+
+
 def test_health_always_200():
     from app.main import app
     with TestClient(app, raise_server_exceptions=False) as c:

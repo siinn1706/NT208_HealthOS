@@ -1,5 +1,9 @@
 from types import SimpleNamespace
+import hashlib
+import hmac
+import json
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -18,6 +22,17 @@ class _FakeDb:
 
     async def rollback(self):
         return None
+
+
+class _FakeRedis:
+    def __init__(self):
+        self.values: dict[str, str] = {}
+
+    async def set(self, key: str, value: str, *, nx: bool = False, ex: int | None = None):
+        if nx and key in self.values:
+            return None
+        self.values[key] = value
+        return True
 
 
 def _fake_request(headers: dict[str, str] | None = None):
@@ -52,7 +67,48 @@ def _production_required_kwargs(*, app_env: str, bff_shared_secret: str):
         "smtp_host": "smtp.example.com",
         "smtp_user": "mailer",
         "smtp_password": "mailer-password",
+        "metrics_token": "metrics-token-0123456789abcdef",
     }
+
+
+def _signed_profile(
+    *,
+    secret: str,
+    issuer: str = "healthos-bff",
+    audience: str = "healthos-core",
+    expires_at: str | None = None,
+    nonce: str = "nonce-0123456789abcdef",
+) -> OAuthProfile:
+    profile = OAuthProfile(
+        provider="google",
+        provider_account_id="provider-account-id",
+        email="oauth-user@example.com",
+        name="OAuth User",
+        avatar_url=None,
+        exchange_issuer=issuer,
+        exchange_audience=audience,
+        exchange_expires_at=expires_at
+        or (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat(),
+        exchange_nonce=nonce,
+        exchange_signature="0" * 64,
+    )
+    payload = {
+        "avatar_url": profile.avatar_url,
+        "email": str(profile.email),
+        "exchange_audience": profile.exchange_audience,
+        "exchange_expires_at": profile.exchange_expires_at,
+        "exchange_issuer": profile.exchange_issuer,
+        "exchange_nonce": profile.exchange_nonce,
+        "name": profile.name,
+        "provider": profile.provider,
+        "provider_account_id": profile.provider_account_id,
+    }
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return profile.model_copy(update={"exchange_signature": signature})
 
 
 def test_verify_bff_secret_returns_config_error_when_missing(monkeypatch):
@@ -111,6 +167,7 @@ async def test_correct_bff_secret_allows_token_exchange(monkeypatch):
         ),
         request=request,
         db=fake_db,
+        redis=_FakeRedis(),
         _bff=None,
     )
 
@@ -129,3 +186,92 @@ def test_settings_require_bff_secret_in_production_and_staging(app_env):
 def test_settings_allow_missing_bff_secret_in_development():
     settings = Settings(_env_file=None, app_env="development", node_env="", bff_shared_secret="")
     assert settings.bff_shared_secret == ""
+
+
+@pytest.mark.parametrize(
+    "secret",
+    [
+        "dev-bff-secret-change-in-production",
+        "short-secret",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    ],
+)
+def test_settings_reject_default_or_weak_bff_secret_in_protected_envs(secret):
+    kwargs = _production_required_kwargs(app_env="production", bff_shared_secret=secret)
+
+    with pytest.raises(ValueError, match="BFF_SHARED_SECRET"):
+        Settings(_env_file=None, **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_bff_exchange_rejects_expired_payload(monkeypatch):
+    secret = "0123456789abcdef0123456789abcdef"
+    monkeypatch.setattr(
+        auth_endpoints,
+        "settings",
+        SimpleNamespace(
+            bff_shared_secret=secret,
+            bff_exchange_issuer="healthos-bff",
+            bff_exchange_audience="healthos-core",
+            bff_exchange_max_age_seconds=300,
+            bff_exchange_signing_required=True,
+        ),
+    )
+    profile = _signed_profile(
+        secret=secret,
+        expires_at=(datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_endpoints.verify_bff_exchange_payload(profile, _FakeRedis())
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "BFF_EXCHANGE_EXPIRED"
+
+
+@pytest.mark.asyncio
+async def test_bff_exchange_rejects_mismatched_audience(monkeypatch):
+    secret = "0123456789abcdef0123456789abcdef"
+    monkeypatch.setattr(
+        auth_endpoints,
+        "settings",
+        SimpleNamespace(
+            bff_shared_secret=secret,
+            bff_exchange_issuer="healthos-bff",
+            bff_exchange_audience="healthos-core",
+            bff_exchange_max_age_seconds=300,
+            bff_exchange_signing_required=True,
+        ),
+    )
+    profile = _signed_profile(secret=secret, audience="other-core")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_endpoints.verify_bff_exchange_payload(profile, _FakeRedis())
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "BFF_EXCHANGE_CLAIMS_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_bff_exchange_rejects_replayed_nonce(monkeypatch):
+    secret = "0123456789abcdef0123456789abcdef"
+    redis = _FakeRedis()
+    monkeypatch.setattr(
+        auth_endpoints,
+        "settings",
+        SimpleNamespace(
+            bff_shared_secret=secret,
+            bff_exchange_issuer="healthos-bff",
+            bff_exchange_audience="healthos-core",
+            bff_exchange_max_age_seconds=300,
+            bff_exchange_signing_required=True,
+        ),
+    )
+    profile = _signed_profile(secret=secret)
+
+    await auth_endpoints.verify_bff_exchange_payload(profile, redis)
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_endpoints.verify_bff_exchange_payload(profile, redis)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "BFF_EXCHANGE_REPLAYED"

@@ -54,7 +54,7 @@ async def analyze_meal(body: AnalyzeMealRequest) -> AnalyzeMealResponse:
     try:
         image = load_image_from_url(
             image_url=body.image_url,
-            timeout_seconds=settings.ai_request_timeout_seconds,
+            timeout_seconds=settings.ai_image_download_timeout_seconds,
         )
     except ImageLoadError as exc:
         raise HTTPException(

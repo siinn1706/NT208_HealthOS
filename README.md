@@ -1,27 +1,78 @@
-# NT208_HealthOS — Virtual Personal Doctor
+<div align="center">
 
-Health management platform with FE+BFF, Core API, workers, and data services.
+<h1>NT208_HealthOS</h1>
+
+<p><strong>Virtual Personal Doctor</strong></p>
+
+<p>Health management platform with Web/BFF, Core API, workers, mobile app, and data services.</p>
+
+<p>
+  <a href="./README.md">
+    <img alt="English README" src="https://img.shields.io/badge/Language-English-2563EB?style=for-the-badge" />
+  </a>
+  <a href="./README.vi.md">
+    <img alt="Vietnamese README" src="https://img.shields.io/badge/Language-Tieng_Viet-DC2626?style=for-the-badge" />
+  </a>
+</p>
+
+<p>
+  <strong>Frontend / BFF</strong><br />
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" />
+  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" />
+  <img alt="next-intl" src="https://img.shields.io/badge/next--intl-4-7C3AED?style=flat-square&logoColor=white" />
+</p>
+
+<p>
+  <strong>Backend / Data</strong><br />
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.128-009688?style=flat-square&logo=fastapi&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=FFD43B" />
+  <img alt="SQLAlchemy" src="https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=flat-square&logoColor=white" />
+  <img alt="Alembic" src="https://img.shields.io/badge/Alembic-1.18-6BA81E?style=flat-square&logoColor=white" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
+  <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" />
+  <img alt="Celery" src="https://img.shields.io/badge/Celery-5-37814A?style=flat-square&logo=celery&logoColor=white" />
+  <img alt="MinIO" src="https://img.shields.io/badge/MinIO-S3--compatible-C72E49?style=flat-square&logo=minio&logoColor=white" />
+</p>
+
+<p>
+  <strong>Mobile / Infra / Quality</strong><br />
+  <img alt="Expo" src="https://img.shields.io/badge/Expo-53-4630EB?style=flat-square&logo=expo&logoColor=white" />
+  <img alt="React Native" src="https://img.shields.io/badge/React_Native-0.79-20232A?style=flat-square&logo=react&logoColor=61DAFB" />
+  <img alt="Expo Router" src="https://img.shields.io/badge/Expo_Router-5-4630EB?style=flat-square&logo=expo&logoColor=white" />
+  <img alt="Docker Compose" src="https://img.shields.io/badge/Docker_Compose-dev-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-4-6E9F18?style=flat-square&logo=vitest&logoColor=white" />
+  <img alt="Playwright" src="https://img.shields.io/badge/Playwright-1.59-2EAD33?style=flat-square&logo=playwright&logoColor=white" />
+  <img alt="Pytest" src="https://img.shields.io/badge/Pytest-8-009FE3?style=flat-square&logo=pytest&logoColor=white" />
+  <img alt="Jest" src="https://img.shields.io/badge/Jest-29-C21325?style=flat-square&logo=jest&logoColor=white" />
+</p>
+
+</div>
 
 ## Tech Stack
 
 | Layer | Stack | Notes |
 |---|---|---|
-| FE + BFF | Next.js 16, React 19, Tailwind 4, next-intl | BFF Route Handlers under `/api/v1/**` |
-| Core BE | FastAPI + SQLAlchemy async | Router prefix `/v1` |
+| Frontend + BFF | Next.js 16, React 19, TypeScript, Tailwind CSS 4, next-intl 4 | BFF Route Handlers under `/api/v1/**`; browser traffic enters here |
+| Core API | FastAPI, Python 3.12, SQLAlchemy async, Alembic | Router prefix `/v1`; not called directly by browser code |
+| Mobile | Expo SDK 53, React Native 0.79, Expo Router 5, TypeScript | Native app surface with its own Expo Router entry |
 | Database | PostgreSQL 16 + asyncpg | Core persistent data |
-| Cache/Queue | Redis 7 + Celery | Cache + async task broker |
-| Storage | MinIO (dev) / S3-compatible | Object storage |
+| Cache + Queue | Redis 7 + Celery 5 | Cache, rate limits, broker, and async jobs |
+| Storage | MinIO / S3-compatible | Object storage for local development and S3-style deployments |
 | Workers | AI Worker (8001), Notification (8002), Queue Worker | Queue worker runs from backend; optional `queue-worker-service` profile in dev |
+| Infra + Dev | Docker Compose | Local infrastructure orchestration |
+| Testing + Quality | Vitest, Playwright, Pytest, Jest | Frontend unit, E2E, backend, and mobile test surfaces |
 
 ## Architecture (Critical Rule)
 
-Browser **never** calls Core directly.
+> Browser code must call the Next.js BFF at `/api/v1/**`. It must not call the Core API at `/v1/**` directly.
 
-```
-Browser -> Next.js BFF (/api/v1/**) -> Core BE (/v1/**) -> PostgreSQL/Redis/MinIO
+```text
+Browser -> Next.js BFF (/api/v1/**) -> Core API (/v1/**) -> PostgreSQL / Redis / MinIO
 ```
 
-- BFF handlers: `frontend/src/app/api/v1/**/route.ts`
+- Required browser path: `frontend/src/app/api/v1/**/route.ts`
 - BFF proxy helper: `frontend/src/lib/core-api-proxy.ts`
 - Core router: `backend/app/api/v1/router.py`
 
@@ -70,12 +121,23 @@ bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
 
 Create an initial admin user for testing (run after setup):
 
-```bash
+```powershell
 cd backend
+$env:SEED_ADMIN_EMAIL="admin@healthos.local"
+$env:SEED_ADMIN_PASSWORD="change-me"
+$env:SEED_ADMIN_DISPLAY_NAME="Admin Test"
 .\.venv\Scripts\python.exe seed_admin.py
 ```
 
-Creates: email `admin@healthos.local` with a pre-configured password. Script lives at `backend/seed_admin.py`.
+The script reads `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and
+`SEED_ADMIN_DISPLAY_NAME`. `SEED_ADMIN_PASSWORD` is required and is never
+printed. To remove the same seeded account:
+
+```powershell
+cd backend
+$env:SEED_ADMIN_EMAIL="admin@healthos.local"
+.\.venv\Scripts\python.exe delete_seed_admin.py --confirm
+```
 
 ### Option A: Docker (recommended)
 
@@ -177,12 +239,21 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 
 ## Current Status
 
-**v1.2.2 (Current)**: Data layer refactor, documentation audit, chat E2E review (unreleased).
-**v1.2.1**: Auth security hardening (JWT revocation, IP rate limiting, Fernet-encrypted MFA, HIBP integration).
-**v1.2.0**: User accent color customization and theming.
+HealthOS is a demo-oriented full-stack project with separate web, Core API, worker, and native mobile surfaces.
 
-- **Implemented**: Auth (email/OTP/OAuth), security audit logging, rate limiting, HIBP breach detection, profile/goals, meals, reports, appointments, reminders, chat/WebSocket, vitals, devices, dashboard, gamification, in-app notifications (`/v1/notifications` + read/read-all + unread-count), AI meal analysis (`/analyze`).
-- **Known gaps / partial**: Password login does not enforce MFA challenge even when `mfa_enabled=true`; JWT decoder does not enforce `iss`/`aud`; notification dispatch service remains stub (`/dispatch` => queued); some UX paths remain TODO.
+- **Web**: Browser traffic goes through the Next.js BFF under `/api/v1/**`; Core remains a server-side `/v1/**` target.
+- **Core backend**: FastAPI provides auth, profile/dashboard, meals, reports, appointments, reminders, medications, plans, onboarding drafts, chat/WebSocket, devices, notification list/read/unread routes, and audit/security flows.
+- **Workers/services**: AI meal analysis is available when Core, MinIO, and the AI worker are configured. Notification dispatch supports Core in-app persistence and optional SMTP email through the standalone notification service.
+- **Mobile**: The Expo app calls Core directly with bearer-token auth and uses the shared API contracts where available.
+
+## Known Limitations
+
+- Browser code must not call Core `/v1/**` directly; use BFF `/api/v1/**`.
+- Push notifications and SMS providers are not configured.
+- WebSocket presence is still single-process/in-memory.
+- Wearable sync remains outside the demo scope and is stubbed in the worker surface.
+- Some native mobile UI affordances are partial workflows rather than production-complete flows.
+- These docs do not assert a clean global build or test run; run the relevant scripts for the surface you are changing.
 
 ## CI/CD Pipeline
 
@@ -209,13 +280,18 @@ See [Production Checklist](./docs/production-checklist.md) for required env vars
 
 ## Documentation
 
+- [Frontend + BFF README](./frontend/README.md)
+- [Mobile README](./mobile/README.md)
+- [Backend/Core Architecture](./docs/system-architecture.md)
+- [Backend Security](./docs/security.md)
 - [Project Overview + PDR](./docs/project-overview-pdr.md)
 - [Codebase Summary](./docs/codebase-summary.md)
 - [Code Standards](./docs/code-standards.md)
-- [System Architecture](./docs/system-architecture.md)
-- [Security](./docs/security.md)
 - [Project Changelog](./docs/project-changelog.md)
 - [Project Roadmap](./docs/project-roadmap.md)
+- [Current Status](./docs/current-status.md)
+- [Final Demo Checklist](./docs/demo/demo-checklist.md)
+- [Final Demo Script](./docs/demo/demo-script.md)
 - [Deployment Guide](./docs/deployment-guide.md)
 - [Design Guidelines](./docs/design-guidelines.md)
 - [Folder Convention](./docs/standards/folder-convention.md)

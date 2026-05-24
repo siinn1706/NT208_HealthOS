@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { CORE_API_URL } from "@/lib/env";
 
 /** Decode JWT to get user_id (used for auth check only — no cache key needed). */
@@ -41,6 +42,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   const userId = await getUserIdFromToken();
   if (!userId) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
 

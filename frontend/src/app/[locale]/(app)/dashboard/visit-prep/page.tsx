@@ -1,6 +1,12 @@
 import { ClipboardCheck, Plus } from "lucide-react";
 import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("visitPrep") };
+}
 import { Link } from "@/navigation";
 import { PageHeader } from "@/components/shared/page";
 import { BriefStatusBadge } from "@/components/dashboard/visit-prep/BriefStatusBadge";

@@ -27,6 +27,12 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   const upstream = await coreFetchStream(req, `/v1/conversations/${safe}/messages/stream`, {
     method: "POST",
   });
+
+  // Guard rejection returns JSON 403 — short-circuit before applying SSE headers.
+  if (!upstream.ok && upstream.headers.get("content-type")?.startsWith("application/json")) {
+    return upstream;
+  }
+
   return new Response(upstream.body, {
     status: upstream.status,
     headers: {

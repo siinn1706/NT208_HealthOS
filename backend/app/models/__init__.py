@@ -4,5 +4,6 @@ from app.models import audit      # noqa: F401
 from app.models import emergency  # noqa: F401
 from app.models import health_goal  # noqa: F401
 from app.models import visit_briefs  # noqa: F401
+from app.models.rbac import Role, Permission, UserRole, RolePermission  # noqa: F401
 
-__all__ = ["Base"]
+__all__ = ["Base", "Role", "Permission", "UserRole", "RolePermission"]

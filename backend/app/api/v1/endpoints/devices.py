@@ -47,6 +47,33 @@ _rate_limit_ingest = user_rate_limiter(
     max_requests=6, window_seconds=60, route_key="hc.ingest"
 )
 _INGEST_BODY_LIMIT_BYTES = 256 * 1024  # 256 KiB hard cap
+_SYNC_STATE_BODY_LIMIT_BYTES = 64 * 1024  # token-only endpoint cap
+
+
+async def _enforce_sync_state_body_limit(request: Request) -> None:
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > _SYNC_STATE_BODY_LIMIT_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail={
+                        "code": "PAYLOAD_TOO_LARGE",
+                        "message": "Sync-state payload exceeds 64 KiB.",
+                    },
+                )
+        except ValueError:
+            pass
+
+    raw_body = await request.body()
+    if len(raw_body) > _SYNC_STATE_BODY_LIMIT_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "code": "PAYLOAD_TOO_LARGE",
+                "message": "Sync-state payload exceeds 64 KiB.",
+            },
+        )
 
 
 async def _load_user_device(
@@ -429,9 +456,11 @@ async def get_sync_state(
     responses={
         401: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
     },
     summary="Replace sync-state tokens for a device",
+    dependencies=[Depends(_enforce_sync_state_body_limit)],
 )
 async def put_sync_state(
     device_id: uuid.UUID,

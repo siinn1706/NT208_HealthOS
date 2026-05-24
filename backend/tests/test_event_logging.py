@@ -10,6 +10,44 @@ from app.core.event_logging import hash_email, log_event
 from app.core.logging_setup import JsonFormatter
 
 
+def test_text_logging_injects_request_id_for_propagated_records(capsys):
+    """Third-party propagated records must still satisfy the text formatter."""
+    from app.core import logging_setup
+
+    root = logging.getLogger()
+    original_handlers = list(root.handlers)
+    original_filters = list(root.filters)
+    original_level = root.level
+    original_configured = logging_setup._CONFIGURED
+
+    for handler in original_handlers:
+        root.removeHandler(handler)
+    root.filters.clear()
+    logging_setup._CONFIGURED = False
+
+    class _Settings:
+        log_format = "text"
+        log_level = "INFO"
+
+    try:
+        logging_setup.configure_logging(_Settings())
+        logging.getLogger("sqlalchemy.engine.Engine").info("select pg_catalog.version()")
+        captured = capsys.readouterr()
+    finally:
+        for handler in list(root.handlers):
+            root.removeHandler(handler)
+        root.filters.clear()
+        for flt in original_filters:
+            root.addFilter(flt)
+        for handler in original_handlers:
+            root.addHandler(handler)
+        root.setLevel(original_level)
+        logging_setup._CONFIGURED = original_configured
+
+    assert "Logging error" not in captured.err
+    assert "sqlalchemy.engine.Engine [-] select pg_catalog.version()" in captured.err
+
+
 def test_log_event_unknown_kwarg_raises_in_debug_mode(monkeypatch):
     from app.core import config as cfg
     monkeypatch.setattr(cfg.settings, "debug", True)

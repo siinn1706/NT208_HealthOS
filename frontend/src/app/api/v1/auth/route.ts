@@ -21,6 +21,7 @@ import {
   revokeCoreSession,
   sessionUserFromCoreAuth,
 } from "@/lib/bff-auth-session";
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { CORE_API_URL } from "@/lib/env";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 import { normalizeCoreError } from "@/lib/bff-error-normalize";
@@ -111,6 +112,9 @@ export async function GET() {
 
 // ── POST /api/v1/auth/session → Login, set cookies ──────────────────────────
 export async function POST(req: NextRequest) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   const body = await req.json().catch(() => null);
   if (!body?.identifier || !body?.password) {
     return NextResponse.json(
@@ -194,7 +198,10 @@ export async function POST(req: NextRequest) {
 }
 
 // ── DELETE /api/v1/auth/session → Logout, clear cookies ─────────────────────
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
   const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value ?? null;

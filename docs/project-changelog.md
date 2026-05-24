@@ -1,12 +1,60 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.3-docs | **Last Updated**: 2026-05-22
+> **Version**: 1.3.5-hardening | **Last Updated**: 2026-05-24
 
 ---
 
 ## [Unreleased]
 
 ### Added
+
+#### RBAC Foundation (2026-05-24)
+- **Migration `036_rbac_foundation`**: adds `roles`, `permissions`, `user_roles`, `role_permissions` tables. `user_roles.user_id` FK is `RESTRICT` (admin role survives soft-delete; must be explicitly revoked). Extends `audit_event_type_enum` with `rbac_role_granted` / `rbac_role_revoked`.
+- **`app/models/rbac.py`**: ORM models for all four tables. `User.roles` relationship uses `lazy="raise"` — all reads go through the service.
+- **`app/services/rbac.py`**: `list_user_roles`, `list_user_permissions`, `has_role`, `has_permission` (all filter `User.deleted_at IS NULL`), `ensure_default_roles_and_permissions`, `grant_role`, `revoke_role`. All inserts use `ON CONFLICT DO NOTHING`. `grant_role` writes an `audit_log` row only for actual new grants (via `RETURNING`).
+- **`app/core/rbac_deps.py`**: `require_role(code)`, `require_permission(code)` factory deps raising `ForbiddenException` (code `FORBIDDEN`); `get_current_user_roles`, `get_current_user_permissions`, `is_admin_user`.
+- **`seed_admin.py`** refactor: accepts `SEED_ADMIN_EMAIL` (single) and `SEED_ADMIN_EMAILS` (comma-separated); emails normalized to lowercase + deduped; `_username_from_email_safe` handles reserved names (`admin` → `admin_seed`) and SHA-1 suffix on collision; grants `admin` role via RBAC; single-commit transaction; never prints password.
+- **`delete_seed_admin.py`** update: no-flag → usage + exit non-zero; `--confirm` → legacy user-delete (unchanged contract); `--revoke-role` → role-only revoke + `audit_log`.
+- **Tests**: `tests/services/test_rbac.py`, `tests/api/v1/test_rbac_dependencies.py`, `tests/test_seed_admin_idempotent.py`, `tests/test_delete_seed_admin_semantics.py`. All use real Postgres; skipped when `settings.database_url` absent.
+
+**Error contract:** 403 returns `{"detail": {"code": "FORBIDDEN", "message": "Insufficient privileges."}}` — reuses existing `ForbiddenException`.
+
+**Non-goal:** `/admin/*` endpoint wiring is deferred to a follow-up plan.
+
+#### BFF CSRF Origin Guard & Route Protection Hardening (2026-05-24)
+- **CSRF origin guard primitive** (`frontend/src/lib/bff-origin-guard.ts`): `assertSameOrigin()` validates Origin/Referer headers on all BFF mutating routes (POST/PUT/PATCH/DELETE). Wired into `coreProxy()`, `coreFetchStream()`, and 15 direct-fetch route handlers.
+- **Origin validation**: Compares host:port against `BFF_TRUSTED_ORIGINS` env (comma-separated). Non-production: implicit localhost:* and 127.0.0.1:* allowed. Production: fail-closed on empty config.
+- **Guard mode**: `BFF_CSRF_GUARD_MODE` env controls `dry-run` (log, forward) or `enforce` (reject with 403). Default enforce in production.
+- **Route protection audit** (`frontend/src/__tests__/proxy-protected-routes.fixture.ts`): Regression test enumerates all 42 app pages, classifies 29 as private (/dashboard), 13 as public. CI fails if new page added without classification.
+- **Protected routes** (`PROTECTED_PREFIXES`): /dashboard (authenticated app), /onboarding (session required). Public routes: /, /login, /register, /verify, /forgot-password, /about, /articles, /plans, /services, /legal/*, /e/[token], OAuth callbacks.
+- **Deprecated endpoint deprecation** (`POST /v1/auth/check-password-breach`): Removed BFF passthrough route `frontend/src/app/api/v1/auth/check-password-breach/route.ts`. Backend now returns HTTP 410 Gone, directing clients to `GET /v1/auth/check-password-breach/range/{prefix}` (HIBP k-anonymity). Rate-limit key `auth:pwned_range_post_legacy` removed.
+- **Error normalization**: `defaultCodeForStatus()` handles 410 → "ENDPOINT_GONE" code.
+- **Configuration**: New env vars `BFF_TRUSTED_ORIGINS` and `BFF_CSRF_GUARD_MODE` documented in `frontend/.env.example`.
+- **Test coverage**: AST tests verify mutating handlers have guards (`mutating-handlers-have-guard.test.ts`), OAuth init routes remain GET-only (`init-routes-get-only.test.ts`), route protection fixtures classify all pages (`proxy-protected-routes.test.ts`).
+- **Files modified**: `frontend/src/lib/bff-origin-guard.ts` (new), `frontend/src/lib/core-api-proxy.ts`, 10+ BFF route handlers, `frontend/.env.example` (new), `backend/app/api/v1/endpoints/auth.py`, `backend/contracts/openapi/core-api.yaml`, `docs/system-architecture.md`.
+
+#### Final Demo Readiness (2026-05-23)
+- **BFF routing policy guard**: Added a frontend test preventing production `/v1/:path*` and `/ws` Next.js rewrites to Core. Documented WebSocket ticket expectations as the realtime exception.
+- **Admin maintenance scripts**: `seed_admin.py` now reads `SEED_ADMIN_*` env vars and refuses missing passwords; `delete_seed_admin.py --confirm` removes the configured account.
+- **Notification dispatch demo path**: Core notification dispatch persists `in_app` notifications; standalone notification service validates dispatch payloads, supports optional SMTP email, and returns explicit `skipped` reasons for unsupported/unconfigured channels.
+- **Demo documentation**: Added `docs/current-status.md`, `docs/demo/demo-checklist.md`, and `docs/demo/demo-script.md`.
+
+#### AI Worker SSRF & DoS Hardening (2026-05-24)
+- **SSRF protection**: Image URL scheme allowlist (http/https only), host allowlist enforcement with case-insensitive matching, private/loopback/link-local/metadata IP blocking (169.254.169.254, CGNAT 100.64.0.0/10).
+- **Redirect validation**: Manual per-hop re-validation (cap 3 redirects) mitigates DNS rebinding attacks.
+- **DoS protection**: Streamed byte-cap download (10 MiB default, matches backend meal upload cap), PIL `DecompressionBombError` caught, decoded dimension validation against `MAX_IMAGE_PIXELS` (24 MP).
+- **Configuration**: 5 new Settings fields in `services/ai-worker/app/core/config.py` with sensible defaults; `.env.example` documents each knob for dev/prod tightening.
+- **Error sanitization**: No URLs or secrets leaked in `ImageLoadError` messages (full URLs logged at DEBUG only).
+- **Test coverage**: 14 new security tests + existing suite verified; 16 total tests in `test_image_loader_security.py`.
+- **Files modified**: `services/ai-worker/app/services/image_loader.py`, `services/ai-worker/app/core/config.py`, `services/ai-worker/.env.example`, `services/ai-worker/tests/test_image_loader_security.py`.
+
+#### Documentation Audit & Hardening (2026-05-23)
+- **Documentation sync pass**: Verified stale claims in security.md, system-architecture.md, project-roadmap.md, project-changelog.md against current codebase state
+- **JWT iss/aud claim correction**: Updated security.md to reflect that JWT `iss`/`aud` validation is already enforced via `decode_access_token()` (not a TODO). Updated roadmap to mark as completed.
+- **Meal analysis documentation**: Updated system-architecture.md to clarify meal analysis task source: `backend/app/tasks/meal_analysis.py` (Celery-based, runs in Core BE, not queue-worker service)
+- **Queue worker tasks cleanup**: Documented that meal_tasks.py and notification_tasks.py were deleted from queue-worker service; meal and notification tasks now live in backend/app/tasks/
+- **Verified implemented endpoints**: Confirmed `/v1/plans` endpoint exists (endpoints/plans.py); confirmed `/v1/users/me/onboarding-draft` endpoint exists (endpoints/users.py)
+- **MFA enforcement status**: Password login now returns an MFA challenge when `mfa_enabled=true`; stale MFA-gap docs were corrected during the final demo readiness pass.
 
 #### DB Session Transaction Safety & Alembic Model Registry (2026-05-22)
 - **Transaction safety refactor**: Removed implicit `await session.commit()` from `get_db()` and `get_db_context()` dependency injectors. Write paths now explicitly commit; read paths do not. Rollback-on-exception preserved.
@@ -90,7 +138,7 @@
   - Added note that both dev-sync workflows can fire on the same qualifying release commit
 - Aligned `security.md` with current implementation details:
   - Corrected method/strategy specifics for rate-limited endpoints
-  - Updated cookie SameSite note to `Lax` and documented additional known gaps (legacy WS deprecation route, `/api/v1/plans` drift, notification dispatch stub)
+  - Updated cookie SameSite note to `Lax` and documented additional known gaps (legacy WS deprecation route, `/api/v1/plans` drift, notification provider gaps)
 - Refreshed metadata/version stamps for updated core docs to `1.2.3-docs` / `2026-04-21`.
 
 #### Frontend

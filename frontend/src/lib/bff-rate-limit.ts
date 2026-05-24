@@ -206,7 +206,6 @@ export const RATE_LIMITS: Record<string, RateLimitOptions> = {
   "auth:availability_email":      { key: "auth:availability_email",      max: 20,  windowSeconds: 60 },
   "auth:availability_username":   { key: "auth:availability_username",   max: 20,  windowSeconds: 60 },
   "auth:pwned_range_get":         { key: "auth:pwned_range_get",         max: 30,  windowSeconds: 60 },
-  "auth:pwned_range_post_legacy": { key: "auth:pwned_range_post_legacy", max: 10,  windowSeconds: 60 },
   "auth:ws_token":                { key: "auth:ws_token",                max: 30,  windowSeconds: 60 },
   "auth:oauth_start":             { key: "auth:oauth_start",             max: 20,  windowSeconds: 60 },
   "auth:mfa_verify":              { key: "auth:mfa_verify",              max: 5,   windowSeconds: 300 },

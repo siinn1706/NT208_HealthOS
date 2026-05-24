@@ -1,6 +1,12 @@
 import { getTranslations, getLocale } from "next-intl/server";
 import { Brain, ShieldCheck } from "lucide-react";
 import { headers } from "next/headers";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("risk") };
+}
 import { RiskGaugeRow } from "@/components/dashboard/risk/RiskGaugeRow";
 import { RiskRefreshButton } from "@/components/dashboard/risk/RiskRefreshButton";
 import { PageHeader } from "@/components/shared/page";

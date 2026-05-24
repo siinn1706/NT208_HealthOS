@@ -1,6 +1,6 @@
 # NT208 HealthOS — Mobile
 
-Expo / React Native app recreating the NT208 HealthOS handoff across 3 visual themes (Calm Clinic · Night Sky · Warm Care) with tab screens plus auth, drill-down, care-flow, meds-flow, and reusable form routes.
+Expo / React Native app for the HealthOS iOS/Android experience. The app uses Core API directly with bearer tokens stored on-device; browser web traffic is handled separately by the Next.js BFF in `../frontend/`.
 
 ## Scope
 
@@ -8,7 +8,7 @@ Expo / React Native app recreating the NT208 HealthOS handoff across 3 visual th
 
 - No `expo start --web`, no web bundles, no `app.json` web block.
 - `@react-native-community/netinfo`, `expo-haptics`, and other native modules are not web-compatible by design.
-- For the web dashboard see `../frontend/`.
+- For the web dashboard and BFF, see `../frontend/`.
 
 ## Screens
 
@@ -63,6 +63,15 @@ Switch via **Me → Preferences → Appearance**:
 - Mobile-native Core API client under `src/api/`
 - Bearer session storage via `expo-secure-store`
 - Backend gaps are guarded in-screen instead of backed by local mock fixtures
+
+## Dev Notes
+
+### Jest / testing dependencies
+
+`react-test-renderer@19.0.0` is a required devDependency because
+`@testing-library/react-native` declares `react-test-renderer>=18.2.0` as a peer dep.
+It must be pinned to match `react@19.0.0` exactly — using a mismatched version causes
+runtime errors in tests.
 
 ## Shared API contracts
 

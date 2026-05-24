@@ -1,6 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import { AddMealForm } from "@/components/dashboard/meals/AddMealForm";
 import { PageHeader } from "@/components/shared/page";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.meals");
+  return { title: t("addMealPage") };
+}
 
 export default async function AddMealPage() {
   const t = await getTranslations("addMeal");

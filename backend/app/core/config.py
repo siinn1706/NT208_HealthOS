@@ -1,6 +1,7 @@
 """Core configuration — reads from .env via pydantic-settings."""
 import logging
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -23,11 +24,21 @@ PRODUCTION_BLOCKED_STORAGE_CREDENTIALS = {
     "change-me",
     "changeme",
 }
+PROTECTED_RUNTIME_ENVS = {"production", "staging"}
+BFF_SHARED_SECRET_MIN_LENGTH = 32
+BFF_SHARED_SECRET_BLOCKLIST = {
+    "dev-bff-secret-change-in-production",
+    "change-me-strong-random-secret",
+    "bff-shared-secret-prod",
+}
+METRICS_TOKEN_MIN_LENGTH = 16
 
 
 def _is_production() -> bool:
     """Check if running in production mode."""
-    env = os.environ.get("APP_ENV", os.environ.get("NODE_ENV", "")).lower()
+    app_env = os.environ.get("APP_ENV")
+    node_env = os.environ.get("NODE_ENV")
+    env = (app_env if app_env and app_env.strip() else node_env or "").strip().lower()
     return env == "production"
 
 
@@ -90,10 +101,16 @@ class Settings(BaseSettings):
     # BFF shared secret — gates /v1/auth/token so only the BFF can mint tokens.
     # Must be a non-empty string in production/staging.
     bff_shared_secret: str = ""
+    # BFF OAuth exchange signing. Production/staging require signed short-lived
+    # payloads by default so Core can reject forged or replayed BFF profiles.
+    bff_exchange_issuer: str = "healthos-bff"
+    bff_exchange_audience: str = "healthos-core"
+    bff_exchange_max_age_seconds: int = 300
+    bff_exchange_signing_required: bool | None = None
 
     # Metrics endpoint access control (Phase 1)
     # METRICS_TOKEN: when set, callers must send X-Metrics-Token: <value>
-    # METRICS_ALLOW_LOCAL: allow scraping from loopback/RFC-1918 without token
+    # METRICS_ALLOW_LOCAL: dev-only local bypass; ignored in staging/production.
     metrics_token: str | None = None
     metrics_allow_local: bool = True
 
@@ -148,12 +165,25 @@ class Settings(BaseSettings):
 
     def resolved_runtime_env(self) -> str:
         app_value = self.app_env.strip().lower()
-        if app_value:
-            return app_value
         node_value = self.node_env.strip().lower()
-        if node_value:
+
+        # APP_ENV is authoritative only when explicitly provided. Otherwise
+        # deploy platforms that set NODE_ENV=production must still trigger
+        # production/staging guardrails instead of falling through to the
+        # development default.
+        if "app_env" in self.model_fields_set and app_value:
+            return app_value
+        if "node_env" in self.model_fields_set and node_value:
             return node_value
-        return "development"
+
+        env_app = os.environ.get("APP_ENV")
+        if env_app and env_app.strip():
+            return env_app.strip().lower()
+        env_node = os.environ.get("NODE_ENV")
+        if env_node and env_node.strip():
+            return env_node.strip().lower()
+
+        return app_value or "development"
 
     def model_post_init(self, __context: Any) -> None:
         # Accept common legacy env keys.
@@ -173,11 +203,9 @@ class Settings(BaseSettings):
     def validate_production_secrets(self) -> "Settings":
         """Validate required secrets in production mode."""
         runtime_env = self.resolved_runtime_env()
-        if runtime_env in {"production", "staging"} and not self.bff_shared_secret.strip():
-            raise ValueError(
-                "BFF_SHARED_SECRET must be set in production/staging. "
-                "Generate a strong random secret and configure both BFF and Core BE."
-            )
+        protected_env = runtime_env in PROTECTED_RUNTIME_ENVS
+        if protected_env:
+            self._validate_protected_runtime_basics(runtime_env)
         if runtime_env == "production":
             if not self.secret_key:
                 raise ValueError("SECRET_KEY must be set in production")
@@ -223,6 +251,60 @@ class Settings(BaseSettings):
             except Exception as e:
                 raise ValueError(f"FERNET_KEY is not a valid Fernet key: {e}")
         return self
+
+    def _validate_protected_runtime_basics(self, runtime_env: str) -> None:
+        """Guardrails shared by staging and production runtimes."""
+        bff_secret = self.bff_shared_secret.strip()
+        if not bff_secret:
+            raise ValueError(
+                "BFF_SHARED_SECRET must be set in production/staging. "
+                "Generate a strong random secret and configure both BFF and Core BE."
+            )
+        if bff_secret.lower() in BFF_SHARED_SECRET_BLOCKLIST:
+            raise ValueError(
+                "BFF_SHARED_SECRET uses an insecure development/default value in production/staging. "
+                "Generate a unique high-entropy value."
+            )
+        if len(bff_secret) < BFF_SHARED_SECRET_MIN_LENGTH:
+            raise ValueError(
+                f"BFF_SHARED_SECRET must be at least {BFF_SHARED_SECRET_MIN_LENGTH} characters in production/staging"
+            )
+        character_classes = sum(
+            bool(re.search(pattern, bff_secret))
+            for pattern in (r"[a-z]", r"[A-Z]", r"\d", r"[^A-Za-z0-9]")
+        )
+        if character_classes < 2:
+            raise ValueError(
+                "BFF_SHARED_SECRET must include at least two character classes in production/staging"
+            )
+
+        if not self.secret_key:
+            raise ValueError(f"SECRET_KEY must be set in {runtime_env}")
+        if len(self.secret_key) < 32:
+            raise ValueError(f"SECRET_KEY must be at least 32 characters in {runtime_env}")
+        if self.secret_key.strip().lower() in PRODUCTION_BLOCKED_SECRET_KEYS:
+            raise ValueError(
+                "SECRET_KEY uses an insecure development default in production/staging. "
+                "Set a unique high-entropy value."
+            )
+
+        if (
+            self.allowed_origins == ["http://localhost:3000"]
+            or any(origin.strip() == "*" for origin in self.allowed_origins)
+        ):
+            raise ValueError(
+                "ALLOWED_ORIGINS must be explicitly set without localhost defaults or wildcards in production/staging"
+            )
+
+        metrics_token = (self.metrics_token or "").strip()
+        if not metrics_token:
+            raise ValueError(
+                "METRICS_TOKEN must be set in production/staging; local/private IP trust is dev-only."
+            )
+        if len(metrics_token) < METRICS_TOKEN_MIN_LENGTH:
+            raise ValueError(
+                f"METRICS_TOKEN must be at least {METRICS_TOKEN_MIN_LENGTH} characters in production/staging"
+            )
 
 
 @lru_cache

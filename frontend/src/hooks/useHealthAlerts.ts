@@ -5,13 +5,22 @@
  *
  * Usage:
  *   const { alerts, dismissAlert, status } = useHealthAlerts();
+ *   const { alerts, dismissAlert, status } = useHealthAlerts({ enabled: false });
  *
  * The server sends frames:
  *   { event: "health_alert", payload: { id, type, message, timestamp } }
  *
- * BFF TODO: WebSocket endpoint /ws?token=<JWT>
- *   - Subscribe to "health_alert" events
- *   - Receive real-time notifications for abnormal vitals
+ * WebSocket endpoint: /ws?token=<JWT> (proxied via BFF ws-token exchange)
+ *
+ * enabled prop allows callers to gate the connection on auth state.
+ * Safety note: useChatWs handles unauthenticated cases autonomously —
+ * fetchToken() failure sets status="error" without opening a socket;
+ * server close code 4001 sets sessionExpired=true and stops retrying.
+ * Components inside the (app) layout are server-redirected if unauthenticated,
+ * providing an additional guard.
+ *
+ * NOTE: Core does not yet emit real `health_alert` WebSocket events.
+ * This hook is wired and ready; backend event emission is pending.
  */
 
 import { useCallback, useState } from "react";
@@ -24,6 +33,11 @@ export interface HealthAlert {
   timestamp: string;
 }
 
+type UseHealthAlertsOptions = {
+  /** Gate the WebSocket connection. Defaults to true. */
+  enabled?: boolean;
+};
+
 type UseHealthAlertsResult = {
   alerts: HealthAlert[];
   status: WsStatus;
@@ -33,7 +47,7 @@ type UseHealthAlertsResult = {
   lastMessage: WsFrame | null;
 };
 
-export function useHealthAlerts(): UseHealthAlertsResult {
+export function useHealthAlerts({ enabled = true }: UseHealthAlertsOptions = {}): UseHealthAlertsResult {
   const [alerts, setAlerts] = useState<HealthAlert[]>([]);
   const [lastMessage, setLastMessage] = useState<WsFrame | null>(null);
 
@@ -54,7 +68,7 @@ export function useHealthAlerts(): UseHealthAlertsResult {
 
   const { status } = useChatWs({
     onEvent: handleEvent,
-    enabled: true, // TODO: only connect when user is authenticated
+    enabled,
   });
 
   const dismissAlert = useCallback((id: string) => {

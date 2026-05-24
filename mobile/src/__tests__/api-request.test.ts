@@ -1,5 +1,15 @@
 /* eslint-env jest */
-import { apiRequest, ApiError, getCoreApiBaseUrl, getCoreWsBaseUrl, buildQuery } from '../api/client';
+import {
+  apiRequest,
+  ApiError,
+  getCoreApiBaseUrl,
+  getCoreWsBaseUrl,
+  buildQuery,
+  createIdempotencyKey,
+  setRefreshHandler,
+  setUnauthorizedHandler,
+} from '../api/client';
+import { clearStoredSession } from '../auth/session-store';
 
 jest.mock('expo-constants', () => ({
   default: { expoConfig: { extra: {} } },
@@ -19,9 +29,24 @@ function setDevMode(value: boolean) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  setRefreshHandler(null);
+  setUnauthorizedHandler(null);
   setDevMode(true);
   delete process.env.EXPO_PUBLIC_CORE_API_URL;
   delete process.env.EXPO_PUBLIC_CORE_WS_URL;
+});
+
+describe('createIdempotencyKey', () => {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  it('returns a valid v4 UUID', () => {
+    expect(createIdempotencyKey()).toMatch(UUID_RE);
+  });
+
+  it('produces unique values on each call', () => {
+    const keys = new Set(Array.from({ length: 20 }, () => createIdempotencyKey()));
+    expect(keys.size).toBe(20);
+  });
 });
 
 describe('buildQuery', () => {
@@ -120,6 +145,28 @@ describe('apiRequest', () => {
     await apiRequest('/v1/test');
     const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer mock-token');
+  });
+
+  it('clears session and calls unauthorized handler when refresh fails', async () => {
+    const refreshHandler = jest.fn().mockResolvedValue(false);
+    const unauthorizedHandler = jest.fn();
+    setRefreshHandler(refreshHandler);
+    setUnauthorizedHandler(unauthorizedHandler);
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ error: { message: 'Expired', code: 'AUTH_INVALID_TOKEN' } }),
+    });
+
+    await expect(apiRequest('/v1/private')).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_INVALID_TOKEN',
+    });
+
+    expect(refreshHandler).toHaveBeenCalledTimes(1);
+    expect(clearStoredSession).toHaveBeenCalledTimes(1);
+    expect(unauthorizedHandler).toHaveBeenCalledTimes(1);
   });
 
   it('skips Authorization header when auth:false', async () => {

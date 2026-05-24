@@ -1,5 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("overview") };
+}
 
 import { RealtimeAnomalyWidget } from "@/components/dashboard/widgets/RealtimeAnomalyWidget";
 import { AlertBannerWidget } from "@/components/dashboard/widgets/AlertBannerWidget";

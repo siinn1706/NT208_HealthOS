@@ -14,7 +14,18 @@ const beVietnamPro = Be_Vietnam_Pro({
   display: "swap",
 });
 
-// Default metadata — removed; locale-aware metadata defined in [locale]/layout.tsx
+export const metadata: Metadata = {
+  title: {
+    default: "HealthOS — Your Virtual Personal Doctor",
+    template: "%s · HealthOS",
+  },
+  description:
+    "HealthOS — track vitals, meals, reminders, and reports with your AI-powered personal health companion.",
+  applicationName: "HealthOS",
+  icons: {
+    icon: { url: "/icon.svg", type: "image/svg+xml" },
+  },
+};
 
 export default async function RootLayout({
   children,

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { CORE_API_URL } from "@/lib/env";
 
 async function getAccessToken(): Promise<string | null> {
@@ -80,6 +81,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   // Log a meal
   const CORE = CORE_API_URL;
   const body = await req.formData();

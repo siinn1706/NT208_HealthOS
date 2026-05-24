@@ -76,4 +76,20 @@ def test_optional_ai_schema_can_degrade_without_blocking_auth_validation():
 def test_alembic_repository_has_a_single_canonical_head():
     versions_dir = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 
-    assert _alembic_heads(versions_dir) == {"030_add_refresh_token_sessions"}
+    heads = _alembic_heads(versions_dir)
+    assert len(heads) == 1
+
+
+def test_security_access_denied_migration_uses_canonical_audit_enum():
+    versions_dir = Path(__file__).resolve().parents[2] / "alembic" / "versions"
+    migration_path = versions_dir / "031_add_security_access_denied_enum.py"
+
+    migration_text = migration_path.read_text(encoding="utf-8")
+    all_migration_text = "\n".join(
+        path.read_text(encoding="utf-8") for path in versions_dir.glob("*.py")
+    )
+
+    assert "auditeventtypeenum" not in all_migration_text
+    assert "audit_event_type_enum" in migration_text
+    assert "security_access_denied" in migration_text
+    assert "autocommit_block" in migration_text

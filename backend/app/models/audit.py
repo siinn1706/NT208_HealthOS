@@ -87,6 +87,9 @@ class AuditEventTypeEnum(str, Enum):
     # Cross-user IDOR denial — logged when an authenticated user attempts to
     # access a resource they do not own. Filtered from user-facing log list.
     SECURITY_ACCESS_DENIED = "security_access_denied"
+    # RBAC — role grant/revoke; written in same transaction as user_roles change.
+    RBAC_ROLE_GRANTED = "rbac_role_granted"
+    RBAC_ROLE_REVOKED = "rbac_role_revoked"
 
 
 class AuditLog(Base):

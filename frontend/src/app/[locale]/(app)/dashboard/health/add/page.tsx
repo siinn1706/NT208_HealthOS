@@ -1,6 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/state";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("vitalsDevices") };
+}
 
 export default async function AddHealthMetricPage() {
   const t = await getTranslations("dashboard.health");

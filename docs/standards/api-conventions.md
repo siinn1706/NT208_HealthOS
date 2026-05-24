@@ -14,6 +14,18 @@ every FastAPI handler under `core/app/api/v1/**`.
 > The BFF is responsible for shaping every response into the envelope below
 > so the FE can consume one uniform `DataSlice<T>` shape across all surfaces.
 
+Production Next.js config must not expose a browser-facing `/v1/:path*`
+rewrite to Core. Local developer shortcuts, if ever reintroduced, must be
+guarded by an explicit development-only condition and documented in the same
+change. The regression test for this policy lives in
+`frontend/src/__tests__/next-config-routing-policy.test.ts`.
+
+WebSockets are the deliberate exception to the HTTP BFF rule: clients that need
+Core realtime transport may open `/ws` directly against Core, but only after
+obtaining a short-lived ticket from `GET /v1/auth/ws-ticket`. A public `/ws`
+rewrite in Next.js is not currently configured; if one is added later, it must
+preserve the same ticket expectation and must not become a bearer-token bypass.
+
 ---
 
 ## 1. Response envelope

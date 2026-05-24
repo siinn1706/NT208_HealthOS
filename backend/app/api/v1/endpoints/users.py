@@ -47,6 +47,13 @@ from app.services.otp import (
     hash_otp_code,
     mark_otp_consumed,
 )
+from app.services.upload_security import (
+    UploadTooLargeError,
+    detect_image_mime,
+    extension_for_mime,
+    normalize_content_type,
+    read_upload_bounded,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -117,8 +124,8 @@ async def upload_profile_avatar(
     file: UploadFile = File(...),
 ) -> CurrentUserResponse:
     """Upload a profile image to object storage and persist URL on ``user_profiles.avatar_url``."""
-    content_type = (file.content_type or "").split(";")[0].strip().lower()
-    if content_type not in _ALLOWED_AVATAR_TYPES:
+    declared_type = normalize_content_type(file.content_type)
+    if declared_type not in _ALLOWED_AVATAR_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -126,26 +133,40 @@ async def upload_profile_avatar(
                 "message": "Avatar must be JPEG, PNG, or WebP.",
             },
         )
-    raw = await file.read()
+    try:
+        raw = await read_upload_bounded(file, _MAX_AVATAR_BYTES)
+    except UploadTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "AVATAR_TOO_LARGE", "message": "Avatar must be at most 2 MiB."},
+        ) from exc
     if len(raw) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "EMPTY_FILE", "message": "Empty upload."},
         )
-    if len(raw) > _MAX_AVATAR_BYTES:
+    detected_type = detect_image_mime(raw[:32])
+    if detected_type not in _ALLOWED_AVATAR_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "AVATAR_TOO_LARGE", "message": "Avatar must be at most 2 MiB."},
+            detail={"code": "INVALID_AVATAR_CONTENT", "message": "Avatar bytes must be a valid image."},
         )
-    suffix_by_type = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-    suffix = suffix_by_type.get(content_type, ".jpg")
+    if detected_type != declared_type:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "AVATAR_MIME_MISMATCH",
+                "message": "Avatar content does not match the declared file type.",
+            },
+        )
+    suffix = f".{extension_for_mime(detected_type, 'jpg')}"
     key = f"profile-avatars/{current_user.id}/{uuid.uuid4()}{suffix}"
     try:
         public_url = upload_file(
             settings.storage_bucket_meals,
             key,
             raw,
-            content_type=content_type,
+            content_type=detected_type,
         )
     except RuntimeError as exc:
         raise HTTPException(
@@ -238,9 +259,13 @@ async def update_current_user_profile(
         current_user.onboarding_status = OnboardingStatusEnum.IN_PROGRESS.value
 
     await db.commit()
-    await db.refresh(current_user)
-
-    return _to_current_user_response(current_user)
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.profile))
+        .where(User.id == current_user.id)
+    )
+    user = result.scalar_one()
+    return _to_current_user_response(user)
 
 
 # ─── B7 P8 — Account data export ─────────────────────────────────────────
@@ -539,3 +564,80 @@ async def restore_account(
     )
     await db.commit()
     return {"data": {"status": "active"}}
+
+
+# ── Onboarding draft ──────────────────────────────────────────────────────────
+
+from app.schemas.onboarding_draft import (
+    OnboardingDraftPutBody,
+    OnboardingDraftData,
+    OnboardingDraftResponse,
+    enforce_max_draft_size,
+)
+from app.services import onboarding_draft as draft_svc
+
+
+@router.get(
+    "/me/onboarding-draft",
+    response_model=OnboardingDraftResponse,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Get the current user's onboarding draft",
+)
+async def get_onboarding_draft(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OnboardingDraftResponse:
+    draft = await draft_svc.get_draft(db, current_user.id)
+    if draft is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "No onboarding draft found."},
+        )
+    return OnboardingDraftResponse(
+        data=OnboardingDraftData(
+            data=draft.data,
+            updated_at=draft.updated_at,
+            expires_at=draft.expires_at,
+        )
+    )
+
+
+@router.put(
+    "/me/onboarding-draft",
+    response_model=OnboardingDraftResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+    },
+    summary="Upsert the current user's onboarding draft",
+    dependencies=[Depends(enforce_max_draft_size)],
+)
+async def put_onboarding_draft(
+    body: OnboardingDraftPutBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OnboardingDraftResponse:
+    draft = await draft_svc.upsert_draft(db, current_user.id, body.data)
+    await db.commit()
+    await db.refresh(draft)
+    return OnboardingDraftResponse(
+        data=OnboardingDraftData(
+            data=draft.data,
+            updated_at=draft.updated_at,
+            expires_at=draft.expires_at,
+        )
+    )
+
+
+@router.delete(
+    "/me/onboarding-draft",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={401: {"model": ErrorResponse}},
+    summary="Delete the current user's onboarding draft",
+)
+async def delete_onboarding_draft(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await draft_svc.delete_draft(db, current_user.id)
+    await db.commit()

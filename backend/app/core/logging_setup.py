@@ -46,6 +46,7 @@ def configure_logging(settings: "Settings") -> None:
             root.removeHandler(h)
 
     handler = logging.StreamHandler()
+    handler.addFilter(RequestIdFilter())
     if settings.log_format == "json":
         handler.setFormatter(JsonFormatter())
     else:

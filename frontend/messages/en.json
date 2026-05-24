@@ -58,6 +58,9 @@
     }
   },
   "onboarding": {
+    "meta": {
+      "title": "Set up your profile"
+    },
     "welcome": {
       "title": "Welcome to HealthOS",
       "subtitle": "We'll set up your profile in five short steps. Most steps take less than a minute, and you can skip ahead and come back anytime — your progress is saved automatically.",

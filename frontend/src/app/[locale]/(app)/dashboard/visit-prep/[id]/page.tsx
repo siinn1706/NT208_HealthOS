@@ -2,6 +2,13 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { VisitPrepWizardClient } from "@/components/dashboard/visit-prep/VisitPrepWizardClient";
 import type { VisitBriefDetail } from "@/types/api";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("visitPrep") };
+}
 
 async function fetchBrief(id: string): Promise<VisitBriefDetail | null> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

@@ -1,5 +1,7 @@
 """Notification Service — FastAPI application."""
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
+
+from app.notification_dispatch_core import EnvelopeValidationError, dispatch
 
 app = FastAPI(title="HealthOS Notification Service", version="0.1.0")
 
@@ -10,15 +12,24 @@ async def health() -> dict:
 
 
 @app.post("/dispatch")
-async def dispatch(event: dict) -> dict:
-    """
-    Dispatch a notification event directly (alternative to Celery task).
-    Validates against contracts/events/notification-requested.json schema.
+async def dispatch_endpoint(event: dict) -> dict:
+    """Dispatch a notification event.
 
-    TODO:
-      1. Validate event envelope & payload
-      2. Route by channel (email/push/sms/in_app)
-      3. Call corresponding provider adapter
-      4. Return delivery status
+    Accepts either the notification.requested envelope or the demo-friendly
+    flat shape with event_id, recipient/user id, title/body/message, and
+    channel(s). Idempotency is not guaranteed.
     """
-    return {"status": "queued", "event_id": event.get("metadata", {}).get("event_id")}
+    try:
+        result = dispatch(event)
+    except EnvelopeValidationError as exc:
+        event_id = event.get("event_id") or (event.get("metadata") or {}).get("event_id")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "INVALID_ENVELOPE",
+                "message": "Invalid notification payload.",
+                "event_id": event_id,
+                "reason": str(exc),
+            },
+        ) from None
+    return result.to_dict()

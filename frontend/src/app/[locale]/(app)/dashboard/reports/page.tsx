@@ -1,6 +1,12 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { FileBarChart2, Sparkles } from "lucide-react";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard.nav");
+  return { title: t("reports") };
+}
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiOverview } from "@/components/dashboard/reports/KpiOverview";
