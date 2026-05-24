@@ -28,10 +28,51 @@ from httpx import ASGITransport, AsyncClient
 
 from app.adapters.database import engine
 from app.adapters.database import get_db
+from app.adapters.redis_client import get_redis
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.main import app
 from app.services.wearable_sync import google_health, oauth_state
+
+
+class _FakeRedis:
+    """In-memory Redis stand-in for endpoint tests.
+
+    Supports ``set`` (with ``ex`` TTL, ignored — TTL isn't checked in unit
+    tests), ``getdel``, and the Lua-based lock-release ``eval`` used by the
+    sync task tests.  Keeps a plain dict so tests can inspect state directly.
+    """
+
+    def __init__(self):
+        self.store: dict[str, str] = {}
+
+    async def set(self, key: str, value: str, *, ex: int | None = None, nx: bool = False):
+        if nx and key in self.store:
+            return None
+        self.store[key] = value
+        return True
+
+    async def getdel(self, key: str):
+        return self.store.pop(key, None)
+
+
+@pytest.fixture(autouse=True)
+def fake_redis_override():
+    """Inject an in-memory Redis for every test in this module.
+
+    All wearables endpoints that use ``get_redis`` (connect, callback) will
+    receive this fake — no real Redis connection required.  Tests that need
+    to pre-populate state (e.g. mint_state) can request the fixture by name
+    to get the same instance the endpoint will see.
+    """
+    redis = _FakeRedis()
+
+    async def _get_fake():
+        return redis
+
+    app.dependency_overrides[get_redis] = _get_fake
+    yield redis
+    app.dependency_overrides.pop(get_redis, None)
 
 
 @pytest.fixture
@@ -169,7 +210,7 @@ async def test_callback_rejects_state_for_other_user(
 
 @pytest.mark.asyncio
 async def test_callback_rejects_google_account_owned_by_other_user(
-    authenticated_client, authenticated_user, monkeypatch
+    authenticated_client, authenticated_user, monkeypatch, fake_redis_override
 ):
     class _ScalarResult:
         def __init__(self, value):
@@ -200,7 +241,9 @@ async def test_callback_rejects_google_account_owned_by_other_user(
     monkeypatch.setattr(google_health, "fetch_user_profile", fake_profile)
     app.dependency_overrides[get_db] = override_db
 
-    state = oauth_state.sign_state(authenticated_user.id)
+    # Use mint_state so the nonce is stored in the same fake Redis the
+    # callback endpoint will call consume_state against.
+    state = await oauth_state.mint_state(fake_redis_override, authenticated_user.id)
     res = await authenticated_client.get(
         f"/v1/wearables/google/callback?code=fakecode&state={state}"
     )

@@ -37,6 +37,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
+from app.adapters.redis_client import get_redis
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.audit import AuditEventTypeEnum
@@ -83,16 +84,18 @@ class GoogleConnectResponse(BaseModel):
 )
 async def google_connect(
     current_user: Annotated[User, Depends(get_current_user)],
+    redis=Depends(get_redis),
 ) -> GoogleConnectResponse:
     """Return a fresh Google OAuth consent URL bound to ``current_user``.
 
-    The URL embeds a 10-minute signed state (``oauth_state.sign_state``)
+    The URL embeds a one-time signed state (``oauth_state.mint_state``)
     so the callback can prove the round-trip was initiated by THIS user
-    in THIS browser session. Without that, a CSRF attacker could pin
-    their own Google account onto someone else's HealthOS profile.
+    in THIS browser session.  The nonce is stored in Redis with a 10-minute
+    TTL; ``consume_state`` atomically removes it so any replay of the same
+    state URL is rejected even before the JWT expires.
     """
+    state = await oauth_state.mint_state(redis, current_user.id)
     try:
-        state = oauth_state.sign_state(current_user.id)
         url = google_health.build_oauth_url(state)
     except google_health.GoogleHealthError as exc:
         # Credentials missing — operator-fixable, not user-fixable.
@@ -131,6 +134,7 @@ async def google_callback(
     state: Annotated[str, Query(min_length=1, max_length=4096)],
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis=Depends(get_redis),
 ) -> ConnectedDeviceResponse:
     """Exchange the authorization ``code`` for tokens, persist a
     ``ConnectedDevice`` row, enqueue an initial backfill, and return
@@ -141,14 +145,14 @@ async def google_callback(
     ``/dashboard/health`` — the Core BE just delivers the data.
 
     Failure modes:
-      * Bad state            → 400 (likely CSRF, expired link, or replay).
+      * Bad state / replay   → 400 (CSRF, expired link, or second use).
       * Bad code             → 400 (Google rejected the exchange).
       * Token-encrypt fails  → 503 (operator forgot ``FERNET_KEY``).
       * Unique-violation     → handled by ``device_svc`` upsert pattern.
     """
-    # ── Verify state ─────────────────────────────────────────────────
+    # ── Consume state (one-time, replay-safe) ────────────────────────
     try:
-        oauth_state.verify_state(state, expected_user_id=current_user.id)
+        await oauth_state.consume_state(redis, state, expected_user_id=current_user.id)
     except oauth_state.OAuthStateError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
