@@ -8,35 +8,35 @@
 
 <p>
   <strong>Frontend / BFF</strong><br />
-  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white" />
-  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=20232A" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" />
-  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" />
-  <img alt="next-intl" src="https://img.shields.io/badge/next--intl-4-000000?style=flat-square" />
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-0F172A?style=flat-square&logo=nextdotjs&logoColor=white" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-0F172A?style=flat-square&logo=react&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-0F172A?style=flat-square&logo=typescript&logoColor=white" />
+  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-0F172A?style=flat-square&logo=tailwindcss&logoColor=white" />
+  <img alt="next-intl" src="https://img.shields.io/badge/next--intl-4-0F172A?style=flat-square&logoColor=white" />
 </p>
 
 <p>
   <strong>Backend / Data</strong><br />
-  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.128-009688?style=flat-square&logo=fastapi&logoColor=white" />
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" />
-  <img alt="SQLAlchemy" src="https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=flat-square" />
-  <img alt="Alembic" src="https://img.shields.io/badge/Alembic-1.18-6BA539?style=flat-square" />
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
-  <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" />
-  <img alt="Celery" src="https://img.shields.io/badge/Celery-5-37814A?style=flat-square&logo=celery&logoColor=white" />
-  <img alt="MinIO" src="https://img.shields.io/badge/MinIO-S3--compatible-C72E49?style=flat-square&logo=minio&logoColor=white" />
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.128-0F172A?style=flat-square&logo=fastapi&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-0F172A?style=flat-square&logo=python&logoColor=white" />
+  <img alt="SQLAlchemy" src="https://img.shields.io/badge/SQLAlchemy-2.0-0F172A?style=flat-square&logoColor=white" />
+  <img alt="Alembic" src="https://img.shields.io/badge/Alembic-1.18-0F172A?style=flat-square&logoColor=white" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-0F172A?style=flat-square&logo=postgresql&logoColor=white" />
+  <img alt="Redis" src="https://img.shields.io/badge/Redis-7-0F172A?style=flat-square&logo=redis&logoColor=white" />
+  <img alt="Celery" src="https://img.shields.io/badge/Celery-5-0F172A?style=flat-square&logo=celery&logoColor=white" />
+  <img alt="MinIO" src="https://img.shields.io/badge/MinIO-S3--compatible-0F172A?style=flat-square&logo=minio&logoColor=white" />
 </p>
 
 <p>
   <strong>Mobile / Infra / Quality</strong><br />
-  <img alt="Expo" src="https://img.shields.io/badge/Expo-53-000020?style=flat-square&logo=expo&logoColor=white" />
-  <img alt="React Native" src="https://img.shields.io/badge/React_Native-0.79-61DAFB?style=flat-square&logo=react&logoColor=20232A" />
-  <img alt="Expo Router" src="https://img.shields.io/badge/Expo_Router-5-000020?style=flat-square&logo=expo&logoColor=white" />
-  <img alt="Docker Compose" src="https://img.shields.io/badge/Docker_Compose-dev-2496ED?style=flat-square&logo=docker&logoColor=white" />
-  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-4-6E9F18?style=flat-square&logo=vitest&logoColor=white" />
-  <img alt="Playwright" src="https://img.shields.io/badge/Playwright-1.59-2EAD33?style=flat-square&logo=playwright&logoColor=white" />
-  <img alt="Pytest" src="https://img.shields.io/badge/Pytest-8-0A9EDC?style=flat-square&logo=pytest&logoColor=white" />
-  <img alt="Jest" src="https://img.shields.io/badge/Jest-29-C21325?style=flat-square&logo=jest&logoColor=white" />
+  <img alt="Expo" src="https://img.shields.io/badge/Expo-53-0F172A?style=flat-square&logo=expo&logoColor=white" />
+  <img alt="React Native" src="https://img.shields.io/badge/React_Native-0.79-0F172A?style=flat-square&logo=react&logoColor=white" />
+  <img alt="Expo Router" src="https://img.shields.io/badge/Expo_Router-5-0F172A?style=flat-square&logo=expo&logoColor=white" />
+  <img alt="Docker Compose" src="https://img.shields.io/badge/Docker_Compose-dev-0F172A?style=flat-square&logo=docker&logoColor=white" />
+  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-4-0F172A?style=flat-square&logo=vitest&logoColor=white" />
+  <img alt="Playwright" src="https://img.shields.io/badge/Playwright-1.59-0F172A?style=flat-square&logo=playwright&logoColor=white" />
+  <img alt="Pytest" src="https://img.shields.io/badge/Pytest-8-0F172A?style=flat-square&logo=pytest&logoColor=white" />
+  <img alt="Jest" src="https://img.shields.io/badge/Jest-29-0F172A?style=flat-square&logo=jest&logoColor=white" />
 </p>
 
 </div>
