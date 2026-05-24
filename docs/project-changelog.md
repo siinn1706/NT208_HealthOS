@@ -8,6 +8,19 @@
 
 ### Added
 
+#### RBAC Foundation (2026-05-24)
+- **Migration `036_rbac_foundation`**: adds `roles`, `permissions`, `user_roles`, `role_permissions` tables. `user_roles.user_id` FK is `RESTRICT` (admin role survives soft-delete; must be explicitly revoked). Extends `audit_event_type_enum` with `rbac_role_granted` / `rbac_role_revoked`.
+- **`app/models/rbac.py`**: ORM models for all four tables. `User.roles` relationship uses `lazy="raise"` — all reads go through the service.
+- **`app/services/rbac.py`**: `list_user_roles`, `list_user_permissions`, `has_role`, `has_permission` (all filter `User.deleted_at IS NULL`), `ensure_default_roles_and_permissions`, `grant_role`, `revoke_role`. All inserts use `ON CONFLICT DO NOTHING`. `grant_role` writes an `audit_log` row only for actual new grants (via `RETURNING`).
+- **`app/core/rbac_deps.py`**: `require_role(code)`, `require_permission(code)` factory deps raising `ForbiddenException` (code `FORBIDDEN`); `get_current_user_roles`, `get_current_user_permissions`, `is_admin_user`.
+- **`seed_admin.py`** refactor: accepts `SEED_ADMIN_EMAIL` (single) and `SEED_ADMIN_EMAILS` (comma-separated); emails normalized to lowercase + deduped; `_username_from_email_safe` handles reserved names (`admin` → `admin_seed`) and SHA-1 suffix on collision; grants `admin` role via RBAC; single-commit transaction; never prints password.
+- **`delete_seed_admin.py`** update: no-flag → usage + exit non-zero; `--confirm` → legacy user-delete (unchanged contract); `--revoke-role` → role-only revoke + `audit_log`.
+- **Tests**: `tests/services/test_rbac.py`, `tests/api/v1/test_rbac_dependencies.py`, `tests/test_seed_admin_idempotent.py`, `tests/test_delete_seed_admin_semantics.py`. All use real Postgres; skipped when `settings.database_url` absent.
+
+**Error contract:** 403 returns `{"detail": {"code": "FORBIDDEN", "message": "Insufficient privileges."}}` — reuses existing `ForbiddenException`.
+
+**Non-goal:** `/admin/*` endpoint wiring is deferred to a follow-up plan.
+
 #### BFF CSRF Origin Guard & Route Protection Hardening (2026-05-24)
 - **CSRF origin guard primitive** (`frontend/src/lib/bff-origin-guard.ts`): `assertSameOrigin()` validates Origin/Referer headers on all BFF mutating routes (POST/PUT/PATCH/DELETE). Wired into `coreProxy()`, `coreFetchStream()`, and 15 direct-fetch route handlers.
 - **Origin validation**: Compares host:port against `BFF_TRUSTED_ORIGINS` env (comma-separated). Non-production: implicit localhost:* and 127.0.0.1:* allowed. Production: fail-closed on empty config.

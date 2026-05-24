@@ -11,6 +11,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from app.models.health_goal import HealthGoal  # noqa: F401
+    from app.models.rbac import Role  # noqa: F401
 
 
 class Base(DeclarativeBase):
@@ -291,6 +292,11 @@ class User(Base):
     )
     plans: Mapped[list["Plan"]] = relationship(
         "Plan", back_populates="user", cascade="all, delete-orphan",
+    )
+    # Read-only convenience; all writes via rbac_service. lazy="raise" forces
+    # all reads through list_user_roles() to avoid MissingGreenlet on closed sessions.
+    roles: Mapped[list["Role"]] = relationship(
+        "Role", secondary="user_roles", viewonly=True, lazy="raise",
     )
 
 
