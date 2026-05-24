@@ -13,8 +13,10 @@
  */
 
 import { NextRequest } from "next/server";
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { multipartProxy } from "@/lib/bff/multipart-proxy";
 
 export async function POST(req: NextRequest) {
+  assertSameOrigin(req);
   return multipartProxy(req, "/v1/meals/analyze-photo");
 }

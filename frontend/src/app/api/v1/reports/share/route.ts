@@ -4,10 +4,13 @@
  * V1: proxy to notification service via Core BE.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { shareReport } from "@/lib/reports-data";
 import type { ShareRequest } from "@/types/api";
 
 export async function POST(req: NextRequest) {
+  assertSameOrigin(req);
+
   let body: ShareRequest;
   try {
     body = await req.json();

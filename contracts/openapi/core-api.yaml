@@ -6949,87 +6949,15 @@ paths:
   /v1/auth/check-password-breach:
     post:
       deprecated: true
-      description: 'DEPRECATED — sends the raw password to the server.
-
-
-        Use ``GET /auth/check-password-breach/range/{prefix}`` instead, which only
-
-        accepts the first 5 hex characters of the SHA-1 hash so the password
-
-        itself never leaves the browser (HIBP k-anonymity).
-
-
-        Kept for one release for backwards compatibility with older clients; new
-
-        clients SHOULD migrate to the range endpoint.'
+      description: 'Removed. Use ``GET /auth/check-password-breach/range/{prefix}`` (HIBP k-anonymity).'
       operationId: check_password_breach_endpoint_v1_auth_check_password_breach_post
-      requestBody:
-        content:
-          application/json:
-            schema:
-              additionalProperties: true
-              title: Body
-              type: object
-        required: true
       responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                title: Response 200 Check Password Breach Endpoint V1 Auth Check Password Breach Post
-                type: object
-          description: Successful Response
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthenticated
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        '409':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Conflict
         '410':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Gone
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-        '429':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Rate limit exceeded
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal server error
-      security:
-      - bearerAuth: []
       summary: Check Password Breach Endpoint
       tags:
       - Auth

@@ -1,7 +1,7 @@
 # NT208 HealthOS — System Architecture
 
-> **Version**: 1.3.0  
-> **Last Updated**: 2026-05-22  
+> **Version**: 1.3.1  
+> **Last Updated**: 2026-05-24  
 > **Scope**: Web + Mobile + Microservices + Background Tasks
 
 ---
@@ -471,6 +471,39 @@ Backend
 **Known Gap**: Password login does not enforce MFA challenge
   even when mfa_enabled=true (TODO v1.3)
 ```
+
+### CSRF Origin Guard
+
+All BFF mutating routes (POST/PUT/PATCH/DELETE) enforce an Origin/Referer guard via `assertSameOrigin()` in `src/lib/bff-origin-guard.ts`. Guard is wired into:
+
+- Core proxy layer: `coreProxy()` and `coreFetchStream()` for all proxy routes
+- Direct-fetch handlers: auth/route.ts, auth/refresh/route.ts, auth/reset-password/route.ts, auth/request-otp/route.ts, auth/verify-otp/route.ts, auth/check-username/route.ts, auth/check-email/route.ts, auth/ws-token/route.ts, users/me/avatar/route.ts, meals/route.ts, health/route.ts, health-data/route.ts, health-data/meal/route.ts, health-goals/route.ts, analytics/gamification-summary/route.ts
+
+**Validation logic:**
+- Extract Origin/Referer header
+- Compare host:port against `BFF_TRUSTED_ORIGINS` (env-configured, comma-separated)
+- Non-production: implicit localhost:*, 127.0.0.1:* allowed
+- Production: empty origins = fail-closed (reject all mutating requests lacking matching Origin)
+
+**Guard mode** (`BFF_CSRF_GUARD_MODE` env):
+- `dry-run`: Log rejection, forward anyway (migration window)
+- `enforce` (default production): Return 403 with `{error: {code: "CSRF_ORIGIN_REJECTED"}}`
+
+**Public exceptions:** `/api/v1/public/**` paths exempt via `EXEMPT_PATH_PREFIXES` allow-list. OAuth init routes (GET-only) return null (no-op). Callbacks exempt by being GET.
+
+### Route Protection
+
+The Next.js middleware (`src/proxy.ts`) gates every private page before the request reaches the app.
+
+**Protected prefixes** (defined in `PROTECTED_PREFIXES`):
+- `/dashboard` — all authenticated app pages
+- `/onboarding` — handled separately (session required; completed users are bounced to dashboard)
+
+**Public pages** (no session required): `/`, `/login`, `/register`, `/verify`, `/forgot-password`, `/about`, `/articles`, `/plans`, `/services`, `/legal/*`, `/e/[token]`, `/dev/kitchensink`.
+
+**Source of truth:** `src/__tests__/proxy-protected-routes.fixture.ts` enumerates every page classified as private or public. The companion test globs `app/[locale]/**/page.tsx` at test time and fails CI if any new page is added without a classification entry. Adding a private page outside `/dashboard` requires both a fixture update and a new entry in `PROTECTED_PREFIXES`.
+
+**Security note:** The middleware redirect is a UX gate, not an authorization boundary. The Core BE validates the JWT on every request; the `(app)` layout also revalidates the session for defence-in-depth.
 
 ### Rate Limiting Strategy
 

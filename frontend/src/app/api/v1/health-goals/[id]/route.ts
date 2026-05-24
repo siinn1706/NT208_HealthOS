@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { CORE_API_URL } from "@/lib/env";
 
 async function getUserIdFromToken(): Promise<string | null> {
@@ -15,6 +16,9 @@ async function getUserIdFromToken(): Promise<string | null> {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   const userId = await getUserIdFromToken();
   if (!userId) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
 
@@ -33,6 +37,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   const userId = await getUserIdFromToken();
   if (!userId) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
 

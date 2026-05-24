@@ -1199,28 +1199,18 @@ async def reset_password(
 
 @router.post(
     "/check-password-breach",
-    responses={200: {"model": dict}, 400: {"model": ErrorResponse}, 410: {"model": ErrorResponse}},
+    responses={410: {"model": ErrorResponse}},
     deprecated=True,
 )
-async def check_password_breach_endpoint(
-    body: dict,
-) -> dict:
+async def check_password_breach_endpoint() -> None:
     """
-    DEPRECATED — sends the raw password to the server.
-
-    Use ``GET /auth/check-password-breach/range/{prefix}`` instead, which only
-    accepts the first 5 hex characters of the SHA-1 hash so the password
-    itself never leaves the browser (HIBP k-anonymity).
-
-    Kept for one release for backwards compatibility with older clients; new
-    clients SHOULD migrate to the range endpoint.
+    Removed — use ``GET /auth/check-password-breach/range/{prefix}`` instead.
     """
-    password = body.get("password", "")
-    if not password:
-        return {"breached": False}
-
-    is_breached, count = await check_password_breach(password)
-    return {"breached": is_breached, "count": count}
+    raise ApiException(
+        status_code=status.HTTP_410_GONE,
+        code="ENDPOINT_GONE",
+        message="Endpoint gone — use GET /v1/auth/check-password-breach/range/{prefix} (HIBP k-anonymity).",
+    )
 
 
 @router.get(

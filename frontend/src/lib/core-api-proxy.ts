@@ -20,6 +20,7 @@ import {
   clearAuthCookies,
   refreshCoreAuth,
 } from "@/lib/bff-auth-session";
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { CORE_API_URL } from "@/lib/env";
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from "@/lib/request-id";
 
@@ -104,6 +105,7 @@ function defaultCodeForStatus(status: number): string {
     case 403: return "FORBIDDEN";
     case 404: return "NOT_FOUND";
     case 409: return "CONFLICT";
+    case 410: return "ENDPOINT_GONE";
     case 413: return "PAYLOAD_TOO_LARGE";
     case 415: return "UNSUPPORTED_MEDIA_TYPE";
     case 422: return "VALIDATION_FAILED";
@@ -121,6 +123,7 @@ function defaultMessageForStatus(status: number): string {
     case 403: return "You don't have permission to perform this action.";
     case 404: return "The requested resource was not found.";
     case 409: return "The request conflicts with the current state.";
+    case 410: return "Endpoint gone — use the replacement API.";
     case 413: return "Request body is too large.";
     case 415: return "Unsupported media type.";
     case 422: return "The submitted data failed validation.";
@@ -237,6 +240,8 @@ export async function coreProxy(
   options: ProxyOptions = {}
 ): Promise<NextResponse> {
   const requestId = getOrCreateRequestId(req);
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
   const { accessToken, refreshToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
   const method = options.method ?? req.method;
@@ -442,6 +447,8 @@ export async function coreFetchStream(
   options: { method?: string; bodySizeLimit?: number; requireAuth?: boolean } = {},
 ): Promise<Response> {
   const requestId = getOrCreateRequestId(req);
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
   const { accessToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
   if (requireAuth && !accessToken) {

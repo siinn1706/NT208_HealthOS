@@ -58,7 +58,7 @@ describe("/api/v1/auth/session route", () => {
     const { POST } = await import("@/app/api/v1/auth/route");
     const request = new NextRequest("http://localhost/api/v1/auth/session", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Origin": "http://localhost" },
       body: JSON.stringify({ identifier: "user@example.com", password: "pw" }),
     });
     const response = await POST(request);
@@ -91,7 +91,11 @@ describe("/api/v1/auth/session route", () => {
     fetchMock.mockResolvedValue(jsonResponse({ data: { success: true } }, 200));
 
     const { DELETE } = await import("@/app/api/v1/auth/route");
-    const response = await DELETE();
+    const deleteReq = new NextRequest("http://localhost/api/v1/auth/session", {
+      method: "DELETE",
+      headers: { "Origin": "http://localhost" },
+    });
+    const response = await DELETE(deleteReq);
 
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(1);

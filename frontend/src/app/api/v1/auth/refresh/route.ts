@@ -8,9 +8,13 @@ import {
   refreshCoreAuth,
   sessionUserFromCoreAuth,
 } from "@/lib/bff-auth-session";
+import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 
 export async function POST(req: NextRequest) {
+  const csrfReject = assertSameOrigin(req);
+  if (csrfReject) return csrfReject;
+
   const refreshToken = (await cookies()).get(REFRESH_COOKIE_NAME)?.value ?? null;
   if (!refreshToken) {
     return NextResponse.json(
