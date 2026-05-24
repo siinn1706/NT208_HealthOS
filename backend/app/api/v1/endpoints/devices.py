@@ -174,6 +174,18 @@ async def disconnect_device(
             request,
             details={"device_id": str(device_id)},
         )
+    elif provider_was == WearableProviderEnum.GOOGLE_HEALTH:
+        # Distinct event so the security log can tell the on-device
+        # HEALTH_CONNECT_DISCONNECTED (user revoked locally on phone)
+        # apart from the server-side OAuth revocation handled by
+        # `device_svc.disconnect_device`.
+        await audit(
+            db,
+            AuditEventTypeEnum.WEARABLE_OAUTH_DISCONNECTED,
+            current_user.id,
+            request,
+            details={"device_id": str(device_id), "provider": "google_health"},
+        )
     await db.commit()
 
 
