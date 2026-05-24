@@ -64,6 +64,15 @@ Switch via **Me → Preferences → Appearance**:
 - Bearer session storage via `expo-secure-store`
 - Backend gaps are guarded in-screen instead of backed by local mock fixtures
 
+## Dev Notes
+
+### Jest / testing dependencies
+
+`react-test-renderer@19.0.0` is a required devDependency because
+`@testing-library/react-native` declares `react-test-renderer>=18.2.0` as a peer dep.
+It must be pinned to match `react@19.0.0` exactly — using a mismatched version causes
+runtime errors in tests.
+
 ## Shared API contracts
 
 Mobile imports Core API types from `../shared/api-contracts`. `metro.config.js` watches the repository root and resolves modules from `mobile/node_modules` first, so Expo can bundle those shared TypeScript files without copying them into `mobile/src`. `tsconfig.json` includes `../shared/**/*.ts` so strict type-checking sees the same contract source Metro bundles.
