@@ -203,6 +203,25 @@ async def google_callback(
                 "message": "Google profile is missing a stable subject id.",
             },
         )
+    duplicate_owner = (
+        await db.execute(
+            select(ConnectedDevice.user_id).where(
+                ConnectedDevice.provider == WearableProviderEnum.GOOGLE_HEALTH,
+                ConnectedDevice.external_account_id == google_sub,
+                ConnectedDevice.user_id != current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if duplicate_owner is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "ACCOUNT_ALREADY_LINKED",
+                "message": (
+                    "This Google Health account is already linked to another user."
+                ),
+            },
+        )
 
     # ── Encrypt tokens before any DB write ──────────────────────────
     try:

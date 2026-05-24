@@ -27,10 +27,11 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.adapters.database import engine
+from app.adapters.database import get_db
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.main import app
-from app.services.wearable_sync import oauth_state
+from app.services.wearable_sync import google_health, oauth_state
 
 
 @pytest.fixture
@@ -164,6 +165,48 @@ async def test_callback_rejects_state_for_other_user(
     )
     assert res.status_code == 400
     assert "INVALID_STATE" in str(res.json())
+
+
+@pytest.mark.asyncio
+async def test_callback_rejects_google_account_owned_by_other_user(
+    authenticated_client, authenticated_user, monkeypatch
+):
+    class _ScalarResult:
+        def __init__(self, value):
+            self._value = value
+
+        def scalar_one_or_none(self):
+            return self._value
+
+    class _DuplicateDb:
+        async def execute(self, _stmt):
+            return _ScalarResult(uuid.uuid4())
+
+    async def override_db():
+        return _DuplicateDb()
+
+    async def fake_exchange(_code: str):
+        return {
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
+            "expires_in": 3600,
+            "scope": "scope-a scope-b",
+        }
+
+    async def fake_profile(_access_token: str):
+        return {"sub": "google-sub-123"}
+
+    monkeypatch.setattr(google_health, "exchange_code_for_tokens", fake_exchange)
+    monkeypatch.setattr(google_health, "fetch_user_profile", fake_profile)
+    app.dependency_overrides[get_db] = override_db
+
+    state = oauth_state.sign_state(authenticated_user.id)
+    res = await authenticated_client.get(
+        f"/v1/wearables/google/callback?code=fakecode&state={state}"
+    )
+    assert res.status_code == 409
+    assert "ACCOUNT_ALREADY_LINKED" in str(res.json())
+    app.dependency_overrides.pop(get_db, None)
 
 
 # ─────────────────────────────────────────────────────────────────────

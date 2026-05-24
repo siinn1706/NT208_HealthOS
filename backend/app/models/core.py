@@ -5,7 +5,7 @@ import uuid
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String, Text, Time, UniqueConstraint, func, text
+from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Index, Integer, String, Text, Time, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -592,6 +592,15 @@ class ConnectedDevice(Base):
             "provider",
             "external_account_id",
             name="uq_connected_devices_user_provider_account",
+        ),
+        Index(
+            "uq_connected_devices_google_account_global",
+            "provider",
+            "external_account_id",
+            unique=True,
+            postgresql_where=text(
+                "provider = 'google_health' AND external_account_id IS NOT NULL"
+            ),
         ),
     )
 
