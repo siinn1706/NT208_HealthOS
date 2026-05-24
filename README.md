@@ -7,6 +7,15 @@
 <p>Health management platform with Web/BFF, Core API, workers, mobile app, and data services.</p>
 
 <p>
+  <a href="./README.md">
+    <img alt="English README" src="https://img.shields.io/badge/Language-English-2563EB?style=for-the-badge" />
+  </a>
+  <a href="./README.vi.md">
+    <img alt="Vietnamese README" src="https://img.shields.io/badge/Language-Tieng_Viet-DC2626?style=for-the-badge" />
+  </a>
+</p>
+
+<p>
   <strong>Frontend / BFF</strong><br />
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white" />
   <img alt="React" src="https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB" />
