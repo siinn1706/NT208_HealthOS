@@ -686,6 +686,77 @@ Core API Replicas (3+ instances, port 8000)
 
 ---
 
+## Authorization (RBAC)
+
+### Tables
+
+| Table | Purpose |
+|-------|---------|
+| `roles` | Named roles (`user`, `admin`). `code` is unique slug. |
+| `permissions` | Flat permission codes (e.g. `admin.users.read`). |
+| `user_roles` | (user_id, role_id) assignment. `user_id` FK is `RESTRICT` — role must be explicitly revoked before a user row can be hard-deleted. |
+| `role_permissions` | (role_id, permission_id) linking. |
+
+### Default Data (seeded by `seed_admin.py`)
+
+**Roles:** `user`, `admin`
+
+**Permissions (admin role):** `admin.access`, `admin.users.read`, `admin.users.update`, `admin.users.ban`, `admin.subscriptions.read`, `admin.subscriptions.update`, `admin.metrics.read`
+
+### Gating a Route
+
+```python
+from app.core.rbac_deps import require_permission
+
+@router.get("/admin/users", dependencies=[Depends(require_permission("admin.users.read"))])
+async def list_users(...):
+    ...
+```
+
+`require_role("admin")` and `require_permission("admin.access")` both raise `ForbiddenException` (code `FORBIDDEN`, HTTP 403) — single generic message, no role/permission enumeration.
+
+### Admin Status
+
+Admin status is derived entirely from the `user_roles` table — there is no `is_admin` column on `users`. Use `is_admin_user(user, db)` from `app.core.rbac_deps` for non-HTTP contexts (Celery beats, scripts).
+
+### Soft-Delete Safety
+
+`has_role()` and `has_permission()` filter `User.deleted_at IS NULL`. A soft-deleted user with a retained `user_roles` row does **not** pass authorization. `account_deletion.request_deletion()` must revoke all role grants before soft-deleting a user.
+
+### Seed & Revoke
+
+```bash
+# Create/update admin — idempotent
+SEED_ADMIN_EMAIL=admin@healthos.local SEED_ADMIN_PASSWORD='changeme' python seed_admin.py
+
+# Multi-email
+SEED_ADMIN_EMAILS=a@x.com,b@x.com SEED_ADMIN_PASSWORD='changeme' python seed_admin.py
+
+# Revoke admin role only (keep user row)
+SEED_ADMIN_EMAIL=admin@healthos.local python delete_seed_admin.py --revoke-role
+
+# Legacy: delete user row entirely
+SEED_ADMIN_EMAIL=admin@healthos.local python delete_seed_admin.py --confirm
+```
+
+Emails are normalized to lowercase. Local-part `admin` is rewritten to `admin_seed` to avoid the reserved username.
+
+### Rollback Runbook
+
+**If migration applied but seed failed mid-loop:**
+1. Inspect stderr to identify failed email.
+2. Re-run `seed_admin.py` — single-commit transaction; partial role/permission rows are idempotent.
+
+**Full rollback (Red Team #12 — coupled pair):**
+1. **Code revert first**: revert `User.roles` relationship in `app/models/core.py` and the re-export in `app/models/__init__.py`.
+2. Deploy the reverted code.
+3. Then: `cd backend && alembic downgrade 035_merge_security_and_app_heads`
+4. Verify: `python -c "from app.main import app; print('ok')"`
+
+> **Order matters.** Running `alembic downgrade` before reverting code causes app boot crash — SQLAlchemy tries to reflect the now-dropped `user_roles` table via `User.roles`.
+
+---
+
 ## References
 
 - [Project Overview](./project-overview-pdr.md)
