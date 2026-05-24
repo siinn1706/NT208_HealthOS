@@ -301,6 +301,14 @@ async def ingest_health_data(
 
     # ── Resolve the device (404 if it doesn't belong to the caller) ──
     device = await _load_user_device(db, current_user.id, device_id)
+    try:
+        batch = sync_svc.validate_ingest_batch(device, batch)
+    except ValueError as exc:
+        await idem_svc.release(redis, idem_key, idem_scope)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "VALIDATION_FAILED", "message": str(exc)},
+        ) from exc
 
     try:
         # `commit=False` defers durability to the explicit `db.commit()`

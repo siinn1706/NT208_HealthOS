@@ -18,12 +18,17 @@ import uuid
 
 import pytest
 
-from app.models.core import MetricTypeEnum, WearableSourceEnum
+from app.models.core import (
+    ConnectedDevice,
+    MetricTypeEnum,
+    WearableProviderEnum,
+    WearableSourceEnum,
+)
 from app.schemas.sync import (
     HealthIngestBatch,
     HealthRecordIn,
 )
-from app.services.health_sync import _split
+from app.services.health_sync import _split, validate_ingest_batch
 
 
 def _record(
@@ -115,6 +120,74 @@ def test_ingest_batch_accepts_empty_payload():
     assert batch.records == []
     assert batch.next_changes_tokens == {}
     assert batch.provider == "health_connect"
+
+
+def test_validate_ingest_batch_overrides_client_source_and_namespaces_ids():
+    device = ConnectedDevice(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+        connected_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    batch = HealthIngestBatch(
+        records=[
+            _record(external_id="rec-42").model_copy(
+                update={"source": WearableSourceEnum.GOOGLE_HEALTH}
+            )
+        ]
+    )
+    validated = validate_ingest_batch(
+        device,
+        batch,
+        now=datetime.datetime(2026, 4, 19, 12, tzinfo=datetime.timezone.utc),
+    )
+    rec = validated.records[0]
+    assert rec.source is WearableSourceEnum.HEALTH_CONNECT
+    assert rec.external_id == f"hc:{device.id}:rec-42"
+
+
+def test_validate_ingest_batch_rejects_future_timestamp():
+    device = ConnectedDevice(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+        connected_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    batch = HealthIngestBatch(
+        records=[
+            _record().model_copy(
+                update={
+                    "recorded_at": datetime.datetime(
+                        2026, 4, 19, 12, 6, tzinfo=datetime.timezone.utc
+                    )
+                }
+            )
+        ]
+    )
+    with pytest.raises(ValueError):
+        validate_ingest_batch(
+            device,
+            batch,
+            now=datetime.datetime(2026, 4, 19, 12, tzinfo=datetime.timezone.utc),
+        )
+
+
+def test_validate_ingest_batch_rejects_unreasonable_external_version():
+    device = ConnectedDevice(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+        connected_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    batch = HealthIngestBatch(
+        records=[_record(external_version=1_800_000_000_001)]
+    )
+    with pytest.raises(ValueError):
+        validate_ingest_batch(
+            device,
+            batch,
+            now=datetime.datetime(2026, 4, 19, 12, tzinfo=datetime.timezone.utc),
+        )
 
 
 # ── _split partitions tombstones ──────────────────────────────────────────

@@ -119,6 +119,10 @@ async def _load_device(db, device_id: uuid.UUID) -> ConnectedDevice:
     return item
 
 
+def _hc_external_id(device_id: uuid.UUID, raw_external_id: str) -> str:
+    return f"hc:{device_id}:{raw_external_id}"
+
+
 async def _count_health_rows(db, user_id: uuid.UUID, *, include_deleted: bool = True) -> int:
     stmt = select(HealthMetric).where(HealthMetric.user_id == user_id)
     if not include_deleted:
@@ -194,7 +198,7 @@ async def test_newer_version_updates_in_place(temp_user_and_device):
             await db.execute(
                 select(HealthMetric).where(
                     HealthMetric.user_id == user_id,
-                    HealthMetric.external_id == "rec-bump",
+                    HealthMetric.external_id == _hc_external_id(device_id, "rec-bump"),
                 )
             )
         ).scalar_one()
@@ -225,7 +229,7 @@ async def test_older_version_is_rejected(temp_user_and_device):
             await db.execute(
                 select(HealthMetric).where(
                     HealthMetric.user_id == user_id,
-                    HealthMetric.external_id == "rec-fresh",
+                    HealthMetric.external_id == _hc_external_id(device_id, "rec-fresh"),
                 )
             )
         ).scalar_one()
@@ -256,7 +260,9 @@ async def test_null_incoming_version_does_not_overwrite_real_version(temp_user_a
             await db.execute(
                 select(HealthMetric).where(
                     HealthMetric.user_id == user_id,
-                    HealthMetric.external_id == "rec-versioned",
+                    HealthMetric.external_id == _hc_external_id(
+                        device_id, "rec-versioned"
+                    ),
                 )
             )
         ).scalar_one()

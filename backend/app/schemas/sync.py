@@ -49,6 +49,26 @@ class HealthRecordIn(BaseModel):
     source_app: str | None = Field(default=None, max_length=128)
     recording_method: str | None = Field(default=None, max_length=16)
 
+    @field_validator("external_id")
+    @classmethod
+    def normalize_external_id(cls, v: str) -> str:
+        return v.strip()
+
+    @field_validator("recorded_at")
+    @classmethod
+    def normalize_recorded_at(cls, v: datetime.datetime) -> datetime.datetime:
+        if v.tzinfo is None:
+            return v.replace(tzinfo=datetime.timezone.utc)
+        return v
+
+    @field_validator("source_app", "recording_method")
+    @classmethod
+    def normalize_optional_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cleaned = v.strip()
+        return cleaned or None
+
     @field_validator("value")
     @classmethod
     def validate_medical_range(cls, v: float, info) -> float:
@@ -83,6 +103,11 @@ class HealthDeletionIn(BaseModel):
     """
 
     external_id: str = Field(min_length=1, max_length=128)
+
+    @field_validator("external_id")
+    @classmethod
+    def normalize_external_id(cls, v: str) -> str:
+        return v.strip()
 
 
 # ── Batch envelope + per-record-type token bundle ─────────────────────
