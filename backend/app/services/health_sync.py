@@ -31,6 +31,7 @@ from app.models.core import (
     ConnectedDevice,
     DeviceSyncState,
     HealthMetric,
+    WearableProviderEnum,
     WearableSourceEnum,
 )
 from app.schemas.sync import (
@@ -49,6 +50,16 @@ logger = logging.getLogger(__name__)
 # the parameter limit (PostgreSQL allows ~32k bind parameters; each row
 # uses ~12) and bounds lock duration on `health_metrics`.
 _UPSERT_CHUNK = 100
+_MAX_ACCEPTED_FUTURE_SKEW = datetime.timedelta(minutes=5)
+_MAX_ACCEPTED_HISTORY = datetime.timedelta(days=3650)
+_MAX_EXTERNAL_VERSION_FUTURE_SKEW_MS = 86_400_000
+_HEALTH_CONNECT_EXTERNAL_ID_PREFIX = "hc"
+
+
+_PROVIDER_TO_SOURCE: dict[str, WearableSourceEnum] = {
+    "health_connect": WearableSourceEnum.HEALTH_CONNECT,
+    "google_health": WearableSourceEnum.GOOGLE_HEALTH,
+}
 
 
 @dataclass(frozen=True)
@@ -68,6 +79,106 @@ class _NormalizedRecord:
     recording_method: str | None
     external_id: str
     external_version: int | None
+
+
+def _derived_source(device: ConnectedDevice) -> WearableSourceEnum:
+    try:
+        return _PROVIDER_TO_SOURCE[device.provider.value]
+    except KeyError as exc:  # pragma: no cover - defensive
+        raise ValueError(
+            f"Unsupported wearable provider for ingest: {device.provider.value}"
+        ) from exc
+
+
+def _normalize_timestamp(
+    recorded_at: datetime.datetime,
+    *,
+    now: datetime.datetime,
+) -> datetime.datetime:
+    normalized = recorded_at
+    if normalized.tzinfo is None:
+        normalized = normalized.replace(tzinfo=datetime.timezone.utc)
+    else:
+        normalized = normalized.astimezone(datetime.timezone.utc)
+    if normalized > now + _MAX_ACCEPTED_FUTURE_SKEW:
+        raise ValueError("recorded_at is too far in the future.")
+    if normalized < now - _MAX_ACCEPTED_HISTORY:
+        raise ValueError("recorded_at is too old.")
+    return normalized
+
+
+def _normalize_external_version(
+    external_version: int | None,
+    *,
+    now: datetime.datetime,
+) -> int | None:
+    if external_version is None:
+        return None
+    max_allowed = int(now.timestamp() * 1000) + _MAX_EXTERNAL_VERSION_FUTURE_SKEW_MS
+    if external_version > max_allowed:
+        raise ValueError("external_version exceeds the accepted time window.")
+    return external_version
+
+
+def _sanitize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _canonicalize_external_id(device: ConnectedDevice, external_id: str) -> str:
+    cleaned = external_id.strip()
+    if device.provider == WearableProviderEnum.HEALTH_CONNECT:
+        prefix = f"{_HEALTH_CONNECT_EXTERNAL_ID_PREFIX}:{device.id}:"
+        if cleaned.startswith(prefix):
+            return cleaned
+        return f"{prefix}{cleaned}"
+    return cleaned
+
+
+def validate_ingest_batch(
+    device: ConnectedDevice,
+    batch: HealthIngestBatch,
+    *,
+    now: datetime.datetime | None = None,
+) -> HealthIngestBatch:
+    """Canonicalize the wearable batch at the trust boundary.
+
+    The device/provider relationship is authoritative; client-supplied
+    provenance metadata is advisory only and must not drive dedupe or
+    overwrite logic.
+    """
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    source = _derived_source(device)
+    records = [
+        rec.model_copy(
+            update={
+                "recorded_at": _normalize_timestamp(rec.recorded_at, now=now),
+                "source": source,
+                "source_app": _sanitize_optional_text(rec.source_app),
+                "recording_method": _sanitize_optional_text(rec.recording_method),
+                "external_id": _canonicalize_external_id(device, rec.external_id),
+                "external_version": _normalize_external_version(
+                    rec.external_version, now=now
+                ),
+            }
+        )
+        for rec in batch.records
+    ]
+    deletions = [
+        tombstone.model_copy(
+            update={"external_id": _canonicalize_external_id(device, tombstone.external_id)}
+        )
+        for tombstone in batch.deletions
+    ]
+    return batch.model_copy(
+        update={
+            "provider": device.provider.value,
+            "records": records,
+            "deletions": deletions,
+        }
+    )
 
 
 def _split(
@@ -226,11 +337,14 @@ async def upsert_batch(
     device: ConnectedDevice,
     batch: HealthIngestBatch,
 ) -> HealthIngestResult:
-    """Top-level entrypoint. Persists rows + per-record-type tokens in
-    a single transaction (the surrounding endpoint owns the commit)."""
-    upserts, deletion_ids = _split(
-        user_id, device.id, batch.records, batch.deletions
-    )
+    """Persist rows + per-record-type tokens in a single transaction.
+
+    The surrounding endpoint owns the commit AND the WS publish — callers
+    must call publish_vitals_updated AFTER await db.commit() so the push
+    never races ahead of a successful write.
+    """
+    batch = validate_ingest_batch(device, batch)
+    upserts, deletion_ids = _split(user_id, device.id, batch.records, batch.deletions)
 
     inserted = 0
     updated = 0

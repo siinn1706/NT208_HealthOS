@@ -33,7 +33,8 @@ from app.services import devices as device_svc
 from app.services import health_sync as sync_svc
 from app.services import idempotency as idem_svc
 from app.services.audit import audit
-from app.services.idempotency import IdempotencyOutcome
+from app.services.idempotency import IdempotencyOutcome, build_scoped_ingest_key
+from app.services.wearable_sync.ws_publish import publish_vitals_updated
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
@@ -201,6 +202,18 @@ async def disconnect_device(
             request,
             details={"device_id": str(device_id)},
         )
+    elif provider_was == WearableProviderEnum.GOOGLE_HEALTH:
+        # Distinct event so the security log can tell the on-device
+        # HEALTH_CONNECT_DISCONNECTED (user revoked locally on phone)
+        # apart from the server-side OAuth revocation handled by
+        # `device_svc.disconnect_device`.
+        await audit(
+            db,
+            AuditEventTypeEnum.WEARABLE_OAUTH_DISCONNECTED,
+            current_user.id,
+            request,
+            details={"device_id": str(device_id), "provider": "google_health"},
+        )
     await db.commit()
 
 
@@ -274,7 +287,11 @@ async def ingest_health_data(
         )
 
     idem_scope = "hc.ingest"
-    idem_result = await idem_svc.acquire_or_wait(redis, idem_key, idem_scope)
+    # Scope the Redis key to (user, device, body-hash) so two users
+    # presenting the same Idempotency-Key header cannot cross-replay each
+    # other's data and re-posting a different body always gets a fresh slot.
+    scoped_key = build_scoped_ingest_key(current_user.id, device_id, raw_body)
+    idem_result = await idem_svc.acquire_or_wait(redis, scoped_key, idem_scope)
     record_idempotency_outcome(idem_scope, idem_result.outcome.value)
     if idem_result.outcome == IdempotencyOutcome.REPLAY and idem_result.payload is not None:
         record_health_sync_outcome("health_connect", "replay")
@@ -299,7 +316,7 @@ async def ingest_health_data(
     try:
         body_json = _json.loads(raw_body) if raw_body else {}
     except Exception as exc:
-        await idem_svc.release(redis, idem_key, idem_scope)
+        await idem_svc.release(redis, scoped_key, idem_scope)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INVALID_JSON", "message": "Body must be valid JSON."},
@@ -308,7 +325,7 @@ async def ingest_health_data(
     try:
         batch = HealthIngestBatch.model_validate(body_json)
     except Exception as exc:
-        await idem_svc.release(redis, idem_key, idem_scope)
+        await idem_svc.release(redis, scoped_key, idem_scope)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"code": "VALIDATION_FAILED", "message": str(exc)},
@@ -316,6 +333,14 @@ async def ingest_health_data(
 
     # ── Resolve the device (404 if it doesn't belong to the caller) ──
     device = await _load_user_device(db, current_user.id, device_id)
+    try:
+        batch = sync_svc.validate_ingest_batch(device, batch)
+    except ValueError as exc:
+        await idem_svc.release(redis, scoped_key, idem_scope)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "VALIDATION_FAILED", "message": str(exc)},
+        ) from exc
 
     try:
         # `commit=False` defers durability to the explicit `db.commit()`
@@ -354,7 +379,7 @@ async def ingest_health_data(
                 commit=False,
             )
             await db.commit()  # persist failure state in one shot
-            await idem_svc.release(redis, idem_key, idem_scope)
+            await idem_svc.release(redis, scoped_key, idem_scope)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "INGEST_FAILED", "message": "Ingest failed."},
@@ -381,19 +406,27 @@ async def ingest_health_data(
         # whole transaction rolls back together.
         await db.commit()
 
+        # WS push happens after commit — never before — so the dashboard
+        # refresh triggered by the event sees committed data.
+        await publish_vitals_updated(
+            current_user.id,
+            source="health_connect",
+            count=result.inserted + result.updated,
+        )
+
         record_health_sync_outcome(
             "health_connect", "partial" if result.errors else "ok"
         )
         envelope = HealthIngestResponse(data=result)
         await idem_svc.store(
-            redis, idem_key, idem_scope, envelope.model_dump(mode="json")
+            redis, scoped_key, idem_scope, envelope.model_dump(mode="json")
         )
         return envelope
     except HTTPException:
         raise
     except Exception:
         # Unhandled — release the slot so retry isn't permanently stuck.
-        await idem_svc.release(redis, idem_key, idem_scope)
+        await idem_svc.release(redis, scoped_key, idem_scope)
         raise
 
 

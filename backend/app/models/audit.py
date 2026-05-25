@@ -64,6 +64,12 @@ class AuditEventTypeEnum(str, Enum):
     HEALTH_CONNECT_PERMISSION_GRANTED = "health_connect_permission_granted"
     HEALTH_CONNECT_PERMISSION_REVOKED = "health_connect_permission_revoked"
     HEALTH_CONNECT_DISCONNECTED = "health_connect_disconnected"
+    # Server-side wearable OAuth (Google Health — Luồng B). Mirror the
+    # HEALTH_CONNECT_* events above but for the OAuth-based flow where
+    # tokens live on our server, not on the user's device. See migration
+    # 032 for the matching enum entries.
+    WEARABLE_OAUTH_CONNECTED = "wearable_oauth_connected"
+    WEARABLE_OAUTH_DISCONNECTED = "wearable_oauth_disconnected"
     # Medication Hub — plan lifecycle + refill + appointment import + summary export.
     MEDICATION_PLAN_CREATED = "medication_plan_created"
     MEDICATION_PLAN_UPDATED = "medication_plan_updated"

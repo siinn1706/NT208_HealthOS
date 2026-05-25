@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.core import MetricTypeEnum, WearableSourceEnum
 from app.schemas.common import DataResponse
+from app.schemas.devices import _HC_RECORD_TYPES
 
 
 SYNC_TOKEN_MAX_COUNT = 32
@@ -69,6 +70,26 @@ class HealthRecordIn(BaseModel):
     source_app: str | None = Field(default=None, max_length=128)
     recording_method: str | None = Field(default=None, max_length=16)
 
+    @field_validator("external_id")
+    @classmethod
+    def normalize_external_id(cls, v: str) -> str:
+        return v.strip()
+
+    @field_validator("recorded_at")
+    @classmethod
+    def normalize_recorded_at(cls, v: datetime.datetime) -> datetime.datetime:
+        if v.tzinfo is None:
+            return v.replace(tzinfo=datetime.timezone.utc)
+        return v
+
+    @field_validator("source_app", "recording_method")
+    @classmethod
+    def normalize_optional_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cleaned = v.strip()
+        return cleaned or None
+
     @field_validator("value")
     @classmethod
     def validate_medical_range(cls, v: float, info) -> float:
@@ -104,8 +125,23 @@ class HealthDeletionIn(BaseModel):
 
     external_id: str = Field(min_length=1, max_length=128)
 
+    @field_validator("external_id")
+    @classmethod
+    def normalize_external_id(cls, v: str) -> str:
+        return v.strip()
+
 
 # ── Batch envelope + per-record-type token bundle ─────────────────────
+
+def _validate_hc_token_keys(v: dict) -> dict:
+    unknown = set(v.keys()) - _HC_RECORD_TYPES
+    if unknown:
+        raise ValueError(
+            f"unknown HC record type(s): {sorted(unknown)}. "
+            f"Allowed: {sorted(_HC_RECORD_TYPES)}"
+        )
+    return v
+
 
 class HealthIngestBatch(BaseModel):
     """Batch payload posted by the mobile sync orchestrator."""
@@ -121,16 +157,15 @@ class HealthIngestBatch(BaseModel):
     # in `records` since v2 of the contract. Both work; the service folds
     # them together at upsert time.
     deletions: list[HealthDeletionIn] = Field(default_factory=list, max_length=500)
-    # Map of HC record-type name → next changesToken to persist atomically
-    # with the ingest. Keys MUST be one of:
-    #   "Steps" | "HeartRate" | "SleepSession" | "Weight"
-    #   (stretch) "BloodPressure" | "ExerciseSession"
+    # Keys restricted to the closed _HC_RECORD_TYPES vocabulary so the
+    # token table cannot grow unbounded or receive hostile key strings.
     next_changes_tokens: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("next_changes_tokens")
     @classmethod
-    def validate_next_changes_tokens(cls, tokens: dict[str, str]) -> dict[str, str]:
-        return validate_sync_token_map(tokens)  # type: ignore[return-value]
+    def _check_token_keys(cls, v: dict[str, str]) -> dict[str, str]:
+        _validate_hc_token_keys(v)
+        return validate_sync_token_map(v)  # type: ignore[return-value]
 
 
 class HealthIngestErrorRow(BaseModel):
@@ -175,5 +210,6 @@ class SyncStateUpdateBody(BaseModel):
 
     @field_validator("tokens")
     @classmethod
-    def validate_tokens(cls, tokens: dict[str, Optional[str]]) -> dict[str, Optional[str]]:
-        return validate_sync_token_map(tokens)
+    def _check_token_keys(cls, v: dict[str, Optional[str]]) -> dict[str, Optional[str]]:
+        _validate_hc_token_keys(v)
+        return validate_sync_token_map(v)

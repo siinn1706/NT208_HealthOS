@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
 
 from app.schemas.common import DataResponse
 
@@ -47,12 +47,18 @@ class ConnectedDeviceDTO(BaseModel):
     battery_pct: int | None = None
     # Health Connect additions — null for legacy stub providers.
     device_label: str | None = None
+    # Always serialized as null — the Google OAuth sub is an internal
+    # identifier that must not be exposed in API responses.
     external_account_id: str | None = None
     scopes: list[str] | None = None
     last_sync_status: str | None = None
     last_sync_error: str | None = None
     last_sync_count: int | None = None
     last_attempted_at: datetime.datetime | None = None
+
+    @field_serializer("external_account_id")
+    def _redact_external_account_id(self, _value: str | None) -> None:
+        return None
 
 
 class DeviceConnectBody(BaseModel):
@@ -72,6 +78,18 @@ class DeviceConnectBody(BaseModel):
     @classmethod
     def _check_scopes(cls, v: list[str] | None) -> list[str] | None:
         return _validate_scopes(v)
+
+    @model_validator(mode="after")
+    def _require_account_id_for_health_connect(self) -> "DeviceConnectBody":
+        # Health Connect dedupes on (user, provider, external_account_id);
+        # accepting NULL would let a second install collapse onto the first
+        # device's row and overwrite its label/scopes/sync state.
+        if self.provider == "health_connect":
+            if self.external_account_id is None or not self.external_account_id.strip():
+                raise ValueError(
+                    "external_account_id is required for provider=health_connect"
+                )
+        return self
 
 
 class ConnectedDeviceResponse(DataResponse[ConnectedDeviceDTO]):

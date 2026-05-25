@@ -18,13 +18,18 @@ import uuid
 
 import pytest
 
-from app.models.core import MetricTypeEnum, WearableSourceEnum
+from app.models.core import (
+    ConnectedDevice,
+    MetricTypeEnum,
+    WearableProviderEnum,
+    WearableSourceEnum,
+)
 from app.schemas.sync import (
     HealthIngestBatch,
     HealthRecordIn,
     SyncStateUpdateBody,
 )
-from app.services.health_sync import _split
+from app.services.health_sync import _split, validate_ingest_batch
 
 
 def _record(
@@ -138,6 +143,74 @@ def test_sync_state_rejects_malformed_key():
         SyncStateUpdateBody.model_validate({"tokens": {"../Steps": "value"}})
 
 
+def test_validate_ingest_batch_overrides_client_source_and_namespaces_ids():
+    device = ConnectedDevice(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+        connected_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    batch = HealthIngestBatch(
+        records=[
+            _record(external_id="rec-42").model_copy(
+                update={"source": WearableSourceEnum.GOOGLE_HEALTH}
+            )
+        ]
+    )
+    validated = validate_ingest_batch(
+        device,
+        batch,
+        now=datetime.datetime(2026, 4, 19, 12, tzinfo=datetime.timezone.utc),
+    )
+    rec = validated.records[0]
+    assert rec.source is WearableSourceEnum.HEALTH_CONNECT
+    assert rec.external_id == f"hc:{device.id}:rec-42"
+
+
+def test_validate_ingest_batch_rejects_future_timestamp():
+    device = ConnectedDevice(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+        connected_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    batch = HealthIngestBatch(
+        records=[
+            _record().model_copy(
+                update={
+                    "recorded_at": datetime.datetime(
+                        2026, 4, 19, 12, 6, tzinfo=datetime.timezone.utc
+                    )
+                }
+            )
+        ]
+    )
+    with pytest.raises(ValueError):
+        validate_ingest_batch(
+            device,
+            batch,
+            now=datetime.datetime(2026, 4, 19, 12, tzinfo=datetime.timezone.utc),
+        )
+
+
+def test_validate_ingest_batch_rejects_unreasonable_external_version():
+    device = ConnectedDevice(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+        connected_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    batch = HealthIngestBatch(
+        records=[_record(external_version=1_800_000_000_001)]
+    )
+    with pytest.raises(ValueError):
+        validate_ingest_batch(
+            device,
+            batch,
+            now=datetime.datetime(2026, 4, 19, 12, tzinfo=datetime.timezone.utc),
+        )
+
+
 # ── _split partitions tombstones ──────────────────────────────────────────
 
 
@@ -196,3 +269,93 @@ def test_split_folds_dedicated_deletions_with_legacy():
     )
     assert {u.external_id for u in upserts} == {"keep-1"}
     assert set(deletion_ids) == {"legacy-tomb", "new-tomb-1", "new-tomb-2"}
+
+
+# ── fix 6: HC record-type key validation ────────────────────────────
+
+
+def test_ingest_batch_rejects_unknown_token_key():
+    """next_changes_tokens must only contain _HC_RECORD_TYPES keys."""
+    with pytest.raises(Exception):  # pydantic ValidationError
+        HealthIngestBatch(
+            records=[],
+            deletions=[],
+            next_changes_tokens={"UnknownType": "tok-abc"},
+        )
+
+
+def test_ingest_batch_accepts_known_token_keys():
+    """All six known HC record-type strings should pass validation."""
+    batch = HealthIngestBatch(
+        records=[],
+        deletions=[],
+        next_changes_tokens={
+            "Steps": "tok-1",
+            "HeartRate": "tok-2",
+            "Weight": "tok-3",
+        },
+    )
+    assert batch.next_changes_tokens["Steps"] == "tok-1"
+
+
+def test_ingest_batch_accepts_empty_token_map():
+    """An absent / empty token map is always valid (most batches omit it)."""
+    batch = HealthIngestBatch(records=[], deletions=[])
+    assert batch.next_changes_tokens == {}
+
+
+def test_sync_state_update_rejects_unknown_token_key():
+    """SyncStateUpdateBody.tokens must also enforce the record-type allowlist."""
+    from app.schemas.sync import SyncStateUpdateBody
+
+    with pytest.raises(Exception):  # pydantic ValidationError
+        SyncStateUpdateBody(tokens={"EvilType": "tok-xyz"})
+
+
+def test_sync_state_update_accepts_known_keys():
+    from app.schemas.sync import SyncStateUpdateBody
+
+    body = SyncStateUpdateBody(tokens={"Steps": "tok-ok", "HeartRate": None})
+    assert body.tokens["Steps"] == "tok-ok"
+    assert body.tokens["HeartRate"] is None
+
+
+# ── fix 8: WS publish is NOT called inside upsert_batch ─────────────
+
+
+@pytest.mark.asyncio
+async def test_upsert_batch_does_not_publish_ws(monkeypatch):
+    """publish_vitals_updated must NOT fire inside upsert_batch — only the
+    surrounding endpoint/task may call it, after a successful db.commit().
+    """
+    from app.services.wearable_sync import ws_publish
+
+    publish_calls: list = []
+    monkeypatch.setattr(
+        ws_publish, "publish_vitals_updated", lambda *a, **kw: publish_calls.append((a, kw))
+    )
+
+    # Minimal fake DB that does nothing.
+    class _FakeExec:
+        def __init__(self): self.rowcount = 0
+        def scalars(self): return self
+        def all(self): return []
+    class _FakeDb:
+        async def execute(self, *a, **kw): return _FakeExec()
+        async def flush(self): pass
+        def add(self, *a): pass
+
+    from app.models.core import ConnectedDevice, WearableProviderEnum
+    from app.services.health_sync import upsert_batch
+    import uuid as _uuid
+
+    device = ConnectedDevice(
+        id=_uuid.uuid4(),
+        user_id=_uuid.uuid4(),
+        provider=WearableProviderEnum.HEALTH_CONNECT,
+    )
+    batch = HealthIngestBatch(records=[], deletions=[])
+
+    # Call upsert_batch — if it triggers publish the test will fail.
+    await upsert_batch(_FakeDb(), device.user_id, device, batch)
+    assert publish_calls == [], "upsert_batch must not publish WS events directly"
