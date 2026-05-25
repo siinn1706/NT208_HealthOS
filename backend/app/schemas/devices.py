@@ -13,20 +13,46 @@ from app.schemas.common import DataResponse
 # Anything outside this set is rejected at the schema layer so the column
 # can never grow unbounded JSON or hostile XSS payloads.
 _HC_RECORD_TYPES = {
+    # Legacy 6 — these mapped 1:1 to the pre-expansion MetricTypeEnum.
     "Steps",
     "HeartRate",
     "SleepSession",
     "Weight",
     "BloodPressure",
     "ExerciseSession",
+    # Wearable-expansion HC types — each maps to an existing
+    # MetricTypeEnum value AND a normalizer `_GOOGLE_HEALTH_TYPE_MAP`
+    # entry. HC types without a backend mapping (BasalMetabolicRate,
+    # Nutrition, Power, Speed, StepsCadence, ElevationGained) are
+    # deliberately omitted — granting them would let mobile request
+    # permissions for data that would be silently dropped.
+    "OxygenSaturation",
+    "RestingHeartRate",
+    "HeartRateVariabilityRmssd",
+    "RespiratoryRate",
+    "Vo2Max",
+    "Distance",
+    "FloorsClimbed",
+    "ActiveCaloriesBurned",
+    "TotalCaloriesBurned",
+    "BodyFat",
+    "LeanBodyMass",
+    "BoneMass",
+    "Height",
+    "BodyTemperature",
+    "SkinTemperature",
+    "BloodGlucose",
+    "Hydration",
+    "MenstruationFlow",
+    "MindfulnessSession",
 }
 
 
 def _validate_scopes(value: list[str] | None) -> list[str] | None:
     if value is None:
         return None
-    if len(value) > 20:
-        raise ValueError("scopes length exceeds 20 items")
+    if len(value) > 40:
+        raise ValueError("scopes length exceeds 40 items")
     cleaned: list[str] = []
     for item in value:
         if not isinstance(item, str):
@@ -109,7 +135,7 @@ class DevicePermissionsBody(BaseModel):
     backend replaces `scopes` and recomputes `last_sync_status`.
     """
 
-    scopes: list[str] = Field(default_factory=list, max_length=20)
+    scopes: list[str] = Field(default_factory=list, max_length=40)
 
     @field_validator("scopes")
     @classmethod

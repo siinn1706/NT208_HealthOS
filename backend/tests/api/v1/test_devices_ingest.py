@@ -235,10 +235,12 @@ async def test_permissions_patch_rejects_unknown_scope(authenticated_client):
 
 @pytest.mark.asyncio
 async def test_permissions_patch_rejects_too_many_scopes(authenticated_client):
-    """`max_length=20` on the scopes list."""
+    """`max_length=40` on the scopes list (raised from 20 when the
+    `_HC_RECORD_TYPES` allowlist expanded to cover the full set of
+    Health Connect record types backed by MetricTypeEnum)."""
     res = await authenticated_client.patch(
         f"/v1/devices/{uuid.uuid4()}/permissions",
-        json={"scopes": ["Steps"] * 21},
+        json={"scopes": ["Steps"] * 41},
     )
     assert res.status_code == 422
 
