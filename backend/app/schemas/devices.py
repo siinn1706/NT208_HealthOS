@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
 
 from app.schemas.common import DataResponse
 
@@ -78,6 +78,18 @@ class DeviceConnectBody(BaseModel):
     @classmethod
     def _check_scopes(cls, v: list[str] | None) -> list[str] | None:
         return _validate_scopes(v)
+
+    @model_validator(mode="after")
+    def _require_account_id_for_health_connect(self) -> "DeviceConnectBody":
+        # Health Connect dedupes on (user, provider, external_account_id);
+        # accepting NULL would let a second install collapse onto the first
+        # device's row and overwrite its label/scopes/sync state.
+        if self.provider == "health_connect":
+            if self.external_account_id is None or not self.external_account_id.strip():
+                raise ValueError(
+                    "external_account_id is required for provider=health_connect"
+                )
+        return self
 
 
 class ConnectedDeviceResponse(DataResponse[ConnectedDeviceDTO]):
