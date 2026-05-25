@@ -16,6 +16,7 @@ plans/
 guide/
 AGENTS.md
 scripts/
+.kiro/
 
 
 Node/Next.js
@@ -96,5 +97,3 @@ infra/data/
 release-manifest.json
 /.playwright-mcp
 /nt208
-.kiro/specs/cursor-tracking-dot-background/.config.kiro
-.kiro/specs/cursor-tracking-dot-background/requirements.md

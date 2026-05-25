@@ -31,8 +31,8 @@ class AdminCurrentSubscriptionSummary(BaseModel):
 class AdminUserListItem(BaseModel):
     id: uuid.UUID
     email: str
-    username: str
-    display_name: str
+    username: str | None = None
+    display_name: str | None = None
     onboarding_status: str
     email_verified_at: datetime | None = None
     created_at: datetime

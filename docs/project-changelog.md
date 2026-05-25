@@ -1,12 +1,39 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.5-hardening | **Last Updated**: 2026-05-24
+> **Version**: 1.3.6-admin-redesign | **Last Updated**: 2026-05-25
 
 ---
 
 ## [Unreleased]
 
 ### Added
+
+#### Admin User Detail Redesign + i18n + Subscription Controls (2026-05-25)
+- **Phase 1 — Admin i18n foundation**: Moved all admin console UI strings from hardcoded English to next-intl with `admin.*` namespace; 60+ keys added to `en.json` + `vi.json` (userDetail, users, common, errors, subscriptions sections)
+- **Phase 2 — User detail UI redesign**: Sticky action bar (Ban/Unban), collapsible rail toggle, tab system (Profile / Subscription / Activity); new components `UserDetailActionBar.tsx`, `CurrentSubscriptionCard.tsx`
+- **Phase 3 — Subscription admin controls**: Quick-action buttons (Cancel, Extend +30d, +90d, Reset to Free), assignment form with Zod validation, subscription history table (BFF stub returns `[]` with TODO), `subscription-quick-action-payloads.ts` with D2/D3 decision payload builders
+- **Phase 4 — localStorage refactor**: UI preference helpers extracted to `src/lib/admin/ui-prefs.ts` (density, sidebar collapse, column visibility) to keep `components/admin/` storage-free
+- **Phase 5 — Tests + i18n wiring**: Rewrote `ProfileSection.test.tsx`, fixed `AdminErrorState.test.tsx` assertion, fixed `admin-bff-auth.test.ts` mock response; wired i18n into 6 admin pages; net: 32 failed → 4 failed (pre-existing in unmodified files)
+- **Decision D1 (Method mismatch)**: BFF route switched to PATCH to match Core endpoint `PATCH /v1/admin/users/{id}/subscription`
+- **Decision D2 (Cancel semantics)**: Cancel preserves `current.expires_at`; only flips `status` to `"canceled"`
+- **Decision D3 (Extend on null/canceled)**: Base = `now`, result = `now + N days`, force `status` → `"active"`
+- **Decision D4 (History persistence)**: Phase 03 ships BFF stub `[]`; new BE table `subscription_assignments` deferred to follow-up
+- **Files new/modified**: `frontend/messages/{en,vi}.json` (admin keys), `frontend/src/components/admin/user-detail/*`, `frontend/src/lib/admin/ui-prefs.ts`, `frontend/src/lib/admin/subscription-quick-action-payloads.ts`, BFF `/api/v1/admin/users/[id]/subscription`
+- **Status**: All 5 phases complete. Admin console fully i18n'd; user detail polish shipped; subscription controls wired.
+
+#### Admin Console Redesign (2026-05-25)
+- **Phase 1 — Design System**: 9 CSS custom properties (`--admin-*`) for sidebar, header, density, dark-mode variants
+- **Phase 2 — Shell Components**: `AdminSidebar.tsx` (collapsible, token-driven, active link tracking), `AdminTopBar.tsx` (header + identity menu), `AdminShell.tsx` (wrapper), `admin-sidebar-collapse.ts` (localStorage persistence)
+- **Phase 3 — Overview Page**: `KpiCard.tsx` + `Sparkline.tsx` (7-point SVG sparkline), `OverviewCards.tsx` grid, `ActivityFeed.tsx` + `ActivityFeedEntry.tsx`
+- **Phase 4 — Users Table**: `UsersTable.tsx` (density toggle, column visibility, search), `ColumnVisibilityMenu.tsx`, `DensityToggle.tsx`
+- **Phase 5 — User Detail**: `user-detail-action-bar.tsx`, `user-detail-profile-section.tsx`, `user-detail-subscription-section.tsx`, `user-audit-tab.tsx` (filters audit events by user)
+- **Phase 6 — Subscriptions**: `PlansTable.tsx`, `PlanMetricsStrip.tsx`, `PlanBadge.tsx`, `EditPlanModal.tsx`
+- **Phase 7 — Audit & Security**: `audit-table.tsx`, `audit-filter-bar.tsx`, `security-feed.tsx`, `severity-pill.tsx`, `SeverityBadge.tsx`
+- **Phase 8 — Layout Primitives**: `AdminPageContent`, `AdminPageHeader`, `AdminCard`, `AdminToolbar` in `admin-layout-primitives.tsx`; all 3 admin pages migrated
+- **Phase 9 — A11y & Motion**: `motion-safe:` prefix on transitions/animations; `scope="col"` on table headers; `aria-current="page"` on active nav links
+- **Phase 10 — Tests**: 9 new test files (150 tests total, 150 passing); fixed `APP_ENV` mock in AdminShell/AdminSidebar tests; fixed `renderWithReason` async act() for React 18; added `testTimeout: 20000` + `maxForks: 4` to vitest config; Playwright smoke spec `e2e/admin-redesign.spec.ts` (gated by `ADMIN_E2E=1`)
+- **Files new/modified**: `frontend/src/components/admin/*`, `frontend/src/lib/admin/*`, `frontend/src/app/[locale]/(admin)/*`, `frontend/src/__tests__/admin-*.test.ts`, `e2e/admin-redesign.spec.ts`
+- **Status**: All 10 phases complete. UI/UX layer finished; backend RBAC endpoint wiring deferred to v1.3.
 
 #### RBAC Foundation (2026-05-24)
 - **Migration `036_rbac_foundation`**: adds `roles`, `permissions`, `user_roles`, `role_permissions` tables. `user_roles.user_id` FK is `RESTRICT` (admin role survives soft-delete; must be explicitly revoked). Extends `audit_event_type_enum` with `rbac_role_granted` / `rbac_role_revoked`.

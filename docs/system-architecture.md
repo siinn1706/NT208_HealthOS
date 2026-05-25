@@ -1,7 +1,7 @@
 # NT208 HealthOS — System Architecture
 
-> **Version**: 1.3.1  
-> **Last Updated**: 2026-05-24  
+> **Version**: 1.3.2  
+> **Last Updated**: 2026-05-25  
 > **Scope**: Web + Mobile + Microservices + Background Tasks
 
 ---
@@ -201,6 +201,122 @@ Browser/Mobile receives message (real-time)
 │                                                    │
 └────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Admin Console Architecture
+
+### Shell Design
+
+Admin console UI built on token-driven design system with sidebar collapse state persisted to localStorage.
+
+**Layout Structure**
+```
+AdminShell (wrapper)
+  ├─ AdminSidebar (collapsible nav)
+  │   ├─ CSS custom properties (--admin-sidebar-bg, --admin-fg, --admin-accent, etc.)
+  │   ├─ aria-current="page" on active links
+  │   └─ Collapse state: localStorage key "healthos.admin.sidebar-collapsed"
+  └─ AdminTopBar (header + identity menu)
+      ├─ AdminEnvBadge (dev/staging indicator)
+      └─ User identity menu (RBAC indicator ready)
+```
+
+**Layout Primitives** (`admin-layout-primitives.tsx`)
+- `AdminPageContent` — main content wrapper with safe padding
+- `AdminPageHeader` — page title + actions bar
+- `AdminCard` — card container with token-driven styling
+- `AdminToolbar` — action toolbar (filters, toggles, exports)
+
+### Component Library
+
+**Shared Admin Components**
+| Component | Purpose | Ref |
+|-----------|---------|-----|
+| KpiCard + Sparkline | 7-point trend visualization | Phase 3 |
+| UsersTable | density/column-visibility toggles, search | Phase 4 |
+| UserDetailSections | profile, subscription audit tabs | Phase 5 |
+| PlansTable | subscription metrics, edit modal | Phase 6 |
+| AuditTable | event log with filter bar | Phase 7 |
+| SecurityFeed | severity badges, timeline | Phase 7 |
+
+### Pages
+
+| Route | Components | Status |
+|-------|-----------|--------|
+| `/admin` | OverviewCards, ActivityFeed | Complete (Phase 3) |
+| `/admin/users` | UsersTable, ColumnVisibilityMenu | Complete (Phase 4) |
+| `/admin/users/[id]` | UserDetailActionBar, sections, audit tab | Complete (Phase 5) |
+| `/admin/subscriptions` | PlansTable, PlanMetricsStrip, EditPlanModal | Complete (Phase 6) |
+| `/admin/audit` | AuditTable, AuditFilterBar | Complete (Phase 7) |
+| `/admin/security` | SecurityFeed, SeverityBadge | Complete (Phase 7) |
+
+### Design Tokens
+
+```css
+/* Sidebar */
+--admin-sidebar-bg: [light: #f8f9fa, dark: #1f2937]
+--admin-sidebar-fg: [light: #111827, dark: #f3f4f6]
+--admin-sidebar-accent: [light: #3b82f6, dark: #60a5fa]
+--admin-sidebar-active-bg: [light: #e5e7eb, dark: #374151]
+
+/* Header */
+--admin-header-height: 64px
+--admin-header-bg: [light: #ffffff, dark: #111827]
+
+/* Density */
+--admin-row-height-compact: 36px
+--admin-row-height-default: 44px
+--admin-row-height-relaxed: 56px
+```
+
+### A11y & Motion
+
+- `aria-current="page"` marks active sidebar link
+- `scope="col"` on all table header cells
+- `motion-safe:` prefix gates `animate-*` and `transition-*` classes (respects user's prefers-reduced-motion)
+
+### Internationalization (i18n)
+
+Admin console UI fully supports next-intl with `admin.*` namespace:
+
+**Message keys structure:**
+```
+admin.userDetail          → User detail page (profile, subscription, activity sections)
+admin.users              → Users list page
+admin.subscriptions      → Subscription plans management page
+admin.common             → Shared labels (save, cancel, delete, etc.)
+admin.errors             → Admin-specific error messages (Max retries reached, etc.)
+```
+
+**Locales supported:** English (`en.json`) + Vietnamese (`vi.json`)
+
+**BFF subscription quick-action payloads** (`src/lib/admin/subscription-quick-action-payloads.ts`):
+- `buildCancelPayload()` — Cancels subscription, preserves `expires_at`
+- `buildExtendPayload(days)` — Extends N days from expiry (or `now` if expired/canceled)
+- `buildResetFreePayload()` — Resets user to Free plan, clears expiry
+
+**Subscription assignment form** (`UserDetailSubscriptionForm.tsx`):
+- Zod validation for plan selection and duration
+- Error boundary + field-level error display
+- Calls PATCH `/api/v1/admin/users/[id]/subscription` via BFF
+
+### Testing
+
+- **9 test files** covering shell, components, pages, integration
+- **150 tests** (all passing):
+  - Shell: AdminSidebar collapse, AdminTopBar rendering
+  - Components: KpiCard, UsersTable density/visibility, UserDetailSections
+  - Pages: Overview, users list, user detail, subscriptions, audit
+  - Integration: navigation, RBAC decorator readiness
+- **Playwright smoke spec** (`e2e/admin-redesign.spec.ts`) — gated by `ADMIN_E2E=1`; validates sidebar collapse, table interactions, page navigation
+
+### Known Gaps
+
+- **Subscription history**: BFF stub returns `[]`; new BE table `subscription_assignments` deferred to follow-up plan
+- **Audit tab**: BFF stub returns `[]`; Core `/v1/admin/users/{id}/audit` deferred to follow-up plan
+- **Endpoint wiring**: RBAC permission checks not yet wired to backend endpoints (deferred to v1.3)
+- **Backend integration**: 6 admin pages render mock data where real BFF routes exist; subscription quick-actions + history wired to BFF stubs
 
 ---
 

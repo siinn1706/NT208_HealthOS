@@ -18,8 +18,10 @@ import {
   applyAuthCookies,
   clearAuthCookies,
   readCoreAuthPayload,
+  readCoreSessionSnapshot,
   revokeCoreSession,
   sessionUserFromCoreAuth,
+  stripSecretFields,
 } from "@/lib/bff-auth-session";
 import { assertSameOrigin } from "@/lib/bff-origin-guard";
 import { CORE_API_URL } from "@/lib/env";
@@ -80,6 +82,8 @@ export async function GET() {
           display_name: devUser.display_name,
           avatar_url: null,
           onboarding_status: "completed",
+          roles: [] as string[],
+          permissions: [] as string[],
         },
       });
     }
@@ -91,17 +95,31 @@ export async function GET() {
       cache: "no-store",
     });
 
-    const data = await res.json().catch(() => null);
+    const raw = await res.json().catch(() => null);
     if (!res.ok) {
       const response = NextResponse.json(
-        data ?? { error: { code: "AUTH_REQUIRED", message: "Session expired." } },
+        raw ?? { error: { code: "AUTH_REQUIRED", message: "Session expired." } },
         { status: 401 },
       );
       clearAuthCookies(response);
       return response;
     }
 
-    return NextResponse.json(data, { status: 200 });
+    // Shape the response: extract known fields, apply identifier constraints,
+    // and strip any secret fields that Core may have included (R4.3, Property 11).
+    const snapshot = readCoreSessionSnapshot(raw);
+    if (!snapshot) {
+      // Core returned 2xx but with an unexpected shape — treat as upstream error.
+      return NextResponse.json(
+        { error: { code: "UPSTREAM_ERROR", message: "Unexpected response from Core API." } },
+        { status: 502 },
+      );
+    }
+
+    // Double-check: strip secrets from the shaped snapshot as a defence-in-depth measure.
+    const safeData = stripSecretFields(snapshot);
+
+    return NextResponse.json({ data: safeData }, { status: 200 });
   } catch {
     return NextResponse.json(
       { error: { code: "UPSTREAM_ERROR", message: "Could not reach Core API." } },

@@ -280,6 +280,8 @@ class AuthToken(BaseModel):
     display_name: str
     avatar_url: Optional[str] = None
     onboarding_status: str = "pending"
+    roles: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
 
 
 class AuthTokenResponse(DataResponse[AuthToken]):
@@ -306,6 +308,8 @@ class CurrentUser(BaseModel):
     display_name: str
     avatar_url: Optional[str] = None
     onboarding_status: str = "pending"
+    roles: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
     onboarding_completed_at: Optional[str] = None
     created_at: Optional[str] = None
 

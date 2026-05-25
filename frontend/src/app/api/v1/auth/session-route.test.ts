@@ -49,6 +49,8 @@ describe("/api/v1/auth/session route", () => {
             display_name: "User",
             avatar_url: null,
             onboarding_status: "completed",
+            roles: ["admin"],
+            permissions: ["admin.access"],
           },
         },
         200,
@@ -73,11 +75,17 @@ describe("/api/v1/auth/session route", () => {
         display_name: "User",
         avatar_url: null,
         onboarding_status: "completed",
+        roles: ["admin"],
+        permissions: ["admin.access"],
       },
     });
     expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBe("access-new");
     expect(response.cookies.get(REFRESH_COOKIE_NAME)?.value).toBe("refresh-new");
-    expect(response.cookies.get(META_COOKIE_NAME)?.value).toContain("completed");
+    const meta = JSON.parse(response.cookies.get(META_COOKIE_NAME)?.value ?? "{}");
+    expect(meta).toEqual({
+      onboarding_status: "completed",
+      is_admin: true,
+    });
   });
 
   it("sends refresh token to Core logout and clears auth cookies", async () => {

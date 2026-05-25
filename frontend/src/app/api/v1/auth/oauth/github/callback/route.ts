@@ -8,6 +8,8 @@ import { applyAuthCookies, readCoreAuthPayload } from "@/lib/bff-auth-session";
 import { CORE_API_URL } from "@/lib/env";
 import { isCoreUpstreamUnreachable } from "@/lib/core-upstream-errors";
 import { buildSignedBffOAuthProfile } from "@/lib/oauth/bff-exchange-signature";
+import { isAdmin } from "@/lib/admin/admin-session";
+import { resolvePostLoginRedirectPath } from "@/lib/auth-post-login-redirect";
 import {
   buildLocalizedAppUrl,
   buildOAuthCallbackUrlFromContext,
@@ -137,15 +139,16 @@ export async function GET(request: NextRequest) {
     if (!auth) {
       throw new Error("Core BE returned no token payload");
     }
-    const onboardingStatus = auth.onboarding_status ?? "pending";
 
     // ─── Create Session and Redirect ─────────────────────────────────────────
-    const redirectTo = onboardingStatus === "completed"
-      ? buildLocalizedAppUrl(
-          context,
-          context.postLoginPath ?? "/dashboard",
-        )
-      : buildLocalizedAppUrl(context, "/onboarding");
+    const redirectTo = buildLocalizedAppUrl(
+      context,
+      resolvePostLoginRedirectPath({
+        isAdmin: isAdmin(auth.roles, auth.permissions),
+        onboardingStatus: auth.onboarding_status ?? "pending",
+        fromRaw: context.postLoginPath,
+      }),
+    );
     const response = NextResponse.redirect(redirectTo);
 
     applyAuthCookies(response, auth);
