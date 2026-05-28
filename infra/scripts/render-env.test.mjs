@@ -130,7 +130,7 @@ test("public env keys must not look like server-side secrets", () => {
 
 test("rendered files contain only target-relevant service keys", () => {
   const root = makeTempRoot();
-  const env = loadExampleEnv({ GEMINI_API_KEY: "gemini-secret", FIREBASE_PROJECT_ID: "firebase-project" });
+  const env = loadExampleEnv({ AI_PROXY_API_KEY: "proxy-secret", FIREBASE_PROJECT_ID: "firebase-project" });
   const rendered = renderTargets(env, ["mobile", "notification", "ai-worker"], root);
   for (const file of rendered) writeRenderedFile(file);
 
@@ -139,8 +139,11 @@ test("rendered files contain only target-relevant service keys", () => {
   const aiWorker = fs.readFileSync(path.join(root, "services/ai-worker/.env"), "utf8");
 
   assert.match(mobile, /EXPO_PUBLIC_CORE_API_URL=/);
-  assert.doesNotMatch(mobile, /GEMINI_API_KEY=/);
+  assert.doesNotMatch(mobile, /AI_PROXY_BASE_URL=/);
   assert.match(notification, /FIREBASE_PROJECT_ID=firebase-project/);
-  assert.doesNotMatch(notification, /GEMINI_API_KEY=/);
-  assert.match(aiWorker, /GEMINI_API_KEY=gemini-secret/);
+  assert.doesNotMatch(notification, /AI_PROXY_BASE_URL=/);
+  assert.match(aiWorker, /AI_PROXY_BASE_URL=http:\/\/localhost:20128\/v1/);
+  assert.match(aiWorker, /AI_PROXY_MODEL=oc\/deepseek-v4-flash-free/);
+  assert.match(aiWorker, /AI_PROXY_API_KEY=proxy-secret/);
+  assert.doesNotMatch(aiWorker, /GEMINI_API_KEY=/);
 });

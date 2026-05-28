@@ -573,12 +573,12 @@ async def get_exercise_suggestions(
     user: User | None = None,
     locale: str = "vi",
 ) -> list[ExerciseSuggestionDTO]:
-    """Return AI-powered exercise suggestions (Gemini + RAG), with rule-based fallback.
+    """Return AI-powered exercise suggestions with rule-based fallback.
 
     Flow:
     1. Check Redis cache  (TTL = 1 h)
     2. Build RAG context from DB  (health metrics 7d + meals + risk + profile)
-    3. POST to AI worker  → Gemini 2.0 Flash generates personalised JSON
+    3. POST to AI worker  → LLM proxy generates personalised JSON
     4. Store in Redis cache
     5. On any failure → fall back to rule-based engine
     """

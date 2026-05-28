@@ -2,7 +2,7 @@
 
 Two routes are exposed under ``/api/ai``:
 
-  * ``POST /api/ai/chat``         — non-streaming Gemini reply (JSON).
+  * ``POST /api/ai/chat``         — non-streaming LLM proxy reply (JSON).
   * ``POST /api/ai/chat/stream``  — Server-Sent Events stream of token deltas.
   * ``POST /api/ai/generate``     — Legacy adapter that proxies into ``/chat``
                                     so older callers keep working. Deprecated.
@@ -22,11 +22,11 @@ from pydantic import BaseModel
 from typing import Any
 
 from app.schemas.chat import ChatReply, ChatRequest, ChatTurn
-from app.services import gemini_chat_service
-from app.services.gemini_chat_service import (
-    GeminiChatBlockedError,
-    GeminiChatTimeoutError,
-    GeminiChatUnavailableError,
+from app.services import llm_proxy_service
+from app.services.llm_proxy_service import (
+    LlmProxyBlockedError,
+    LlmProxyTimeoutError,
+    LlmProxyUnavailableError,
 )
 
 router = APIRouter(prefix="/api/ai")
@@ -47,20 +47,20 @@ class AIGenerateResponse(BaseModel):
 # ── /api/ai/chat ──────────────────────────────────────────────────────────────
 @router.post("/chat", response_model=ChatReply)
 async def chat_completion(payload: ChatRequest) -> ChatReply:
-    """Run a non-streaming Gemini chat completion."""
+    """Run a non-streaming proxy chat completion."""
     try:
-        return await gemini_chat_service.generate_chat_reply(payload)
-    except GeminiChatUnavailableError as exc:
+        return await llm_proxy_service.generate_chat_reply(payload)
+    except LlmProxyUnavailableError as exc:
         raise HTTPException(
             status_code=503,
             detail={"code": "AI_UNCONFIGURED", "message": str(exc)},
         ) from exc
-    except GeminiChatTimeoutError as exc:
+    except LlmProxyTimeoutError as exc:
         raise HTTPException(
             status_code=504,
             detail={"code": "AI_TIMEOUT", "message": str(exc)},
         ) from exc
-    except GeminiChatBlockedError as exc:
+    except LlmProxyBlockedError as exc:
         raise HTTPException(
             status_code=422,
             detail={"code": "AI_SAFETY_BLOCKED", "message": str(exc)},
@@ -81,7 +81,7 @@ async def chat_completion(payload: ChatRequest) -> ChatReply:
 # ── /api/ai/chat/stream ───────────────────────────────────────────────────────
 @router.post("/chat/stream")
 async def chat_completion_stream(payload: ChatRequest) -> StreamingResponse:
-    """Stream Gemini deltas as Server-Sent Events.
+    """Stream proxy deltas as Server-Sent Events.
 
     Each line: ``data: {"delta": "...", "finish": false}\\n\\n``.
     Terminator: ``data: {"finish": true, "usage": {...}, "model": "...",
@@ -90,7 +90,7 @@ async def chat_completion_stream(payload: ChatRequest) -> StreamingResponse:
 
     async def event_source():
         try:
-            async for delta, final in gemini_chat_service.stream_chat_reply(payload):
+            async for delta, final in llm_proxy_service.stream_chat_reply(payload):
                 if final is None:
                     yield "data: " + json.dumps({"delta": delta, "finish": False}) + "\n\n"
                 else:
@@ -105,21 +105,21 @@ async def chat_completion_stream(payload: ChatRequest) -> StreamingResponse:
                     if "error" in final:
                         final_event["error"] = final["error"]
                     yield "data: " + json.dumps(final_event) + "\n\n"
-        except GeminiChatUnavailableError as exc:
+        except LlmProxyUnavailableError as exc:
             yield "data: " + json.dumps({
                 "finish": True,
                 "finish_reason": "error",
                 "error_code": "AI_UNCONFIGURED",
                 "error": str(exc),
             }) + "\n\n"
-        except GeminiChatTimeoutError as exc:
+        except LlmProxyTimeoutError as exc:
             yield "data: " + json.dumps({
                 "finish": True,
                 "finish_reason": "error",
                 "error_code": "AI_TIMEOUT",
                 "error": str(exc),
             }) + "\n\n"
-        except GeminiChatBlockedError as exc:
+        except LlmProxyBlockedError as exc:
             yield "data: " + json.dumps({
                 "finish": True,
                 "finish_reason": "safety",
@@ -161,23 +161,23 @@ class ExerciseSuggestionsResponse(BaseModel):
 async def exercise_suggestions(payload: ExerciseSuggestionsRequest) -> ExerciseSuggestionsResponse:
     """Generate AI-powered exercise suggestions using user health context (RAG)."""
     try:
-        items = await gemini_chat_service.generate_exercise_suggestions(
+        items = await llm_proxy_service.generate_exercise_suggestions(
             user_context=payload.user_context,
             count=payload.count,
             locale=payload.locale,
         )
         return ExerciseSuggestionsResponse(suggestions=items)
-    except GeminiChatUnavailableError as exc:
+    except LlmProxyUnavailableError as exc:
         raise HTTPException(
             status_code=503,
             detail={"code": "AI_UNCONFIGURED", "message": str(exc)},
         ) from exc
-    except GeminiChatTimeoutError as exc:
+    except LlmProxyTimeoutError as exc:
         raise HTTPException(
             status_code=504,
             detail={"code": "AI_TIMEOUT", "message": str(exc)},
         ) from exc
-    except GeminiChatBlockedError as exc:
+    except LlmProxyBlockedError as exc:
         raise HTTPException(
             status_code=422,
             detail={"code": "AI_SAFETY_BLOCKED", "message": str(exc)},
@@ -211,22 +211,22 @@ class ReportSummaryResponse(BaseModel):
 async def report_summary(payload: ReportSummaryRequest) -> ReportSummaryResponse:
     """Generate AI-powered summary for a health report."""
     try:
-        text = await gemini_chat_service.generate_report_summary(
+        text = await llm_proxy_service.generate_report_summary(
             report_data=payload.report_data,
             locale=payload.locale,
         )
         return ReportSummaryResponse(summary=text)
-    except GeminiChatUnavailableError as exc:
+    except LlmProxyUnavailableError as exc:
         raise HTTPException(
             status_code=503,
             detail={"code": "AI_UNCONFIGURED", "message": str(exc)},
         ) from exc
-    except GeminiChatTimeoutError as exc:
+    except LlmProxyTimeoutError as exc:
         raise HTTPException(
             status_code=504,
             detail={"code": "AI_TIMEOUT", "message": str(exc)},
         ) from exc
-    except GeminiChatBlockedError as exc:
+    except LlmProxyBlockedError as exc:
         raise HTTPException(
             status_code=422,
             detail={"code": "AI_SAFETY_BLOCKED", "message": str(exc)},
@@ -242,7 +242,7 @@ async def report_summary(payload: ReportSummaryRequest) -> ReportSummaryResponse
 # ── /api/ai/generate (legacy adapter) ─────────────────────────────────────────
 @router.post("/generate", response_model=AIGenerateResponse, deprecated=True)
 async def generate_ai_reply(payload: AIGenerateRequest) -> AIGenerateResponse:
-    """Legacy stub-compatible endpoint, now backed by Gemini.
+    """Legacy stub-compatible endpoint, now backed by the LLM proxy.
 
     The previous implementation echoed the message back. We translate the
     legacy ``{user_id, message, history}`` shape into a ``ChatRequest`` and
@@ -263,16 +263,19 @@ async def generate_ai_reply(payload: AIGenerateRequest) -> AIGenerateResponse:
 
     chat_req = ChatRequest(
         messages=history_turns,
-        system_prompt="You are HealthOS AI Assistant. Be concise and empathetic.",
+        system_prompt=(
+            "You are HealthOS AI Assistant. Be empathetic, evidence-based, and "
+            "sufficiently detailed. Prefer a structured answer with practical next steps."
+        ),
     )
     try:
-        reply = await gemini_chat_service.generate_chat_reply(chat_req)
+        reply = await llm_proxy_service.generate_chat_reply(chat_req)
         return AIGenerateResponse(reply=reply.reply)
-    except GeminiChatUnavailableError:
+    except LlmProxyUnavailableError:
         return AIGenerateResponse(
-            reply="Trợ lý AI chưa được cấu hình API key. Vui lòng liên hệ quản trị viên."
+            reply="Trợ lý AI chưa được cấu hình proxy. Vui lòng liên hệ quản trị viên."
         )
-    except (GeminiChatTimeoutError, GeminiChatBlockedError, Exception) as exc:
+    except (LlmProxyTimeoutError, LlmProxyBlockedError, Exception) as exc:
         _LOGGER.warning("legacy_generate_failed reason=%s", exc)
         return AIGenerateResponse(
             reply="Trợ lý AI tạm thời không phản hồi. Vui lòng thử lại sau."

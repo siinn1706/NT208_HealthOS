@@ -5,6 +5,7 @@
 FastAPI worker xử lý AI jobs bất đồng bộ:
 - OCR nhận diện tên thực phẩm từ ảnh bữa ăn
 - Ước tính dinh dưỡng (calories, protein, carbs, fat)
+- Chat/completion tasks qua OpenAI-compatible proxy nội bộ
 - Rule-based health alert evaluation
 
 ## Port
@@ -52,8 +53,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 - Google Drive file id: `AI_YOLO_GDRIVE_FILE_ID` in `services/ai-worker/.env`
 - Optional integrity hash: `AI_YOLO_MODEL_SHA256` (recommended for strict verification)
 - Class database: `services/ai-worker/data/class_names.py`
-- Team key: `GEMINI_API_KEY` dùng chung qua file env nội bộ, không commit
-- Khi thiếu model/class db, service sẽ tự fallback qua Gemini để vẫn trả nutrition.
+- Meal photo scan is local YOLO-only. Missing model/class db returns a controlled analysis failure.
+- Text generation uses `AI_PROXY_BASE_URL=http://localhost:20128/v1` and `AI_PROXY_MODEL=oc/deepseek-v4-flash-free`.
+- `AI_PROXY_API_KEY` is optional; leave blank for a local proxy that does not require auth.
+- Chat replies default to `AI_CHAT_MAX_TOKENS=2048`; Core chat also sends a 2048-token reply budget so stale worker env files do not shrink normal dashboard answers.
 
 Download model manually:
 

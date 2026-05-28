@@ -229,7 +229,7 @@ async def handle_ws_event(
         await broadcast_dual(room, msg_data, "msg:new", "chat.message.sent", exclude=ws)
         await fanout_to_members(conv_id, "chat.message.sent", msg_data)
 
-        # ── AI conversation: kick off Gemini reply in the background ────────
+        # ── AI conversation: kick off worker reply in the background ────────
         await _maybe_trigger_ai_reply(
             db=db,
             ws=ws,

@@ -407,7 +407,7 @@ async def stream_message(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StreamingResponse:
-    """B7 P6 — SSE pipe for AI replies.
+    """SSE pipe for AI replies.
 
     Persists the user's message synchronously, then streams an `assistant`
     delta sequence terminated by either `done` (success) or `aborted` /
@@ -447,7 +447,7 @@ async def stream_message(
     user_msg_id = user_msg.id
     await db.commit()
 
-    # B7 review P2-5 — generator owns its session lifecycle. We don't pass
+    # The generator owns its session lifecycle. We don't pass
     # `db` (the dep-injected one) so FastAPI can return the connection to
     # the pool the moment this handler returns.
     generator = stream_assistant_response(

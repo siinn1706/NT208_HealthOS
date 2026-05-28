@@ -1,5 +1,5 @@
 /**
- * BFF — AI conversation Server-Sent Events stream (B7 P6).
+ * BFF — AI conversation Server-Sent Events stream.
  *
  * POST /api/v1/conversations/{id}/messages/stream
  *   → POST /v1/conversations/{id}/messages/stream

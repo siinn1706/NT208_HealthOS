@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from app.api.generate import router as ai_router
 from app.core.config import settings
 from app.schemas.analysis import AnalyzeMealRequest, AnalyzeMealResponse
-from app.services import gemini_chat_service
+from app.services import llm_proxy_service
 from app.services.food_detector_service import detect_food_nutrition, get_detector_runtime_status
 from app.services.image_loader import ImageLoadError, load_image_from_url
 from app.services.nutrition_mapper import map_to_healthos_nutrition
@@ -26,7 +26,7 @@ async def lifespan(_app: FastAPI):
         _load_yolo_model()
         _LOGGER.info("food_detector_warmup_success")
     except Exception as exc:  # pragma: no cover - startup runtime path
-        # Keep worker booting, fallback path can still handle requests.
+        # Keep worker booting; analysis requests return controlled failures if assets are unavailable.
         _LOGGER.warning("food_detector_warmup_failed reason=%s", exc)
     yield
 
@@ -43,8 +43,8 @@ async def health() -> dict:
         "service": "ai-worker",
         "debug": settings.debug,
         "detector": detector_status,
-        "gemini_chat": "configured" if gemini_chat_service.is_configured() else "missing_key",
-        "gemini_chat_model": settings.gemini_chat_model,
+        "ai_proxy": "configured" if llm_proxy_service.is_configured() else "missing_config",
+        "ai_proxy_model": settings.ai_proxy_model,
     }
 
 

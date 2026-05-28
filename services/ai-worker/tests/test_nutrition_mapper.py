@@ -29,7 +29,7 @@ def test_mapper_keeps_calories_and_fat() -> None:
     assert 0 <= result.confidence <= 1
 
 
-def test_mapper_caps_gemini_confidence() -> None:
+def test_mapper_clamps_confidence_to_one() -> None:
     raw = RawFoodNutrition(
         dish_name="Unknown",
         serving_type="1 serving",
@@ -38,9 +38,9 @@ def test_mapper_caps_gemini_confidence() -> None:
         saturates_g=2,
         sugar_g=6,
         salt_g=0.6,
-        confidence=0.95,
-        source="gemini",
+        confidence=1.5,
+        source="external",
     )
 
     result = map_to_healthos_nutrition(raw)
-    assert result.confidence <= 0.65
+    assert result.confidence == 1.0

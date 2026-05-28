@@ -16,14 +16,14 @@ def test_chat_endpoint_returns_reply(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_generate(request: Any) -> ChatReply:
         return ChatReply(
             reply="Đây là câu trả lời từ AI.",
-            model="gemini-2.0-flash",
+            model="oc/deepseek-v4-flash-free",
             usage=ChatUsage(prompt_tokens=5, completion_tokens=10, total_tokens=15),
             finish_reason="stop",
             latency_ms=120,
         )
 
     monkeypatch.setattr(
-        "app.api.generate.gemini_chat_service.generate_chat_reply", fake_generate
+        "app.api.generate.llm_proxy_service.generate_chat_reply", fake_generate
     )
 
     response = client.post(
@@ -42,13 +42,13 @@ def test_chat_endpoint_returns_reply(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_chat_endpoint_unconfigured_returns_503(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.services.gemini_chat_service import GeminiChatUnavailableError
+    from app.services.llm_proxy_service import LlmProxyUnavailableError
 
     async def fake_generate(request: Any) -> ChatReply:
-        raise GeminiChatUnavailableError("missing key")
+        raise LlmProxyUnavailableError("missing config")
 
     monkeypatch.setattr(
-        "app.api.generate.gemini_chat_service.generate_chat_reply", fake_generate
+        "app.api.generate.llm_proxy_service.generate_chat_reply", fake_generate
     )
 
     response = client.post(
@@ -67,7 +67,7 @@ def test_chat_stream_emits_sse(monkeypatch: pytest.MonkeyPatch) -> None:
         yield (
             "",
             {
-                "model": "gemini-2.0-flash",
+                "model": "oc/deepseek-v4-flash-free",
                 "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
                 "finish_reason": "stop",
                 "latency_ms": 42,
@@ -76,7 +76,7 @@ def test_chat_stream_emits_sse(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(
-        "app.api.generate.gemini_chat_service.stream_chat_reply", fake_stream
+        "app.api.generate.llm_proxy_service.stream_chat_reply", fake_stream
     )
 
     with client.stream(
@@ -96,13 +96,13 @@ def test_chat_stream_emits_sse(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_legacy_generate_endpoint_falls_back_when_unconfigured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.services.gemini_chat_service import GeminiChatUnavailableError
+    from app.services.llm_proxy_service import LlmProxyUnavailableError
 
     async def fake_generate(request: Any) -> ChatReply:
-        raise GeminiChatUnavailableError("missing key")
+        raise LlmProxyUnavailableError("missing config")
 
     monkeypatch.setattr(
-        "app.api.generate.gemini_chat_service.generate_chat_reply", fake_generate
+        "app.api.generate.llm_proxy_service.generate_chat_reply", fake_generate
     )
 
     response = client.post(
@@ -111,4 +111,4 @@ def test_legacy_generate_endpoint_falls_back_when_unconfigured(
     )
 
     assert response.status_code == 200
-    assert "API key" in response.json()["reply"]
+    assert "proxy" in response.json()["reply"]

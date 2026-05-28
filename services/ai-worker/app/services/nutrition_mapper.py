@@ -75,8 +75,6 @@ def map_to_healthos_nutrition(raw: RawFoodNutrition) -> NutritionResult:
     protein_g = max(non_fat_kcal * (1.0 - carb_ratio) / 4.0, 0.0)
 
     confidence = max(min(float(raw.confidence), 1.0), 0.0)
-    if raw.source == "gemini":
-        confidence = min(confidence, 0.65)
 
     return NutritionResult(
         dish_name=dish_name,
