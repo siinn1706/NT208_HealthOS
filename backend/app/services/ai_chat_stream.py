@@ -1,4 +1,4 @@
-"""B7 P6 — Server-Sent Events streaming for AI conversations.
+"""Server-Sent Events streaming for AI conversations.
 
 Responsibilities:
   * Persist the user's message immediately so the conversation list shows it
@@ -10,11 +10,7 @@ Responsibilities:
   * On any failure, persist a `status='failed'` row with the partial text we
     captured so the user sees something in the conversation transcript.
 
-The AI worker is currently a stub. Until it grows a real `/api/ai/generate-stream`
-SSE endpoint we fall back to a deterministic local "tokenizer" that splits a
-response into chunks at 50 ms intervals — enough to exercise the FE pipeline.
-
-B7 review P2-5 — the streaming generator opens its own short-lived
+The streaming generator opens its own short-lived
 `AsyncSessionLocal()` rather than borrowing the request-scoped `db` from
 `Depends(get_db)`. This frees the request-scoped session for FastAPI to
 tear down when the handler returns and prevents the async pool (default
@@ -54,47 +50,47 @@ def _sse_event(event: str, data: dict | str) -> str:
     return f"event: {event}\ndata: {data}\n\n"
 
 
-async def _fallback_token_stream(prompt: str) -> AsyncGenerator[str, None]:
-    """Deterministic local fallback while the AI worker is mock.
-
-    Splits a canned reply into ~5-character chunks; the FE accumulator
-    treats the chunks identically to a real LLM stream.
-    """
-    canned = (
-        "I'm a virtual health assistant — not a doctor. Here's a general "
-        "response to your question; please consult a qualified clinician for "
-        "personal medical advice."
-    )
-    cursor = 0
-    while cursor < len(canned):
-        next_cut = min(cursor + 5, len(canned))
-        chunk = canned[cursor:next_cut]
-        cursor = next_cut
-        await asyncio.sleep(0.05)
-        yield chunk
-
-
 async def _upstream_token_stream(prompt: str, user_id: uuid.UUID) -> AsyncGenerator[str, None]:
-    """Try the AI worker streaming endpoint; fall back gracefully if absent."""
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            async with client.stream(
-                "POST",
-                f"{settings.ai_worker_url}/api/ai/generate-stream",
-                json={"user_id": str(user_id), "message": prompt, "history": []},
-            ) as response:
-                if response.status_code != 200:
-                    raise RuntimeError(
-                        f"ai-worker /api/ai/generate-stream returned {response.status_code}"
-                    )
-                async for chunk in response.aiter_text():
-                    if chunk:
-                        yield chunk
-                return
-    except Exception as exc:  # noqa: BLE001 — falling back is the desired behavior
-        logger.info("AI worker stream unavailable (%s); using local fallback", exc)
-    async for chunk in _fallback_token_stream(prompt):
-        yield chunk
+    """Proxy AI Worker chat SSE deltas into the Core SSE contract."""
+    worker_payload = {
+        "messages": [{"role": "user", "content": prompt}],
+        "system_prompt": (
+            "You are HealthOS AI Assistant. Reply in Vietnamese by default. "
+            "Be complete, empathetic, and evidence-based rather than terse. "
+            "Think through the available context before answering, but do not reveal "
+            "hidden chain-of-thought. Use headings or bullets for longer answers, "
+            "include practical next steps, and encourage professional care for serious symptoms."
+        ),
+        "locale": "vi",
+    }
+    timeout = httpx.Timeout(settings.ai_worker_timeout_seconds, read=None)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        async with client.stream(
+            "POST",
+            f"{settings.ai_worker_url.rstrip('/')}/api/ai/chat/stream",
+            json=worker_payload,
+        ) as response:
+            if response.status_code != 200:
+                raise RuntimeError(f"ai-worker /api/ai/chat/stream returned {response.status_code}")
+            async for raw_line in response.aiter_lines():
+                if not raw_line or not raw_line.startswith("data:"):
+                    continue
+                payload = raw_line[len("data:"):].strip()
+                if not payload:
+                    continue
+                try:
+                    event = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                if event.get("finish"):
+                    if event.get("safety_blocked"):
+                        raise RuntimeError("AI response was blocked by safety filters.")
+                    if event.get("error") or event.get("error_code"):
+                        raise RuntimeError(str(event.get("error") or event.get("error_code")))
+                    return
+                delta = event.get("delta")
+                if isinstance(delta, str) and delta:
+                    yield delta
 
 
 async def stream_assistant_response(
@@ -109,7 +105,7 @@ async def stream_assistant_response(
 
     Opens its own short-lived `AsyncSessionLocal()` rather than borrowing
     the request-scoped session, so FastAPI's `get_db` dep can return its
-    pool slot the moment the handler returns. (B7 review P2-5.)
+    pool slot the moment the handler returns.
 
     The caller must already have committed the user message before invoking
     this generator — once a `StreamingResponse` returns, the dep teardown
@@ -194,7 +190,7 @@ async def _finalize_assistant(  # idor-ok: private — updates the bot's own mes
 ) -> None:
     """Update the streaming row in a fresh, short-lived session.
 
-    (B7 review P2-5 — does not borrow the request-scoped session.)
+    Does not borrow the request-scoped session.
     """
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(Message).where(Message.id == message_id))

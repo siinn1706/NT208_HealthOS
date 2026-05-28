@@ -201,9 +201,10 @@ async def _build_chat_request_payload(
         user_context = await build_user_context(db, user) if user else None
     except Exception:  # pragma: no cover - context module is optional in P2
         system_prompt = (
-            "Bạn là HealthOS AI Assistant — trợ lý sức khoẻ thân thiện, súc tích, "
-            "dựa trên bằng chứng. Khuyến khích người dùng gặp bác sĩ khi triệu chứng nghiêm trọng. "
-            "Không đưa chẩn đoán chính thức."
+            "Bạn là HealthOS AI Assistant — trợ lý sức khoẻ thân thiện, trả lời đầy đủ "
+            "nhưng dễ đọc và dựa trên bằng chứng. Suy xét đủ bối cảnh nhưng không tiết lộ "
+            "chuỗi suy luận nội bộ. Khuyến khích người dùng gặp bác sĩ khi triệu chứng "
+            "nghiêm trọng. Không đưa chẩn đoán chính thức."
         )
         user_context = None
 
@@ -211,6 +212,7 @@ async def _build_chat_request_payload(
         "messages": history,
         "system_prompt": system_prompt,
         "user_context": user_context,
+        "max_tokens": settings.ai_chat_reply_max_tokens,
         "locale": locale,
     }
 
@@ -464,9 +466,7 @@ async def _run_streaming(
                 if final.get("safety_blocked"):
                     error_text = "Tôi không thể trả lời câu hỏi này. Vui lòng diễn đạt lại."
                 elif final.get("error_code") == "AI_UNCONFIGURED":
-                    error_text = (
-                        "Trợ lý AI chưa được cấu hình API key. Vui lòng liên hệ quản trị viên."
-                    )
+                    error_text = "Trợ lý AI chưa được cấu hình proxy. Vui lòng liên hệ quản trị viên."
                 elif final.get("finish_reason") == "error":
                     error_text = "Trợ lý AI tạm thời không phản hồi. Vui lòng thử lại sau."
                 break
@@ -617,7 +617,7 @@ def _extract_worker_error(exc: httpx.HTTPStatusError) -> dict[str, Any]:
 def _format_worker_error_message(detail: dict[str, Any]) -> str:
     code = detail.get("code", "AI_ERROR")
     if code == "AI_UNCONFIGURED":
-        return "Trợ lý AI chưa được cấu hình API key. Vui lòng liên hệ quản trị viên."
+        return "Trợ lý AI chưa được cấu hình proxy. Vui lòng liên hệ quản trị viên."
     if code == "AI_TIMEOUT":
         return "Trợ lý AI phản hồi quá lâu. Vui lòng thử lại."
     if code == "AI_SAFETY_BLOCKED":

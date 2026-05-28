@@ -562,6 +562,19 @@ export function ChatWindow({
     () => findAiBotUserId(conversation.participants),
     [conversation.participants]
   );
+  const visibleMessages = useMemo(
+    () =>
+      messages.filter(
+        (message) =>
+          !(
+            conversation.type === "ai" &&
+            message.sender_kind === "ai" &&
+            (message.status === "sending" || message.status === "streaming") &&
+            message.content.trim().length === 0
+          ),
+      ),
+    [conversation.type, messages],
+  );
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
@@ -626,7 +639,7 @@ export function ChatWindow({
           <MessageList
             ref={messageListRef}
             conversationId={conversation.id}
-            messages={messages}
+            messages={visibleMessages}
             currentUserId={currentUserId}
             participantNameById={participantNameById}
             aiBotUserId={aiBotUserId}
@@ -646,11 +659,6 @@ export function ChatWindow({
           />
         )}
 
-        {/* AI quick replies */}
-        {conversation.type === "ai" && !replyTo && !editingMessage && (
-          <AiQuickReplies onSelect={handleSend} disabled={isTyping} />
-        )}
-
         {/* Stop generation control. Surfaces while an AI stream is in flight. */}
         {conversation.type === "ai" && streamingAssistantId && (
           <div className="px-3 pb-2 flex justify-center">
@@ -664,6 +672,11 @@ export function ChatWindow({
               {t("stopGeneration")}
             </button>
           </div>
+        )}
+
+        {/* AI quick replies */}
+        {conversation.type === "ai" && !replyTo && !editingMessage && (
+          <AiQuickReplies onSelect={handleSend} disabled={isTyping} />
         )}
 
         <MessageInput

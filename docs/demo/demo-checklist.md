@@ -32,7 +32,7 @@ Required env vars per surface:
 - **Backend**: `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `ALLOWED_ORIGINS`, `BFF_SHARED_SECRET`, `AI_WORKER_URL`, storage vars
 - **Frontend/BFF**: `CORE_API_URL`, `BFF_SHARED_SECRET`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CORE_WS_URL`
 - **OAuth demo** *(optional)*: provider client IDs/secrets + registered callback URLs
-- **AI meal demo** *(optional)*: `AI_YOLO_MODEL_PATH`, `AI_CLASS_NAMES_PATH`, optionally `GEMINI_API_KEY`
+- **AI demo** *(optional)*: `AI_YOLO_MODEL_PATH`, `AI_CLASS_NAMES_PATH`, `AI_PROXY_BASE_URL`, `AI_PROXY_MODEL`
 - **Notification email demo** *(optional)*: `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, optionally `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_USE_TLS`
 - **Mobile demo** *(optional)*: `EXPO_PUBLIC_CORE_API_URL`, `EXPO_PUBLIC_CORE_WS_URL`
 

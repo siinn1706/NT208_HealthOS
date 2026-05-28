@@ -271,7 +271,7 @@ sequenceDiagram
 │                                                    │
 │  AI Worker (port 8001)                           │
 │    • YOLOv10 food detection (local inference)    │
-│    • Gemini API fallback for chat                │
+│    • Text generation via local OpenAI proxy      │
 │                                                    │
 │  Notification Service (port 8002)                │
 │    • /dispatch validation + optional SMTP demo   │
@@ -281,7 +281,6 @@ sequenceDiagram
 │    • Google OAuth                                 │
 │    • GitHub OAuth                                │
 │    • HIBP (Have I Been Pwned)                     │
-│    • Gemini API (meal photo fallback)             │
 │                                                    │
 └────────────────────────────────────────────────────┘
 ```
@@ -466,7 +465,7 @@ GET /metrics              → Prometheus format (guarded by metrics_token)
 |---------|------|----------|---------|
 | Frontend (Next.js BFF) | 3000 | HTTP/HTTPS | Web UI + BFF route handlers |
 | Core API (FastAPI) | 8000 | HTTP/HTTPS + WSS | REST endpoints + WebSocket |
-| AI Worker | 8001 | HTTP | Meal detection + Gemini fallback |
+| AI Worker | 8001 | HTTP | YOLO meal detection + proxy-backed text generation |
 | Notification Service | 8002 | HTTP | Push/email dispatch (stub) |
 | PostgreSQL | 5432 | TCP | Database (internal) |
 | Redis | 6379 | TCP | Cache + queue (internal) |

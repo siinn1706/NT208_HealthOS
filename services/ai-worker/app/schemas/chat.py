@@ -1,4 +1,4 @@
-"""Request/response schemas for AI chat completion (Gemini-backed)."""
+"""Request/response schemas for AI chat completion."""
 from __future__ import annotations
 
 from typing import Any, Literal

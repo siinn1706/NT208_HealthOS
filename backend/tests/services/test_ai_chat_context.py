@@ -22,6 +22,8 @@ async def test_build_system_prompt_default_locale_is_vietnamese():
     prompt = await ai_chat_context.build_system_prompt("vi")
     assert "HealthOS AI Assistant" in prompt
     assert "bác sĩ" in prompt.lower() or "tham khảo" in prompt.lower()
+    assert "Trả lời đầy đủ" in prompt
+    assert "chuỗi suy luận nội bộ" in prompt
 
 
 @pytest.mark.asyncio
@@ -29,6 +31,8 @@ async def test_build_system_prompt_english():
     prompt = await ai_chat_context.build_system_prompt("en")
     assert "HealthOS AI Assistant" in prompt
     assert "doctor" in prompt.lower()
+    assert "complete" in prompt.lower()
+    assert "hidden chain-of-thought" in prompt
 
 
 # ── _profile_snapshot ──────────────────────────────────────────────────────

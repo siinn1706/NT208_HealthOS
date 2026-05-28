@@ -1,8 +1,12 @@
 """Unit tests for ai_chat_orchestrator concurrency + rate limiting + payload."""
 from __future__ import annotations
 
+import uuid
+from unittest.mock import AsyncMock
+
 import pytest
 
+from app.core.config import settings
 from app.services import ai_chat_orchestrator
 
 
@@ -44,7 +48,7 @@ def test_rate_limiter_isolates_users():
 # ── Worker error formatting ────────────────────────────────────────────────
 
 def test_format_worker_error_message_known_codes():
-    assert "API key" in ai_chat_orchestrator._format_worker_error_message(
+    assert "proxy" in ai_chat_orchestrator._format_worker_error_message(
         {"code": "AI_UNCONFIGURED"}
     )
     assert "quá lâu" in ai_chat_orchestrator._format_worker_error_message(
@@ -58,6 +62,28 @@ def test_format_worker_error_message_known_codes():
 def test_format_worker_error_message_unknown_code_falls_back():
     msg = ai_chat_orchestrator._format_worker_error_message({"code": "X"})
     assert "không phản hồi" in msg
+
+
+@pytest.mark.asyncio
+async def test_build_chat_request_payload_sets_reply_token_budget(monkeypatch):
+    async def fake_history(*args, **kwargs):
+        return [{"role": "user", "content": "Tôi nên ăn gì hôm nay?"}]
+
+    async def fake_user(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(settings, "ai_chat_reply_max_tokens", 2048, raising=False)
+    monkeypatch.setattr(ai_chat_orchestrator, "_load_recent_history", fake_history)
+    monkeypatch.setattr(ai_chat_orchestrator, "_fetch_user_with_profile", fake_user)
+
+    payload = await ai_chat_orchestrator._build_chat_request_payload(
+        AsyncMock(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+
+    assert payload["max_tokens"] == 2048
 
 
 # ── extract_worker_error parsing ───────────────────────────────────────────

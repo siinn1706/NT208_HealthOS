@@ -46,7 +46,7 @@
 1. Confirm Core, MinIO, and AI worker health.
 2. Upload a meal photo from the supported meal scan/upload flow.
 3. Show pending/status progression and analyzed nutrition output.
-4. If model/Gemini config is unavailable, state that the provider is missing rather than claiming completed analysis.
+4. If the local YOLO model/class db is unavailable, state that image analysis is unavailable rather than claiming completed analysis.
 
 ## Mobile Demo
 

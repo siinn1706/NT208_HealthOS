@@ -8,6 +8,19 @@
 
 ### Fixed
 
+#### AI Chat Response Depth (2026-05-28)
+- **Answer depth**: Core and AI Worker chat prompts no longer force terse/concise replies; they now ask for complete, structured answers with rationale summary, practical next steps, and medical-safety caveats.
+- **Completion budget**: Default `AI_CHAT_MAX_TOKENS` increased from `1024` to `2048` across worker config and env templates; Core chat also sends a 2048-token reply budget to override stale worker env values.
+- **Regression coverage**: Added prompt/payload assertions so the proxy request keeps the larger token budget and detailed-answer instruction.
+
+#### AI Proxy Provider Migration (2026-05-28)
+- **AI Worker text provider**: Chat, streaming chat, exercise suggestions, and report summaries now use the local OpenAI-compatible proxy at `AI_PROXY_BASE_URL` with default model `oc/deepseek-v4-flash-free`.
+- **Browser SSE path**: Core `/v1/conversations/{id}/messages/stream` now forwards to AI Worker `/api/ai/chat/stream` instead of the old stub stream path.
+- **Gemini dependency removed**: AI Worker runtime no longer requires `GEMINI_API_KEY`; env templates/rendering emit provider-neutral `AI_PROXY_*` keys for AI Worker only.
+- **Meal scan honesty**: Meal photo analysis is local YOLO-only; model/class misses now return controlled failure instead of a third-party vision fallback.
+- **Timeout behavior**: YOLO inference timeout now returns without waiting on executor shutdown.
+- **Fallback copy**: Backend chat fallback wording no longer tells users/admins to configure an API key.
+
 #### Manual Meal Persistence Contract (2026-05-28)
 - **Core commit**: `POST /v1/meals` now commits JSON/manual and multipart create paths before returning/storing the success envelope.
 - **Manual nutrition**: Web manual payload fields (`meal_type`, `notes`, ingredients, calories/macros) are normalized into `Meal.nutrition_result`; `/ingredients` reads submitted rows back from that JSON.

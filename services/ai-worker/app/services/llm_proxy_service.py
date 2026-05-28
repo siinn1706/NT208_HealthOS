@@ -1,0 +1,416 @@
+"""OpenAI-compatible proxy client for HealthOS text generation."""
+from __future__ import annotations
+
+import json
+import logging
+import time
+from collections.abc import AsyncIterator
+from typing import Any
+
+import httpx
+
+from app.core.config import settings
+from app.schemas.chat import ChatReply, ChatRequest, ChatTurn, ChatUsage
+
+_LOGGER = logging.getLogger(__name__)
+_BLOCKED_FINISH_REASONS = {"content_filter", "safety", "blocked", "recitation"}
+
+
+class LlmProxyUnavailableError(RuntimeError):
+    """Raised when the proxy endpoint/model config is missing."""
+
+
+class LlmProxyTimeoutError(RuntimeError):
+    """Raised when the proxy call exceeds the configured timeout."""
+
+
+class LlmProxyBlockedError(RuntimeError):
+    """Raised when the upstream proxy reports a safety/content filter block."""
+
+
+def _build_system_prompt(
+    base_prompt: str,
+    user_context: dict[str, Any] | None,
+    locale: str,
+) -> str:
+    parts: list[str] = []
+    if base_prompt:
+        parts.append(base_prompt.strip())
+    parts.append(
+        f"Always reply in language code: {locale}. "
+        "Keep tone empathetic, evidence-based, and sufficiently detailed. "
+        "Prefer a complete, structured answer over a terse reply. "
+        "Think through the available context before answering, but do not reveal "
+        "hidden chain-of-thought; provide a short rationale summary instead. "
+        "For health questions, include practical next steps and safety caveats. "
+        "Only be very brief when the user explicitly asks for a short answer."
+    )
+    if user_context:
+        ctx_json = json.dumps(user_context, ensure_ascii=False, default=str)
+        parts.append(
+            "USER_CONTEXT (use this data to personalise your answers but never "
+            "echo the raw JSON back to the user, never reveal email/phone/address):\n"
+            + ctx_json
+        )
+    return "\n\n".join(parts)
+
+
+def _history_to_openai(messages: list[ChatTurn]) -> list[dict[str, str]]:
+    return [
+        {"role": turn.role, "content": turn.content}
+        for turn in messages
+        if turn.role in {"user", "assistant", "system"}
+    ]
+
+
+def _resolve_model_name(request_model: str | None = None) -> str:
+    return request_model or settings.ai_proxy_model
+
+
+def _ensure_configured() -> None:
+    if not settings.ai_proxy_base_url_normalized or not settings.ai_proxy_model:
+        raise LlmProxyUnavailableError(
+            "AI proxy is not configured (missing AI_PROXY_BASE_URL or AI_PROXY_MODEL)."
+        )
+
+
+def _headers() -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if settings.ai_proxy_api_key.strip():
+        headers["Authorization"] = f"Bearer {settings.ai_proxy_api_key.strip()}"
+    return headers
+
+
+def _chat_url() -> str:
+    return f"{settings.ai_proxy_base_url_normalized}/chat/completions"
+
+
+def _generation_payload(
+    *,
+    messages: list[dict[str, str]],
+    model: str,
+    temperature: float | None,
+    max_tokens: int | None,
+    stream: bool,
+) -> dict[str, Any]:
+    return {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature if temperature is not None else settings.ai_chat_temperature,
+        "max_tokens": max_tokens if max_tokens is not None else settings.ai_chat_max_tokens,
+        "stream": stream,
+    }
+
+
+async def _post_completion(payload: dict[str, Any]) -> dict[str, Any]:
+    timeout = httpx.Timeout(settings.ai_chat_timeout_seconds)
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(_chat_url(), headers=_headers(), json=payload)
+            response.raise_for_status()
+            return response.json()
+    except httpx.TimeoutException as exc:
+        raise LlmProxyTimeoutError("AI proxy call timed out.") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("AI proxy returned malformed JSON.") from exc
+    except httpx.HTTPStatusError as exc:
+        raise RuntimeError(f"AI proxy returned HTTP {exc.response.status_code}.") from exc
+    except httpx.RequestError as exc:
+        raise RuntimeError("AI proxy request failed.") from exc
+
+
+def _extract_usage(data: dict[str, Any] | None) -> ChatUsage:
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if not isinstance(usage, dict):
+        return ChatUsage()
+    return ChatUsage(
+        prompt_tokens=int(usage.get("prompt_tokens") or 0),
+        completion_tokens=int(usage.get("completion_tokens") or 0),
+        total_tokens=int(usage.get("total_tokens") or 0),
+    )
+
+
+def _extract_text(content: Any, *, strip: bool = True) -> str:
+    if isinstance(content, str):
+        return content.strip() if strip else content
+    if isinstance(content, list):
+        chunks: list[str] = []
+        for item in content:
+            if isinstance(item, dict) and isinstance(item.get("text"), str):
+                chunks.append(item["text"])
+            elif isinstance(item, str):
+                chunks.append(item)
+        text = "".join(chunks)
+        return text.strip() if strip else text
+    return ""
+
+
+def _first_choice(data: dict[str, Any]) -> dict[str, Any]:
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices:
+        raise RuntimeError("AI proxy returned no choices.")
+    choice = choices[0]
+    if not isinstance(choice, dict):
+        raise RuntimeError("AI proxy returned malformed choice.")
+    return choice
+
+
+def _raise_if_blocked(finish_reason: str) -> None:
+    if finish_reason.lower() in _BLOCKED_FINISH_REASONS:
+        _LOGGER.warning("ai_proxy_blocked finish=%s", finish_reason)
+        raise LlmProxyBlockedError("AI proxy content filter blocked the response.")
+
+
+def _request_messages(request: ChatRequest) -> list[dict[str, str]]:
+    system_prompt = _build_system_prompt(request.system_prompt, request.user_context, request.locale)
+    messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
+    messages.extend(_history_to_openai(request.messages))
+    return messages
+
+
+async def generate_chat_reply(request: ChatRequest) -> ChatReply:
+    _ensure_configured()
+    if not request.messages or request.messages[-1].role != "user":
+        raise ValueError("messages must end with a user turn.")
+
+    model = _resolve_model_name(request.model)
+    payload = _generation_payload(
+        messages=_request_messages(request),
+        model=model,
+        temperature=request.temperature,
+        max_tokens=request.max_tokens,
+        stream=False,
+    )
+    started = time.perf_counter()
+    data = await _post_completion(payload)
+    latency_ms = int((time.perf_counter() - started) * 1000)
+
+    choice = _first_choice(data)
+    finish_reason = str(choice.get("finish_reason") or "stop").lower()
+    _raise_if_blocked(finish_reason)
+    message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
+    text = _extract_text(message.get("content"))
+    if not text:
+        raise RuntimeError("AI proxy returned an empty response.")
+
+    return ChatReply(
+        reply=text,
+        model=str(data.get("model") or model),
+        usage=_extract_usage(data),
+        finish_reason=finish_reason,
+        safety_blocked=False,
+        latency_ms=latency_ms,
+    )
+
+
+async def stream_chat_reply(
+    request: ChatRequest,
+) -> AsyncIterator[tuple[str, dict[str, Any] | None]]:
+    _ensure_configured()
+    if not request.messages or request.messages[-1].role != "user":
+        raise ValueError("messages must end with a user turn.")
+
+    model = _resolve_model_name(request.model)
+    payload = _generation_payload(
+        messages=_request_messages(request),
+        model=model,
+        temperature=request.temperature,
+        max_tokens=request.max_tokens,
+        stream=True,
+    )
+    started = time.perf_counter()
+    final_model = model
+    finish_reason = "stop"
+    usage = ChatUsage()
+    safety_blocked = False
+
+    timeout = httpx.Timeout(settings.ai_chat_timeout_seconds, read=None)
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream("POST", _chat_url(), headers=_headers(), json=payload) as response:
+                response.raise_for_status()
+                async for raw_line in response.aiter_lines():
+                    line = raw_line.strip()
+                    if not line or not line.startswith("data:"):
+                        continue
+                    event_text = line[len("data:"):].strip()
+                    if event_text == "[DONE]":
+                        break
+                    event = json.loads(event_text)
+                    if isinstance(event.get("model"), str):
+                        final_model = event["model"]
+                    if isinstance(event.get("usage"), dict):
+                        usage = _extract_usage(event)
+                    for choice in event.get("choices") or []:
+                        if not isinstance(choice, dict):
+                            continue
+                        chunk_finish = choice.get("finish_reason")
+                        if chunk_finish:
+                            finish_reason = str(chunk_finish).lower()
+                            safety_blocked = finish_reason in _BLOCKED_FINISH_REASONS
+                        delta = choice.get("delta") if isinstance(choice.get("delta"), dict) else {}
+                        content = _extract_text(delta.get("content"), strip=False)
+                        if content:
+                            yield content, None
+    except httpx.TimeoutException as exc:
+        raise LlmProxyTimeoutError("AI proxy stream timed out.") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("AI proxy returned malformed stream JSON.") from exc
+    except httpx.HTTPStatusError as exc:
+        raise RuntimeError(f"AI proxy returned HTTP {exc.response.status_code}.") from exc
+    except httpx.RequestError as exc:
+        raise RuntimeError("AI proxy stream request failed.") from exc
+
+    yield "", {
+        "model": final_model,
+        "usage": usage.model_dump(),
+        "finish_reason": "safety" if safety_blocked else finish_reason,
+        "latency_ms": int((time.perf_counter() - started) * 1000),
+        "safety_blocked": safety_blocked,
+    }
+
+
+def is_configured() -> bool:
+    return bool(settings.ai_proxy_base_url_normalized and settings.ai_proxy_model)
+
+
+_EXERCISE_SYSTEM_PROMPT = """\
+Bạn là chuyên gia tư vấn thể dục y học của HealthOS. Dựa trên dữ liệu sức khoẻ thực tế của người dùng, \
+hãy đưa ra tối đa {count} gợi ý luyện tập cá nhân hoá, khoa học và an toàn.
+
+Nguyên tắc bắt buộc:
+- Phân tích kỹ các chỉ số: nhịp tim, huyết áp, bước chân, giấc ngủ, BMI, nguy cơ bệnh, dinh dưỡng.
+- AN TOÀN TRƯỚC TIÊN: nhịp tim > 100 bpm hoặc huyết áp tâm thu > 140 mmHg -> chỉ gợi ý thở/thiền/yoga nhẹ.
+- Dùng kiến thức y học thể thao hiện đại (ACSM guidelines, WHO physical activity recommendations 2020).
+- Viết title ngắn gọn, message cụ thể có số liệu thực từ dữ liệu người dùng, có kỹ thuật tập.
+- KHÔNG chẩn đoán bệnh, KHÔNG kê thuốc. Khuyến khích gặp bác sĩ khi triệu chứng nghiêm trọng.
+- Trả lời bằng tiếng Việt.
+"""
+
+_EXERCISE_JSON_SCHEMA = """\
+Trả về JSON array thuần theo schema:
+[
+  {{
+    "id": "string kebab-case",
+    "type": "warning | tip | goal | success",
+    "icon": "Dumbbell | Flame | Heart | Footprints | Moon | Zap | Target | CheckCircle | Lightbulb",
+    "title": "Tiêu đề ngắn",
+    "message": "Mô tả cụ thể 2-3 câu",
+    "priority": 1,
+    "duration_minutes": 30,
+    "intensity": "low | medium | high",
+    "category": "cardio | strength | flexibility | balance"
+  }}
+]
+Trả về tối đa {count} phần tử, sắp xếp theo priority tăng dần.
+"""
+
+
+def _strip_markdown_fence(text: str) -> str:
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    return "\n".join(line for line in stripped.splitlines() if not line.startswith("```")).strip()
+
+
+async def _complete_text(
+    *,
+    system_prompt: str,
+    user_message: str,
+    temperature: float,
+    max_tokens: int,
+) -> str:
+    _ensure_configured()
+    data = await _post_completion(
+        _generation_payload(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            model=_resolve_model_name(),
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=False,
+        )
+    )
+    choice = _first_choice(data)
+    finish_reason = str(choice.get("finish_reason") or "stop").lower()
+    _raise_if_blocked(finish_reason)
+    message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
+    text = _extract_text(message.get("content"))
+    if not text:
+        raise RuntimeError("AI proxy returned an empty response.")
+    return _strip_markdown_fence(text)
+
+
+async def generate_exercise_suggestions(
+    user_context: dict[str, Any],
+    count: int = 3,
+    locale: str = "vi",
+) -> list[dict[str, Any]]:
+    count = max(1, min(int(count or 3), 5))
+    ctx_json = json.dumps(user_context, ensure_ascii=False, default=str)
+    text = await _complete_text(
+        system_prompt=_EXERCISE_SYSTEM_PROMPT.format(count=count),
+        user_message=(
+            f"Dữ liệu sức khoẻ từ database người dùng (locale={locale}):\n{ctx_json}\n\n"
+            f"Yêu cầu output:\n{_EXERCISE_JSON_SCHEMA.format(count=count)}\n\n"
+            "Chỉ trả về JSON array thuần, bắt đầu bằng [ và kết thúc bằng ]."
+        ),
+        temperature=0.4,
+        max_tokens=1024,
+    )
+
+    suggestions: list[dict[str, Any]] = json.loads(text)
+    if not isinstance(suggestions, list):
+        raise ValueError(f"Expected JSON array, got: {type(suggestions)}")
+
+    valid = []
+    allowed_types = {"warning", "tip", "goal", "success"}
+    allowed_icons = {"Dumbbell", "Flame", "Heart", "Footprints", "Moon", "Zap", "Target", "CheckCircle", "Lightbulb"}
+    allowed_intensities = {"low", "medium", "high"}
+    allowed_categories = {"cardio", "strength", "flexibility", "balance"}
+    for item in suggestions[:count]:
+        if not isinstance(item, dict):
+            continue
+        item["type"] = item.get("type", "tip") if item.get("type") in allowed_types else "tip"
+        item["icon"] = item.get("icon", "Dumbbell") if item.get("icon") in allowed_icons else "Dumbbell"
+        item["intensity"] = item.get("intensity", "medium") if item.get("intensity") in allowed_intensities else "medium"
+        item["category"] = item.get("category", "cardio") if item.get("category") in allowed_categories else "cardio"
+        item.setdefault("id", f"ai-suggestion-{len(valid)}")
+        item.setdefault("title", "Gợi ý luyện tập")
+        item.setdefault("message", "")
+        item.setdefault("priority", len(valid) + 1)
+        item.setdefault("duration_minutes", 30)
+        valid.append(item)
+    return valid
+
+
+_REPORT_SUMMARY_SYSTEM_PROMPT = """\
+Bạn là bác sĩ AI của HealthOS. Dựa trên dữ liệu báo cáo sức khoẻ thực tế, \
+hãy viết một đoạn tóm tắt tổng quan ngắn gọn cho người dùng.
+
+Nguyên tắc bắt buộc:
+- Dựa 100% vào dữ liệu thật; không bịa số liệu.
+- Nếu section không có dữ liệu, nói rõ "chưa có dữ liệu" cho phần đó.
+- Nêu cụ thể 1-2 chỉ số nổi bật nhất với số liệu thật.
+- Đưa 1-2 khuyến nghị ngắn, cụ thể, khả thi.
+- KHÔNG chẩn đoán bệnh, KHÔNG kê thuốc.
+- Viết tối đa 4 câu. Trả về plain text thuần.
+"""
+
+
+async def generate_report_summary(
+    report_data: dict[str, Any],
+    locale: str = "vi",
+) -> str:
+    ctx_json = json.dumps(report_data, ensure_ascii=False, default=str)
+    return await _complete_text(
+        system_prompt=_REPORT_SUMMARY_SYSTEM_PROMPT,
+        user_message=(
+            f"Dữ liệu báo cáo sức khoẻ (locale={locale}):\n{ctx_json}\n\n"
+            "Viết tóm tắt tổng quan cho báo cáo này. Chỉ trả về plain text."
+        ),
+        temperature=0.3,
+        max_tokens=512,
+    )

@@ -158,6 +158,23 @@ describe("chat realtime remediation", () => {
     expect(messageList).toContain("requestAnimationFrame");
   });
 
+  it("keeps AI stream controls above suggestions and hides empty assistant placeholders", () => {
+    const chatWindow = fs.readFileSync(
+      path.join(process.cwd(), "src/components/dashboard/chat/ChatWindow.tsx"),
+      "utf8",
+    );
+
+    const stopControlIndex = chatWindow.indexOf("Stop generation control");
+    const quickRepliesIndex = chatWindow.indexOf("AI quick replies");
+    expect(stopControlIndex).toBeGreaterThanOrEqual(0);
+    expect(quickRepliesIndex).toBeGreaterThanOrEqual(0);
+    expect(stopControlIndex).toBeLessThan(quickRepliesIndex);
+    expect(chatWindow).toContain("const visibleMessages = useMemo(");
+    expect(chatWindow).toContain('message.sender_kind === "ai"');
+    expect(chatWindow).toContain("message.content.trim().length === 0");
+    expect(chatWindow).toContain("messages={visibleMessages}");
+  });
+
   it("updates conversation previews with the confirmed server id after send", async () => {
     bffFetchMock.mockImplementation(async (url: string) => {
       if (url === "/api/v1/conversations/conv-1/messages?limit=50") {

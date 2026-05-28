@@ -32,8 +32,6 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.45
     ai_yolo_timeout_seconds: float = 15.0
     ai_max_image_size_px: int = 640
-    ai_enable_gemini_fallback: bool = True
-    ai_gemini_timeout_seconds: float = 20.0
 
     # Image download security
     ai_max_image_download_bytes: int = 10 * 1024 * 1024  # 10 MiB, matches backend upload cap
@@ -44,11 +42,10 @@ class Settings(BaseSettings):
 
     ai_yolo_model_path: str = str(_DEFAULT_MODEL_PATH)
     ai_class_names_path: str = str(_DEFAULT_CLASS_NAMES_PATH)
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash-lite"
-
-    gemini_chat_model: str = "gemini-2.5-flash-lite"
-    ai_chat_max_tokens: int = 1024
+    ai_proxy_base_url: str = "http://localhost:20128/v1"
+    ai_proxy_model: str = "oc/deepseek-v4-flash-free"
+    ai_proxy_api_key: str = ""
+    ai_chat_max_tokens: int = 2048
     ai_chat_temperature: float = 0.6
     ai_chat_timeout_seconds: float = 30.0
     ai_chat_stream_chunk_min_chars: int = 1
@@ -67,6 +64,10 @@ class Settings(BaseSettings):
     @property
     def class_names_path(self) -> Path:
         return Path(self.ai_class_names_path).expanduser()
+
+    @property
+    def ai_proxy_base_url_normalized(self) -> str:
+        return self.ai_proxy_base_url.rstrip("/")
 
 
 settings = Settings()
