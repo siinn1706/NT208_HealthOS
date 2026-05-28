@@ -46,6 +46,16 @@ export const PRIVATE_PATHS = [
   "/dashboard/visit-prep/[id]/print",
   "/dashboard/visit-prep/new",
   "/onboarding",
+  // Admin pages — require authentication.
+  // Note: /admin/forbidden is role-exempt (middleware allows it without admin
+  // role check) but still requires a valid session.
+  "/admin",
+  "/admin/users",
+  "/admin/users/[id]",
+  "/admin/subscriptions",
+  "/admin/security",
+  "/admin/audit",
+  "/admin/forbidden",
 ] as const;
 
 export const PUBLIC_PATHS = [

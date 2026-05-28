@@ -21,22 +21,17 @@ for arg in "$@"; do
     esac
 done
 
-copy_env() {
-    local src="$1" dest="$2"
-    if [ ! -f "$dest" ]; then
-        cp "$src" "$dest"
-        echo "[ENV] Created $dest"
-    else
-        echo "[ENV] $dest already exists, skipping."
-    fi
-}
+MASTER_ENV="$ROOT_DIR/infra/env/.env.master"
+MASTER_EXAMPLE="$ROOT_DIR/infra/env/.env.master.example"
+if [ ! -f "$MASTER_ENV" ]; then
+    cp "$MASTER_EXAMPLE" "$MASTER_ENV"
+    echo "[ENV] Created $MASTER_ENV from template. Review it before production deploy."
+else
+    echo "[ENV] $MASTER_ENV already exists."
+fi
 
-copy_env "$ROOT_DIR/infra/env/frontend.env.example" "$ROOT_DIR/frontend/.env.local"
-copy_env "$ROOT_DIR/infra/env/backend.env.example"  "$ROOT_DIR/backend/.env"
-copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/ai-worker/.env"
-copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/queue-worker/.env"
-copy_env "$ROOT_DIR/infra/env/worker.env.example"   "$ROOT_DIR/services/notification/.env"
-copy_env "$ROOT_DIR/infra/docker/.env.dev.example"  "$ROOT_DIR/infra/docker/.env.dev"
+echo "[ENV] Rendering generated env files from master..."
+bash "$ROOT_DIR/infra/scripts/sync-env.sh" --target all
 
 if [[ "$SKIP_MODEL_DOWNLOAD" -eq 0 ]]; then
     echo "[MODEL] Ensuring AI YOLO model exists..."

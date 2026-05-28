@@ -14,11 +14,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, MessageCircle, Users } from "lucide-react";
 import { ConversationItem } from "./ConversationItem";
 import { StrangerRequests } from "./StrangerRequests";
 import { ChatSearchUsers } from "./ChatSearchUsers";
+import { CreateGroupDialog } from "./CreateGroupDialog";
 import type { Conversation, StrangerRequest } from "@/types/api";
 
 interface ConversationListProps {
@@ -35,6 +42,7 @@ interface ConversationListProps {
   onRejectStranger: (id: string) => void;
   onBlockStranger: (id: string) => void;
   onCreateConversation: (targetUserId: string) => Promise<Conversation | null>;
+  onCreateGroup: (title: string, memberIds: string[]) => Promise<Conversation | null>;
 }
 
 export function ConversationList({
@@ -51,10 +59,13 @@ export function ConversationList({
   onRejectStranger,
   onBlockStranger,
   onCreateConversation,
+  onCreateGroup,
 }: ConversationListProps) {
   const t = useTranslations("chat");
+  const tg = useTranslations("chat.group");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const pendingCount = strangerRequests.filter((r) => r.status === "pending").length;
@@ -82,13 +93,26 @@ export function ConversationList({
       {/* Header */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-2">
         <h1 className="text-lg font-bold flex-1">{t("title")}</h1>
-        <button
-          onClick={() => setShowSearch(true)}
-          aria-label={t("searchUsers")}
-          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
-        >
-          <Plus className="w-4 h-4 text-muted-foreground" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={tg("newChat")}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => setShowSearch(true)}>
+              <MessageCircle className="w-4 h-4 mr-2" />
+              {tg("newChat")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowCreateGroup(true)}>
+              <Users className="w-4 h-4 mr-2" />
+              {tg("newGroup")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Search bar */}
@@ -175,6 +199,14 @@ export function ConversationList({
         conversations={conversations}
         onSelectConversation={onSelectConversation}
         onCreateConversation={onCreateConversation}
+      />
+
+      {/* Create group dialog */}
+      <CreateGroupDialog
+        open={showCreateGroup}
+        onOpenChange={setShowCreateGroup}
+        onCreate={onCreateGroup}
+        onSuccess={(conv) => onSelectConversation(conv.id)}
       />
 
       {/* Delete confirmation */}

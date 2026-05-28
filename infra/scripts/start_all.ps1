@@ -277,8 +277,9 @@ Write-Host "[ALL] Mode effective: $effectiveMode" -ForegroundColor DarkCyan
 Write-Host "[ALL] Selected components: $($selected -join ', ')" -ForegroundColor DarkCyan
 Write-Host "[ALL] Install policy: $InstallPolicy" -ForegroundColor DarkCyan
 
-# Sync .env files from examples (add new keys, preserve existing values)
-Write-Host "[ALL] Syncing env files..." -ForegroundColor Cyan
+# Render generated .env files from infra/env/.env.master. This intentionally
+# overwrites generated env files so the master remains the single source.
+Write-Host "[ALL] Rendering env files from master..." -ForegroundColor Cyan
 & (Join-Path $PSScriptRoot "sync-env.ps1")
 
 try {

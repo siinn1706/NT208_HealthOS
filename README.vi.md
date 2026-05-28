@@ -198,6 +198,7 @@ Giữ `BFF_SHARED_SECRET` chỉ ở phía server và không bao giờ expose qua
 - Giữ `OAUTH_GOOGLE_CALLBACK_URL` và `OAUTH_GITHUB_CALLBACK_URL` làm giá trị fallback cho phát triển cục bộ. Chúng không còn là nguồn duy nhất để tạo callback.
 - Các entry `ALLOWED_DEV_ORIGINS` phải là hostname hoặc wildcard hostname, không phải URL đầy đủ. Ví dụ: `localhost,127.0.0.1,healthos-dev.example.com`.
 - Nếu tạm dùng URL xoay vòng `trycloudflare.com`, thêm `*.trycloudflare.com` vào `ALLOWED_DEV_ORIGINS` để Next.js chấp nhận traffic HMR `/_next/*` trong dev. Điều này chỉ ảnh hưởng guard dev-origin của Next; OAuth providers vẫn yêu cầu callback URL chính xác.
+- Để test chat WebSocket qua cùng frontend tunnel, đặt `NEXT_PUBLIC_CORE_WS_URL=wss://<tunnel-host>` rồi restart `npm run dev`; dev proxy của frontend sẽ chuyển tiếp WebSocket upgrade `/ws` và `/v1/**` sang `CORE_API_URL`.
 - Đăng ký cả localhost và stable tunnel callback URI trong Google Cloud Console và GitHub OAuth App settings:
   - `http://localhost:3000/api/v1/auth/oauth/google/callback`
   - `https://<stable-tunnel>/api/v1/auth/oauth/google/callback`

@@ -1,68 +1,26 @@
-# HealthOS — Env Key Validation (Windows PowerShell)
-# Compares local .env files against infra/env/*.env.example to find missing keys.
-# Safe: read-only, non-destructive.
-# Usage: .\infra\scripts\check-env.ps1
+# HealthOS - Master Env Validation (Windows PowerShell)
+# Verifies generated .env files match infra/env/.env.master without writing files.
+# Usage: .\infra\scripts\check-env.ps1 [-Target all|dev|prod|workers|backend|frontend|ai-worker|queue-worker|notification|compose-dev|compose-prod|mobile]
+
+param(
+    [string]$Target = "all",
+    [string]$Master
+)
 
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$Renderer = Join-Path $PSScriptRoot "render-env.mjs"
+$MasterPath = if ($Master) { (Resolve-Path $Master).Path } else { Join-Path $Root "infra\env\.env.master" }
 
-$Pairs = @(
-    @{ Example = "infra\env\backend.env.example";   Local = "backend\.env" },
-    @{ Example = "infra\env\frontend.env.example";  Local = "frontend\.env.local" },
-    @{ Example = "infra\env\worker.env.example";    Local = "services\ai-worker\.env" },
-    @{ Example = "infra\env\worker.env.example";    Local = "services\queue-worker\.env" },
-    @{ Example = "infra\env\worker.env.example";    Local = "services\notification\.env" },
-    @{ Example = "infra\docker\.env.dev.example";   Local = "infra\docker\.env.dev" }
-)
-
-$AnyMissing = $false
-
-foreach ($Pair in $Pairs) {
-    $examplePath = Join-Path $Root $Pair.Example
-    $localPath   = Join-Path $Root $Pair.Local
-
-    if (-not (Test-Path $examplePath)) {
-        Write-Warning "  [SKIP] Example not found: $($Pair.Example)"
-        continue
-    }
-
-    $exampleKeys = (Get-Content $examplePath) |
-        Where-Object { $_ -match "^[A-Z_][A-Z0-9_]*=" } |
-        ForEach-Object { ($_ -split "=")[0] }
-
-    if (-not (Test-Path $localPath)) {
-        Write-Host "[MISSING FILE] $($Pair.Local)" -ForegroundColor Red
-        Write-Host "  Run setup script: .\infra\scripts\setup.ps1" -ForegroundColor Yellow
-        $AnyMissing = $true
-        continue
-    }
-
-    $localKeys = (Get-Content $localPath) |
-        Where-Object { $_ -match "^[A-Z_][A-Z0-9_]*=" } |
-        ForEach-Object { ($_ -split "=")[0] }
-
-    $missing = $exampleKeys | Where-Object { $_ -notin $localKeys }
-    $extra   = $localKeys   | Where-Object { $_ -notin $exampleKeys }
-
-    if ($missing.Count -eq 0) {
-        Write-Host "[OK] $($Pair.Local)" -ForegroundColor Green
-    } else {
-        Write-Host "[MISSING KEYS] $($Pair.Local)" -ForegroundColor Red
-        $missing | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
-        $AnyMissing = $true
-    }
-
-    if ($extra.Count -gt 0) {
-        Write-Host "  [INFO] Extra keys (not in example — may be OK): $($extra -join ', ')" -ForegroundColor DarkGray
-    }
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    throw "Node.js is required to validate env files. Install Node.js 20+ and retry."
 }
 
-if ($AnyMissing) {
-    Write-Host ""
-    Write-Host "Fix: copy missing keys from infra/env/*.env.example into your local .env file." -ForegroundColor Yellow
+if (-not (Test-Path $MasterPath)) {
+    Write-Host "[MISSING FILE] infra\env\.env.master" -ForegroundColor Red
+    Write-Host "  Run setup or sync first: .\infra\scripts\sync-env.ps1 -Target all" -ForegroundColor Yellow
     exit 1
-} else {
-    Write-Host ""
-    Write-Host "All env files look good." -ForegroundColor Green
-    exit 0
 }
+
+& node $Renderer --master $MasterPath --target $Target --check
+exit $LASTEXITCODE

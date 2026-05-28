@@ -1,9 +1,8 @@
 """Per-conversation WebSocket endpoint for user-to-user realtime chat.
 
-URL: GET /v1/chat/ws/{conversation_id}?token=<access_token>
+URL: GET /v1/chat/ws/{conversation_id}?token=<ws_ticket>
 
-Auth: Regular JWT access token (not ws_ticket) — the browser passes it
-directly so the user doesn't need a separate ws-token round-trip.
+Auth: Short-lived WebSocket ticket from GET /v1/auth/ws-ticket.
 
 On connect the endpoint:
   1. Decodes and validates the JWT.
@@ -21,6 +20,7 @@ if the client omits it.
 """
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import logging
@@ -31,7 +31,7 @@ from jose import JWTError
 
 from app.adapters.database import AsyncSessionLocal
 from app.adapters.redis_client import get_redis
-from app.core.security import JWT_BLACKLIST_PREFIX, decode_access_token
+from app.core.security import JWT_BLACKLIST_PREFIX, decode_token_with_type
 from app.services import chat as chat_svc
 from app.ws.chat_router import handle_ws_event
 from app.ws.handlers import manager
@@ -52,7 +52,7 @@ async def per_conversation_ws(
     Per-conversation WebSocket for user-to-user realtime chat.
 
     Authentication:
-      ?token=<JWT access token>  (required; regular access_token accepted)
+      ?token=<ws_ticket>  (required)
 
     The client sends JSON frames:
       { "event": "<type>", "payload": { ... } }
@@ -85,11 +85,22 @@ async def per_conversation_ws(
         return
 
     try:
-        payload = decode_access_token(token)
+        payload = decode_token_with_type(
+            token,
+            expected_type="ws_ticket",
+            allow_legacy_access=False,
+        )
         jti = payload.get("jti")
         if jti:
-            redis_conn = await get_redis()
-            revoked = await redis_conn.exists(f"{JWT_BLACKLIST_PREFIX}{jti}")
+            try:
+                redis_conn = await get_redis()
+                revoked = await asyncio.wait_for(
+                    redis_conn.exists(f"{JWT_BLACKLIST_PREFIX}{jti}"),
+                    timeout=1.0,
+                )
+            except Exception as exc:
+                _LOGGER.warning("per_conv_ws ticket revocation check unavailable: %s", exc)
+                revoked = False
             if revoked:
                 raise JWTError("token has been revoked")
         user_id_str = payload.get("sub", "")
@@ -122,7 +133,9 @@ async def per_conversation_ws(
             return
 
     # ── Connect ───────────────────────────────────────────────────────────────
-    await manager.connect(ws, user_id_str)
+    connected = await manager.connect(ws, user_id_str)
+    if not connected:
+        return
     _LOGGER.info("per_conv_ws connected user=%s conv=%s", user_id_str, conversation_id)
 
     manager.join_room(ws, f"user:{user_id_str}")
@@ -173,8 +186,29 @@ async def per_conversation_ws(
                 })
                 continue
 
+            if not isinstance(frame, dict):
+                await manager.send_to_ws(ws, {
+                    "event": "error",
+                    "payload": {
+                        "code": "INVALID_FRAME",
+                        "message": "WebSocket frame must be a JSON object.",
+                    },
+                    "timestamp": ts_now(),
+                })
+                continue
+
             event_type = frame.get("event", "")
-            payload_data: dict = frame.get("payload", {})
+            payload_data = frame.get("payload", {})
+            if not isinstance(event_type, str) or not isinstance(payload_data, dict):
+                await manager.send_to_ws(ws, {
+                    "event": "error",
+                    "payload": {
+                        "code": "INVALID_FRAME",
+                        "message": "Frame requires string event and object payload.",
+                    },
+                    "timestamp": ts_now(),
+                })
+                continue
 
             # Heartbeat reply — handled directly, no DB access needed
             if event_type == "pong":

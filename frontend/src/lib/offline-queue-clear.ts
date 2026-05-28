@@ -1,22 +1,12 @@
 /**
- * B7 P7 — single entry point for "scrub everything queued" used by the
- * sign-out flow. Combines the JSON `localStorage` queue (chat, simple meals)
- * with the IndexedDB multipart queue (meal photos, future doc uploads).
+ * Single entry point for logout queue scrubbing.
  *
- * No PHI should outlive the session on a shared device.
+ * No PHI should outlive the session on a shared device. The full user-scoped
+ * purge clears legacy localStorage queues, per-user IndexedDB queues, and their
+ * in-memory DB-scope caches.
  */
-import { clear as clearJsonQueue } from "@/lib/offline-queue";
-import { clearMultipartQueue } from "@/lib/offline-queue-multipart";
+import { purgeAllUserScoped } from "@/lib/user-scoped-storage";
 
 export async function clearAllOfflineQueues(): Promise<void> {
-  try {
-    clearJsonQueue();
-  } catch {
-    /* localStorage may be locked; nothing actionable */
-  }
-  try {
-    await clearMultipartQueue();
-  } catch {
-    /* IndexedDB may be unavailable in private mode */
-  }
+  await purgeAllUserScoped();
 }

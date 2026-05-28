@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager, contextmanager
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 import app.models  # noqa: F401 — ensure all mappers register
@@ -12,14 +13,17 @@ from app.models import Base
 
 logger = logging.getLogger(__name__)
 
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.debug,
-    pool_size=20,
-    max_overflow=10,
-    pool_pre_ping=True,
-    pool_recycle=300,
-)
+_async_engine_options = {
+    "echo": settings.debug,
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+}
+if settings.debug:
+    _async_engine_options["poolclass"] = NullPool
+else:
+    _async_engine_options.update({"pool_size": 20, "max_overflow": 10})
+
+engine = create_async_engine(settings.database_url, **_async_engine_options)
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 

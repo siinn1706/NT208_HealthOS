@@ -41,11 +41,11 @@ import uuid
 from typing import Any, Callable
 
 from fastapi import WebSocket
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import AsyncSessionLocal
-from app.models.core import Conversation, ConversationTypeEnum
+from app.models.core import Conversation, ConversationMember, ConversationTypeEnum
 from app.services import ai_chat_orchestrator, chat as chat_svc
 from app.services.events import EventEmitter
 from app.ws.handlers import ConnectionManager
@@ -73,6 +73,16 @@ async def handle_ws_event(
             "timestamp": ts_now(),
         })
 
+    if not isinstance(payload, dict):
+        await ack_error("INVALID_FRAME", "Frame payload must be a JSON object.")
+        return
+
+    def chat_service_error_code(exc: Exception) -> str:
+        message = str(exc).lower()
+        if isinstance(exc, PermissionError) or "not a member" in message:
+            return "CHAT_FORBIDDEN"
+        return "CHAT_ERROR"
+
     async def broadcast_dual(
         room: str,
         payload_data: dict[str, Any],
@@ -85,6 +95,27 @@ async def handle_ws_event(
         await manager.broadcast(room, legacy_msg, exclude_ws=exclude)
         canonical_msg = event_emitter.emit_to_ws(contract_event, payload_data, user_id)
         await manager.broadcast(room, canonical_msg, exclude_ws=exclude)
+
+    async def fanout_to_members(
+        conversation_id: uuid.UUID,
+        event: str,
+        payload_data: dict[str, Any],
+    ) -> None:
+        """Per-user fanout for members not joined to the room."""
+        try:
+            result = await db.execute(
+                select(ConversationMember.user_id).where(
+                    and_(
+                        ConversationMember.conversation_id == conversation_id,
+                        ConversationMember.is_accepted.is_(True),
+                    )
+                )
+            )
+            member_ids = [uid for uid in result.scalars().all() if uid != user_id]
+            frame = {"event": event, "payload": payload_data, "timestamp": ts_now()}
+            await asyncio.gather(*[manager.send_to_user(str(uid), frame) for uid in member_ids])
+        except Exception:
+            pass  # Fanout failure must not fail the WS handler
 
     # ── Handshake ─────────────────────────────────────────────────────────────
     if event_type == "client:hello":
@@ -158,7 +189,11 @@ async def handle_ws_event(
 
         client_message_id = payload.get("client_message_id")
         reply_to_id_str = payload.get("reply_to_id")
-        reply_to_id = uuid.UUID(reply_to_id_str) if reply_to_id_str else None
+        try:
+            reply_to_id = uuid.UUID(str(reply_to_id_str)) if reply_to_id_str else None
+        except (ValueError, TypeError, AttributeError):
+            await ack_error("INVALID_PAYLOAD", "reply_to_id must be a valid UUID.")
+            return
         content_type = payload.get("content_type", "text")
 
         try:
@@ -172,7 +207,7 @@ async def handle_ws_event(
                 reply_to_id=reply_to_id,
             )
         except (ValueError, PermissionError) as exc:
-            await ack_error("CHAT_ERROR", str(exc))
+            await ack_error(chat_service_error_code(exc), str(exc))
             return
 
         await db.commit()
@@ -192,6 +227,7 @@ async def handle_ws_event(
         # Broadcast to room (excluding sender's socket — they already got ack)
         room = f"conv:{conv_id}"
         await broadcast_dual(room, msg_data, "msg:new", "chat.message.sent", exclude=ws)
+        await fanout_to_members(conv_id, "chat.message.sent", msg_data)
 
         # ── AI conversation: kick off Gemini reply in the background ────────
         await _maybe_trigger_ai_reply(
@@ -234,6 +270,7 @@ async def handle_ws_event(
         event_data = {"event": "msg:edit", "payload": payload_data, "timestamp": ts_now()}
         await manager.send_to_ws(ws, {**event_data, "event": "msg:edit:ack"})
         await broadcast_dual(f"conv:{conv_id}", payload_data, "msg:edit", "chat.message.edited", exclude=ws)
+        await fanout_to_members(conv_id, "chat.message.edited", payload_data)
 
     # ── Delete / recall message ────────────────────────────────────────────────
     elif event_type in {"msg:delete", "chat.message.recall"}:
@@ -264,6 +301,7 @@ async def handle_ws_event(
         event_data = {"event": "msg:delete", "payload": payload_data, "timestamp": ts_now()}
         await manager.send_to_ws(ws, {**event_data, "event": "msg:delete:ack"})
         await broadcast_dual(f"conv:{conv_id}", payload_data, "msg:delete", "chat.message.recalled", exclude=ws)
+        await fanout_to_members(conv_id, "chat.message.recalled", payload_data)
 
     # ── React to message ───────────────────────────────────────────────────────
     elif event_type in {"msg:react", "chat.message.react"}:
@@ -289,7 +327,7 @@ async def handle_ws_event(
         try:
             msg_dto = await chat_svc.react_to_message(db, msg_id, conv_id, user_id, emoji)
         except (ValueError, PermissionError) as exc:
-            await ack_error("CHAT_ERROR", str(exc))
+            await ack_error(chat_service_error_code(exc), str(exc))
             return
 
         await db.commit()
@@ -312,7 +350,7 @@ async def handle_ws_event(
         try:
             await chat_svc.pin_message(db, msg_id, conv_id, user_id)
         except (ValueError, PermissionError) as exc:
-            await ack_error("CHAT_ERROR", str(exc))
+            await ack_error(chat_service_error_code(exc), str(exc))
             return
 
         await db.commit()
@@ -334,7 +372,7 @@ async def handle_ws_event(
         try:
             await chat_svc.unpin_message(db, msg_id, conv_id, user_id)
         except (ValueError, PermissionError) as exc:
-            await ack_error("CHAT_ERROR", str(exc))
+            await ack_error(chat_service_error_code(exc), str(exc))
             return
 
         await db.commit()
@@ -345,7 +383,7 @@ async def handle_ws_event(
     # ── Mark as read ───────────────────────────────────────────────────────────
     elif event_type in {"msg:read", "chat.message.read"}:
         conv_id_str = payload.get("conversation_id", "")
-        last_msg_id_str = payload.get("last_read_message_id", "")
+        last_msg_id_str = payload.get("last_read_message_id") or payload.get("last_message_id", "")
         try:
             conv_id = uuid.UUID(conv_id_str)
             last_msg_id = uuid.UUID(last_msg_id_str)
@@ -370,6 +408,9 @@ async def handle_ws_event(
 
     # ── Typing indicator ───────────────────────────────────────────────────────
     elif event_type in {"typing", "chat.typing"}:
+        if not manager.check_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending typing events too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         is_typing = bool(payload.get("is_typing", True))
         try:
@@ -377,7 +418,12 @@ async def handle_ws_event(
         except (ValueError, AttributeError):
             return  # silently ignore malformed typing events
 
-        # Broadcast to room but exclude sender
+        try:
+            await chat_svc.assert_member(db, conv_id, user_id)
+        except ValueError:
+            await ack_error("CHAT_FORBIDDEN", "You are not a member of this conversation.")
+            return
+
         typing_payload = {
             "user_id": user_id_str,
             "conversation_id": conv_id_str,
@@ -389,7 +435,11 @@ async def handle_ws_event(
     elif event_type == "conv:sync":
         conv_id_str = payload.get("conversation_id", "")
         after_msg_id_str = payload.get("after_message_id")
-        limit = int(payload.get("limit", 50))
+        try:
+            limit = int(payload.get("limit", 50))
+        except (TypeError, ValueError):
+            await ack_error("INVALID_PAYLOAD", "conv:sync limit must be an integer.")
+            return
         limit = max(1, min(limit, 100))
 
         try:

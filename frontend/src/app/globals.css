@@ -264,6 +264,148 @@ html {
   animation: msg-highlight 1.6s ease-out 1;
 }
 
+/* Admin Console tokens */
+:root {
+  /* ── Surfaces ─────────────────────────────────────── */
+  --admin-canvas: #F8FAFC;
+  --admin-surface: #FFFFFF;
+  --admin-surface-muted: #F1F5F9;
+  --admin-surface-raised: #FFFFFF;
+
+  /* ── Borders ──────────────────────────────────────── */
+  --admin-border: #E2E8F0;
+  --admin-border-strong: #CBD5E1;
+  --admin-divider: #E2E8F0;
+
+  /* ── Text ─────────────────────────────────────────── */
+  --admin-fg: #0F172A;
+  --admin-fg-muted: #475569;
+  --admin-fg-subtle: #94A3B8;
+  --admin-fg-on-brand: #FFFFFF;
+
+  /* ── Brand ────────────────────────────────────────── */
+  --admin-brand: #1A4474;
+  --admin-brand-hover: #163A63;
+  --admin-brand-soft: rgba(26, 68, 116, 0.12);
+  --admin-on-brand: #FFFFFF;
+
+  /* ── Sidebar (preserved + extended) ──────────────── */
+  --admin-sidebar-bg: #1A4474;
+  --admin-sidebar-fg: #FFFFFF;
+  --admin-sidebar-fg-muted: rgba(255,255,255,0.55);
+  --admin-sidebar-hover: rgba(255,255,255,0.10);
+  --admin-sidebar-active-bg: rgba(65,188,230,0.20);
+  --admin-sidebar-active-fg: #FFFFFF;
+  --admin-sidebar-accent: #41BCE6;
+
+  /* ── Status ───────────────────────────────────────── */
+  --admin-status-success: #0F7B5A;
+  --admin-status-success-soft: #DCFCE7;
+  --admin-status-warning: #B45309;
+  --admin-status-warning-soft: #FEF9C3;
+  --admin-status-danger: #B42318;
+  --admin-status-danger-soft: #FEE2E2;
+  --admin-status-info: #1D4ED8;
+  --admin-status-info-soft: #DBEAFE;
+
+  /* ── Plan badges ──────────────────────────────────── */
+  --admin-plan-free: #64748B;
+  --admin-plan-basic: #0369A1;
+  --admin-plan-pro: #7C3AED;
+  --admin-plan-enterprise: #B45309;
+
+  /* ── Density sizing ───────────────────────────────── */
+  --admin-row-height-compact: 2.5rem;
+  --admin-row-height-comfortable: 3.25rem;
+  --admin-cell-px-compact: 0.75rem;
+  --admin-cell-px-comfortable: 1rem;
+
+  /* ── Header ───────────────────────────────────────── */
+  --admin-header-height: 4rem;
+  --admin-header-shadow: 0 1px 0 0 var(--admin-border);
+
+  /* ── Focus ────────────────────────────────────────── */
+  --admin-focus-ring: 0 0 0 2px var(--admin-brand);
+
+  /* ── Legacy aliases (preserved for backward compat) ─ */
+  --admin-active: #41BCE6;
+  --admin-layout-density: compact;
+}
+
+.dark {
+  /* ── Surfaces ─────────────────────────────────────── */
+  --admin-canvas: #0B1220;
+  --admin-surface: #101A2E;
+  --admin-surface-muted: #172035;
+  --admin-surface-raised: #1A2540;
+
+  /* ── Borders ──────────────────────────────────────── */
+  --admin-border: #1E2D45;
+  --admin-border-strong: #2A3F5F;
+  --admin-divider: #1E2D45;
+
+  /* ── Text ─────────────────────────────────────────── */
+  --admin-fg: #E2E8F0;
+  --admin-fg-muted: #94A3B8;
+  --admin-fg-subtle: #475569;
+  --admin-fg-on-brand: #FFFFFF;
+
+  /* ── Brand ────────────────────────────────────────── */
+  --admin-brand: #7EC8D8;
+  --admin-brand-hover: #93D0DE;
+  --admin-brand-soft: rgba(126,200,216,0.15);
+  --admin-on-brand: #0B1220;
+
+  /* ── Sidebar (preserved + extended) ──────────────── */
+  --admin-sidebar-bg: #0F2743;
+  --admin-sidebar-fg: #E2E8F0;
+  --admin-sidebar-fg-muted: rgba(226,232,240,0.50);
+  --admin-sidebar-hover: rgba(255,255,255,0.08);
+  --admin-sidebar-active-bg: rgba(126,200,216,0.18);
+  --admin-sidebar-active-fg: #E2E8F0;
+  --admin-sidebar-accent: #7EC8D8;
+
+  /* ── Status ───────────────────────────────────────── */
+  --admin-status-success: #34D399;
+  --admin-status-success-soft: rgba(52,211,153,0.15);
+  --admin-status-warning: #FBBF24;
+  --admin-status-warning-soft: rgba(251,191,36,0.15);
+  --admin-status-danger: #F87171;
+  --admin-status-danger-soft: rgba(248,113,113,0.15);
+  --admin-status-info: #60A5FA;
+  --admin-status-info-soft: rgba(96,165,250,0.15);
+
+  /* ── Plan badges ──────────────────────────────────── */
+  --admin-plan-free: #94A3B8;
+  --admin-plan-basic: #38BDF8;
+  --admin-plan-pro: #A78BFA;
+  --admin-plan-enterprise: #FBBF24;
+
+  /* ── Density sizing ───────────────────────────────── */
+  --admin-row-height-compact: 2.5rem;
+  --admin-row-height-comfortable: 3.25rem;
+  --admin-cell-px-compact: 0.75rem;
+  --admin-cell-px-comfortable: 1rem;
+
+  /* ── Header ───────────────────────────────────────── */
+  --admin-header-height: 4rem;
+  --admin-header-shadow: 0 1px 0 0 var(--admin-border);
+
+  /* ── Focus ────────────────────────────────────────── */
+  --admin-focus-ring: 0 0 0 2px var(--admin-brand);
+
+  /* ── Legacy aliases (preserved for backward compat) ─ */
+  --admin-active: #7EC8D8;
+  --admin-layout-density: compact;
+}
+
+/* Admin tabular numerics utility */
+@layer utilities {
+  .admin-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 /* Motion design tokens — single source of truth for chat / progress /
    achievement micro-interactions. Components must reference these tokens
    instead of inlining magic ms / cubic-bezier values so we can globally tune

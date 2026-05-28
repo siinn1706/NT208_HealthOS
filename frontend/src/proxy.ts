@@ -3,6 +3,11 @@ import { routing } from "./i18n/routing";
 import { NextRequest, NextResponse } from "next/server";
 import { META_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 import { getLocaleFromPathname, stripLocalePrefix } from "@/lib/locale-path";
+import {
+  isAdminPath,
+  isDashboardPath,
+  buildLoginRedirect,
+} from "@/lib/admin/path-classify";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -33,12 +38,57 @@ function getOnboardingStatus(req: NextRequest): string {
   }
 }
 
+/**
+ * Read admin status from the httpOnly meta cookie set by BFF on login.
+ * Returns `true` only when `meta.is_admin === true`; returns `false` on any
+ * error (missing cookie, JSON parse failure, unexpected shape).
+ * Requirements: 5.7
+ */
+function getIsAdminFromMeta(req: NextRequest): boolean {
+  const raw = req.cookies.get(META_COOKIE_NAME)?.value;
+  if (!raw) return false;
+  try {
+    const meta = JSON.parse(raw) as Record<string, unknown>;
+    return meta.is_admin === true;
+  } catch {
+    return false;
+  }
+}
+
 export default function proxy(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
   const pathnameWithoutLocale = stripLocalePrefix(pathname);
   const locale = getLocaleFromPathname(pathname);
 
   const hasSession = Boolean(req.cookies.get(SESSION_COOKIE_NAME)?.value);
+
+  // ── Admin route protection ────────────────────────────────────────────────
+  // Must run BEFORE the dashboard check so admin users hitting /dashboard are
+  // caught by Branch 2 below, and non-admins hitting /admin are caught here.
+  if (isAdminPath(pathnameWithoutLocale)) {
+    // Branch 1a: no session → redirect to login with `from` param (R5.2, R5.3, R5.8)
+    if (!hasSession) {
+      return NextResponse.redirect(
+        new URL(buildLoginRedirect(locale, req.nextUrl.pathname), req.url)
+      );
+    }
+    // Branch 1b: authenticated but not admin → redirect to forbidden page,
+    // UNLESS the user is already on /admin/forbidden (avoid redirect loop) (R5.4)
+    if (
+      !getIsAdminFromMeta(req) &&
+      pathnameWithoutLocale !== "/admin/forbidden"
+    ) {
+      return NextResponse.redirect(
+        new URL(`/${locale}/admin/forbidden`, req.url)
+      );
+    }
+  }
+
+  // ── Dashboard → admin redirect for admin users ────────────────────────────
+  // Branch 2: admin user hitting /dashboard → redirect to /admin (R5.5)
+  if (isDashboardPath(pathnameWithoutLocale) && hasSession && getIsAdminFromMeta(req)) {
+    return NextResponse.redirect(new URL(`/${locale}/admin`, req.url));
+  }
 
   // ── Onboarding route protection ───────────────────────────────────────────
   if (

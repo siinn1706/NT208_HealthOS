@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useNotification, ValidationMessages } from "@/hooks/use-notification";
 import { getSafePostLoginRedirectPath } from "@/lib/safe-post-login-redirect";
+import { isAdmin } from "@/lib/admin/admin-session";
+import { resolvePostLoginRedirectPath } from "@/lib/auth-post-login-redirect";
 import {
   AuthShell,
   AuthBanner,
@@ -159,17 +161,13 @@ export function LoginForm() {
       success(tErrors("loginSuccess"));
       track("auth.login.succeeded");
 
-      const onboardingStatus = data?.data?.onboarding_status;
-      const fromRaw = searchParams.get("from");
-      const fromSafe = getSafePostLoginRedirectPath(fromRaw);
-
-      if (onboardingStatus === "completed" && fromSafe) {
-        router.push(fromSafe);
-      } else if (onboardingStatus === "completed") {
-        router.push("/dashboard");
-      } else {
-        router.push("/onboarding");
-      }
+      router.push(
+        resolvePostLoginRedirectPath({
+          isAdmin: isAdmin(data?.data?.roles, data?.data?.permissions),
+          onboardingStatus: data?.data?.onboarding_status,
+          fromRaw: searchParams.get("from"),
+        }),
+      );
     } catch (err) {
       const errors = handleError(err, tErrors("genericTryAgain"));
       if (Object.keys(errors).length > 0) {

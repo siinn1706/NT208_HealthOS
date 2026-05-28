@@ -2451,6 +2451,7 @@
   },
   "chat": {
     "title": "Tin nhắn",
+    "loadingSession": "Đang tải phiên đăng nhập…",
     "allChats": "Tất cả",
     "strangers": "Người lạ",
     "aiAssistant": "HealthOS AI",
@@ -2592,7 +2593,10 @@
     },
     "queue": {
       "evictedTitle": "Đã bỏ một số tin nhắn trong hàng đợi",
-      "evictedDescription": "{n} tin nhắn cũ nhất không thể giữ lại khi bạn offline."
+      "evictedDescription": "{n} tin nhắn cũ nhất không thể giữ lại khi bạn offline.",
+      "enqueueFailedTitle": "Tin nhắn chưa được xếp hàng",
+      "offlineQueuedTitle": "Tin nhắn đã được xếp hàng",
+      "offlineQueuedDescription": "Sẽ gửi khi bạn kết nối trở lại."
     },
     "empty": {
       "noConversationsTitle": "Chưa có cuộc trò chuyện",
@@ -2611,6 +2615,42 @@
       "tooLarge": "Ảnh quá lớn. Tối đa {max} MB.",
       "unsupported": "Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.",
       "uploadFailed": "Không tải được ảnh. Thử lại nhé."
+    },
+    "group": {
+      "newChat": "Tin nhắn mới",
+      "newGroup": "Nhóm mới",
+      "createGroup": "Nhóm mới",
+      "groupTitle": "Tên nhóm",
+      "groupTitlePlaceholder": "Nhập tên nhóm (2–100 ký tự)",
+      "addMembers": "Thêm thành viên",
+      "membersHint": "Chọn ít nhất 2 thành viên",
+      "groupAvatarOptional": "Ảnh nhóm (tuỳ chọn)",
+      "create": "Tạo nhóm",
+      "cancel": "Huỷ",
+      "errorGroupTitleTooShort": "Tên nhóm phải có ít nhất 2 ký tự",
+      "errorGroupTitleTooLong": "Tên nhóm không được quá 100 ký tự",
+      "errorGroupTooSmall": "Chọn ít nhất 2 thành viên",
+      "errorGroupTooLarge": "Nhóm không được quá 50 thành viên",
+      "members": "Thành viên ({count})",
+      "addMembersTitle": "Thêm thành viên",
+      "leave": "Rời nhóm",
+      "leaveConfirmTitle": "Rời nhóm này?",
+      "leaveConfirmDesc": "Bạn sẽ không nhận được tin nhắn từ nhóm này nữa.",
+      "leaveConfirm": "Rời nhóm",
+      "removeMember": "Xoá",
+      "promote": "Thăng lên quản trị viên",
+      "demote": "Hạ xuống thành viên",
+      "transferOwnership": "Chuyển quyền trưởng nhóm",
+      "transferOwnershipConfirmTitle": "Chuyển quyền trưởng nhóm?",
+      "transferOwnershipConfirmDesc": "Bạn sẽ trở thành quản trị viên sau khi chuyển quyền.",
+      "transferOwnershipConfirm": "Chuyển",
+      "editTitle": "Sửa tên",
+      "editAvatar": "Đổi ảnh nhóm",
+      "owner": "Trưởng nhóm",
+      "admin": "Quản trị viên",
+      "member": "Thành viên",
+      "queuedHint": "{count} tin chờ — sẽ gửi khi có mạng",
+      "systemMessage": "Hệ thống"
     }
   },
   "reports": {
@@ -3063,5 +3103,208 @@
       "updatedAt": "Cập nhật {date}"
     },
     "emergencyNumberHint": "Trong tình huống cấp cứu, hãy gọi số cấp cứu tại địa phương (115 ở Việt Nam, 911 ở Mỹ, 112 ở châu Âu)."
+  },
+  "admin": {
+    "common": {
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "retry": "Thử lại",
+      "loading": "Đang tải…",
+      "search": "Tìm kiếm…",
+      "clearFilters": "Xóa bộ lọc",
+      "noResults": "Không có kết quả",
+      "yes": "Có",
+      "no": "Không",
+      "back": "Quay lại",
+      "previous": "Trước",
+      "next": "Tiếp",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép",
+      "submitting": "Đang lưu…",
+      "actions": "Thao tác"
+    },
+    "shell": {
+      "title": "Quản trị",
+      "groups": {
+        "operations": "Vận hành",
+        "subscriptions": "Gói đăng ký",
+        "trustSafety": "An toàn & Kiểm soát"
+      },
+      "nav": {
+        "overview": "Tổng quan",
+        "users": "Người dùng",
+        "plans": "Gói",
+        "security": "Bảo mật",
+        "audit": "Nhật ký"
+      },
+      "expand": "Mở rộng thanh bên",
+      "collapse": "Thu gọn thanh bên"
+    },
+    "overview": {
+      "title": "Tổng quan",
+      "description": "Tình trạng hệ thống và hoạt động gần đây."
+    },
+    "users": {
+      "title": "Người dùng",
+      "description": "Tìm kiếm, lọc và quản lý tài khoản người dùng.",
+      "searchPlaceholder": "Tìm kiếm người dùng…",
+      "statusFilter": {
+        "all": "Tất cả",
+        "active": "Hoạt động",
+        "banned": "Bị cấm",
+        "deleted": "Đã xóa"
+      },
+      "table": {
+        "user": "Người dùng",
+        "email": "Email",
+        "status": "Trạng thái",
+        "plan": "Gói",
+        "joined": "Ngày tham gia",
+        "lastSeen": "Lần cuối truy cập"
+      },
+      "pagination": "Hiển thị {from}–{to} trong {total} người dùng",
+      "page": "Trang {page} / {pages}"
+    },
+    "userDetail": {
+      "backToUsers": "Người dùng",
+      "copyId": "Sao chép ID",
+      "cannotBanSelf": "Không thể cấm tài khoản của chính bạn",
+      "tabs": {
+        "profile": "Hồ sơ",
+        "subscription": "Gói đăng ký",
+        "activity": "Hoạt động"
+      },
+      "profile": {
+        "heading": "Hồ sơ",
+        "displayName": "Tên hiển thị",
+        "email": "Email",
+        "userId": "ID người dùng",
+        "status": "Trạng thái",
+        "roles": "Vai trò",
+        "noRoles": "Không có vai trò",
+        "createdAt": "Ngày tạo",
+        "lastSeen": "Lần cuối truy cập",
+        "noName": "(chưa đặt tên)"
+      },
+      "subscription": {
+        "heading": "Gói đăng ký",
+        "current": "Gói hiện tại",
+        "plan": "Gói",
+        "status": "Trạng thái",
+        "expiresAt": "Ngày hết hạn",
+        "noSubscription": "Chưa có gói đăng ký",
+        "assignTitle": "Gán gói đăng ký",
+        "selectPlan": "Chọn gói…",
+        "selectStatus": "Chọn trạng thái…",
+        "expiresOptional": "(tùy chọn, định dạng ISO 8601)",
+        "noteLabel": "Ghi chú quản trị",
+        "noteHint": "(tùy chọn, tối đa 500 ký tự)",
+        "notePlaceholder": "Ghi chú nội bộ chỉ hiển thị với quản trị viên…",
+        "assignButton": "Gán gói đăng ký",
+        "resetButton": "Khôi phục về hiện tại",
+        "quickActions": {
+          "title": "Thao tác nhanh",
+          "cancel": "Hủy đăng ký",
+          "extend30": "Gia hạn +30 ngày",
+          "extend90": "Gia hạn +90 ngày",
+          "resetFree": "Đặt lại về Free"
+        },
+        "history": {
+          "title": "Lịch sử gán gói",
+          "empty": "Chưa có thay đổi nào.",
+          "by": "Bởi {actor}",
+          "columns": {
+            "when": "Thời gian",
+            "actor": "Người thực hiện",
+            "plan": "Gói",
+            "status": "Trạng thái",
+            "expires": "Hết hạn",
+            "note": "Ghi chú"
+          }
+        },
+        "toasts": {
+          "updated": "Đã cập nhật gói đăng ký.",
+          "failed": "Cập nhật gói đăng ký thất bại."
+        },
+        "dialogs": {
+          "cancel": {
+            "title": "Hủy đăng ký?",
+            "description": "Gói sẽ được đánh dấu là đã hủy. Quyền truy cập vẫn còn đến ngày hết hạn hiện tại.",
+            "confirm": "Hủy đăng ký"
+          },
+          "extend30": {
+            "title": "Gia hạn thêm 30 ngày?",
+            "description": "Gói sẽ được gia hạn thêm 30 ngày từ ngày hết hạn hiện tại (hoặc hôm nay nếu đã hết hạn/hủy).",
+            "confirm": "Gia hạn +30 ngày"
+          },
+          "extend90": {
+            "title": "Gia hạn thêm 90 ngày?",
+            "description": "Gói sẽ được gia hạn thêm 90 ngày từ ngày hết hạn hiện tại (hoặc hôm nay nếu đã hết hạn/hủy).",
+            "confirm": "Gia hạn +90 ngày"
+          },
+          "resetFree": {
+            "title": "Đặt lại về gói Free?",
+            "description": "Người dùng sẽ được chuyển ngay về gói Free. Ngày hết hạn sẽ bị xóa.",
+            "confirm": "Đặt lại về Free"
+          }
+        }
+      },
+      "actionBar": {
+        "ban": "Cấm",
+        "banning": "Đang cấm…",
+        "unban": "Bỏ cấm",
+        "unbanning": "Đang bỏ cấm…"
+      },
+      "ban": {
+        "title": "Cấm người dùng",
+        "reasonLabel": "Lý do",
+        "reasonPlaceholder": "Lý do cấm người dùng này…",
+        "confirm": "Cấm người dùng",
+        "toastBanned": "Đã cấm người dùng.",
+        "toastUnbanned": "Đã bỏ cấm người dùng."
+      },
+      "activity": {
+        "heading": "Hoạt động",
+        "empty": "Không có hoạt động nào được ghi nhận.",
+        "error": "Tải hoạt động thất bại.",
+        "retry": "Thử lại"
+      }
+    },
+    "subscriptions": {
+      "title": "Gói đăng ký",
+      "description": "Quản lý bốn gói đăng ký HealthOS chính thức.",
+      "planLabels": {
+        "free": "Miễn phí",
+        "basic": "Cơ bản",
+        "family": "Gia đình",
+        "professional": "Chuyên nghiệp"
+      },
+      "table": {
+        "code": "Mã",
+        "name": "Tên",
+        "price": "Giá",
+        "billingPeriod": "Chu kỳ thanh toán",
+        "status": "Trạng thái",
+        "actions": "Thao tác"
+      },
+      "edit": {
+        "title": "Chỉnh sửa gói",
+        "submit": "Lưu thay đổi"
+      }
+    },
+    "forbidden": {
+      "title": "Từ chối truy cập",
+      "description": "Bạn không có quyền truy cập khu vực quản trị này.",
+      "back": "Về trang chủ"
+    },
+    "errors": {
+      "generic": "Lỗi không xác định.",
+      "fetchFailed": "Tải thất bại.",
+      "serverError": "Lỗi máy chủ ({status}).",
+      "timeout": "Yêu cầu hết thời gian.",
+      "noRetries": "Đã đạt số lần thử lại tối đa."
+    }
   }
 }

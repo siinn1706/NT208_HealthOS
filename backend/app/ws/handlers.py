@@ -80,12 +80,12 @@ class ConnectionManager:
     # Connection lifecycle
     # ──────────────────────────────────────────────────────────────────────────
 
-    async def connect(self, ws: WebSocket, user_id: str) -> None:
+    async def connect(self, ws: WebSocket, user_id: str) -> bool:
         # Check global cap first — reject without accept to minimise resource use
         total = sum(len(conns) for conns in self.user_connections.values())
         if total >= self.MAX_GLOBAL_CONNECTIONS:
             await ws.close(code=1013)  # Try Again Later
-            return
+            return False
 
         # Check per-user connection limit before accepting
         current_count = len(self.user_connections.get(user_id, set()))
@@ -97,7 +97,7 @@ class ConnectionManager:
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             })
             await ws.close(code=4008)
-            return
+            return False
         await ws.accept()
         self.user_connections.setdefault(user_id, set()).add(ws)
         self.ws_to_user[ws] = user_id
@@ -105,14 +105,20 @@ class ConnectionManager:
         self.presence[user_id] = {"is_online": True, "last_seen_at": None}
         task = asyncio.create_task(self._heartbeat_loop(ws))
         self._heartbeat_tasks[ws] = task
+        return True
 
     def disconnect(self, ws: WebSocket) -> str | None:
         """Remove a WebSocket. Returns the user_id that was disconnected, or None."""
         user_id = self.ws_to_user.pop(ws, None)
+        task = self._heartbeat_tasks.pop(ws, None)
+        if task and task is not asyncio.current_task():
+            task.cancel()
+        for room in self.ws_to_rooms.pop(ws, set()):
+            room_sockets = self.room_connections.get(room, set())
+            room_sockets.discard(ws)
+            if not room_sockets:
+                self.room_connections.pop(room, None)
         if user_id:
-            task = self._heartbeat_tasks.pop(ws, None)
-            if task:
-                task.cancel()
             sockets = self.user_connections.get(user_id, set())
             sockets.discard(ws)
             if not sockets:
@@ -122,11 +128,6 @@ class ConnectionManager:
                     "is_online": False,
                     "last_seen_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 }
-            for room in self.ws_to_rooms.pop(ws, set()):
-                room_sockets = self.room_connections.get(room, set())
-                room_sockets.discard(ws)
-                if not room_sockets:
-                    self.room_connections.pop(room, None)
         return user_id
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -134,9 +135,10 @@ class ConnectionManager:
     # ──────────────────────────────────────────────────────────────────────────
 
     def join_room(self, ws: WebSocket, room: str) -> None:
+        if ws not in self.ws_to_user:
+            return
         self.room_connections.setdefault(room, set()).add(ws)
-        if ws in self.ws_to_rooms:
-            self.ws_to_rooms[ws].add(room)
+        self.ws_to_rooms[ws].add(room)
 
     def leave_room(self, ws: WebSocket, room: str) -> None:
         sockets = self.room_connections.get(room, set())
@@ -146,6 +148,15 @@ class ConnectionManager:
         if ws in self.ws_to_rooms:
             self.ws_to_rooms[ws].discard(room)
 
+    def leave_user_room(self, user_id: str, room: str) -> int:
+        """Remove all active sockets for a user from one room."""
+        removed = 0
+        for ws in list(self.user_connections.get(user_id, set())):
+            if room in self.ws_to_rooms.get(ws, set()):
+                self.leave_room(ws, room)
+                removed += 1
+        return removed
+
     # ──────────────────────────────────────────────────────────────────────────
     # Sending
     # ──────────────────────────────────────────────────────────────────────────
@@ -154,10 +165,7 @@ class ConnectionManager:
         try:
             await ws.send_json(message)
         except Exception:
-            # M11: Dead socket cleanup — remove from tracking to prevent repeated failures
-            user_id = self.ws_to_user.get(ws)
-            if user_id and ws in self.user_connections.get(user_id, set()):
-                self.user_connections[user_id].discard(ws)
+            self.disconnect(ws)
 
     async def send_to_user(self, user_id: str, message: dict) -> None:
         """Deliver to ALL connected sockets of a user (multi-device)."""
@@ -206,6 +214,8 @@ class ConnectionManager:
                 await asyncio.sleep(self.HEARTBEAT_INTERVAL)
                 ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 await self.send_to_ws(ws, {"event": "ping", "payload": {}, "timestamp": ts})
+                if ws not in self.ws_to_user:
+                    return
         except asyncio.CancelledError:
             pass
         except Exception as exc:

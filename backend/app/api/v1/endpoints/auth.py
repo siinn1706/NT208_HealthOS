@@ -92,6 +92,7 @@ from app.services.refresh_tokens import (
 from app.services.account_status import is_active_ban
 from app.services.security_logging import log_security_event
 from app.services.audit import audit
+from app.services import rbac as rbac_service
 from app.services import oauth_links as oauth_link_svc
 from app.services.oauth_links import LastSignInMethodError, OAuthLinkConflict
 from app.models.audit import AuditEventTypeEnum
@@ -128,6 +129,12 @@ def _mfa_login_challenge_key(challenge_id: str) -> str:
     return f"auth:mfa:login:{challenge_id}"
 
 
+async def _rbac_snapshot(db: AsyncSession, user_id: uuid.UUID) -> tuple[list[str], list[str]]:
+    roles = list(await rbac_service.list_user_roles(db, user_id))
+    permissions = sorted(await rbac_service.list_user_permissions(db, user_id))
+    return roles, permissions
+
+
 def _raise_if_account_banned(user: User) -> None:
     if not is_active_ban(user):
         return
@@ -158,6 +165,7 @@ async def _issue_auth_token(
         ip_address=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None,
     )
+    roles, permissions = await _rbac_snapshot(db, user.id)
     return AuthToken(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -167,6 +175,8 @@ async def _issue_auth_token(
         display_name=user.display_name,
         avatar_url=user.profile.avatar_url if user.profile is not None else None,
         onboarding_status=user.onboarding_status,
+        roles=roles,
+        permissions=permissions,
     )
 
 
@@ -1332,8 +1342,12 @@ async def check_password_breach_range_endpoint(prefix: str) -> PlainTextResponse
     response_model=CurrentUserResponse,
     responses={401: {"model": ErrorResponse}},
 )
-async def get_me(current_user: User = Depends(get_current_user)) -> CurrentUserResponse:
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUserResponse:
     """Return the currently authenticated user."""
+    roles, permissions = await _rbac_snapshot(db, current_user.id)
     return CurrentUserResponse(
         data=CurrentUser(
             id=str(current_user.id),
@@ -1347,6 +1361,8 @@ async def get_me(current_user: User = Depends(get_current_user)) -> CurrentUserR
             onboarding_completed_at=current_user.onboarding_completed_at.isoformat()
             if current_user.onboarding_completed_at
             else None,
+            roles=roles,
+            permissions=permissions,
         )
     )
 
@@ -1386,6 +1402,7 @@ async def refresh_access_token(
 
     _raise_if_account_banned(user)
     access_token = create_user_access_token(user)
+    roles, permissions = await _rbac_snapshot(db, user.id)
     token = AuthToken(
         access_token=access_token,
         refresh_token=next_refresh_token,
@@ -1395,6 +1412,8 @@ async def refresh_access_token(
         display_name=user.display_name,
         avatar_url=user.profile.avatar_url if user.profile is not None else None,
         onboarding_status=user.onboarding_status,
+        roles=roles,
+        permissions=permissions,
     )
     await db.commit()
     return AuthTokenResponse(data=token)

@@ -175,6 +175,18 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   );
 }
 
+function subscribeMounted(): () => void {
+  return () => undefined;
+}
+
+function getMountedClientSnapshot(): boolean {
+  return true;
+}
+
+function getMountedServerSnapshot(): boolean {
+  return false;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -183,20 +195,20 @@ export default function SettingsPage() {
 
   const { theme: rawTheme, setTheme } = useTheme();
   const theme = (rawTheme ?? "system") as ThemeOption;
-  const [mounted, setMounted] = useState(false);
+  const mounted = React.useSyncExternalStore(
+    subscribeMounted,
+    getMountedClientSnapshot,
+    getMountedServerSnapshot,
+  );
   const [notifications, setNotifications] = useState<NotificationPrefs>(NOTIF_DEFAULTS);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [downloadSubmitting, setDownloadSubmitting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
-  // B7 P9 — identity-proof inputs
+  // Identity-proof inputs for destructive account deletion.
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     fetchNotificationPrefs().then((prefs) => {
@@ -217,8 +229,8 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     try {
-      // B7 P7 — scrub queued mutations (incl. PHI-bearing meal photos) before
-      // clearing the session so nothing outlives logout on a shared device.
+      // Scrub queued mutations before clearing the session so nothing outlives
+      // logout on a shared device.
       try {
         const { clearAllOfflineQueues } = await import("@/lib/offline-queue-clear");
         await clearAllOfflineQueues();
@@ -252,10 +264,10 @@ export default function SettingsPage() {
     }
   };
 
-  // B7 P8 — Triggered when the user clicks the in-app notification's deep link.
+  // Triggered when the user clicks the in-app notification's deep link.
   // Reads `?export=<request_id>` and immediately navigates to the signed URL.
-  // B7 review P2-1 — track handled ids in a ref + scrub the query param after
-  // the download triggers, so a refresh doesn't re-spam the toast.
+  // Track handled ids in a ref + scrub the query param after the download
+  // triggers, so a refresh doesn't re-spam the toast.
   const handledExportsRef = React.useRef<Set<string>>(new Set());
   React.useEffect(() => {
     const exportId = searchParams.get("export");

@@ -181,6 +181,23 @@ class ConversationSettingsBody(BaseModel):
     theme_id: str | None = None
 
 
+class AddMembersBody(BaseModel):
+    user_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=50)
+
+
+class UpdateGroupMetadataBody(BaseModel):
+    title: str | None = Field(None, min_length=2, max_length=100)
+    avatar_url: str | None = Field(None, max_length=512, pattern=r"^https?://")
+
+
+class SetMemberRoleBody(BaseModel):
+    role: str = Field(..., pattern=r"^(admin|member)$")
+
+
+class TransferOwnershipBody(BaseModel):
+    new_owner_id: uuid.UUID
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # User lookup
 # ──────────────────────────────────────────────────────────────────────────────

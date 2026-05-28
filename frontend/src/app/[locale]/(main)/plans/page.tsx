@@ -122,7 +122,7 @@ export default function PlansPage() {
         contained={false}
         aria-labelledby="plans-hero-title"
       >
-        <AtmosphereGrid variant="dots" tone="dark" />
+        <AtmosphereGrid variant="dots" tone="dark" interactive />
         <AtmosphereGlow />
         <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-night-400/15 blur-[100px]" />
         <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-warm-gold/10 blur-[80px]" />

@@ -1312,6 +1312,10 @@ class Conversation(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     members: Mapped[list[ConversationMember]] = relationship(
         back_populates="conversation",
@@ -1456,6 +1460,16 @@ class Message(Base):
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+
+    __table_args__ = (
+        Index(
+            "uq_messages_conversation_client_message_id",
+            "conversation_id",
+            "client_message_id",
+            unique=True,
+            postgresql_where=text("client_message_id IS NOT NULL"),
+        ),
     )
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")

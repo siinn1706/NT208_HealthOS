@@ -367,11 +367,21 @@ components:
           default: pending
           title: Onboarding Status
           type: string
+        permissions:
+          items:
+            type: string
+          title: Permissions
+          type: array
         refresh_token:
           anyOf:
           - type: string
           - type: 'null'
           title: Refresh Token
+        roles:
+          items:
+            type: string
+          title: Roles
+          type: array
         token_type:
           default: bearer
           title: Token Type
@@ -875,11 +885,21 @@ components:
           default: pending
           title: Onboarding Status
           type: string
+        permissions:
+          items:
+            type: string
+          title: Permissions
+          type: array
         phone:
           anyOf:
           - type: string
           - type: 'null'
           title: Phone
+        roles:
+          items:
+            type: string
+          title: Roles
+          type: array
         username:
           anyOf:
           - type: string

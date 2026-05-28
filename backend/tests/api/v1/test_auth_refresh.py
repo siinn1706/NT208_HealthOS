@@ -39,6 +39,11 @@ async def test_refresh_access_token_returns_rotated_bundle(monkeypatch):
 
     monkeypatch.setattr(auth_endpoints, "rotate_refresh_token", _rotate_refresh_token)
     monkeypatch.setattr(auth_endpoints, "create_user_access_token", lambda _user: "new-access-token")
+    monkeypatch.setattr(
+        auth_endpoints,
+        "_rbac_snapshot",
+        lambda _db, _user_id: _async_value((["admin"], ["admin.access"])),
+    )
 
     response = await auth_endpoints.refresh_access_token(
         body=SimpleNamespace(refresh_token="old-refresh-token"),
@@ -48,6 +53,8 @@ async def test_refresh_access_token_returns_rotated_bundle(monkeypatch):
 
     assert response.data.access_token == "new-access-token"
     assert response.data.refresh_token == "next-refresh-token"
+    assert response.data.roles == ["admin"]
+    assert response.data.permissions == ["admin.access"]
     assert db.commits == 1
 
 
@@ -69,3 +76,7 @@ async def test_refresh_access_token_rejects_invalid_refresh_token(monkeypatch):
 
     assert getattr(exc_info.value, "detail", {}).get("code") == "INVALID_REFRESH_TOKEN"
     assert db.commits == 1
+
+
+async def _async_value(value):
+    return value

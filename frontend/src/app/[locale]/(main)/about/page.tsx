@@ -46,7 +46,7 @@ export default function AboutPage() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <Section tone="dark" padding="lg" contained={false} aria-labelledby="about-hero-title">
-        <AtmosphereGrid variant="dots" tone="dark" />
+        <AtmosphereGrid variant="dots" tone="dark" interactive />
         <AtmosphereGlow variant="soft" static />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">

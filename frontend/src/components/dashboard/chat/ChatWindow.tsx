@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useMessages, useTypingState, findAiBotUserId } from "@/hooks/useChat";
-import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
+import type { WsFrame } from "@/hooks/useChatWs";
 import { useChatConvWs } from "@/hooks/useChatConvWs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatWindowHeader } from "./ChatWindowHeader";
@@ -23,6 +23,11 @@ import { useTranslations } from "next-intl";
 import { track } from "@/lib/analytics";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
+const CONVERSATION_UPDATE_EVENTS = new Set(["conversation.updated", "chat.conversation.updated"]);
+
+function createOptimisticMessageId(): string {
+  return `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+}
 
 interface ChatWindowProps {
   conversation: Conversation;
@@ -36,6 +41,13 @@ interface ChatWindowProps {
   onMessageSent?: (msg: Message) => void;
   onIncomingMessage?: (raw: unknown) => void;
   onConversationUpdate?: (raw: unknown) => void;
+  onUserStatus?: (raw: unknown) => void;
+  onLeaveGroup?: (convId: string) => Promise<boolean>;
+  onAddGroupMembers?: (convId: string, userIds: string[]) => Promise<boolean>;
+  onRemoveGroupMember?: (convId: string, userId: string) => Promise<boolean>;
+  onPromoteGroupMember?: (convId: string, userId: string) => Promise<boolean>;
+  onDemoteGroupMember?: (convId: string, userId: string) => Promise<boolean>;
+  onTransferGroupOwnership?: (convId: string, userId: string) => Promise<boolean>;
 }
 
 export function ChatWindow({
@@ -50,6 +62,13 @@ export function ChatWindow({
   onMessageSent,
   onIncomingMessage,
   onConversationUpdate,
+  onUserStatus,
+  onLeaveGroup,
+  onAddGroupMembers,
+  onRemoveGroupMember,
+  onPromoteGroupMember,
+  onDemoteGroupMember,
+  onTransferGroupOwnership,
 }: ChatWindowProps) {
   const t = useTranslations("chat");
   const {
@@ -122,6 +141,7 @@ export function ChatWindow({
 
     if (frame.event === "msg:new" || frame.event === "chat.message.sent") {
       upsertMessage(payload);
+      onIncomingMessage?.(payload);
       return;
     }
 
@@ -191,8 +211,21 @@ export function ChatWindow({
       setRemoteTyping(typing);
     }
 
-    if (frame.event === "conversation.updated") {
+    if (CONVERSATION_UPDATE_EVENTS.has(frame.event)) {
       onConversationUpdate?.(payload);
+      return;
+    }
+
+    if (frame.event === "user.status") {
+      onUserStatus?.(payload);
+      return;
+    }
+
+    if (frame.event === "chat.conversation.removed") {
+      // Current user was removed from this group — navigate away
+      if (typeof payload.conversation_id === "string" && payload.conversation_id === convId) {
+        onBack?.();
+      }
     }
   }, [
     convId,
@@ -201,26 +234,20 @@ export function ChatWindow({
     setRemoteTyping,
     onIncomingMessage,
     onConversationUpdate,
+    onUserStatus,
     currentUserId,
     onAiStreamStarted,
     onAiStreamChunk,
     onAiStreamCompleted,
+    onBack,
   ]);
-
-  // Global WS: kept for receiving broadcast events when it connects.
-  // Not used for isConnected/sendEvent — Turbopack does not proxy WS upgrades
-  // via rewrites(), so this socket is best-effort in dev.
-  useChatWs({
-    onEvent: handleWsEvent,
-    enabled: wsEnabled,
-    onReconnect: refetchActiveConversation,
-  });
 
   // Per-conversation socket: authoritative connection for this chat window.
   // Backend auto-joins conv:{id} on connect — no conv:join handshake needed.
+  // `isConnected` is intentionally unused here: send/flush paths must NOT gate
+  // on the socket (REST POST is the durable channel; the BE rebroadcasts).
   const {
     sendEvent,
-    isConnected,
     sessionExpired,
     isReconnecting,
     reconnectNow,
@@ -252,32 +279,88 @@ export function ChatWindow({
         return;
       }
 
+      if (!currentUserId) {
+        toast.info(t("loadingSession"));
+        return;
+      }
+
       // Offline branch: don't even attempt the network call. Stage a `queued`
       // optimistic bubble locally and persist it to IndexedDB so it survives
       // reload. The reconnect effect below will drain it.
-      if (!isOnline || (wsEnabled && !isConnected)) {
-        const optimistic = enqueueOptimisticMessage(convId, content, replyTo?.id);
-        if (optimistic) {
-          void enqueueOutbound({
-            client_message_id: optimistic.id,
-            conversation_id: convId,
+      //
+      // WS state is intentionally NOT a gate here — the REST send below is the
+      // authoritative delivery path and BE rebroadcasts every accepted message
+      // over `conv:{id}`. A down/flaky WebSocket must never silently swallow
+      // outgoing messages or other members will think the user has gone quiet.
+      if (!isOnline) {
+        const clientMessageId = createOptimisticMessageId();
+        void enqueueOutbound({
+          client_message_id: clientMessageId,
+          conversation_id: convId,
+          content,
+          reply_to_id: replyTo?.id ?? null,
+        }).then((queued) => {
+          if (!queued) {
+            const failed = enqueueOptimisticMessage(
+              convId,
+              content,
+              replyTo?.id,
+              clientMessageId,
+              "failed",
+              "unknown",
+            );
+            track("chat.message.failed", { conversation_id: convId, error_code: "queue_unavailable" });
+            if (failed) onMessageSent?.(failed);
+            toast.error(t("queue.enqueueFailedTitle"));
+            return;
+          }
+          const optimistic = enqueueOptimisticMessage(
+            convId,
             content,
-            reply_to_id: replyTo?.id ?? null,
-          });
-          track("chat.message.queued", { conversation_id: convId, reason: !isOnline ? "offline" : "ws_down" });
+            replyTo?.id,
+            clientMessageId,
+          );
+          if (!optimistic) return;
+          track("chat.message.queued", { conversation_id: convId, reason: "offline" });
           onMessageSent?.(optimistic);
-        }
+          toast.info(t("queue.offlineQueuedTitle"), {
+            id: "chat-offline-queued",
+            description: t("queue.offlineQueuedDescription"),
+          });
+        });
         setReplyTo(null);
         messageListRef.current?.scrollToBottom();
         return;
       }
 
-      // B7 P6 — AI conversations stream over SSE. Skips the WS / queue paths;
+      const enqueueNetworkFailure = async (result: Message) => {
+        const queued = await enqueueOutbound({
+          client_message_id: result.id,
+          conversation_id: convId,
+          content,
+          reply_to_id: replyTo?.id ?? null,
+        });
+        if (!queued) {
+          track("chat.message.failed", { conversation_id: convId, error_code: "queue_unavailable" });
+          toast.error(t("queue.enqueueFailedTitle"));
+          return;
+        }
+        markMessageQueued(result.id);
+        track("chat.message.queued", { conversation_id: convId, reason: "network_after_send" });
+      };
+
+      // AI conversations stream over SSE. Skips the WS / queue paths;
       // each "send" is a fresh request/response and AI replies arrive inline.
       if (conversation.type === "ai") {
-        void streamAiMessage(convId, content).then((sent) => {
-          if (sent) onMessageSent?.(sent);
-        });
+        void streamAiMessage(convId, content)
+          .then((sent) => { if (sent) onMessageSent?.(sent); })
+          .catch((error: unknown) => {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Cannot send message right now. Please try again.";
+            toast.error(message);
+          });
         setReplyTo(null);
         messageListRef.current?.scrollToBottom();
         return;
@@ -290,14 +373,7 @@ export function ChatWindow({
           // 422/429 are user-actionable and stay in `failed` so the user sees
           // a Retry button with the right reason chip.
           if (result.status === "failed" && result.error_code === "network") {
-            void enqueueOutbound({
-              client_message_id: result.id,
-              conversation_id: convId,
-              content,
-              reply_to_id: replyTo?.id ?? null,
-            });
-            markMessageQueued(result.id);
-            track("chat.message.queued", { conversation_id: convId, reason: "network_after_send" });
+            void enqueueNetworkFailure(result);
           } else if (result.status === "failed") {
             track("chat.message.failed", {
               conversation_id: convId,
@@ -327,11 +403,11 @@ export function ChatWindow({
       editMessage,
       onMessageSent,
       isOnline,
-      isConnected,
-      wsEnabled,
       enqueueOptimisticMessage,
       enqueueOutbound,
       markMessageQueued,
+      currentUserId,
+      t,
     ]
   );
 
@@ -350,13 +426,13 @@ export function ChatWindow({
     discardMessage(msgId);
   }, [discardMessage, removeOutbound, convId]);
 
-  // Auto-flush queued messages once the connection comes back. Guarded by
-  // both `isOnline` and `isConnected` so we don't burn battery flushing into
-  // a still-degraded socket.
+  // Auto-flush queued messages once the device is back online. We deliberately
+  // do NOT require `isConnected` (the per-conv WS) — REST POST is the durable
+  // delivery path and BE rebroadcasts on success, so a degraded socket must
+  // not block draining the outbox.
   const lastFlushKeyRef = useRef<string>("");
   useEffect(() => {
     if (!isOnline) return;
-    if (wsEnabled && !isConnected) return;
     if (queuedItems.length === 0) return;
 
     // Cheap dedupe: only flush when the (conv, count, head id) tuple changes.
@@ -384,12 +460,13 @@ export function ChatWindow({
             // Network failure on resend — re-enqueue the (still-failed) row so
             // the next reconnect tries again. We swap the IDB key over to the
             // freshly-minted optimistic id so future retries stay aligned.
-            void enqueueOutbound({
+            const requeued = await enqueueOutbound({
               client_message_id: result.id,
               conversation_id: item.conversation_id,
               content: item.content,
               reply_to_id: item.reply_to_id ?? null,
             });
+            if (!requeued) return false;
             markMessageQueued(result.id);
             return true;
           }
@@ -411,8 +488,6 @@ export function ChatWindow({
     });
   }, [
     isOnline,
-    isConnected,
-    wsEnabled,
     queuedItems,
     convId,
     flushOutbound,
@@ -576,7 +651,7 @@ export function ChatWindow({
           <AiQuickReplies onSelect={handleSend} disabled={isTyping} />
         )}
 
-        {/* B7 P6 — Stop generation control. Surfaces while an AI stream is in flight. */}
+        {/* Stop generation control. Surfaces while an AI stream is in flight. */}
         {conversation.type === "ai" && streamingAssistantId && (
           <div className="px-3 pb-2 flex justify-center">
             <button
@@ -600,8 +675,18 @@ export function ChatWindow({
           onCancelReply={handleCancelReply}
           onCancelEdit={handleCancelEdit}
           onKeyPress={onKeyPress}
-          disabled={conversation.type === "ai" && Boolean(streamingAssistantId)}
+          disabled={
+            !currentUserId ||
+            (conversation.type === "ai" && Boolean(streamingAssistantId))
+          }
         />
+        {queuedItems.length > 0 && !isOnline && (
+          <div className="px-4 pb-1.5">
+            <p className="text-[11px] text-muted-foreground text-center">
+              {t("group.queuedHint", { count: queuedItems.length })}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Conversation info panel — lazy-mounted to avoid filtering all messages when closed */}
@@ -612,6 +697,12 @@ export function ChatWindow({
           conversation={conversation}
           currentUserId={currentUserId}
           messages={messages}
+          onLeaveGroup={onLeaveGroup}
+          onAddMembers={onAddGroupMembers}
+          onRemoveMember={onRemoveGroupMember}
+          onPromoteMember={onPromoteGroupMember}
+          onDemoteMember={onDemoteGroupMember}
+          onTransferOwnership={onTransferGroupOwnership}
         />
       )}
 

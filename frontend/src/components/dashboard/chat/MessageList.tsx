@@ -6,7 +6,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -132,6 +131,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const loadingOlderRef = useRef(false);
   const prevLenForAppendRef = useRef(0);
   const prevLastMsgIdRef = useRef<string | null>(null);
+  const prevIsTypingRef = useRef(isTyping);
   const prevFirstMsgIdRef = useRef<string | undefined>(undefined);
   const prevMessagesLenRef = useRef(0);
   const pendingJumpRequestIdRef = useRef(0);
@@ -313,6 +313,17 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     setShowTimeChip(false);
     if (timeChipTimerRef.current) clearTimeout(timeChipTimerRef.current);
   }, [scrollerElement]);
+
+  useEffect(() => {
+    const wasTyping = prevIsTypingRef.current;
+    prevIsTypingRef.current = isTyping;
+    if (!isTyping || wasTyping || !atBottomRef.current) return;
+
+    const frame = requestAnimationFrame(() => {
+      if (atBottomRef.current) scrollToBottomImpl();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isTyping, scrollToBottomImpl]);
 
   useImperativeHandle(
     ref,

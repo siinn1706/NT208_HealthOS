@@ -10,8 +10,70 @@ import {
 } from "@/lib/bff-auth-cookie";
 import { fetchWithTimeout } from "@/lib/bff-fetch-utils";
 import { CORE_API_URL } from "@/lib/env";
+import { isAdmin } from "@/lib/admin/admin-session";
 
 const DEFAULT_ONBOARDING_STATUS = "pending";
+
+/**
+ * Secret fields that must never appear in any session response at any depth.
+ * R4.3 / Property 11.
+ */
+const SECRET_FIELDS = new Set([
+  "access_token",
+  "refresh_token",
+  "mfa_secret",
+  "mfa_recovery_codes",
+  "password_hash",
+  "oauth_token",
+  "session_cookie",
+]);
+
+/**
+ * Recursively strip SECRET_FIELDS from any plain-object tree.
+ * Arrays are traversed element-by-element; primitives are returned as-is.
+ */
+export function stripSecretFields(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripSecretFields);
+  }
+  if (isRecord(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (!SECRET_FIELDS.has(k)) {
+        out[k] = stripSecretFields(v);
+      }
+    }
+    return out;
+  }
+  return value;
+}
+
+/** Regex for valid role/permission identifiers (R4.1, R4.2). */
+const IDENTIFIER_RE = /^[a-z0-9_.:-]+$/;
+
+/**
+ * Filter and cap an identifier array per the session schema constraints.
+ * - maxItems: maximum number of items to keep
+ * - minLen / maxLen: per-item length bounds
+ * - Items that don't match IDENTIFIER_RE or fall outside length bounds are dropped.
+ */
+export function filterIdentifierArray(
+  raw: unknown,
+  maxItems: number,
+  minLen: number,
+  maxLen: number,
+): string[] {
+  if (!Array.isArray(raw)) return [];
+  const result: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    if (item.length < minLen || item.length > maxLen) continue;
+    if (!IDENTIFIER_RE.test(item)) continue;
+    result.push(item);
+    if (result.length >= maxItems) break;
+  }
+  return result;
+}
 
 export interface CoreAuthPayload {
   access_token: string;
@@ -22,6 +84,8 @@ export interface CoreAuthPayload {
   display_name?: string;
   avatar_url?: string | null;
   onboarding_status?: string | null;
+  roles?: string[];
+  permissions?: string[];
 }
 
 export interface SessionUserSnapshot {
@@ -31,6 +95,8 @@ export interface SessionUserSnapshot {
   display_name: string | null;
   avatar_url: string | null;
   onboarding_status: string;
+  roles: string[];
+  permissions: string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -65,6 +131,29 @@ export function readCoreAuthPayload(payload: unknown): CoreAuthPayload | null {
     display_name: readString(data.display_name) ?? undefined,
     avatar_url: readNullableString(data.avatar_url),
     onboarding_status: readNullableString(data.onboarding_status),
+    roles: filterIdentifierArray(data.roles, 32, 1, 64),
+    permissions: filterIdentifierArray(data.permissions, 256, 1, 128),
+  };
+}
+
+/**
+ * Build a SessionUserSnapshot from a raw Core /v1/auth/me response.
+ * Unlike readCoreAuthPayload, this does NOT require an access_token in the
+ * response body (the token is already held in the session cookie).
+ * Returns null if the payload is not a valid record with a data object.
+ */
+export function readCoreSessionSnapshot(payload: unknown): SessionUserSnapshot | null {
+  if (!isRecord(payload) || !isRecord(payload.data)) return null;
+  const data = payload.data;
+  return {
+    user_id: readString(data.user_id) ?? readString(data.id),
+    email: readString(data.email),
+    username: readNullableString(data.username),
+    display_name: readString(data.display_name),
+    avatar_url: readNullableString(data.avatar_url),
+    onboarding_status: readOnboardingStatus(data.onboarding_status),
+    roles: filterIdentifierArray(data.roles, 32, 1, 64),
+    permissions: filterIdentifierArray(data.permissions, 256, 1, 128),
   };
 }
 
@@ -76,6 +165,8 @@ export function sessionUserFromCoreAuth(auth: CoreAuthPayload): SessionUserSnaps
     display_name: auth.display_name ?? null,
     avatar_url: auth.avatar_url ?? null,
     onboarding_status: readOnboardingStatus(auth.onboarding_status),
+    roles: auth.roles ?? [],
+    permissions: auth.permissions ?? [],
   };
 }
 
@@ -92,6 +183,7 @@ export function applyAuthCookies(response: NextResponse, auth: CoreAuthPayload):
     META_COOKIE_NAME,
     JSON.stringify({
       onboarding_status: readOnboardingStatus(auth.onboarding_status),
+      is_admin: isAdmin(auth.roles ?? [], auth.permissions ?? []),
     }),
     {
       httpOnly: true,

@@ -49,6 +49,7 @@ if (-not $SkipInstall) {
     }
 }
 
-Write-Host "[FE] Starting Next.js on http://localhost:3000 ..." -ForegroundColor Green
+Write-Host "[FE] Starting Next.js on 0.0.0.0:3000 (local: http://localhost:3000) ..." -ForegroundColor Green
+Write-Host "[FE] For Cloudflared, point the tunnel at http://127.0.0.1:3000 or http://localhost:3000." -ForegroundColor DarkCyan
 npm run dev
 exit $LASTEXITCODE

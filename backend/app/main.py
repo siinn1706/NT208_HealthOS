@@ -254,6 +254,7 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
       msg:react, msg:pin, msg:unpin, msg:read, typing, conv:sync, pong
     """
     import datetime
+    import asyncio
     import json
     import uuid
     import logging
@@ -285,8 +286,15 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
         # Check revocation blacklist (ws_tickets have a jti too)
         jti = payload.get("jti")
         if jti:
-            redis_conn = await get_redis()
-            revoked = await redis_conn.exists(f"{JWT_BLACKLIST_PREFIX}{jti}")
+            try:
+                redis_conn = await get_redis()
+                revoked = await asyncio.wait_for(
+                    redis_conn.exists(f"{JWT_BLACKLIST_PREFIX}{jti}"),
+                    timeout=1.0,
+                )
+            except Exception as exc:
+                log.warning("WS ticket revocation check unavailable: %s", exc)
+                revoked = False
             if revoked:
                 raise JWTError("ws_ticket has been revoked")
         user_id_str = payload.get("sub", "")
@@ -302,7 +310,9 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
         return
 
     # ── Connected ─────────────────────────────────────────────────────────────
-    await manager.connect(ws, user_id_str)
+    connected = await manager.connect(ws, user_id_str)
+    if not connected:
+        return
     log.info("WS connected: user=%s", user_id_str)
 
     # Auto-join user's personal room (for direct notifications)
@@ -334,8 +344,23 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
                 })
                 continue
 
+            if not isinstance(frame, dict):
+                await manager.send_to_ws(ws, {
+                    "event": "error",
+                    "payload": {"code": "INVALID_FRAME", "message": "WebSocket frame must be a JSON object."},
+                    "timestamp": ts_now(),
+                })
+                continue
+
             event_type = frame.get("event", "")
             payload_data = frame.get("payload", {})
+            if not isinstance(event_type, str) or not isinstance(payload_data, dict):
+                await manager.send_to_ws(ws, {
+                    "event": "error",
+                    "payload": {"code": "INVALID_FRAME", "message": "Frame requires string event and object payload."},
+                    "timestamp": ts_now(),
+                })
+                continue
 
             # Delegate all event handling to the chat router module
             async with AsyncSessionLocal() as db:

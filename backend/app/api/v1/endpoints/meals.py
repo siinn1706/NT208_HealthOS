@@ -6,7 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ from app.core.security import get_current_user
 from app.models.core import Meal, MealStatusEnum, User
 from app.schemas.common import DataResponse, ErrorResponse, PaginationMeta
 from app.schemas.meals import (
+    MealCreateBody,
     MealDataResponse,
     MealIngredientItem,
     MealIngredientListResponse,
@@ -43,12 +44,6 @@ router = APIRouter(prefix="/meals", tags=["Meals"])
 
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-
-
-class _MealCreateJsonBody(BaseModel):
-    name: str = Field(min_length=1)
-    notes: str | None = None
-    logged_at: datetime.datetime | None = None
 
 
 def _bad_request(message: str) -> HTTPException:
@@ -166,17 +161,24 @@ async def create_meal(
     logged_at: datetime.datetime | None = None
     image_url: str | None = None
     job_id: str | None = None
+    nutrition_result: dict | None = None
+    committed = False
 
     try:
         if "application/json" in content_type:
             body = await request.json()
             try:
-                parsed = _MealCreateJsonBody.model_validate(body)
+                parsed = MealCreateBody.model_validate(body)
             except Exception as exc:  # pragma: no cover - defensive
                 raise _bad_request("Invalid JSON body for meal creation.") from exc
             name = parsed.name
             logged_at = parsed.logged_at
-            _ = parsed.notes
+            nutrition_result = meal_svc.build_manual_nutrition_result(
+                name=parsed.name,
+                notes=parsed.notes,
+                meal_type=parsed.meal_type,
+                ingredients=parsed.ingredients,
+            )
         else:
             name = name_form
             logged_at = logged_at_form
@@ -204,6 +206,7 @@ async def create_meal(
             logged_at=logged_at,
             image_url=image_url,
             job_id=None,
+            nutrition_result=nutrition_result,
         )
 
         # If image was uploaded, trigger async analysis after meal is created
@@ -213,8 +216,10 @@ async def create_meal(
 
             stmt = update(Meal).where(Meal.id == meal.id).values(job_id=job.id)
             await db.execute(stmt)
-            await db.commit()
             meal.job_id = job.id
+
+        await db.commit()
+        committed = True
 
         response = MealDataResponse(data=_to_meal_response(meal))
         if idem_key:
@@ -225,7 +230,7 @@ async def create_meal(
     except Exception:
         # Release the idempotency slot so the next retry isn't permanently
         # stuck waiting on a pending marker that will never become an envelope.
-        if idem_key:
+        if idem_key and not committed:
             try:
                 await idem_svc.release(redis, idem_key, idem_scope)
             except Exception:

@@ -50,12 +50,14 @@ export async function POST(req: NextRequest) {
   if (!token) return unauthorized();
 
   const contentType = req.headers.get("content-type") ?? "";
+  const idempotencyKey = req.headers.get("idempotency-key");
 
   try {
     let body: BodyInit | undefined;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
     };
+    if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
 
     if (contentType.includes("multipart/form-data")) {
       body = await req.formData();

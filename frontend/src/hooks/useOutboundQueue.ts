@@ -72,6 +72,10 @@ async function resolveDbName(): Promise<string | null> {
   return _dbNamePromise;
 }
 
+export function resetOutboundQueueUserScope(): void {
+  _dbNamePromise = null;
+}
+
 function openDb(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
     if (typeof indexedDB === "undefined") {
@@ -187,7 +191,7 @@ export interface UseOutboundQueueResult {
   /** Current queued items for the active conversation, FIFO. */
   queued: OutboundItem[];
   /** Persist a new outbound item. Idempotent on `client_message_id`. */
-  enqueue: (item: Omit<OutboundItem, "enqueued_at" | "attempts"> & { attempts?: number }) => Promise<void>;
+  enqueue: (item: Omit<OutboundItem, "enqueued_at" | "attempts"> & { attempts?: number }) => Promise<boolean>;
   /** Remove a single item (typically after successful resend). */
   remove: (clientMessageId: string) => Promise<void>;
   /**
@@ -211,9 +215,11 @@ export function useOutboundQueue(
     setQueued(items);
   }, [conversationId]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const enqueue = useCallback<UseOutboundQueueResult["enqueue"]>(
     async (item) => {
@@ -226,7 +232,7 @@ export function useOutboundQueue(
         attempts: item.attempts ?? 0,
       };
       const ok = await dbPut(stored);
-      if (!ok) return;
+      if (!ok) return false;
 
       const count = await dbCountForConversation(item.conversation_id);
       if (count > PER_CONVERSATION_CAP) {
@@ -234,6 +240,7 @@ export function useOutboundQueue(
         if (evicted.length > 0) onEvicted?.(evicted.length);
       }
       await refresh();
+      return true;
     },
     [refresh, onEvicted]
   );

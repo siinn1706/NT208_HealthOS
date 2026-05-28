@@ -1,7 +1,7 @@
 # NT208 HealthOS — System Architecture
 
-> **Version**: 1.3.1  
-> **Last Updated**: 2026-05-24  
+> **Version**: 1.3.2  
+> **Last Updated**: 2026-05-25  
 > **Scope**: Web + Mobile + Microservices + Background Tasks
 
 ---
@@ -53,7 +53,7 @@ Response (JSON)
 Mobile App (AsyncStorage cache)
 ```
 
-### Real-time Chat (WebSocket)
+### Real-time Chat (WebSocket) + Offline Messaging + Group Chat
 ```
 Browser/Mobile (WSS)
     ↓
@@ -66,11 +66,91 @@ Core API WebSocket (port 8000/ws)
 Message received
     ├─ Validate input (Pydantic)
     ├─ Persist to PostgreSQL
-    ├─ Publish to Redis Pub/Sub
-    │   (all connected clients receive)
-    └─ Send to all subscribers
+    ├─ Check group membership + RBAC (owner/admin/member)
+    ├─ Publish to Redis Pub/Sub (all connected clients receive)
+    ├─ Notify offline members via _notify_conversation_members()
+    │   └─ No-op for offline members (send_to_user skips empty socket set); catch up via REST on reconnect
+    └─ Send to all subscribers (real-time delivery)
         ↓
-Browser/Mobile receives message (real-time)
+Connected clients receive message (real-time)
+Offline clients catch up through REST on reconnect or conversation open
+```
+
+**Group Chat Features**:
+- Group creation + member management (REST API: POST, PATCH, DELETE `/conversations/{id}/members`)
+- Role-based access control: owner → admin → member; owner leave auto-promotes; last-member leave soft-deletes
+- Offline resilience: Messages persist in DB for offline members; ChatLayout refetches on reconnect
+- Frontend: Group creation dialog, member picker, group info panel with role/leave/add actions
+
+---
+
+### Chat — Store-and-Forward Contract
+
+**Invariant:** A message is durable before any WS delivery is attempted. All three send entrypoints persist through `chat_svc.send_message()`, which executes `db.add()` + `db.flush()` before the endpoint/router commits **before** any call to `ws_manager.send_to_user()` or `broadcast`. Per-user fanout exceptions never roll back the commit.
+
+#### Send paths
+
+| Entrypoint | Persist call site | WS broadcast |
+|------------|------------------|--------------|
+| REST `POST /conversations/{id}/messages` | `chat_svc.send_message` -> `db.flush()` x3 (`chat.py`), `db.commit()` at `conversations.py:380` | Room broadcast uses dead-socket cleanup; `_notify_conversation_members` is try/except wrapped |
+| WS `msg:send` / `chat.message.send` | same `chat_svc.send_message`, `db.commit()` at `chat_router.py:199` | `broadcast_dual` + `fanout_to_members` (try/except wrapped) |
+| AI stream `POST /messages/stream` | same `chat_svc.send_message`, `db.commit()` before the SSE generator starts | none for the user message at handler level; stream generator handles assistant events independently |
+
+`ws_manager.send_to_user(user_id, frame)` is a no-op when `user_id` has no sockets (`handlers.py:162-165`).
+
+#### Catch-up paths (offline recipient)
+
+| Trigger | Path | Mechanism |
+|---------|------|-----------|
+| WS reconnect | `useChatWs.onopen` (when `wasReconnect=true`) → `onReconnect` callback → `refetchActiveConversation` + `refetchConversations` | Full REST refetch of active conv + list-level unread counts |
+| Open conversation | `useMessages` mount/dep-change → `GET /v1/conversations/{id}/messages?limit=50` | Cursor pagination (`before=` timestamp); `has_more` flag drives scroll-up pagination |
+| Unread count | `chat_svc.get_conversations` → `_get_bulk_conversation_data` | Counts messages where `created_at > member.last_read_at` (NULL = all messages unread) |
+
+#### Idempotency (`client_message_id`)
+
+Frontend generates `optimistic-<uuid>` before the POST and sends it as `client_message_id`. Backend deduplicates on `(conversation_id, client_message_id)` in `chat_svc.send_message`, backed by a partial unique index where `client_message_id IS NOT NULL`; duplicate POST returns the original DTO without inserting a new row. WS rebroadcast of the same `message.id` is merged in-place by `upsertMessage`.
+
+#### Frontend outbox semantics
+
+`useOutboundQueue` (IndexedDB) is the durable offline outbox:
+- **Scope**: per-user database (`healthos-chat-{uid}`), per-conversation records.
+- **Durability first**: UI only shows a composed-offline message as `queued` after IndexedDB write succeeds. If IDB is unavailable, the bubble remains failed/not queued.
+- **Cap**: 200 items per conversation; oldest evicted with `onEvicted` callback.
+- **Drain**: `flush(send)` is re-entrant-guarded (`flushingRef.current`) — concurrent `online` events never double-send.
+- **Dedupe key**: `ChatWindow` uses `${convId}:${queuedItems.length}:${head.client_message_id}` to suppress duplicate drain effects during WS bouncing.
+- **Error classification**: Only `error_code === "network"` auto-enqueues; `rate_limited` and `validation` errors stay `failed` and require manual retry.
+
+#### Sequence diagram — offline recipient
+
+```mermaid
+sequenceDiagram
+  participant A as Sender FE
+  participant BFF as Next.js BFF
+  participant BE as FastAPI BE
+  participant DB as Postgres
+  participant WS as WS Manager
+  participant B as Recipient FE
+
+  A->>BFF: POST /api/v1/conversations/{id}/messages
+  BFF->>BE: POST /v1/conversations/{id}/messages
+  BE->>DB: INSERT message (client_message_id)
+  DB-->>BE: ok (row committed)
+  BE->>WS: send_to_user(recipient, frame) — best-effort
+  Note over WS,B: B has no socket → no-op, no error
+  BE-->>BFF: 201 MessageDTO
+  BFF-->>A: 201 MessageDTO
+  Note over A: optimistic bubble → confirmed (id swap)
+
+  Note over B: ...later, B reconnects
+
+  B->>BFF: GET /api/v1/conversations
+  BFF->>BE: GET /v1/conversations
+  BE-->>BFF: list with unread_count=N
+  BFF-->>B: conversation list
+  B->>BFF: GET /api/v1/conversations/{id}/messages
+  BFF->>BE: GET /v1/conversations/{id}/messages
+  BE-->>BFF: missed messages (cursor paginated)
+  BFF-->>B: messages rendered
 ```
 
 ---
@@ -124,6 +204,10 @@ Browser/Mobile receives message (real-time)
 │  │ • Register   │ │ • Reactions  │ │ • Goals          │  │
 │  │ • MFA        │ │ • Presence   │ │ • Risk predict   │  │
 │  │ • OAuth      │ │ • Pinned     │ │ • Trend analysis │  │
+│  │              │ │ • Groups     │ │                  │  │
+│  │              │ │ • RBAC       │ │                  │  │
+│  │              │ │ • Offline    │ │                  │  │
+│  │              │ │   fanout     │ │                  │  │
 │  └──────────────┘ └──────────────┘ └──────────────────┘  │
 │                                                            │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐  │
@@ -201,6 +285,122 @@ Browser/Mobile receives message (real-time)
 │                                                    │
 └────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Admin Console Architecture
+
+### Shell Design
+
+Admin console UI built on token-driven design system with sidebar collapse state persisted to localStorage.
+
+**Layout Structure**
+```
+AdminShell (wrapper)
+  ├─ AdminSidebar (collapsible nav)
+  │   ├─ CSS custom properties (--admin-sidebar-bg, --admin-fg, --admin-accent, etc.)
+  │   ├─ aria-current="page" on active links
+  │   └─ Collapse state: localStorage key "healthos.admin.sidebar-collapsed"
+  └─ AdminTopBar (header + identity menu)
+      ├─ AdminEnvBadge (dev/staging indicator)
+      └─ User identity menu (RBAC indicator ready)
+```
+
+**Layout Primitives** (`admin-layout-primitives.tsx`)
+- `AdminPageContent` — main content wrapper with safe padding
+- `AdminPageHeader` — page title + actions bar
+- `AdminCard` — card container with token-driven styling
+- `AdminToolbar` — action toolbar (filters, toggles, exports)
+
+### Component Library
+
+**Shared Admin Components**
+| Component | Purpose | Ref |
+|-----------|---------|-----|
+| KpiCard + Sparkline | 7-point trend visualization | Phase 3 |
+| UsersTable | density/column-visibility toggles, search | Phase 4 |
+| UserDetailSections | profile, subscription audit tabs | Phase 5 |
+| PlansTable | subscription metrics, edit modal | Phase 6 |
+| AuditTable | event log with filter bar | Phase 7 |
+| SecurityFeed | severity badges, timeline | Phase 7 |
+
+### Pages
+
+| Route | Components | Status |
+|-------|-----------|--------|
+| `/admin` | OverviewCards, ActivityFeed | Complete (Phase 3) |
+| `/admin/users` | UsersTable, ColumnVisibilityMenu | Complete (Phase 4) |
+| `/admin/users/[id]` | UserDetailActionBar, sections, audit tab | Complete (Phase 5) |
+| `/admin/subscriptions` | PlansTable, PlanMetricsStrip, EditPlanModal | Complete (Phase 6) |
+| `/admin/audit` | AuditTable, AuditFilterBar | Complete (Phase 7) |
+| `/admin/security` | SecurityFeed, SeverityBadge | Complete (Phase 7) |
+
+### Design Tokens
+
+```css
+/* Sidebar */
+--admin-sidebar-bg: [light: #f8f9fa, dark: #1f2937]
+--admin-sidebar-fg: [light: #111827, dark: #f3f4f6]
+--admin-sidebar-accent: [light: #3b82f6, dark: #60a5fa]
+--admin-sidebar-active-bg: [light: #e5e7eb, dark: #374151]
+
+/* Header */
+--admin-header-height: 64px
+--admin-header-bg: [light: #ffffff, dark: #111827]
+
+/* Density */
+--admin-row-height-compact: 36px
+--admin-row-height-default: 44px
+--admin-row-height-relaxed: 56px
+```
+
+### A11y & Motion
+
+- `aria-current="page"` marks active sidebar link
+- `scope="col"` on all table header cells
+- `motion-safe:` prefix gates `animate-*` and `transition-*` classes (respects user's prefers-reduced-motion)
+
+### Internationalization (i18n)
+
+Admin console UI fully supports next-intl with `admin.*` namespace:
+
+**Message keys structure:**
+```
+admin.userDetail          → User detail page (profile, subscription, activity sections)
+admin.users              → Users list page
+admin.subscriptions      → Subscription plans management page
+admin.common             → Shared labels (save, cancel, delete, etc.)
+admin.errors             → Admin-specific error messages (Max retries reached, etc.)
+```
+
+**Locales supported:** English (`en.json`) + Vietnamese (`vi.json`)
+
+**BFF subscription quick-action payloads** (`src/lib/admin/subscription-quick-action-payloads.ts`):
+- `buildCancelPayload()` — Cancels subscription, preserves `expires_at`
+- `buildExtendPayload(days)` — Extends N days from expiry (or `now` if expired/canceled)
+- `buildResetFreePayload()` — Resets user to Free plan, clears expiry
+
+**Subscription assignment form** (`UserDetailSubscriptionForm.tsx`):
+- Zod validation for plan selection and duration
+- Error boundary + field-level error display
+- Calls PATCH `/api/v1/admin/users/[id]/subscription` via BFF
+
+### Testing
+
+- **9 test files** covering shell, components, pages, integration
+- **150 tests** (all passing):
+  - Shell: AdminSidebar collapse, AdminTopBar rendering
+  - Components: KpiCard, UsersTable density/visibility, UserDetailSections
+  - Pages: Overview, users list, user detail, subscriptions, audit
+  - Integration: navigation, RBAC decorator readiness
+- **Playwright smoke spec** (`e2e/admin-redesign.spec.ts`) — gated by `ADMIN_E2E=1`; validates sidebar collapse, table interactions, page navigation
+
+### Known Gaps
+
+- **Subscription history**: BFF stub returns `[]`; new BE table `subscription_assignments` deferred to follow-up plan
+- **Audit tab**: BFF stub returns `[]`; Core `/v1/admin/users/{id}/audit` deferred to follow-up plan
+- **Endpoint wiring**: RBAC permission checks not yet wired to backend endpoints (deferred to v1.3)
+- **Backend integration**: 6 admin pages render mock data where real BFF routes exist; subscription quick-actions + history wired to BFF stubs
 
 ---
 
@@ -304,17 +504,22 @@ Browser
     └─ On next request, cookie auto-sent in Authorization header
 ```
 
-### 2. Chat Message Flow (WebSocket)
+### 2. Chat Message Flow (WebSocket) + Group Messaging + Offline Delivery
 
 ```
-Browser (WSS /ws/chat/conversation_id)
+Browser/Mobile (WSS /ws/chat/conversation_id)
     ↓ [message: "How are you?"]
 Core API WebSocket Handler
     ├─ Authenticate JWT token
     ├─ Add to connection manager (in-memory list)
+    ├─ Verify group membership + check role (owner/admin/member)
     ├─ Parse message (Pydantic validation)
     ├─ Persist to PostgreSQL (Message table)
     ├─ Publish to Redis Pub/Sub (channel: conversation_id)
+    ├─ Notify offline members via _notify_conversation_members()
+    │   └─ For each member not currently connected:
+    │       ├─ send_to_user is a no-op when no socket exists
+    │       └─ Message stays durable in Postgres for REST catch-up
     └─ Return OK
         ↓
 Redis Pub/Sub
@@ -325,7 +530,20 @@ Browser + Other participants
     ├─ Receive message object
     ├─ Append to messages state
     └─ Render in UI (real-time)
+        ↓
+Offline clients (on reconnect)
+    ├─ BFF calls /conversations/{id} to refresh members
+    ├─ BFF calls /conversations/{id}/messages to fetch latest
+    └─ UI updates with missed messages + new members/roles
 ```
+
+**Group Chat Constraints**:
+- Only group members (owner/admin/member) can send messages
+- Message edits + deletes scoped to sender or owner
+- Member role changes propagated in real-time (role channel)
+- Last-member departure soft-deletes conversation (deleted_at set)
+- Owner departure auto-promotes oldest admin; if no admin, auto-deletes
+
 
 ### 3. Reminder Firing Flow (Background Task)
 
@@ -650,6 +868,7 @@ Mobile app displays nutrition breakdown
 | **MFA enforcement** | Password login bypasses MFA challenge | v1.3: Enforce challenge |
 | **OAuth token refresh** | Not implemented | v2.0: Add OAuth refresh |
 | **Multi-tenant support** | Single tenant (future) | v3.0: Organization support |
+| **Group invitation system** | Groups auto-joined; no invitations yet | v1.4: Add invite flow |
 
 ---
 

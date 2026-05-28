@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CHAT_UNREAD_REFRESH_EVENT } from "@/hooks/useChat";
 
 /**
  * Polls the conversations endpoint for the total unread count. Returns 0 when
@@ -26,9 +27,13 @@ export function useUnreadConversations(intervalMs = 30_000) {
     };
     fetchUnread();
     const id = window.setInterval(fetchUnread, intervalMs);
+    window.addEventListener(CHAT_UNREAD_REFRESH_EVENT, fetchUnread);
+    window.addEventListener("focus", fetchUnread);
     return () => {
       cancelled = true;
       window.clearInterval(id);
+      window.removeEventListener(CHAT_UNREAD_REFRESH_EVENT, fetchUnread);
+      window.removeEventListener("focus", fetchUnread);
     };
   }, [intervalMs]);
 
