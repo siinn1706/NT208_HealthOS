@@ -10,6 +10,7 @@ import datetime
 import logging
 import uuid
 from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -711,6 +712,256 @@ async def assert_member(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Group management operations
+# ──────────────────────────────────────────────────────────────────────────────
+
+GROUP_SIZE_CAP = 256
+
+
+def _require_role(actor_member: ConversationMember, allowed: set[str]) -> None:
+    """Raise PermissionError if actor's role is not in allowed set."""
+    if actor_member.role not in allowed:
+        raise PermissionError(f"This action requires role in {allowed}; you have '{actor_member.role}'.")
+
+
+async def add_group_members(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    user_ids: list[uuid.UUID],
+) -> ConversationDTO:
+    actor = await assert_member(db, conversation_id, actor_id)
+    conv_result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = conv_result.scalar_one_or_none()
+    if conv is None or conv.type != ConversationTypeEnum.GROUP:
+        raise ValueError("Conversation is not a group.")
+    _require_role(actor, {"owner", "admin"})
+
+    # Count current accepted members
+    count_result = await db.execute(
+        select(func.count(ConversationMember.id)).where(
+            and_(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.is_accepted.is_(True),
+            )
+        )
+    )
+    current_count = count_result.scalar_one()
+    new_ids = [uid for uid in user_ids if uid != actor_id]
+    if current_count + len(new_ids) > GROUP_SIZE_CAP:
+        raise ValueError(f"Group cannot exceed {GROUP_SIZE_CAP} members.")
+
+    for uid in new_ids:
+        existing = (await db.execute(
+            select(ConversationMember).where(
+                and_(
+                    ConversationMember.conversation_id == conversation_id,
+                    ConversationMember.user_id == uid,
+                )
+            )
+        )).scalar_one_or_none()
+        if existing is None:
+            db.add(ConversationMember(
+                conversation_id=conversation_id,
+                user_id=uid,
+                role="member",
+                is_accepted=True,
+            ))
+        elif not existing.is_accepted:
+            existing.is_accepted = True
+
+    await db.flush()
+    conv = await _reload_conversation(db, conversation_id)
+    return await _build_conversation_dto(db, conv, actor_id)
+
+
+async def remove_group_member(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    target_id: uuid.UUID,
+) -> ConversationDTO:
+    actor = await assert_member(db, conversation_id, actor_id)
+    conv_result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = conv_result.scalar_one_or_none()
+    if conv is None or conv.type != ConversationTypeEnum.GROUP:
+        raise ValueError("Conversation is not a group.")
+
+    if target_id == actor_id:
+        # Self-remove = leave
+        return await leave_group(db, conversation_id, actor_id)  # type: ignore[return-value]
+
+    _require_role(actor, {"owner", "admin"})
+
+    target = (await db.execute(
+        select(ConversationMember).where(
+            and_(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == target_id,
+            )
+        )
+    )).scalar_one_or_none()
+
+    if target is None:
+        # Idempotent — target not a member
+        conv = await _reload_conversation(db, conversation_id)
+        return await _build_conversation_dto(db, conv, actor_id)
+
+    if target.role == "owner":
+        raise PermissionError("Cannot remove the group owner.")
+    if target.role == "admin" and actor.role != "owner":
+        raise PermissionError("Only the owner can remove an admin.")
+
+    await db.delete(target)
+    await db.flush()
+    conv = await _reload_conversation(db, conversation_id)
+    return await _build_conversation_dto(db, conv, actor_id)
+
+
+async def leave_group(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    actor_id: uuid.UUID,
+) -> None:
+    actor = await assert_member(db, conversation_id, actor_id)
+    conv_result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = conv_result.scalar_one_or_none()
+    if conv is None or conv.type != ConversationTypeEnum.GROUP:
+        raise ValueError("Conversation is not a group.")
+
+    if actor.role == "owner":
+        # Auto-promote oldest admin or member before leaving
+        next_owner = (await db.execute(
+            select(ConversationMember)
+            .where(
+                and_(
+                    ConversationMember.conversation_id == conversation_id,
+                    ConversationMember.user_id != actor_id,
+                    ConversationMember.is_accepted.is_(True),
+                    ConversationMember.role == "admin",
+                )
+            )
+            .order_by(ConversationMember.id)
+            .limit(1)
+        )).scalar_one_or_none()
+
+        if next_owner is None:
+            next_owner = (await db.execute(
+                select(ConversationMember)
+                .where(
+                    and_(
+                        ConversationMember.conversation_id == conversation_id,
+                        ConversationMember.user_id != actor_id,
+                        ConversationMember.is_accepted.is_(True),
+                    )
+                )
+                .order_by(ConversationMember.id)
+                .limit(1)
+            )).scalar_one_or_none()
+
+        if next_owner:
+            next_owner.role = "owner"
+        else:
+            # Last member — soft-delete conversation
+            import datetime as _dt
+            conv.deleted_at = _dt.datetime.now(_dt.timezone.utc)
+
+    await db.delete(actor)
+    await db.flush()
+
+
+async def update_group_metadata(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    *,
+    title: str | None,
+    avatar_url: str | None,
+) -> ConversationDTO:
+    actor = await assert_member(db, conversation_id, actor_id)
+    conv_result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = conv_result.scalar_one_or_none()
+    if conv is None or conv.type != ConversationTypeEnum.GROUP:
+        raise ValueError("Conversation is not a group.")
+    _require_role(actor, {"owner", "admin"})
+
+    if title is not None:
+        conv.title = title
+    if avatar_url is not None:
+        conv.avatar_url = avatar_url
+
+    await db.flush()
+    conv = await _reload_conversation(db, conversation_id)
+    return await _build_conversation_dto(db, conv, actor_id)
+
+
+async def set_member_role(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    target_id: uuid.UUID,
+    role: str,
+) -> ConversationDTO:
+    actor = await assert_member(db, conversation_id, actor_id)
+    conv_result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = conv_result.scalar_one_or_none()
+    if conv is None or conv.type != ConversationTypeEnum.GROUP:
+        raise ValueError("Conversation is not a group.")
+    _require_role(actor, {"owner"})
+
+    target = (await db.execute(
+        select(ConversationMember).where(
+            and_(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == target_id,
+                ConversationMember.is_accepted.is_(True),
+            )
+        )
+    )).scalar_one_or_none()
+    if target is None:
+        raise ValueError("Target user is not a member.")
+    if target.role == "owner":
+        raise PermissionError("Cannot change the owner's role; use transfer-owner instead.")
+
+    target.role = role
+    await db.flush()
+    conv = await _reload_conversation(db, conversation_id)
+    return await _build_conversation_dto(db, conv, actor_id)
+
+
+async def transfer_ownership(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    new_owner_id: uuid.UUID,
+) -> ConversationDTO:
+    actor = await assert_member(db, conversation_id, actor_id)
+    conv_result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = conv_result.scalar_one_or_none()
+    if conv is None or conv.type != ConversationTypeEnum.GROUP:
+        raise ValueError("Conversation is not a group.")
+    _require_role(actor, {"owner"})
+
+    new_owner = (await db.execute(
+        select(ConversationMember).where(
+            and_(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == new_owner_id,
+                ConversationMember.is_accepted.is_(True),
+            )
+        )
+    )).scalar_one_or_none()
+    if new_owner is None:
+        raise ValueError("New owner must already be a member.")
+
+    actor.role = "admin"
+    new_owner.role = "owner"
+    await db.flush()
+    conv = await _reload_conversation(db, conversation_id)
+    return await _build_conversation_dto(db, conv, actor_id)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Message operations
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -778,19 +1029,41 @@ async def send_message(
 ) -> MessageDTO:
     await assert_member(db, conversation_id, sender_id)
 
-    # Idempotency check
-    if client_message_id:
+    async def load_existing_client_message() -> MessageDTO | None:
+        if not client_message_id:
+            return None
         existing = await db.execute(
-            select(Message).where(
+            select(Message.id).where(
                 and_(
                     Message.conversation_id == conversation_id,
                     Message.client_message_id == client_message_id,
                 )
             )
         )
-        dup = existing.scalar_one_or_none()
-        if dup:
-            return await _load_message_dto(db, dup.id, conversation_id)
+        message_id = existing.scalar_one_or_none()
+        if message_id is None:
+            return None
+        return await _load_message_dto(db, message_id, conversation_id)
+
+    # Fast idempotency path. The DB unique index below is still authoritative
+    # for concurrent retries that race past this read.
+    if client_message_id:
+        existing_dto = await load_existing_client_message()
+        if existing_dto:
+            return existing_dto
+
+    if reply_to_id:
+        reply_result = await db.execute(
+            select(Message).where(
+                and_(
+                    Message.id == reply_to_id,
+                    Message.conversation_id == conversation_id,
+                    Message.deleted_at.is_(None),
+                )
+            )
+        )
+        if reply_result.scalar_one_or_none() is None:
+            raise ValueError("Reply target does not belong to this conversation.")
 
     ct = MessageContentTypeEnum(content_type)
     attachments_data = [a.model_dump() for a in attachments] if attachments else None
@@ -805,7 +1078,16 @@ async def send_message(
         attachments=attachments_data,
     )
     db.add(msg)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        if not client_message_id:
+            raise
+        await db.rollback()
+        existing_dto = await load_existing_client_message()
+        if existing_dto:
+            return existing_dto
+        raise
 
     # Update conversation.updated_at
     conv_result = await db.execute(
@@ -1096,7 +1378,13 @@ async def mark_conversation_read(
     """Set member.last_read_at to the timestamp of the specified message."""
     await assert_member(db, conversation_id, user_id)
     msg_result = await db.execute(
-        select(Message.created_at).where(Message.id == last_read_message_id)
+        select(Message.created_at).where(
+            and_(
+                Message.id == last_read_message_id,
+                Message.conversation_id == conversation_id,
+                Message.deleted_at.is_(None),
+            )
+        )
     )
     msg_ts = msg_result.scalar_one_or_none()
     if not msg_ts:

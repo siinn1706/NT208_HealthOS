@@ -59,7 +59,7 @@ export function UserDetailTabs({
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col gap-0">
-      <TabsList className="w-full justify-start rounded-none border-b border-[var(--admin-border)] bg-transparent p-0">
+      <TabsList variant="line" className="w-full justify-start rounded-none border-b border-[var(--admin-border)] bg-transparent p-0">
         {VALID_TABS.map((tabId) => {
           const { labelKey, Icon } = TAB_META[tabId];
           return (

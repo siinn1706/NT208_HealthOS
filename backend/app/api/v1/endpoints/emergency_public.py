@@ -173,8 +173,9 @@ async def get_public_emergency_card(
     # We do NOT hard-revoke the token — the user might have a genuinely
     # heavily-scanned card (multi-hospital long-term patient). The audit row
     # + notification is enough signal for the owner to investigate.
+    realtime_notification = None
     if token_row.access_count == TOKEN_SANITY_CAP_READS:
-        await notif_svc.enqueue(
+        realtime_notification = await notif_svc.enqueue(
             db=db,
             user_id=token_row.user_id,
             title="Emergency QR card scanned heavily",
@@ -219,5 +220,7 @@ async def get_public_emergency_card(
         )
 
     await db.commit()
+    if realtime_notification is not None:
+        await notif_svc.emit_notification_created(realtime_notification)
 
     return PublicEmergencyCardResponse(data=card)

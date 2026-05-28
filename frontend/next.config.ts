@@ -103,18 +103,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: "/ws",
-        destination: "http://localhost:8000/ws",
-      },
-      {
-        source: "/v1/:path*",
-        destination: "http://localhost:8000/v1/:path*",
-      },
-    ];
-  },
 };
 
 export default withNextIntl(nextConfig);

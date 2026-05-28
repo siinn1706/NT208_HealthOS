@@ -146,7 +146,7 @@ export function readCoreSessionSnapshot(payload: unknown): SessionUserSnapshot |
   if (!isRecord(payload) || !isRecord(payload.data)) return null;
   const data = payload.data;
   return {
-    user_id: readString(data.user_id),
+    user_id: readString(data.user_id) ?? readString(data.id),
     email: readString(data.email),
     username: readNullableString(data.username),
     display_name: readString(data.display_name),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -11,6 +12,7 @@ from app.schemas.common import DataResponse, PaginatedResponse
 class NutritionResult(BaseModel):
     dish_name: str | None = None
     serving_type: str | None = None
+    meal_type: str | None = None
     calories: float | None = None
     protein_g: float | None = None
     carbs_g: float | None = None
@@ -20,6 +22,30 @@ class NutritionResult(BaseModel):
     salt_g: float | None = None
     confidence: float | None = None
     source: str | None = None
+    notes: str | None = None
+    ingredients: list[dict[str, Any]] | None = None
+
+
+class MealCreateIngredient(BaseModel):
+    ingredient_name: str = Field(min_length=1, max_length=100)
+    ingredient_name_en: str | None = Field(default=None, max_length=100)
+    ingredient_id: uuid.UUID | None = None
+    grams: float = Field(ge=0, le=5000)
+    manual_calories: float | None = Field(default=None, ge=0, le=10000)
+    calories: float | None = Field(default=None, ge=0, le=10000)
+    kcal: float | None = Field(default=None, ge=0, le=10000)
+    carbs_g: float | None = Field(default=None, ge=0, le=10000)
+    protein_g: float | None = Field(default=None, ge=0, le=10000)
+    fat_g: float | None = Field(default=None, ge=0, le=10000)
+    is_matched: bool | None = None
+
+
+class MealCreateBody(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    notes: str | None = Field(default=None, max_length=500)
+    logged_at: datetime.datetime | None = None
+    meal_type: Literal["breakfast", "lunch", "dinner", "snack"] | None = None
+    ingredients: list[MealCreateIngredient] = Field(default_factory=list, max_length=100)
 
 
 class MealResponse(BaseModel):

@@ -23,6 +23,7 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import Notification, NotificationKindEnum, UserPreference
+from app.ws.handlers import manager as ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,33 @@ _DEFAULT_NOTIFICATION_PREFERENCES = {
     "critical_bypass": False,
     "snooze_options": [5, 10, 30],
 }
+
+
+def _notification_realtime_frame(notification: Notification) -> dict | None:
+    notification_id = getattr(notification, "id", None)
+    user_id = getattr(notification, "user_id", None)
+    if notification_id is None or user_id is None:
+        return None
+    created_at = getattr(notification, "created_at", None)
+    return {
+        "event": "notification.created",
+        "payload": {
+            "id": str(notification_id),
+            "kind": str(getattr(notification, "kind", "info") or "info"),
+            "created_at": created_at.isoformat() if created_at is not None else None,
+        },
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+
+
+async def emit_notification_created(notification: Notification) -> None:
+    frame = _notification_realtime_frame(notification)
+    if frame is None:
+        return
+    try:
+        await ws_manager.send_to_user(str(notification.user_id), frame)
+    except Exception as exc:
+        logger.debug("notification.created websocket fanout failed: %s", type(exc).__name__)
 
 def _coerce_snooze_options(value: object | None) -> list[int]:
     raw = value if isinstance(value, list) else _DEFAULT_NOTIFICATION_PREFERENCES["snooze_options"]
@@ -230,6 +258,7 @@ async def enqueue(
     await db.flush()
     if commit:
         await db.commit()
+        await emit_notification_created(notif)
     return notif
 
 

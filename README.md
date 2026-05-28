@@ -95,7 +95,7 @@ Browser -> Next.js BFF (/api/v1/**) -> Core API (/v1/**) -> PostgreSQL / Redis /
 bash infra/scripts/setup.sh
 ```
 
-This copies env example files, downloads the AI YOLO model from Google Drive, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
+This creates `infra/env/.env.master` from the tracked master template, renders all generated `.env` files from it, downloads the AI YOLO model from Google Drive, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
 
 Skip model download if needed:
 
@@ -176,18 +176,16 @@ python -m venv .venv
 | Notification health | http://localhost:8002/health |
 | MinIO API / Console | http://localhost:9000 / http://localhost:9001 |
 
-## Environment (Frontend)
+## Environment
 
-Use `infra/env/frontend.env.example` as source of truth.
-The setup script copies it to `frontend/.env.local` automatically:
+Use `infra/env/.env.master` as the single local/deploy source of truth. Generated files such as `backend/.env`, `frontend/.env.local`, service worker `.env` files, Docker compose env files, and `mobile/.env` are overwritten by the renderer:
 
 ```bash
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-CORE_API_URL=http://localhost:8000
-NEXT_PUBLIC_CORE_WS_URL=ws://localhost:8000
-ALLOWED_DEV_ORIGINS=localhost,127.0.0.1,healthos-dev.example.com
-BFF_SHARED_SECRET=dev-bff-secret-change-in-production
+node infra/scripts/render-env.mjs --target all
+node infra/scripts/render-env.mjs --target prod --check
 ```
+
+Template: `infra/env/.env.master.example`
 
 Do not use `NEXT_PUBLIC_API_URL` for browser-to-core calls.
 Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
@@ -198,6 +196,7 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 - Keep `OAUTH_GOOGLE_CALLBACK_URL` and `OAUTH_GITHUB_CALLBACK_URL` as fallback values for local development. They are no longer the sole source of truth for callback generation.
 - `ALLOWED_DEV_ORIGINS` entries must be hostnames or wildcard hostnames, not full URLs. Example: `localhost,127.0.0.1,healthos-dev.example.com`.
 - If you temporarily use a rotating `trycloudflare.com` URL, add `*.trycloudflare.com` to `ALLOWED_DEV_ORIGINS` so Next.js accepts `/_next/*` HMR traffic during dev. This only affects Next's dev-origin guard; OAuth providers still require exact callback URLs.
+- For chat WebSocket testing through the same frontend tunnel, set `NEXT_PUBLIC_CORE_WS_URL=wss://<tunnel-host>` and restart `npm run dev`; the frontend dev proxy forwards `/ws` and `/v1/**` WebSocket upgrades to `CORE_API_URL`.
 - Register both localhost and the stable tunnel callback URIs in Google Cloud Console and GitHub OAuth App settings:
   - `http://localhost:3000/api/v1/auth/oauth/google/callback`
   - `https://<stable-tunnel>/api/v1/auth/oauth/google/callback`
@@ -233,7 +232,7 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 - CORS errors → Check `ALLOWED_ORIGINS` in `backend/.env` is a JSON array: `["http://localhost:3000"]`
 - Import errors → Verify Python version matches 3.12 (see `.python-version`)
 - npm errors → Verify Node version matches 20 (see `.nvmrc`)
-- Missing env keys after pull → Run `.\check_env.bat` (see Phase 8 tooling)
+- Env drift after pull → Edit `infra/env/.env.master`, run `.\infra\scripts\sync-env.ps1 -Target all`, then `.\check_env.bat`
 - Stale DB / broken migrations → Run `.\reset_docker.bat` then `.\start_ALL.bat`
 - Services fail to start → Run `.\start_ALL.bat -CheckOnly` and read the reported logs under `infra/logs/`
 
@@ -268,7 +267,7 @@ GitHub Actions workflows (`.github/workflows/`):
 **Note:** Release config is dynamic (`.releaserc.cjs`). Verify deployment platform and artifact targets before first production run.
 
 See [Deployment Guide](./docs/deployment-guide.md) for workflow setup, monitoring/checklist gaps, and troubleshooting.
-See [Production Checklist](./docs/production-checklist.md) for required env vars before deploying.
+See [Production Checklist](./docs/production-checklist.md) for required master env vars before deploying.
 
 ## Git Workflow
 

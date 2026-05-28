@@ -14,6 +14,8 @@ import {
 import { SidebarNavGrouped } from "./SidebarNavGrouped";
 import { TopNavV2 } from "./TopNavV2";
 import { MobileNav } from "./MobileNav";
+import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
+import { CHAT_REALTIME_EVENT, dispatchChatUnreadRefresh } from "@/hooks/useChat";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -22,6 +24,48 @@ interface AppShellProps {
 }
 
 const SIDEBAR_PREFERENCE_KEY = "healthos.sidebar.collapsed";
+const NOTIFICATIONS_REFRESH_EVENT = "healthos:notifications-refresh";
+const CHAT_UNREAD_WS_EVENTS = new Set([
+  "msg:new",
+  "msg:read",
+  "chat.message.sent",
+  "chat.message.read",
+  "conversation.updated",
+  "chat.conversation.updated",
+]);
+const NOTIFICATION_WS_EVENTS = new Set([
+  "notification.created",
+  "notification.read",
+  "notifications.read_all",
+]);
+
+function dispatchNotificationsRefresh(): void {
+  window.dispatchEvent(new CustomEvent(NOTIFICATIONS_REFRESH_EVENT));
+}
+
+function DashboardRealtimeBridge() {
+  const dispatchReconnectRefresh = React.useCallback(() => {
+    dispatchChatUnreadRefresh();
+    dispatchNotificationsRefresh();
+  }, []);
+
+  const handleEvent = React.useCallback((frame: WsFrame) => {
+    if (CHAT_UNREAD_WS_EVENTS.has(frame.event)) {
+      window.dispatchEvent(new CustomEvent(CHAT_REALTIME_EVENT, { detail: frame }));
+      dispatchChatUnreadRefresh();
+    }
+    if (NOTIFICATION_WS_EVENTS.has(frame.event)) {
+      dispatchNotificationsRefresh();
+    }
+  }, []);
+
+  useChatWs({
+    onEvent: handleEvent,
+    onReconnect: dispatchReconnectRefresh,
+  });
+
+  return null;
+}
 
 /**
  * Single source of truth for the authenticated app chrome.
@@ -37,13 +81,18 @@ export function AppShell({ children, userName, userAvatar }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
   React.useEffect(() => {
+    let nextCollapsed = false;
     try {
       const raw = window.localStorage.getItem(SIDEBAR_PREFERENCE_KEY);
-      if (raw === "1") setCollapsed(true);
+      nextCollapsed = raw === "1";
     } catch {
       /* ignore */
     }
-    setHydrated(true);
+    const id = window.setTimeout(() => {
+      setCollapsed(nextCollapsed);
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   React.useEffect(() => {
@@ -56,13 +105,15 @@ export function AppShell({ children, userName, userAvatar }: AppShellProps) {
   }, [collapsed, hydrated]);
 
   React.useEffect(() => {
-    setDrawerOpen(false);
+    const id = window.setTimeout(() => setDrawerOpen(false), 0);
+    return () => window.clearTimeout(id);
   }, [pathname]);
 
   const isFullHeight = pathname.includes("/dashboard/chat");
 
   return (
     <div className="flex min-h-svh w-full bg-background">
+      <DashboardRealtimeBridge />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-background focus:p-2 focus:ring-2 focus:ring-ring"

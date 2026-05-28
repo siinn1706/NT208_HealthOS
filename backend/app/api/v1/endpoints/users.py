@@ -506,7 +506,7 @@ async def soft_delete_account(
     from app.services import notifications as notif_svc
     from app.models.core import NotificationKindEnum
 
-    await notif_svc.enqueue(
+    deletion_notification = await notif_svc.enqueue(
         db=db,
         user_id=user.id,
         title="Your account is scheduled for deletion",
@@ -523,6 +523,7 @@ async def soft_delete_account(
     if credentials is not None:
         await deletion_svc.revoke_all_sessions(redis, credentials.credentials)
     await db.commit()
+    await notif_svc.emit_notification_created(deletion_notification)
 
     return {
         "data": {

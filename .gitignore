@@ -45,6 +45,7 @@ coverage/
 .env.*
 !infra/docker/.env.dev.example
 !infra/docker/.env.prod.example
+!infra/env/.env.master.example
 backend/.env
 
 # Internal env backup (docs/sync-env-secrets.ps1)

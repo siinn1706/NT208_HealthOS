@@ -577,6 +577,12 @@ export interface StrangerRequest {
   created_at: string;
 }
 
+// ─── Group management request DTOs ─────────────────────────────────────────
+export interface AddMembersRequest { user_ids: string[] }
+export interface SetMemberRoleRequest { role: "admin" | "member" }
+export interface UpdateGroupMetadataRequest { title?: string; avatar_url?: string }
+export interface TransferOwnershipRequest { new_owner_id: string }
+
 export interface ChatTheme {
   id: string;
   name: string;

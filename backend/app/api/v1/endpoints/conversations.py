@@ -9,27 +9,28 @@ URL structure follows docs/standards/api-conventions.md:
 """
 from __future__ import annotations
 
+import asyncio
 import datetime
+import logging
 import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
 from app.models.core import (
     Conversation,
+    ConversationMember,
     ConversationTypeEnum,
-    Message,
-    MessageContentTypeEnum,
-    MessageStatusEnum,
     User,
 )
 from app.services.ai_chat_stream import stream_assistant_response
 from app.schemas.chat import (
+    AddMembersBody,
     ConversationDTO,
     ConversationListResponse,
     ConversationSettingsBody,
@@ -42,8 +43,11 @@ from app.schemas.chat import (
     MessageListResponse,
     ReactMessageBody,
     SendMessageBody,
-    ConversationResponse, 
-    MessageResponse, 
+    SetMemberRoleBody,
+    TransferOwnershipBody,
+    UpdateGroupMetadataBody,
+    ConversationResponse,
+    MessageResponse,
     PinnedMessageListResponse,
     UserLookupResponse,
 )
@@ -52,6 +56,7 @@ from app.services import chat as chat_svc
 from app.ws.handlers import manager as ws_manager
 
 router = APIRouter(tags=["Chat"])
+_LOGGER = logging.getLogger("healthos.chat.api")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -68,15 +73,52 @@ async def _notify_conversation(
     payload: dict,
 ) -> None:
     """Broadcast a WS event to all members of a conversation room."""
-    import datetime as _dt
     await ws_manager.broadcast(
         room=f"conv:{conversation_id}",
         message={
             "event": event,
             "payload": payload,
-            "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         },
     )
+
+
+async def _notify_conversation_members(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    event: str,
+    payload: dict,
+    *,
+    exclude_user_id: uuid.UUID | None = None,
+) -> None:
+    """Per-user fanout for conv-list-impacting events.
+
+    Sends one frame per online user socket via send_to_user, in addition to
+    the room broadcast. Skips exclude_user_id (typically the sender).
+    No-op for offline users — they resync via /v1/conversations on reconnect.
+    """
+    result = await db.execute(
+        select(ConversationMember.user_id).where(
+            and_(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.is_accepted.is_(True),
+            )
+        )
+    )
+    member_ids = [uid for uid in result.scalars().all() if uid != exclude_user_id]
+    if not member_ids:
+        return
+
+    frame = {
+        "event": event,
+        "payload": payload,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    try:
+        await asyncio.gather(*[ws_manager.send_to_user(str(uid), frame) for uid in member_ids])
+        _LOGGER.debug("chat.fanout conv_id=%s event=%s recipient_count=%d", conversation_id, event, len(member_ids))
+    except Exception:
+        pass  # Fanout failure must NOT roll back the DB commit
 
 
 # ─── Conversation endpoints ────────────────────────────────────────────────────
@@ -340,6 +382,11 @@ async def send_message(
         "chat.message.sent",
         msg.model_dump(mode="json"),
     )
+    # Per-user fanout for members not joined to the room (e.g. on dashboard tab)
+    await _notify_conversation_members(
+        db, conversation_id, "chat.message.sent", msg.model_dump(mode="json"),
+        exclude_user_id=current_user.id,
+    )
     return MessageResponse(data=msg)
 
 
@@ -384,16 +431,19 @@ async def stream_message(
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
 
     # Persist the user message immediately (durable even if streaming dies).
-    user_msg = Message(
-        conversation_id=conversation_id,
-        sender_id=current_user.id,
-        client_message_id=body.client_message_id,
-        content=body.content,
-        content_type=MessageContentTypeEnum(body.content_type or "text"),
-        status=MessageStatusEnum.COMPLETED.value,
-    )
-    db.add(user_msg)
-    await db.flush()
+    try:
+        user_msg = await chat_svc.send_message(
+            db,
+            conversation_id=conversation_id,
+            sender_id=current_user.id,
+            content=body.content,
+            content_type=body.content_type,
+            client_message_id=body.client_message_id,
+            reply_to_id=body.reply_to_id,
+            attachments=body.attachments,
+        )
+    except (ValueError, PermissionError) as exc:
+        raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
     user_msg_id = user_msg.id
     await db.commit()
 
@@ -440,6 +490,10 @@ async def edit_message(
     await db.commit()
 
     await _notify_conversation(conversation_id, "chat.message.edited", msg.model_dump(mode="json"))
+    await _notify_conversation_members(
+        db, conversation_id, "chat.message.edited", msg.model_dump(mode="json"),
+        exclude_user_id=current_user.id,
+    )
     return MessageResponse(data=msg)
 
 
@@ -467,6 +521,10 @@ async def recall_message(
     await db.commit()
 
     await _notify_conversation(conversation_id, "chat.message.recalled", msg.model_dump(mode="json"))
+    await _notify_conversation_members(
+        db, conversation_id, "chat.message.recalled", msg.model_dump(mode="json"),
+        exclude_user_id=current_user.id,
+    )
     return MessageResponse(data=msg)
 
 
@@ -596,6 +654,180 @@ async def mark_read(
             "conversation_id": str(conversation_id),
         },
     )
+
+
+# ─── Group management endpoints ────────────────────────────────────────────────
+
+@router.patch(
+    "/conversations/{conversation_id}",
+    response_model=ConversationResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
+    summary="Update group title and/or avatar (owner/admin only)",
+)
+async def update_group_metadata(
+    conversation_id: uuid.UUID,
+    body: UpdateGroupMetadataBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationResponse:
+    try:
+        dto = await chat_svc.update_group_metadata(
+            db, conversation_id, current_user.id, title=body.title, avatar_url=body.avatar_url
+        )
+    except (ValueError, PermissionError) as exc:
+        code = "CHAT_FORBIDDEN" if isinstance(exc, PermissionError) else "CHAT_ERROR"
+        raise _http_error(403 if isinstance(exc, PermissionError) else 400, code, str(exc))
+    await db.commit()
+    conv_updated_dto = dto.model_dump(mode="json")
+    await _notify_conversation(conversation_id, "chat.conversation.updated", conv_updated_dto)
+    await _notify_conversation_members(db, conversation_id, "chat.conversation.updated", conv_updated_dto)
+    return ConversationResponse(data=dto)
+
+
+@router.post(
+    "/conversations/{conversation_id}/members",
+    response_model=ConversationResponse,
+    status_code=status.HTTP_200_OK,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
+    summary="Add members to a group conversation (owner/admin only)",
+)
+async def add_group_members(
+    conversation_id: uuid.UUID,
+    body: AddMembersBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationResponse:
+    try:
+        dto = await chat_svc.add_group_members(db, conversation_id, current_user.id, body.user_ids)
+    except (ValueError, PermissionError) as exc:
+        code = "CHAT_FORBIDDEN" if isinstance(exc, PermissionError) else "CHAT_ERROR"
+        raise _http_error(403 if isinstance(exc, PermissionError) else 400, code, str(exc))
+    await db.commit()
+    conv_data = dto.model_dump(mode="json")
+    await _notify_conversation(conversation_id, "chat.conversation.updated", conv_data)
+    await _notify_conversation_members(db, conversation_id, "chat.conversation.updated", conv_data)
+    return ConversationResponse(data=dto)
+
+
+@router.delete(
+    "/conversations/{conversation_id}/members/{user_id}",
+    response_model=ConversationResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
+    summary="Remove a member from a group conversation (owner/admin only)",
+)
+async def remove_group_member(
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationResponse:
+    try:
+        dto = await chat_svc.remove_group_member(db, conversation_id, current_user.id, user_id)
+    except (ValueError, PermissionError) as exc:
+        code = "CHAT_FORBIDDEN" if isinstance(exc, PermissionError) else "CHAT_ERROR"
+        raise _http_error(403 if isinstance(exc, PermissionError) else 400, code, str(exc))
+    await db.commit()
+    conv_data = dto.model_dump(mode="json")
+    # Notify the removed user, then evict their sockets from this room before
+    # broadcasting future conversation events to remaining members.
+    await ws_manager.send_to_user(
+        str(user_id),
+        {
+            "event": "chat.conversation.removed",
+            "payload": {"conversation_id": str(conversation_id)},
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        },
+    )
+    ws_manager.leave_user_room(str(user_id), f"conv:{conversation_id}")
+    await _notify_conversation(conversation_id, "chat.conversation.updated", conv_data)
+    await _notify_conversation_members(db, conversation_id, "chat.conversation.updated", conv_data)
+    return ConversationResponse(data=dto)
+
+
+@router.post(
+    "/conversations/{conversation_id}/leave",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
+    summary="Leave a group conversation",
+)
+async def leave_group(
+    conversation_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    try:
+        await chat_svc.leave_group(db, conversation_id, current_user.id)
+    except (ValueError, PermissionError) as exc:
+        code = "CHAT_FORBIDDEN" if isinstance(exc, PermissionError) else "CHAT_ERROR"
+        raise _http_error(403 if isinstance(exc, PermissionError) else 400, code, str(exc))
+    await db.commit()
+    await ws_manager.send_to_user(
+        str(current_user.id),
+        {
+            "event": "chat.conversation.removed",
+            "payload": {"conversation_id": str(conversation_id)},
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        },
+    )
+    ws_manager.leave_user_room(str(current_user.id), f"conv:{conversation_id}")
+    await _notify_conversation(
+        conversation_id,
+        "chat.conversation.updated",
+        {"conversation_id": str(conversation_id)},
+    )
+    await _notify_conversation_members(
+        db, conversation_id, "chat.conversation.updated",
+        {"conversation_id": str(conversation_id)},
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/members/{user_id}/role",
+    response_model=ConversationResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
+    summary="Promote or demote a member's role (owner only)",
+)
+async def set_member_role(
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: SetMemberRoleBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationResponse:
+    try:
+        dto = await chat_svc.set_member_role(db, conversation_id, current_user.id, user_id, body.role)
+    except (ValueError, PermissionError) as exc:
+        code = "CHAT_FORBIDDEN" if isinstance(exc, PermissionError) else "CHAT_ERROR"
+        raise _http_error(403 if isinstance(exc, PermissionError) else 400, code, str(exc))
+    await db.commit()
+    conv_data = dto.model_dump(mode="json")
+    await _notify_conversation(conversation_id, "chat.conversation.updated", conv_data)
+    await _notify_conversation_members(db, conversation_id, "chat.conversation.updated", conv_data)
+    return ConversationResponse(data=dto)
+
+
+@router.post(
+    "/conversations/{conversation_id}/transfer-owner",
+    response_model=ConversationResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}},
+    summary="Transfer group ownership to another member (owner only)",
+)
+async def transfer_ownership(
+    conversation_id: uuid.UUID,
+    body: TransferOwnershipBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationResponse:
+    try:
+        dto = await chat_svc.transfer_ownership(db, conversation_id, current_user.id, body.new_owner_id)
+    except (ValueError, PermissionError) as exc:
+        code = "CHAT_FORBIDDEN" if isinstance(exc, PermissionError) else "CHAT_ERROR"
+        raise _http_error(403 if isinstance(exc, PermissionError) else 400, code, str(exc))
+    await db.commit()
+    conv_data = dto.model_dump(mode="json")
+    await _notify_conversation(conversation_id, "chat.conversation.updated", conv_data)
+    await _notify_conversation_members(db, conversation_id, "chat.conversation.updated", conv_data)
+    return ConversationResponse(data=dto)
 
 
 # ─── User lookup ───────────────────────────────────────────────────────────────

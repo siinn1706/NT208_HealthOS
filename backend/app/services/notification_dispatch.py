@@ -6,9 +6,11 @@ logged here.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -176,6 +178,23 @@ def normalize_event(event: dict[str, Any]) -> NormalizedNotification:
     )
 
 
+def _emit_in_app_realtime(notification: Any) -> None:
+    notification_id = getattr(notification, "id", None)
+    if notification_id is None:
+        return
+    try:
+        from app.services.notifications import emit_notification_created
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(emit_notification_created(notification))
+        else:
+            loop.create_task(emit_notification_created(notification))
+    except Exception as exc:
+        logger.debug("notification dispatch websocket fanout failed: %s", type(exc).__name__)
+
+
 def _dispatch_in_app(notification: NormalizedNotification, db=None) -> ChannelResult:
     channel = "in_app"
     try:
@@ -185,17 +204,27 @@ def _dispatch_in_app(notification: NormalizedNotification, db=None) -> ChannelRe
         title = _strip_crlf(notification.title)[:255]
         body = _strip_crlf(notification.body)[:2000]
         kind = _strip_crlf(notification.kind)[:32] or "info"
+        persisted = Notification(user_id=user_id, title=title, body=body, kind=kind)
 
         if db is not None:
-            db.add(Notification(user_id=user_id, title=title, body=body, kind=kind))
+            db.add(persisted)
             db.flush()
+            realtime_notification = None
         else:
             from app.adapters.database import get_sync_db_context
 
             with get_sync_db_context() as session:
-                session.add(Notification(user_id=user_id, title=title, body=body, kind=kind))
+                session.add(persisted)
                 session.flush()
+                realtime_notification = SimpleNamespace(
+                    id=persisted.id,
+                    user_id=persisted.user_id,
+                    kind=persisted.kind,
+                    created_at=persisted.created_at,
+                )
 
+        if realtime_notification is not None:
+            _emit_in_app_realtime(realtime_notification)
         logger.info(
             "channel=in_app status=delivered event_id=%s user_id=%s",
             notification.event_id,

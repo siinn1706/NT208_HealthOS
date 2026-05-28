@@ -1,27 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
-import { useConversations, useStrangerRequests } from "@/hooks/useChat";
+import { CHAT_REALTIME_EVENT, useConversations, useStrangerRequests } from "@/hooks/useChat";
+import type { WsFrame } from "@/hooks/useChatWs";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
 import { ChatEmptyState } from "./ChatEmptyState";
 import type { Message } from "@/types/api";
 import { cn } from "@/lib/utils";
 
-export function ChatLayout() {
+interface ChatLayoutProps {
+  initialCurrentUserId?: string | null;
+}
+
+const SERVER_MESSAGE_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function ChatLayout({ initialCurrentUserId = null }: ChatLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
   const prefersReduced = useReducedMotion();
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(initialCurrentUserId);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/v1/auth/session", { cache: "no-store" })
+    fetch("/api/v1/auth/session", { cache: "no-store", credentials: "same-origin" })
       .then(async (res) => {
         const body = res.ok ? await res.json().catch(() => null) : null;
         return body;
@@ -29,10 +38,12 @@ export function ChatLayout() {
       .then((json) => {
         if (cancelled) return;
         const userId = json?.data?.user_id ?? json?.data?.id;
-        setCurrentUserId(typeof userId === "string" ? userId : null);
+        if (typeof userId === "string" && userId.trim()) {
+          setCurrentUserId(userId);
+        }
       })
       .catch(() => {
-        if (!cancelled) setCurrentUserId(null);
+        // Keep the server-validated id if a transient tunnel/session fetch fails.
       });
     return () => {
       cancelled = true;
@@ -56,9 +67,28 @@ export function ChatLayout() {
     markAsRead,
     updateLastMessage,
     applyIncomingMessage,
+    applyUserStatus,
     upsertConversation,
     createConversation,
+    createGroup,
+    addGroupMembers,
+    removeGroupMember,
+    leaveGroup,
+    setMemberRole,
+    transferOwnership,
+    refetchConversations,
   } = useConversations();
+
+  // Refetch conversation list when coming back online so offline-missed WS
+  // fanout events (e.g. new group membership, last-message updates) are synced.
+  const isOnline = useOnlineStatus();
+  const prevOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    if (!prevOnlineRef.current && isOnline) {
+      void refetchConversations();
+    }
+    prevOnlineRef.current = isOnline;
+  }, [isOnline, refetchConversations]);
 
   const { pendingRequests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
 
@@ -66,14 +96,36 @@ export function ChatLayout() {
     () => conversations.find((c) => c.id === activeId),
     [conversations, activeId]
   );
+  const activeLastMessageId = activeConversation?.last_message?.id;
+  const lastMarkedReadRef = useRef<string | null>(null);
+
+  const markVisibleConversationRead = useCallback(
+    (conversationId: string | null, lastMessageId?: string) => {
+      if (!conversationId || !lastMessageId) return;
+      if (!SERVER_MESSAGE_ID_RE.test(lastMessageId)) return;
+      const key = `${conversationId}:${lastMessageId}`;
+      if (lastMarkedReadRef.current === key) return;
+      lastMarkedReadRef.current = key;
+      void markAsRead(conversationId, lastMessageId);
+    },
+    [markAsRead]
+  );
+
+  useEffect(() => {
+    if (!activeId || !activeLastMessageId) return;
+    const id = window.setTimeout(() => {
+      markVisibleConversationRead(activeId, activeLastMessageId);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [activeId, activeLastMessageId, markVisibleConversationRead]);
 
   const handleSelectConversation = useCallback(
     (id: string) => {
       const selected = conversations.find((conversation) => conversation.id === id);
       router.push(`${basePath}/${id}`);
-      markAsRead(id, selected?.last_message?.id);
+      markVisibleConversationRead(id, selected?.last_message?.id);
     },
-    [router, basePath, markAsRead, conversations]
+    [router, basePath, markVisibleConversationRead, conversations]
   );
 
   const handleBack = useCallback(() => {
@@ -91,12 +143,32 @@ export function ChatLayout() {
     [createConversation, upsertConversation]
   );
 
+  const handleCreateGroup = useCallback(
+    async (title: string, memberIds: string[]) => {
+      const created = await createGroup(title, memberIds);
+      if (created) {
+        upsertConversation(created);
+      }
+      return created;
+    },
+    [createGroup, upsertConversation]
+  );
+
   const handleDeleteConversation = useCallback(
     (id: string) => {
       deleteConversation(id);
       if (activeId === id) router.push(basePath);
     },
     [deleteConversation, activeId, router, basePath]
+  );
+
+  const handleLeaveGroup = useCallback(
+    async (convId: string) => {
+      const ok = await leaveGroup(convId);
+      if (ok && activeId === convId) router.push(basePath);
+      return ok;
+    },
+    [leaveGroup, activeId, router, basePath]
   );
 
   // Stable callbacks scoped to the active conversation
@@ -127,6 +199,32 @@ export function ChatLayout() {
     [upsertConversation]
   );
 
+  const handleIncomingMessage = useCallback(
+    (raw: unknown) => applyIncomingMessage(raw, activeId),
+    [applyIncomingMessage, activeId]
+  );
+
+  useEffect(() => {
+    const handleRealtimeEvent = (event: Event) => {
+      const frame = (event as CustomEvent<WsFrame>).detail;
+      if (!frame || typeof frame.event !== "string") return;
+      const payload = frame.payload;
+      if (frame.event === "msg:new" || frame.event === "chat.message.sent") {
+        applyIncomingMessage(payload, activeId);
+        return;
+      }
+      if (frame.event === "conversation.updated" || frame.event === "chat.conversation.updated") {
+        upsertConversation(payload);
+        return;
+      }
+      if (frame.event === "user.status") {
+        applyUserStatus(payload);
+      }
+    };
+    window.addEventListener(CHAT_REALTIME_EVENT, handleRealtimeEvent);
+    return () => window.removeEventListener(CHAT_REALTIME_EVENT, handleRealtimeEvent);
+  }, [activeId, applyIncomingMessage, applyUserStatus, upsertConversation]);
+
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-background">
       {/* ── Conversation list panel ── */}
@@ -153,6 +251,7 @@ export function ChatLayout() {
           onRejectStranger={rejectRequest}
           onBlockStranger={blockRequest}
           onCreateConversation={handleCreateConversation}
+          onCreateGroup={handleCreateGroup}
         />
       </div>
 
@@ -168,7 +267,7 @@ export function ChatLayout() {
         <AnimatePresence>
           {activeConversation ? (
             <motion.div
-              key={activeConversation.id}
+              key="active-pane"
               className="flex flex-col h-full"
               initial={{ opacity: prefersReduced ? 1 : 0 }}
               animate={{ opacity: 1 }}
@@ -185,8 +284,15 @@ export function ChatLayout() {
                 onDelete={handleDeleteActive}
                 onThemeChange={handleThemeChange}
                 onMessageSent={handleMessageSent}
-                onIncomingMessage={(raw) => applyIncomingMessage(raw, activeId)}
+                onIncomingMessage={handleIncomingMessage}
                 onConversationUpdate={handleConversationUpdate}
+                onUserStatus={applyUserStatus}
+                onLeaveGroup={handleLeaveGroup}
+                onAddGroupMembers={addGroupMembers}
+                onRemoveGroupMember={removeGroupMember}
+                onPromoteGroupMember={(convId, uid) => setMemberRole(convId, uid, "admin")}
+                onDemoteGroupMember={(convId, uid) => setMemberRole(convId, uid, "member")}
+                onTransferGroupOwnership={transferOwnership}
               />
             </motion.div>
           ) : (

@@ -2451,6 +2451,7 @@
   },
   "chat": {
     "title": "Tin nhắn",
+    "loadingSession": "Đang tải phiên đăng nhập…",
     "allChats": "Tất cả",
     "strangers": "Người lạ",
     "aiAssistant": "HealthOS AI",
@@ -2592,7 +2593,10 @@
     },
     "queue": {
       "evictedTitle": "Đã bỏ một số tin nhắn trong hàng đợi",
-      "evictedDescription": "{n} tin nhắn cũ nhất không thể giữ lại khi bạn offline."
+      "evictedDescription": "{n} tin nhắn cũ nhất không thể giữ lại khi bạn offline.",
+      "enqueueFailedTitle": "Tin nhắn chưa được xếp hàng",
+      "offlineQueuedTitle": "Tin nhắn đã được xếp hàng",
+      "offlineQueuedDescription": "Sẽ gửi khi bạn kết nối trở lại."
     },
     "empty": {
       "noConversationsTitle": "Chưa có cuộc trò chuyện",
@@ -2611,6 +2615,42 @@
       "tooLarge": "Ảnh quá lớn. Tối đa {max} MB.",
       "unsupported": "Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.",
       "uploadFailed": "Không tải được ảnh. Thử lại nhé."
+    },
+    "group": {
+      "newChat": "Tin nhắn mới",
+      "newGroup": "Nhóm mới",
+      "createGroup": "Nhóm mới",
+      "groupTitle": "Tên nhóm",
+      "groupTitlePlaceholder": "Nhập tên nhóm (2–100 ký tự)",
+      "addMembers": "Thêm thành viên",
+      "membersHint": "Chọn ít nhất 2 thành viên",
+      "groupAvatarOptional": "Ảnh nhóm (tuỳ chọn)",
+      "create": "Tạo nhóm",
+      "cancel": "Huỷ",
+      "errorGroupTitleTooShort": "Tên nhóm phải có ít nhất 2 ký tự",
+      "errorGroupTitleTooLong": "Tên nhóm không được quá 100 ký tự",
+      "errorGroupTooSmall": "Chọn ít nhất 2 thành viên",
+      "errorGroupTooLarge": "Nhóm không được quá 50 thành viên",
+      "members": "Thành viên ({count})",
+      "addMembersTitle": "Thêm thành viên",
+      "leave": "Rời nhóm",
+      "leaveConfirmTitle": "Rời nhóm này?",
+      "leaveConfirmDesc": "Bạn sẽ không nhận được tin nhắn từ nhóm này nữa.",
+      "leaveConfirm": "Rời nhóm",
+      "removeMember": "Xoá",
+      "promote": "Thăng lên quản trị viên",
+      "demote": "Hạ xuống thành viên",
+      "transferOwnership": "Chuyển quyền trưởng nhóm",
+      "transferOwnershipConfirmTitle": "Chuyển quyền trưởng nhóm?",
+      "transferOwnershipConfirmDesc": "Bạn sẽ trở thành quản trị viên sau khi chuyển quyền.",
+      "transferOwnershipConfirm": "Chuyển",
+      "editTitle": "Sửa tên",
+      "editAvatar": "Đổi ảnh nhóm",
+      "owner": "Trưởng nhóm",
+      "admin": "Quản trị viên",
+      "member": "Thành viên",
+      "queuedHint": "{count} tin chờ — sẽ gửi khi có mạng",
+      "systemMessage": "Hệ thống"
     }
   },
   "reports": {

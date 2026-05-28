@@ -170,18 +170,11 @@ describe("filterIdentifierArray — Property 10: Session identifier-array shape"
   });
 
   it("caps permissions at 256 items even when input has more", () => {
-    fc.assert(
-      fc.property(
-        // Use short valid identifiers to keep generation fast
-        fc.array(validIdentifier(1, 8), { minLength: 257, maxLength: 270 }),
-        (arr) => {
-          const result = filterIdentifierArray(arr, 256, 1, 128);
-          expect(result.length).toBeLessThanOrEqual(256);
-        },
-      ),
-      { numRuns: 100 },
-    );
-  }, 15000);
+    const permissions = Array.from({ length: 270 }, (_, i) => `perm:${i}`);
+    const result = filterIdentifierArray(permissions, 256, 1, 128);
+    expect(result).toHaveLength(256);
+    expect(result).toEqual(permissions.slice(0, 256));
+  });
 
   it("rejects items exceeding maxLen", () => {
     fc.assert(
@@ -442,6 +435,19 @@ describe("readCoreSessionSnapshot — Property 13: 401 session response excludes
     expect(result!.permissions).toEqual([]);
   });
 
+  it("normalizes Core /auth/me id into BFF user_id", () => {
+    const payload = {
+      data: {
+        id: "u-from-auth-me",
+        email: "user@example.com",
+        onboarding_status: "completed",
+      },
+    };
+    const result = readCoreSessionSnapshot(payload);
+    expect(result).not.toBeNull();
+    expect(result!.user_id).toBe("u-from-auth-me");
+  });
+
   it("snapshot never contains roles or permissions keys when payload is null/undefined", () => {
     // Simulates the 401 path: no snapshot is returned, so no roles/permissions
     expect(readCoreSessionSnapshot(null)).toBeNull();
@@ -465,7 +471,7 @@ describe("readCoreSessionSnapshot — Property 13: 401 session response excludes
           const result = readCoreSessionSnapshot({ data });
           if (result === null) return; // null is fine for invalid payloads
           // The snapshot itself must not contain secret fields
-          const resultObj = result as Record<string, unknown>;
+          const resultObj = result as unknown as Record<string, unknown>;
           for (const secretKey of SECRET_FIELD_NAMES) {
             expect(secretKey in resultObj).toBe(false);
           }

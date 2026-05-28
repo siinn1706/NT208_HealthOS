@@ -15,6 +15,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { resolveCoreWebSocketBase } from "@/lib/core-websocket-url";
+
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -110,23 +112,25 @@ export function useChatWs({
     if (!enabled) return;
     intentionalCloseRef.current = false;
 
-    // Get (or re-use) the auth token
-    if (!tokenRef.current) {
-      tokenRef.current = await fetchToken();
-    }
+    // Always mint a fresh short-lived WS ticket for each connection attempt.
+    tokenRef.current = await fetchToken();
     if (!tokenRef.current) {
       setStatus("error");
       return;
     }
 
-    const wsBase =
-      process.env.NEXT_PUBLIC_CORE_WS_URL ??
-      `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+    const wsBase = resolveCoreWebSocketBase(process.env.NEXT_PUBLIC_CORE_WS_URL);
     const wsUrl = `${wsBase}/ws?token=${encodeURIComponent(tokenRef.current)}`;
 
     setStatus("connecting");
 
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch {
+      setStatus("error");
+      return;
+    }
     wsRef.current = ws;
 
     ws.onopen = () => {

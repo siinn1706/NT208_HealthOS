@@ -218,6 +218,12 @@ export async function purgeAllUserScoped(): Promise<void> {
     } catch {
       /* ignore — module may not be loaded */
     }
+    try {
+      const mod = await import("@/hooks/useOutboundQueue");
+      mod.resetOutboundQueueUserScope?.();
+    } catch {
+      /* ignore — module may not be loaded */
+    }
   }
 }
 

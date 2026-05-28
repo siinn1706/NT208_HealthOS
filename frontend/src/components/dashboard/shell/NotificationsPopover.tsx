@@ -17,6 +17,7 @@ import { track } from "@/lib/analytics";
 import { useRouter } from "@/navigation";
 
 const MAX_ITEMS = 20;
+const NOTIFICATIONS_REFRESH_EVENT = "healthos:notifications-refresh";
 
 type NotificationItem = {
   id: string | number;
@@ -178,7 +179,9 @@ export function NotificationsPopover({ locale }: { locale: string }) {
   // Poll the cheap unread-count endpoint while the popover is closed.
   React.useEffect(() => {
     const controller = new AbortController();
-    fetchUnreadCount(controller.signal);
+    const tick = window.setTimeout(() => {
+      void fetchUnreadCount(controller.signal);
+    }, 0);
     const id = window.setInterval(() => {
       void fetchUnreadCount(controller.signal);
     }, UNREAD_POLL_INTERVAL_MS);
@@ -188,6 +191,7 @@ export function NotificationsPopover({ locale }: { locale: string }) {
     window.addEventListener("focus", onFocus);
     return () => {
       controller.abort();
+      window.clearTimeout(tick);
       window.clearInterval(id);
       window.removeEventListener("focus", onFocus);
     };
@@ -196,10 +200,24 @@ export function NotificationsPopover({ locale }: { locale: string }) {
   // Hydrate the full list when the popover opens, then refresh on interval.
   React.useEffect(() => {
     if (!open) return;
-    fetchAll();
+    const tick = window.setTimeout(() => {
+      void fetchAll();
+    }, 0);
     const id = window.setInterval(fetchAll, FETCH_INTERVAL_MS);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearTimeout(tick);
+      window.clearInterval(id);
+    };
   }, [open, fetchAll]);
+
+  React.useEffect(() => {
+    const refresh = () => {
+      void fetchUnreadCount();
+      if (open) void fetchAll();
+    };
+    window.addEventListener(NOTIFICATIONS_REFRESH_EVENT, refresh);
+    return () => window.removeEventListener(NOTIFICATIONS_REFRESH_EVENT, refresh);
+  }, [fetchAll, fetchUnreadCount, open]);
 
   const derivedUnreadCount = React.useMemo(
     () => items.filter((n) => !(n.is_read || n.read_at)).length,
@@ -225,6 +243,8 @@ export function NotificationsPopover({ locale }: { locale: string }) {
       await fetch(`/api/v1/notifications/${id}/read`, { method: "POST" });
     } catch {
       /* keep optimistic update; server will reconcile on next poll */
+    } finally {
+      window.dispatchEvent(new CustomEvent(NOTIFICATIONS_REFRESH_EVENT));
     }
   }, []);
 
@@ -238,6 +258,8 @@ export function NotificationsPopover({ locale }: { locale: string }) {
       await fetch("/api/v1/notifications/read-all", { method: "POST" });
     } catch {
       /* optimistic update; reconciles on next poll */
+    } finally {
+      window.dispatchEvent(new CustomEvent(NOTIFICATIONS_REFRESH_EVENT));
     }
   }, [unreadCount]);
 

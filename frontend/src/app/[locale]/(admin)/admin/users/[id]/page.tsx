@@ -28,7 +28,7 @@ function UserDetailSkeleton() {
   return (
     <div className="flex flex-col gap-0" aria-busy="true" aria-label="Loading user details">
       {/* Action bar skeleton */}
-      <div className="sticky z-20 flex h-14 items-center gap-4 border-b border-[var(--admin-border)] bg-[var(--admin-surface)] px-6" style={{ top: "var(--admin-header-height)" }}>
+      <div className="sticky z-20 flex h-14 items-center gap-4 border-b border-[var(--admin-border)] bg-[var(--admin-surface)] px-6" style={{ top: 0 }}>
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-40" />
         <div className="ml-auto flex gap-2">

@@ -212,7 +212,9 @@ function normalizeUpstreamError(
 
 function buildCoreProxyResponse(status: number, responseData: unknown, requestId: string): NextResponse {
   let response: NextResponse;
-  if (status >= 500) {
+  if (status === 204 || status === 205) {
+    response = new NextResponse(null, { status });
+  } else if (status >= 500) {
     response = NextResponse.json(
       { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error" } },
       { status },

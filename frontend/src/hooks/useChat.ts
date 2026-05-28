@@ -19,6 +19,14 @@ import type {
   ChatParticipant,
 } from "@/types/api";
 
+export const CHAT_UNREAD_REFRESH_EVENT = "healthos:chat-unread-refresh";
+export const CHAT_REALTIME_EVENT = "healthos:chat-realtime-event";
+
+export function dispatchChatUnreadRefresh(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(CHAT_UNREAD_REFRESH_EVENT));
+}
+
 const FALLBACK_AI_CONVERSATION: Conversation = {
   id: "ai-assistant",
   type: "ai",
@@ -132,6 +140,50 @@ function adaptMessage(m: any): Message {
   };
 }
 
+function mergeRemoteMessagesWithLocal(
+  remoteMessages: Message[],
+  localMessages: Message[],
+  preservedLocalConversations: Map<string, string>,
+  conversationId: string,
+): Message[] {
+  const remoteInConversation = remoteMessages.filter(
+    (message) => message.conversation_id === conversationId
+  );
+  const remoteIds = new Set(remoteInConversation.map((message) => message.id));
+  const localOnly = localMessages.filter((message) => {
+    if (message.conversation_id !== conversationId) return false;
+    if (remoteIds.has(message.id)) return false;
+    return (
+      preservedLocalConversations.get(message.id) === conversationId ||
+      message.status === "queued" ||
+      message.status === "sending" ||
+      message.status === "failed"
+    );
+  });
+  return [...remoteInConversation, ...localOnly].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+}
+
+function prunePreservedLocalMessages(
+  preservedLocalConversations: Map<string, string>,
+  conversationId: string,
+  visibleMessages: Message[],
+  remoteMessages: Message[],
+): void {
+  const visibleIds = new Set(visibleMessages.map((message) => message.id));
+  const remoteIds = new Set(remoteMessages.map((message) => message.id));
+  for (const [messageId, preservedConversationId] of preservedLocalConversations) {
+    if (
+      preservedConversationId !== conversationId ||
+      remoteIds.has(messageId) ||
+      !visibleIds.has(messageId)
+    ) {
+      preservedLocalConversations.delete(messageId);
+    }
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptConversation(c: any): Conversation {
   const participants: ChatParticipant[] = (c.participants ?? []).map(adaptParticipant);
@@ -170,42 +222,45 @@ export function useConversations() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const applyConversationData = useCallback((data: unknown[]) => {
+    const apiConversations = data.map(adaptConversation);
+    const apiAiConversation = apiConversations.find((c) => c.type === "ai");
+    const nonAiConversations = apiConversations.filter((c) => c.type !== "ai");
+    const aiConv = apiAiConversation
+      ?? (process.env.NODE_ENV === "development" ? FALLBACK_AI_CONVERSATION : undefined);
+    setConversations([...(aiConv ? [aiConv] : []), ...nonAiConversations]);
+  }, []);
+
+  const loadConversations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await bffFetch<{ data: unknown[] }>("/api/v1/conversations");
+      applyConversationData(data);
+    } catch {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[useChat] Failed to fetch conversations — using AI fallback for dev");
+        setConversations([FALLBACK_AI_CONVERSATION]);
+      } else {
+        setConversations([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [applyConversationData]);
+
+  // Silent background refetch — no loading skeleton, keeps existing conversations on error
+  const silentRefetchConversations = useCallback(async () => {
+    try {
+      const { data } = await bffFetch<{ data: unknown[] }>("/api/v1/conversations");
+      applyConversationData(data);
+    } catch {
+      // Keep existing conversations on background refetch failure
+    }
+  }, [applyConversationData]);
+
   // Initial load
   /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    bffFetch<{ data: unknown[] }>("/api/v1/conversations")
-      .then(({ data }) => {
-        if (!cancelled) {
-          const apiConversations = data.map(adaptConversation);
-          const apiAiConversation = apiConversations.find(
-            (conversation) => conversation.type === "ai"
-          );
-          const nonAiConversations = apiConversations.filter(
-            (conversation) => conversation.type !== "ai"
-          );
-          const aiConv = apiAiConversation
-            ?? (process.env.NODE_ENV === "development" ? FALLBACK_AI_CONVERSATION : undefined);
-          setConversations([
-            ...(aiConv ? [aiConv] : []),
-            ...nonAiConversations,
-          ]);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          if (process.env.NODE_ENV === "development") {
-            console.warn("[useChat] Failed to fetch conversations — using AI fallback for dev");
-            setConversations([FALLBACK_AI_CONVERSATION]);
-          } else {
-            setConversations([]);
-          }
-        }
-      })
-      .finally(() => { if (!cancelled) setIsLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  useEffect(() => { void loadConversations(); }, [loadConversations]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const sortedConversations = useMemo(() => [...conversations].sort((a, b) => {
@@ -294,12 +349,14 @@ export function useConversations() {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unread_count: 0 } : c))
     );
+    dispatchChatUnreadRefresh();
     if (!lastReadMessageId) return;
     try {
       await bffFetch(`/api/v1/conversations/${id}/read`, {
         method: "POST",
         body: { last_read_message_id: lastReadMessageId },
       });
+      dispatchChatUnreadRefresh();
     } catch {
       // keep optimistic local state
     }
@@ -354,9 +411,57 @@ export function useConversations() {
           };
         })
       );
+      if (activeConversationId !== message.conversation_id) {
+        dispatchChatUnreadRefresh();
+      }
     },
     []
   );
+
+  const applyUserStatus = useCallback((raw: unknown) => {
+    if (!raw || typeof raw !== "object") return;
+    const payload = raw as Record<string, unknown>;
+    const rawUserId = payload.user_id ?? payload.id;
+    const userId = typeof rawUserId === "string" ? rawUserId : null;
+    if (!userId) return;
+
+    const status = typeof payload.status === "string" ? payload.status.toLowerCase() : null;
+    const isOnline =
+      typeof payload.is_online === "boolean"
+        ? payload.is_online
+        : status === "online"
+          ? true
+          : status === "offline"
+            ? false
+            : undefined;
+    const rawLastSeen = payload.last_seen_at ?? payload.last_seen;
+    const lastSeen = typeof rawLastSeen === "string" ? rawLastSeen : undefined;
+    if (isOnline === undefined && lastSeen === undefined) return;
+
+    setConversations((prev) => {
+      let changed = false;
+      const next = prev.map((conversation) => {
+        let participantChanged = false;
+        const participants = conversation.participants.map((participant) => {
+          if (participant.user_id !== userId) return participant;
+          const nextParticipant = {
+            ...participant,
+            ...(isOnline !== undefined ? { is_online: isOnline } : {}),
+            ...(lastSeen !== undefined ? { last_seen: lastSeen } : {}),
+          };
+          participantChanged =
+            participantChanged ||
+            nextParticipant.is_online !== participant.is_online ||
+            nextParticipant.last_seen !== participant.last_seen;
+          return nextParticipant;
+        });
+        if (!participantChanged) return conversation;
+        changed = true;
+        return { ...conversation, participants };
+      });
+      return changed ? next : prev;
+    });
+  }, []);
 
   const createConversation = useCallback(async (targetUserId: string): Promise<Conversation | null> => {
     try {
@@ -375,6 +480,129 @@ export function useConversations() {
     }
   }, []);
 
+  const createGroup = useCallback(async (
+    title: string,
+    memberIds: string[],
+    avatarUrl?: string,
+  ): Promise<Conversation | null> => {
+    try {
+      const result = await bffFetch<{ data: unknown }>("/api/v1/conversations/group", {
+        method: "POST",
+        body: { title, member_ids: memberIds, ...(avatarUrl ? { avatar_url: avatarUrl } : {}) },
+      });
+      const conv = adaptConversation(result.data);
+      setConversations((prev) => {
+        if (prev.find((c) => c.id === conv.id)) return prev;
+        return [conv, ...prev];
+      });
+      return conv;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const addGroupMembers = useCallback(async (convId: string, userIds: string[]): Promise<boolean> => {
+    try {
+      await bffFetch(`/api/v1/conversations/${convId}/members`, {
+        method: "POST",
+        body: { user_ids: userIds },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const removeGroupMember = useCallback(async (convId: string, userId: string): Promise<boolean> => {
+    try {
+      await bffFetch(`/api/v1/conversations/${convId}/members/${userId}`, { method: "DELETE" });
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? { ...c, participants: c.participants.filter((p) => p.user_id !== userId) }
+            : c
+        )
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const leaveGroup = useCallback(async (convId: string): Promise<boolean> => {
+    try {
+      await bffFetch(`/api/v1/conversations/${convId}/leave`, { method: "POST" });
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const setMemberRole = useCallback(async (convId: string, userId: string, role: "admin" | "member"): Promise<boolean> => {
+    try {
+      await bffFetch(`/api/v1/conversations/${convId}/members/${userId}/role`, {
+        method: "POST",
+        body: { role },
+      });
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? { ...c, participants: c.participants.map((p) => p.user_id === userId ? { ...p, role } : p) }
+            : c
+        )
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const transferOwnership = useCallback(async (convId: string, newOwnerId: string): Promise<boolean> => {
+    try {
+      await bffFetch(`/api/v1/conversations/${convId}/transfer-owner`, {
+        method: "POST",
+        body: { new_owner_id: newOwnerId },
+      });
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                participants: c.participants.map((p) => {
+                  if (p.user_id === newOwnerId) return { ...p, role: "owner" };
+                  if (p.role === "owner") return { ...p, role: "admin" };
+                  return p;
+                }),
+              }
+            : c
+        )
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const updateGroupMetadata = useCallback(async (convId: string, title?: string, avatarUrl?: string): Promise<boolean> => {
+    try {
+      await bffFetch(`/api/v1/conversations/${convId}`, {
+        method: "PATCH",
+        body: { ...(title !== undefined ? { title } : {}), ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}) },
+      });
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? { ...c, ...(title !== undefined ? { name: title } : {}), ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}) }
+            : c
+        )
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   return {
     conversations: sortedConversations,
     isLoading,
@@ -385,8 +613,17 @@ export function useConversations() {
     markAsRead,
     updateLastMessage,
     applyIncomingMessage,
+    applyUserStatus,
     createConversation,
+    createGroup,
+    addGroupMembers,
+    removeGroupMember,
+    leaveGroup,
+    setMemberRole,
+    transferOwnership,
+    updateGroupMetadata,
     upsertConversation,
+    refetchConversations: silentRefetchConversations,
   };
 }
 
@@ -407,14 +644,31 @@ export function useMessages(
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  // B7 P6 — AI streaming state. `null` means no stream in flight.
+  // AI streaming state. `null` means no stream in flight.
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const lastCursorRef = useRef<string | null>(null);
+  const activeConversationIdRef = useRef(conversationId);
+  activeConversationIdRef.current = conversationId;
+  const preservedLocalMessageConversationsRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!conversationId || conversationId === FALLBACK_AI_CONVERSATION.id) {
+      preservedLocalMessageConversationsRef.current.clear();
+      setMessages([]);
+      return;
+    }
+    const preservedEntries = preservedLocalMessageConversationsRef.current.entries();
+    for (const [messageId, preservedConversationId] of preservedEntries) {
+      if (preservedConversationId !== conversationId) {
+        preservedLocalMessageConversationsRef.current.delete(messageId);
+      }
+    }
+    setMessages((prev) => prev.filter((message) => message.conversation_id === conversationId));
+  }, [conversationId]);
 
   // Load messages when conversationId changes
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
@@ -441,7 +695,22 @@ export function useMessages(
       .then(({ data, has_more, next_cursor }) => {
         if (!cancelled) {
           // API returns newest-first; reverse to display oldest-at-top
-          setMessages(data.map(adaptMessage).reverse());
+          const remoteMessages = data.map(adaptMessage).reverse();
+          setMessages((prev) => {
+            const merged = mergeRemoteMessagesWithLocal(
+              remoteMessages,
+              prev,
+              preservedLocalMessageConversationsRef.current,
+              conversationId,
+            );
+            prunePreservedLocalMessages(
+              preservedLocalMessageConversationsRef.current,
+              conversationId,
+              merged,
+              remoteMessages,
+            );
+            return merged;
+          });
           setHasMore(has_more);
           lastCursorRef.current = next_cursor ?? null;
         }
@@ -453,7 +722,6 @@ export function useMessages(
 
     return () => { cancelled = true; };
   }, [conversationId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   /**
    * Refetch the active conversation's most recent page from the BFF.
@@ -461,20 +729,37 @@ export function useMessages(
    * Used after a WS reconnect to rescue any state that may have changed
    * while the socket was offline — most importantly, an AI bot reply that
    * landed `ai:completed` between disconnect and reconnect would otherwise
-   * leave a stuck `streaming` placeholder bubble (FE review C6).
+   * leave a stuck `streaming` placeholder bubble.
    *
    * Idempotent and conversation-aware: no-op when no conversation is active
    * or for the dev FALLBACK_AI_CONVERSATION (which has no real DB rows).
    */
   const refetchActiveConversation = useCallback(async () => {
-    if (!conversationId || conversationId === FALLBACK_AI_CONVERSATION.id) return;
+    const requestConversationId = conversationId;
+    if (!requestConversationId || requestConversationId === FALLBACK_AI_CONVERSATION.id) return;
     try {
       const { data, has_more, next_cursor } = await bffFetch<{
         data: unknown[];
         has_more: boolean;
         next_cursor: string | null;
-      }>(`/api/v1/conversations/${conversationId}/messages?limit=50`);
-      setMessages(data.map(adaptMessage).reverse());
+      }>(`/api/v1/conversations/${requestConversationId}/messages?limit=50`);
+      if (activeConversationIdRef.current !== requestConversationId) return;
+      const remoteMessages = data.map(adaptMessage).reverse();
+      setMessages((prev) => {
+        const merged = mergeRemoteMessagesWithLocal(
+          remoteMessages,
+          prev,
+          preservedLocalMessageConversationsRef.current,
+          requestConversationId,
+        );
+        prunePreservedLocalMessages(
+          preservedLocalMessageConversationsRef.current,
+          requestConversationId,
+          merged,
+          remoteMessages,
+        );
+        return merged;
+      });
       setHasMore(has_more);
       lastCursorRef.current = next_cursor ?? null;
     } catch {
@@ -527,6 +812,8 @@ export function useMessages(
   /** Called by WS event handler to upsert a message into state. */
   const upsertMessage = useCallback((raw: unknown) => {
     const msg = adaptMessage(raw);
+    if (msg.conversation_id !== activeConversationIdRef.current) return;
+    preservedLocalMessageConversationsRef.current.set(msg.id, msg.conversation_id);
     setMessages((prev) => {
       const idx = prev.findIndex((m) => m.id === msg.id);
       if (idx >= 0) {
@@ -622,7 +909,7 @@ export function useMessages(
   }, []);
 
   /**
-   * B7 P6 — AI streaming send.
+   * AI streaming send.
    *
    * Posts the user message to `/api/v1/conversations/{id}/messages/stream`
    * (SSE). Inserts an optimistic user message + a placeholder assistant
@@ -634,7 +921,7 @@ export function useMessages(
    */
   const streamAiMessage = useCallback(
     async (convId: string, content: string): Promise<Message | null> => {
-      if (!currentUserId) return null;
+      if (!currentUserId) throw new Error("Cannot send message: user session not loaded");
       // Cancel any prior stream — the user can only have one in flight per hook instance.
       streamAbortRef.current?.abort();
       const controller = new AbortController();
@@ -794,8 +1081,7 @@ export function useMessages(
        * + `useOutboundQueue.enqueue` to persist the payload to IndexedDB.
        *
        * Without this hook, a transient BFF outage during an "online" send
-       * would leave the bubble stuck at `failed` and require the user to
-       * manually retry (CRITICAL C5 in the FE review).
+       * would leave the bubble stuck at `failed` and require manual retry.
        */
       onNetworkFailure?: (msg: Message) => void | Promise<void>,
     ): Promise<Message> => {
@@ -827,8 +1113,12 @@ export function useMessages(
         is_pinned: false,
         created_at: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, optimistic]);
-      onMessageSent?.(optimistic);
+      const shouldReflectInState = convId === activeConversationIdRef.current;
+      if (shouldReflectInState) {
+        preservedLocalMessageConversationsRef.current.set(optimisticId, convId);
+        setMessages((prev) => [...prev, optimistic]);
+        onMessageSent?.(optimistic);
+      }
 
       try {
         const result = await bffFetch<{ data: unknown }>(
@@ -844,12 +1134,20 @@ export function useMessages(
           }
         );
         const confirmed = adaptMessage(result.data);
-        setMessages((prev) => {
-          const next = prev.map((m) => (m.id === optimisticId ? confirmed : m));
-          const firstConfirmedIdx = next.findIndex((m) => m.id === confirmed.id);
-          if (firstConfirmedIdx < 0) return next;
-          return next.filter((m, idx) => m.id !== confirmed.id || idx === firstConfirmedIdx);
-        });
+        const canReflectConfirmed =
+          convId === activeConversationIdRef.current &&
+          confirmed.conversation_id === activeConversationIdRef.current;
+        if (canReflectConfirmed) {
+          preservedLocalMessageConversationsRef.current.delete(optimisticId);
+          preservedLocalMessageConversationsRef.current.set(confirmed.id, confirmed.conversation_id);
+          setMessages((prev) => {
+            const next = prev.map((m) => (m.id === optimisticId ? confirmed : m));
+            const firstConfirmedIdx = next.findIndex((m) => m.id === confirmed.id);
+            if (firstConfirmedIdx < 0) return next;
+            return next.filter((m, idx) => m.id !== confirmed.id || idx === firstConfirmedIdx);
+          });
+          onMessageSent?.(confirmed);
+        }
         return confirmed;
       } catch (err) {
         const errorCode: NonNullable<Message["error_code"]> = (() => {
@@ -864,7 +1162,9 @@ export function useMessages(
           status: "failed" as const,
           error_code: errorCode,
         };
-        setMessages((prev) => prev.map((m) => (m.id === optimisticId ? failed : m)));
+        if (convId === activeConversationIdRef.current) {
+          setMessages((prev) => prev.map((m) => (m.id === optimisticId ? failed : m)));
+        }
 
         // Network-class failures are safe to auto-enqueue — the BFF rejected
         // the request because of connectivity, not validation. Hand the
@@ -898,6 +1198,7 @@ export function useMessages(
       if (target.status !== "failed" && target.status !== "queued") return null;
       if (currentUserId && target.sender_id !== currentUserId) return null;
       const replyToId = target.reply_to?.id;
+      preservedLocalMessageConversationsRef.current.delete(messageId);
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
       return sendMessage(target.conversation_id, target.content, replyToId);
     },
@@ -910,6 +1211,7 @@ export function useMessages(
    * worker until `ai:completed` arrives.
    */
   const discardMessage = useCallback((messageId: string) => {
+    preservedLocalMessageConversationsRef.current.delete(messageId);
     setMessages((prev) => {
       const target = prev.find((m) => m.id === messageId);
       if (!target) return prev;
@@ -943,9 +1245,18 @@ export function useMessages(
    * the payload to IndexedDB via `useOutboundQueue.enqueue`.
    */
   const enqueueOptimisticMessage = useCallback(
-    (convId: string, content: string, replyToId?: string): Message | null => {
+    (
+      convId: string,
+      content: string,
+      replyToId?: string,
+      clientMessageId?: string,
+      status: Message["status"] = "queued",
+      errorCode?: Message["error_code"],
+    ): Message | null => {
       if (!currentUserId) return null;
-      const optimisticId = `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+      if (convId !== activeConversationIdRef.current) return null;
+      const optimisticId = clientMessageId
+        ?? `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
       const optimistic: Message = {
         id: optimisticId,
         conversation_id: convId,
@@ -954,7 +1265,8 @@ export function useMessages(
         sender_kind: "user",
         content,
         type: "text",
-        status: "queued",
+        status,
+        error_code: errorCode,
         reply_to: replyToId
           ? { id: replyToId, content: "", sender_id: "", type: "text" }
           : undefined,
@@ -964,6 +1276,7 @@ export function useMessages(
         is_pinned: false,
         created_at: new Date().toISOString(),
       };
+      preservedLocalMessageConversationsRef.current.set(optimisticId, convId);
       setMessages((prev) => [...prev, optimistic]);
       return optimistic;
     },
@@ -1012,6 +1325,7 @@ export function useMessages(
 
   const deleteMessage = useCallback(async (convId: string, messageId: string) => {
     let prevMessages: Message[] | null = null;
+    preservedLocalMessageConversationsRef.current.delete(messageId);
     setMessages((prev) => {
       prevMessages = prev;
       return prev.filter((m) => m.id !== messageId);
@@ -1109,7 +1423,7 @@ export function useMessages(
     [currentUserId, selfReactionLabel]
   );
 
-  // P0 — `simulateAIReply` was removed. Faking AI replies in the UI without an
+  // `simulateAIReply` was removed. Faking AI replies in the UI without an
   // explicit `sender_kind:"ai"` from the server bypasses every safety guard on
   // the AI surface (disclaimer, rate-limits, audit logs, content filters). All
   // AI replies must originate from the AI worker via the BFF (either the WS

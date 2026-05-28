@@ -4,17 +4,17 @@
  * useChatConvWs — manages a per-conversation WebSocket connection to Core BE.
  *
  * Mirrors useChatWs but targets the per-conversation endpoint at
- * `${CORE_WS_URL}/v1/chat/ws/{conversation_id}?token=<JWT>` instead of the
+ * `${CORE_WS_URL}/v1/chat/ws/{conversation_id}?token=<ws_ticket>` instead of the
  * global `/ws`. The backend auto-joins the `conv:{id}` room on connect, so the
  * client does NOT need to send a `conv:join` event.
  *
- * The auth token is the raw access JWT (vended by /api/v1/auth/ws-jwt) — the
- * per-conv endpoint decodes it as a JWT, not as a short-lived ws_ticket.
+ * The token is a short-lived ws_ticket vended by /api/v1/auth/ws-token.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { WsFrame, WsStatus } from "@/hooks/useChatWs";
+import { resolveCoreWebSocketBase } from "@/lib/core-websocket-url";
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
@@ -75,7 +75,7 @@ export function useChatConvWs({
 
   const fetchToken = useCallback(async (): Promise<string | null> => {
     try {
-      const res = await fetch("/api/v1/auth/ws-jwt");
+      const res = await fetch("/api/v1/auth/ws-token");
       if (!res.ok) return null;
       const data = (await res.json()) as { token?: string };
       return data.token ?? null;
@@ -89,24 +89,26 @@ export function useChatConvWs({
     if (!conversationId) return;
     intentionalCloseRef.current = false;
 
-    if (!tokenRef.current) {
-      tokenRef.current = await fetchToken();
-    }
+    tokenRef.current = await fetchToken();
     if (!tokenRef.current) {
       setStatus("error");
       return;
     }
 
-    const wsBase =
-      process.env.NEXT_PUBLIC_CORE_WS_URL ??
-      `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+    const wsBase = resolveCoreWebSocketBase(process.env.NEXT_PUBLIC_CORE_WS_URL);
     const wsUrl =
       `${wsBase}/v1/chat/ws/${encodeURIComponent(conversationId)}` +
       `?token=${encodeURIComponent(tokenRef.current)}`;
 
     setStatus("connecting");
 
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch {
+      setStatus("error");
+      return;
+    }
     wsRef.current = ws;
 
     ws.onopen = () => {

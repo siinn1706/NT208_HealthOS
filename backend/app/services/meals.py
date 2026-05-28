@@ -7,6 +7,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import Meal, MealStatusEnum
+from app.schemas.meals import MealCreateIngredient
 from app.services._ownership import get_owned
 
 
@@ -16,6 +17,83 @@ def _safe_float(value: object) -> float:
     except (TypeError, ValueError):
         return 0.0
     return number if number >= 0 else 0.0
+
+
+def _calories_from_ingredient(item: MealCreateIngredient) -> float:
+    return _safe_float(
+        item.manual_calories
+        if item.manual_calories is not None
+        else item.calories
+        if item.calories is not None
+        else item.kcal
+    )
+
+
+def _macro_or_estimate(value: float | None, calories: float, ratio: float, kcal_per_g: float) -> float:
+    if value is not None:
+        return _safe_float(value)
+    if calories <= 0:
+        return 0.0
+    return (calories * ratio) / kcal_per_g
+
+
+def build_manual_nutrition_result(
+    *,
+    name: str,
+    notes: str | None,
+    meal_type: str | None,
+    ingredients: list[MealCreateIngredient],
+) -> dict | None:
+    normalized_ingredients: list[dict] = []
+    totals = {"calories": 0.0, "carbs_g": 0.0, "protein_g": 0.0, "fat_g": 0.0}
+
+    for item in ingredients:
+        ingredient_name = item.ingredient_name.strip()
+        calories = _calories_from_ingredient(item)
+        carbs = _macro_or_estimate(item.carbs_g, calories, 0.50, 4.0)
+        protein = _macro_or_estimate(item.protein_g, calories, 0.15, 4.0)
+        fat = _macro_or_estimate(item.fat_g, calories, 0.35, 9.0)
+        normalized = {
+            "name": ingredient_name,
+            "ingredient_name": ingredient_name,
+            "grams": _safe_float(item.grams),
+            "calories": calories,
+            "carbs_g": carbs,
+            "protein_g": protein,
+            "fat_g": fat,
+        }
+        if item.ingredient_name_en:
+            normalized["ingredient_name_en"] = item.ingredient_name_en.strip()
+        if item.ingredient_id:
+            normalized["ingredient_id"] = str(item.ingredient_id)
+        if item.is_matched is not None:
+            normalized["is_matched"] = item.is_matched
+        normalized_ingredients.append(normalized)
+        totals["calories"] += calories
+        totals["carbs_g"] += carbs
+        totals["protein_g"] += protein
+        totals["fat_g"] += fat
+
+    cleaned_notes = notes.strip() if notes else None
+    if not meal_type and not cleaned_notes and not normalized_ingredients:
+        return None
+
+    nutrition = {
+        "dish_name": name,
+        "source": "manual",
+        "calories": totals["calories"],
+        "carbs_g": totals["carbs_g"],
+        "protein_g": totals["protein_g"],
+        "fat_g": totals["fat_g"],
+    }
+    if meal_type:
+        nutrition["serving_type"] = meal_type
+        nutrition["meal_type"] = meal_type
+    if cleaned_notes:
+        nutrition["notes"] = cleaned_notes
+    if normalized_ingredients:
+        nutrition["ingredients"] = normalized_ingredients
+    return nutrition
 
 
 def _apply_meal_date_filters(
@@ -74,14 +152,21 @@ async def create_meal(
     logged_at: datetime.datetime | None,
     image_url: str | None = None,
     job_id: str | None = None,
+    nutrition_result: dict | None = None,
 ) -> Meal:
     meal = Meal(
         user_id=user_id,
         name=name,
         image_url=image_url,
         job_id=job_id,
-        status=MealStatusEnum.PROCESSING if job_id else MealStatusEnum.PENDING,
-        nutrition_result=None,
+        status=(
+            MealStatusEnum.PROCESSING
+            if job_id
+            else MealStatusEnum.ANALYZED
+            if nutrition_result is not None
+            else MealStatusEnum.PENDING
+        ),
+        nutrition_result=nutrition_result,
         logged_at=logged_at or datetime.datetime.now(datetime.timezone.utc),
     )
     db.add(meal)

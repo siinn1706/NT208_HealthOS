@@ -16,27 +16,21 @@ Import-Module (Join-Path $PSScriptRoot "healthos-common.psm1") -Force
 Write-Host "=== HealthOS Setup ===" -ForegroundColor Cyan
 Write-Host "Root: $Root"
 
-function Copy-EnvFile {
-    param(
-        [string]$src,
-        [string]$dest
-    )
-
-    if (-not (Test-Path $dest)) {
-        Copy-Item $src $dest
-        Write-Host "[ENV] Created $dest" -ForegroundColor Green
-    }
-    else {
-        Write-Host "[ENV] $dest already exists, skipping." -ForegroundColor Yellow
-    }
+$MasterEnv = "$Root\infra\env\.env.master"
+$MasterExample = "$Root\infra\env\.env.master.example"
+if (-not (Test-Path $MasterEnv)) {
+    Copy-Item $MasterExample $MasterEnv
+    Write-Host "[ENV] Created $MasterEnv from template. Review it before production deploy." -ForegroundColor Yellow
+}
+else {
+    Write-Host "[ENV] $MasterEnv already exists." -ForegroundColor Green
 }
 
-Copy-EnvFile "$Root\infra\env\frontend.env.example" "$Root\frontend\.env.local"
-Copy-EnvFile "$Root\infra\env\backend.env.example" "$Root\backend\.env"
-Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\ai-worker\.env"
-Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\queue-worker\.env"
-Copy-EnvFile "$Root\infra\env\worker.env.example" "$Root\services\notification\.env"
-Copy-EnvFile "$Root\infra\docker\.env.dev.example" "$Root\infra\docker\.env.dev"
+Write-Host "[ENV] Rendering generated env files from master..." -ForegroundColor Cyan
+& "$Root\infra\scripts\sync-env.ps1" -Target all
+if ($LASTEXITCODE -ne 0) {
+    throw "[ENV] Env render failed."
+}
 
 if (-not $skipModelDownload) {
     Write-Host "[MODEL] Ensuring AI YOLO model exists..." -ForegroundColor Cyan

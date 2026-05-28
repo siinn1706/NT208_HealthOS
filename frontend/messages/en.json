@@ -2451,6 +2451,7 @@
   },
   "chat": {
     "title": "Messages",
+    "loadingSession": "Loading session…",
     "allChats": "All Chats",
     "strangers": "Strangers",
     "aiAssistant": "HealthOS AI",
@@ -2592,7 +2593,10 @@
     },
     "queue": {
       "evictedTitle": "Some queued messages were dropped",
-      "evictedDescription": "{n} oldest messages couldn't be kept while you were offline."
+      "evictedDescription": "{n} oldest messages couldn't be kept while you were offline.",
+      "enqueueFailedTitle": "Message was not queued",
+      "offlineQueuedTitle": "Message queued",
+      "offlineQueuedDescription": "Will send when you're back online."
     },
     "empty": {
       "noConversationsTitle": "No conversations yet",
@@ -2611,6 +2615,42 @@
       "tooLarge": "Image is too large. Max {max} MB.",
       "unsupported": "Only JPEG, PNG, or WebP images are supported.",
       "uploadFailed": "Couldn't upload that image. Try again."
+    },
+    "group": {
+      "newChat": "New chat",
+      "newGroup": "New group",
+      "createGroup": "New group",
+      "groupTitle": "Group name",
+      "groupTitlePlaceholder": "Enter group name (2–100 chars)",
+      "addMembers": "Add members",
+      "membersHint": "Select at least 2 members",
+      "groupAvatarOptional": "Group photo (optional)",
+      "create": "Create",
+      "cancel": "Cancel",
+      "errorGroupTitleTooShort": "Group name must be at least 2 characters",
+      "errorGroupTitleTooLong": "Group name must be at most 100 characters",
+      "errorGroupTooSmall": "Select at least 2 members",
+      "errorGroupTooLarge": "Group cannot have more than 50 members",
+      "members": "Members ({count})",
+      "addMembersTitle": "Add members",
+      "leave": "Leave group",
+      "leaveConfirmTitle": "Leave this group?",
+      "leaveConfirmDesc": "You will no longer receive messages from this group.",
+      "leaveConfirm": "Leave",
+      "removeMember": "Remove",
+      "promote": "Promote to admin",
+      "demote": "Demote to member",
+      "transferOwnership": "Transfer ownership",
+      "transferOwnershipConfirmTitle": "Transfer ownership?",
+      "transferOwnershipConfirmDesc": "You will become an admin after transferring ownership.",
+      "transferOwnershipConfirm": "Transfer",
+      "editTitle": "Edit name",
+      "editAvatar": "Change photo",
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "queuedHint": "{count} queued — will send when online",
+      "systemMessage": "System"
     }
   },
   "reports": {

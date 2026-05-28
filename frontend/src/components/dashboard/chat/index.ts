@@ -1,10 +1,12 @@
 // Chat components barrel export
 export { AiChatBadge } from "./AiChatBadge";
+export { AddMembersDialog } from "./AddMembersDialog";
 export { ChatBackground } from "./ChatBackground";
 export { AiMessageContent } from "./AiMessageContent";
 export { AiQuickReplies } from "./AiQuickReplies";
 export { ChatSearchBar } from "./ChatSearchBar";
 export { ConversationInfoPanel } from "./ConversationInfoPanel";
+export { CreateGroupDialog } from "./CreateGroupDialog";
 export { ForwardMessageDialog } from "./ForwardMessageDialog";
 export { ChatEmptyState } from "./ChatEmptyState";
 export { ChatLayout } from "./ChatLayout";
@@ -14,6 +16,7 @@ export { ChatWindow } from "./ChatWindow";
 export { ChatWindowHeader } from "./ChatWindowHeader";
 export { ConversationItem } from "./ConversationItem";
 export { ConversationList } from "./ConversationList";
+export { GroupMembersSection } from "./GroupMembersSection";
 export { MessageActions } from "./MessageActions";
 export { MessageBubble } from "./MessageBubble";
 export { MessageInput } from "./MessageInput";
@@ -24,3 +27,4 @@ export { OnlineStatus } from "./OnlineStatus";
 export { PinnedMessages } from "./PinnedMessages";
 export { StrangerRequests } from "./StrangerRequests";
 export { TypingIndicator } from "./TypingIndicator";
+export { UserPickerMulti } from "./UserPickerMulti";

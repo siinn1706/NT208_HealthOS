@@ -70,7 +70,7 @@ export function UserDetailActionBar({
           "motion-safe:transition-shadow",
           scrolled ? "shadow-sm" : "shadow-none",
         ].join(" ")}
-        style={{ top: "var(--admin-header-height)" }}
+        style={{ top: 0 }}
       >
         <Link
           href="/admin/users"
