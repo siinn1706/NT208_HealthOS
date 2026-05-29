@@ -201,14 +201,16 @@ async def test_callback_rejects_bad_state(authenticated_client):
 
 @pytest.mark.asyncio
 async def test_callback_rejects_state_for_other_user(
-    authenticated_client, authenticated_user
+    authenticated_client, authenticated_user, fake_redis_override
 ):
-    """State signed for user A is presented by user B → 400."""
+    """State minted for user A is presented by user B → 400."""
     # `authenticated_user` is user B (the one logged in). Mint a state
-    # for a DIFFERENT user; the callback must refuse it.
+    # for a DIFFERENT user into the SAME fake Redis the endpoint reads, so
+    # the nonce check passes and we actually exercise the subject-mismatch
+    # rejection rather than the "nonce absent" branch.
     other = uuid.uuid4()
     assert other != authenticated_user.id
-    state = oauth_state.sign_state(other)
+    state = await oauth_state.mint_state(fake_redis_override, other)
     res = await authenticated_client.get(
         f"/v1/wearables/google/callback?code=fakecode&state={state}"
     )
