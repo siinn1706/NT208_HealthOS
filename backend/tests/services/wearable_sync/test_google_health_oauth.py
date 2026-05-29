@@ -11,6 +11,7 @@ test suite uses (see ``test_sync_task.py``).
 """
 from __future__ import annotations
 
+import datetime
 import urllib.parse
 from types import SimpleNamespace
 from typing import Any
@@ -18,6 +19,12 @@ from typing import Any
 import pytest
 
 from app.services.wearable_sync import google_health
+
+
+def _epoch(year: int, month: int, day: int) -> datetime.datetime:
+    """Tz-aware UTC datetime — fetch_data only ISO-formats it, the value
+    itself is irrelevant to the pagination tests."""
+    return datetime.datetime(year, month, day, tzinfo=datetime.timezone.utc)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -285,3 +292,83 @@ async def test_fetch_user_profile_raises_on_non_200(patched_httpx):
     with pytest.raises(google_health.GoogleHealthError) as exc:
         await google_health.fetch_user_profile("expired")
     assert exc.value.status_code == 401
+
+
+# ──────────────────────────────────────────────────────────────────────
+# fetch_data — pagination
+# ──────────────────────────────────────────────────────────────────────
+
+
+class _PaginatingAsyncClient:
+    """Fake client that serves a scripted queue of responses and records
+    the ``pageToken`` sent on each GET — enough to prove fetch_data walks
+    ``nextPageToken`` and accumulates records across pages."""
+
+    responses: list[_FakeResponse] = []
+    seen_page_tokens: list[Any] = []
+
+    def __init__(self, *_args, **_kwargs) -> None:
+        pass
+
+    async def __aenter__(self) -> "_PaginatingAsyncClient":
+        return self
+
+    async def __aexit__(self, *_exc) -> None:
+        return None
+
+    async def get(self, _url, *, headers=None, params=None, **_kw) -> _FakeResponse:
+        type(self).seen_page_tokens.append((params or {}).get("pageToken"))
+        return type(self).responses.pop(0)
+
+
+@pytest.fixture
+def paginating_httpx(monkeypatch):
+    _PaginatingAsyncClient.responses = []
+    _PaginatingAsyncClient.seen_page_tokens = []
+    monkeypatch.setattr(google_health.httpx, "AsyncClient", _PaginatingAsyncClient)
+    return _PaginatingAsyncClient
+
+
+@pytest.mark.asyncio
+async def test_fetch_data_follows_next_page_token(paginating_httpx):
+    """Records from every page are accumulated, and the token from page N
+    is sent as pageToken on page N+1 until a page omits it."""
+    paginating_httpx.responses = [
+        _FakeResponse(200, {"records": [{"id": "1"}], "nextPageToken": "tok-2"}),
+        _FakeResponse(200, {"records": [{"id": "2"}], "nextPageToken": "tok-3"}),
+        _FakeResponse(200, {"records": [{"id": "3"}]}),  # no token → stop
+    ]
+    out = await google_health.fetch_data(
+        "AT", "heart_rate",
+        _epoch(2026, 1, 1), _epoch(2026, 1, 31),
+    )
+    assert [r["id"] for r in out] == ["1", "2", "3"]
+    # First request carries no token; subsequent requests echo the prior page's.
+    assert paginating_httpx.seen_page_tokens == [None, "tok-2", "tok-3"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_data_stops_at_page_cap(paginating_httpx, monkeypatch):
+    """A response that always hands back a token must not loop forever —
+    the page cap bounds it."""
+    monkeypatch.setattr(google_health, "_MAX_PAGES_PER_FETCH", 3)
+    paginating_httpx.responses = [
+        _FakeResponse(200, {"records": [{"id": str(i)}], "nextPageToken": "always"})
+        for i in range(10)
+    ]
+    out = await google_health.fetch_data(
+        "AT", "steps", _epoch(2026, 1, 1), _epoch(2026, 1, 2)
+    )
+    assert len(out) == 3  # capped, not 10
+    assert len(paginating_httpx.seen_page_tokens) == 3
+
+
+@pytest.mark.asyncio
+async def test_fetch_data_single_bare_list_is_one_page(paginating_httpx):
+    """A bare-list response has no pagination envelope — treat as final."""
+    paginating_httpx.responses = [_FakeResponse(200, [{"id": "a"}, {"id": "b"}])]
+    out = await google_health.fetch_data(
+        "AT", "steps", _epoch(2026, 1, 1), _epoch(2026, 1, 2)
+    )
+    assert [r["id"] for r in out] == ["a", "b"]
+    assert paginating_httpx.seen_page_tokens == [None]

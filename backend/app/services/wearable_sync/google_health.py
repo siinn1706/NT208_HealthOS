@@ -81,6 +81,14 @@ _DEFAULT_SCOPES: Final[tuple[str, ...]] = (
 # Celery worker. 10 s matches the auth.py httpx pattern.
 _HTTP_TIMEOUT: Final[float] = 10.0
 
+# Hard cap on pages followed per data-type in `fetch_data`. Google list
+# endpoints paginate via `nextPageToken`; without a ceiling a buggy or
+# hostile upstream that always echoes a token would loop forever and pin
+# a worker. 50 pages is far beyond any honest 30-day backfill, and keeps
+# the worst-case single-type duration (50 × _HTTP_TIMEOUT = 500 s) below
+# the per-device sync lock TTL so the lock can't silently lapse mid-sweep.
+_MAX_PAGES_PER_FETCH: Final[int] = 50
+
 
 class GoogleHealthError(RuntimeError):
     """Raised on any non-recoverable failure talking to Google Health.
@@ -286,35 +294,61 @@ async def fetch_data(
     # with ISO-8601 timestamp range as query string. If Google ships a
     # different convention, swap this URL — nothing else changes.
     url = f"{_HEALTH_API_BASE}/users/me/dataTypes/{data_type}/records"
-    params = {
+    base_params = {
         "startTime": since.isoformat(),
         "endTime": until.isoformat(),
     }
     headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Follow `nextPageToken` across pages so a multi-page window (a 30-day
+    # backfill almost always is) isn't silently truncated to the first
+    # page. One client for the whole walk reuses the connection. The page
+    # cap bounds the loop against an upstream that never stops handing out
+    # tokens.
+    records: list[dict[str, Any]] = []
+    page_token: str | None = None
     async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-        resp = await client.get(url, headers=headers, params=params)
-    if resp.status_code == 401:
-        # Access token expired — caller will refresh and retry.
-        raise GoogleHealthError(
-            "Google access token expired.",
-            status_code=401,
-        )
-    if resp.status_code != 200:
-        logger.warning(
-            "Google Health fetch failed for %s: %s %s",
-            data_type, resp.status_code, resp.text[:200],
-        )
-        raise GoogleHealthError(
-            f"Failed to fetch {data_type} from Google Health.",
-            status_code=resp.status_code,
-        )
-    body = resp.json()
-    # Google list responses are typically wrapped in a "records" or
-    # "items" key. Be defensive — return whichever is present, falling
-    # back to an empty list so callers can iterate without guarding.
-    if isinstance(body, list):
-        return body
-    return body.get("records") or body.get("items") or []
+        for _ in range(_MAX_PAGES_PER_FETCH):
+            params = dict(base_params)
+            if page_token:
+                params["pageToken"] = page_token
+            resp = await client.get(url, headers=headers, params=params)
+            if resp.status_code == 401:
+                # Access token expired — caller will refresh and retry.
+                raise GoogleHealthError(
+                    "Google access token expired.",
+                    status_code=401,
+                )
+            if resp.status_code != 200:
+                logger.warning(
+                    "Google Health fetch failed for %s: %s %s",
+                    data_type, resp.status_code, resp.text[:200],
+                )
+                raise GoogleHealthError(
+                    f"Failed to fetch {data_type} from Google Health.",
+                    status_code=resp.status_code,
+                )
+            body = resp.json()
+            # Google list responses are typically wrapped in a "records" or
+            # "items" key. Be defensive — accept whichever is present. A bare
+            # list carries no pagination envelope, so it's always a single page.
+            if isinstance(body, list):
+                records.extend(body)
+                break
+            records.extend(body.get("records") or body.get("items") or [])
+            page_token = body.get("nextPageToken") or body.get("next_page_token")
+            if not page_token:
+                break
+        else:
+            # Loop exhausted the cap without a terminating page — the window
+            # may be truncated. Log loudly; callers treat what we return as
+            # complete, so this is the only signal that it might not be.
+            logger.warning(
+                "Google Health fetch for %s hit the %d-page cap — "
+                "results may be truncated.",
+                data_type, _MAX_PAGES_PER_FETCH,
+            )
+    return records
 
 
 async def register_webhook(
