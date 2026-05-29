@@ -299,7 +299,11 @@ async def get_or_create_ai_conversation(
             sender_id=user_id,
             content=initial_message.strip(),
             content_type="text",
-            client_message_id=f"mobile-ai-seed-{uuid.uuid4()}",
+            # Stable per-conversation key so a double-tap / retry / relaunch
+            # that re-hits get_or_create with the same initial_message dedups
+            # against the existing seed instead of inserting a duplicate
+            # opening message (and triggering a second Gemini round-trip).
+            client_message_id=f"mobile-ai-seed-{conv.id}",
         )
         conv = await _reload_conversation(db, conv.id)
     return await _build_conversation_dto(db, conv, user_id, presence_map)
