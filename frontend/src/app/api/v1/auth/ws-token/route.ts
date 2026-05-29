@@ -2,6 +2,7 @@
  * BFF WS-Token — /api/v1/auth/ws-token
  * GET → exchange session cookie for a short-lived Core WS ticket.
  */
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
@@ -10,12 +11,32 @@ import { CORE_API_URL } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/bff-fetch-utils";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 
-export async function GET(req: NextRequest) {
-  const limited = await enforceRateLimit(req, RATE_LIMITS["auth:ws_token"]);
-  if (limited) return limited;
+const COOKIE_PRESENT_RATE_LIMIT = {
+  ...RATE_LIMITS["auth:ws_token"],
+  key: "auth:ws_token:session_cookie",
+  fallbackPrincipal: "session-cookie-present",
+  logUnresolvedIp: false,
+};
 
+function sessionPrincipal(accessToken: string): string {
+  return `session:${createHash("sha256").update(accessToken).digest("hex")}`;
+}
+
+export async function GET(req: NextRequest) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+
+  if (accessToken) {
+    const cookieLimited = await enforceRateLimit(req, COOKIE_PRESENT_RATE_LIMIT);
+    if (cookieLimited) return cookieLimited;
+  }
+
+  const limiterOptions = accessToken
+    ? { ...RATE_LIMITS["auth:ws_token"], principal: sessionPrincipal(accessToken) }
+    : RATE_LIMITS["auth:ws_token"];
+
+  const limited = await enforceRateLimit(req, limiterOptions);
+  if (limited) return limited;
 
   if (!accessToken) {
     return NextResponse.json(

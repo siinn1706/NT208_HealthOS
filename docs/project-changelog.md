@@ -1,6 +1,6 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.6-admin-redesign | **Last Updated**: 2026-05-28
+> **Version**: 1.3.6-admin-redesign | **Last Updated**: 2026-05-29
 
 ---
 
@@ -23,6 +23,34 @@
 - **Env/docs/tests**: Worker env templates expose the new DeepSeek and embedding knobs; tests cover payloads, JSON fallback, streaming reasoning suppression, embedding service, and endpoint validation.
 
 ### Fixed
+
+#### Dashboard Trends Batch Endpoint (2026-05-29)
+- **Core batch route**: Added authenticated `GET /v1/reports/trends/batch` with metric parsing that trims, lowercases, dedupes, preserves order, omits unsupported tokens, and returns `400` when no supported metric remains.
+- **Service preload**: Trend batch analysis now loads health metrics once per user/period and loads meals only when `calories` is requested, while keeping the single `/reports/trends` fallback behavior unchanged.
+- **BFF/dashboard**: Added `/api/v1/reports/trends/batch` and switched trend summary + realtime anomaly widgets from per-metric fan-out to one batch request per load/period.
+- **Contracts/tests**: Updated Core/BFF contract paths, aligned required `metrics` query metadata, and added focused service, API, and widget regression coverage.
+- **Verification**: Backend trend service/API pytest passed: 13 tests. Frontend batch widget Vitest, targeted ESLint, backend syntax compile, and changed-file diff check passed.
+
+#### Dashboard Auth DB WS-Token Overhead Reduction (2026-05-29)
+- **Auth last-seen**: `get_current_user` now schedules throttled background `last_seen_at` touches after all auth/security checks instead of awaiting a DB update on every authenticated request.
+- **DB pooling**: Async DB pooling now stays enabled under `DEBUG=true`; `DB_DISABLE_POOL=true` is the explicit opt-in for `NullPool` and is rendered from the master env template.
+- **Env migration safety**: Existing local master env files that lack `DB_DISABLE_POOL` now render it as `false` instead of failing, while other missing required keys still fail.
+- **WS token limiter**: Cookie-bearing `/api/v1/auth/ws-token` calls keep a stable pre-Core abuse gate, then authenticated calls rate-limit by `session:<sha256(access-token)>` without exposing raw tokens.
+- **Regression coverage**: Added backend scheduling/pool-option tests, env-renderer coverage, and ws-token route tests for hashed principals, invalid-cookie abuse gating, unauth 401, 429, upstream error, and 503 paths.
+- **Verification**: Focused backend pytest passed: 10 tests. Focused frontend Vitest passed: 78 tests. Env renderer tests passed: 10 tests. Backend env render/check passed.
+
+#### Dashboard Exercise AI Timeout Fallback (2026-05-29)
+- **Core guardrail**: Dashboard exercise suggestions now bound the AI worker call with a short service-level timeout before falling back to the existing rule-based engine.
+- **Fallback safety**: Timeout, AI worker errors, empty AI output, and unavailable worker paths return rule suggestions without caching failed output.
+- **Locale cache**: Exercise suggestion cache keys now include locale and successful non-empty AI suggestions still use the one-hour Redis cache.
+- **Regression coverage**: Added focused backend service tests for cache hit, AI success cache write, timeout fallback, empty output fallback, AI error fallback, parse-skip fallback, and blank-locale normalization.
+- **Verification**: Targeted backend pytest passed: 10 tests. Python syntax compile and `git diff --check` passed with only existing LF/CRLF warnings.
+
+#### Dashboard Exercise Suggestions SSR Decoupling (2026-05-29)
+- **Dashboard SSR**: Removed exercise suggestions from `/dashboard` server `Promise.all`; summary, vitals, and reminders remain server-rendered.
+- **Client widget fetch**: Exercise suggestions now load after hydration through `/api/v1/dashboard/exercise-suggestions` with loading, empty, and safe error states.
+- **Regression coverage**: Added focused widget tests for BFF fetch and request failure containment; i18n keys added for loading/error copy.
+- **Verification**: Static SSR grep, targeted widget Vitest, targeted ESLint, and i18n parity passed. Repo-wide TypeScript still has unrelated baseline admin/BFF/config errors.
 
 #### AI Chat Medical Safety Layer (2026-05-28)
 - **Emergency bypass**: Backend AI chat now detects deterministic emergency red flags before AI Worker calls and persists a templated emergency reply instead of sending emergency content to the LLM.

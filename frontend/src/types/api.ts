@@ -721,9 +721,12 @@ export interface TrendAnalysis {
   trend: TrendDirection;
   change_percent: number;
   ai_summary: string;
+  ai_summary_params?: Record<string, unknown>;
   /** 0–1 when the API provides a model confidence for the forecast band */
   confidence?: number;
 }
+
+export type TrendAnalysisBatch = Record<string, TrendAnalysis>;
 
 // ─── Share / Notifications ────────────────────────────────────────────────
 

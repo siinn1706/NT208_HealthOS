@@ -1,21 +1,25 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import Link from "next/link";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { cn } from "@/lib/utils";
-import type { ReportPeriod, TrendAnalysis } from "@/types/api";
+import type { ReportPeriod, TrendAnalysis, TrendAnalysisBatch } from "@/types/api";
 
-async function fetchTrend(metric: string, period: ReportPeriod): Promise<TrendAnalysis | null> {
-  const res = await fetch(`/api/v1/reports/trends?metric=${metric}&period=${period}`, {
+async function fetchTrendBatch(metrics: string[], period: ReportPeriod): Promise<TrendAnalysisBatch> {
+  const params = new URLSearchParams({
+    metrics: metrics.join(","),
+    period,
+  });
+  const res = await fetch(`/api/v1/reports/trends/batch?${params.toString()}`, {
     credentials: "include",
   });
-  if (!res.ok) return null;
+  if (!res.ok) return {};
   const json = await res.json();
-  return json?.data ?? null;
+  return json?.data ?? {};
 }
 
 interface MetricDef { key: string; label: string; unit: string; color: string; scale?: number }
@@ -80,21 +84,18 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
   const [trends,    setTrends]    = useState<Record<string, TrendAnalysis>>({});
   const [isPending, startTransition] = useTransition();
 
-  const loadTrends = (p: ReportPeriod) => {
+  const loadTrends = useCallback((p: ReportPeriod) => {
     startTransition(async () => {
-      const results = await Promise.all(METRICS.map((m) => fetchTrend(m.key, p)));
-      const map: Record<string, TrendAnalysis> = {};
-      METRICS.forEach((m, i) => { if (results[i]) map[m.key] = results[i]!; });
-      setTrends(map);
+      const data = await fetchTrendBatch(METRICS.map((m) => m.key), p);
+      setTrends(data);
     });
-  };
+  }, [startTransition]);
 
-  useEffect(() => { loadTrends(period); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { loadTrends(period); }, [loadTrends, period]);
 
   const handlePeriodChange = (p: ReportPeriod | "custom") => {
     if (p === "custom") return;
     setPeriod(p);
-    loadTrends(p);
   };
 
   return (

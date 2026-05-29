@@ -27,6 +27,13 @@ export interface RateLimitOptions {
    * When provided, IP resolution is skipped entirely.
    */
   principal?: string;
+  /**
+   * Stable non-user-controlled fallback for routes that must not fail open when
+   * no trusted IP is available.
+   */
+  fallbackPrincipal?: string;
+  /** Suppress expected unresolved-IP logs when a fallback principal handles it. */
+  logUnresolvedIp?: boolean;
 }
 
 interface Store {
@@ -127,16 +134,18 @@ export async function enforceRateLimit(
   req: Request,
   opts: RateLimitOptions,
 ): Promise<NextResponse | null> {
-  const principal = opts.principal ?? resolveClientIp(req);
+  const principal = opts.principal ?? resolveClientIp(req) ?? opts.fallbackPrincipal;
 
   if (!principal) {
     // Unresolvable IP — fail-OPEN per-request, never collapse into shared bucket.
-    console.warn(
-      JSON.stringify({
-        event: "bff_rate_limit_ip_unresolvable",
-        route: opts.key,
-      }),
-    );
+    if (opts.logUnresolvedIp !== false) {
+      console.warn(
+        JSON.stringify({
+          event: "bff_rate_limit_ip_unresolvable",
+          route: opts.key,
+        }),
+      );
+    }
     return null;
   }
 

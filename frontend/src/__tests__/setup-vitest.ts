@@ -30,6 +30,19 @@ function resolveKey(obj: Record<string, unknown>, path: string): string {
   return typeof cur === "string" ? cur : path;
 }
 
+function hasKey(obj: Record<string, unknown>, path: string): boolean {
+  const parts = path.split(".");
+  let cur: unknown = obj;
+  for (const part of parts) {
+    if (cur && typeof cur === "object" && part in cur) {
+      cur = (cur as Record<string, unknown>)[part];
+    } else {
+      return false;
+    }
+  }
+  return typeof cur === "string";
+}
+
 // Module-level messages store — NextIntlClientProvider sets this per render;
 // afterEach resets it so tests are isolated.
 let _providerMessages: Record<string, unknown> | null = null;
@@ -42,30 +55,37 @@ function activeMessages(): Record<string, unknown> {
   return _providerMessages ?? (enMessages as Record<string, unknown>);
 }
 
+type TestTranslator = ((key: string, params?: Record<string, string | number>) => string) & {
+  has: (key: string) => boolean;
+};
+
+function makeTranslator(namespace?: string): TestTranslator {
+  const translate = ((key: string, params?: Record<string, string | number>) => {
+    const fullKey = namespace ? `${namespace}.${key}` : key;
+    let msg = resolveKey(activeMessages(), fullKey);
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        msg = msg.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+      });
+    }
+    return msg;
+  }) as TestTranslator;
+
+  translate.has = (key: string) => {
+    const fullKey = namespace ? `${namespace}.${key}` : key;
+    return hasKey(activeMessages(), fullKey);
+  };
+
+  return translate;
+}
+
 // Global next-intl mock — returns actual message text so component structure tests pass.
 // Tests that wrap with IntlWrapper (NextIntlClientProvider + locale messages) get the
 // locale-specific text; unwrapped tests get English.
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace?: string) => (key: string, params?: Record<string, string | number>) => {
-    const fullKey = namespace ? `${namespace}.${key}` : key;
-    let msg = resolveKey(activeMessages(), fullKey);
-    if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        msg = msg.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
-      });
-    }
-    return msg;
-  },
-  getTranslations: async (namespace?: string) => (key: string, params?: Record<string, string | number>) => {
-    const fullKey = namespace ? `${namespace}.${key}` : key;
-    let msg = resolveKey(activeMessages(), fullKey);
-    if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        msg = msg.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
-      });
-    }
-    return msg;
-  },
+  useTranslations: (namespace?: string) => makeTranslator(namespace),
+  getTranslations: async (namespace?: string) => makeTranslator(namespace),
+  useLocale: () => "vi",
   // NextIntlClientProvider: store messages so useTranslations can see them
   NextIntlClientProvider: ({ children, messages }: { children: unknown; messages?: Record<string, unknown> }) => {
     if (messages) _providerMessages = messages;

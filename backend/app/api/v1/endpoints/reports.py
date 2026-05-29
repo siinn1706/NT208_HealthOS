@@ -15,7 +15,7 @@ from app.core.security import get_current_user
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import User
 from app.schemas.common import ErrorResponse
-from app.schemas.insights import HealthReportResponse, TrendAnalysisResponse
+from app.schemas.insights import HealthReportResponse, TrendAnalysisBatchResponse, TrendAnalysisResponse
 from app.schemas.report_export import (
     ReportExportRequestBody,
     ReportExportRequestDTO,
@@ -57,6 +57,32 @@ async def _enforce_pdf_rate_limit(redis: Redis, user_id: uuid.UUID) -> None:
         )
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
+
+
+def _parse_trend_metrics_param(raw: str) -> list[str]:
+    requested: list[str] = []
+    seen: set[str] = set()
+    for token in raw.split(","):
+        metric = token.strip().lower()
+        if (
+            not metric
+            or metric not in insight_svc.TREND_ANALYSIS_METRICS
+            or metric in seen
+        ):
+            continue
+        seen.add(metric)
+        requested.append(metric)
+
+    if not requested:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "VALIDATION_ERROR",
+                "message": "No supported trend metrics requested.",
+            },
+        )
+
+    return requested
 
 
 @router.get(
@@ -103,6 +129,23 @@ async def get_report_trends(
 ) -> TrendAnalysisResponse:
     data = await insight_svc.get_trend_analysis(db, current_user, metric, period)
     return TrendAnalysisResponse(data=data)
+
+
+@router.get(
+    "/trends/batch",
+    response_model=TrendAnalysisBatchResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+    summary="Get report trend analysis for multiple metrics",
+)
+async def get_report_trends_batch(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    metrics: str = Query(...),
+    period: str = Query(default="7d", pattern="^(7d|30d|90d)$"),
+) -> TrendAnalysisBatchResponse:
+    parsed_metrics = _parse_trend_metrics_param(metrics)
+    data = await insight_svc.get_trend_analysis_batch(db, current_user, parsed_metrics, period)
+    return TrendAnalysisBatchResponse(data=data)
 
 
 # ─── B7 P10 — PDF report export ──────────────────────────────────────────

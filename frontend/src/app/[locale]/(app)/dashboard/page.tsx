@@ -24,7 +24,6 @@ import {
   getDashboardSummary,
   getVitalsTimeseries,
   getUpcomingReminders,
-  getExerciseSuggestions,
 } from "@/lib/dashboard-data";
 import type { ReportPeriod } from "@/types/api";
 import { TrendSummaryWidget } from "@/components/dashboard/widgets/TrendSummaryWidget";
@@ -52,11 +51,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const t = await getTranslations("dashboard");
 
   // Parallel data fetch on the server
- const [summary, vitals, reminders, exerciseSuggestions] = await Promise.all([
+  const [summary, vitals, reminders] = await Promise.all([
     getDashboardSummary(),
     getVitalsTimeseries(days),
     getUpcomingReminders(),
-    getExerciseSuggestions(),
   ]);
 
   // Detect time of day for greeting
@@ -114,7 +112,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3 items-stretch">
         <GoalProgressWidget goals={summary.goals} />
         <AiInsightWidget insight={summary.aiInsight} />
-        <ExerciseSuggestionsWidget suggestions={exerciseSuggestions} />
+        <ExerciseSuggestionsWidget />
       </div>
       </div>
     </>

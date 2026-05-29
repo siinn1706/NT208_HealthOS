@@ -12,7 +12,7 @@ import {
 import { useHealthAlerts } from "@/hooks/useHealthAlerts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import type { AnomalyPoint, TrendAnalysis } from "@/types/api";
+import type { AnomalyPoint, TrendAnalysisBatch } from "@/types/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,33 +40,44 @@ type MetricKey = typeof ALL_METRICS[number]["key"];
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 async function fetchAllAnomalies(): Promise<MetricAnomalyData[]> {
-  const results = await Promise.all(
-    ALL_METRICS.map(async (m) => {
-      try {
-        const res = await fetch(`/api/v1/reports/trends?metric=${m.key}&period=30d`, {
-          credentials: "include",
-        });
-        if (!res.ok) return { metric: m.key, metricLabel: m.label, unit: m.unit, anomalies: [] };
-        const json  = await res.json();
-        const data  = json?.data as TrendAnalysis | undefined;
-        // Always use static Vietnamese label, not the API i18n key
-        return {
+  const emptyResults = () =>
+    ALL_METRICS.map((m) => ({
+      metric: m.key,
+      metricLabel: m.label,
+      unit: m.unit,
+      anomalies: [],
+    }));
+
+  try {
+    const params = new URLSearchParams({
+      metrics: ALL_METRICS.map((m) => m.key).join(","),
+      period: "30d",
+    });
+    const res = await fetch(`/api/v1/reports/trends/batch?${params.toString()}`, {
+      credentials: "include",
+    });
+    if (!res.ok) return emptyResults();
+
+    const json = await res.json();
+    const batch = json?.data as TrendAnalysisBatch | undefined;
+    return ALL_METRICS.map((m) => {
+      const data = batch?.[m.key];
+      // Always use static Vietnamese label, not the API i18n key.
+      return {
+        metric: m.key,
+        metricLabel: m.label,
+        unit: m.unit,
+        anomalies: (data?.anomalies ?? []).map((a) => ({
+          ...a,
           metric: m.key,
           metricLabel: m.label,
           unit: m.unit,
-          anomalies: (data?.anomalies ?? []).map((a) => ({
-            ...a,
-            metric: m.key,
-            metricLabel: m.label,
-            unit: m.unit,
-          })),
-        } satisfies MetricAnomalyData;
-      } catch {
-        return { metric: m.key, metricLabel: m.label, unit: m.unit, anomalies: [] };
-      }
-    }),
-  );
-  return results;
+        })),
+      } satisfies MetricAnomalyData;
+    });
+  } catch {
+    return emptyResults();
+  }
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
