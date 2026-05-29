@@ -58,6 +58,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = ""
+    # DEBUG controls logging/docs; DB pooling is disabled only by explicit opt-in.
+    db_disable_pool: bool = False
 
     # Redis — put credentials in REDIS_URL (e.g. redis://:secret@host:6379/0) when Redis requires AUTH.
     redis_url: str = "redis://localhost:6379/0"

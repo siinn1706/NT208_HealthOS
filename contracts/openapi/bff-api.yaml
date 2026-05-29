@@ -508,6 +508,30 @@ paths:
         "200":
           description: Forwarded response from Core BE
 
+  /reports/trends/batch:
+    get:
+      tags: [Reports]
+      summary: Batch trend analysis (proxy → Core BE)
+      parameters:
+        - name: metrics
+          in: query
+          required: true
+          schema:
+            type: string
+            example: heart_rate,steps,sleep
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+      responses:
+        "200":
+          description: Forwarded response from Core BE
+        "400":
+          description: No supported trend metrics requested
+        "422":
+          description: Missing or invalid query parameters
+
   /vitals/timeseries:
     get:
       tags: [Vitals]

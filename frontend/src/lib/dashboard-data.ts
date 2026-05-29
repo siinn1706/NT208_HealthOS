@@ -258,32 +258,3 @@ export async function getUpcomingReminders(): Promise<DataSlice<ReminderItem[]>>
   }
 }
 
-export async function getExerciseSuggestions(): Promise<ExerciseSuggestion[]> {
-  try {
-    const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/dashboard/exercise-suggestions`, {
-      cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
-    });
-    if (!res.ok) return [];
-    const json = await res.json().catch(() => null);
-    const data = json?.data;
-    if (!Array.isArray(data)) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return data.map((item: any) => ({
-      id: typeof item.id === "string" ? item.id : "",
-      type: ["tip", "warning", "goal", "success"].includes(item.type) ? item.type : "tip",
-      icon: typeof item.icon === "string" ? item.icon : "Info",
-      title: typeof item.title === "string" ? item.title : "",
-      message: typeof item.message === "string" ? item.message : "",
-      message_params: item.message_params ?? undefined,
-      priority: typeof item.priority === "number" ? item.priority : 99,
-      duration_minutes: typeof item.duration_minutes === "number" ? item.duration_minutes : null,
-      intensity: ["low", "medium", "high"].includes(item.intensity) ? item.intensity : "low",
-      category: ["cardio", "strength", "flexibility", "balance"].includes(item.category) ? item.category : "cardio",
-    }));
-  } catch {
-    return [];
-  }
-}
-

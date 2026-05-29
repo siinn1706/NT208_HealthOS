@@ -18,7 +18,7 @@ const TARGETS = {
     path: "backend/.env",
     sections: [
       ["App", ["APP_ENV", "NODE_ENV", "DEBUG", "LOG_LEVEL", "LOG_FORMAT", "APP_URL"]],
-      ["Database and Redis", ["DATABASE_URL", "REDIS_URL", "CELERY_BROKER_URL"]],
+      ["Database and Redis", ["DATABASE_URL", "DB_DISABLE_POOL", "REDIS_URL", "CELERY_BROKER_URL"]],
       [
         "Storage",
         [
@@ -226,6 +226,16 @@ const TARGET_ALIASES = {
 
 const SECRET_KEY_PATTERN = /(SECRET|PASSWORD|TOKEN|PRIVATE|FERNET|API_KEY|CLIENT_SECRET|ACCESS_KEY)/i;
 const PLACEHOLDER_PATTERN = /(change-me|replace-with|your-domain|example\.com|dev-secret|dev-bff-secret|dev-nextauth|healthos_dev_pass|minioadmin)/i;
+const BACKWARD_COMPATIBLE_DEFAULTS = {
+  DB_DISABLE_POOL: "false",
+};
+
+export function applyEnvDefaults(env) {
+  return {
+    ...BACKWARD_COMPATIBLE_DEFAULTS,
+    ...env,
+  };
+}
 
 export function parseDotenv(text) {
   const env = {};
@@ -298,15 +308,16 @@ export function collectTargetKeys(targetNames) {
 }
 
 export function validateEnv(env, targetNames, options = {}) {
+  const effectiveEnv = applyEnvDefaults(env);
   const requiredKeys = collectTargetKeys(targetNames);
-  const missing = requiredKeys.filter((key) => !(key in env));
+  const missing = requiredKeys.filter((key) => !(key in effectiveEnv));
   if (missing.length > 0) {
     throw new Error(`Master env is missing required key(s): ${missing.join(", ")}`);
   }
 
   for (const key of requiredKeys) assertPublicKeyIsSafe(key);
 
-  const runtime = String(env.APP_ENV || env.NODE_ENV || "").trim().toLowerCase();
+  const runtime = String(effectiveEnv.APP_ENV || effectiveEnv.NODE_ENV || "").trim().toLowerCase();
   const requireProd = options.requireProdValidation || runtime === "production" || runtime === "staging";
   if (!requireProd) return;
 
@@ -334,23 +345,23 @@ export function validateEnv(env, targetNames, options = {}) {
     "EXPO_PUBLIC_CORE_WS_URL",
   ];
   for (const key of prodRequired) {
-    assertPresent(env, key);
-    assertNotPlaceholder(env, key);
+    assertPresent(effectiveEnv, key);
+    assertNotPlaceholder(effectiveEnv, key);
   }
 
-  assertMinLength(env, "SECRET_KEY", 32);
-  assertMinLength(env, "BFF_SHARED_SECRET", 32);
-  assertMinLength(env, "METRICS_TOKEN", 16);
-  assertMinLength(env, "NEXTAUTH_SECRET", 32);
-  assertNoLocalhost(env, "DATABASE_URL");
-  assertNoLocalhost(env, "REDIS_URL");
-  assertNoLocalhost(env, "ALLOWED_ORIGINS");
-  assertNoWildcardOrigins(env.ALLOWED_ORIGINS);
-  assertHttps(env, "NEXTAUTH_URL");
-  assertHttps(env, "NEXT_PUBLIC_APP_URL");
-  assertHttps(env, "EXPO_PUBLIC_CORE_API_URL");
-  assertWss(env, "NEXT_PUBLIC_CORE_WS_URL");
-  assertWss(env, "EXPO_PUBLIC_CORE_WS_URL");
+  assertMinLength(effectiveEnv, "SECRET_KEY", 32);
+  assertMinLength(effectiveEnv, "BFF_SHARED_SECRET", 32);
+  assertMinLength(effectiveEnv, "METRICS_TOKEN", 16);
+  assertMinLength(effectiveEnv, "NEXTAUTH_SECRET", 32);
+  assertNoLocalhost(effectiveEnv, "DATABASE_URL");
+  assertNoLocalhost(effectiveEnv, "REDIS_URL");
+  assertNoLocalhost(effectiveEnv, "ALLOWED_ORIGINS");
+  assertNoWildcardOrigins(effectiveEnv.ALLOWED_ORIGINS);
+  assertHttps(effectiveEnv, "NEXTAUTH_URL");
+  assertHttps(effectiveEnv, "NEXT_PUBLIC_APP_URL");
+  assertHttps(effectiveEnv, "EXPO_PUBLIC_CORE_API_URL");
+  assertWss(effectiveEnv, "NEXT_PUBLIC_CORE_WS_URL");
+  assertWss(effectiveEnv, "EXPO_PUBLIC_CORE_WS_URL");
 }
 
 export function assertPublicKeyIsSafe(key) {
@@ -408,11 +419,12 @@ function assertWss(env, key) {
 export function renderTargetContent(env, targetName) {
   const target = TARGETS[targetName];
   if (!target) throw new Error(`Unknown target "${targetName}"`);
+  const effectiveEnv = applyEnvDefaults(env);
   const lines = [...GENERATED_HEADER];
   for (const [sectionName, keys] of target.sections) {
     lines.push(`# ${sectionName}`);
     for (const key of keys) {
-      lines.push(`${key}=${stringifyEnvValue(env[key] ?? "")}`);
+      lines.push(`${key}=${stringifyEnvValue(effectiveEnv[key] ?? "")}`);
     }
     lines.push("");
   }

@@ -13,15 +13,21 @@ from app.models import Base
 
 logger = logging.getLogger(__name__)
 
-_async_engine_options = {
-    "echo": settings.debug,
-    "pool_pre_ping": True,
-    "pool_recycle": 300,
-}
-if settings.debug:
-    _async_engine_options["poolclass"] = NullPool
-else:
-    _async_engine_options.update({"pool_size": 20, "max_overflow": 10})
+
+def _build_async_engine_options(app_settings):
+    options = {
+        "echo": app_settings.debug,
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
+    if app_settings.db_disable_pool:
+        options["poolclass"] = NullPool
+    else:
+        options.update({"pool_size": 20, "max_overflow": 10})
+    return options
+
+
+_async_engine_options = _build_async_engine_options(settings)
 
 engine = create_async_engine(settings.database_url, **_async_engine_options)
 

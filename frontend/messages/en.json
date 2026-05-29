@@ -2249,6 +2249,8 @@
       "title": "Exercise Suggestions",
       "subtitle": "Based on your health data",
       "noData": "Log some health data to get exercise recommendations.",
+      "loading": "Loading exercise suggestions...",
+      "loadError": "Couldn't load exercise suggestions.",
       "viewAll": "View progress",
       "minutes": "min",
       "tabRecommendations": "Recommendations",

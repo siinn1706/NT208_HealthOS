@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 import uuid
 
-from fastapi import Depends, HTTPException, status
+from fastapi import BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -145,6 +145,7 @@ def _account_banned_exception(user: User) -> HTTPException:
 
 
 async def get_current_user(
+    background_tasks: BackgroundTasks,
     credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
@@ -235,7 +236,7 @@ async def get_current_user(
         )
 
     from app.services import auth_touch
-    await auth_touch.touch_user_last_seen(user.id)
+    await auth_touch.schedule_user_last_seen_touch(user.id, redis, background_tasks)
     return user
 
 

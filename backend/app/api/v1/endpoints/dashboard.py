@@ -57,5 +57,10 @@ async def get_exercise_suggestions(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ExerciseSuggestionsResponse:
-    data = await dashboard_svc.get_exercise_suggestions(db=db, user_id=current_user.id)
+    data = await dashboard_svc.get_exercise_suggestions(
+        db=db,
+        user_id=current_user.id,
+        user=current_user,
+        locale="vi",
+    )
     return ExerciseSuggestionsResponse(data=data)

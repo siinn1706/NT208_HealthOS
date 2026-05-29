@@ -2249,6 +2249,8 @@
       "title": "Gợi ý luyện tập",
       "subtitle": "Dựa trên dữ liệu sức khỏe của bạn",
       "noData": "Ghi lại dữ liệu sức khỏe để nhận gợi ý luyện tập.",
+      "loading": "Đang tải gợi ý luyện tập...",
+      "loadError": "Không tải được gợi ý luyện tập.",
       "viewAll": "Xem tiến độ",
       "minutes": "phút",
       "tabRecommendations": "Gợi ý",

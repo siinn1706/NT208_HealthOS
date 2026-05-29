@@ -24,9 +24,25 @@ REPORT_PERIOD_DAYS: dict[str, int] = {
     "90d": 90,
 }
 
+TREND_ANALYSIS_METRICS: frozenset[str] = frozenset(
+    {
+        "heart_rate",
+        "steps",
+        "sleep",
+        "calories",
+        "weight",
+        "blood_pressure",
+        "bmi",
+    }
+)
+
 
 def _utc_now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _normalize_period(period: str) -> str:
+    return period if period in REPORT_PERIOD_DAYS else "7d"
 
 
 def _period_days(period: str) -> int:
@@ -791,18 +807,12 @@ def _find_anomalies(
     return anomalies
 
 
-async def get_trend_analysis(
-    db: AsyncSession,
+def _build_trend_series_mapping(
+    metrics: list[HealthMetric],
+    meals: list[Meal],
     user: User,
-    metric: str,
     period: str,
-) -> dict:
-    if period not in REPORT_PERIOD_DAYS:
-        period = "7d"
-
-    metrics = await _metrics_in_period(db, user.id, period)
-    meals = await _meals_in_period(db, user.id, period)
-
+) -> dict[str, dict]:
     mapping = {
         "heart_rate": {
             "label": "HEART_RATE",
@@ -854,7 +864,7 @@ async def get_trend_analysis(
         },
     }
 
-    if metric == "bmi" and user.profile and user.profile.height_cm and user.profile.height_cm > 0:
+    if user.profile and user.profile.height_cm and user.profile.height_cm > 0:
         weight_series = _daily_metric_series(metrics, MetricTypeEnum.WEIGHT_KG, period)
         mapping["bmi"]["series"] = [
             {
@@ -866,11 +876,10 @@ async def get_trend_analysis(
             for item in weight_series
         ]
 
-    selected = mapping.get(metric)
-    if selected is None:
-        selected = mapping["heart_rate"]
-        metric = "heart_rate"
+    return mapping
 
+
+def _build_trend_analysis_payload(metric: str, selected: dict, period: str) -> dict:
     data_points = [
         {"date": item["date"], "value": round(float(item["value"]), 2)}
         for item in selected["series"]
@@ -916,5 +925,49 @@ async def get_trend_analysis(
         "change_percent": change_percent,
         "ai_summary": ai_summary,
         "ai_summary_params": ai_summary_params,
+    }
+
+
+async def get_trend_analysis(
+    db: AsyncSession,
+    user: User,
+    metric: str,
+    period: str,
+) -> dict:
+    period = _normalize_period(period)
+    metric = metric if metric in TREND_ANALYSIS_METRICS else "heart_rate"
+    metrics = await _metrics_in_period(db, user.id, period)
+    meals = await _meals_in_period(db, user.id, period) if metric == "calories" else []
+    mapping = _build_trend_series_mapping(metrics, meals, user, period)
+    return _build_trend_analysis_payload(metric, mapping[metric], period)
+
+
+async def get_trend_analysis_batch(
+    db: AsyncSession,
+    user: User,
+    metrics: list[str],
+    period: str,
+) -> dict[str, dict]:
+    period = _normalize_period(period)
+    requested: list[str] = []
+    seen: set[str] = set()
+    for raw_metric in metrics:
+        metric = raw_metric.strip().lower()
+        if metric not in TREND_ANALYSIS_METRICS or metric in seen:
+            continue
+        seen.add(metric)
+        requested.append(metric)
+
+    if not requested:
+        return {}
+
+    # Batch callers must not pay one query per metric; preload shared rows once.
+    metric_rows = await _metrics_in_period(db, user.id, period)
+    meal_rows = await _meals_in_period(db, user.id, period) if "calories" in seen else []
+    mapping = _build_trend_series_mapping(metric_rows, meal_rows, user, period)
+    return {
+        metric: _build_trend_analysis_payload(metric, mapping[metric], period)
+        for metric in requested
+        if metric in mapping
     }
 

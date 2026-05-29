@@ -33,14 +33,28 @@ class _FakeDb:
 
 
 class _FakeRedis:
-    def __init__(self):
+    def __init__(self, *, set_result=True):
         self.values: dict[str, str] = {}
+        self.set_result = set_result
+        self.set_calls = []
 
     async def exists(self, key: str):
         return key in self.values
 
     async def setex(self, key: str, _ttl: int, value: str):
         self.values[key] = value
+
+    async def set(self, key: str, value: str, *, ex=None, nx=False):
+        self.set_calls.append((key, value, ex, nx))
+        return self.set_result
+
+
+class _FakeBackgroundTasks:
+    def __init__(self):
+        self.calls = []
+
+    def add_task(self, func, *args, **kwargs):
+        self.calls.append((func, args, kwargs))
 
 
 def _request():
@@ -70,21 +84,23 @@ def _banned_user(*, banned_until=None):
 
 
 @pytest.mark.asyncio
-async def test_get_current_user_rejects_active_banned_account(monkeypatch):
+async def test_get_current_user_rejects_active_banned_account():
     user = _banned_user()
     token = create_access_token(str(user.id))
     credentials = SimpleNamespace(scheme="Bearer", credentials=token)
-
-    async def _skip_touch(*_args, **_kwargs):
-        return None
-
-    monkeypatch.setattr("app.services.auth_touch.touch_user_last_seen", _skip_touch)
+    background_tasks = _FakeBackgroundTasks()
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_user(credentials=credentials, db=_FakeDb(user), redis=_FakeRedis())
+        await get_current_user(
+            background_tasks=background_tasks,
+            credentials=credentials,
+            db=_FakeDb(user),
+            redis=_FakeRedis(),
+        )
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail["code"] == "ACCOUNT_BANNED"
+    assert background_tasks.calls == []
 
 
 @pytest.mark.asyncio
@@ -94,6 +110,8 @@ async def test_expired_ban_does_not_block_current_user(monkeypatch):
     )
     token = create_access_token(str(user.id))
     credentials = SimpleNamespace(scheme="Bearer", credentials=token)
+    background_tasks = _FakeBackgroundTasks()
+    redis = _FakeRedis()
     touched: list[uuid.UUID] = []
 
     async def _touch(user_id):
@@ -101,10 +119,47 @@ async def test_expired_ban_does_not_block_current_user(monkeypatch):
 
     monkeypatch.setattr("app.services.auth_touch.touch_user_last_seen", _touch)
 
-    current = await get_current_user(credentials=credentials, db=_FakeDb(user), redis=_FakeRedis())
+    current = await get_current_user(
+        background_tasks=background_tasks,
+        credentials=credentials,
+        db=_FakeDb(user),
+        redis=redis,
+    )
 
     assert current.id == user.id
-    assert touched == [user.id]
+    assert touched == []
+    assert len(background_tasks.calls) == 1
+    func, args, kwargs = background_tasks.calls[0]
+    assert func is _touch
+    assert args == (user.id,)
+    assert kwargs == {}
+    assert redis.set_calls == [
+        (f"auth:last_seen_touch:{user.id}", "1", 60, True),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_pending_deletion_does_not_schedule_last_seen_touch():
+    user = _banned_user()
+    user.banned_at = None
+    user.banned_until = None
+    user.deleted_at = datetime.datetime.now(datetime.timezone.utc)
+    user.purge_at = user.deleted_at + datetime.timedelta(days=7)
+    token = create_access_token(str(user.id))
+    credentials = SimpleNamespace(scheme="Bearer", credentials=token)
+    background_tasks = _FakeBackgroundTasks()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_user(
+            background_tasks=background_tasks,
+            credentials=credentials,
+            db=_FakeDb(user),
+            redis=_FakeRedis(),
+        )
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "ACCOUNT_PENDING_DELETION"
+    assert background_tasks.calls == []
 
 
 @pytest.mark.asyncio

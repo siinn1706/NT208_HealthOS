@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import logging
+import time
 import uuid
 
 import httpx
@@ -25,6 +27,7 @@ from app.schemas.dashboard import (
 
 _LOGGER = logging.getLogger(__name__)
 _EXERCISE_CACHE_TTL = 3600  # 1 hour
+_EXERCISE_AI_DASHBOARD_TIMEOUT_SECONDS = 2.75
 
 
 def _utc_now() -> datetime.datetime:
@@ -44,6 +47,11 @@ def _safe_display_name(user: User) -> str:
     if user.display_name:
         return user.display_name
     return user.email
+
+
+def _exercise_cache_key(user_id: uuid.UUID, locale: str) -> str:
+    normalized_locale = (locale or "vi").strip() or "vi"
+    return f"ai:exercise:{user_id}:{normalized_locale}"
 
 
 def _latest_metric_value(
@@ -423,6 +431,7 @@ async def _call_ai_worker_exercise(
 
     raw_items: list[dict] = data.get("suggestions", [])
     result: list[ExerciseSuggestionDTO] = []
+    parse_skipped = False
     for item in raw_items:
         try:
             result.append(ExerciseSuggestionDTO(
@@ -443,7 +452,10 @@ async def _call_ai_worker_exercise(
                 source="ai",
             ))
         except Exception as exc:  # noqa: BLE001
-            _LOGGER.debug("exercise_dto_parse_skip item=%s reason=%s", item, exc)
+            parse_skipped = True
+            _LOGGER.debug("exercise_dto_parse_skip reason=%s", exc)
+    if parse_skipped:
+        raise ValueError("AI returned malformed exercise suggestions")
     return result
 
 
@@ -584,15 +596,18 @@ async def get_exercise_suggestions(
     """
     from app.adapters.redis_client import get_redis
 
-    cache_key = f"ai:exercise:{user_id}"
+    normalized_locale = (locale or "vi").strip() or "vi"
+    cache_key = _exercise_cache_key(user_id, normalized_locale)
 
     # ── 1. Cache hit ────────────────────────────────────────────────────────
     try:
         redis = await get_redis()
         cached = await redis.get(cache_key)
         if cached:
+            _LOGGER.debug("exercise_cache_read cache=hit locale=%s", normalized_locale)
             raw: list[dict] = json.loads(cached)
             return [ExerciseSuggestionDTO(**item) for item in raw]
+        _LOGGER.debug("exercise_cache_read cache=miss locale=%s", normalized_locale)
     except Exception as exc:  # noqa: BLE001 - Redis optional
         _LOGGER.debug("exercise_cache_read_failed reason=%s", exc)
 
@@ -614,8 +629,13 @@ async def get_exercise_suggestions(
         user_context = {}
 
     # ── 3. AI Worker call ───────────────────────────────────────────────────
+    ai_started = time.perf_counter()
     try:
-        suggestions = await _call_ai_worker_exercise(user_context, locale=locale)
+        suggestions = await asyncio.wait_for(
+            _call_ai_worker_exercise(user_context, locale=normalized_locale),
+            timeout=_EXERCISE_AI_DASHBOARD_TIMEOUT_SECONDS,
+        )
+        duration_ms = (time.perf_counter() - ai_started) * 1000.0
         if not suggestions:
             raise ValueError("AI returned empty suggestions list")
 
@@ -627,8 +647,29 @@ async def get_exercise_suggestions(
         except Exception as exc:  # noqa: BLE001
             _LOGGER.debug("exercise_cache_write_failed reason=%s", exc)
 
+        _LOGGER.info(
+            "exercise_ai_success duration_ms=%.1f suggestions=%d locale=%s cache=write_attempted",
+            duration_ms,
+            len(suggestions),
+            normalized_locale,
+        )
         return suggestions
 
+    except asyncio.TimeoutError:
+        duration_ms = (time.perf_counter() - ai_started) * 1000.0
+        _LOGGER.warning(
+            "exercise_ai_timeout duration_ms=%.1f timeout_seconds=%.2f locale=%s fallback=rule",
+            duration_ms,
+            _EXERCISE_AI_DASHBOARD_TIMEOUT_SECONDS,
+            normalized_locale,
+        )
+        return await _rule_based_exercise_suggestions(db, user_id)
     except Exception as exc:  # noqa: BLE001
-        _LOGGER.warning("exercise_ai_failed reason=%s — falling back to rule-based", exc)
+        duration_ms = (time.perf_counter() - ai_started) * 1000.0
+        _LOGGER.warning(
+            "exercise_ai_failed reason=%s duration_ms=%.1f locale=%s fallback=rule",
+            exc,
+            duration_ms,
+            normalized_locale,
+        )
         return await _rule_based_exercise_suggestions(db, user_id)

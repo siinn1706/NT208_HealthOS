@@ -5536,6 +5536,18 @@ components:
       - data
       title: TrendAnalysisResponse
       type: object
+    TrendAnalysisBatchResponse:
+      properties:
+        data:
+          additionalProperties:
+            additionalProperties: true
+            type: object
+          title: Data
+          type: object
+      required:
+      - data
+      title: TrendAnalysisBatchResponse
+      type: object
     TriageOutcomeDTO:
       properties:
         bucket:
@@ -14759,6 +14771,78 @@ paths:
       security:
       - bearerAuth: []
       summary: Get report trend analysis
+      tags:
+      - Reports
+  /v1/reports/trends/batch:
+    get:
+      operationId: get_report_trends_batch_v1_reports_trends_batch_get
+      parameters:
+      - in: query
+        name: metrics
+        required: true
+        schema:
+          title: Metrics
+          type: string
+      - in: query
+        name: period
+        required: false
+        schema:
+          default: 7d
+          pattern: ^(7d|30d|90d)$
+          title: Period
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendAnalysisBatchResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get report trend analysis for multiple metrics
       tags:
       - Reports
   /v1/security-logs/:

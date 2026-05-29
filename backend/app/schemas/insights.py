@@ -16,3 +16,7 @@ class HealthReportResponse(DataResponse[dict[str, Any]]):
 class TrendAnalysisResponse(DataResponse[dict[str, Any]]):
     ...
 
+
+class TrendAnalysisBatchResponse(DataResponse[dict[str, dict[str, Any]]]):
+    ...
+

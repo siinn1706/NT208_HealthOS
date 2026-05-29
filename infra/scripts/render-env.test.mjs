@@ -62,6 +62,7 @@ test("renderTargets overwrites generated env files deterministically", () => {
 
   const content = fs.readFileSync(backend.absolutePath, "utf8");
   assert.match(content, /BFF_SHARED_SECRET=local-shared-secret/);
+  assert.match(content, /DB_DISABLE_POOL=false/);
   assert.doesNotMatch(content, /OLD_VALUE=1/);
 });
 
@@ -78,6 +79,17 @@ test("validateEnv reports missing master keys", () => {
     () => validateEnv(env, ["backend"]),
     /missing required key\(s\): BFF_SHARED_SECRET/,
   );
+});
+
+test("backend rendering defaults missing DB_DISABLE_POOL for existing master env files", () => {
+  const root = makeTempRoot();
+  const env = loadExampleEnv();
+  delete env.DB_DISABLE_POOL;
+
+  assert.doesNotThrow(() => validateEnv(env, ["backend"]));
+
+  const [backend] = renderTargets(env, ["backend"], root);
+  assert.match(backend.content, /DB_DISABLE_POOL=false/);
 });
 
 test("validateEnv rejects production placeholder values", () => {

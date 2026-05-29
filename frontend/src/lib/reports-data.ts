@@ -10,6 +10,7 @@ import type {
   TimeseriesPoint,
   TrendDirection,
   TrendAnalysis,
+  TrendAnalysisBatch,
   ShareRequest,
   ShareResult,
 } from "@/types/api";
@@ -159,6 +160,29 @@ export async function getTrendAnalysis(
     return data;
   } catch {
     return emptyTrend(metric, period);
+  }
+}
+
+export async function getTrendAnalysisBatch(
+  metrics: string[],
+  period: ReportPeriod = "30d"
+): Promise<TrendAnalysisBatch> {
+  const requested = Array.from(
+    new Set(metrics.map((metric) => metric.trim().toLowerCase()).filter(Boolean))
+  );
+  if (requested.length === 0) return {};
+
+  try {
+    const params = new URLSearchParams({
+      metrics: requested.join(","),
+      period,
+    });
+    const json = await fetchJson(`/api/v1/reports/trends/batch?${params.toString()}`);
+    const data = (json as { data?: TrendAnalysisBatch } | null)?.data;
+    if (!data || typeof data !== "object") return {};
+    return data;
+  } catch {
+    return {};
   }
 }
 

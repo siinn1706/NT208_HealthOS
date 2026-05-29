@@ -12,17 +12,6 @@ import {
 } from "@/lib/bff-rate-limit";
 import { MemoryStore } from "@/lib/bff-rate-limit-store-memory";
 
-function makeReq(headers: Record<string, string> = {}): NextRequest {
-  const req = new NextRequest("http://localhost/api/v1/auth/test", { method: "POST" });
-  Object.entries(headers).forEach(([k, v]) => {
-    Object.defineProperty(req.headers, "get", {
-      writable: true,
-      value: (name: string) => (name === k ? v : null),
-    });
-  });
-  return req;
-}
-
 function makeReqWithIp(ip: string): NextRequest {
   return new NextRequest("http://localhost/api/v1/auth/test", {
     method: "POST",
@@ -151,6 +140,25 @@ describe("enforceRateLimit — custom principal (RT-6)", () => {
     // Same req with different principal — should not be blocked
     const result = await enforceRateLimit(req, { ...opts, principal: "token-hash-xyz" });
     expect(result).toBeNull();
+  });
+
+  it("uses fallback principal when trusted IP is unavailable", async () => {
+    process.env.TRUST_PROXY = "0";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const opts = {
+      key: "auth:test:fallback",
+      max: 1,
+      windowSeconds: 60,
+      fallbackPrincipal: "stable-cookie-present",
+      logUnresolvedIp: false,
+    };
+
+    expect(await enforceRateLimit(makeReqWithIp("10.0.0.8"), opts)).toBeNull();
+    const blocked = await enforceRateLimit(makeReqWithIp("10.0.0.9"), opts);
+
+    expect(blocked?.status).toBe(429);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
 

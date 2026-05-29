@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import {
@@ -50,10 +50,68 @@ const INTENSITY_CONFIG = {
 const KCAL_PER_MIN: Record<string, number> = { low: 4, medium: 7, high: 10 };
 
 const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+const EXERCISE_SUGGESTIONS_PATH = "/api/v1/dashboard/exercise-suggestions";
+const SUGGESTION_TYPES = ["tip", "warning", "goal", "success"] as const;
+const INTENSITIES = ["low", "medium", "high"] as const;
+const CATEGORIES = ["cardio", "strength", "flexibility", "balance"] as const;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function estCal(s: ExerciseSuggestion) {
   return s.duration_minutes ? s.duration_minutes * (KCAL_PER_MIN[s.intensity] ?? 5) : 0;
+}
+
+function isSuggestionType(value: unknown): value is ExerciseSuggestion["type"] {
+  return typeof value === "string" && SUGGESTION_TYPES.includes(value as ExerciseSuggestion["type"]);
+}
+
+function isIntensity(value: unknown): value is ExerciseSuggestion["intensity"] {
+  return typeof value === "string" && INTENSITIES.includes(value as ExerciseSuggestion["intensity"]);
+}
+
+function isCategory(value: unknown): value is ExerciseSuggestion["category"] {
+  return typeof value === "string" && CATEGORIES.includes(value as ExerciseSuggestion["category"]);
+}
+
+function normalizeMessageParams(value: unknown): Record<string, number | string> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const params: Record<string, number | string> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof item === "number" || typeof item === "string") {
+      params[key] = item;
+    }
+  }
+  return Object.keys(params).length > 0 ? params : undefined;
+}
+
+function normalizeExerciseSuggestion(item: unknown, index: number): ExerciseSuggestion | null {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+  const row = item as Record<string, unknown>;
+  const source = row.source === "ai" || row.source === "rule" ? row.source : undefined;
+  const messageParams = normalizeMessageParams(row.message_params);
+  const duration =
+    typeof row.duration_minutes === "number" && Number.isFinite(row.duration_minutes)
+      ? row.duration_minutes
+      : null;
+
+  return {
+    id:
+      typeof row.id === "string" && row.id.trim()
+        ? row.id
+        : `exercise-suggestion-${index}`,
+    type: isSuggestionType(row.type) ? row.type : "tip",
+    icon: typeof row.icon === "string" && row.icon in ICON_MAP ? row.icon : "Info",
+    title: typeof row.title === "string" ? row.title : "",
+    message: typeof row.message === "string" ? row.message : "",
+    ...(messageParams ? { message_params: messageParams } : {}),
+    priority:
+      typeof row.priority === "number" && Number.isFinite(row.priority)
+        ? row.priority
+        : 99,
+    duration_minutes: duration,
+    intensity: isIntensity(row.intensity) ? row.intensity : "low",
+    category: isCategory(row.category) ? row.category : "cardio",
+    ...(source ? { source } : {}),
+  };
 }
 
 // ── IntensityBars ──────────────────────────────────────────────────────────────
@@ -214,15 +272,111 @@ function DayCell({
   );
 }
 
+function ExerciseSuggestionsSkeleton({ t }: { t: ReturnType<typeof useTranslations> }) {
+  return (
+    <div className="space-y-2.5" aria-live="polite">
+      <p className="sr-only">{t("loading")}</p>
+      {[0, 1, 2].map((item) => (
+        <div
+          key={item}
+          className="rounded-xl border border-border/70 px-3.5 pt-4 pb-3.5 space-y-3"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-muted animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-3/5 rounded-full bg-muted animate-pulse" />
+              <div className="h-2.5 w-full rounded-full bg-muted/80 animate-pulse" />
+              <div className="h-2.5 w-4/5 rounded-full bg-muted/70 animate-pulse" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-5 w-14 rounded-full bg-muted/80 animate-pulse" />
+            <div className="h-5 w-16 rounded-full bg-muted/70 animate-pulse" />
+            <div className="h-5 w-20 rounded-full bg-muted/60 animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ExerciseSuggestionsEmpty({ t }: { t: ReturnType<typeof useTranslations> }) {
+  return (
+    <div className="flex flex-col items-center py-8 gap-2 text-center">
+      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+        <Dumbbell className="w-5 h-5 text-muted-foreground/50" aria-hidden />
+      </div>
+      <p className="text-sm font-medium text-muted-foreground">{t("noData")}</p>
+    </div>
+  );
+}
+
+function ExerciseSuggestionsError({ t }: { t: ReturnType<typeof useTranslations> }) {
+  return (
+    <div className="flex flex-col items-center py-8 gap-2 text-center">
+      <div className="w-10 h-10 rounded-full bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400 flex items-center justify-center">
+        <AlertTriangle className="w-5 h-5" aria-hidden />
+      </div>
+      <p className="text-sm font-medium text-muted-foreground">{t("loadError")}</p>
+    </div>
+  );
+}
+
 // ── Main widget ────────────────────────────────────────────────────────────────
 type Tab = "rec" | "week";
+type FetchState =
+  | { status: "loading"; suggestions: ExerciseSuggestion[] }
+  | { status: "success"; suggestions: ExerciseSuggestion[] }
+  | { status: "error"; suggestions: ExerciseSuggestion[] };
 
-interface Props { suggestions: ExerciseSuggestion[] }
-
-export function ExerciseSuggestionsWidget({ suggestions }: Props) {
+export function ExerciseSuggestionsWidget() {
   const t      = useTranslations("dashboard.exercise");
   const locale = useLocale();
   const [tab, setTab] = useState<Tab>("rec");
+  const [fetchState, setFetchState] = useState<FetchState>({
+    status: "loading",
+    suggestions: [],
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let isActive = true;
+
+    async function loadSuggestions() {
+      try {
+        const res = await fetch(EXERCISE_SUGGESTIONS_PATH, {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error("Could not load exercise suggestions.");
+
+        const json = await res.json().catch(() => null);
+        const data = (json as { data?: unknown } | null)?.data;
+        if (!Array.isArray(data)) throw new Error("Malformed exercise suggestions payload.");
+
+        const suggestions = data
+          .map((item, index) => normalizeExerciseSuggestion(item, index))
+          .filter((item): item is ExerciseSuggestion => item !== null);
+
+        if (isActive) {
+          setFetchState({ status: "success", suggestions });
+        }
+      } catch {
+        if (isActive && !controller.signal.aborted) {
+          setFetchState({ status: "error", suggestions: [] });
+        }
+      }
+    }
+
+    void loadSuggestions();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, []);
+
+  const suggestions = fetchState.status === "success" ? fetchState.suggestions : [];
 
   const todayIdx = (new Date().getDay() + 6) % 7;  // 0=Mon
   const dayLabels = DAY_KEYS.map((key) => t(`days.${key}` as Parameters<typeof t>[0]));
@@ -293,13 +447,12 @@ export function ExerciseSuggestionsWidget({ suggestions }: Props) {
 
         {/* Recommendations tab */}
         {tab === "rec" && (
-          suggestions.length === 0 ? (
-            <div className="flex flex-col items-center py-8 gap-2 text-center">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <Dumbbell className="w-5 h-5 text-muted-foreground/50" aria-hidden />
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">{t("noData")}</p>
-            </div>
+          fetchState.status === "loading" ? (
+            <ExerciseSuggestionsSkeleton t={t} />
+          ) : fetchState.status === "error" ? (
+            <ExerciseSuggestionsError t={t} />
+          ) : suggestions.length === 0 ? (
+            <ExerciseSuggestionsEmpty t={t} />
           ) : (
             suggestions.slice(0, 3).map((s) => (
               <SuggestionCard key={s.id} s={s} t={t} />
@@ -309,60 +462,68 @@ export function ExerciseSuggestionsWidget({ suggestions }: Props) {
 
         {/* Weekly plan tab */}
         {tab === "week" && (
-          <div className="space-y-3 py-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              {t("weeklyPlanTitle")}
-            </p>
+          fetchState.status === "loading" ? (
+            <ExerciseSuggestionsSkeleton t={t} />
+          ) : fetchState.status === "error" ? (
+            <ExerciseSuggestionsError t={t} />
+          ) : suggestions.length === 0 ? (
+            <ExerciseSuggestionsEmpty t={t} />
+          ) : (
+            <div className="space-y-3 py-1">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                {t("weeklyPlanTitle")}
+              </p>
 
-            {/* 7-day grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {weeklyPlan.map(({ label, items, rest }, i) => (
-                <DayCell key={label} label={label} items={items} rest={rest} isToday={i === todayIdx} t={t} />
-              ))}
-            </div>
-
-            {/* Weekly stats */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-muted/30 dark:bg-muted/10 border border-border p-3">
-                <p className="text-lg font-bold tabular-nums text-foreground leading-none">{activeCount}</p>
-                <p className="text-[10px] text-muted-foreground mt-1 leading-none">{t("trainingDays")}</p>
+              {/* 7-day grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {weeklyPlan.map(({ label, items, rest }, i) => (
+                  <DayCell key={label} label={label} items={items} rest={rest} isToday={i === todayIdx} t={t} />
+                ))}
               </div>
-              <div className="rounded-xl bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-900/40 p-3">
-                <p className="text-lg font-bold tabular-nums text-orange-500 leading-none">~{totalKcalWeekly.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground mt-1 leading-none">{t("estimatedKcal")}</p>
-              </div>
-            </div>
 
-            {/* Per-suggestion breakdown */}
-            {suggestions.length > 0 && (
-              <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2.5">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("planDetails")}</p>
-                {suggestions.slice(0, 4).map((s) => {
-                  const cat  = CAT_CONFIG[s.category] ?? CAT_CONFIG.cardio;
-                  const Icon = ICON_MAP[s.icon] ?? Info;
-                  const cal  = estCal(s) * (cat.days.length ?? 1);
-                  const days = cat.days.map((d) => dayLabels[d]).join(", ");
-                  const title = t.has(`suggestions.${s.id}.title` as never)
-                    ? t(`suggestions.${s.id}.title` as never)
-                    : s.title;
-                  return (
-                    <div key={s.id} className="flex items-center gap-2.5">
-                      <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0", `bg-gradient-to-br ${cat.gradient}`)}>
-                        <Icon className="w-3 h-3 text-white" aria-hidden />
+              {/* Weekly stats */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-muted/30 dark:bg-muted/10 border border-border p-3">
+                  <p className="text-lg font-bold tabular-nums text-foreground leading-none">{activeCount}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-none">{t("trainingDays")}</p>
+                </div>
+                <div className="rounded-xl bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-900/40 p-3">
+                  <p className="text-lg font-bold tabular-nums text-orange-500 leading-none">~{totalKcalWeekly.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-none">{t("estimatedKcal")}</p>
+                </div>
+              </div>
+
+              {/* Per-suggestion breakdown */}
+              {suggestions.length > 0 && (
+                <div className="rounded-xl border border-border bg-muted/10 p-3 space-y-2.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("planDetails")}</p>
+                  {suggestions.slice(0, 4).map((s) => {
+                    const cat  = CAT_CONFIG[s.category] ?? CAT_CONFIG.cardio;
+                    const Icon = ICON_MAP[s.icon] ?? Info;
+                    const cal  = estCal(s) * (cat.days.length ?? 1);
+                    const days = cat.days.map((d) => dayLabels[d]).join(", ");
+                    const title = t.has(`suggestions.${s.id}.title` as never)
+                      ? t(`suggestions.${s.id}.title` as never)
+                      : s.title;
+                    return (
+                      <div key={s.id} className="flex items-center gap-2.5">
+                        <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0", `bg-gradient-to-br ${cat.gradient}`)}>
+                          <Icon className="w-3 h-3 text-white" aria-hidden />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold text-foreground truncate">{title}</p>
+                          <p className="text-[10px] text-muted-foreground">{days}</p>
+                        </div>
+                        {cal > 0 && (
+                          <span className="text-[10px] font-bold text-orange-500 tabular-nums flex-shrink-0">~{cal} kcal</span>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold text-foreground truncate">{title}</p>
-                        <p className="text-[10px] text-muted-foreground">{days}</p>
-                      </div>
-                      {cal > 0 && (
-                        <span className="text-[10px] font-bold text-orange-500 tabular-nums flex-shrink-0">~{cal} kcal</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )
         )}
       </div>
 
