@@ -514,8 +514,16 @@ async def _maybe_trigger_ai_reply(
     if conv_type != ConversationTypeEnum.AI:
         return
 
+    from app.services.medical_safety import MedicalSafetyLevel, classify_by_rules
+    is_emergency_message = (
+        classify_by_rules(user_message_content).level is MedicalSafetyLevel.EMERGENCY
+    )
+
     from app.core.config import settings as _settings
-    if len(user_message_content) > _settings.ai_chat_max_user_message_chars:
+    if (
+        not is_emergency_message
+        and len(user_message_content) > _settings.ai_chat_max_user_message_chars
+    ):
         await manager.send_to_ws(ws, {
             "event": "error",
             "payload": {
@@ -529,8 +537,11 @@ async def _maybe_trigger_ai_reply(
         return
 
     # Per-user AI rate limit (separate from the chat-wide 5/s token bucket).
-    if not ai_chat_orchestrator.get_rate_limiter().allow(
-        user_id_str, max_per_minute=_settings.ai_chat_user_rate_per_minute
+    if (
+        not is_emergency_message
+        and not ai_chat_orchestrator.get_rate_limiter().allow(
+            user_id_str, max_per_minute=_settings.ai_chat_user_rate_per_minute
+        )
     ):
         await manager.send_to_ws(ws, {
             "event": "error",
@@ -589,6 +600,7 @@ async def _maybe_trigger_ai_reply(
                 user_id_str=user_id_str,
                 broadcast=broadcast_event,
                 typing_broadcast=emit_typing,
+                latest_user_message_content=user_message_content,
             )
         except ai_chat_orchestrator.AiBusyError:
             await manager.send_to_ws(ws, {

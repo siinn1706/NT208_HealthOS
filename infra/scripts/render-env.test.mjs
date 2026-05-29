@@ -145,5 +145,8 @@ test("rendered files contain only target-relevant service keys", () => {
   assert.match(aiWorker, /AI_PROXY_BASE_URL=http:\/\/localhost:20128\/v1/);
   assert.match(aiWorker, /AI_PROXY_MODEL=oc\/deepseek-v4-flash-free/);
   assert.match(aiWorker, /AI_PROXY_API_KEY=proxy-secret/);
+  assert.match(aiWorker, /AI_PROXY_THINKING_MODE=disabled/);
+  assert.match(aiWorker, /AI_EMBEDDING_DIMENSION=384/);
+  assert.match(aiWorker, /AI_CHAT_MAX_TOKENS=2048/);
   assert.doesNotMatch(aiWorker, /GEMINI_API_KEY=/);
 });

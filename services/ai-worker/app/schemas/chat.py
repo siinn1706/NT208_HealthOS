@@ -24,6 +24,8 @@ class ChatRequest(BaseModel):
     messages: list[ChatTurn] = Field(default_factory=list)
     system_prompt: str = Field(default="", max_length=8192)
     user_context: dict[str, Any] | None = None
+    rag_context: dict[str, Any] | None = None
+    safety_context: dict[str, Any] | None = None
     model: str | None = None
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
     max_tokens: int | None = Field(default=None, ge=16, le=8192)

@@ -134,6 +134,9 @@ class Settings(BaseSettings):
     ai_chat_user_rate_per_minute: int = 10
     ai_chat_max_concurrent_per_user: int = 1
     ai_chat_streaming_enabled: bool = True
+    medical_rag_enabled: bool = True
+    medical_rag_top_k: int = 3
+    medical_rag_candidate_limit: int = 200
     ai_bot_email: str = "ai-bot@healthos.local"
     # Group conversation invite acceptance gate.
     # True  = non-creator members start with is_accepted=False (safe default for test/dev).

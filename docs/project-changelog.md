@@ -6,7 +6,29 @@
 
 ## [Unreleased]
 
+### Added
+
+#### Medical RAG Retrieval for AI Chat (2026-05-28)
+- **Knowledge store**: Added curated medical source/chunk ORM models, Alembic migration `041_medical_knowledge_rag`, lexical search index, and portable 384-dimension embedding storage.
+- **Curated corpus**: Added six concise WHO/CDC/MedlinePlus source summaries with deterministic manifest-driven chunking and `python -m app.scripts.seed_medical_knowledge` ingestion.
+- **Retrieval service**: Backend AI chat now retrieves source snippets only for non-emergency health questions, skips non-health messages, and degrades to limited-source chat context when retrieval is unavailable.
+- **Worker citations**: AI Worker chat accepts `rag_context` and `safety_context`, formats source snippets as `[S1]` labels only when sources exist, and treats RAG text as untrusted evidence.
+- **Regression coverage**: Added focused corpus, retrieval, orchestrator, model-registry, and worker prompt tests.
+- **Verification**: Python syntax compile, corpus JSON validation, migration compile, and `git diff --check` passed. Targeted backend/worker pytest is blocked by the local broken Windows Python/venv.
+
+#### AI Worker JSON + Embeddings (2026-05-28)
+- **DeepSeek controls**: AI Worker proxy payloads now support `thinking`, `reasoning_effort`, `response_format`, and safe provider-specific extension fields.
+- **JSON helper**: Added JSON-mode completion helper with a narrow retry path when a local proxy rejects `response_format`.
+- **Embedding endpoint**: Added internal `POST /api/ai/embed` returning local 384-dimensional multilingual embeddings for future Medical RAG; no backend retrieval/vector store added.
+- **Env/docs/tests**: Worker env templates expose the new DeepSeek and embedding knobs; tests cover payloads, JSON fallback, streaming reasoning suppression, embedding service, and endpoint validation.
+
 ### Fixed
+
+#### AI Chat Medical Safety Layer (2026-05-28)
+- **Emergency bypass**: Backend AI chat now detects deterministic emergency red flags before AI Worker calls and persists a templated emergency reply instead of sending emergency content to the LLM.
+- **Active chat paths**: WebSocket AI replies and the REST/SSE stream endpoint both use the safety layer; emergency handling bypasses AI worker rate/concurrency rejection while non-emergency worker flow stays unchanged.
+- **Prompt safety**: Vietnamese and English system prompts now state the AI is not a doctor, must not diagnose/prescribe/change medication doses, should ask for missing data, explain uncertainty, and include seek-care guidance.
+- **Verification**: Python syntax compile passed; pure medical-safety and stream-contract tests passed. Full backend targeted pytest remains blocked by the local broken Windows Python/venv.
 
 #### AI Chat Response Depth (2026-05-28)
 - **Answer depth**: Core and AI Worker chat prompts no longer force terse/concise replies; they now ask for complete, structured answers with rationale summary, practical next steps, and medical-safety caveats.
@@ -43,8 +65,6 @@
 - **Chat composer**: Dashboard chat now seeds `currentUserId` from server-validated BFF session before client hydration; transient `/api/v1/auth/session` fetch failures no longer clear the known id and leave the textarea disabled.
 - **Cloudflared HMR**: Frontend dev proxy normalizes Next-owned websocket upgrade `Host` and `Origin` to the local dev origin while keeping Core websocket proxying limited to `/ws` and `/v1/**` upgrades.
 - **Tests**: Added static guards for chat session bootstrap and tunnel-safe dev-proxy routing.
-
-### Added
 
 #### Offline Messaging — Store-and-Forward contract hardened (2026-05-27)
 - **Audit**: Verified persist-before-broadcast invariant at all 3 send entrypoints (REST, WS, AI stream); no P1 gaps found

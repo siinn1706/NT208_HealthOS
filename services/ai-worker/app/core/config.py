@@ -45,10 +45,15 @@ class Settings(BaseSettings):
     ai_proxy_base_url: str = "http://localhost:20128/v1"
     ai_proxy_model: str = "oc/deepseek-v4-flash-free"
     ai_proxy_api_key: str = ""
+    ai_proxy_thinking_mode: str = "disabled"
+    ai_proxy_reasoning_effort: str = "high"
     ai_chat_max_tokens: int = 2048
     ai_chat_temperature: float = 0.6
     ai_chat_timeout_seconds: float = 30.0
     ai_chat_stream_chunk_min_chars: int = 1
+    ai_embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    ai_embedding_dimension: int = 384
+    ai_embedding_timeout_seconds: float = 30.0
 
     @property
     def allowed_image_hosts_set(self) -> frozenset[str]:

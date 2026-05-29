@@ -27,6 +27,8 @@ def test_base_metadata_includes_all_non_device_tables():
         "user_bmi_goals",
         "subscription_plans",
         "user_subscriptions",
+        "medical_knowledge_sources",
+        "medical_knowledge_chunks",
     }
     actual = set(Base.metadata.tables.keys())
     missing = expected - actual
