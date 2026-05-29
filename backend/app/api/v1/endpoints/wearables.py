@@ -34,6 +34,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
@@ -55,6 +56,16 @@ from app.services.wearable_sync.token_crypto import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/wearables", tags=["Wearables"])
+
+# Push envelopes are tiny (an id + a sub). Cap hard so an unauthenticated
+# caller can't make us buffer a multi-GB body just to compute the HMAC —
+# the signature check happens only AFTER the body is read.
+_WEBHOOK_BODY_LIMIT_BYTES = 64 * 1024
+# Reject a re-presented, already-seen signed push within this window so a
+# captured valid push can't be replayed to force repeated syncs. Comfortably
+# longer than Google's own webhook retry budget so legitimate retries of an
+# UN-acked push still pass (we only set the marker once we accept one).
+_WEBHOOK_REPLAY_TTL_SECONDS = 600
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -170,7 +181,12 @@ async def google_callback(
 
     access_token = tokens.get("access_token")
     refresh_token = tokens.get("refresh_token")
-    expires_in = int(tokens.get("expires_in", 3600))
+    try:
+        expires_in = int(tokens.get("expires_in", 3600))
+    except (TypeError, ValueError):
+        # Google should always send an int, but a malformed response must
+        # not 500 the connect flow — fall back to the standard 1h lifetime.
+        expires_in = 3600
     granted_scope_str = tokens.get("scope") or ""
     if not access_token or not refresh_token:
         # `prompt=consent` in build_oauth_url should guarantee a
@@ -259,48 +275,65 @@ async def google_callback(
         )
     ).scalar_one_or_none()
 
-    if existing is None:
-        device = ConnectedDevice(
-            user_id=current_user.id,
-            provider=WearableProviderEnum.GOOGLE_HEALTH,
-            external_account_id=google_sub,
-            device_label="Google Health",
-            access_token_encrypted=access_ciphertext,
-            refresh_token_encrypted=refresh_ciphertext,
-            token_expires_at=token_expires_at,
-            oauth_scopes=granted_scopes,
-            # "pending" — connected, waiting on first sync to prove it
-            # works. Mirrors the Health Connect "re-grant" transition
-            # in devices.connect_device, intentionally honest.
-            last_sync_status="pending",
-            connected_at=now,
-        )
-        db.add(device)
-        await db.flush()
-    else:
-        existing.access_token_encrypted = access_ciphertext
-        existing.refresh_token_encrypted = refresh_ciphertext
-        existing.token_expires_at = token_expires_at
-        existing.oauth_scopes = granted_scopes
-        existing.device_label = "Google Health"
-        existing.last_sync_status = "pending"
-        existing.last_sync_error = None
-        existing.connected_at = now
-        device = existing
+    # The pre-flight `duplicate_owner` check above closes the common case,
+    # but two callbacks racing to bind the same Google sub to different
+    # users can both pass it. The global partial-unique index
+    # (uq_connected_devices_google_account_global) is the real guard — turn
+    # the IntegrityError the loser hits into the same 409 instead of a 500.
+    try:
+        if existing is None:
+            device = ConnectedDevice(
+                user_id=current_user.id,
+                provider=WearableProviderEnum.GOOGLE_HEALTH,
+                external_account_id=google_sub,
+                device_label="Google Health",
+                access_token_encrypted=access_ciphertext,
+                refresh_token_encrypted=refresh_ciphertext,
+                token_expires_at=token_expires_at,
+                oauth_scopes=granted_scopes,
+                # "pending" — connected, waiting on first sync to prove it
+                # works. Mirrors the Health Connect "re-grant" transition
+                # in devices.connect_device, intentionally honest.
+                last_sync_status="pending",
+                connected_at=now,
+            )
+            db.add(device)
+            await db.flush()
+        else:
+            existing.access_token_encrypted = access_ciphertext
+            existing.refresh_token_encrypted = refresh_ciphertext
+            existing.token_expires_at = token_expires_at
+            existing.oauth_scopes = granted_scopes
+            existing.device_label = "Google Health"
+            existing.last_sync_status = "pending"
+            existing.last_sync_error = None
+            existing.connected_at = now
+            device = existing
 
-    await audit(
-        db,
-        AuditEventTypeEnum.WEARABLE_OAUTH_CONNECTED,
-        current_user.id,
-        request,
-        details={
-            "provider": "google_health",
-            "device_id": str(device.id),
-            "scopes_count": len(granted_scopes),
-        },
-        commit=False,
-    )
-    await db.commit()
+        await audit(
+            db,
+            AuditEventTypeEnum.WEARABLE_OAUTH_CONNECTED,
+            current_user.id,
+            request,
+            details={
+                "provider": "google_health",
+                "device_id": str(device.id),
+                "scopes_count": len(granted_scopes),
+            },
+            commit=False,
+        )
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "ACCOUNT_ALREADY_LINKED",
+                "message": (
+                    "This Google Health account is already linked to another user."
+                ),
+            },
+        ) from exc
     await db.refresh(device)
 
     # ── Kick off the initial backfill (best-effort) ─────────────────
@@ -337,6 +370,7 @@ async def google_callback(
 async def google_webhook(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis=Depends(get_redis),
 ) -> None:
     """Receive a push from Google Health and enqueue an on-demand sync.
 
@@ -367,7 +401,33 @@ async def google_webhook(
             },
         )
 
+    # Reject oversized bodies before reading them in full. The signature
+    # check below has to hash the entire body, so without this cap an
+    # unauthenticated caller could pin memory with an arbitrarily large POST.
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > _WEBHOOK_BODY_LIMIT_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail={
+                        "code": "PAYLOAD_TOO_LARGE",
+                        "message": "Webhook payload exceeds 64 KiB.",
+                    },
+                )
+        except ValueError:
+            pass
+
     raw_body = await request.body()
+    if len(raw_body) > _WEBHOOK_BODY_LIMIT_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "code": "PAYLOAD_TOO_LARGE",
+                "message": "Webhook payload exceeds 64 KiB.",
+            },
+        )
+
     sig = request.headers.get("X-Goog-Signature", "")
     expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, sig):
@@ -378,6 +438,21 @@ async def google_webhook(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "INVALID_SIGNATURE", "message": "Bad webhook signature."},
         )
+
+    # Replay guard: a valid signed push may only be acted on once per
+    # window. SETNX keyed on our own computed HMAC (never the attacker-
+    # supplied header) is atomic, so a flood of replays collapses to a
+    # single sync. A second presentation returns 204 (not an error) so a
+    # legitimate Google retry of an already-handled push stays quiet.
+    first_seen = await redis.set(
+        f"wearable:webhook:seen:{expected}",
+        "1",
+        nx=True,
+        ex=_WEBHOOK_REPLAY_TTL_SECONDS,
+    )
+    if not first_seen:
+        logger.info("Google webhook replay ignored")
+        return
 
     # Parse the body just enough to extract the affected Google sub.
     # Tolerant of the still-evolving Google shape: try a couple of

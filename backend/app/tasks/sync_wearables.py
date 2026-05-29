@@ -324,7 +324,10 @@ async def _refresh_and_persist(
             "Refresh response missing access_token.",
             status_code=500,
         )
-    expires_in = int(payload.get("expires_in", 3600))
+    try:
+        expires_in = int(payload.get("expires_in", 3600))
+    except (TypeError, ValueError):
+        expires_in = 3600
     device.access_token_encrypted = encrypt_token(new_access)
     device.token_expires_at = datetime.datetime.now(
         datetime.timezone.utc

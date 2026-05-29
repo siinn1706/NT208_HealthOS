@@ -95,6 +95,19 @@ class GoogleHealthError(RuntimeError):
         self.status_code = status_code
 
 
+def _safe_oauth_error(resp: httpx.Response) -> str:
+    """Extract the structured ``error`` code from an OAuth error response.
+
+    Returns just the short machinery code (e.g. ``invalid_grant``) so logs
+    stay useful without dumping the full upstream body, which can contain
+    request material we don't want in our log stream.
+    """
+    try:
+        return str(resp.json().get("error", "")) or "unknown"
+    except Exception:
+        return "unparseable"
+
+
 def _require_credentials() -> tuple[str, str, str]:
     """Pull OAuth client creds from settings or raise.
 
@@ -168,9 +181,13 @@ async def exchange_code_for_tokens(code: str) -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
         resp = await client.post(_OAUTH_TOKEN_URL, data=payload)
     if resp.status_code != 200:
-        # Body may contain a 'error' / 'error_description' pair; safe to
-        # log because it never carries PHI, only OAuth machinery state.
-        logger.warning("Google token exchange failed: %s %s", resp.status_code, resp.text)
+        # Log only the structured OAuth error code, never the raw body —
+        # the token endpoint's response can echo back request material.
+        logger.warning(
+            "Google token exchange failed: status=%s error=%s",
+            resp.status_code,
+            _safe_oauth_error(resp),
+        )
         raise GoogleHealthError(
             "Google rejected the authorization code.",
             status_code=resp.status_code,
@@ -199,7 +216,11 @@ async def refresh_access_token(refresh_token: str) -> dict[str, Any]:
         # revoked (user disconnected from their Google account settings)
         # — caller should mark the connection inactive and prompt
         # re-consent rather than retrying.
-        logger.warning("Google token refresh failed: %s %s", resp.status_code, resp.text)
+        logger.warning(
+            "Google token refresh failed: status=%s error=%s",
+            resp.status_code,
+            _safe_oauth_error(resp),
+        )
         raise GoogleHealthError(
             "Failed to refresh Google access token.",
             status_code=resp.status_code,
