@@ -22,6 +22,7 @@ export type DeviceProvider =
   | "garmin"
   | "fitbit"
   | "google_fit"
+  | "google_health"
   | "health_connect";
 
 export interface Device {
@@ -61,6 +62,12 @@ const PROVIDER_META: Record<DeviceProvider, { label: string; color: string; bg: 
   },
   google_fit: {
     label: "Google Fit",
+    color: "#4285F4",
+    bg: "bg-[#4285F4]/10",
+    logoPath: "",
+  },
+  google_health: {
+    label: "Google Health",
     color: "#4285F4",
     bg: "bg-[#4285F4]/10",
     logoPath: "",
@@ -231,6 +238,41 @@ export function DeviceConnectionCard({
         </>
       )}
 
+      {/* Google Health (Luồng B) — server-side OAuth. On a sync error the
+          refresh token has usually been revoked (REAUTH_REQUIRED), so the
+          only fix is re-consent: surface a Reconnect CTA that re-runs the
+          OAuth flow rather than a Sync-now button that can't help. */}
+      {device.provider === "google_health" && (
+        <>
+          {device.lastSyncStatus === "error" && (
+            <div className="flex items-center justify-between gap-2 text-xs px-2 py-1.5 rounded-lg bg-red-500/10 text-red-700 dark:text-red-400">
+              <span>{t("googleSyncError")}</span>
+              {onConnect && (
+                <button
+                  type="button"
+                  onClick={() => void onConnect(device.provider)}
+                  className="flex-shrink-0 font-medium underline underline-offset-2 hover:no-underline cursor-pointer"
+                >
+                  {t("reconnect")}
+                </button>
+              )}
+            </div>
+          )}
+          {device.scopes && device.scopes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {device.scopes.map((s) => (
+                <span
+                  key={s}
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1">
         {device.connected ? (
@@ -251,6 +293,22 @@ export function DeviceConnectionCard({
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 {t("hcSyncFromMobileShort")}
+              </button>
+            ) : device.provider === "google_health" ? (
+              // Google Health pulls server-side on a 15-minute schedule.
+              // The generic `/sync` endpoint only stamps last_synced_at,
+              // which would move the backfill watermark forward without
+              // fetching — silently skipping data. So no Sync-now button;
+              // show that auto-sync is on instead.
+              <button
+                type="button"
+                disabled
+                title={t("googleAutoSync")}
+                aria-label={t("googleAutoSync")}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-muted text-muted-foreground cursor-not-allowed"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {t("googleAutoSyncShort")}
               </button>
             ) : (
               <button

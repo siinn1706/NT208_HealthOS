@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus } from "lucide-react";
+import { CheckCircle2, Plus, X } from "lucide-react";
 import { DeviceConnectionCard, type Device, type DeviceProvider } from "./DeviceConnectionCard";
 
 // Health Connect leads the picker because it's the only provider with
@@ -15,8 +15,12 @@ const SUPPORTED_PROVIDERS: Array<{
   /** When true, the connect flow opens an explainer modal rather than
    *  immediately posting to Core BE. */
   webRequiresMobile?: boolean;
+  /** When true, the connect flow mints a Google OAuth consent URL and
+   *  redirects the browser there instead of POSTing to /v1/devices. */
+  oauthRedirect?: boolean;
 }> = [
   { provider: "health_connect", label: "Health Connect", webRequiresMobile: true },
+  { provider: "google_health", label: "Google Health", oauthRedirect: true },
   { provider: "apple_health", label: "Apple Health" },
   { provider: "google_fit", label: "Google Fit" },
   { provider: "garmin", label: "Garmin Connect" },
@@ -30,6 +34,7 @@ function normalizeDevice(raw: unknown): Device | null {
   if (
     provider !== "apple_health" &&
     provider !== "google_fit" &&
+    provider !== "google_health" &&
     provider !== "garmin" &&
     provider !== "fitbit" &&
     provider !== "health_connect"
@@ -91,6 +96,25 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
   const [connectingProvider, setConnectingProvider] = useState<DeviceProvider | null>(null);
   const [connectErrorProvider, setConnectErrorProvider] = useState<DeviceProvider | null>(null);
   const [hcExplainerOpen, setHcExplainerOpen] = useState(false);
+  // Outcome of the Google Health OAuth round-trip, read from the query
+  // string the callback BFF route redirects back with (?wearable=...).
+  const [oauthFlash, setOauthFlash] = useState<"connected" | "error" | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("wearable");
+    if (outcome !== "connected" && outcome !== "error") return;
+    setOauthFlash(outcome);
+    // Strip the one-shot params so a refresh / back-nav doesn't re-flash.
+    params.delete("wearable");
+    params.delete("code");
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + (qs ? `?${qs}` : "")
+    );
+  }, []);
 
   // P0 truth fix (UX plan §E): handleSync MUST throw on non-2xx so the
   // DeviceConnectionCard can transition into its error state. Previously a
@@ -136,6 +160,32 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
       return;
     }
 
+    // Google Health (Luồng B): mint a consent URL server-side and hand the
+    // browser to Google. The callback BFF route finishes the connection and
+    // redirects back here, so we never resolve a device inline — we leave.
+    if (config?.oauthRedirect) {
+      setConnectingProvider(provider);
+      setConnectErrorProvider(null);
+      try {
+        const res = await fetch("/api/v1/wearables/google/connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok) throw new Error("CONNECT_FAILED");
+        const json = await res.json().catch(() => null);
+        const url = typeof json?.authorization_url === "string" ? json.authorization_url : null;
+        if (!url) throw new Error("NO_AUTH_URL");
+        // Full-page navigation off the SPA — keep `connecting` set so the
+        // button doesn't flicker back before the browser leaves.
+        window.location.href = url;
+      } catch {
+        setConnectErrorProvider(provider);
+        setTimeout(() => setConnectErrorProvider(null), 3000);
+        setConnectingProvider(null);
+      }
+      return;
+    }
+
     setConnectingProvider(provider);
     setConnectErrorProvider(null);
     try {
@@ -173,6 +223,32 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
 
   return (
     <div className="space-y-6">
+      {oauthFlash && (
+        <div
+          role="status"
+          className={
+            oauthFlash === "connected"
+              ? "flex items-center justify-between gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-400"
+              : "flex items-center justify-between gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-400"
+          }
+        >
+          <span className="flex items-center gap-2">
+            {oauthFlash === "connected" && <CheckCircle2 className="w-4 h-4 flex-shrink-0" />}
+            {oauthFlash === "connected"
+              ? t("connectSuccessGoogle")
+              : t("connectErrorGoogle")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setOauthFlash(null)}
+            aria-label={t("dismiss")}
+            className="flex-shrink-0 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {devices.length > 0 && (
         <section>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">

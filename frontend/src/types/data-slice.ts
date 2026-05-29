@@ -37,6 +37,10 @@ export type ProviderId =
   | "garmin"
   | "withings"
   | "samsung_health"
+  // Server-side Google Health OAuth (Luồng B). Distinct from "google_fit":
+  // it's the 2024 unified Health API pulled by the backend, not the legacy
+  // Fit app.
+  | "google_health"
   // Android Health Connect aggregator. Distinct from the per-app providers
   // because HC itself rebroadcasts data from many sources; the row's
   // `source_app` carries the originating package.

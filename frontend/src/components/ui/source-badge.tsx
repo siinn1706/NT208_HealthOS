@@ -17,6 +17,7 @@ interface ProviderTheme {
 const PROVIDER_THEMES: Record<ProviderId, ProviderTheme> = {
   apple_health:    { label: "Apple Health",   color: "#FF2D55", bg: "bg-[#FF2D55]/10", Icon: HeartPulse },
   google_fit:      { label: "Google Fit",     color: "#4285F4", bg: "bg-[#4285F4]/10", Icon: Activity },
+  google_health:   { label: "Google Health",  color: "#4285F4", bg: "bg-[#4285F4]/10", Icon: HeartPulse },
   fitbit:          { label: "Fitbit",         color: "#00B0B9", bg: "bg-[#00B0B9]/10", Icon: Watch },
   garmin:          { label: "Garmin",         color: "#009CDE", bg: "bg-[#009CDE]/10", Icon: Watch },
   withings:        { label: "Withings",       color: "#1A8FBF", bg: "bg-[#1A8FBF]/10", Icon: HeartPulse },

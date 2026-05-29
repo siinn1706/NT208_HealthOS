@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/shared/page";
 const PROVIDER_LABELS: Record<string, string> = {
   apple_health: "Apple Health",
   google_fit: "Google Fit",
+  google_health: "Google Health",
   garmin: "Garmin Connect",
   fitbit: "Fitbit",
   health_connect: "Health Connect",
@@ -27,6 +28,7 @@ function normalizeDevice(raw: unknown): Device | null {
   if (
     provider !== "apple_health" &&
     provider !== "google_fit" &&
+    provider !== "google_health" &&
     provider !== "garmin" &&
     provider !== "fitbit" &&
     provider !== "health_connect"
