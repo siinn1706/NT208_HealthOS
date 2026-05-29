@@ -61,4 +61,14 @@ describe("ExerciseSuggestionsWidget", () => {
     expect(screen.getByText("Xem tiến độ")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("shows the empty state when the BFF returns no suggestions", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ExerciseSuggestionsWidget />, { wrapper: IntlWrapper });
+
+    expect(await screen.findByText("Ghi lại dữ liệu sức khỏe để nhận gợi ý luyện tập.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

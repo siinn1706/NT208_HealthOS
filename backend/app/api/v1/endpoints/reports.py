@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import logging
+import time
 import uuid
 from typing import Annotated
 
@@ -11,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
 from app.adapters.storage import DEFAULT_GET_EXPIRY_S
+from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import User
@@ -57,6 +60,18 @@ async def _enforce_pdf_rate_limit(redis: Redis, user_id: uuid.UUID) -> None:
         )
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
+_LOGGER = logging.getLogger(__name__)
+
+
+def _log_trend_endpoint_duration(endpoint: str, started_at: float, metric_count: int) -> None:
+    if not settings.debug:
+        return
+    _LOGGER.debug(
+        "reports_trend_endpoint_duration endpoint=%s metric_count=%d duration_ms=%.1f",
+        endpoint,
+        metric_count,
+        (time.perf_counter() - started_at) * 1000.0,
+    )
 
 
 def _parse_trend_metrics_param(raw: str) -> list[str]:
@@ -127,7 +142,9 @@ async def get_report_trends(
     metric: str = Query(default="heart_rate"),
     period: str = Query(default="7d", pattern="^(7d|30d|90d)$"),
 ) -> TrendAnalysisResponse:
+    started_at = time.perf_counter()
     data = await insight_svc.get_trend_analysis(db, current_user, metric, period)
+    _log_trend_endpoint_duration("single", started_at, 1)
     return TrendAnalysisResponse(data=data)
 
 
@@ -144,7 +161,9 @@ async def get_report_trends_batch(
     period: str = Query(default="7d", pattern="^(7d|30d|90d)$"),
 ) -> TrendAnalysisBatchResponse:
     parsed_metrics = _parse_trend_metrics_param(metrics)
+    started_at = time.perf_counter()
     data = await insight_svc.get_trend_analysis_batch(db, current_user, parsed_metrics, period)
+    _log_trend_endpoint_duration("batch", started_at, len(parsed_metrics))
     return TrendAnalysisBatchResponse(data=data)
 
 

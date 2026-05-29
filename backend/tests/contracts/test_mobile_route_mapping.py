@@ -14,8 +14,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
-from .device_scope import is_device_path
 from .route_extractor import extract_routes
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -58,9 +56,6 @@ def test_mobile_route_mapping() -> None:
             null_paths.append(
                 f"{site['file']}:{site['line']} [{site['callPattern']}] — path unresolvable"
             )
-            continue
-
-        if is_device_path(core_path):
             continue
 
         if not _path_matches_contract(core_path, contract_paths):

@@ -36,7 +36,7 @@ class OAuthProfile(BaseModel):
     )
 
 
-# ─── B7 P3 — OAuth Linked Accounts (settings → linked accounts) ──────────────
+# ─── OAuth Linked Accounts (settings → linked accounts) ─────────────────────
 
 
 class OAuthLinkAttachBody(BaseModel):
@@ -71,8 +71,7 @@ class RequestOtpBody(BaseModel):
     """Request body for email OTP."""
 
     email: EmailStr
-    # `delete_account` is the B7 P0-2 path for OAuth-only users to prove
-    # identity for account deletion without a password.
+    # OAuth-only users prove identity for account deletion without a password.
     purpose: Literal["signup", "reset_password", "login", "delete_account"] = "signup"
     name: Optional[str] = None
     username: Optional[str] = Field(None, description="Username for signup")
@@ -92,7 +91,7 @@ class VerifyOtpBody(BaseModel):
     """Verify submitted OTP code."""
 
     email: EmailStr
-    purpose: Literal["signup", "reset_password", "login"] = "signup"
+    purpose: Literal["signup", "reset_password", "login", "delete_account"] = "signup"
     code: str = Field(
         min_length=6,
         max_length=6,
@@ -130,13 +129,13 @@ class OtpRequestedResponse(DataResponse[OtpRequested]):
 
 
 class OtpVerified(BaseModel):
-    """Returned after a successful OTP verification for reset_password.
+    """Returned after a successful OTP verification that needs a follow-up step.
 
-    The caller must follow up with POST /auth/reset-password within the TTL.
+    The caller must follow up with the matching endpoint within the TTL.
     """
 
     email: EmailStr
-    next_step: Literal["reset_password"] = "reset_password"
+    next_step: Literal["reset_password", "delete_account"] = "reset_password"
 
 
 class OtpVerifiedResponse(DataResponse[OtpVerified]):

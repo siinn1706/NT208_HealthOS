@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timedelta, timezone
 
+from redis.asyncio import Redis
+from redis.exceptions import ResponseError
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,3 +83,18 @@ async def decrement_attempts(db: AsyncSession, record: EmailOtp) -> int:
 async def mark_otp_consumed(db: AsyncSession, record: EmailOtp) -> None:
     record.consumed_at = datetime.now(timezone.utc)
     await db.flush()
+
+
+async def redis_getdel_compat(redis: Redis, key: str) -> bytes | str | None:
+    """Atomically consume a Redis key on servers with or without GETDEL."""
+    try:
+        return await redis.getdel(key)
+    except ResponseError as exc:
+        error_text = str(exc).lower()
+        if "unknown command" not in error_text or "getdel" not in error_text:
+            raise
+        return await redis.eval(
+            "local v=redis.call('GET',KEYS[1]); if v then redis.call('DEL',KEYS[1]); end; return v",
+            1,
+            key,
+        )

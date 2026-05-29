@@ -1,8 +1,8 @@
 """Canonical OpenAPI diff function — shared by diff script and contract tests.
 
 Compares two OpenAPI dicts path-by-path and emits Finding tuples.
-Device-scope findings are categorised separately; non-device findings
-are what the drift gate enforces.
+Known temporary drift is filtered by exact category/method/path/detail entries;
+all other findings are what the drift gate enforces.
 
 Import as::
 
@@ -12,13 +12,14 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from .device_scope import CANONICAL_ERROR_CODES, is_device_path
+from .device_scope import CANONICAL_ERROR_CODES
+from .openapi_drift_allowlist import is_allowed_openapi_drift
 
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
 
 
 class Finding(NamedTuple):
-    category: str   # missing-in-contract | missing-in-runtime | shape-mismatch | device-scope
+    category: str   # missing-in-contract | missing-in-runtime | shape-mismatch
     path: str
     method: str
     detail: str
@@ -64,16 +65,12 @@ def _compare_operation(
 ) -> list[Finding]:
     findings: list[Finding] = []
     area = _tag_for_path(path)
-    device = is_device_path(path)
-
     if live_op is None and committed_op is not None:
-        cat = "device-scope" if device else "missing-in-runtime"
-        findings.append(Finding(cat, path, method, "Present in contract, absent in runtime", area))
+        findings.append(Finding("missing-in-runtime", path, method, "Present in contract, absent in runtime", area))
         return findings
 
     if live_op is not None and committed_op is None:
-        cat = "device-scope" if device else "missing-in-contract"
-        findings.append(Finding(cat, path, method, "Present in runtime, absent in contract", area))
+        findings.append(Finding("missing-in-contract", path, method, "Present in runtime, absent in contract", area))
         return findings
 
     if live_op is None and committed_op is None:
@@ -88,10 +85,9 @@ def _compare_operation(
     committed_resp_cmp = {k: v for k, v in committed_resp.items() if k not in CANONICAL_ERROR_CODES}
 
     if live_resp_cmp != committed_resp_cmp:
-        cat = "device-scope" if device else "shape-mismatch"
         findings.append(
             Finding(
-                cat, path, method,
+                "shape-mismatch", path, method,
                 f"Response shape differs: {_summarise_response_diff(live_resp_cmp, committed_resp_cmp)}",
                 area,
             )
@@ -101,8 +97,7 @@ def _compare_operation(
     live_body = _sort_recursive(live_op.get("requestBody") or {})
     committed_body = _sort_recursive(committed_op.get("requestBody") or {})
     if live_body != committed_body and (live_body or committed_body):
-        cat = "device-scope" if device else "shape-mismatch"
-        findings.append(Finding(cat, path, method, "Request body differs", area))
+        findings.append(Finding("shape-mismatch", path, method, "Request body differs", area))
 
     return findings
 
@@ -132,4 +127,17 @@ def diff(live_schema: dict, committed_schema: dict) -> list[Finding]:
 
 
 def non_device_findings(findings: list[Finding]) -> list[Finding]:
-    return [f for f in findings if f.category != "device-scope"]
+    return [finding for finding in findings if not _is_allowed_drift(finding)]
+
+
+def allowed_openapi_drift_findings(findings: list[Finding]) -> list[Finding]:
+    return [finding for finding in findings if _is_allowed_drift(finding)]
+
+
+def _is_allowed_drift(finding: Finding) -> bool:
+    return is_allowed_openapi_drift(
+        finding.category,
+        finding.path,
+        finding.method,
+        finding.detail,
+    )

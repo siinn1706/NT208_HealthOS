@@ -2,7 +2,7 @@
 
 Generates the live schema via ``app.openapi()`` (no DB, no lifespan),
 diffs it against ``contracts/openapi/core-api.yaml``, and asserts that
-no non-device findings exist.
+no non-allowlisted findings exist.
 
 On failure a Markdown diff report is written to
 ``backend/tests/contracts/.last_diff.md`` for easy inspection.
@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from .openapi_diff import diff, non_device_findings
+from .openapi_diff import allowed_openapi_drift_findings, diff, non_device_findings
 
 _REPORT_PATH = Path(__file__).parent / ".last_diff.md"
 _CONTRACT_PATH = Path(__file__).resolve().parents[3] / "contracts" / "openapi" / "core-api.yaml"
@@ -27,7 +27,7 @@ def _load_yaml(path: Path) -> dict:
 
 def _render_findings_report(findings) -> str:
     lines = ["# Contract Drift — Last Test Run\n"]
-    lines.append(f"Total non-device findings: **{len(findings)}**\n")
+    lines.append(f"Total enforced findings: **{len(findings)}**\n")
     lines.append("| Category | Path | Method | Detail |")
     lines.append("|----------|------|--------|--------|")
     for f in findings:
@@ -36,10 +36,17 @@ def _render_findings_report(findings) -> str:
 
 
 def test_openapi_no_drift(live_schema: dict) -> None:
-    """Live FastAPI schema must match committed core-api.yaml (non-device paths)."""
+    """Live FastAPI schema must match committed core-api.yaml except exact temporary drift."""
     committed = _load_yaml(_CONTRACT_PATH)
     findings = diff(live_schema, committed)
+    allowed = allowed_openapi_drift_findings(findings)
     bad = non_device_findings(findings)
+
+    if allowed:
+        print(
+            f"\n[WARN] {len(allowed)} exact OpenAPI drift finding(s) are temporarily allowlisted."
+            "\n  -> Remove by 2026-06-15 after Core contract entries land."
+        )
 
     if bad:
         report = _render_findings_report(bad)

@@ -1,26 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import Link from "next/link";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
+import { fetchTrendAnalysisBatch } from "@/lib/reports-trends-client";
 import { cn } from "@/lib/utils";
-import type { ReportPeriod, TrendAnalysis, TrendAnalysisBatch } from "@/types/api";
-
-async function fetchTrendBatch(metrics: string[], period: ReportPeriod): Promise<TrendAnalysisBatch> {
-  const params = new URLSearchParams({
-    metrics: metrics.join(","),
-    period,
-  });
-  const res = await fetch(`/api/v1/reports/trends/batch?${params.toString()}`, {
-    credentials: "include",
-  });
-  if (!res.ok) return {};
-  const json = await res.json();
-  return json?.data ?? {};
-}
+import type { ReportPeriod, TrendAnalysis } from "@/types/api";
 
 interface MetricDef { key: string; label: string; unit: string; color: string; scale?: number }
 
@@ -83,11 +71,16 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
   const [period,    setPeriod]    = useState<ReportPeriod>(initialPeriod);
   const [trends,    setTrends]    = useState<Record<string, TrendAnalysis>>({});
   const [isPending, startTransition] = useTransition();
+  const latestTrendRequestId = useRef(0);
 
   const loadTrends = useCallback((p: ReportPeriod) => {
+    const requestId = latestTrendRequestId.current + 1;
+    latestTrendRequestId.current = requestId;
     startTransition(async () => {
-      const data = await fetchTrendBatch(METRICS.map((m) => m.key), p);
-      setTrends(data);
+      const data = await fetchTrendAnalysisBatch(METRICS.map((m) => m.key), p);
+      if (latestTrendRequestId.current === requestId) {
+        setTrends(data);
+      }
     });
   }, [startTransition]);
 

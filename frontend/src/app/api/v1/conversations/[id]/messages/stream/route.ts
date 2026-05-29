@@ -21,6 +21,20 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
+function copySetCookieHeaders(source: Headers, target: Headers): void {
+  const getSetCookie = (source as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+  const cookies =
+    typeof getSetCookie === "function"
+      ? getSetCookie.call(source)
+      : source.get("set-cookie")
+        ? [source.get("set-cookie") as string]
+        : [];
+
+  for (const cookie of cookies) {
+    target.append("Set-Cookie", cookie);
+  }
+}
+
 export async function POST(req: NextRequest, ctx: RouteContext) {
   const { id } = await ctx.params;
   const safe = encodeURIComponent(id);
@@ -33,13 +47,18 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     return upstream;
   }
 
+  const headers = new Headers({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "X-Accel-Buffering": "no",
+    Connection: "keep-alive",
+  });
+  const requestId = upstream.headers.get("X-Request-ID");
+  if (requestId) headers.set("X-Request-ID", requestId);
+  copySetCookieHeaders(upstream.headers, headers);
+
   return new Response(upstream.body, {
     status: upstream.status,
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      "X-Accel-Buffering": "no",
-      Connection: "keep-alive",
-    },
+    headers,
   });
 }

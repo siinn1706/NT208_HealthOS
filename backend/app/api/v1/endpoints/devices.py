@@ -411,7 +411,7 @@ async def ingest_health_data(
         await publish_vitals_updated(
             current_user.id,
             source="health_connect",
-            count=result.inserted + result.updated,
+            count=result.inserted + result.updated + result.deleted,
         )
 
         record_health_sync_outcome(

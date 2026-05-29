@@ -153,6 +153,7 @@ class SendMessageBody(BaseModel):
     client_message_id: str | None = Field(None, max_length=128)
     reply_to_id: uuid.UUID | None = None
     attachments: list[AttachmentDTO] | None = Field(None, max_length=10)
+    locale: str | None = Field(None, max_length=16)
 
 
 class EditMessageBody(BaseModel):

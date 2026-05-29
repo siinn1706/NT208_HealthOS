@@ -33,9 +33,11 @@ export interface HealthAlert {
   timestamp: string;
 }
 
-type UseHealthAlertsOptions = {
+export type UseHealthAlertsOptions = {
   /** Gate the WebSocket connection. Defaults to true. */
   enabled?: boolean;
+  /** Refetch dependent state after the shared socket reconnects. */
+  onReconnect?: () => void;
 };
 
 type UseHealthAlertsResult = {
@@ -43,11 +45,14 @@ type UseHealthAlertsResult = {
   status: WsStatus;
   dismissAlert: (id: string) => void;
   clearAll: () => void;
-  /** Most recent raw WebSocket frame, useful for realtime chart updates */
+  /** Most recent raw WebSocket frame, useful for realtime refetch signals. */
   lastMessage: WsFrame | null;
 };
 
-export function useHealthAlerts({ enabled = true }: UseHealthAlertsOptions = {}): UseHealthAlertsResult {
+export function useHealthAlerts({
+  enabled = true,
+  onReconnect,
+}: UseHealthAlertsOptions = {}): UseHealthAlertsResult {
   const [alerts, setAlerts] = useState<HealthAlert[]>([]);
   const [lastMessage, setLastMessage] = useState<WsFrame | null>(null);
 
@@ -69,6 +74,7 @@ export function useHealthAlerts({ enabled = true }: UseHealthAlertsOptions = {})
   const { status } = useChatWs({
     onEvent: handleEvent,
     enabled,
+    onReconnect,
   });
 
   const dismissAlert = useCallback((id: string) => {

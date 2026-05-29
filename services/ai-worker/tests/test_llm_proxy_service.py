@@ -58,6 +58,8 @@ async def test_generate_chat_reply_posts_openai_payload(monkeypatch: pytest.Monk
     assert "USER_CONTEXT" in captured["payload"]["messages"][0]["content"]
     assert "sufficiently detailed" in captured["payload"]["messages"][0]["content"]
     assert "hidden chain-of-thought" in captured["payload"]["messages"][0]["content"]
+    assert "overrides prior assistant messages" in captured["payload"]["messages"][0]["content"]
+    assert "Do not tell the user to switch languages" in captured["payload"]["messages"][0]["content"]
     assert captured["payload"]["messages"][-1] == {"role": "user", "content": "Xin chào"}
     assert captured["payload"]["thinking"] == {"type": "disabled"}
     assert "reasoning_effort" not in captured["payload"]

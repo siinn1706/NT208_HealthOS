@@ -39,6 +39,11 @@ function makeSessionToken(userId: string) {
   return `header.${payload}.signature`;
 }
 
+function makeUnsignedIdToken(payload: Record<string, unknown>) {
+  const encodedPayload = Buffer.from(JSON.stringify(payload), "utf-8").toString("base64url");
+  return `header.${encodedPayload}.signature`;
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -220,6 +225,93 @@ describe("OAuth route handlers", () => {
     expect(body.exchange_audience).toBe("healthos-core");
     expect(body.exchange_nonce).toMatch(/^[a-f0-9]{48}$/);
     expect(body.exchange_signature).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("rejects Google OAuth callback when the unverified nonce payload mismatches", async () => {
+    vi.spyOn(googleOAuth, "exchangeGoogleCodeForToken").mockResolvedValue({
+      access_token: "provider-access-token",
+      expires_in: 3600,
+      token_type: "Bearer",
+      scope: "email profile",
+      id_token: makeUnsignedIdToken({ nonce: "wrong-nonce" }),
+    });
+    const userInfoSpy = vi.spyOn(googleOAuth, "getGoogleUserInfo").mockResolvedValue({
+      id: "google-user-id",
+      email: "google@example.com",
+      name: "Google User",
+      verified_email: true,
+    });
+
+    const response = await googleCallback(
+      makeRequest(
+        "http://localhost:3000/api/v1/auth/oauth/google/callback?code=oauth-code&state=expected-state",
+        {
+          cookies: {
+            oauth_context_google: encodeOAuthContext({
+              initiatedOrigin: "http://localhost:3000",
+              locale: "en",
+              postLoginPath: "/dashboard",
+            }),
+            oauth_state_google: "expected-state",
+            oauth_verifier_google: "pkce-verifier",
+            oauth_nonce_google: "expected-nonce",
+          },
+        },
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/en/login?oauth_error=nonce_mismatch",
+    );
+    expect(userInfoSpy).not.toHaveBeenCalled();
+  });
+
+  it("continues Google OAuth callback when id_token cannot be decoded for nonce", async () => {
+    vi.spyOn(googleOAuth, "exchangeGoogleCodeForToken").mockResolvedValue({
+      access_token: "provider-access-token",
+      expires_in: 3600,
+      token_type: "Bearer",
+      scope: "email profile",
+      id_token: "malformed-token",
+    });
+    vi.spyOn(googleOAuth, "getGoogleUserInfo").mockResolvedValue({
+      id: "google-user-id",
+      email: "google@example.com",
+      name: "Google User",
+      verified_email: true,
+    });
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          data: {
+            access_token: "core-access-token",
+            onboarding_status: "completed",
+          },
+        },
+        200,
+      ),
+    );
+
+    const response = await googleCallback(
+      makeRequest(
+        "http://localhost:3000/api/v1/auth/oauth/google/callback?code=oauth-code&state=expected-state",
+        {
+          cookies: {
+            oauth_context_google: encodeOAuthContext({
+              initiatedOrigin: "http://localhost:3000",
+              locale: "en",
+              postLoginPath: "/dashboard",
+            }),
+            oauth_state_google: "expected-state",
+            oauth_verifier_google: "pkce-verifier",
+            oauth_nonce_google: "expected-nonce",
+          },
+        },
+      ),
+    );
+
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe("http://localhost:3000/en/dashboard");
   });
 
   it("sends X-BFF-Secret header in GitHub OAuth callback token exchange", async () => {

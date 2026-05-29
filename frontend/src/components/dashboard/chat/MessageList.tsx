@@ -118,6 +118,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
   const [isAtBottom, setIsAtBottom] = useState(true);
   const atBottomRef = useRef(true);
+  const shouldFollowTailRef = useRef(true);
   const [showTimeChip, setShowTimeChip] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [jumpInitialDate, setJumpInitialDate] = useState<Date | null>(null);
@@ -131,6 +132,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const loadingOlderRef = useRef(false);
   const prevLenForAppendRef = useRef(0);
   const prevLastMsgIdRef = useRef<string | null>(null);
+  const prevTailSignatureRef = useRef<string | null>(null);
   const prevIsTypingRef = useRef(isTyping);
   const prevFirstMsgIdRef = useRef<string | undefined>(undefined);
   const prevMessagesLenRef = useRef(0);
@@ -168,7 +170,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     prevMessagesLenRef.current = 0;
     prevLenForAppendRef.current = 0;
     prevLastMsgIdRef.current = null;
+    prevTailSignatureRef.current = null;
     atBottomRef.current = true;
+    shouldFollowTailRef.current = true;
     setIsAtBottom(true);
   }, [conversationId]);
 
@@ -199,6 +203,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
     const onScroll = () => {
       const delta = prevScrollTop - el.scrollTop;
+      if (delta > 0) {
+        shouldFollowTailRef.current = false;
+      }
       if (delta > 4) {
         setShowTimeChip(true);
         if (timeChipTimerRef.current) clearTimeout(timeChipTimerRef.current);
@@ -211,6 +218,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 64;
       if (nearBottom && !atBottomRef.current) {
         atBottomRef.current = true;
+        shouldFollowTailRef.current = true;
         setIsAtBottom(true);
         setShowTimeChip(false);
         setNewWhileScrolledCount(0);
@@ -226,17 +234,36 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     atBottomRef.current = atBottom;
     setIsAtBottom(atBottom);
     if (atBottom) {
+      shouldFollowTailRef.current = true;
       setShowTimeChip(false);
       setNewWhileScrolledCount(0);
       if (timeChipTimerRef.current) clearTimeout(timeChipTimerRef.current);
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
     } else {
+      if (!isTyping) shouldFollowTailRef.current = false;
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
       scrollEndTimerRef.current = setTimeout(() => {
         // no-op: reserved for future soft-dismiss
       }, 10_000);
     }
-  }, []);
+  }, [isTyping]);
+
+  const scheduleScrollerBottomSweep = useCallback(
+    (behavior: ScrollBehavior) => {
+      const sweep = () => {
+        const el = scrollerElement;
+        if (el && typeof el.scrollTo === "function") {
+          el.scrollTo({ top: el.scrollHeight, behavior });
+        }
+      };
+
+      requestAnimationFrame(() => {
+        sweep();
+        requestAnimationFrame(sweep);
+      });
+    },
+    [scrollerElement]
+  );
 
   const handleRangeChanged = useCallback(
     (range: ListRange) => {
@@ -246,34 +273,45 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     [firstItemIndex]
   );
 
-  // Append: auto-scroll when user was at bottom or the new tail is own message
+  // Tail changes: auto-scroll when the user is following the bottom.
+  // AI replies can grow in place, so content/status changes matter too.
   useEffect(() => {
     const n = messages.length;
     if (n === 0) {
       prevLenForAppendRef.current = 0;
       prevLastMsgIdRef.current = null;
+      prevTailSignatureRef.current = null;
       return;
     }
     const last = messages[n - 1];
     const lastId = last?.id ?? null;
-    const grew = n > prevLenForAppendRef.current;
-    const isNewTail = lastId !== prevLastMsgIdRef.current;
+    const prevLen = prevLenForAppendRef.current;
+    const prevLastId = prevLastMsgIdRef.current;
+    const prevTailSignature = prevTailSignatureRef.current;
+    const tailSignature = last ? `${last.id}:${last.status}:${last.content.length}` : null;
+    const grew = n > prevLen;
+    const isNewTail = lastId !== prevLastId;
+    const tailUpdated = !grew && lastId === prevLastId && tailSignature !== prevTailSignature;
     prevLenForAppendRef.current = n;
     prevLastMsgIdRef.current = lastId;
+    prevTailSignatureRef.current = tailSignature;
 
-    if (!grew || !isNewTail) return;
+    if (!(grew && isNewTail) && !tailUpdated) return;
 
     const fromSelf = Boolean(currentUserId && last && last.sender_id === currentUserId);
-    if (atBottomRef.current || fromSelf) {
+    if (atBottomRef.current || fromSelf || shouldFollowTailRef.current) {
+      shouldFollowTailRef.current = true;
+      const behavior: ScrollBehavior = fromSelf ? "smooth" : "auto";
       virtuosoRef.current?.scrollToIndex({
         index: "LAST",
         align: "end",
-        behavior: fromSelf ? "smooth" : "auto",
+        behavior,
       });
-    } else {
+      scheduleScrollerBottomSweep(behavior);
+    } else if (grew && isNewTail) {
       setNewWhileScrolledCount((c) => c + 1);
     }
-  }, [messages, currentUserId]);
+  }, [messages, currentUserId, scheduleScrollerBottomSweep]);
 
   const scrollToTargetIndex = useCallback(
     (dataIndex: number) => {
@@ -287,6 +325,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       setShowTimeChip(false);
       const jumpingToBottom = dataIndex >= messages.length - 1;
       atBottomRef.current = jumpingToBottom;
+      shouldFollowTailRef.current = jumpingToBottom;
       setIsAtBottom(jumpingToBottom);
       if (jumpingToBottom) {
         setNewWhileScrolledCount(0);
@@ -303,24 +342,23 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       align: "end",
       behavior: "auto",
     });
-    requestAnimationFrame(() => {
-      const el = scrollerElement;
-      if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    });
+    scheduleScrollerBottomSweep("smooth");
     atBottomRef.current = true;
+    shouldFollowTailRef.current = true;
     setIsAtBottom(true);
     setNewWhileScrolledCount(0);
     setShowTimeChip(false);
     if (timeChipTimerRef.current) clearTimeout(timeChipTimerRef.current);
-  }, [scrollerElement]);
+  }, [scheduleScrollerBottomSweep]);
 
   useEffect(() => {
     const wasTyping = prevIsTypingRef.current;
     prevIsTypingRef.current = isTyping;
-    if (!isTyping || wasTyping || !atBottomRef.current) return;
+    const shouldFollowTyping = atBottomRef.current || shouldFollowTailRef.current;
+    if (!isTyping || wasTyping || !shouldFollowTyping) return;
 
     const frame = requestAnimationFrame(() => {
-      if (atBottomRef.current) scrollToBottomImpl();
+      if (atBottomRef.current || shouldFollowTailRef.current) scrollToBottomImpl();
     });
     return () => cancelAnimationFrame(frame);
   }, [isTyping, scrollToBottomImpl]);
@@ -444,7 +482,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       }
 
       const showTime =
-        msg.is_edited ||
+        isAi ||
+        (!isAi && msg.is_edited) ||
         shouldShowTimestamp(
           prev ? { sender_id: prev.sender_id, created_at: prev.created_at } : null,
           next ? { sender_id: next.sender_id, created_at: next.created_at } : null,

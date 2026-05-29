@@ -1,6 +1,7 @@
 """Meal analysis Celery tasks."""
 import logging
 import uuid
+from typing import Any
 
 import httpx
 from celery import Task
@@ -25,18 +26,52 @@ _NUMERIC_NUTRITION_KEYS = {
     "confidence",
 }
 _STRING_NUTRITION_KEYS = {"dish_name", "serving_type", "source"}
+_NUMERIC_INGREDIENT_KEYS = {
+    "grams",
+    "kcal",
+    "calories",
+    "protein_g",
+    "carbs_g",
+    "fat_g",
+    "confidence",
+}
+_STRING_INGREDIENT_KEYS = {"name", "ingredient_name", "ingredient_name_en"}
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _validate_ingredient(data: Any) -> dict[str, float | str] | None:
+    if not isinstance(data, dict):
+        return None
+    normalized: dict[str, float | str] = {}
+    for key, value in data.items():
+        if key in _NUMERIC_INGREDIENT_KEYS and _is_number(value):
+            normalized[key] = float(value)
+        elif key in _STRING_INGREDIENT_KEYS and isinstance(value, str) and value.strip():
+            normalized[key] = value.strip()
+    return normalized or None
 
 
 def _validate_nutrition(data: dict) -> dict:
     """Sanitize AI Worker nutrition response to expected schema."""
     if not isinstance(data, dict):
         return {}
-    normalized: dict[str, float | str] = {}
+    normalized: dict[str, Any] = {}
     for key, value in data.items():
-        if key in _NUMERIC_NUTRITION_KEYS and isinstance(value, (int, float)):
+        if key in _NUMERIC_NUTRITION_KEYS and _is_number(value):
             normalized[key] = float(value)
         elif key in _STRING_NUTRITION_KEYS and isinstance(value, str):
             normalized[key] = value
+        elif key == "ingredients" and isinstance(value, list):
+            ingredients = [
+                ingredient
+                for ingredient in (_validate_ingredient(item) for item in value)
+                if ingredient is not None
+            ]
+            if ingredients:
+                normalized["ingredients"] = ingredients
     return normalized
 
 

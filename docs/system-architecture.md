@@ -642,7 +642,7 @@ Core API
     ├─ Decode JWT
     ├─ Check jti NOT in Redis blacklist
     ├─ Check exp > now
-    ├─ Check iss + aud (TODO: enforce in v1.3)
+    ├─ Check iss + aud (required in normal path; legacy no-claim fallback is non-production only)
     └─ Allow request ✅
         ↓
 Logout Request
@@ -700,13 +700,20 @@ All BFF mutating routes (POST/PUT/PATCH/DELETE) enforce an Origin/Referer guard 
 - Extract Origin/Referer header
 - Compare host:port against `BFF_TRUSTED_ORIGINS` (env-configured, comma-separated)
 - Non-production: implicit localhost:*, 127.0.0.1:* allowed
-- Production: empty origins = fail-closed (reject all mutating requests lacking matching Origin)
+- Protected envs (`production`, `prod`, `staging` via `APP_ENV`, `NEXT_PUBLIC_APP_ENV`, or `NODE_ENV`): frontend config evaluation fails fast when `BFF_TRUSTED_ORIGINS` is empty or malformed; mutating requests still fail closed if no configured origin matches.
 
 **Guard mode** (`BFF_CSRF_GUARD_MODE` env):
-- `dry-run`: Log rejection, forward anyway (migration window)
-- `enforce` (default production): Return 403 with `{error: {code: "CSRF_ORIGIN_REJECTED"}}`
+- `dry-run`: Log rejection and forward anyway in non-protected local/dev envs only.
+- `enforce` (default and required in protected envs): Return 403 with `{error: {code: "CSRF_ORIGIN_REJECTED"}}`
 
 **Public exceptions:** `/api/v1/public/**` paths exempt via `EXEMPT_PATH_PREFIXES` allow-list. OAuth init routes (GET-only) return null (no-op). Callbacks exempt by being GET.
+
+**Dev bypass:** Local password-login bypass requires both `DEV_BYPASS_ENABLED=true`
+and `DEV_BYPASS_CREDENTIALS`. Protected env validation rejects both variables.
+
+**Cookie TTL:** `COOKIE_MAX_AGE` defaults to the Core access-token window
+(3600 seconds). `REFRESH_COOKIE_MAX_AGE` remains longer-lived for refresh
+rotation.
 
 ### Route Protection
 
@@ -863,7 +870,7 @@ Mobile app displays nutrition breakdown
 |-------|---------------|-----------|
 | **WebSocket presence** | In-memory only (not shared across replicas) | v2.0: Redis-backed presence |
 | **Notification dispatch** | Stub (queues only, doesn't send) | v1.3: Call FCM/SendGrid |
-| **JWT iss/aud validation** | Not enforced (single issuer in dev) | v1.3: Add validation |
+| **JWT legacy compatibility** | `iss`/`aud` required in normal decode path; non-production only accepts legacy tokens when both claims are absent | Remove fallback after legacy tokens expire |
 | **MFA enforcement** | Password login bypasses MFA challenge | v1.3: Enforce challenge |
 | **OAuth token refresh** | Not implemented | v2.0: Add OAuth refresh |
 | **Multi-tenant support** | Single tenant (future) | v3.0: Organization support |

@@ -45,7 +45,7 @@ export interface AuthToken {
 export type AuthLoginResult = AuthToken | MfaLoginRequired;
 
 export type RequestOtpPurpose = 'signup' | 'reset_password' | 'login' | 'delete_account';
-export type VerifyOtpPurpose = 'signup' | 'reset_password' | 'login';
+export type VerifyOtpPurpose = 'signup' | 'reset_password' | 'login' | 'delete_account';
 
 export interface RequestOtpBody {
   email: string;

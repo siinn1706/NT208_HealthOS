@@ -27,6 +27,10 @@ from typing import Any
 from fastapi import WebSocket
 
 
+class WebSocketDeliveryError(Exception):
+    """Raised when a checked websocket send cannot be delivered."""
+
+
 class _RateLimiter:
     """Token bucket rate limiter — 5 tokens/s, burst up to 10."""
 
@@ -161,16 +165,42 @@ class ConnectionManager:
     # Sending
     # ──────────────────────────────────────────────────────────────────────────
 
-    async def send_to_ws(self, ws: WebSocket, message: dict) -> None:
+    async def send_to_ws(
+        self,
+        ws: WebSocket,
+        message: dict,
+        *,
+        raise_delivery_errors: bool = False,
+    ) -> None:
         try:
             await ws.send_json(message)
-        except Exception:
+        except Exception as exc:
             self.disconnect(ws)
+            if raise_delivery_errors:
+                raise WebSocketDeliveryError("websocket send failed") from exc
 
-    async def send_to_user(self, user_id: str, message: dict) -> None:
+    async def send_to_user(
+        self,
+        user_id: str,
+        message: dict,
+        *,
+        raise_delivery_errors: bool = False,
+    ) -> None:
         """Deliver to ALL connected sockets of a user (multi-device)."""
+        failures: list[WebSocketDeliveryError] = []
         for ws in list(self.user_connections.get(user_id, set())):
-            await self.send_to_ws(ws, message)
+            try:
+                await self.send_to_ws(
+                    ws,
+                    message,
+                    raise_delivery_errors=raise_delivery_errors,
+                )
+            except WebSocketDeliveryError as exc:
+                failures.append(exc)
+        if failures:
+            raise WebSocketDeliveryError(
+                f"failed to deliver websocket frame to {len(failures)} socket(s) for user"
+            ) from failures[0]
 
     async def broadcast(self, room: str, message: dict, exclude_ws: WebSocket | None = None) -> None:
         """Broadcast to all WebSockets in a room, optionally skipping one socket."""

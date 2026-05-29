@@ -19,7 +19,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOutboundQueue, type OutboundItem } from "@/hooks/useOutboundQueue";
 import type { Conversation, Message } from "@/types/api";
 import { toast } from "sonner";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { track } from "@/lib/analytics";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
@@ -71,6 +71,7 @@ export function ChatWindow({
   onTransferGroupOwnership,
 }: ChatWindowProps) {
   const t = useTranslations("chat");
+  const locale = useLocale();
   const {
     messages,
     isLoading: isLoadingMessages,
@@ -97,7 +98,7 @@ export function ChatWindow({
     onAiStreamChunk,
     onAiStreamCompleted,
     refetchActiveConversation,
-  } = useMessages(conversation.id, currentUserId, { selfReactionLabel: t("you") });
+  } = useMessages(conversation.id, currentUserId, { locale, selfReactionLabel: t("you") });
 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);

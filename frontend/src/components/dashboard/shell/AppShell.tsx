@@ -16,6 +16,10 @@ import { TopNavV2 } from "./TopNavV2";
 import { MobileNav } from "./MobileNav";
 import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
 import { CHAT_REALTIME_EVENT, dispatchChatUnreadRefresh } from "@/hooks/useChat";
+import {
+  VITALS_REALTIME_EVENT,
+  VITALS_REALTIME_RECONNECT_EVENT,
+} from "@/hooks/useVitalsRealtimeRefresh";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -38,15 +42,25 @@ const NOTIFICATION_WS_EVENTS = new Set([
   "notification.read",
   "notifications.read_all",
 ]);
+const VITALS_WS_EVENTS = new Set(["vitals.updated"]);
 
 function dispatchNotificationsRefresh(): void {
   window.dispatchEvent(new CustomEvent(NOTIFICATIONS_REFRESH_EVENT));
+}
+
+function dispatchVitalsRefresh(frame: WsFrame): void {
+  window.dispatchEvent(new CustomEvent(VITALS_REALTIME_EVENT, { detail: frame }));
+}
+
+function dispatchVitalsReconnectRefresh(): void {
+  window.dispatchEvent(new CustomEvent(VITALS_REALTIME_RECONNECT_EVENT));
 }
 
 function DashboardRealtimeBridge() {
   const dispatchReconnectRefresh = React.useCallback(() => {
     dispatchChatUnreadRefresh();
     dispatchNotificationsRefresh();
+    dispatchVitalsReconnectRefresh();
   }, []);
 
   const handleEvent = React.useCallback((frame: WsFrame) => {
@@ -56,6 +70,9 @@ function DashboardRealtimeBridge() {
     }
     if (NOTIFICATION_WS_EVENTS.has(frame.event)) {
       dispatchNotificationsRefresh();
+    }
+    if (VITALS_WS_EVENTS.has(frame.event)) {
+      dispatchVitalsRefresh(frame);
     }
   }, []);
 

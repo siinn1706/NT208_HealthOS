@@ -109,6 +109,14 @@ def test_format_worker_error_message_unknown_code_falls_back():
     assert "không phản hồi" in msg
 
 
+def test_locale_from_user_uses_preferences_when_profile_has_no_language():
+    profile = type("Profile", (), {})()
+    preferences = type("Preferences", (), {"locale": "en"})()
+    user = type("User", (), {"profile": profile, "preferences": preferences})()
+
+    assert ai_chat_orchestrator._locale_from_user(user) == "en"
+
+
 @pytest.mark.asyncio
 async def test_build_chat_request_payload_sets_reply_token_budget(monkeypatch):
     async def fake_history(*args, **kwargs):

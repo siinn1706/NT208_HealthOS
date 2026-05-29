@@ -24,12 +24,66 @@
 
 ### Fixed
 
+#### AI Chat Locale Consistency (2026-05-29)
+- **Severity/impact**: Medium user-facing bug where Vietnamese chat sessions could receive English-only AI replies when saved backend preferences were `en`.
+- **Locale contract**: AI stream sends now include the active chat UI locale, and Core prefers that request locale before falling back to saved profile/preferences.
+- **Prompt guard**: AI Worker language instruction now overrides prior assistant history and untrusted context, preventing "switch languages" replies from stale English context.
+- **Verification**: Backend AI stream/orchestrator pytest passed: 21 tests. AI Worker proxy pytest passed: 17 tests. Frontend AI streaming Vitest passed: 6 tests. Core OpenAPI drift check passed. Python syntax compile, targeted frontend ESLint, and touched-file diff check passed.
+
+#### Dashboard Summary Same-Origin Fetch (2026-05-29)
+- **KPI load fix**: Dashboard summary, vitals, and reminders server helpers now resolve the BFF URL from current request host/proto in local/dev instead of stale `NEXT_PUBLIC_APP_URL`, avoiding same-app fetch failures that surfaced as KPI summary load errors.
+- **Protected env guard**: Staging/production keeps using configured `NEXT_PUBLIC_APP_URL`.
+- **Verification**: Focused dashboard/BFF Vitest passed: 30 tests. Targeted ESLint passed. Full frontend TypeScript remains blocked by unrelated admin/test/config baseline errors.
+
+#### AI Chat Stream Locale Crash (2026-05-29)
+- **Stream locale**: Core `/v1/conversations/{id}/messages/stream` now resolves chat locale from `user_preferences.locale` with a safe `vi` fallback instead of reading removed `UserProfile.preferred_language`, preventing 500s after user message persistence.
+- **Forbidden mapping**: Non-member AI stream sends now return `403 CHAT_FORBIDDEN` instead of surfacing uncaught membership `ValueError`.
+- **Verification**: Backend targeted pytest passed: 23 tests. Live Core disposable stream probe returned 200 and emitted `event: start`; live BFF disposable stream probe completed through `event: done` with deltas. Probe rows were cleaned up.
+
+#### Production Guardrails and Contract Observability (2026-05-29)
+- **WS fanout observability**: Chat conversation-member fanout failures now emit structured warning logs and a low-cardinality Prometheus counter from checked manager delivery failures while preserving post-commit best-effort delivery.
+- **Contract drift gate**: Removed broad device/wearable/sync route skips from BFF/mobile contract mapping; Google Health wearable Core/BFF paths are now declared, with only exact dated allowlist entries for pre-existing admin/chat/OpenAPI drift.
+- **Protected frontend env**: Staging/production config now fails fast for empty or malformed `BFF_TRUSTED_ORIGINS`, forbids CSRF dry-run/dev bypass variables, and validates production cookie TTL alignment during env rendering.
+- **Dev bypass safety**: `DEV_BYPASS_CREDENTIALS` is ignored unless `DEV_BYPASS_ENABLED=true` and the app is in an unprotected env.
+- **OAuth accuracy**: Google sign-in callback now names the `id_token` handling as unverified nonce-only decoding; link callback wording no longer implies nonce verification.
+- **Verification**: Backend targeted pytest passed: 12 tests. Frontend targeted Vitest passed: 38 tests. Env renderer tests passed: 16 tests.
+
+#### BFF Frontend Runtime Consistency (2026-05-29)
+- **Client parsing**: `bffFetchClient` now handles 204/205, empty bodies, text bodies, and empty/text error responses without JSON parse crashes while preserving 401 redirect behavior.
+- **SSE auth refresh**: Chat SSE BFF streaming now refreshes expired or missing access cookies before opening the upstream stream, retries once, keeps inbound abort cancellation, and preserves rotated auth cookies.
+- **Legacy health-data routes**: Deprecated `GET /api/v1/health-data` with 410 replacement guidance; legacy meal create paths now use shared `coreProxy` with idempotency and multipart boundary handling.
+- **Dashboard failure truthfulness**: Dashboard summary and vitals helpers now return `DataSlice` recoverable errors so widgets show load failures instead of silent empty/default data.
+- **Verification**: Focused frontend Vitest passed: 49 tests across BFF/client/dashboard/chat-vitals seams. Full frontend Vitest passed: 912 tests. Touched-file ESLint and i18n parity passed. Production build still compiles the app bundle, then TypeScript remains blocked by unrelated `admin-validation.ts` Zod 4 type drift.
+
+#### Backend Meal Auth OTP Correctness (2026-05-29)
+- **Meal photo state**: Image meal create and analyze-photo now persist `processing` with the queued job id; enqueue failure returns a controlled server error instead of committing a pending jobless row.
+- **Nutrition sanitizer**: AI meal analysis now preserves valid ingredient breakdowns while dropping invalid nested entries.
+- **Reset password OTP**: Verified reset markers survive breached-password and user-state validation failures, then consume atomically only before password/token mutation.
+- **Delete-account OTP**: `delete_account` verify now creates a one-time marker consumed by OAuth-only account deletion; request/verify schemas, OpenAPI, mobile types, and BFF verify proxy aligned.
+- **Verification**: Backend focused pytest passed: 24 tests. Frontend verify-OTP route Vitest passed: 1 test. Backend `compileall`, mobile typecheck, and scoped diff check passed. Contract drift gate remains blocked by unrelated admin/chat/subscription route drift and password-breach shape mismatch.
+
+#### Dashboard Performance Verification (2026-05-29)
+- **SSR guard**: Added a static regression test proving `/dashboard` keeps exercise suggestions out of the server render critical path.
+- **Widget regression coverage**: Exercise suggestions now have loading, success, error, and empty-state tests; trend/anomaly widgets assert batch route usage and no dashboard single-trend fan-out.
+- **Diagnostics**: Added opt-in BFF Core proxy timing logs for dashboard/trend paths via `BFF_DASHBOARD_PERF_LOG=true` and debug-only Core endpoint duration logs.
+- **Backend coverage**: Tightened batch trend response-key assertions and added non-blocking `last_seen_at` scheduling coverage.
+- **Verification**: Focused frontend Vitest passed: 18 tests. Focused backend pytest passed: 21 tests. Targeted frontend ESLint and backend `py_compile` passed. Full frontend lint/test still have unrelated baseline failures.
+
+#### Web Vitals Realtime Refresh (2026-05-29)
+- **Realtime hook**: Added a PHI-safe `vitals.updated` refetch hook over the existing dashboard websocket bridge and removed the stale pushed-chart-data hook.
+- **Health dashboard**: `/dashboard/health` now refreshes current-period KPI, comparison, and connected-device data from BFF `/api/v1/**` routes on vitals events and reconnect.
+- **Main dashboard widget**: `VitalsChartWidget` now refetches extended vitals on the same event/reconnect path and clears stale chart data when the canonical response is empty.
+- **Health Connect deletions**: Ingest publish count now includes deleted rows, so deletion-only syncs can still trigger a frontend refresh.
+- **Race guards**: Current-period request guards prevent slow older range fetches from overwriting newer selections.
+- **Verification**: Focused Vitest, touched-file ESLint, focused backend pytest, and code review passed. Full frontend lint/test and broader backend endpoint pytest still have unrelated baseline/environment failures.
+
 #### Dashboard Trends Batch Endpoint (2026-05-29)
 - **Core batch route**: Added authenticated `GET /v1/reports/trends/batch` with metric parsing that trims, lowercases, dedupes, preserves order, omits unsupported tokens, and returns `400` when no supported metric remains.
 - **Service preload**: Trend batch analysis now loads health metrics once per user/period and loads meals only when `calories` is requested, while keeping the single `/reports/trends` fallback behavior unchanged.
 - **BFF/dashboard**: Added `/api/v1/reports/trends/batch` and switched trend summary + realtime anomaly widgets from per-metric fan-out to one batch request per load/period.
+- **Frontend cleanup**: Extracted a client-safe trend batch helper with auth-scoped in-flight dedupe, safe empty fallback, and stale-period protection for fast trend range switching.
 - **Contracts/tests**: Updated Core/BFF contract paths, aligned required `metrics` query metadata, and added focused service, API, and widget regression coverage.
-- **Verification**: Backend trend service/API pytest passed: 13 tests. Frontend batch widget Vitest, targeted ESLint, backend syntax compile, and changed-file diff check passed.
+- **Verification**: Backend trend service/API pytest passed: 13 tests. Frontend batch widget Vitest now passes 6 tests; targeted ESLint, backend syntax compile, and changed-file diff check passed. Repo-wide frontend TypeScript remains blocked by unrelated admin/BFF/config baseline errors.
 
 #### Dashboard Auth DB WS-Token Overhead Reduction (2026-05-29)
 - **Auth last-seen**: `get_current_user` now schedules throttled background `last_seen_at` touches after all auth/security checks instead of awaiting a DB update on every authenticated request.

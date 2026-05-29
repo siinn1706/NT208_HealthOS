@@ -4,7 +4,14 @@ import { REQUEST_ID_HEADER, getOrCreateRequestId } from "@/lib/request-id";
 const UUID_HEX_RE = /^[0-9a-f]{32}$/;
 
 function makeReq(headers: Record<string, string> = {}): { headers: Headers } {
-  return { headers: new Headers(headers) };
+  const values = new Map(
+    Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]),
+  );
+  return {
+    headers: {
+      get: (name: string) => values.get(name.toLowerCase()) ?? null,
+    } as Headers,
+  };
 }
 
 afterEach(() => {

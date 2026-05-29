@@ -13,6 +13,7 @@ All tests run against real Postgres; skipped when database_url is absent.
 from __future__ import annotations
 
 import datetime
+import logging
 import uuid
 from unittest.mock import patch
 
@@ -110,6 +111,7 @@ async def pg_db():
                     delete(User).where(User.id.in_(created_ids["users"]))
                 )
             await cleanup.commit()
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="module", autouse=True)
@@ -124,11 +126,11 @@ async def dispose_engine():
 # ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_send_persists_when_recipient_has_no_ws(pg_db):
-    """Message row exists in DB even when recipient has no WS socket.
+async def test_send_persists_when_recipient_ws_send_fails(pg_db, caplog):
+    """Message row exists in DB even when recipient WS delivery fails.
 
-    Also verifies that fanout was attempted for the recipient and that
-    a fanout exception (simulated offline) does not surface to the caller.
+    Also verifies that a real manager-level socket failure is recorded
+    and does not surface to the caller.
     """
     db, ids = pg_db
     sender = await _create_user(db)
@@ -156,24 +158,44 @@ async def test_send_persists_when_recipient_has_no_ws(pg_db):
     assert row.sender_id == sender.id
     assert row.client_message_id == "sf-test-1"
 
-    # Fanout ATTEMPTED for recipient; exception swallowed (offline simulation)
-    from app.api.v1.endpoints.conversations import _notify_conversation_members
+    # Fanout ATTEMPTED for recipient; stale socket send failures are recorded
+    # and swallowed so persistence still wins over realtime delivery.
+    from app.api.v1.endpoints.conversations import _notify_conversation_members, ws_manager
 
-    fanout_calls: list[str] = []
+    class FailingWebSocket:
+        async def send_json(self, frame: dict) -> None:
+            raise OSError("recipient socket closed")
 
-    async def _mock_offline_send(user_id: str, frame: dict) -> None:
-        fanout_calls.append(user_id)
-        if user_id == str(recipient.id):
-            raise OSError("recipient has no socket")
+    failing_ws = FailingWebSocket()
+    ws_manager.user_connections.setdefault(str(recipient.id), set()).add(failing_ws)
+    ws_manager.ws_to_user[failing_ws] = str(recipient.id)
+    ws_manager.ws_to_rooms[failing_ws] = set()
 
-    with patch("app.api.v1.endpoints.conversations.ws_manager.send_to_user", _mock_offline_send):
-        # Must not raise even though recipient send raises
-        await _notify_conversation_members(
-            db, conv.id, "chat.message.sent", msg.model_dump(mode="json"),
-            exclude_user_id=sender.id,
-        )
+    try:
+        with (
+            patch("app.api.v1.endpoints.conversations.record_ws_fanout_failure") as record_metric,
+            caplog.at_level(logging.WARNING, logger="healthos.chat.api"),
+        ):
+            # Must not raise even though recipient socket send raises.
+            await _notify_conversation_members(
+                db, conv.id, "chat.message.sent", msg.model_dump(mode="json"),
+                exclude_user_id=sender.id,
+            )
+    finally:
+        ws_manager.disconnect(failing_ws)
 
-    assert str(recipient.id) in fanout_calls
+    assert failing_ws not in ws_manager.ws_to_user
+    record_metric.assert_called_once_with("chat.message.sent", "WebSocketDeliveryError")
+    fanout_record = next(
+        record for record in caplog.records if record.getMessage() == "chat.fanout.failed"
+    )
+    assert fanout_record.event_name == "chat.message.sent"
+    assert fanout_record.conversation_id == str(conv.id)
+    assert fanout_record.recipient_count == 1
+    assert fanout_record.excluded_user_id == str(sender.id)
+    assert fanout_record.exception_type == "WebSocketDeliveryError"
+    assert "hello offline world" not in fanout_record.getMessage()
+    assert not hasattr(fanout_record, "payload")
 
 
 @pytest.mark.asyncio

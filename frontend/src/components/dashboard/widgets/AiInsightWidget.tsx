@@ -2,6 +2,8 @@ import { getTranslations, getLocale } from "next-intl/server";
 import Link from "next/link";
 import { Bot, Sparkles, Info } from "lucide-react";
 import { ConfidenceChip } from "@/components/ui/confidence-chip";
+import type { DashboardSummary } from "@/lib/dashboard-data";
+import type { DataSlice } from "@/types/data-slice";
 
 export interface AiInsight {
   text: string;
@@ -11,7 +13,7 @@ export interface AiInsight {
 }
 
 interface AiInsightWidgetProps {
-  insight?: AiInsight | null;
+  summary: DataSlice<DashboardSummary>;
 }
 
 // Resolve raw i18n key from backend (e.g. "CALORIE_NORMAL") to translated string.
@@ -29,10 +31,15 @@ function resolveInsightText(
 }
 
 // Server Component
-export async function AiInsightWidget({ insight }: AiInsightWidgetProps) {
+export async function AiInsightWidget({ summary }: AiInsightWidgetProps) {
   const t = await getTranslations("dashboard.ai");
   const tInsights = await getTranslations("dashboard.risk.insights");
   const locale = await getLocale();
+  const insight = summary.status === "success" ? summary.data?.aiInsight : null;
+  const hasError =
+    summary.status === "recoverable_error" ||
+    summary.status === "hard_error" ||
+    summary.status === "no_permission";
 
   return (
     <div className="rounded-xl border border-border bg-card h-full">
@@ -56,7 +63,11 @@ export async function AiInsightWidget({ insight }: AiInsightWidgetProps) {
       </div>
 
       <div className="px-5 py-4">
-        {insight ? (
+        {hasError ? (
+          <p className="text-sm text-muted-foreground">
+            {summary.error?.message ?? t("loadError")}
+          </p>
+        ) : insight ? (
           <>
             <div className="flex gap-3">
               <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" aria-hidden />

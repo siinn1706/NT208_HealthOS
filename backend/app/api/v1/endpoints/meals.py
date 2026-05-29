@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel
 from redis.asyncio import Redis
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
@@ -52,6 +52,16 @@ def _bad_request(message: str) -> HTTPException:
         detail={
             "code": "VALIDATION_ERROR",
             "message": message,
+        },
+    )
+
+
+def _analysis_enqueue_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail={
+            "code": "MEAL_ANALYSIS_ENQUEUE_FAILED",
+            "message": "Meal analysis could not be queued. Please try again.",
         },
     )
 
@@ -125,13 +135,13 @@ async def create_meal(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     redis: Annotated[Redis, Depends(get_redis)],
-    name_form: Annotated[str | None, Form()] = None,
-    notes_form: Annotated[str | None, Form()] = None,
-    logged_at_form: Annotated[datetime.datetime | None, Form()] = None,
+    name_form: Annotated[str | None, Form(alias="name")] = None,
+    notes_form: Annotated[str | None, Form(alias="notes")] = None,
+    logged_at_form: Annotated[datetime.datetime | None, Form(alias="logged_at")] = None,
     image: UploadFile | None = File(default=None),
 ) -> MealDataResponse:
-    # B7 P7 — Idempotency-Key replay store. The IndexedDB offline queue retries
-    # the same payload with the same key after a network blip; we want a single
+    # The IndexedDB offline queue retries the same payload with the same key after
+    # a network blip; we want a single
     # logical meal row per key. We use `acquire_or_wait` so two concurrent
     # retries don't both proceed (TOCTOU race the previous code had).
     idem_key = request.headers.get("idempotency-key") or request.headers.get("Idempotency-Key")
@@ -211,12 +221,19 @@ async def create_meal(
 
         # If image was uploaded, trigger async analysis after meal is created
         if image_url:
-            job = analyze_meal_image.delay(str(meal.id), image_url)
-            from sqlalchemy import update
+            try:
+                job = analyze_meal_image.delay(str(meal.id), image_url)
+            except Exception as exc:
+                raise _analysis_enqueue_error() from exc
 
-            stmt = update(Meal).where(Meal.id == meal.id).values(job_id=job.id)
+            stmt = (
+                update(Meal)
+                .where(Meal.id == meal.id)
+                .values(job_id=job.id, status=MealStatusEnum.PROCESSING)
+            )
             await db.execute(stmt)
             meal.job_id = job.id
+            meal.status = MealStatusEnum.PROCESSING
 
         await db.commit()
         committed = True
@@ -363,13 +380,20 @@ async def analyze_meal_photo(
     )
 
     # Trigger async analysis
-    job = analyze_meal_image.delay(str(meal.id), image_url)
+    try:
+        job = analyze_meal_image.delay(str(meal.id), image_url)
+    except Exception as exc:
+        raise _analysis_enqueue_error() from exc
 
     # Update meal with job_id
-    from sqlalchemy import update
-
-    stmt = update(Meal).where(Meal.id == meal.id).values(job_id=job.id)
+    stmt = (
+        update(Meal)
+        .where(Meal.id == meal.id)
+        .values(job_id=job.id, status=MealStatusEnum.PROCESSING)
+    )
     await db.execute(stmt)
+    meal.job_id = job.id
+    meal.status = MealStatusEnum.PROCESSING
     await db.commit()
 
     return AnalysisJobResponse(job_id=job.id, status="processing", meal_id=meal.id)

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Heart, Activity, Droplets, Plus } from "lucide-react";
 import { Link } from "@/navigation";
 import { formatDateTime } from "@/lib/format-utils";
 import { METRIC_COLORS } from "@/lib/metric-colors";
+import { useVitalsRealtimeRefresh } from "@/hooks/useVitalsRealtimeRefresh";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { PeriodComparisonChart } from "@/components/charts/PeriodComparisonChart";
@@ -159,52 +160,74 @@ export default function HealthPage() {
   const [latestVital, setLatestVital] = useState<{ heartRate?: number; systolic?: number; diastolic?: number } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [devices, setDevices] = useState<DeviceItem[]>([]);
-  const [devicesLoaded, setDevicesLoaded] = useState(false);
+  const periodRef = useRef<ReportPeriod>("7d");
+  const healthRequestSeqRef = useRef(0);
+  const noDeviceInfoLabel = t("noDeviceInfo");
 
-  const loadData = (p: ReportPeriod) => {
+  const refreshHealthData = useCallback((targetPeriod: ReportPeriod) => {
+    const requestSeq = ++healthRequestSeqRef.current;
     startTransition(async () => {
-      const [vitals, comparison, devs] = await Promise.all([
-        fetchVitals(p),
-        fetchComparison(p),
-        devicesLoaded ? Promise.resolve(devices) : (async () => {
-          const d = await fetchDevices(t("noDeviceInfo"));
-          setDevices(d);
-          setDevicesLoaded(true);
-          return d;
-        })(),
+      const [vitals, comparison] = await Promise.all([
+        fetchVitals(targetPeriod),
+        fetchComparison(targetPeriod),
       ]);
-      if (vitals && Array.isArray(vitals) && vitals.length > 0) {
-        const last = vitals[vitals.length - 1];
-        setLatestVital({
-          heartRate: last.heart_rate,
-          systolic: last.systolic,
-          diastolic: last.diastolic,
-        });
+      if (requestSeq !== healthRequestSeqRef.current || targetPeriod !== periodRef.current) {
+        return;
+      }
+      if (Array.isArray(vitals)) {
+        if (vitals.length > 0) {
+          const last = vitals[vitals.length - 1];
+          setLatestVital({
+            heartRate: last.heart_rate,
+            systolic: last.systolic,
+            diastolic: last.diastolic,
+          });
+        } else {
+          setLatestVital(null);
+        }
       }
       if (comparison) setComparisonData(comparison);
     });
-  };
+  }, [startTransition]);
+
+  const refreshDevices = useCallback(async () => {
+    const data = await fetchDevices(noDeviceInfoLabel);
+    setDevices(data);
+  }, [noDeviceInfoLabel]);
+
+  const refreshAllForCurrentPeriod = useCallback(async () => {
+    refreshHealthData(periodRef.current);
+    await refreshDevices();
+  }, [refreshDevices, refreshHealthData]);
 
   // Initial load — must be useEffect, NOT useState, to avoid calling startTransition during render
   useEffect(() => {
-    loadData("7d");
-    fetchDevices(t("noDeviceInfo")).then((d) => {
-      setDevices(d);
-      setDevicesLoaded(true);
+    let cancelled = false;
+    periodRef.current = "7d";
+    refreshHealthData("7d");
+    void fetchDevices(noDeviceInfoLabel).then((data) => {
+      if (!cancelled) setDevices(data);
     });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [noDeviceInfoLabel, refreshHealthData]);
+
+  useVitalsRealtimeRefresh({
+    enabled: true,
+    onRefresh: refreshAllForCurrentPeriod,
+  });
 
   const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
     if (newPeriod === "custom") return;
     setPeriod(newPeriod);
-    loadData(newPeriod);
+    periodRef.current = newPeriod;
+    refreshHealthData(newPeriod);
   };
 
   const latest = latestVital;
   const dates = comparisonData.map((d) => d.date);
   const hrValues = comparisonData.map((d) => d.values["heart_rate"] ?? 0);
-  const sysValues = comparisonData.map((d) => d.values["blood_pressure_systolic"] ?? 0);
-  const diaValues = comparisonData.map((d) => d.values["blood_pressure_diastolic"] ?? 0);
 
   return (
     <>

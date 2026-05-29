@@ -97,6 +97,14 @@ B7_HEALTH_SYNC_OUTCOMES = Counter(
     labelnames=("provider", "outcome"),
 )
 
+# Chat fanout is best-effort after the DB commit. This counter makes delivery
+# failures visible without adding per-user or per-conversation cardinality.
+B7_WS_FANOUT_FAILURES = Counter(
+    "b7_ws_fanout_failures_total",
+    "Best-effort chat websocket fanout failures by event and exception type.",
+    labelnames=("event", "exception_type"),
+)
+
 
 # ── Histograms ────────────────────────────────────────────────────────────
 
@@ -151,6 +159,16 @@ def record_health_sync_outcome(provider: str, outcome: str) -> None:
         B7_HEALTH_SYNC_OUTCOMES.labels(provider=provider, outcome=outcome).inc()
     except Exception:  # pragma: no cover
         logger.debug("Failed to record health sync outcome", exc_info=True)
+
+
+def record_ws_fanout_failure(event_name: str, exception_type: str) -> None:
+    try:
+        B7_WS_FANOUT_FAILURES.labels(
+            event=event_name,
+            exception_type=exception_type,
+        ).inc()
+    except Exception:  # pragma: no cover
+        logger.debug("Failed to record websocket fanout metric", exc_info=True)
 
 
 @contextmanager

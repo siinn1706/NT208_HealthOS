@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from .device_scope import is_device_path, is_pending_stub_path
+from .device_scope import is_allowed_bff_route_drift, is_pending_stub_path
 from .route_extractor import extract_routes
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -68,6 +68,7 @@ def test_bff_route_mapping() -> None:
     errors: list[str] = []
     null_paths: list[str] = []
     stub_paths: list[str] = []
+    allowed_drift_paths: list[str] = []
 
     for site in call_sites:
         core_path = site["corePath"]
@@ -77,15 +78,18 @@ def test_bff_route_mapping() -> None:
             )
             continue
 
-        # Skip device-scope paths (frozen).
-        if is_device_path(core_path):
-            continue
-
         # Known pending stubs — Core not yet implemented; warn, don't fail.
         if is_pending_stub_path(core_path):
             stub_paths.append(
                 f"{site['file']}:{site['line']} [{site['callPattern']}] "
                 f"calls pending stub `{core_path}` (not yet in Core)"
+            )
+            continue
+
+        if is_allowed_bff_route_drift(core_path):
+            allowed_drift_paths.append(
+                f"{site['file']}:{site['line']} [{site['callPattern']}] "
+                f"calls exact allowlisted route drift `{core_path}`"
             )
             continue
 
@@ -103,6 +107,12 @@ def test_bff_route_mapping() -> None:
             + "\n".join(f"  {e}" for e in stub_paths)
             + "\n  → Remove from PENDING_STUB_BFF_PATHS once Core endpoint is implemented."
         )
+    if allowed_drift_paths:
+        print(
+            f"\n[WARN] {len(allowed_drift_paths)} BFF route(s) use exact drift allowlist entries:\n"
+            + "\n".join(f"  {e}" for e in allowed_drift_paths)
+            + "\n  → Remove by 2026-06-15 after Core contract entries land."
+        )
     if null_paths:
         messages.append(
             f"{len(null_paths)} unresolvable BFF Core call site(s) (extractor errors):\n"
@@ -116,3 +126,17 @@ def test_bff_route_mapping() -> None:
 
     if messages:
         pytest.fail("\n\n".join(messages))
+
+
+def test_device_wearable_sync_paths_are_not_prefix_skipped() -> None:
+    """A new route under these namespaces must still be declared explicitly."""
+    contract_paths = {
+        "/v1/devices",
+        "/v1/devices/{device_id}",
+        "/v1/wearables/google/connect",
+        "/v1/sync",
+    }
+
+    assert not _path_matches_contract("/v1/devices/{device_id}/unknown", contract_paths)
+    assert not _path_matches_contract("/v1/wearables/google/unknown", contract_paths)
+    assert not _path_matches_contract("/v1/sync/unknown", contract_paths)

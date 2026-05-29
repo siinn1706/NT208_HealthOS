@@ -27,6 +27,55 @@ describe("parseAllowedOrigins", () => {
   });
 });
 
+describe("assertFrontendEnvConfig", () => {
+  beforeEach(() => vi.resetModules());
+
+  afterEach(() => {
+    delete process.env.APP_ENV;
+    delete process.env.NEXT_PUBLIC_APP_ENV;
+    delete process.env.BFF_TRUSTED_ORIGINS;
+    delete process.env.BFF_CSRF_GUARD_MODE;
+    delete process.env.DEV_BYPASS_ENABLED;
+    delete process.env.DEV_BYPASS_CREDENTIALS;
+    process.env.NODE_ENV = "test";
+  });
+
+  it("fails protected env when trusted origins are empty", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.BFF_TRUSTED_ORIGINS = "";
+    const { assertFrontendEnvConfig } = await import("@/lib/env");
+
+    expect(() => assertFrontendEnvConfig()).toThrow(/BFF_TRUSTED_ORIGINS/);
+  });
+
+  it("fails protected env when trusted origins are malformed", async () => {
+    process.env.NEXT_PUBLIC_APP_ENV = "staging";
+    process.env.BFF_TRUSTED_ORIGINS = "not-a-url";
+    const { assertFrontendEnvConfig } = await import("@/lib/env");
+
+    expect(() => assertFrontendEnvConfig()).toThrow(/valid absolute BFF_TRUSTED_ORIGINS/);
+  });
+
+  it("rejects dev bypass config in protected envs", async () => {
+    process.env.APP_ENV = "staging";
+    process.env.BFF_TRUSTED_ORIGINS = "https://staging.healthos.example";
+    process.env.DEV_BYPASS_ENABLED = "true";
+    process.env.DEV_BYPASS_CREDENTIALS = "admin:admin";
+    const { assertFrontendEnvConfig } = await import("@/lib/env");
+
+    expect(() => assertFrontendEnvConfig()).toThrow(/DEV_BYPASS/);
+  });
+
+  it("rejects CSRF dry-run config in protected envs", async () => {
+    process.env.APP_ENV = "staging";
+    process.env.BFF_TRUSTED_ORIGINS = "https://staging.healthos.example";
+    process.env.BFF_CSRF_GUARD_MODE = "dry-run";
+    const { assertFrontendEnvConfig } = await import("@/lib/env");
+
+    expect(() => assertFrontendEnvConfig()).toThrow(/BFF_CSRF_GUARD_MODE/);
+  });
+});
+
 describe("originMatches", () => {
   it("returns true for an explicit allow-list hit in production", async () => {
     const { originMatches } = await import("@/lib/bff-origin-guard");
@@ -147,6 +196,21 @@ describe("assertSameOrigin — production enforcement", () => {
     expect(result).not.toBeNull();
     expect(result!.status).toBe(403);
   });
+
+  it("rejects in protected env even if CSRF dry-run is configured", async () => {
+    process.env.BFF_TRUSTED_ORIGINS = "https://app.example";
+    process.env.BFF_CSRF_GUARD_MODE = "dry-run";
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { assertSameOrigin } = await import("@/lib/bff-origin-guard");
+    const req = makeReq("POST", "/api/v1/auth", { Origin: "https://evil.attacker.com" });
+    const result = assertSameOrigin(req);
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe(403);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const logArg = JSON.parse(warnSpy.mock.calls[0][0] as string) as Record<string, unknown>;
+    expect(logArg.event).toBe("csrf.guard.rejected");
+    warnSpy.mockRestore();
+  });
 });
 
 describe("assertSameOrigin — development", () => {
@@ -172,8 +236,8 @@ describe("assertSameOrigin — development", () => {
 describe("assertSameOrigin — dry-run mode", () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.NODE_ENV = "production";
-    process.env.BFF_TRUSTED_ORIGINS = "https://app.healthos.example";
+    process.env.NODE_ENV = "development";
+    process.env.BFF_TRUSTED_ORIGINS = "https://dev.healthos.example";
     process.env.BFF_CSRF_GUARD_MODE = "dry-run";
   });
 

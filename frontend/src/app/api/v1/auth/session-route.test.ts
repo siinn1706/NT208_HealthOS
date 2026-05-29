@@ -33,6 +33,79 @@ describe("/api/v1/auth/session route", () => {
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     process.env.CORE_API_URL = "http://core.example";
+    process.env.NODE_ENV = "test";
+    delete process.env.NEXT_PUBLIC_APP_ENV;
+    delete process.env.APP_ENV;
+    delete process.env.BFF_TRUSTED_ORIGINS;
+    delete process.env.DEV_BYPASS_ENABLED;
+    delete process.env.DEV_BYPASS_CREDENTIALS;
+  });
+
+  it("does not use dev bypass unless explicitly enabled", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.DEV_BYPASS_CREDENTIALS = "admin:admin";
+    cookiesMock.mockResolvedValue({ get: () => undefined });
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials." } }, 401),
+    );
+
+    const { POST } = await import("@/app/api/v1/auth/route");
+    const request = new NextRequest("http://localhost/api/v1/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Origin": "http://localhost" },
+      body: JSON.stringify({ identifier: "admin", password: "admin" }),
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://core.example/v1/auth/login",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("allows dev bypass only in unprotected env with explicit flag", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.DEV_BYPASS_ENABLED = "true";
+    process.env.DEV_BYPASS_CREDENTIALS = "admin:admin";
+    cookiesMock.mockResolvedValue({ get: () => undefined });
+
+    const { POST } = await import("@/app/api/v1/auth/route");
+    const request = new NextRequest("http://localhost/api/v1/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Origin": "http://localhost" },
+      body: JSON.stringify({ identifier: "admin", password: "admin" }),
+    });
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.email).toBe("admin@healthos.local");
+    expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBe("DEV_BYPASS:admin@healthos.local");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not use dev bypass in staging even when configured", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.NEXT_PUBLIC_APP_ENV = "staging";
+    process.env.BFF_TRUSTED_ORIGINS = "http://localhost";
+    process.env.DEV_BYPASS_ENABLED = "true";
+    process.env.DEV_BYPASS_CREDENTIALS = "admin:admin";
+    cookiesMock.mockResolvedValue({ get: () => undefined });
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials." } }, 401),
+    );
+
+    const { POST } = await import("@/app/api/v1/auth/route");
+    const request = new NextRequest("http://localhost/api/v1/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Origin": "http://localhost" },
+      body: JSON.stringify({ identifier: "admin", password: "admin" }),
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("stores access and refresh cookies on successful password login", async () => {

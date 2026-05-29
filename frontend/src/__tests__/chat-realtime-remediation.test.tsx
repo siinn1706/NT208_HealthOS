@@ -1,19 +1,108 @@
 import fs from "node:fs";
 import path from "node:path";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { MessageList } from "@/components/dashboard/chat/MessageList";
 import {
   CHAT_UNREAD_REFRESH_EVENT,
   useMessages,
   useConversations,
 } from "@/hooks/useChat";
 import { useUnreadConversations } from "@/components/dashboard/shell/use-unread-conversations";
+import type { Message } from "@/types/api";
+
+const virtuosoHarness = vi.hoisted(() => ({
+  forceNotAtBottomOnRender: false,
+  scrollToIndex: vi.fn(),
+}));
 
 const bffFetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", () => ({
   bffFetch: bffFetchMock,
+}));
+
+interface MockVirtuosoHandle {
+  scrollToIndex: (args: unknown) => void;
+}
+
+interface MockVirtuosoProps {
+  scrollerRef?: (el: HTMLElement | Window | null) => void;
+  components?: {
+    Footer?: ComponentType;
+    List?: ComponentType<ComponentPropsWithoutRef<"div">>;
+  };
+  totalCount?: number;
+  firstItemIndex?: number;
+  itemContent?: (index: number) => ReactNode;
+  atBottomStateChange?: (atBottom: boolean) => void;
+}
+
+vi.mock("react-virtuoso", async () => {
+  const React = await import("react");
+
+  const MockVirtuoso = React.forwardRef<MockVirtuosoHandle, MockVirtuosoProps>(
+    function MockVirtuoso(props, ref) {
+      const scroller = React.useRef<HTMLDivElement>(null);
+
+      React.useImperativeHandle(ref, () => ({
+        scrollToIndex: virtuosoHarness.scrollToIndex,
+      }));
+
+      React.useLayoutEffect(() => {
+        const el = scroller.current;
+        if (!el) return;
+        Object.defineProperty(el, "scrollHeight", { configurable: true, value: 1000 });
+        Object.defineProperty(el, "clientHeight", { configurable: true, value: 300 });
+        props.scrollerRef?.(el);
+        if (virtuosoHarness.forceNotAtBottomOnRender) {
+          props.atBottomStateChange?.(false);
+        }
+      });
+
+      const List = props.components?.List ?? "div";
+      const Footer = props.components?.Footer;
+      const firstItemIndex = props.firstItemIndex ?? 0;
+      const items = Array.from({ length: props.totalCount ?? 0 }, (_, offset) =>
+        React.createElement(
+          React.Fragment,
+          { key: firstItemIndex + offset },
+          props.itemContent?.(firstItemIndex + offset),
+        ),
+      );
+
+      return React.createElement(
+        "div",
+        { ref: scroller, "data-testid": "message-list-scroller" },
+        React.createElement(List, null, items),
+        Footer ? React.createElement(Footer) : null,
+      );
+    },
+  );
+
+  return { Virtuoso: MockVirtuoso };
+});
+
+vi.mock("@/components/dashboard/chat/MessageBubble", () => ({
+  MessageBubble: ({
+    message,
+    isAi,
+    showTime,
+  }: {
+    message: Message;
+    isAi: boolean;
+    showTime?: boolean;
+  }) => (
+    <div
+      data-testid={`message-${message.id}`}
+      data-is-ai={String(isAi)}
+      data-show-time={String(showTime)}
+    >
+      {message.content}
+    </div>
+  ),
 }));
 
 const conversation = {
@@ -63,9 +152,106 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   bffFetchMock.mockReset();
+  virtuosoHarness.forceNotAtBottomOnRender = false;
+  virtuosoHarness.scrollToIndex.mockReset();
 });
 
+function message(overrides: Partial<Message>): Message {
+  return {
+    id: "msg-1",
+    conversation_id: "conv-1",
+    sender_id: "user-1",
+    content: "hello",
+    type: "text",
+    status: "sent",
+    reactions: [],
+    is_edited: false,
+    is_recalled: false,
+    is_pinned: false,
+    created_at: "2026-05-28T00:00:00Z",
+    ...overrides,
+  };
+}
+
+function renderMessageList(props: { messages: Message[]; isTyping: boolean }) {
+  return (
+    <MessageList
+      conversationId="conv-1"
+      messages={props.messages}
+      currentUserId="user-1"
+      participantNameById={{ "user-1": "One" }}
+      isTyping={props.isTyping}
+      onReply={vi.fn()}
+      onEdit={vi.fn()}
+      onRecall={vi.fn()}
+      onDelete={vi.fn()}
+      onPin={vi.fn()}
+      onReact={vi.fn()}
+    />
+  );
+}
+
 describe("chat realtime remediation", () => {
+  it("keeps the typing footer pinned when it expands below the last message", async () => {
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const scrollTo = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: scrollTo,
+    });
+
+    try {
+      const messages = [message({ id: "self-1", sender_id: "user-1", content: "Can you help?" })];
+      const { rerender } = render(renderMessageList({ messages, isTyping: false }));
+
+      virtuosoHarness.forceNotAtBottomOnRender = true;
+      rerender(renderMessageList({ messages, isTyping: true }));
+
+      await waitFor(() => {
+        expect(scrollTo).toHaveBeenCalledWith(
+          expect.objectContaining({ top: 1000, behavior: "smooth" }),
+        );
+      });
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+        configurable: true,
+        value: originalScrollTo,
+      });
+    }
+  });
+
+  it("keeps the AI metadata row visible for grouped assistant replies", () => {
+    const messages = [
+      message({
+        id: "ai-1",
+        sender_id: "bot-1",
+        sender_kind: "ai",
+        content: "first",
+        created_at: "2026-05-28T00:00:00Z",
+      }),
+      message({
+        id: "ai-2",
+        sender_id: "bot-1",
+        sender_kind: "ai",
+        content: "middle",
+        created_at: "2026-05-28T00:01:00Z",
+      }),
+      message({
+        id: "ai-3",
+        sender_id: "bot-1",
+        sender_kind: "ai",
+        content: "last",
+        created_at: "2026-05-28T00:02:00Z",
+      }),
+    ];
+
+    render(renderMessageList({ messages, isTyping: false }));
+
+    const groupedAiMessage = screen.getByTestId("message-ai-2");
+    expect(groupedAiMessage).toHaveAttribute("data-is-ai", "true");
+    expect(groupedAiMessage).toHaveAttribute("data-show-time", "true");
+  });
+
   it("marks a conversation read through the BFF and invalidates unread badges", async () => {
     mockConversationLoad();
     const refresh = vi.fn();

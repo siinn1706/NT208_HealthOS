@@ -10,9 +10,10 @@ import {
   Crown, Brain, BarChart2,
 } from "lucide-react";
 import { useHealthAlerts } from "@/hooks/useHealthAlerts";
+import { fetchTrendAnalysisBatch } from "@/lib/reports-trends-client";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import type { AnomalyPoint, TrendAnalysisBatch } from "@/types/api";
+import type { AnomalyPoint } from "@/types/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,20 +47,10 @@ async function fetchAllAnomalies(): Promise<MetricAnomalyData[]> {
       metricLabel: m.label,
       unit: m.unit,
       anomalies: [],
-    }));
+  }));
 
   try {
-    const params = new URLSearchParams({
-      metrics: ALL_METRICS.map((m) => m.key).join(","),
-      period: "30d",
-    });
-    const res = await fetch(`/api/v1/reports/trends/batch?${params.toString()}`, {
-      credentials: "include",
-    });
-    if (!res.ok) return emptyResults();
-
-    const json = await res.json();
-    const batch = json?.data as TrendAnalysisBatch | undefined;
+    const batch = await fetchTrendAnalysisBatch(ALL_METRICS.map((m) => m.key), "30d");
     return ALL_METRICS.map((m) => {
       const data = batch?.[m.key];
       // Always use static Vietnamese label, not the API i18n key.

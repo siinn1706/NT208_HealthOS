@@ -101,7 +101,24 @@ async def test_batch_report_trends_returns_metric_map(
     )
 
     assert res.status_code == 200
-    assert list(res.json()["data"]) == ["heart_rate", "steps"]
+    data = res.json()["data"]
+    assert list(data) == ["heart_rate", "steps"]
+    assert data["heart_rate"]["metric"] == "heart_rate"
+    assert data["steps"]["metric"] == "steps"
+    assert {
+        "metric",
+        "metric_label",
+        "unit",
+        "period",
+        "data_points",
+        "trend_line",
+        "prediction",
+        "anomalies",
+        "trend",
+        "change_percent",
+        "ai_summary",
+        "ai_summary_params",
+    }.issubset(data["heart_rate"])
 
 
 @pytest.mark.asyncio

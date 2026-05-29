@@ -358,7 +358,7 @@ export const MessageBubble = memo(function MessageBubble({
               ) : (
                 <span className="text-[10px] text-muted-foreground/70">{timeStr}</span>
               )}
-              {message.is_edited && !message.is_recalled && (
+              {message.is_edited && !message.is_recalled && !isAi && (
                 <span className="text-[10px] text-muted-foreground/70 italic">({t("edited")})</span>
               )}
               {isOwn && !message.is_recalled && <MessageStatus status={message.status} t={t} />}
