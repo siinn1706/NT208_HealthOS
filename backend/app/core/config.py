@@ -161,6 +161,18 @@ class Settings(BaseSettings):
     # on the dashboard and burning quota / 429s from Google.
     wearable_sync_interval_minutes: int = 15
 
+    # ── Open Wearables (self-hosted unified wearable aggregator) ──────────
+    # The single integration that fans out to Garmin / Oura / Whoop / Fitbit /
+    # Apple / Google / Samsung etc. We run our own Open Wearables instance
+    # (docker compose) and talk to it server-to-server with a developer API
+    # key. Empty base URL disables the connector (endpoints 503).
+    #   - base URL of our self-hosted instance, e.g. http://open-wearables:8000
+    #   - API key minted in the Open Wearables developer portal
+    #   - Svix endpoint secret for verifying inbound outgoing-webhook deliveries
+    open_wearables_base_url: str = ""
+    open_wearables_api_key: str = ""
+    open_wearables_webhook_secret: str = ""
+
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8")
 
     def resolved_runtime_env(self) -> str:
