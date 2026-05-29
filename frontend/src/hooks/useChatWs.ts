@@ -76,6 +76,7 @@ export function useChatWs({
   const tokenRef = useRef<string | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectGenerationRef = useRef(0);
   const intentionalCloseRef = useRef(false);
   const onEventRef = useRef(onEvent);
   const onReconnectRef = useRef(onReconnect);
@@ -110,12 +111,19 @@ export function useChatWs({
 
   const connect = useCallback(async () => {
     if (!enabled) return;
+    const generation = ++connectGenerationRef.current;
     intentionalCloseRef.current = false;
 
     // Always mint a fresh short-lived WS ticket for each connection attempt.
-    tokenRef.current = await fetchToken();
+    const token = await fetchToken();
+    if (generation !== connectGenerationRef.current || intentionalCloseRef.current) {
+      return;
+    }
+
+    tokenRef.current = token;
     if (!tokenRef.current) {
       setStatus("error");
+      setIsReconnecting(false);
       return;
     }
 
@@ -129,11 +137,13 @@ export function useChatWs({
       ws = new WebSocket(wsUrl);
     } catch {
       setStatus("error");
+      setIsReconnecting(false);
       return;
     }
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (generation !== connectGenerationRef.current) return;
       // Snapshot BEFORE we reset the counter so we can tell whether this
       // open is a fresh subscribe or a recovery from a transient drop.
       const wasReconnect = reconnectAttemptsRef.current > 0;
@@ -161,6 +171,7 @@ export function useChatWs({
     };
 
     ws.onmessage = (evt) => {
+      if (generation !== connectGenerationRef.current) return;
       try {
         const frame = JSON.parse(evt.data as string) as WsFrame;
 
@@ -177,10 +188,12 @@ export function useChatWs({
     };
 
     ws.onerror = () => {
+      if (generation !== connectGenerationRef.current) return;
       setStatus("error");
     };
 
     ws.onclose = (evt) => {
+      if (generation !== connectGenerationRef.current) return;
       wsRef.current = null;
       setStatus("disconnected");
 
@@ -225,6 +238,7 @@ export function useChatWs({
   );
 
   const disconnect = useCallback(() => {
+    connectGenerationRef.current += 1;
     intentionalCloseRef.current = true;
     clearReconnectTimer();
     wsRef.current?.close();
@@ -248,10 +262,13 @@ export function useChatWs({
       connect();
     }
     return () => {
+      connectGenerationRef.current += 1;
       clearReconnectTimer();
       intentionalCloseRef.current = true;
       wsRef.current?.close();
       wsRef.current = null;
+      setStatus("disconnected");
+      setIsReconnecting(false);
     };
   }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */

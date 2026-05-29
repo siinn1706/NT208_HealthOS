@@ -108,10 +108,9 @@ export function ChatWindow({
   const messageListRef = useRef<MessageListHandle>(null);
 
   const convId = conversation.id;
-  // AI conversations now flow through the same WS pipeline as human chat —
-  // the BE orchestrator persists + broadcasts the bot's reply, including
-  // streaming chunks (ai:* / chat.message.ai_* events).
-  const wsEnabled = true;
+  // Direct/group chats need the per-conversation socket. AI sends through the
+  // SSE stream endpoint, so a flaky WS should not show a reconnect banner there.
+  const usesConversationSocket = conversation.type !== "ai";
 
   const handleWsEvent = useCallback((frame: WsFrame) => {
     const payload = frame.payload as Record<string, unknown>;
@@ -255,7 +254,7 @@ export function ChatWindow({
   } = useChatConvWs({
     conversationId: convId,
     onEvent: handleWsEvent,
-    enabled: wsEnabled,
+    enabled: usesConversationSocket,
     onReconnect: refetchActiveConversation,
   });
 
@@ -594,12 +593,12 @@ export function ChatWindow({
           onInfoOpen={() => setShowInfo(true)}
         />
 
-        {wsEnabled && (
+        {(!isOnline || sessionExpired || (usesConversationSocket && isReconnecting)) && (
           <ConnectionStatusBanner
             isOnline={isOnline}
-            isReconnecting={isReconnecting}
+            isReconnecting={usesConversationSocket && isReconnecting}
             sessionExpired={sessionExpired}
-            onReconnect={reconnectNow}
+            onReconnect={usesConversationSocket ? reconnectNow : undefined}
           />
         )}
 

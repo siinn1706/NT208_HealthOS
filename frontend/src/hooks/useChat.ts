@@ -109,6 +109,10 @@ function adaptMessage(m: any): Message {
         : senderId === "system"
           ? "system"
           : "user";
+  const aiMetadata =
+    m.ai_metadata && typeof m.ai_metadata === "object" && !Array.isArray(m.ai_metadata)
+      ? (m.ai_metadata as Message["ai_metadata"])
+      : null;
   return {
     id: String(m.id),
     conversation_id: String(m.conversation_id),
@@ -132,6 +136,7 @@ function adaptMessage(m: any): Message {
         }
       : undefined,
     reactions: adaptReactions(m.reactions ?? []),
+    ai_metadata: aiMetadata,
     is_edited: Boolean(m.edited_at || m.is_edited),
     is_recalled: Boolean(m.is_recalled),
     is_pinned: Boolean(m.is_pinned),

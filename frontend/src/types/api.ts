@@ -520,6 +520,30 @@ export interface MessageAttachment {
   mime_type: string;
 }
 
+export interface AiMessageSourceMetadata {
+  id?: string | null;
+  title?: string | null;
+  organization?: string | null;
+  url?: string | null;
+  score?: number | null;
+}
+
+export interface AiMessageMetadata {
+  model?: string | null;
+  prompt_tokens?: number | null;
+  completion_tokens?: number | null;
+  total_tokens?: number | null;
+  latency_ms?: number | null;
+  finish_reason?: string | null;
+  safety_blocked?: boolean;
+  streamed?: boolean;
+  rag_context_present?: boolean;
+  rag_sources_count?: number;
+  rag_limited?: boolean;
+  rag_reason?: string | null;
+  rag_sources?: AiMessageSourceMetadata[];
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -539,6 +563,7 @@ export interface Message {
   reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type" | "sender_display_name">;
   reactions: MessageReaction[];
   attachments?: MessageAttachment[] | null;
+  ai_metadata?: AiMessageMetadata | null;
   is_edited: boolean;
   is_recalled: boolean;
   is_pinned: boolean;

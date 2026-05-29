@@ -30,6 +30,8 @@ def _chunk(
 
 def test_is_health_related_query_excludes_emergency_and_non_health():
     assert medical_rag.is_health_related_query("How can I sleep better?") is True
+    assert medical_rag.is_health_related_query("Cân nặng này có ổn không?") is True
+    assert medical_rag.is_health_related_query("BMI 17.4 có bị thiếu cân không?") is True
     assert medical_rag.is_health_related_query("What is the capital of France?") is False
     assert medical_rag.is_health_related_query("I have crushing chest pain") is False
 

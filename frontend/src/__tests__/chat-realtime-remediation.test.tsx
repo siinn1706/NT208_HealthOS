@@ -359,6 +359,9 @@ describe("chat realtime remediation", () => {
     expect(chatWindow).toContain('message.sender_kind === "ai"');
     expect(chatWindow).toContain("message.content.trim().length === 0");
     expect(chatWindow).toContain("messages={visibleMessages}");
+    expect(chatWindow).toContain('const usesConversationSocket = conversation.type !== "ai";');
+    expect(chatWindow).toContain("enabled: usesConversationSocket");
+    expect(chatWindow).toContain("isReconnecting={usesConversationSocket && isReconnecting}");
   });
 
   it("updates conversation previews with the confirmed server id after send", async () => {
