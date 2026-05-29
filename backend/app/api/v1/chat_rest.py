@@ -80,6 +80,7 @@ async def create_direct_conversation(
         conv = await chat_svc.create_direct_conversation(db, current_user.id, body.target_user_id)
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
+    await db.commit()
     dto = await chat_svc._build_conversation_dto(db, conv, current_user.id)
 
     # Notify the target user in real time
@@ -152,6 +153,7 @@ async def accept_conversation(
         await chat_svc.accept_conversation(db, conversation_id, current_user.id)
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
 
 @router.post(
@@ -168,6 +170,7 @@ async def reject_conversation(
         await chat_svc.reject_conversation(db, conversation_id, current_user.id)
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
 
 @router.get(
@@ -220,6 +223,7 @@ async def send_message(
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
 
+    await db.commit()
     await _notify_conversation(
         conversation_id, "chat.message.sent", msg.model_dump(mode="json")
     )
@@ -247,6 +251,7 @@ async def edit_message(
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
 
+    await db.commit()
     await _notify_conversation(
         conversation_id, "chat.message.edited", msg.model_dump(mode="json")
     )
@@ -274,6 +279,7 @@ async def recall_message(
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
 
+    await db.commit()
     await _notify_conversation(
         conversation_id, "chat.message.recalled", msg.model_dump(mode="json")
     )
@@ -299,6 +305,7 @@ async def react_to_message(
     except ValueError as exc:
         raise _err(403, "CHAT_FORBIDDEN", str(exc))
 
+    await db.commit()
     await _notify_conversation(
         conversation_id, "chat.message.reacted", msg.model_dump(mode="json")
     )
@@ -316,9 +323,13 @@ async def mark_read(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    await chat_svc.mark_conversation_read(
-        db, conversation_id, current_user.id, body.last_read_message_id
-    )
+    try:
+        await chat_svc.mark_conversation_read(
+            db, conversation_id, current_user.id, body.last_read_message_id
+        )
+    except ValueError as exc:
+        raise _err(403, "CHAT_FORBIDDEN", str(exc))
+    await db.commit()
     await _notify_conversation(
         conversation_id,
         "chat.message.read",
@@ -362,6 +373,7 @@ async def pin_message(
         await chat_svc.pin_message(db, message_id, conversation_id, current_user.id)
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
 
 @router.delete(
@@ -379,6 +391,7 @@ async def unpin_message(
         await chat_svc.unpin_message(db, message_id, conversation_id, current_user.id)
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
 
 @router.patch(
@@ -403,6 +416,7 @@ async def update_conversation_settings(
         )
     except ValueError as exc:
         raise _err(400, "CHAT_ERROR", str(exc))
+    await db.commit()
 
 
 # ── User lookup ───────────────────────────────────────────────────────────────
