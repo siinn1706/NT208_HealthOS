@@ -1096,7 +1096,12 @@ async def mark_conversation_read(
     """Set member.last_read_at to the timestamp of the specified message."""
     await assert_member(db, conversation_id, user_id)
     msg_result = await db.execute(
-        select(Message.created_at).where(Message.id == last_read_message_id)
+        select(Message.created_at).where(
+            and_(
+                Message.id == last_read_message_id,
+                Message.conversation_id == conversation_id,
+            )
+        )
     )
     msg_ts = msg_result.scalar_one_or_none()
     if not msg_ts:

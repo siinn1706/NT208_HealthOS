@@ -377,6 +377,15 @@ async def handle_ws_event(
         except (ValueError, AttributeError):
             return  # silently ignore malformed typing events
 
+        # Verify membership — a client may put any conversation_id in the
+        # payload, so the per-conversation WS URL does not guarantee it. Without
+        # this check a member of conv A could forge a typing indicator (and leak
+        # their user_id) into any conv B whose id they know.
+        try:
+            await chat_svc.assert_member(db, conv_id, user_id)
+        except ValueError:
+            return  # silently ignore typing for conversations the user isn't in
+
         # Broadcast to room but exclude sender
         typing_payload = {
             "user_id": user_id_str,
