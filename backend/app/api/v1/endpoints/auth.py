@@ -15,7 +15,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from redis.asyncio import Redis
-from redis.exceptions import ResponseError
 
 from app.adapters.database import get_db
 from app.adapters.email_client import send_otp_email
@@ -68,6 +67,7 @@ from app.services.otp import (
     get_latest_active_otp,
     mark_otp_consumed,
     otp_expiry_time,
+    redis_getdel_compat,
 )
 from app.services.auth import (
     UserBanned,
@@ -107,22 +107,6 @@ MFA_LOGIN_CHALLENGE_TTL_SECONDS = 5 * 60
 MFA_LOGIN_MAX_ATTEMPTS = 5
 BFF_EXCHANGE_NONCE_PREFIX = "auth:bff_exchange_nonce:"
 BFF_EXCHANGE_REQUIRED_ENVS = {"production", "staging"}
-
-
-async def _redis_getdel_compat(redis: Redis, key: str) -> bytes | str | None:
-    """GETDEL with backward compatibility for Redis versions < 6.2."""
-    try:
-        return await redis.getdel(key)
-    except ResponseError as exc:
-        error_text = str(exc).lower()
-        if "unknown command" not in error_text or "getdel" not in error_text:
-            raise
-        # Atomic fallback equivalent to GETDEL using Lua script.
-        return await redis.eval(
-            "local v=redis.call('GET',KEYS[1]); if v then redis.call('DEL',KEYS[1]); end; return v",
-            1,
-            key,
-        )
 
 
 def _mfa_login_challenge_key(challenge_id: str) -> str:
@@ -1041,7 +1025,7 @@ async def verify_email_otp(
 
     # Atomically consume the OTP — GETDEL prevents two concurrent requests from
     # both reading the valid hash before either deletes it (TOCTOU).
-    consumed = await _redis_getdel_compat(redis, key)
+    consumed = await redis_getdel_compat(redis, key)
     if consumed is None:
         # Another concurrent request consumed the OTP first
         raise ApiException(
@@ -1066,8 +1050,28 @@ async def verify_email_otp(
         # Store a "verified" marker so reset-password can proceed (TTL 5 min)
         verified_key = f"auth:otp:reset_verified:{body.email}"
         await redis.setex(verified_key, OTP_TTL_SECONDS, "1")
+        await db.commit()
         return OtpVerifiedResponse(
             data=OtpVerified(email=body.email, next_step="reset_password")
+        )
+
+    if body.purpose == "delete_account":
+        result = await db.execute(
+            select(User).where(func.lower(User.email) == body.email.lower())
+        )
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise NotFoundException(
+                resource="Email",
+                message="Không tìm thấy tài khoản với email này",
+                code="ACCOUNT_NOT_FOUND_EMAIL",
+            )
+        _raise_if_account_banned(user)
+        verified_key = f"auth:otp:delete_account_verified:{user.email}"
+        await redis.setex(verified_key, OTP_TTL_SECONDS, "1")
+        await db.commit()
+        return OtpVerifiedResponse(
+            data=OtpVerified(email=user.email, next_step="delete_account")
         )
 
     # ── login: verify OTP for existing user, return JWT ─────────────────────
@@ -1228,8 +1232,7 @@ async def reset_password(
     Updates the user\'s hashed password and returns a JWT access token.
     """
     verified_key = f"auth:otp:reset_verified:{body.email}"
-    consumed = await _redis_getdel_compat(redis, verified_key)
-    if consumed is None:
+    if await redis.get(verified_key) is None:
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_REQUIRED",
@@ -1260,6 +1263,14 @@ async def reset_password(
             code="ACCOUNT_NOT_FOUND_EMAIL",
         )
     _raise_if_account_banned(user)
+
+    consumed = await redis_getdel_compat(redis, verified_key)
+    if consumed is None:
+        raise ApiException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="OTP_REQUIRED",
+            message="Vui lòng xác thực OTP trước khi đặt lại mật khẩu.",
+        )
 
     user.hashed_password = hash_password(body.new_password)
     user.has_password = True

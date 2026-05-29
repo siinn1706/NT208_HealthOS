@@ -28,6 +28,11 @@ class _FakeBackgroundTasks:
         self.calls.append((func, args, kwargs))
 
 
+class _FailingBackgroundTasks:
+    def add_task(self, func, *args, **kwargs):
+        raise RuntimeError("background queue unavailable")
+
+
 @pytest.mark.asyncio
 async def test_schedule_user_last_seen_touch_enqueues_when_throttle_key_is_created():
     user_id = uuid.uuid4()
@@ -67,3 +72,15 @@ async def test_schedule_user_last_seen_touch_ignores_redis_failures():
     await auth_touch.schedule_user_last_seen_touch(user_id, redis, background_tasks)
 
     assert background_tasks.calls == []
+
+
+@pytest.mark.asyncio
+async def test_schedule_user_last_seen_touch_does_not_block_on_background_task_failure():
+    user_id = uuid.uuid4()
+    redis = _FakeRedis(result=True)
+
+    await auth_touch.schedule_user_last_seen_touch(user_id, redis, _FailingBackgroundTasks())
+
+    assert redis.calls == [
+        (f"{auth_touch.LAST_SEEN_TOUCH_KEY_PREFIX}{user_id}", "1", 60, True),
+    ]

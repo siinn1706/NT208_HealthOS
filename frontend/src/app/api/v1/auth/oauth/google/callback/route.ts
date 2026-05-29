@@ -1,6 +1,8 @@
 /**
  * Google OAuth callback handler
- * Validates state, exchanges code for token, gets user info, creates session
+ * Validates state/PKCE, checks the Google id_token nonce when decodable,
+ * gets user info, and creates a session. This does not perform full OIDC
+ * id_token signature/issuer/audience/expiry verification.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeGoogleCodeForToken, getGoogleUserInfo } from "@/lib/oauth/google";
@@ -25,6 +27,14 @@ function withGoogleCookieCleanup(response: NextResponse): NextResponse {
     "oauth_context_google",
   ]);
   return response;
+}
+
+function decodeUnverifiedGoogleIdTokenPayloadForNonce(idToken: string): { nonce?: unknown } {
+  const encodedPayload = idToken.split(".")[1];
+  if (!encodedPayload) {
+    throw new Error("Google id_token is missing a payload segment.");
+  }
+  return JSON.parse(Buffer.from(encodedPayload, "base64url").toString());
 }
 
 export async function GET(request: NextRequest) {
@@ -94,13 +104,13 @@ export async function GET(request: NextRequest) {
       redirectUri,
     });
 
-    // ─── Validate Nonce (OIDC replay protection) ──────────────────────────────
+    // The payload decode below is nonce-only and unverified. It is not full OIDC
+    // id_token validation; state, PKCE, userinfo, and the signed Core exchange
+    // remain the enforced controls in this route.
     const storedNonce = request.cookies.get("oauth_nonce_google")?.value;
     if (tokenResponse.id_token && storedNonce) {
       try {
-        const payload = JSON.parse(
-          Buffer.from(tokenResponse.id_token.split(".")[1], "base64url").toString()
-        );
+        const payload = decodeUnverifiedGoogleIdTokenPayloadForNonce(tokenResponse.id_token);
         if (payload.nonce !== storedNonce) {
           console.error("Google OAuth nonce mismatch");
           return withGoogleCookieCleanup(

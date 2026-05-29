@@ -1,6 +1,8 @@
 import { KpiDonutChart } from "@/components/charts/KpiDonutChart";
 import { getTranslations, getLocale } from "next-intl/server";
 import { getLocaleTag } from "@/lib/format-utils";
+import type { DashboardSummary } from "@/lib/dashboard-data";
+import type { DataSlice } from "@/types/data-slice";
 
 export interface KpiData {
   caloriesBurned: { current: number | null; target: number | null };
@@ -10,7 +12,7 @@ export interface KpiData {
 }
 
 interface KpiRingWidgetProps {
-  data: KpiData;
+  summary: DataSlice<DashboardSummary>;
 }
 
 const KPI_CONFIG = [
@@ -36,10 +38,33 @@ const KPI_CONFIG = [
   },
 ];
 
+const EMPTY_KPIS: KpiData = {
+  caloriesBurned: { current: null, target: null },
+  sleepScore: { current: null, target: null },
+  heartRate: { current: null, target: null },
+  steps: { current: null, target: null },
+};
+
+function summaryHasError(summary: DataSlice<DashboardSummary>): boolean {
+  return summary.status === "recoverable_error" || summary.status === "hard_error" || summary.status === "no_permission";
+}
+
 // Server Component — renders static KPI data as cards with client chart children
-export async function KpiRingWidget({ data }: KpiRingWidgetProps) {
+export async function KpiRingWidget({ summary }: KpiRingWidgetProps) {
   const t = await getTranslations("dashboard.kpi");
   const locale = await getLocale();
+  const data = summary.status === "success" && summary.data ? summary.data.kpis : EMPTY_KPIS;
+
+  if (summaryHasError(summary)) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-card p-4">
+        <p className="text-sm font-semibold text-foreground">{t("loadError")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {summary.error?.message ?? t("noData")}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

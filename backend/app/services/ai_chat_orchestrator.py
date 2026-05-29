@@ -136,16 +136,33 @@ class AiBusyError(RuntimeError):
 async def _fetch_user_with_profile(db: AsyncSession, user_id: uuid.UUID) -> User | None:
     result = await db.execute(
         select(User)
-        .options(selectinload(User.profile))
+        .options(selectinload(User.profile), selectinload(User.preferences))
         .where(User.id == user_id)
     )
     return result.scalar_one_or_none()
 
 
+def _normalize_locale(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    locale = value.strip().lower()
+    if locale.startswith("en"):
+        return "en"
+    if locale.startswith("vi"):
+        return "vi"
+    return None
+
+
 def _locale_from_user(user: User | None) -> str:
-    if user and user.profile and getattr(user.profile, "preferred_language", None):
-        return user.profile.preferred_language  # type: ignore[return-value]
-    return "vi"
+    if user is None:
+        return "vi"
+    profile = getattr(user, "profile", None)
+    profile_locale = _normalize_locale(getattr(profile, "preferred_language", None))
+    if profile_locale:
+        return profile_locale
+    preferences = getattr(user, "preferences", None)
+    pref_locale = _normalize_locale(getattr(preferences, "locale", None))
+    return pref_locale or "vi"
 
 
 def _latest_user_text_from_history(history: list[dict[str, str]]) -> str | None:
@@ -225,9 +242,7 @@ async def _build_chat_request_payload(
         db, conversation_id, user_id, bot_id, limit=settings.ai_context_max_messages
     )
     user = await _fetch_user_with_profile(db, user_id)
-    locale = "vi"
-    if user and user.profile and getattr(user.profile, "preferred_language", None):
-        locale = user.profile.preferred_language  # type: ignore[assignment]
+    locale = _locale_from_user(user)
 
     # Phase 3 will overwrite system_prompt + user_context with rich health data.
     try:

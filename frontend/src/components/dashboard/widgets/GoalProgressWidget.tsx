@@ -4,6 +4,8 @@ import { getLocale } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import { Target } from "lucide-react";
 import { getLocaleTag, getUnitLabel } from "@/lib/format-utils";
+import type { DashboardSummary } from "@/lib/dashboard-data";
+import type { DataSlice } from "@/types/data-slice";
 
 export interface Goal {
   id: string;
@@ -14,7 +16,7 @@ export interface Goal {
 }
 
 interface GoalProgressWidgetProps {
-  goals: Goal[];
+  summary: DataSlice<DashboardSummary>;
 }
 
 const GOAL_COLORS: Record<Goal["key"], string> = {
@@ -23,10 +25,15 @@ const GOAL_COLORS: Record<Goal["key"], string> = {
   calories: "#E3B79A",
 };
 
+function summaryHasError(summary: DataSlice<DashboardSummary>): boolean {
+  return summary.status === "recoverable_error" || summary.status === "hard_error" || summary.status === "no_permission";
+}
+
 // Server Component
-export async function GoalProgressWidget({ goals }: GoalProgressWidgetProps) {
+export async function GoalProgressWidget({ summary }: GoalProgressWidgetProps) {
   const t = await getTranslations("dashboard.goals");
   const locale = await getLocale();
+  const goals = summary.status === "success" && summary.data ? summary.data.goals : [];
 
   return (
     <div className="rounded-xl border border-border bg-card h-full">
@@ -36,10 +43,14 @@ export async function GoalProgressWidget({ goals }: GoalProgressWidgetProps) {
       </div>
 
       <div className="px-5 py-4 space-y-5">
-        {goals.length === 0 && (
+        {summaryHasError(summary) ? (
+          <p className="text-xs text-muted-foreground">
+            {summary.error?.message ?? t("loadError")}
+          </p>
+        ) : goals.length === 0 && (
           <p className="text-xs text-muted-foreground">{t("noInfo")}</p>
         )}
-        {goals.map((goal) => {
+        {!summaryHasError(summary) && goals.map((goal) => {
           const safeCurrent = goal.current ?? 0;
           const safeTarget = goal.target && goal.target > 0 ? goal.target : null;
           const pct = safeTarget ? Math.min(Math.round((safeCurrent / safeTarget) * 100), 100) : 0;

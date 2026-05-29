@@ -3,7 +3,7 @@
  *
  * Usage (in Client Component):
  *   import { bffFetch } from "@/lib/api-client";
- *   const data = await bffFetch("/api/v1/health-data?range=30d");
+ *   const data = await bffFetch("/api/v1/dashboard/summary");
  *
  * Rule: Client components call BFF (/api/v1/...), NOT Core BE directly.
  * Server components can call BFF routes directly via fetch or import handlers.
@@ -22,6 +22,31 @@ type BffFetchOptions = {
 
 /** Default client-side BFF request timeout in milliseconds. */
 const BFF_FETCH_TIMEOUT_MS = 30_000;
+
+async function readResponseBody(res: Response): Promise<unknown> {
+  if (res.status === 204 || res.status === 205) return undefined;
+
+  const text = await res.text();
+  if (!text.trim()) return undefined;
+
+  const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+  const looksJson = contentType.includes("application/json") || /^[\s\n\r]*[\[{]/.test(text);
+  if (!looksJson) return text;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function fallbackClientError(res: Response, body: unknown): { error: { code: string; message: string } } {
+  const message =
+    typeof body === "string" && body.trim()
+      ? body
+      : res.statusText || "Request failed.";
+  return { error: { code: "UNKNOWN", message } };
+}
 
 export async function bffFetch<T = unknown>(
   path: string,
@@ -96,8 +121,8 @@ export async function bffFetchClient(
       window.location.href = `/login?from=${from}`;
       return { error: { code: "SESSION_EXPIRED" } };
     }
-    const err = await res.json().catch(() => ({}));
-    return { error: err };
+    const body = await readResponseBody(res).catch(() => undefined);
+    return { error: body && typeof body === "object" ? body : fallbackClientError(res, body) };
   }
-  return { data: await res.json() };
+  return { data: await readResponseBody(res) };
 }

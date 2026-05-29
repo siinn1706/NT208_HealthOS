@@ -92,6 +92,24 @@ type ProxyOptions = {
 
 const JSON_BODY_LIMIT = 1_048_576;            // 1 MiB
 const MULTIPART_BODY_LIMIT = 10 * 1_048_576;  // 10 MiB — matches Core's upload cap
+const DASHBOARD_PERF_PROXY_PATH_PREFIXES = ["/v1/dashboard", "/v1/reports/trends"];
+
+function logCoreProxyDuration(
+  corePath: string,
+  method: string,
+  status: number,
+  attempt: "initial" | "retry",
+  startedAt: number,
+  requestId: string,
+): void {
+  if (process.env.BFF_DASHBOARD_PERF_LOG !== "true") return;
+  if (!DASHBOARD_PERF_PROXY_PATH_PREFIXES.some((prefix) => corePath.startsWith(prefix))) return;
+
+  const durationMs = Date.now() - startedAt;
+  console.info(
+    `bff_core_proxy_duration method=${method} path=${corePath} status=${status} attempt=${attempt} duration_ms=${durationMs} request_id=${requestId}`,
+  );
+}
 
 /**
  * Map an HTTP status code to a sane default error code when upstream did not
@@ -229,6 +247,17 @@ function buildCoreProxyResponse(status: number, responseData: unknown, requestId
   return response;
 }
 
+function jsonErrorResponse(
+  status: number,
+  code: string,
+  message: string,
+  requestId: string,
+): NextResponse {
+  const response = NextResponse.json({ error: { code, message } }, { status });
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
+}
+
 /**
  * Proxy a Next.js route handler request to the Core BE and return the response.
  *
@@ -287,17 +316,21 @@ export async function coreProxy(
     const contentLengthHeader = req.headers.get("content-length");
     const declaredLength = contentLengthHeader ? Number(contentLengthHeader) : NaN;
     if (Number.isFinite(declaredLength) && declaredLength > bodySizeLimit) {
-      return NextResponse.json(
-        { error: { code: "PAYLOAD_TOO_LARGE", message: "Upload exceeds maximum allowed size." } },
-        { status: 413 }
+      return jsonErrorResponse(
+        413,
+        "PAYLOAD_TOO_LARGE",
+        "Upload exceeds maximum allowed size.",
+        requestId,
       );
     }
     try {
       const buffer = await req.arrayBuffer();
       if (buffer.byteLength > bodySizeLimit) {
-        return NextResponse.json(
-          { error: { code: "PAYLOAD_TOO_LARGE", message: "Upload exceeds maximum allowed size." } },
-          { status: 413 }
+        return jsonErrorResponse(
+          413,
+          "PAYLOAD_TOO_LARGE",
+          "Upload exceeds maximum allowed size.",
+          requestId,
         );
       }
       bodyForFetch = buffer;
@@ -308,9 +341,11 @@ export async function coreProxy(
     try {
       const rawBody = await req.text();
       if (rawBody && new TextEncoder().encode(rawBody).length > bodySizeLimit) {
-        return NextResponse.json(
-          { error: { code: "PAYLOAD_TOO_LARGE", message: "Request body exceeds maximum allowed size." } },
-          { status: 413 }
+        return jsonErrorResponse(
+          413,
+          "PAYLOAD_TOO_LARGE",
+          "Request body exceeds maximum allowed size.",
+          requestId,
         );
       }
       bodyForFetch = rawBody || undefined;
@@ -323,7 +358,10 @@ export async function coreProxy(
     | { kind: "http"; status: number; data: unknown }
     | { kind: "transport"; status: number; code: string; message: string };
 
-  async function executeCoreRequest(authToken: string | null): Promise<ProxyAttemptResult> {
+  async function executeCoreRequest(
+    authToken: string | null,
+    attempt: "initial" | "retry",
+  ): Promise<ProxyAttemptResult> {
     const requestHeaders: Record<string, string> = { ...headers };
     if (authToken) {
       requestHeaders.Authorization = `Bearer ${authToken}`;
@@ -332,6 +370,7 @@ export async function coreProxy(
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30_000);
+    const startedAt = Date.now();
     try {
       const upstream = await fetch(url.toString(), {
         method,
@@ -340,27 +379,31 @@ export async function coreProxy(
         cache: "no-store",
         signal: controller.signal,
       });
-      clearTimeout(timeoutId);
+      const data = await upstream.json().catch(() => null);
+      logCoreProxyDuration(corePath, method, upstream.status, attempt, startedAt, requestId);
       return {
         kind: "http",
         status: upstream.status,
-        data: await upstream.json().catch(() => null),
+        data,
       };
     } catch (err) {
-      clearTimeout(timeoutId);
       const isTimeout = err instanceof Error && err.name === "AbortError";
+      const status = isTimeout ? 504 : 503;
+      logCoreProxyDuration(corePath, method, status, attempt, startedAt, requestId);
       return {
         kind: "transport",
-        status: isTimeout ? 504 : 503,
+        status,
         code: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
         message: isTimeout
           ? "Core service request timed out."
           : "Core service is temporarily unavailable.",
       };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
-  const firstAttempt = await executeCoreRequest(accessToken);
+  const firstAttempt = await executeCoreRequest(accessToken, "initial");
   if (firstAttempt.kind === "transport") {
     const resp = NextResponse.json(
       { error: { code: firstAttempt.code, message: firstAttempt.message } },
@@ -395,7 +438,7 @@ export async function coreProxy(
     return response;
   }
 
-  const retryAttempt = await executeCoreRequest(refreshed.auth.access_token);
+  const retryAttempt = await executeCoreRequest(refreshed.auth.access_token, "retry");
   if (retryAttempt.kind === "transport") {
     const response = buildCoreProxyResponse(retryAttempt.status, null, requestId);
     applyAuthCookies(response, refreshed.auth);
@@ -451,24 +494,9 @@ export async function coreFetchStream(
   const requestId = getOrCreateRequestId(req);
   const csrfReject = assertSameOrigin(req);
   if (csrfReject) return csrfReject;
-  const { accessToken } = await getAuthCookies();
+  const { accessToken, refreshToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
-  if (requireAuth && !accessToken) {
-    return new Response(
-      JSON.stringify({
-        error: { code: "AUTH_REQUIRED", message: "Authentication required." },
-      }),
-      { status: 401, headers: { "Content-Type": "application/json", [REQUEST_ID_HEADER]: requestId } },
-    );
-  }
-
   const method = options.method ?? req.method;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "text/event-stream",
-    [REQUEST_ID_HEADER]: requestId,
-  };
-  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
   const url = new URL(corePath, CORE_API_URL);
   req.nextUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));
@@ -478,31 +506,111 @@ export async function coreFetchStream(
     const limit = options.bodySizeLimit ?? JSON_BODY_LIMIT;
     try {
       const raw = await req.text();
-      if (raw.length > limit) {
-        return new Response(
-          JSON.stringify({
-            error: { code: "PAYLOAD_TOO_LARGE", message: "Request body too large." },
-          }),
-          { status: 413, headers: { "Content-Type": "application/json" } },
+      if (new TextEncoder().encode(raw).length > limit) {
+        return jsonErrorResponse(
+          413,
+          "PAYLOAD_TOO_LARGE",
+          "Request body too large.",
+          requestId,
         );
       }
-      body = raw;
+      body = raw || undefined;
     } catch {
       body = undefined;
     }
   }
 
-  // B7 review P1-2 — propagate the inbound AbortSignal so client cancellation
-  // (Stop-generation button → AbortController.abort()) tears down the
-  // upstream Core fetch immediately. Without this, BFF kept reading SSE
-  // chunks from Core (and Core kept paying the AI worker for tokens) long
-  // after the browser closed its connection.
-  // No timeout here — SSE connections are intentionally long-lived.
-  return fetch(url.toString(), {
-    method,
-    headers,
-    body,
-    cache: "no-store",
-    signal: req.signal,
+  const makeAuthRequiredResponse = (clearCookies: boolean): NextResponse => {
+    const response = jsonErrorResponse(
+      401,
+      "AUTH_REQUIRED",
+      clearCookies ? "Session expired. Please sign in again." : "Authentication required.",
+      requestId,
+    );
+    if (clearCookies) clearAuthCookies(response);
+    return response;
+  };
+
+  const makeStreamTransportErrorResponse = (auth?: RefreshResult): NextResponse => {
+    const response = jsonErrorResponse(
+      503,
+      "UPSTREAM_UNAVAILABLE",
+      "Core service is temporarily unavailable.",
+      requestId,
+    );
+    if (auth?.ok) applyAuthCookies(response, auth.auth);
+    return response;
+  };
+
+  const fetchStream = async (authToken: string | null): Promise<Response> => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      [REQUEST_ID_HEADER]: requestId,
+    };
+    if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+    // Propagate the inbound AbortSignal so client cancellation tears down the
+    // upstream Core fetch. No timeout here; SSE connections are long-lived.
+    const upstream = await fetch(url.toString(), {
+      method,
+      headers,
+      body,
+      cache: "no-store",
+      signal: req.signal,
+    });
+    const response = new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: upstream.headers,
+    });
+    response.headers.set(REQUEST_ID_HEADER, requestId);
+    return response;
+  };
+
+  let currentAccessToken = accessToken;
+  let refreshed: RefreshResult | null = null;
+
+  if (requireAuth && !currentAccessToken) {
+    if (!refreshToken) return makeAuthRequiredResponse(false);
+    refreshed = await refreshWithLock(refreshToken);
+    if (!refreshed.ok) return makeAuthRequiredResponse(true);
+    currentAccessToken = refreshed.auth.access_token;
+  }
+
+  const firstAttempt = await fetchStream(currentAccessToken).catch(() =>
+    makeStreamTransportErrorResponse(refreshed ?? undefined),
+  );
+  if (firstAttempt.status !== 401 || !requireAuth) {
+    if (refreshed?.ok) {
+      const response = new NextResponse(firstAttempt.body, {
+        status: firstAttempt.status,
+        statusText: firstAttempt.statusText,
+        headers: firstAttempt.headers,
+      });
+      response.headers.set(REQUEST_ID_HEADER, requestId);
+      applyAuthCookies(response, refreshed.auth);
+      return response;
+    }
+    return firstAttempt;
+  }
+
+  if (!refreshToken) return makeAuthRequiredResponse(true);
+
+  refreshed = refreshed ?? (await refreshWithLock(refreshToken));
+  if (!refreshed.ok) return makeAuthRequiredResponse(true);
+
+  const retryAttempt = await fetchStream(refreshed.auth.access_token).catch(() =>
+    makeStreamTransportErrorResponse(refreshed ?? undefined),
+  );
+  if (retryAttempt.status === 401) return makeAuthRequiredResponse(true);
+
+  const response = new NextResponse(retryAttempt.body, {
+    status: retryAttempt.status,
+    statusText: retryAttempt.statusText,
+    headers: retryAttempt.headers,
   });
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  applyAuthCookies(response, refreshed.auth);
+  return response;
 }

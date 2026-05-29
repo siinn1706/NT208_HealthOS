@@ -1,6 +1,7 @@
 const DEFAULT_COOKIE_NAME = "healthos.session";
-const DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const DEFAULT_COOKIE_MAX_AGE = 60 * 60; // Aligns with Core's default access token TTL.
 const DEFAULT_REFRESH_COOKIE_NAME = "healthos.refresh";
+const DEFAULT_REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 /**
  * httpOnly companion cookie carrying non-sensitive session metadata
@@ -48,6 +49,6 @@ export const REFRESH_COOKIE_NAME =
   process.env.REFRESH_COOKIE_NAME?.trim() || DEFAULT_REFRESH_COOKIE_NAME;
 
 export const REFRESH_COOKIE_MAX_AGE =
-  parsePositiveInt(process.env.REFRESH_COOKIE_MAX_AGE) ?? SESSION_COOKIE_MAX_AGE;
+  parsePositiveInt(process.env.REFRESH_COOKIE_MAX_AGE) ?? DEFAULT_REFRESH_COOKIE_MAX_AGE;
 
 export const REFRESH_COOKIE_SECURE = SESSION_COOKIE_SECURE;

@@ -56,26 +56,34 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getVitalsTimeseries(days),
     getUpcomingReminders(),
   ]);
+  const alerts = summary.status === "success" ? summary.data?.alerts ?? [] : [];
 
   // Detect time of day for greeting
   const hour = new Date().getHours();
   const greetingKey =
     hour < 12 ? "greeting" : hour < 18 ? "greetingAfternoon" : "greetingEvening";
+  const userName =
+    summary.status === "success" && summary.data?.userName
+      ? summary.data.userName
+      : "";
+  const greetingTitle = userName
+    ? `${t(greetingKey as Parameters<typeof t>[0])}, ${userName}`
+    : t(greetingKey as Parameters<typeof t>[0]);
 
   return (
     <>
       <PageHeader
-        title={`${t(greetingKey as Parameters<typeof t>[0])}, ${summary.userName}`}
+        title={greetingTitle}
         description={t("overview")}
       />
       <div className="max-w-[1400px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
       {/* ── Row 0: Alert Banner (full-width, conditional) ── */}
-      {summary.alerts.length > 0 && (
-        <AlertBannerWidget alerts={summary.alerts} />
+      {alerts.length > 0 && (
+        <AlertBannerWidget alerts={alerts} />
       )}
 
       {/* ── Row 1: KPI Rings ── */}
-      <KpiRingWidget data={summary.kpis} />
+      <KpiRingWidget summary={summary} />
 
       {/* ── Row 2: Quick Actions ── */}
       <QuickActionsWidget />
@@ -110,8 +118,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* Row 6: Goals + AI Insight + Exercise Suggestions */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3 items-stretch">
-        <GoalProgressWidget goals={summary.goals} />
-        <AiInsightWidget insight={summary.aiInsight} />
+        <GoalProgressWidget summary={summary} />
+        <AiInsightWidget summary={summary} />
         <ExerciseSuggestionsWidget />
       </div>
       </div>

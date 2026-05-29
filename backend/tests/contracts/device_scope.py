@@ -1,8 +1,4 @@
-"""Device-scope and public-emergency path constants shared across contract tests."""
-
-# Device endpoints are frozen this pass — excluded from drift assertions.
-# Detection by PATH-PREFIX, not tag strings (runtime uses TitleCase 'Devices').
-DEVICE_PATH_PREFIXES: tuple[str, ...] = ("/v1/devices", "/v1/wearables", "/v1/sync")
+"""Public-emergency and exact route-drift constants shared across contract tests."""
 
 # Explicitly unauthenticated endpoints (ER QR-scan flow).
 PUBLIC_EMERGENCY_PREFIX = "/v1/public/emergency"
@@ -19,10 +15,35 @@ CANONICAL_ERROR_CODES: frozenset[str] = frozenset(
 # Remove an entry once the Core endpoint is implemented and appears in the contract.
 PENDING_STUB_BFF_PATHS: frozenset[str] = frozenset()
 
-
-def is_device_path(path: str) -> bool:
-    return any(path.startswith(p) for p in DEVICE_PATH_PREFIXES)
-
+# Existing non-device route drift from admin/chat/subscription work. Exact paths
+# only; new undeclared BFF calls still fail this gate.
+# TODO(remove by 2026-06-15): replace with committed Core contract entries.
+EXACT_BFF_ROUTE_DRIFT_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "/v1/admin/overview",
+        "/v1/admin/subscription-plans",
+        "/v1/admin/subscription-plans/{param}",
+        "/v1/admin/users",
+        "/v1/admin/users/{param}",
+        "/v1/admin/users/{param}/audit",
+        "/v1/admin/users/{param}/ban",
+        "/v1/admin/users/{param}/subscription",
+        "/v1/admin/users/{param}/subscription/history",
+        "/v1/admin/users/{param}/unban",
+        "/v1/chat/conversations",
+        "/v1/chat/conversations/pending",
+        "/v1/chat/conversations/{param}/accept",
+        "/v1/chat/conversations/{param}/messages",
+        "/v1/chat/conversations/{param}/reject",
+        "/v1/chat/conversations/{param}/settings",
+        "/v1/chat/users/search",
+        "/v1/conversations/{param}/leave",
+        "/v1/conversations/{param}/members",
+        "/v1/conversations/{param}/members/{param}",
+        "/v1/conversations/{param}/members/{param}/role",
+        "/v1/conversations/{param}/transfer-owner",
+    }
+)
 
 def is_public_emergency_path(path: str) -> bool:
     return path.startswith(PUBLIC_EMERGENCY_PREFIX)
@@ -30,3 +51,7 @@ def is_public_emergency_path(path: str) -> bool:
 
 def is_pending_stub_path(path: str) -> bool:
     return path in PENDING_STUB_BFF_PATHS
+
+
+def is_allowed_bff_route_drift(path: str) -> bool:
+    return path in EXACT_BFF_ROUTE_DRIFT_ALLOWLIST

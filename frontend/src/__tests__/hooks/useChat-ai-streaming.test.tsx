@@ -32,6 +32,7 @@ beforeAll(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 
@@ -128,5 +129,37 @@ describe("useMessages — AI streaming reducers", () => {
     });
 
     expect(result.current.messages).toHaveLength(0);
+  });
+
+  it("sends the active locale with AI streaming requests", async () => {
+    const fetchMock = vi.fn(async () => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("event: done\ndata: {}\n\n"));
+          controller.close();
+        },
+      });
+      return { ok: true, body } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useMessages(CONV_ID, USER_ID, { locale: "vi" }),
+    );
+
+    await act(async () => {
+      await result.current.streamAiMessage(CONV_ID, "Mẹo để nhớ uống thuốc đều đặn");
+    });
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/conversations/${CONV_ID}/messages/stream`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      content: "Mẹo để nhớ uống thuốc đều đặn",
+      content_type: "text",
+      locale: "vi",
+    });
   });
 });

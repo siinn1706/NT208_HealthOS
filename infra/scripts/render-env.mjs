@@ -94,7 +94,7 @@ const TARGETS = {
           "NEXT_PUBLIC_ONBOARDING_DRAFT_SERVER",
         ],
       ],
-      ["Feature flags", ["ADMIN_SECURITY_FEED_ENABLED", "ADMIN_AUDIT_FEED_ENABLED", "DEV_BYPASS_CREDENTIALS"]],
+      ["Feature flags", ["ADMIN_SECURITY_FEED_ENABLED", "ADMIN_AUDIT_FEED_ENABLED", "DEV_BYPASS_ENABLED", "DEV_BYPASS_CREDENTIALS"]],
     ],
   },
   "ai-worker": {
@@ -226,8 +226,10 @@ const TARGET_ALIASES = {
 
 const SECRET_KEY_PATTERN = /(SECRET|PASSWORD|TOKEN|PRIVATE|FERNET|API_KEY|CLIENT_SECRET|ACCESS_KEY)/i;
 const PLACEHOLDER_PATTERN = /(change-me|replace-with|your-domain|example\.com|dev-secret|dev-bff-secret|dev-nextauth|healthos_dev_pass|minioadmin)/i;
+const PROTECTED_ENV_VALUES = new Set(["production", "prod", "staging"]);
 const BACKWARD_COMPATIBLE_DEFAULTS = {
   DB_DISABLE_POOL: "false",
+  DEV_BYPASS_ENABLED: "false",
 };
 
 export function applyEnvDefaults(env) {
@@ -317,8 +319,7 @@ export function validateEnv(env, targetNames, options = {}) {
 
   for (const key of requiredKeys) assertPublicKeyIsSafe(key);
 
-  const runtime = String(effectiveEnv.APP_ENV || effectiveEnv.NODE_ENV || "").trim().toLowerCase();
-  const requireProd = options.requireProdValidation || runtime === "production" || runtime === "staging";
+  const requireProd = options.requireProdValidation || isProtectedEnv(effectiveEnv);
   if (!requireProd) return;
 
   const prodRequired = [
@@ -335,6 +336,7 @@ export function validateEnv(env, targetNames, options = {}) {
     "METRICS_TOKEN",
     "NEXTAUTH_URL",
     "NEXTAUTH_SECRET",
+    "BFF_TRUSTED_ORIGINS",
     "POSTGRES_PASSWORD",
     "REDIS_PASSWORD",
     "MINIO_ROOT_USER",
@@ -362,6 +364,16 @@ export function validateEnv(env, targetNames, options = {}) {
   assertHttps(effectiveEnv, "EXPO_PUBLIC_CORE_API_URL");
   assertWss(effectiveEnv, "NEXT_PUBLIC_CORE_WS_URL");
   assertWss(effectiveEnv, "EXPO_PUBLIC_CORE_WS_URL");
+  assertTrustedOrigins(effectiveEnv.BFF_TRUSTED_ORIGINS);
+  assertCsrfGuardEnforcedInProtectedEnv(effectiveEnv);
+  assertNoDevBypassInProtectedEnv(effectiveEnv);
+  assertCookieTtlMatchesAccessToken(effectiveEnv);
+}
+
+function isProtectedEnv(env) {
+  return [env.APP_ENV, env.NEXT_PUBLIC_APP_ENV, env.NODE_ENV].some((value) =>
+    PROTECTED_ENV_VALUES.has(String(value ?? "").trim().toLowerCase()),
+  );
 }
 
 export function assertPublicKeyIsSafe(key) {
@@ -399,6 +411,58 @@ function assertNoLocalhost(env, key) {
 function assertNoWildcardOrigins(value) {
   if (String(value ?? "").includes("*")) {
     throw new Error("Production ALLOWED_ORIGINS must not contain wildcards");
+  }
+}
+
+function assertTrustedOrigins(value) {
+  const entries = String(value ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (entries.length === 0) {
+    throw new Error("Production BFF_TRUSTED_ORIGINS requires at least one browser origin");
+  }
+  for (const entry of entries) {
+    let parsed;
+    try {
+      parsed = new URL(entry);
+    } catch {
+      throw new Error(`Production BFF_TRUSTED_ORIGINS contains invalid origin: ${entry}`);
+    }
+    if (parsed.origin !== entry.replace(/\/$/, "")) {
+      throw new Error(`Production BFF_TRUSTED_ORIGINS must contain origins only: ${entry}`);
+    }
+    if (parsed.protocol !== "https:") {
+      throw new Error(`Production BFF_TRUSTED_ORIGINS must use https:// origins: ${entry}`);
+    }
+    if (/(localhost|127\.0\.0\.1|10\.0\.2\.2)/i.test(parsed.hostname)) {
+      throw new Error(`Production BFF_TRUSTED_ORIGINS must not point at localhost: ${entry}`);
+    }
+  }
+}
+
+function assertNoDevBypassInProtectedEnv(env) {
+  if (String(env.DEV_BYPASS_ENABLED ?? "").trim().toLowerCase() === "true") {
+    throw new Error("Production env must not enable DEV_BYPASS_ENABLED");
+  }
+  if (String(env.DEV_BYPASS_CREDENTIALS ?? "").trim()) {
+    throw new Error("Production env must not configure DEV_BYPASS_CREDENTIALS");
+  }
+}
+
+function assertCsrfGuardEnforcedInProtectedEnv(env) {
+  if (String(env.BFF_CSRF_GUARD_MODE ?? "").trim().toLowerCase() === "dry-run") {
+    throw new Error("Production env must set BFF_CSRF_GUARD_MODE=enforce");
+  }
+}
+
+function assertCookieTtlMatchesAccessToken(env) {
+  const accessMinutes = Number.parseInt(String(env.ACCESS_TOKEN_EXPIRE_MINUTES ?? ""), 10);
+  const cookieMaxAge = Number.parseInt(String(env.COOKIE_MAX_AGE ?? ""), 10);
+  if (!Number.isFinite(accessMinutes) || !Number.isFinite(cookieMaxAge)) return;
+  const accessSeconds = accessMinutes * 60;
+  if (cookieMaxAge > accessSeconds) {
+    throw new Error("Production COOKIE_MAX_AGE must not exceed ACCESS_TOKEN_EXPIRE_MINUTES");
   }
 }
 

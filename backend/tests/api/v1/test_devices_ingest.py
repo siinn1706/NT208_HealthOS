@@ -210,6 +210,76 @@ async def test_ingest_unknown_device_returns_404(authenticated_client):
     assert "NOT_FOUND" in str(detail)
 
 
+@pytest.mark.asyncio
+async def test_ingest_publish_count_includes_deleted_rows(monkeypatch, authenticated_user):
+    """The websocket refresh signal must fire for deletion-only HC ingests too."""
+    import json
+    from types import SimpleNamespace
+
+    from app.api.v1.endpoints import devices as devices_endpoint
+    from app.schemas.sync import HealthIngestResult
+    from app.services.idempotency import IdempotencyOutcome, IdempotencyResult
+
+    device_id = uuid.uuid4()
+    raw_body = json.dumps({"records": [], "deletions": [], "next_changes_tokens": {}}).encode()
+    publish_calls: list[tuple[uuid.UUID, str, int]] = []
+
+    class _Request:
+        headers = {
+            "Idempotency-Key": "count-test",
+            "content-length": str(len(raw_body)),
+        }
+
+        async def body(self):
+            return raw_body
+
+    class _Db:
+        commits = 0
+
+        async def commit(self):
+            self.commits += 1
+
+    async def fake_acquire_or_wait(*_args, **_kwargs):
+        return IdempotencyResult(IdempotencyOutcome.OWN)
+
+    async def fake_noop(*_args, **_kwargs):
+        return None
+
+    async def fake_load_user_device(*_args, **_kwargs):
+        return SimpleNamespace(id=device_id, user_id=authenticated_user.id)
+
+    async def fake_upsert_batch(*_args, **_kwargs):
+        return HealthIngestResult(inserted=0, updated=0, deleted=3)
+
+    async def fake_publish(user_id: uuid.UUID, *, source: str, count: int):
+        publish_calls.append((user_id, source, count))
+
+    monkeypatch.setattr(devices_endpoint.idem_svc, "acquire_or_wait", fake_acquire_or_wait)
+    monkeypatch.setattr(devices_endpoint.idem_svc, "store", fake_noop)
+    monkeypatch.setattr(devices_endpoint, "_load_user_device", fake_load_user_device)
+    monkeypatch.setattr(devices_endpoint, "audit", fake_noop)
+    monkeypatch.setattr(
+        devices_endpoint.sync_svc,
+        "validate_ingest_batch",
+        lambda _device, batch: batch,
+    )
+    monkeypatch.setattr(devices_endpoint.sync_svc, "upsert_batch", fake_upsert_batch)
+    monkeypatch.setattr(devices_endpoint, "publish_vitals_updated", fake_publish)
+
+    db = _Db()
+    response = await devices_endpoint.ingest_health_data(
+        device_id,
+        _Request(),  # type: ignore[arg-type]
+        authenticated_user,
+        db,  # type: ignore[arg-type]
+        object(),  # type: ignore[arg-type]
+    )
+
+    assert response.data.deleted == 3
+    assert db.commits == 1
+    assert publish_calls == [(authenticated_user.id, "health_connect", 3)]
+
+
 # ── PATCH /devices/{id}/permissions contract surface ────────────────────
 
 

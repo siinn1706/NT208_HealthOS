@@ -29,6 +29,39 @@ function makeTempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "healthos-render-env-"));
 }
 
+function loadProductionEnv(overrides = {}) {
+  return loadExampleEnv({
+    APP_ENV: "production",
+    NODE_ENV: "production",
+    DEBUG: "false",
+    LOG_FORMAT: "json",
+    SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    BFF_SHARED_SECRET: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    DATABASE_URL: "postgresql+asyncpg://healthos:prod-pass@db.internal:5432/healthos",
+    REDIS_URL: "redis://:prod-pass@redis.internal:6379/0",
+    ALLOWED_ORIGINS: '["https://healthos.test"]',
+    STORAGE_ACCESS_KEY: "prod-storage-access",
+    STORAGE_SECRET_KEY: "prod-storage-secret",
+    GOOGLE_CLIENT_SECRET: "google-prod-secret",
+    GITHUB_CLIENT_SECRET: "github-prod-secret",
+    FERNET_KEY: "4cOBF-A3G-3YXr5lLT5JaUEM7iPU2NUB9FjoWUd--ng=",
+    METRICS_TOKEN: "metrics-token-0123456789",
+    NEXTAUTH_URL: "https://healthos.test",
+    NEXTAUTH_SECRET: "nextauth-secret-0123456789abcdef012345",
+    BFF_TRUSTED_ORIGINS: "https://healthos.test",
+    COOKIE_MAX_AGE: "3600",
+    POSTGRES_PASSWORD: "prod-postgres-pass",
+    REDIS_PASSWORD: "prod-redis-pass",
+    MINIO_ROOT_USER: "prod-minio-root",
+    MINIO_ROOT_PASSWORD: "prod-minio-pass",
+    NEXT_PUBLIC_APP_URL: "https://healthos.test",
+    NEXT_PUBLIC_CORE_WS_URL: "wss://healthos.test/ws",
+    EXPO_PUBLIC_CORE_API_URL: "https://api.healthos.test",
+    EXPO_PUBLIC_CORE_WS_URL: "wss://api.healthos.test/ws",
+    ...overrides,
+  });
+}
+
 test("parseDotenv handles comments, inline comments, and quoted values", () => {
   const parsed = parseDotenv(`
     # comment
@@ -102,35 +135,85 @@ test("validateEnv rejects production placeholder values", () => {
 });
 
 test("validateEnv accepts production-shaped master values", () => {
-  const env = loadExampleEnv({
-    APP_ENV: "production",
-    NODE_ENV: "production",
-    DEBUG: "false",
-    LOG_FORMAT: "json",
-    SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    BFF_SHARED_SECRET: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
-    DATABASE_URL: "postgresql+asyncpg://healthos:prod-pass@db.internal:5432/healthos",
-    REDIS_URL: "redis://:prod-pass@redis.internal:6379/0",
-    ALLOWED_ORIGINS: '["https://healthos.test"]',
-    STORAGE_ACCESS_KEY: "prod-storage-access",
-    STORAGE_SECRET_KEY: "prod-storage-secret",
-    GOOGLE_CLIENT_SECRET: "google-prod-secret",
-    GITHUB_CLIENT_SECRET: "github-prod-secret",
-    FERNET_KEY: "4cOBF-A3G-3YXr5lLT5JaUEM7iPU2NUB9FjoWUd--ng=",
-    METRICS_TOKEN: "metrics-token-0123456789",
-    NEXTAUTH_URL: "https://healthos.test",
-    NEXTAUTH_SECRET: "nextauth-secret-0123456789abcdef012345",
-    POSTGRES_PASSWORD: "prod-postgres-pass",
-    REDIS_PASSWORD: "prod-redis-pass",
-    MINIO_ROOT_USER: "prod-minio-root",
-    MINIO_ROOT_PASSWORD: "prod-minio-pass",
-    NEXT_PUBLIC_APP_URL: "https://healthos.test",
-    NEXT_PUBLIC_CORE_WS_URL: "wss://healthos.test/ws",
-    EXPO_PUBLIC_CORE_API_URL: "https://api.healthos.test",
-    EXPO_PUBLIC_CORE_WS_URL: "wss://api.healthos.test/ws",
-  });
+  const env = loadProductionEnv();
 
   assert.doesNotThrow(() => validateEnv(env, resolveTargetNames("prod"), { requireProdValidation: true }));
+});
+
+test("validateEnv rejects production frontend without trusted BFF origins", () => {
+  const env = loadProductionEnv({
+    BFF_TRUSTED_ORIGINS: "",
+  });
+
+  assert.throws(
+    () => validateEnv(env, ["frontend"], { requireProdValidation: true }),
+    /BFF_TRUSTED_ORIGINS/,
+  );
+});
+
+test("validateEnv rejects production dev bypass configuration", () => {
+  const env = loadProductionEnv({
+    DEV_BYPASS_ENABLED: "true",
+    DEV_BYPASS_CREDENTIALS: "admin:admin",
+  });
+
+  assert.throws(
+    () => validateEnv(env, ["frontend"], { requireProdValidation: true }),
+    /DEV_BYPASS/,
+  );
+});
+
+test("validateEnv rejects production CSRF dry-run mode", () => {
+  const env = loadProductionEnv({
+    BFF_CSRF_GUARD_MODE: "dry-run",
+  });
+
+  assert.throws(
+    () => validateEnv(env, ["frontend"], { requireProdValidation: true }),
+    /BFF_CSRF_GUARD_MODE/,
+  );
+});
+
+test("validateEnv treats APP_ENV=prod as protected", () => {
+  const env = loadProductionEnv({
+    APP_ENV: "prod",
+    NODE_ENV: "development",
+    NEXT_PUBLIC_APP_ENV: "dev",
+    BFF_CSRF_GUARD_MODE: "dry-run",
+  });
+
+  assert.throws(
+    () => validateEnv(env, ["frontend"]),
+    /BFF_CSRF_GUARD_MODE/,
+  );
+});
+
+test("validateEnv treats NEXT_PUBLIC_APP_ENV protected values as protected", () => {
+  for (const publicEnv of ["prod", "staging"]) {
+    const env = loadProductionEnv({
+      APP_ENV: "dev",
+      NODE_ENV: "development",
+      NEXT_PUBLIC_APP_ENV: publicEnv,
+      BFF_CSRF_GUARD_MODE: "dry-run",
+    });
+
+    assert.throws(
+      () => validateEnv(env, ["frontend"]),
+      /BFF_CSRF_GUARD_MODE/,
+    );
+  }
+});
+
+test("validateEnv rejects production cookie ttl beyond access token ttl", () => {
+  const env = loadProductionEnv({
+    COOKIE_MAX_AGE: "604800",
+    ACCESS_TOKEN_EXPIRE_MINUTES: "60",
+  });
+
+  assert.throws(
+    () => validateEnv(env, ["frontend"], { requireProdValidation: true }),
+    /COOKIE_MAX_AGE/,
+  );
 });
 
 test("public env keys must not look like server-side secrets", () => {

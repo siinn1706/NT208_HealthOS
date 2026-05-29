@@ -24,18 +24,19 @@ import {
   stripSecretFields,
 } from "@/lib/bff-auth-session";
 import { assertSameOrigin } from "@/lib/bff-origin-guard";
-import { CORE_API_URL } from "@/lib/env";
+import { CORE_API_URL, isDevBypassAllowed } from "@/lib/env";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 import { normalizeCoreError } from "@/lib/bff-error-normalize";
 
 // ── Dev bypass ───────────────────────────────────────────────────────────────
-// Set DEV_BYPASS_CREDENTIALS in .env.local as "identifier:password" pairs.
+// Set DEV_BYPASS_ENABLED=true and DEV_BYPASS_CREDENTIALS in .env.local as
+// "identifier:password" pairs. Protected envs never accept this bypass.
 // Example: DEV_BYPASS_CREDENTIALS=admin:admin,test@x.com:pass
 const DEV_BYPASS_PREFIX = "DEV_BYPASS:";
 
 function getDevBypassMap(): Map<string, { email: string; display_name: string }> {
   const map = new Map<string, { email: string; display_name: string }>();
-  if (process.env.NODE_ENV === "production") return map;
+  if (!isDevBypassAllowed()) return map;
 
   const raw = process.env.DEV_BYPASS_CREDENTIALS;
   if (!raw) return map;
@@ -71,7 +72,7 @@ export async function GET() {
     );
   }
 
-  if (process.env.NODE_ENV !== "production") {
+  if (isDevBypassAllowed()) {
     const devUser = parseDevToken(token);
     if (devUser) {
       return NextResponse.json({
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Pre-bypass: dev-only short-circuit MUST run before limiter so hot-reload login loop is not throttled (RT-11).
-  if (process.env.NODE_ENV !== "production") {
+  if (isDevBypassAllowed()) {
     const devMap = getDevBypassMap();
     const key = `${body.identifier}::${body.password}`;
     const devUser = devMap.get(key);

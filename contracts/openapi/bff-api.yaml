@@ -596,6 +596,72 @@ paths:
         "201":
           description: Device connected
 
+  /devices/{id}:
+    delete:
+      tags: [Devices]
+      summary: Disconnect connected wearable device
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Device disconnected
+
+  /devices/{id}/sync:
+    post:
+      tags: [Devices]
+      summary: Trigger connected wearable device sync
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Forwarded response from Core BE
+
+  /devices/{id}/sync-state:
+    get:
+      tags: [Devices]
+      summary: List connected device sync state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Forwarded response from Core BE
+
+  /wearables/google/connect:
+    post:
+      tags: [Wearables]
+      summary: Begin Google Health OAuth connection
+      responses:
+        "200":
+          description: Google Health consent URL
+        "503":
+          description: Google Health is not configured
+
+  /wearables/google/callback:
+    get:
+      tags: [Wearables]
+      summary: Finish Google Health OAuth connection
+      parameters:
+        - name: code
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Forwarded response from Core BE
+        "400":
+          description: Invalid OAuth callback
+
   /notifications:
     get:
       tags: [Notifications]

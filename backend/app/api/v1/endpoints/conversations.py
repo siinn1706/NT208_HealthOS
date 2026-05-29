@@ -21,12 +21,14 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import AsyncSessionLocal, get_db
+from app.core.metrics import record_ws_fanout_failure
 from app.core.security import get_current_user
 from app.models.core import (
     Conversation,
     ConversationMember,
     ConversationTypeEnum,
     User,
+    UserPreference,
 )
 from app.services.ai_chat_stream import stream_assistant_response
 from app.schemas.chat import (
@@ -66,6 +68,31 @@ def _http_error(status_code: int, code: str, message: str) -> HTTPException:
         status_code=status_code,
         detail={"error": {"code": code, "message": message}},
     )
+
+
+def _normalize_chat_locale(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    locale = value.strip().lower()
+    if locale.startswith("en"):
+        return "en"
+    if locale.startswith("vi"):
+        return "vi"
+    return None
+
+
+async def _resolve_chat_locale(db: AsyncSession, current_user: User) -> str:
+    profile = getattr(current_user, "profile", None)
+    profile_locale = _normalize_chat_locale(getattr(profile, "preferred_language", None))
+    if profile_locale:
+        return profile_locale
+
+    result = await db.execute(
+        select(UserPreference.locale).where(UserPreference.user_id == current_user.id)
+    )
+    pref_locale = _normalize_chat_locale(result.scalar_one_or_none())
+    return pref_locale or "vi"
+
 
 async def _notify_conversation(
     conversation_id: uuid.UUID,
@@ -114,11 +141,39 @@ async def _notify_conversation_members(
         "payload": payload,
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
-    try:
-        await asyncio.gather(*[ws_manager.send_to_user(str(uid), frame) for uid in member_ids])
-        _LOGGER.debug("chat.fanout conv_id=%s event=%s recipient_count=%d", conversation_id, event, len(member_ids))
-    except Exception:
-        pass  # Fanout failure must NOT roll back the DB commit
+    results = await asyncio.gather(
+        *[
+            ws_manager.send_to_user(str(uid), frame, raise_delivery_errors=True)
+            for uid in member_ids
+        ],
+        return_exceptions=True,
+    )
+    fatal = [
+        result for result in results
+        if isinstance(result, BaseException) and not isinstance(result, Exception)
+    ]
+    if fatal:
+        raise fatal[0]
+
+    failures = [result for result in results if isinstance(result, Exception)]
+    if failures:
+        failure_types = {type(failure).__name__ for failure in failures}
+        exception_type = next(iter(failure_types)) if len(failure_types) == 1 else "multiple"
+        record_ws_fanout_failure(event, exception_type)
+        _LOGGER.warning(
+            "chat.fanout.failed",
+            extra={
+                "event_name": event,
+                "conversation_id": str(conversation_id),
+                "recipient_count": len(member_ids),
+                "excluded_user_id": str(exclude_user_id) if exclude_user_id else None,
+                "exception_type": exception_type,
+            },
+            exc_info=(type(failures[0]), failures[0], failures[0].__traceback__),
+        )
+        return
+
+    _LOGGER.debug("chat.fanout conv_id=%s event=%s recipient_count=%d", conversation_id, event, len(member_ids))
 
 
 # ─── Conversation endpoints ────────────────────────────────────────────────────
@@ -427,8 +482,10 @@ async def stream_message(
         )
     try:
         await chat_svc.assert_member(db, conversation_id, current_user.id)
-    except PermissionError as exc:
+    except (ValueError, PermissionError) as exc:
         raise _http_error(403, "CHAT_FORBIDDEN", str(exc))
+
+    locale = _normalize_chat_locale(body.locale) or await _resolve_chat_locale(db, current_user)
 
     # Persist the user message immediately (durable even if streaming dies).
     try:
@@ -452,10 +509,6 @@ async def stream_message(
         await db.commit()
     except RuntimeError:
         bot_id = None
-
-    locale = "vi"
-    if current_user.profile and current_user.profile.preferred_language:
-        locale = current_user.profile.preferred_language
 
     async def broadcast_assistant_message(msg: MessageDTO) -> None:
         payload = msg.model_dump(mode="json")

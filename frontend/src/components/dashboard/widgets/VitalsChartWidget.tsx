@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Activity, Footprints, Moon, Scale, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { EChartWrapper } from "@/components/charts/EChartWrapper";
+import { useVitalsRealtimeRefresh } from "@/hooks/useVitalsRealtimeRefresh";
 import type { ReportPeriod } from "@/types/api";
 import type { VitalsDataPoint } from "@/components/charts/VitalsLineChart";
 import { METRIC_COLORS } from "@/lib/metric-colors";
+import { dataSlice, type DataSlice } from "@/types/data-slice";
 import type { EChartsOption } from "echarts";
 import { cn } from "@/lib/utils";
 
@@ -55,15 +57,30 @@ function calcStats(values: (number | undefined)[]): { min: number | null; max: n
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
-async function fetchExtended(days: number): Promise<ExtendedVitalPoint[]> {
+async function fetchExtended(days: number): Promise<DataSlice<ExtendedVitalPoint[]>> {
   try {
     const res = await fetch(`/api/v1/dashboard/vitals-extended?days=${days}`, {
       credentials: "include",
     });
-    if (!res.ok) return [];
-    const json = await res.json();
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      const code =
+        typeof json?.error?.code === "string" ? json.error.code : `HTTP_${res.status}`;
+      const message =
+        typeof json?.error?.message === "string"
+          ? json.error.message
+          : "Could not load vitals data.";
+      return dataSlice.recoverableError({ code, message });
+    }
+    const json = await res.json().catch(() => null);
+    if (!Array.isArray(json?.data)) {
+      return dataSlice.recoverableError({
+        code: "PARSE_ERROR",
+        message: "Vitals response was invalid.",
+      });
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (json?.data ?? []).map((r: any) => ({
+    const items = json.data.map((r: any) => ({
       date:         r.date          ?? "",
       heartRate:    r.heart_rate    ?? undefined,
       systolic:     r.systolic      ?? undefined,
@@ -72,9 +89,18 @@ async function fetchExtended(days: number): Promise<ExtendedVitalPoint[]> {
       sleepMinutes: r.sleep_minutes ?? undefined,
       weightKg:     r.weight_kg     ?? undefined,
     }));
+    if (items.length === 0) return { status: "empty", data: [] };
+    return dataSlice.success(items);
   } catch {
-    return [];
+    return dataSlice.recoverableError({
+      code: "VITALS_EXTENDED_FETCH_FAILED",
+      message: "Could not load vitals data.",
+    });
   }
+}
+
+function periodToDays(period: ReportPeriod): number {
+  return period === "7d" ? 7 : period === "30d" ? 30 : 90;
 }
 
 // ── Stat pill ─────────────────────────────────────────────────────────────────
@@ -303,7 +329,7 @@ const TABS: { key: MetricTab; lk: string; Icon: React.ComponentType<{ className?
 // ── Main Widget ───────────────────────────────────────────────────────────────
 
 interface VitalsChartWidgetProps {
-  initialData: VitalsDataPoint[];
+  initialData: DataSlice<VitalsDataPoint[]>;
   initialPeriod?: ReportPeriod;
 }
 
@@ -312,28 +338,56 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
   const [period,    setPeriod]    = useState<ReportPeriod>(initialPeriod);
   const [activeTab, setActiveTab] = useState<MetricTab>("vitals");
   const [extended,  setExtended]  = useState<ExtendedVitalPoint[]>(() =>
-    initialData.map((d) => ({ date: d.date, heartRate: d.heartRate, systolic: d.systolic, diastolic: d.diastolic }))
+    initialData.data?.map((d) => ({ date: d.date, heartRate: d.heartRate, systolic: d.systolic, diastolic: d.diastolic })) ?? []
   );
+  const [sliceStatus, setSliceStatus] = useState(initialData.status);
+  const [sliceError, setSliceError] = useState(initialData.error);
   const [isPending, startTransition] = useTransition();
+  const periodRef = useRef<ReportPeriod>(initialPeriod);
+  const requestSeqRef = useRef(0);
 
-  // On mount, load full extended data for the default period
-  useEffect(() => {
-    const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+  const refreshExtended = useCallback((targetPeriod: ReportPeriod) => {
+    const requestSeq = ++requestSeqRef.current;
+    const days = periodToDays(targetPeriod);
     startTransition(async () => {
-      const data = await fetchExtended(days);
-      if (data.length) setExtended(data);
+      const result = await fetchExtended(days);
+      if (requestSeq !== requestSeqRef.current || targetPeriod !== periodRef.current) {
+        return;
+      }
+      if (result.status === "success" || result.status === "empty") {
+        setExtended(result.data ?? []);
+        setSliceStatus(result.status);
+        setSliceError(undefined);
+        return;
+      }
+      setExtended([]);
+      setSliceStatus(result.status);
+      setSliceError(result.error);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [startTransition]);
+
+  const refreshCurrentPeriod = useCallback(() => {
+    refreshExtended(periodRef.current);
+  }, [refreshExtended]);
+
+  useEffect(() => {
+    periodRef.current = period;
+  }, [period]);
+
+  // On mount, load full extended data for the default period.
+  useEffect(() => {
+    refreshExtended(periodRef.current);
+  }, [refreshExtended]);
+
+  useVitalsRealtimeRefresh({
+    onRefresh: refreshCurrentPeriod,
+  });
 
   const handlePeriodChange = (newPeriod: ReportPeriod | "custom") => {
     if (newPeriod === "custom") return;
     setPeriod(newPeriod);
-    const days = newPeriod === "7d" ? 7 : newPeriod === "30d" ? 30 : 90;
-    startTransition(async () => {
-      const data = await fetchExtended(days);
-      setExtended(data);
-    });
+    periodRef.current = newPeriod;
+    refreshExtended(newPeriod);
   };
 
   // ── Derived stats ─────────────────────────────────────────────────────────
@@ -360,6 +414,10 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
   const isEmpty = extended.every(
     (d) => d.heartRate == null && d.systolic == null && d.steps == null && d.sleepMinutes == null && d.weightKg == null
   );
+  const hasError =
+    sliceStatus === "recoverable_error" ||
+    sliceStatus === "hard_error" ||
+    sliceStatus === "no_permission";
 
   return (
     <div className="rounded-xl border border-border bg-card flex flex-col overflow-hidden shrink-0">
@@ -438,6 +496,12 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
           <div className="flex items-center justify-center h-[220px] text-sm text-muted-foreground gap-2">
             <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             {t("loading")}
+          </div>
+        ) : hasError ? (
+          <div className="flex flex-col items-center justify-center h-[220px] gap-2 text-muted-foreground text-center px-4">
+            <Activity className="w-8 h-8 opacity-30" />
+            <p className="text-sm font-medium text-foreground">{t("loadError")}</p>
+            <p className="text-xs">{sliceError?.message ?? t("noData")}</p>
           </div>
         ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center h-[220px] gap-2 text-muted-foreground">

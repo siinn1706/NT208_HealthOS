@@ -11,8 +11,8 @@ carry semantic meaning ("the user toggled a permission inside the
 Health Connect app") that doesn't apply when tokens live on our server.
 
 Targets ``audit_event_type_enum`` (the canonical name set in
-``backend/app/models/audit.py`` line 106) — NOT ``auditeventtypeenum``
-which a sibling migration on a different stream happens to use.
+``backend/app/models/audit.py`` line 106), not the legacy generated enum
+type name used by a sibling migration on a different stream.
 """
 from __future__ import annotations
 

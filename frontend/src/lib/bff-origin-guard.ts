@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { BFF_CSRF_GUARD_MODE, BFF_TRUSTED_ORIGINS } from "@/lib/env";
+import { BFF_CSRF_GUARD_MODE, BFF_TRUSTED_ORIGINS, isProtectedAppEnv } from "@/lib/env";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -112,7 +112,7 @@ function logReject(headerValue: string, path: string): void {
  *
  * Returns null on pass (request should proceed), or a 403 NextResponse on rejection.
  *
- * In dry-run mode (`BFF_CSRF_GUARD_MODE=dry-run`) the guard logs but never returns 403.
+ * In non-protected dry-run mode (`BFF_CSRF_GUARD_MODE=dry-run`) the guard logs but never returns 403.
  */
 export function assertSameOrigin(req: NextRequest): NextResponse | null {
   const method = req.method?.toUpperCase();
@@ -123,9 +123,9 @@ export function assertSameOrigin(req: NextRequest): NextResponse | null {
   // Exempt path prefixes (e.g. public emergency token endpoints).
   if (EXEMPT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
 
-  const isProd = process.env.NODE_ENV === "production";
-  const allowedHosts = parseAllowedOrigins(BFF_TRUSTED_ORIGINS.join(","), isProd);
-  checkColdStart(isProd, allowedHosts);
+  const isProtectedEnv = isProtectedAppEnv();
+  const allowedHosts = parseAllowedOrigins(BFF_TRUSTED_ORIGINS.join(","), isProtectedEnv);
+  checkColdStart(isProtectedEnv, allowedHosts);
 
   const requestHost = req.headers.get("host") ?? "";
 
@@ -135,7 +135,7 @@ export function assertSameOrigin(req: NextRequest): NextResponse | null {
   const candidateHeader = originHeader ?? refererHeader ?? "";
   const candidateHost = extractHost(candidateHeader);
 
-  if (candidateHost && originMatches(candidateHost, allowedHosts, requestHost, isProd)) {
+  if (candidateHost && originMatches(candidateHost, allowedHosts, requestHost, isProtectedEnv)) {
     return null; // Pass.
   }
 

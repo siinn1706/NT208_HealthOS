@@ -684,7 +684,8 @@
       "heartUnit": "bpm",
       "steps": "Số bước",
       "stepsUnit": "bước",
-      "noData": "Chưa có dữ liệu"
+      "noData": "Chưa có dữ liệu",
+      "loadError": "Không tải được dữ liệu KPI"
     },
     "vitals": {
       "title": "Xu hướng chỉ số",
@@ -694,6 +695,7 @@
       "bloodPressureDia": "Huyết áp tâm trương",
       "loading": "Đang tải biểu đồ...",
       "noData": "Chưa có dữ liệu chỉ số",
+      "loadError": "Không tải được dữ liệu chỉ số",
       "tabVitals": "Tim mạch",
       "tabSteps": "Bước chân",
       "tabSleep": "Giấc ngủ",
@@ -1467,7 +1469,8 @@
         "steps-10000": "10.000 bước mỗi ngày",
         "steps-15000": "15.000 bước mỗi ngày"
       },
-      "noInfo": "Chưa có thông tin"
+      "noInfo": "Chưa có thông tin",
+      "loadError": "Không tải được mục tiêu"
     },
     "services": {
       "pageTitle": "Bắt đầu hành trình sức khỏe"
@@ -1608,6 +1611,7 @@
       "askAI": "Hỏi Trợ lý AI",
       "loading": "Đang phân tích dữ liệu sức khỏe...",
       "noInfo": "Chưa có thông tin",
+      "loadError": "Không tải được gợi ý AI",
       "notMedicalAdvice": "Gợi ý do AI tạo ra, không thay thế lời khuyên y khoa. Hãy trao đổi với bác sĩ về bất kỳ điều gì bạn lo lắng."
     },
     "nav": {

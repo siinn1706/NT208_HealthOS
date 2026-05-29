@@ -2,9 +2,12 @@ import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import createNextIntlPlugin from "next-intl/plugin";
+import { assertFrontendEnvConfig } from "./src/lib/env";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const frontendRoot = path.dirname(fileURLToPath(import.meta.url));
+
+assertFrontendEnvConfig();
 
 function normalizeAllowedDevOrigin(raw: string | undefined): string | null {
   if (!raw) return null;

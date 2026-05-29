@@ -16,7 +16,8 @@ from app.adapters.redis_client import get_redis
 from app.api.v1.endpoints import meals as meals_endpoint
 from app.core.security import get_current_user
 from app.main import app
-from app.models.core import Meal, User
+from app.models.core import Meal, MealStatusEnum, User
+from app.tasks.meal_analysis import _validate_nutrition
 
 
 class _MemoryRedis:
@@ -202,7 +203,7 @@ async def test_manual_payload_persists_nutrition_and_ingredients(
             "kcal": 165.0,
             "carbs_g": 20.625,
             "protein_g": 6.1875,
-            "fat_g": 6.416666666666667,
+            "fat_g": 6.416666666666666,
         },
         {
             "name": "Chicken breast",
@@ -210,7 +211,7 @@ async def test_manual_payload_persists_nutrition_and_ingredients(
             "kcal": 198.0,
             "carbs_g": 24.75,
             "protein_g": 7.425,
-            "fat_g": 7.7,
+            "fat_g": 7.699999999999999,
         },
     ]
 
@@ -260,11 +261,111 @@ async def test_photo_create_still_persists_job_id(
     )
 
     assert res.status_code == 201
+    assert res.json()["data"]["status"] == "processing"
     meal_id = uuid.UUID(res.json()["data"]["id"])
     row = await _load_meal(meal_id)
     assert row is not None
     assert row.image_url == "meals/test-photo.png"
     assert row.job_id == "job-photo-1"
+    assert row.status == MealStatusEnum.PROCESSING
+
+
+@pytest.mark.asyncio
+async def test_analyze_photo_persists_processing_status(
+    authed_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(meals_endpoint, "upload_file", lambda **kwargs: "meals/analyze-photo.png")
+    monkeypatch.setattr(
+        meals_endpoint.analyze_meal_image,
+        "delay",
+        MagicMock(return_value=SimpleNamespace(id="job-analyze-1")),
+    )
+
+    png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+    res = await authed_client.post(
+        "/v1/meals/analyze-photo",
+        data={"name": "Analyze photo meal"},
+        files={"image": ("meal.png", png_bytes, "image/png")},
+    )
+
+    assert res.status_code == 202
+    payload = res.json()
+    assert payload["job_id"] == "job-analyze-1"
+    assert payload["status"] == "processing"
+    meal_id = uuid.UUID(payload["meal_id"])
+    row = await _load_meal(meal_id)
+    assert row is not None
+    assert row.job_id == "job-analyze-1"
+    assert row.status == MealStatusEnum.PROCESSING
+
+
+@pytest.mark.asyncio
+async def test_photo_create_enqueue_failure_does_not_commit_pending_row(
+    meal_api_state,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(meals_endpoint, "upload_file", lambda **kwargs: "meals/enqueue-failed.png")
+    monkeypatch.setattr(
+        meals_endpoint.analyze_meal_image,
+        "delay",
+        MagicMock(side_effect=RuntimeError("broker unavailable")),
+    )
+
+    png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post(
+            "/v1/meals",
+            data={"name": "Failed queued meal"},
+            files={"image": ("meal.png", png_bytes, "image/png")},
+        )
+
+    assert res.status_code == 500
+    async with AsyncSessionLocal() as db:
+        count = (
+            await db.execute(
+                select(func.count()).select_from(Meal).where(Meal.user_id == meal_api_state.user.id)
+            )
+        ).scalar_one()
+    assert count == 0
+
+
+def test_ai_nutrition_validation_preserves_valid_ingredients():
+    nutrition = _validate_nutrition(
+        {
+            "dish_name": "Chicken bowl",
+            "calories": 512,
+            "ingredients": [
+                {
+                    "name": "Chicken breast",
+                    "grams": 120,
+                    "kcal": 198,
+                    "protein_g": 37.2,
+                    "carbs_g": 0,
+                    "fat_g": 4.3,
+                    "confidence": 0.88,
+                    "unexpected": {"nested": "drop"},
+                },
+                "invalid",
+                {"name": None, "grams": "many"},
+            ],
+        }
+    )
+
+    assert nutrition["dish_name"] == "Chicken bowl"
+    assert nutrition["calories"] == 512.0
+    assert nutrition["ingredients"] == [
+        {
+            "name": "Chicken breast",
+            "grams": 120.0,
+            "kcal": 198.0,
+            "protein_g": 37.2,
+            "carbs_g": 0.0,
+            "fat_g": 4.3,
+            "confidence": 0.88,
+        }
+    ]
 
 
 @pytest.mark.asyncio

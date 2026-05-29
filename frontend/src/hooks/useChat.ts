@@ -631,6 +631,8 @@ export function useConversations() {
 // useMessages
 // ──────────────────────────────────────────────────────────────────────────────
 export interface UseMessagesOptions {
+  /** Active UI locale. Sent with AI streaming requests so replies match the chat language. */
+  locale?: string;
   /** Shown in optimistic reaction payloads (e.g. translated "You") */
   selfReactionLabel?: string;
 }
@@ -640,7 +642,7 @@ export function useMessages(
   currentUserId: string | null = null,
   options: UseMessagesOptions = {}
 ) {
-  const { selfReactionLabel = "You" } = options;
+  const { locale = "vi", selfReactionLabel = "You" } = options;
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -983,6 +985,7 @@ export function useMessages(
             content,
             content_type: "text",
             client_message_id: optimisticUserId,
+            locale,
           }),
           signal: controller.signal,
         });
@@ -1061,7 +1064,7 @@ export function useMessages(
       }
       return optimisticUser;
     },
-    [currentUserId],
+    [currentUserId, locale],
   );
 
   const stopStreaming = useCallback(() => {

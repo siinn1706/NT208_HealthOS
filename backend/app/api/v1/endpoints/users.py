@@ -46,6 +46,7 @@ from app.services.otp import (
     get_latest_active_otp,
     hash_otp_code,
     mark_otp_consumed,
+    redis_getdel_compat,
 )
 from app.services.upload_security import (
     UploadTooLargeError,
@@ -268,7 +269,7 @@ async def update_current_user_profile(
     return _to_current_user_response(user)
 
 
-# ─── B7 P8 — Account data export ─────────────────────────────────────────
+# ─── Account data export ─────────────────────────────────────────────────
 
 
 @router.post(
@@ -401,7 +402,7 @@ async def get_data_export_download(
     )
 
 
-# ─── B7 P9 — Account soft delete + restore ───────────────────────────────
+# ─── Account soft delete + restore ───────────────────────────────────────
 
 
 class DeleteAccountBody(BaseModel):
@@ -438,38 +439,44 @@ async def soft_delete_account(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> dict:
-    # B7 P0-2 — OAuth-only users prove identity via OTP rather than password.
+    # OAuth-only users prove identity via OTP rather than password.
     # Verify the OTP here so the service layer stays pure.
     user_has_password = bool(getattr(current_user, "has_password", True))
     otp_verified = False
     if not user_has_password:
-        if not body.otp_code:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "OTP_REQUIRED",
-                    "message": (
-                        "OAuth-only accounts must verify a one-time code emailed to them. "
-                        "Request one via /v1/auth/request-otp with purpose='delete_account'."
-                    ),
-                },
+        if body.otp_code:
+            otp_record = await get_latest_active_otp(
+                db=db, email=current_user.email, purpose="delete_account"
             )
-        otp_record = await get_latest_active_otp(
-            db=db, email=current_user.email, purpose="delete_account"
-        )
-        if otp_record is None or otp_record.attempts_left <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
-            )
-        if hash_otp_code(body.otp_code) != otp_record.code_hash:
-            await decrement_attempts(db, otp_record)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
-            )
-        await mark_otp_consumed(db, otp_record)
-        otp_verified = True
+            if otp_record is None or otp_record.attempts_left <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
+                )
+            if hash_otp_code(body.otp_code) != otp_record.code_hash:
+                await decrement_attempts(db, otp_record)
+                await db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
+                )
+            await mark_otp_consumed(db, otp_record)
+            otp_verified = True
+        else:
+            verified_key = f"auth:otp:delete_account_verified:{current_user.email}"
+            consumed = await redis_getdel_compat(redis, verified_key)
+            if consumed is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "OTP_REQUIRED",
+                        "message": (
+                            "OAuth-only accounts must verify a one-time code emailed to them. "
+                            "Request one via /v1/auth/request-otp with purpose='delete_account'."
+                        ),
+                    },
+                )
+            otp_verified = True
 
     try:
         user = await deletion_svc.request_deletion(

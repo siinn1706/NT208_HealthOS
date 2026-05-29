@@ -4,7 +4,7 @@
  *
  * Proxies to Core BE: POST /v1/auth/verify-otp
  * For signup/login purposes: sets session token as httpOnly cookie.
- * For reset_password purpose: just proxies the response (no cookie).
+ * For reset_password/delete_account purposes: proxies the response (no cookie).
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -73,13 +73,14 @@ export async function POST(req: NextRequest) {
   // For signup/login: Core BE returns tokens — store them in httpOnly cookies.
   const bodyObj = body as Record<string, unknown>;
   const auth = readCoreAuthPayload(data);
-  if (bodyObj.purpose !== "reset_password" && !auth) {
+  const shouldProxyWithoutToken = bodyObj.purpose === "reset_password" || bodyObj.purpose === "delete_account";
+  if (!shouldProxyWithoutToken && !auth) {
     return NextResponse.json(
       { error: { code: "UPSTREAM_ERROR", message: "Core API returned no token." } },
       { status: 502 },
     );
   }
-  if (auth && bodyObj.purpose !== "reset_password") {
+  if (auth && !shouldProxyWithoutToken) {
     const response = NextResponse.json(
       { data: sessionUserFromCoreAuth(auth) },
       { status: res.status },
@@ -88,6 +89,6 @@ export async function POST(req: NextRequest) {
     return response;
   }
 
-  // reset_password — proxy as-is
+  // reset_password/delete_account — proxy as-is
   return NextResponse.json(data, { status: res.status });
 }

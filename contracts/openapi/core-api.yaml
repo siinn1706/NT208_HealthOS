@@ -431,22 +431,22 @@ components:
             type: string
           - type: 'null'
           title: Image
-        logged_at_form:
+        logged_at:
           anyOf:
           - format: date-time
             type: string
           - type: 'null'
-          title: Logged At Form
-        name_form:
+          title: Logged At
+        name:
           anyOf:
           - type: string
           - type: 'null'
-          title: Name Form
-        notes_form:
+          title: Name
+        notes:
           anyOf:
           - type: string
           - type: 'null'
-          title: Notes Form
+          title: Notes
       title: Body_create_meal_v1_meals_post
       type: object
     Body_upload_prescription_asset_v1_appointments__appointment_id__prescription_assets_post:
@@ -654,6 +654,15 @@ components:
       required:
       - data
       title: ConnectedDeviceResponse
+      type: object
+    GoogleConnectResponse:
+      properties:
+        authorization_url:
+          title: Authorization Url
+          type: string
+      required:
+      - authorization_url
+      title: GoogleConnectResponse
       type: object
     ConversationDTO:
       properties:
@@ -5138,6 +5147,12 @@ components:
           - system
           title: Content Type
           type: string
+        locale:
+          anyOf:
+          - maxLength: 16
+            type: string
+          - type: 'null'
+          title: Locale
         reply_to_id:
           anyOf:
           - format: uuid
@@ -5848,6 +5863,7 @@ components:
           - signup
           - reset_password
           - login
+          - delete_account
           title: Purpose
           type: string
       required:
@@ -6183,7 +6199,7 @@ info:
     **Versioning:** `info.version` follows semver; bump on breaking changes only.
 
 
-    **Device endpoints:** paths under `/v1/devices`, `/v1/wearables`, `/v1/sync` are frozen this pass (see plan `260522-1900-openapi-contract-alignment`).'
+    **Contract drift:** device, wearable, and sync routes are checked by exact path; new proxy calls must be declared before use.'
   title: HealthOS Core API
   version: 1.0.0
 openapi: 3.1.0
@@ -9977,6 +9993,118 @@ paths:
       summary: Replace sync-state tokens for a device
       tags:
       - Devices
+  /v1/wearables/google/callback:
+    get:
+      operationId: google_callback_v1_wearables_google_callback_get
+      parameters:
+      - in: query
+        name: code
+        required: true
+        schema:
+          maxLength: 2048
+          minLength: 1
+          title: Code
+          type: string
+      - in: query
+        name: state
+        required: true
+        schema:
+          maxLength: 4096
+          minLength: 1
+          title: State
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectedDeviceResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      security:
+      - bearerAuth: []
+      summary: Google Health OAuth callback - finish the connection
+      tags:
+      - Wearables
+  /v1/wearables/google/connect:
+    post:
+      operationId: google_connect_v1_wearables_google_connect_post
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleConnectResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      security:
+      - bearerAuth: []
+      summary: Begin Google Health OAuth - return consent URL
+      tags:
+      - Wearables
+  /v1/wearables/google/webhook:
+    post:
+      operationId: google_webhook_v1_wearables_google_webhook_post
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      security:
+      - bearerAuth: []
+      summary: Google Health push-notification receiver
+      tags:
+      - Wearables
   /v1/goals/progress:
     get:
       operationId: get_goal_progress_v1_goals_progress_get

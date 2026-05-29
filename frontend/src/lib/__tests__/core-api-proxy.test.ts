@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import {
   META_COOKIE_NAME,
@@ -26,8 +26,16 @@ function jsonResponse(payload: unknown, status: number): Response {
   });
 }
 
+const REQUEST_ID_HEADER = "X-Request-ID";
+
 describe("coreProxy refresh rotation", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
+
+  afterEach(() => {
+    delete process.env.BFF_DASHBOARD_PERF_LOG;
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   beforeEach(() => {
     vi.resetModules();
@@ -84,6 +92,25 @@ describe("coreProxy refresh rotation", () => {
     expect(response.cookies.get(REFRESH_COOKIE_NAME)?.value).toBe("new-refresh");
     expect(response.cookies.get(META_COOKIE_NAME)?.value).toContain("completed");
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("emits an opt-in duration log for dashboard performance proxy paths", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    process.env.BFF_DASHBOARD_PERF_LOG = "true";
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    fetchMock.mockResolvedValue(jsonResponse({ data: {} }, 200));
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/reports/trends/batch", {
+      method: "GET",
+    });
+    const response = await coreProxy(req, "/v1/reports/trends/batch");
+
+    expect(response.status).toBe(200);
+    expect(infoSpy).toHaveBeenCalledTimes(1);
+    expect(infoSpy.mock.calls[0]?.[0]).toContain(
+      "bff_core_proxy_duration method=GET path=/v1/reports/trends/batch status=200",
+    );
   });
 
   it("clears auth cookies when refresh fails", async () => {
@@ -322,12 +349,416 @@ describe("legacy health-data meal route", () => {
         method: "POST",
         body: JSON.stringify(payload),
         cache: "no-store",
-        headers: {
+        headers: expect.objectContaining({
           Authorization: "Bearer meal-access",
           "Content-Type": "application/json",
           "Idempotency-Key": "legacy-meal-key",
-        },
+          [REQUEST_ID_HEADER]: expect.any(String),
+        }),
       }),
     );
+  });
+
+  it("deprecates the legacy aggregate GET without calling Core", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "meal-access" });
+    const { GET } = await import("@/app/api/v1/health-data/route");
+
+    const response = await GET();
+    const payload = await response.json();
+
+    expect(response.status).toBe(410);
+    expect(payload.error.code).toBe("ENDPOINT_GONE");
+    expect(payload.error.details.replacements).toEqual([
+      "/api/v1/dashboard/summary",
+      "/api/v1/vitals/timeseries",
+      "/api/v1/meals",
+    ]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("proxies legacy root JSON meal creates through the shared Core proxy", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "meal-access" });
+    fetchMock.mockResolvedValue(jsonResponse({ data: { id: "legacy-root" } }, 201));
+
+    const payload = { name: "Root legacy meal" };
+    const { POST } = await import("@/app/api/v1/health-data/route");
+    const req = new NextRequest("http://localhost/api/v1/health-data", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": "legacy-root-key",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await POST(req);
+
+    expect(response.status).toBe(201);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://core.example/v1/meals",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(payload),
+        cache: "no-store",
+        headers: expect.objectContaining({
+          Authorization: "Bearer meal-access",
+          "Content-Type": "application/json",
+          "Idempotency-Key": "legacy-root-key",
+          [REQUEST_ID_HEADER]: expect.any(String),
+        }),
+      }),
+    );
+  });
+
+  it("preserves multipart boundary and enforces shared upload limits for legacy root creates", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "meal-access" });
+    fetchMock.mockResolvedValue(jsonResponse({ data: { id: "legacy-photo" } }, 201));
+
+    const { POST } = await import("@/app/api/v1/health-data/route");
+    const req = new NextRequest("http://localhost/api/v1/health-data", {
+      method: "POST",
+      headers: {
+        "content-type": "multipart/form-data; boundary=legacy",
+        "idempotency-key": "legacy-photo-key",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: "--legacy\r\ncontent\r\n--legacy--",
+    });
+
+    const response = await POST(req);
+    const forwarded = fetchMock.mock.calls[0]?.[1] as RequestInit;
+
+    expect(response.status).toBe(201);
+    expect(forwarded.body).toBeInstanceOf(ArrayBuffer);
+    expect(forwarded.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer meal-access",
+        "Content-Type": "multipart/form-data; boundary=legacy",
+        "Idempotency-Key": "legacy-photo-key",
+        [REQUEST_ID_HEADER]: expect.any(String),
+      }),
+    );
+  });
+
+  it("rejects oversized multipart legacy creates before calling Core", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "meal-access" });
+    const oversizedLength = String(10 * 1_048_576 + 1);
+    const routes = [
+      await import("@/app/api/v1/health-data/route"),
+      await import("@/app/api/v1/health-data/meal/route"),
+    ];
+
+    for (const route of routes) {
+      fetchMock.mockClear();
+      const req = new NextRequest("http://localhost/api/v1/health-data", {
+        method: "POST",
+        headers: {
+          "content-type": "multipart/form-data; boundary=legacy",
+          "content-length": oversizedLength,
+          host: "localhost",
+          origin: "http://localhost",
+        },
+      });
+
+      const response = await route.POST(req);
+      const payload = await response.json();
+
+      expect(response.status).toBe(413);
+      expect(payload.error.code).toBe("PAYLOAD_TOO_LARGE");
+      expect(response.headers.get(REQUEST_ID_HEADER)).toBeTruthy();
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  });
+});
+
+describe("coreFetchStream auth refresh", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    cookiesMock.mockReset();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.CORE_API_URL = "http://core.example";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("refreshes expired access before opening the SSE stream and retries once", async () => {
+    setCookieStore({
+      [SESSION_COOKIE_NAME]: "old-access",
+      [REFRESH_COOKIE_NAME]: "old-refresh",
+    });
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/v1/auth/refresh")) {
+        return jsonResponse(
+          {
+            data: {
+              access_token: "new-access",
+              refresh_token: "new-refresh",
+              user_id: "u1",
+              email: "u1@example.com",
+              username: "u1",
+              display_name: "User One",
+              avatar_url: null,
+              onboarding_status: "completed",
+            },
+          },
+          200,
+        );
+      }
+
+      const auth = (init?.headers as Record<string, string> | undefined)?.Authorization;
+      if (auth === "Bearer old-access") {
+        return jsonResponse({ error: { code: "AUTH_INVALID_TOKEN", message: "Expired" } }, 401);
+      }
+      return new Response("data: ok\n\n", {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    });
+
+    const { coreFetchStream } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    const response = await coreFetchStream(req, "/v1/conversations/c1/messages/stream", {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("data: ok\n\n");
+    expect(response.headers.get("set-cookie")).toContain(SESSION_COOKIE_NAME);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect((fetchMock.mock.calls[2]?.[1] as RequestInit).headers).toEqual(
+      expect.objectContaining({ Authorization: "Bearer new-access" }),
+    );
+  });
+
+  it("refreshes before returning AUTH_REQUIRED when access is missing but refresh exists", async () => {
+    setCookieStore({ [REFRESH_COOKIE_NAME]: "old-refresh" });
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/v1/auth/refresh")) {
+        return jsonResponse(
+          {
+            data: {
+              access_token: "new-access",
+              refresh_token: "new-refresh",
+              user_id: "u1",
+              email: "u1@example.com",
+            },
+          },
+          200,
+        );
+      }
+      return new Response("data: ok\n\n", {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    });
+
+    const { coreFetchStream } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    const response = await coreFetchStream(req, "/v1/conversations/c1/messages/stream", {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect((fetchMock.mock.calls[1]?.[1] as RequestInit).headers).toEqual(
+      expect.objectContaining({ Authorization: "Bearer new-access" }),
+    );
+  });
+
+  it("clears auth cookies when stream refresh fails", async () => {
+    setCookieStore({
+      [SESSION_COOKIE_NAME]: "old-access",
+      [REFRESH_COOKIE_NAME]: "old-refresh",
+    });
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/v1/auth/refresh")) {
+        return jsonResponse({ error: { code: "INVALID_REFRESH_TOKEN" } }, 401);
+      }
+      return jsonResponse({ error: { code: "AUTH_INVALID_TOKEN" } }, 401);
+    });
+
+    const { coreFetchStream } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    const response = await coreFetchStream(req, "/v1/conversations/c1/messages/stream", {
+      method: "POST",
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(payload.error.code).toBe("AUTH_REQUIRED");
+    expect(response.headers.get("set-cookie")).toContain(SESSION_COOKIE_NAME);
+    expect(response.headers.get("set-cookie")).toContain(REFRESH_COOKIE_NAME);
+  });
+
+  it("uses the inbound abort signal for SSE and does not create a timeout", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    fetchMock.mockResolvedValue(
+      new Response("data: ok\n\n", {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }),
+    );
+
+    const { coreFetchStream } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    const response = await coreFetchStream(req, "/v1/conversations/c1/messages/stream", {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).signal).toBe(req.signal);
+    expect(timeoutSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns stable JSON when the upstream stream fetch fails before headers", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockRejectedValue(new Error("connect refused"));
+
+    const { coreFetchStream } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    const response = await coreFetchStream(req, "/v1/conversations/c1/messages/stream", {
+      method: "POST",
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload.error).toEqual({
+      code: "UPSTREAM_UNAVAILABLE",
+      message: "Core service is temporarily unavailable.",
+    });
+    expect(response.headers.get(REQUEST_ID_HEADER)).toBeTruthy();
+  });
+
+  it("rejects multibyte stream request bodies by byte length", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    const { coreFetchStream } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: "é",
+    });
+
+    const response = await coreFetchStream(req, "/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      bodySizeLimit: 1,
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(413);
+    expect(payload.error.code).toBe("PAYLOAD_TOO_LARGE");
+    expect(response.headers.get(REQUEST_ID_HEADER)).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps refreshed cookies when the route wrapper returns the SSE response", async () => {
+    setCookieStore({
+      [SESSION_COOKIE_NAME]: "old-access",
+      [REFRESH_COOKIE_NAME]: "old-refresh",
+    });
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/v1/auth/refresh")) {
+        return jsonResponse(
+          {
+            data: {
+              access_token: "new-access",
+              refresh_token: "new-refresh",
+              user_id: "u1",
+              email: "u1@example.com",
+            },
+          },
+          200,
+        );
+      }
+      const auth = (init?.headers as Record<string, string> | undefined)?.Authorization;
+      if (auth === "Bearer old-access") {
+        return jsonResponse({ error: { code: "AUTH_INVALID_TOKEN" } }, 401);
+      }
+      return new Response("data: ok\n\n", {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    });
+
+    const { POST } = await import("@/app/api/v1/conversations/[id]/messages/stream/route");
+    const req = new NextRequest("http://localhost/api/v1/conversations/c1/messages/stream", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ message: "hello" }),
+    });
+
+    const response = await POST(req, { params: Promise.resolve({ id: "c1" }) });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain(SESSION_COOKIE_NAME);
+    expect(await response.text()).toBe("data: ok\n\n");
   });
 });

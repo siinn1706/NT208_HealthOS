@@ -1,7 +1,7 @@
 /**
  * Google OAuth — link callback (B7 P3).
  *
- * Verifies the state/verifier/nonce + user binding, calls Core
+ * Verifies the state/verifier + user binding, calls Core
  * `/v1/auth/oauth/links/attach` with `X-BFF-Secret`, then redirects back to
  * `/dashboard/profile` with a success or error indicator.
  */
