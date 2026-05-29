@@ -40,6 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
 from app.core.config import settings
+from app.core.rate_limit import user_rate_limiter
 from app.core.security import get_current_user
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import ConnectedDevice, User, WearableProviderEnum
@@ -67,6 +68,18 @@ _WEBHOOK_BODY_LIMIT_BYTES = 64 * 1024
 # UN-acked push still pass (we only set the marker once we accept one).
 _WEBHOOK_REPLAY_TTL_SECONDS = 600
 
+# Per-user throttle on the OAuth entry points. /connect mints a Redis-backed
+# state nonce on every call (spammable into a memory fill) and /callback drives
+# an outbound Google token exchange (a request amplifier). Both are firmly
+# authenticated, so key by user id rather than IP — same rationale as the
+# ingest route. 10/min is far above any honest connect cadence.
+_rate_limit_oauth_connect = user_rate_limiter(
+    max_requests=10, window_seconds=60, route_key="wearable.google.connect"
+)
+_rate_limit_oauth_callback = user_rate_limiter(
+    max_requests=10, window_seconds=60, route_key="wearable.google.callback"
+)
+
 
 # ─────────────────────────────────────────────────────────────────────
 # /connect — mint the consent URL
@@ -89,9 +102,11 @@ class GoogleConnectResponse(BaseModel):
     response_model=GoogleConnectResponse,
     responses={
         401: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },
     summary="Begin Google Health OAuth — return consent URL",
+    dependencies=[Depends(_rate_limit_oauth_connect)],
 )
 async def google_connect(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -135,9 +150,11 @@ async def google_connect(
         400: {"model": ErrorResponse},
         401: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
     },
     summary="Google Health OAuth callback — finish the connection",
+    dependencies=[Depends(_rate_limit_oauth_callback)],
 )
 async def google_callback(
     request: Request,

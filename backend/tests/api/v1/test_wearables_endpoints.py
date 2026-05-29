@@ -39,8 +39,9 @@ class _FakeRedis:
     """In-memory Redis stand-in for endpoint tests.
 
     Supports ``set`` (with ``ex`` TTL, ignored — TTL isn't checked in unit
-    tests), ``getdel``, and the Lua-based lock-release ``eval`` used by the
-    sync task tests.  Keeps a plain dict so tests can inspect state directly.
+    tests), ``getdel``, and the Lua-based ``eval`` the per-user rate limiter
+    on /connect and /callback runs.  Keeps a plain dict so tests can inspect
+    state directly.
     """
 
     def __init__(self):
@@ -54,6 +55,13 @@ class _FakeRedis:
 
     async def getdel(self, key: str):
         return self.store.pop(key, None)
+
+    async def eval(self, _script: str, _numkeys: int, key: str, *_args):
+        # The rate limiter's Lua is INCR + first-call EXPIRE; a unit test only
+        # needs a monotonic per-key counter, so TTL is irrelevant here.
+        cur = int(self.store.get(key, "0")) + 1
+        self.store[key] = str(cur)
+        return cur
 
 
 @pytest.fixture(autouse=True)
