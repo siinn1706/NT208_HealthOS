@@ -4,6 +4,7 @@ Two routes are exposed under ``/api/ai``:
 
   * ``POST /api/ai/chat``         — non-streaming LLM proxy reply (JSON).
   * ``POST /api/ai/chat/stream``  — Server-Sent Events stream of token deltas.
+  * ``POST /api/ai/embed``        — Local multilingual embeddings for future RAG.
   * ``POST /api/ai/generate``     — Legacy adapter that proxies into ``/chat``
                                     so older callers keep working. Deprecated.
 
@@ -12,16 +13,19 @@ the BE orchestrator can map them to user-facing system messages.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from typing import Any
 
+from app.core.config import settings
 from app.schemas.chat import ChatReply, ChatRequest, ChatTurn
+from app.services import embedding_service
 from app.services import llm_proxy_service
 from app.services.llm_proxy_service import (
     LlmProxyBlockedError,
@@ -193,6 +197,49 @@ async def exercise_suggestions(payload: ExerciseSuggestionsRequest) -> ExerciseS
         raise HTTPException(
             status_code=502,
             detail={"code": "AI_UPSTREAM_ERROR", "message": str(exc)},
+        ) from exc
+
+
+# ── /api/ai/embed ────────────────────────────────────────────────────────────
+
+class EmbeddingRequest(BaseModel):
+    texts: list[str] = Field(min_length=1, max_length=32)
+
+
+class EmbeddingResponse(BaseModel):
+    model: str
+    dimension: int
+    embeddings: list[list[float]]
+
+
+@router.post("/embed", response_model=EmbeddingResponse)
+async def embed_texts(payload: EmbeddingRequest) -> EmbeddingResponse:
+    """Generate local multilingual embeddings for internal RAG preparation."""
+    try:
+        embeddings = await asyncio.wait_for(
+            asyncio.to_thread(embedding_service.embed_texts, payload.texts),
+            timeout=settings.ai_embedding_timeout_seconds,
+        )
+        return EmbeddingResponse(
+            model=settings.ai_embedding_model,
+            dimension=settings.ai_embedding_dimension,
+            embeddings=embeddings,
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail={"code": "AI_TIMEOUT", "message": "AI embedding generation timed out."},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "AI_BAD_REQUEST", "message": str(exc)},
+        ) from exc
+    except Exception as exc:
+        _LOGGER.exception("ai_embedding_failed")
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "AI_EMBEDDING_ERROR", "message": str(exc)},
         ) from exc
 
 

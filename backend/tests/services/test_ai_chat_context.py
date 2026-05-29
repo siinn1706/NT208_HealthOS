@@ -20,8 +20,16 @@ from app.services import ai_chat_context
 @pytest.mark.asyncio
 async def test_build_system_prompt_default_locale_is_vietnamese():
     prompt = await ai_chat_context.build_system_prompt("vi")
+    lowered = prompt.lower()
     assert "HealthOS AI Assistant" in prompt
-    assert "bác sĩ" in prompt.lower() or "tham khảo" in prompt.lower()
+    assert "không phải bác sĩ" in lowered
+    assert "không chẩn đoán" in lowered
+    assert "không kê toa" in lowered
+    assert "đổi liều thuốc" in lowered
+    assert "thiếu dữ liệu" in lowered
+    assert "không chắc chắn" in lowered
+    assert "khi nào cần đi khám" in lowered
+    assert "cấp cứu" in lowered
     assert "Trả lời đầy đủ" in prompt
     assert "chuỗi suy luận nội bộ" in prompt
 
@@ -29,9 +37,17 @@ async def test_build_system_prompt_default_locale_is_vietnamese():
 @pytest.mark.asyncio
 async def test_build_system_prompt_english():
     prompt = await ai_chat_context.build_system_prompt("en")
+    lowered = prompt.lower()
     assert "HealthOS AI Assistant" in prompt
-    assert "doctor" in prompt.lower()
-    assert "complete" in prompt.lower()
+    assert "not a doctor" in lowered
+    assert "do not diagnose" in lowered
+    assert "do not prescribe" in lowered
+    assert "starting, stopping, or changing medication doses" in lowered
+    assert "ask for missing data" in lowered
+    assert "explain uncertainty" in lowered
+    assert "when to seek medical care" in lowered
+    assert "emergency symptoms" in lowered
+    assert "complete" in lowered
     assert "hidden chain-of-thought" in prompt
 
 

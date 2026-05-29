@@ -20,7 +20,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.adapters.database import get_db
+from app.adapters.database import AsyncSessionLocal, get_db
 from app.core.security import get_current_user
 from app.models.core import (
     Conversation,
@@ -52,7 +52,7 @@ from app.schemas.chat import (
     UserLookupResponse,
 )
 from app.schemas.common import ErrorResponse
-from app.services import chat as chat_svc
+from app.services import ai_bot, chat as chat_svc
 from app.ws.handlers import manager as ws_manager
 
 router = APIRouter(tags=["Chat"])
@@ -447,6 +447,27 @@ async def stream_message(
     user_msg_id = user_msg.id
     await db.commit()
 
+    try:
+        bot_id = await ai_bot.ensure_ai_bot_member(db, conversation_id)
+        await db.commit()
+    except RuntimeError:
+        bot_id = None
+
+    locale = "vi"
+    if current_user.profile and current_user.profile.preferred_language:
+        locale = current_user.profile.preferred_language
+
+    async def broadcast_assistant_message(msg: MessageDTO) -> None:
+        payload = msg.model_dump(mode="json")
+        async with AsyncSessionLocal() as fanout_db:
+            await _notify_conversation_members(
+                fanout_db,
+                conversation_id,
+                "chat.message.sent",
+                payload,
+                exclude_user_id=current_user.id,
+            )
+
     # The generator owns its session lifecycle. We don't pass
     # `db` (the dep-injected one) so FastAPI can return the connection to
     # the pool the moment this handler returns.
@@ -456,6 +477,9 @@ async def stream_message(
         user_id=current_user.id,
         user_message_id=user_msg_id,
         prompt=body.content,
+        assistant_sender_id=bot_id,
+        locale=locale,
+        broadcast_message=broadcast_assistant_message,
     )
     return StreamingResponse(
         generator,

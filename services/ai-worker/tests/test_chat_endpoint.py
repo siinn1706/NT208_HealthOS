@@ -93,6 +93,51 @@ def test_chat_stream_emits_sse(monkeypatch: pytest.MonkeyPatch) -> None:
     assert '"finish_reason": "stop"' in body
 
 
+def test_embed_endpoint_returns_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_embed(texts: list[str]) -> list[list[float]]:
+        assert texts == ["xin chào"]
+        return [[0.5] * 384]
+
+    monkeypatch.setattr(
+        "app.api.generate.embedding_service.embed_texts", fake_embed
+    )
+
+    response = client.post("/api/ai/embed", json={"texts": ["xin chào"]})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["model"] == "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    assert body["dimension"] == 384
+    assert len(body["embeddings"]) == 1
+    assert len(body["embeddings"][0]) == 384
+
+
+def test_embed_endpoint_rejects_empty_texts() -> None:
+    response = client.post("/api/ai/embed", json={"texts": []})
+
+    assert response.status_code == 422
+
+
+def test_embed_endpoint_rejects_too_many_texts() -> None:
+    response = client.post("/api/ai/embed", json={"texts": ["hello"] * 33})
+
+    assert response.status_code == 422
+
+
+def test_embed_endpoint_maps_blank_text_to_bad_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_embed(texts: list[str]) -> list[list[float]]:
+        raise ValueError("texts must contain non-blank strings.")
+
+    monkeypatch.setattr(
+        "app.api.generate.embedding_service.embed_texts", fake_embed
+    )
+
+    response = client.post("/api/ai/embed", json={"texts": [" "]})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "AI_BAD_REQUEST"
+
+
 def test_legacy_generate_endpoint_falls_back_when_unconfigured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

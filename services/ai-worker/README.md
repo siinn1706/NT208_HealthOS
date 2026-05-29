@@ -6,6 +6,7 @@ FastAPI worker xử lý AI jobs bất đồng bộ:
 - OCR nhận diện tên thực phẩm từ ảnh bữa ăn
 - Ước tính dinh dưỡng (calories, protein, carbs, fat)
 - Chat/completion tasks qua OpenAI-compatible proxy nội bộ
+- Local multilingual embeddings and citation prompt support for Medical RAG
 - Rule-based health alert evaluation
 
 ## Port
@@ -46,6 +47,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 |--------|------|--------|
 | GET | `/health` | Health check |
 | POST | `/analyze` | Phân tích ảnh bữa ăn |
+| POST | `/api/ai/chat` | Non-streaming proxy chat completion |
+| POST | `/api/ai/chat/stream` | SSE proxy chat stream |
+| POST | `/api/ai/embed` | Local 384-dimensional embeddings for Medical RAG |
 
 ## FoodDetector assets
 
@@ -56,7 +60,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 - Meal photo scan is local YOLO-only. Missing model/class db returns a controlled analysis failure.
 - Text generation uses `AI_PROXY_BASE_URL=http://localhost:20128/v1` and `AI_PROXY_MODEL=oc/deepseek-v4-flash-free`.
 - `AI_PROXY_API_KEY` is optional; leave blank for a local proxy that does not require auth.
+- DeepSeek thinking controls default to `AI_PROXY_THINKING_MODE=disabled`; set `enabled` with `AI_PROXY_REASONING_EFFORT=high|max` when the upstream proxy supports it.
 - Chat replies default to `AI_CHAT_MAX_TOKENS=2048`; Core chat also sends a 2048-token reply budget so stale worker env files do not shrink normal dashboard answers.
+- Embeddings use `AI_EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` with `AI_EMBEDDING_DIMENSION=384`. The model loads lazily on first `/api/ai/embed` request.
+- Chat requests may include backend-owned `rag_context` and `safety_context`. The worker formats source snippets as `[S1]`, `[S2]`, etc. only when sources are supplied, and treats snippets as untrusted evidence that cannot override safety rules.
 
 Download model manually:
 
