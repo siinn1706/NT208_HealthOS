@@ -102,10 +102,13 @@ async def test_refresh_persists_new_access_token(passthrough_fernet, monkeypatch
     )
 
     device = _FakeDevice()
-    new_access = await sync_wearables._refresh_and_persist(
+    new_access, current_refresh = await sync_wearables._refresh_and_persist(
         db=None, device=device, refresh_token="current-refresh-plain"
     )
     assert new_access == "fresh-access"
+    # No rotation → the input refresh token flows back unchanged so the
+    # caller keeps using it for any mid-sweep refresh.
+    assert current_refresh == "current-refresh-plain"
     assert device.access_token_encrypted == "ENC:fresh-access"
     # Refresh token was NOT rotated → original ciphertext preserved.
     assert device.refresh_token_encrypted == "old-refresh-cipher"
@@ -134,9 +137,11 @@ async def test_refresh_persists_rotated_refresh_token(
     )
 
     device = _FakeDevice()
-    await sync_wearables._refresh_and_persist(
+    _, current_refresh = await sync_wearables._refresh_and_persist(
         db=None, device=device, refresh_token="anything"
     )
+    # Rotation → the new token is returned so the caller drops the stale one.
+    assert current_refresh == "rotated-refresh"
     assert device.refresh_token_encrypted == "ENC:rotated-refresh"
 
 

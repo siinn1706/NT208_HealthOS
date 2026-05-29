@@ -170,7 +170,9 @@ async def _sync_one_device_async(connection_id: uuid.UUID) -> dict[str, Any]:
             )
             if needs_refresh:
                 try:
-                    access_token = await _refresh_and_persist(db, device, refresh_token)
+                    access_token, refresh_token = await _refresh_and_persist(
+                        db, device, refresh_token
+                    )
                 except google_health.GoogleHealthError as exc:
                     if exc.status_code == 400:
                         await _mark_error(db, device, "REAUTH_REQUIRED")
@@ -222,7 +224,7 @@ async def _sync_one_device_async(connection_id: uuid.UUID) -> dict[str, Any]:
                 except google_health.GoogleHealthError as exc:
                     if exc.status_code == 401:
                         try:
-                            access_token = await _refresh_and_persist(
+                            access_token, refresh_token = await _refresh_and_persist(
                                 db, device, refresh_token
                             )
                             raw_records = await google_health.fetch_data(
@@ -334,8 +336,15 @@ async def _refresh_and_persist(
     db,
     device: ConnectedDevice,
     refresh_token: str,
-) -> str:
-    """Refresh the access token and persist the new ciphertext + expiry."""
+) -> tuple[str, str]:
+    """Refresh the access token and persist the new ciphertext + expiry.
+
+    Returns ``(new_access, current_refresh)``. ``current_refresh`` is the
+    rotated refresh token when Google sends one, otherwise the input token.
+    Callers MUST reassign their local refresh-token variable from the return
+    value: a second refresh in the same sweep (mid-sweep 401) that reused a
+    rotated-away token would fail with invalid_grant.
+    """
     payload = await google_health.refresh_access_token(refresh_token)
     new_access = payload.get("access_token")
     if not new_access:
@@ -354,7 +363,7 @@ async def _refresh_and_persist(
     new_refresh = payload.get("refresh_token")
     if new_refresh:
         device.refresh_token_encrypted = encrypt_token(new_refresh)
-    return new_access
+    return new_access, (new_refresh or refresh_token)
 
 
 async def _acquire_device_lock(connection_id: uuid.UUID) -> _DeviceSyncLock | None:
