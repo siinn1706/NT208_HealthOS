@@ -309,11 +309,16 @@ async def _upsert_chunk(
 async def _apply_deletions(
     db: AsyncSession,
     user_id: uuid.UUID,
+    source: WearableSourceEnum,
     external_ids: list[str],
 ) -> int:
     """Mark matching rows as soft-deleted. Returns the number of rows
-    actually flipped (i.e. excludes the case where HC reports a deletion
-    for a record we never imported)."""
+    actually flipped (i.e. excludes the case where the provider reports a
+    deletion for a record we never imported).
+
+    Scoped by ``source`` — the same column in the upsert conflict target —
+    so a tombstone only ever clears a row written by the same provider, and
+    never an identically-keyed row from a different one."""
     if not external_ids:
         return 0
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -321,7 +326,7 @@ async def _apply_deletions(
         update(HealthMetric)
         .where(
             HealthMetric.user_id == user_id,
-            HealthMetric.source == WearableSourceEnum.HEALTH_CONNECT,
+            HealthMetric.source == source,
             HealthMetric.external_id.in_(external_ids),
             HealthMetric.is_deleted.is_(False),
         )
@@ -366,7 +371,7 @@ async def upsert_batch(
                 for r in chunk
             )
 
-    deleted = await _apply_deletions(db, user_id, deletion_ids)
+    deleted = await _apply_deletions(db, user_id, _derived_source(device), deletion_ids)
 
     # Persist the new tokens. We treat an empty-string token the same as
     # null so the device can explicitly invalidate state without DELETE.
