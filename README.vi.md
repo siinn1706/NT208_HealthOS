@@ -97,6 +97,18 @@ bash infra/scripts/setup.sh
 
 Lệnh này copy các file env example, tải model AI YOLO từ Google Drive, cài npm deps, tạo Python venv, cài pip deps và chạy DB migrations.
 
+Bước tải model verify SHA256 theo `AI_YOLO_MODEL_SHA256` đã pin. Setup fail sớm nếu hash trống — giá trị pin nằm trong `infra/env/.env.master.example`, nên clone mới chạy được luôn. Nếu checkout cũ có `infra/env/.env.master` từ trước commit pin hash, refresh trước khi chạy lại setup:
+
+```powershell
+# Windows: xoá master cũ, regenerate từ example
+Remove-Item .\infra\env\.env.master ; .\infra\scripts\setup.ps1
+```
+
+```bash
+# Linux / macOS / WSL
+rm infra/env/.env.master && bash infra/scripts/setup.sh
+```
+
 Bỏ qua bước tải model nếu cần:
 
 ```powershell
@@ -110,12 +122,14 @@ bash infra/scripts/setup.sh --skip-model-download
 Tải model thủ công:
 
 ```powershell
-.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env
+.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env -RequireSha256
 ```
 
 ```bash
-bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
+bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env --require-sha256
 ```
+
+Bỏ flag `-RequireSha256` / `--require-sha256` để tắt integrity check (không khuyến nghị).
 
 ### Tạo Admin Kiểm Thử (Tùy Chọn)
 
@@ -235,6 +249,7 @@ Giữ `BFF_SHARED_SECRET` chỉ ở phía server và không bao giờ expose qua
 - Lỗi import -> Xác minh Python version khớp 3.12 (xem `.python-version`)
 - Lỗi npm -> Xác minh Node version khớp 20 (xem `.nvmrc`)
 - Thiếu env key sau khi pull -> Chạy `.\check_env.bat` (xem tooling Phase 8)
+- `[MODEL] RequireSha256 is on but AI_YOLO_MODEL_SHA256 is empty` -> `infra/env/.env.master` của bạn có trước commit pin hash. Xoá file đó rồi chạy lại setup (xem mục Setup lần đầu phía trên)
 - DB cũ / migrations lỗi -> Chạy `.\reset_docker.bat` rồi `.\start_ALL.bat`
 - Service khởi động lỗi -> Chạy `.\start_ALL.bat -CheckOnly` và đọc log được báo trong `infra/logs/`
 

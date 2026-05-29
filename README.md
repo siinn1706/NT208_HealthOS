@@ -97,6 +97,18 @@ bash infra/scripts/setup.sh
 
 This creates `infra/env/.env.master` from the tracked master template, renders all generated `.env` files from it, downloads the AI YOLO model from Google Drive, installs npm deps, creates the Python venv, installs pip deps, and runs DB migrations.
 
+The model download verifies the file against the pinned `AI_YOLO_MODEL_SHA256`. Setup fails fast if the hash is missing — the pinned value lives in `infra/env/.env.master.example`, so a fresh clone passes by default. If you have an older checkout whose `infra/env/.env.master` predates the pinned hash, refresh it before re-running setup:
+
+```powershell
+# Windows: discard current master, regenerate from example
+Remove-Item .\infra\env\.env.master ; .\infra\scripts\setup.ps1
+```
+
+```bash
+# Linux / macOS / WSL
+rm infra/env/.env.master && bash infra/scripts/setup.sh
+```
+
 Skip model download if needed:
 
 ```powershell
@@ -110,12 +122,14 @@ bash infra/scripts/setup.sh --skip-model-download
 Download model manually:
 
 ```powershell
-.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env
+.\infra\scripts\download-ai-model.ps1 -EnvFile .\services\ai-worker\.env -RequireSha256
 ```
 
 ```bash
-bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env
+bash infra/scripts/download-ai-model.sh --env-file ./services/ai-worker/.env --require-sha256
 ```
+
+Drop the `-RequireSha256` / `--require-sha256` flag to skip integrity checking (not recommended).
 
 ### Seed Test Admin (Optional)
 
@@ -233,6 +247,7 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 - Import errors → Verify Python version matches 3.12 (see `.python-version`)
 - npm errors → Verify Node version matches 20 (see `.nvmrc`)
 - Env drift after pull → Edit `infra/env/.env.master`, run `.\infra\scripts\sync-env.ps1 -Target all`, then `.\check_env.bat`
+- `[MODEL] RequireSha256 is on but AI_YOLO_MODEL_SHA256 is empty` → Your `infra/env/.env.master` predates the pinned hash. Delete it and rerun setup (see First-time setup above)
 - Stale DB / broken migrations → Run `.\reset_docker.bat` then `.\start_ALL.bat`
 - Services fail to start → Run `.\start_ALL.bat -CheckOnly` and read the reported logs under `infra/logs/`
 
