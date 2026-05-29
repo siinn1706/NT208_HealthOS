@@ -34,7 +34,7 @@ if ($LASTEXITCODE -ne 0) {
 
 if (-not $skipModelDownload) {
     Write-Host "[MODEL] Ensuring AI YOLO model exists..." -ForegroundColor Cyan
-    & "$Root\infra\scripts\download-ai-model.ps1" -EnvFile "$Root\services\ai-worker\.env"
+    & "$Root\infra\scripts\download-ai-model.ps1" -EnvFile "$Root\services\ai-worker\.env" -RequireSha256
     if ($LASTEXITCODE -ne 0) {
         throw "[MODEL] Failed to download AI model."
     }
