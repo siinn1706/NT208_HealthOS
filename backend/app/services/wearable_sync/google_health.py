@@ -6,17 +6,22 @@ API. The caller is responsible for persisting tokens (via
 on the schedule it prefers (Celery Beat at 15-minute intervals, or
 on-demand from the OAuth callback).
 
-The 'Google Health API' here is the new 2024 unified API documented at
-https://developers.google.com/health — distinct from (and the eventual
-replacement for) the legacy Google Fit Fitness API and the standalone
-Fitbit Web API. We do **not** target either of those.
+The 'Google Health API' here is the cloud/server-side API documented at
+https://developers.google.com/health — Google's recommended successor for
+web/OAuth integrations, replacing the deprecated Google Fit APIs (end of
+service late 2026) and absorbing the Fitbit Web API. We do **not** target
+the legacy Fit Fitness API or the on-device Health Connect SDK.
 
-API surface marked TODO below is intentionally explicit: as of
-implementation time some endpoint paths and the webhook subscription
-mechanism were still in flux per Google's docs. The caller's contract
-(``fetch_data`` returns a list of dicts shaped like raw HC records
-the normalizer can consume) is stable regardless of which concrete
-REST shape Google ships.
+Confirmed from the official docs + live v4 discovery doc: base is
+``health.googleapis.com/v4``, data lives under
+``users/*/dataTypes/*/dataPoints``, scopes are the Restricted
+``googlehealth.*`` categories, and webhooks are real (server-managed
+``subscribers``/``subscriptions`` resources). Still TODO (need a captured
+real payload — see Phase C/D notes on the functions below): the exact
+``dataPoints`` request params, the nested per-point JSON shape, and the
+data-type identifier vocabulary the normalizer maps. The caller's contract
+(``fetch_data`` returns a list of plain dicts the normalizer consumes) is
+stable regardless of the concrete field names.
 """
 from __future__ import annotations
 
@@ -38,42 +43,41 @@ _OAUTH_REVOKE_URL: Final[str] = "https://oauth2.googleapis.com/revoke"
 _OAUTH_USERINFO_URL: Final[str] = "https://openidconnect.googleapis.com/v1/userinfo"
 
 # ── Google Health REST base. Documented at developers.google.com/health.
-# Pinned to v1 to avoid silent breakage if Google publishes v2 with
-# different request/response shapes. ──
-_HEALTH_API_BASE: Final[str] = "https://health.googleapis.com/v1"
+# v4 is the current GA major (confirmed against the live discovery doc:
+# https://health.googleapis.com/$discovery/rest?version=v4). Pinned so a
+# future v5 with different request/response shapes can't break us silently.
+_HEALTH_API_BASE: Final[str] = "https://health.googleapis.com/v4"
 
-# ── Scopes requested at consent time. Take the maximum set the spec
-# enumerates so a single grant covers every metric the normalizer maps.
+# ── Scopes requested at consent time.
 # Reference: https://developers.google.com/health/scopes
-# Per spec §3.5: activity, heart rate, sleep, body composition, SpO2,
-# skin temp, breathing, stress, cardio fitness, ECG. ──
+#
+# The real Google Health scopes are COARSE category buckets under the
+# `googlehealth` prefix (not the per-metric `health.*.read` strings an
+# earlier draft of this file guessed). Each is *Restricted*, so the OAuth
+# app must pass Google verification + an annual CASA security assessment
+# before non-test users can grant them.
+#
+# We request the read-only categories that cover every metric in
+# normalizer._GOOGLE_HEALTH_TYPE_MAP. The exact metric→category membership
+# is documented per data-type table on the scopes page; confirm it against
+# real `dataPoints` payloads (Phase C) and trim/extend this set so we don't
+# over-request at review time. `openid/email/profile` stay for the OIDC
+# userinfo call in fetch_user_profile.
 _DEFAULT_SCOPES: Final[tuple[str, ...]] = (
     "openid",
     "email",
     "profile",
-    # Activity
-    "https://www.googleapis.com/auth/health.activity.read",
-    "https://www.googleapis.com/auth/health.exercise.read",
-    # Cardiovascular
-    "https://www.googleapis.com/auth/health.heart_rate.read",
-    "https://www.googleapis.com/auth/health.blood_pressure.read",
-    "https://www.googleapis.com/auth/health.heart_rate_variability.read",
-    # Sleep & recovery
-    "https://www.googleapis.com/auth/health.sleep.read",
-    # Body composition
-    "https://www.googleapis.com/auth/health.body_measurement.read",
-    "https://www.googleapis.com/auth/health.weight.read",
-    # Respiratory & oximetry
-    "https://www.googleapis.com/auth/health.oxygen_saturation.read",
-    "https://www.googleapis.com/auth/health.respiratory_rate.read",
-    # Temperature
-    "https://www.googleapis.com/auth/health.body_temperature.read",
-    "https://www.googleapis.com/auth/health.skin_temperature.read",
-    # Misc
-    "https://www.googleapis.com/auth/health.blood_glucose.read",
-    "https://www.googleapis.com/auth/health.hydration.read",
-    "https://www.googleapis.com/auth/health.stress.read",
-    "https://www.googleapis.com/auth/health.cardio_fitness.read",
+    # Steps, distance, calories, exercise, floors, active minutes, VO2 max.
+    "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
+    # HR (resting/max/HRV), blood pressure, SpO2, respiratory rate, weight,
+    # height, body composition, blood glucose, body/skin temperature, stress.
+    "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
+    # Sleep stages + efficiency.
+    "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
+    # Hydration / nutrition.
+    "https://www.googleapis.com/auth/googlehealth.nutrition.readonly",
+    # Profile (used to bind external_account_id).
+    "https://www.googleapis.com/auth/googlehealth.profile.readonly",
 )
 
 # Network timeout for every upstream call. Google's APIs are usually
@@ -278,22 +282,26 @@ async def fetch_data(
     since: datetime.datetime,
     until: datetime.datetime,
 ) -> list[dict[str, Any]]:
-    """Fetch one data-type's records for a time window.
+    """Fetch one data-type's data points for a time window.
 
-    `data_type` is the Google Health API type identifier (e.g.
-    ``heart_rate``, ``steps``, ``sleep_session``) — the normalizer
-    knows the exact set and how each maps to ``MetricTypeEnum``.
+    `data_type` is the Google Health API data-type identifier (kebab-case,
+    e.g. ``steps``, ``heart-rate``, ``sleep``) — the normalizer knows the
+    set and how each maps to ``MetricTypeEnum``.
 
-    TODO: the v1 REST path is documented at developers.google.com/health
-    but Google reserves the right to evolve the shape. If the live API
-    differs from the path/body convention assumed here, only this
-    function needs updating — callers receive plain dicts that the
-    normalizer interprets.
+    Confirmed against the live v4 contract:
+        GET /v4/users/{user}/dataTypes/{dataType}/dataPoints
+    (resource is ``dataPoints``, not ``records``; reference:
+    developers.google.com/health/reference/rest).
+
+    TODO(Phase C/D): the exact request param names for the time window and
+    page size, plus the response array/field names, still need pinning from
+    a captured real payload + the v4 discovery doc. The query keys below are
+    the AIP-standard guesses; only this function changes when confirmed —
+    callers receive plain dicts the normalizer interprets.
     """
-    # Path convention assumed: GET /v1/users/me/dataTypes/{type}/records
-    # with ISO-8601 timestamp range as query string. If Google ships a
-    # different convention, swap this URL — nothing else changes.
-    url = f"{_HEALTH_API_BASE}/users/me/dataTypes/{data_type}/records"
+    # `users/me` is the caller-identity alias; confirm in Phase C whether v4
+    # accepts it or requires the id from the getIdentity endpoint.
+    url = f"{_HEALTH_API_BASE}/users/me/dataTypes/{data_type}/dataPoints"
     base_params = {
         "startTime": since.isoformat(),
         "endTime": until.isoformat(),
@@ -329,13 +337,19 @@ async def fetch_data(
                     status_code=resp.status_code,
                 )
             body = resp.json()
-            # Google list responses are typically wrapped in a "records" or
-            # "items" key. Be defensive — accept whichever is present. A bare
-            # list carries no pagination envelope, so it's always a single page.
+            # The v4 list response wraps the page in a "dataPoints" array.
+            # Keep "records"/"items" as defensive fallbacks until the exact
+            # field is pinned from a captured payload (Phase C). A bare list
+            # carries no pagination envelope, so it's always a single page.
             if isinstance(body, list):
                 records.extend(body)
                 break
-            records.extend(body.get("records") or body.get("items") or [])
+            records.extend(
+                body.get("dataPoints")
+                or body.get("records")
+                or body.get("items")
+                or []
+            )
             page_token = body.get("nextPageToken") or body.get("next_page_token")
             if not page_token:
                 break
