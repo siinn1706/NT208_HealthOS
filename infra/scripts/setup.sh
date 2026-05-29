@@ -35,7 +35,7 @@ bash "$ROOT_DIR/infra/scripts/sync-env.sh" --target all
 
 if [[ "$SKIP_MODEL_DOWNLOAD" -eq 0 ]]; then
     echo "[MODEL] Ensuring AI YOLO model exists..."
-    bash "$ROOT_DIR/infra/scripts/download-ai-model.sh" --env-file "$ROOT_DIR/services/ai-worker/.env"
+    bash "$ROOT_DIR/infra/scripts/download-ai-model.sh" --env-file "$ROOT_DIR/services/ai-worker/.env" --require-sha256
     echo "[MODEL] Done."
 else
     echo "[MODEL] Skipping model download (--skip-model-download)."

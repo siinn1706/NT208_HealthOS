@@ -84,8 +84,31 @@ download_from_gdrive() {
     -o "$body_file"
 
   content_type="$(rg -N '^content-type:' "$header_file" -i | sed 's/^[^:]*:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)"
-  confirm_token="$(sed -n 's/.*confirm=\([0-9A-Za-z_]\+\).*/\1/p' "$body_file" | head -n 1)"
 
+  # Plain binary response — first request already returned the file.
+  if [[ "$content_type" != *"text/html"* ]]; then
+    mv "$body_file" "$dest_path"
+    return
+  fi
+
+  # Newer GDrive flow (large files): hidden form posts to drive.usercontent.google.com.
+  # confirm value is now fixed ("t"); uuid is per-request.
+  local form_action confirm_value uuid_value second_url
+  form_action="$(sed -n 's/.*action="\(https:\/\/drive\.usercontent\.google\.com\/download[^"]*\)".*/\1/p' "$body_file" | head -n 1)"
+  confirm_value="$(sed -n 's/.*name="confirm"[[:space:]]*value="\([^"]\+\)".*/\1/p' "$body_file" | head -n 1)"
+  uuid_value="$(sed -n 's/.*name="uuid"[[:space:]]*value="\([^"]\+\)".*/\1/p' "$body_file" | head -n 1)"
+
+  if [[ -n "$form_action" && -n "$confirm_value" ]]; then
+    second_url="${form_action}?id=${file_id}&export=download&confirm=${confirm_value}"
+    if [[ -n "$uuid_value" ]]; then
+      second_url="${second_url}&uuid=${uuid_value}"
+    fi
+    curl -sSL -b "$cookie_file" "$second_url" -o "$dest_path"
+    return
+  fi
+
+  # Legacy GDrive flow: confirm token embedded in querystring of body.
+  confirm_token="$(sed -n 's/.*confirm=\([0-9A-Za-z_]\+\).*/\1/p' "$body_file" | head -n 1)"
   if [[ -n "$confirm_token" ]]; then
     curl -sSL -b "$cookie_file" \
       "https://drive.google.com/uc?export=download&confirm=${confirm_token}&id=${file_id}" \
@@ -93,12 +116,8 @@ download_from_gdrive() {
     return
   fi
 
-  if [[ "$content_type" == *"text/html"* ]]; then
-    echo "[MODEL] Google Drive returned HTML without confirm token. Check file sharing and id." >&2
-    exit 1
-  fi
-
-  mv "$body_file" "$dest_path"
+  echo "[MODEL] Google Drive returned HTML without confirm token. Check file sharing and id." >&2
+  exit 1
 }
 
 DEFAULT_FILE_ID="1n9tMmb2P5rAlIJsZrBB1wtjRmCKFreZc"
