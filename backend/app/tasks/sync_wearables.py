@@ -34,10 +34,25 @@ logger = logging.getLogger(__name__)
 
 _INITIAL_BACKFILL_DAYS = 30
 _TOKEN_REFRESH_BUFFER_SECONDS = 60
-_SYNC_LOCK_TTL_SECONDS = 300
+# A full sweep fetches ~35 data types sequentially, each able to walk up to
+# _MAX_PAGES_PER_FETCH pages at _HTTP_TIMEOUT seconds — a single slow type can
+# run for hundreds of seconds. The lock is renewed before every data type (see
+# _renew_device_lock), so the TTL only needs to cover one type's worst case
+# (50 × 10 s = 500 s) plus headroom, not the whole sweep. A crashed worker
+# stops renewing and the lock lapses at the TTL rather than wedging forever.
+_SYNC_LOCK_TTL_SECONDS = 600
 _LOCK_RELEASE_SCRIPT = """
 if redis.call('get', KEYS[1]) == ARGV[1] then
     return redis.call('del', KEYS[1])
+end
+return 0
+"""
+# Extend our own lock's TTL — but only if we still hold it. Comparing the
+# token first stops us from resurrecting a lock another worker has already
+# taken over after ours lapsed.
+_LOCK_RENEW_SCRIPT = """
+if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('pexpire', KEYS[1], ARGV[2])
 end
 return 0
 """
@@ -196,6 +211,10 @@ async def _sync_one_device_async(connection_id: uuid.UUID) -> dict[str, Any]:
             accepted_records = []
             dropped_count = 0
             for data_type in _GOOGLE_HEALTH_TYPE_MAP.keys():
+                # Keep the lock fresh before each (potentially multi-page,
+                # multi-second) fetch so a long sweep can't outlive its TTL
+                # and let a concurrent run start syncing the same device.
+                await _renew_device_lock(lock)
                 try:
                     raw_records = await google_health.fetch_data(
                         access_token, data_type, since, until
@@ -353,6 +372,25 @@ async def _release_device_lock(lock: _DeviceSyncLock) -> None:
         await lock.redis.eval(_LOCK_RELEASE_SCRIPT, 1, lock.key, lock.token)
     except Exception:  # pragma: no cover - defensive
         logger.exception("Failed to release wearable sync lock %s", lock.key)
+
+
+async def _renew_device_lock(lock: _DeviceSyncLock) -> None:
+    """Reset the lock's TTL to a full window, but only while we still own it.
+
+    Best-effort: a renew failure (Redis blip) just means the lock may lapse
+    early, which at worst lets a duplicate sync start — the same outcome the
+    lock already tolerates on the unhappy path. Never let it abort the sync.
+    """
+    try:
+        await lock.redis.eval(
+            _LOCK_RENEW_SCRIPT,
+            1,
+            lock.key,
+            lock.token,
+            str(_SYNC_LOCK_TTL_SECONDS * 1000),
+        )
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("Failed to renew wearable sync lock %s", lock.key)
 
 
 async def _mark_error(db, device: ConnectedDevice, code: str) -> None:

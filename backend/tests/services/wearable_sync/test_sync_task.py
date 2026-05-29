@@ -63,12 +63,16 @@ class _FakeRedis:
         self.values[key] = value
         return True
 
-    async def eval(self, _script: str, _numkeys: int, key: str, token: str):
+    async def eval(self, script: str, _numkeys: int, key: str, token: str, *args):
         self.eval_calls.append((key, token))
-        if self.values.get(key) == token:
-            self.values.pop(key, None)
-            return 1
-        return 0
+        if self.values.get(key) != token:
+            return 0
+        # Renew script carries a TTL arg and only refreshes expiry; release
+        # script deletes the key. Distinguish by whether a TTL was passed.
+        if args:
+            return 1  # renew: key kept, TTL would be reset
+        self.values.pop(key, None)
+        return 1
 
 
 @pytest.fixture
@@ -222,3 +226,36 @@ async def test_sync_one_device_releases_lock_on_exception(monkeypatch):
 
     assert redis.values == {}
     assert redis.eval_calls
+
+
+@pytest.mark.asyncio
+async def test_renew_device_lock_only_extends_when_token_matches():
+    """Renew is a no-op once another worker owns the lock — it must not
+    resurrect a lock we've already lost."""
+    redis = _FakeRedis()
+    key = "wearable-sync:abc"
+    redis.values[key] = "my-token"
+    mine = sync_wearables._DeviceSyncLock(key=key, token="my-token", redis=redis)
+    theirs = sync_wearables._DeviceSyncLock(key=key, token="other-token", redis=redis)
+
+    await sync_wearables._renew_device_lock(mine)
+    # Still held by us, not deleted by the renew.
+    assert redis.values[key] == "my-token"
+
+    await sync_wearables._renew_device_lock(theirs)
+    # Token mismatch → renew did nothing, our lock is intact.
+    assert redis.values[key] == "my-token"
+
+
+@pytest.mark.asyncio
+async def test_renew_device_lock_swallows_redis_errors():
+    """A Redis blip during renew must never abort the sync."""
+    class _BoomRedis:
+        async def eval(self, *_a, **_kw):
+            raise RuntimeError("redis down")
+
+    lock = sync_wearables._DeviceSyncLock(
+        key="k", token="t", redis=_BoomRedis()
+    )
+    # Should not raise.
+    await sync_wearables._renew_device_lock(lock)
