@@ -119,7 +119,10 @@ _URGENT_HEALTH_PHRASES = (
 _ROUTINE_HEALTH_PHRASES = (
     "doctor", "appointment", "medication", "medicine", "blood pressure", "glucose",
     "diabetes", "asthma", "headache", "stomach", "cough", "fever", "pain", "rash",
-    "bac si", "thuoc", "huyet ap", "duong huyet", "dau", "ho", "sot",
+    "bmi", "body mass index", "underweight", "overweight", "weight loss", "weight gain",
+    "healthy weight", "body weight", "bac si", "thuoc", "huyet ap", "duong huyet",
+    "can nang", "chi so bmi", "thieu can", "du can", "tang can", "giam can",
+    "dau", "ho", "sot",
 )
 _GENERAL_HEALTH_PHRASES = (
     "sleep", "nutrition", "diet", "exercise", "fitness", "wellness", "stress",

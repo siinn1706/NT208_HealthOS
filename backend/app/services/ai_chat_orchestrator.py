@@ -13,12 +13,12 @@ End-to-end flow:
   4. On any failure, a synthetic system-content message is persisted so
      the user sees a graceful fallback instead of a silent timeout.
 
-Phase 4 will introduce the streaming variant on top of the same primitives.
+The streaming variant uses the same worker payload contract so both chat
+entrypoints receive matching safety, context, and retrieval inputs.
 """
 from __future__ import annotations
 
 import asyncio
-import datetime
 import logging
 import uuid
 from typing import Any, Awaitable, Callable
@@ -232,19 +232,21 @@ async def _build_chat_request_payload(
     conversation_id: uuid.UUID,
     user_id: uuid.UUID,
     bot_id: uuid.UUID,
+    *,
+    locale_override: str | None = None,
+    latest_user_message_content: str | None = None,
 ) -> dict[str, Any]:
     """Build the JSON body POSTed to the AI worker.
 
-    Phase 3 plugs the real health context here; for now we keep a sane
-    default system prompt so Phase 2 alone gives a working end-to-end demo.
+    Build the source-backed, user-aware payload shared by streaming and
+    non-streaming AI chat entrypoints.
     """
     history = await _load_recent_history(
         db, conversation_id, user_id, bot_id, limit=settings.ai_context_max_messages
     )
     user = await _fetch_user_with_profile(db, user_id)
-    locale = _locale_from_user(user)
+    locale = _normalize_locale(locale_override) or _locale_from_user(user)
 
-    # Phase 3 will overwrite system_prompt + user_context with rich health data.
     try:
         from app.services.ai_chat_context import (
             build_system_prompt,
@@ -268,7 +270,11 @@ async def _build_chat_request_payload(
         "max_tokens": settings.ai_chat_reply_max_tokens,
         "locale": locale,
     }
-    latest_user_text = _latest_user_text_from_history(history)
+    latest_user_text = (
+        latest_user_message_content.strip()
+        if isinstance(latest_user_message_content, str) and latest_user_message_content.strip()
+        else _latest_user_text_from_history(history)
+    )
     safety_result = classify_by_rules(latest_user_text)
     if safety_result.level in {
         MedicalSafetyLevel.URGENT,
@@ -295,6 +301,25 @@ async def _build_chat_request_payload(
                 rag_result.reason,
             )
     return payload
+
+
+async def build_chat_request_payload(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+    bot_id: uuid.UUID,
+    *,
+    locale_override: str | None = None,
+    latest_user_message_content: str | None = None,
+) -> dict[str, Any]:
+    return await _build_chat_request_payload(
+        db,
+        conversation_id,
+        user_id,
+        bot_id,
+        locale_override=locale_override,
+        latest_user_message_content=latest_user_message_content,
+    )
 
 
 async def _persist_system_fallback(
@@ -636,8 +661,7 @@ async def _run_streaming(
     else:
         content_type = "text"
 
-    # Build the ai_metadata payload from the worker's final event so downstream
-    # cost-tracking and debugging tools (Phase 6 reports) have structured data.
+    # Preserve worker metadata for downstream cost tracking and debugging.
     ai_metadata: dict[str, Any] = {}
     if final_meta:
         usage = final_meta.get("usage") or {}
@@ -662,7 +686,6 @@ async def _run_streaming(
             .values(
                 content=full_text,
                 content_type=MessageContentTypeEnum(content_type),
-                edited_at=datetime.datetime.now(datetime.timezone.utc),
                 ai_metadata=ai_metadata or None,
             )
         )

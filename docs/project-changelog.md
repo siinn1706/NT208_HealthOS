@@ -24,6 +24,22 @@
 
 ### Fixed
 
+#### AI Chat Streaming RAG and Personal Context (2026-05-29)
+- **Severity/impact**: High AI-quality bug where web AI chat SSE replies skipped Medical RAG and user health context even though the non-streaming path had them.
+- **Streaming payload**: SSE worker calls now reuse the backend AI chat payload builder, including DB-backed `user_context`, Medical RAG `rag_context`, `safety_context`, locale override, and reply token budget.
+- **Runtime proof**: SSE finalization now persists `messages.ai_metadata` with model, token usage, latency, streamed flag, RAG state, and source id/title/url/score evidence.
+- **Corpus activation**: Added `backend/ingest_medical_knowledge.py` and used it to ingest the local corpus into the current DB: 6 sources, 18 chunks, 18 embeddings.
+- **Vietnamese RAG detection**: BMI/weight Vietnamese prompts such as "Cân nặng này có ổn không?" now route through the health/RAG path.
+- **Frontend preservation**: Chat message adaptation now keeps returned `ai_metadata` after reload/refetch for operator inspection.
+- **Safety preserved**: Emergency prompts still bypass DB/RAG/worker streaming and persist the deterministic safe system reply.
+- **Verification**: Backend focused pytest passed: 32 tests. Frontend targeted Vitest passed: 14 tests. Python compile, RAG DB query, direct AI Worker stream probe, and `git diff --check` passed. Full frontend `tsc --noEmit` remains blocked by unrelated baseline admin/test/config type errors.
+
+#### AI Chat Reload Metadata and Banner State (2026-05-29)
+- **Severity/impact**: Medium user-facing bug where reloaded AI answers lost AI rendering, exposed raw markdown markers, and could show `(Đã chỉnh sửa)`.
+- **AI stream identity**: SSE assistant placeholders now persist with the AI bot sender id and stream finalization no longer marks generated text as a user edit.
+- **Chat banner**: AI SSE conversations no longer enable the per-conversation websocket reconnect banner; offline/session banners remain available where relevant.
+- **Verification**: Frontend targeted Vitest passed: 21 tests. Backend stream-contract pytest passed: 5 tests. Targeted frontend ESLint, backend `py_compile`, and `git diff --check` passed.
+
 #### AI Chat Locale Consistency (2026-05-29)
 - **Severity/impact**: Medium user-facing bug where Vietnamese chat sessions could receive English-only AI replies when saved backend preferences were `en`.
 - **Locale contract**: AI stream sends now include the active chat UI locale, and Core prefers that request locale before falling back to saved profile/preferences.

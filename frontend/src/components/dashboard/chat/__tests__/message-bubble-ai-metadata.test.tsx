@@ -50,6 +50,19 @@ describe("MessageBubble AI metadata", () => {
     expect(screen.queryByText("(Đã chỉnh sửa)")).not.toBeInTheDocument();
   });
 
+  it("renders persisted AI markdown without raw markdown markers", () => {
+    renderBubble(
+      {
+        ...baseMessage,
+        content: "Giữ **thói quen** uống thuốc.",
+      },
+      true,
+    );
+
+    expect(screen.getByText("thói quen").tagName).toBe("STRONG");
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+  });
+
   it("keeps the edited label for non-AI edited messages", () => {
     renderBubble({ ...baseMessage, sender_kind: "user" }, false);
 

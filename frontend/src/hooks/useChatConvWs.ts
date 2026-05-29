@@ -54,6 +54,7 @@ export function useChatConvWs({
   const tokenRef = useRef<string | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectGenerationRef = useRef(0);
   const intentionalCloseRef = useRef(false);
   const onEventRef = useRef(onEvent);
   const onReconnectRef = useRef(onReconnect);
@@ -87,11 +88,18 @@ export function useChatConvWs({
   const connect = useCallback(async () => {
     if (!enabled) return;
     if (!conversationId) return;
+    const generation = ++connectGenerationRef.current;
     intentionalCloseRef.current = false;
 
-    tokenRef.current = await fetchToken();
+    const token = await fetchToken();
+    if (generation !== connectGenerationRef.current || intentionalCloseRef.current) {
+      return;
+    }
+
+    tokenRef.current = token;
     if (!tokenRef.current) {
       setStatus("error");
+      setIsReconnecting(false);
       return;
     }
 
@@ -107,11 +115,13 @@ export function useChatConvWs({
       ws = new WebSocket(wsUrl);
     } catch {
       setStatus("error");
+      setIsReconnecting(false);
       return;
     }
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (generation !== connectGenerationRef.current) return;
       const wasReconnect = reconnectAttemptsRef.current > 0;
 
       setStatus("connected");
@@ -129,6 +139,7 @@ export function useChatConvWs({
     };
 
     ws.onmessage = (evt) => {
+      if (generation !== connectGenerationRef.current) return;
       try {
         const frame = JSON.parse(evt.data as string) as WsFrame;
 
@@ -144,10 +155,12 @@ export function useChatConvWs({
     };
 
     ws.onerror = () => {
+      if (generation !== connectGenerationRef.current) return;
       setStatus("error");
     };
 
     ws.onclose = (evt) => {
+      if (generation !== connectGenerationRef.current) return;
       wsRef.current = null;
       setStatus("disconnected");
 
@@ -191,6 +204,7 @@ export function useChatConvWs({
   );
 
   const disconnect = useCallback(() => {
+    connectGenerationRef.current += 1;
     intentionalCloseRef.current = true;
     clearReconnectTimer();
     wsRef.current?.close();
@@ -214,10 +228,13 @@ export function useChatConvWs({
       void connect();
     }
     return () => {
+      connectGenerationRef.current += 1;
       clearReconnectTimer();
       intentionalCloseRef.current = true;
       wsRef.current?.close();
       wsRef.current = null;
+      setStatus("disconnected");
+      setIsReconnecting(false);
     };
   }, [enabled, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
