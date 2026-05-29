@@ -84,6 +84,33 @@ function Download-GDriveFile {
         }
         $firstBody = Get-Content -Path $bodyPath -Raw
 
+        if ($contentType -notmatch "text/html") {
+            Move-Item -Path $bodyPath -Destination $DestinationPath -Force
+            return
+        }
+
+        # Newer GDrive flow (large files): hidden form posts to drive.usercontent.google.com
+        # with confirm + uuid inputs. Confirm value is now fixed ("t"); uuid is per-request.
+        $formActionMatch = [regex]::Match($firstBody, 'action="(https://drive\.usercontent\.google\.com/download[^"]*)"')
+        $confirmInputMatch = [regex]::Match($firstBody, 'name="confirm"\s+value="([^"]+)"')
+        $uuidInputMatch = [regex]::Match($firstBody, 'name="uuid"\s+value="([^"]+)"')
+
+        if ($formActionMatch.Success -and $confirmInputMatch.Success) {
+            $action = $formActionMatch.Groups[1].Value
+            $confirm = $confirmInputMatch.Groups[1].Value
+            $uuid = if ($uuidInputMatch.Success) { $uuidInputMatch.Groups[1].Value } else { "" }
+
+            $secondUrl = "$action`?id=$FileId&export=download&confirm=$confirm"
+            if ($uuid) { $secondUrl += "&uuid=$uuid" }
+
+            & $curl.Source -sSL -b $cookiePath $secondUrl -o $DestinationPath
+            if ($LASTEXITCODE -ne 0) {
+                throw "[MODEL] Failed second Google Drive request."
+            }
+            return
+        }
+
+        # Legacy GDrive flow: confirm token embedded in querystring of body
         $confirmMatch = [regex]::Match($firstBody, "confirm=([0-9A-Za-z_]+)")
         if ($confirmMatch.Success) {
             $confirm = $confirmMatch.Groups[1].Value
@@ -92,11 +119,6 @@ function Download-GDriveFile {
             if ($LASTEXITCODE -ne 0) {
                 throw "[MODEL] Failed second Google Drive request."
             }
-            return
-        }
-
-        if ($contentType -notmatch "text/html") {
-            Move-Item -Path $bodyPath -Destination $DestinationPath -Force
             return
         }
 
