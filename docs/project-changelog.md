@@ -24,6 +24,15 @@
 
 ### Fixed
 
+#### AI YOLO Model Download Hardening (2026-05-29)
+- **Severity/impact**: High infra bug. `infra/scripts/download-ai-model.{ps1,sh}` threw `[MODEL] Google Drive response is HTML without confirm token`, blocking fresh `setup.{ps1,sh}` runs and new-contributor onboarding.
+- **GDrive flow**: Scripts now parse the new virus-scan warning form (action → `drive.usercontent.google.com/download`, fixed `confirm="t"`, per-request `uuid`) instead of the legacy `confirm=<token>` querystring regex. Legacy regex retained as fallback.
+- **Integrity pinning**: `infra/env/.env.master.example` and `infra/env/worker.env.example` now ship the YOLOv10 model SHA256 (`2e4a0cd2…0465`).
+- **Setup enforcement**: `setup.ps1` and `setup.sh` now pass `-RequireSha256` / `--require-sha256` so a missing hash aborts setup early instead of silently accepting whatever Google Drive returns.
+- **Recovery**: Existing checkouts whose `infra/env/.env.master` predates the pinned hash get a clear failure; delete the file and rerun setup to re-render from the example.
+- **README**: `README.md` and `README.vi.md` document the new contract, the manual-download flag, and the recovery step.
+- **Verification**: Forced re-download produced a 165,628,111-byte PyTorch ZIP (`50 4B 03 04` magic) matching the pinned SHA256; re-running with the populated hash now reports `Existing model hash matches. Skip download.`
+
 #### AI Chat Streaming RAG and Personal Context (2026-05-29)
 - **Severity/impact**: High AI-quality bug where web AI chat SSE replies skipped Medical RAG and user health context even though the non-streaming path had them.
 - **Streaming payload**: SSE worker calls now reuse the backend AI chat payload builder, including DB-backed `user_context`, Medical RAG `rag_context`, `safety_context`, locale override, and reply token budget.
