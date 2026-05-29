@@ -24,6 +24,13 @@
 
 ### Fixed
 
+#### Meal Photo Analyze Contract (2026-05-29)
+- **Severity/impact**: Medium user-facing bug where web meal photo analysis returned `422` before queueing because Core required a pre-analysis `name` field that the camera flow does not know yet.
+- **Analyze-photo fallback**: Core `/v1/meals/analyze-photo` now accepts image-only multipart uploads and stores a neutral `Photo meal` placeholder until YOLO analysis resolves the nutrition result.
+- **Model/config placement**: Verified the local YOLOv10 model hash, mirrored it into the Docker/README `services/ai-worker/models/` path, and aligned AI worker env paths with `models/` plus `data/class_names.py`.
+- **Worker dependency**: Added the `dill` runtime dependency required by the YOLOv10 checkpoint.
+- **Verification**: Focused backend meal endpoint pytest, AI worker env render check, worker model/class path probe, and direct YOLO checkpoint load passed.
+
 #### AI Chat Streaming RAG and Personal Context (2026-05-29)
 - **Severity/impact**: High AI-quality bug where web AI chat SSE replies skipped Medical RAG and user health context even though the non-streaming path had them.
 - **Streaming payload**: SSE worker calls now reuse the backend AI chat payload builder, including DB-backed `user_context`, Medical RAG `rag_context`, `safety_context`, locale override, and reply token budget.

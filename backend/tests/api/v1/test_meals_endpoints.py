@@ -301,6 +301,34 @@ async def test_analyze_photo_persists_processing_status(
 
 
 @pytest.mark.asyncio
+async def test_analyze_photo_accepts_image_without_preanalysis_name(
+    authed_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(meals_endpoint, "upload_file", lambda **kwargs: "meals/analyze-photo.png")
+    monkeypatch.setattr(
+        meals_endpoint.analyze_meal_image,
+        "delay",
+        MagicMock(return_value=SimpleNamespace(id="job-analyze-no-name")),
+    )
+
+    png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+    res = await authed_client.post(
+        "/v1/meals/analyze-photo",
+        files={"image": ("meal.png", png_bytes, "image/png")},
+    )
+
+    assert res.status_code == 202
+    payload = res.json()
+    assert payload["job_id"] == "job-analyze-no-name"
+    meal_id = uuid.UUID(payload["meal_id"])
+    row = await _load_meal(meal_id)
+    assert row is not None
+    assert row.name == "Photo meal"
+    assert row.status == MealStatusEnum.PROCESSING
+
+
+@pytest.mark.asyncio
 async def test_photo_create_enqueue_failure_does_not_commit_pending_row(
     meal_api_state,
     monkeypatch: pytest.MonkeyPatch,

@@ -354,13 +354,14 @@ class AnalysisJobResponse(BaseModel):
 async def analyze_meal_photo(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    name: str = Form(...),
+    name: str | None = Form(default=None),
     image: UploadFile = File(...),
 ) -> AnalysisJobResponse:
     """Upload meal photo for AI analysis."""
     if not image.filename:
         raise _bad_request("image file is required")
 
+    meal_name = (name or "").strip() or "Photo meal"
     image_bytes, content_type, file_ext = await _read_validated_meal_image(image)
     key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
     image_url = upload_file(
@@ -374,7 +375,7 @@ async def analyze_meal_photo(
     meal = await meal_svc.create_meal(
         db=db,
         user_id=current_user.id,
-        name=name,
+        name=meal_name,
         logged_at=datetime.datetime.now(datetime.timezone.utc),
         image_url=image_url,
     )

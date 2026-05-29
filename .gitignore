@@ -70,6 +70,8 @@ contracts/openapi/_generated/*.yaml
 
 # AI local model cache (model is distributed via Google Drive)
 services/ai-worker/models/
+services/ai-worker/model/
+services/ai-worker/class_names.py
 
 # Ignore local infrastructure data
 .data/
