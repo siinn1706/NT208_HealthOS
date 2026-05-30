@@ -7,6 +7,7 @@ export const queryKeys = {
   appointment: (id: string) => `appointments.detail.${id}`,
   prescriptionAssets: (appointmentId: string) => `appointments.prescription-assets.${appointmentId}`,
   conversations: 'chat.conversations',
+  pendingConversations: 'chat.conversations.pending',
   messages: (conversationId: string) => `chat.messages.${conversationId}`,
   medications: 'medications.list',
   medication: (id: string) => `medications.detail.${id}`,

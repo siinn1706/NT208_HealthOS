@@ -522,7 +522,18 @@
     "aiConversationError": "Không thể mở trò chuyện AI.",
     "searchAccessibility": "Tìm kiếm",
     "noConversationsMessage": "Các cuộc trò chuyện với đội chăm sóc và AI đã chấp nhận sẽ hiển thị ở đây.",
-    "createConversationUnavailable": "Tính năng tạo cuộc trò chuyện chưa khả dụng."
+    "createConversationUnavailable": "Tính năng tạo cuộc trò chuyện chưa khả dụng.",
+    "pendingInvites": "Lời mời chờ duyệt",
+    "pendingInvitesSubtitle": "Lời mời nhóm và yêu cầu nhắn tin",
+    "pendingInvitesAccessibility": "Lời mời chờ duyệt",
+    "noPendingInvites": "Không có lời mời nào",
+    "noPendingInvitesMessage": "Lời mời vào nhóm và yêu cầu nhắn tin sẽ hiển thị ở đây.",
+    "loadingInvites": "Đang tải lời mời",
+    "invitesUnavailable": "Không tải được lời mời",
+    "accept": "Chấp nhận",
+    "reject": "Từ chối",
+    "groupMembers": "{{count}} thành viên",
+    "messageRequest": "Yêu cầu nhắn tin"
   },
   "me": {
     "title": "Tôi",

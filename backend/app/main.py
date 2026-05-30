@@ -355,12 +355,16 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
         log.info("WS disconnected: user=%s", disconnected_user)
         # Broadcast offline status to all rooms this user was in
         if disconnected_user:
+            # disconnect() only flips presence to offline once the user's LAST
+            # socket is gone, so read the real value rather than hardcoding
+            # False — otherwise closing one of several tabs/devices would
+            # broadcast a spurious offline to peers while the user is still on.
             presence = manager.get_presence(disconnected_user)
             offline_event = {
                 "event": "user.status",
                 "payload": {
                     "user_id": disconnected_user,
-                    "is_online": False,
+                    "is_online": presence.get("is_online", False),
                     "last_seen_at": presence.get("last_seen_at"),
                 },
                 "timestamp": ts_now(),

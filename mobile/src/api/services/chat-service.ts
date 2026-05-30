@@ -19,6 +19,22 @@ export const chatService = {
     return response.data;
   },
 
+  /** Pending conversation requests awaiting this user's acceptance (stranger DMs + group invites). */
+  async pendingConversations() {
+    const response = await apiRequest<{ data: Conversation[]; total: number }>('/v1/conversations/pending');
+    return response.data;
+  },
+
+  /** Accept a pending conversation request (becomes an accepted member). */
+  async acceptConversation(id: string) {
+    await apiRequest(`/v1/conversations/${encodeURIComponent(id)}/accept`, { method: 'POST' });
+  },
+
+  /** Reject a pending conversation request. */
+  async rejectConversation(id: string) {
+    await apiRequest(`/v1/conversations/${encodeURIComponent(id)}/reject`, { method: 'POST' });
+  },
+
   async createAiConversation(initialMessage?: string) {
     const response = await apiRequest<DataResponse<Conversation>>('/v1/conversations/ai', {
       method: 'POST',

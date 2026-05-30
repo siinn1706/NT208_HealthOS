@@ -8,7 +8,7 @@ import { ApiState, MissingApiState } from '../../src/components/api/api-state';
 import { ChatListSkeleton } from '../../src/components/api/skeletons';
 import { AiAssistantHero } from '../../src/components/chat/ai-assistant-hero';
 import { ConversationRow } from '../../src/components/chat/conversation-row';
-import { IconSearch, IconPlus } from '../../src/icons';
+import { IconSearch, IconPlus, IconUsers } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
@@ -32,6 +32,12 @@ export default function ChatScreen() {
   const { user } = useSession();
   const loadConversations = useCallback(() => chatService.conversations(), []);
   const conversations = useApiQuery(queryKeys.conversations, loadConversations);
+
+  // Pending invites (group invites + stranger DMs) — drives the dot indicator
+  // on the inbox button that opens the pending-invites screen.
+  const loadPending = useCallback(() => chatService.pendingConversations(), []);
+  const pendingInvites = useApiQuery(queryKeys.pendingConversations, loadPending);
+  const hasPendingInvites = (pendingInvites.data?.length ?? 0) > 0;
 
   // Search state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -93,6 +99,13 @@ export default function ChatScreen() {
         subtitle={i18n('chat.subtitle')}
         right={
           <View style={styles.actions}>
+            <IconButton
+              variant="subtle"
+              icon={<IconUsers size={20} color={t.ink3} />}
+              dot={hasPendingInvites}
+              accessibilityLabel={i18n('chat.pendingInvitesAccessibility')}
+              onPress={() => router.push('/chat/pending' as never)}
+            />
             <IconButton
               variant="subtle"
               icon={<IconSearch size={20} color={t.ink3} />}

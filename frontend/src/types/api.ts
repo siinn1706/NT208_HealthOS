@@ -575,6 +575,15 @@ export interface StrangerRequest {
   message_preview: string;
   status: StrangerRequestStatus;
   created_at: string;
+  /**
+   * Conversation type behind the request. "direct" is a stranger DM; "group"
+   * is a pending group invite, which renders with the group title/avatar and
+   * member count instead of the inviter's identity.
+   */
+  conversation_type?: ConversationType;
+  group_title?: string;
+  group_avatar_url?: string | null;
+  member_count?: number;
 }
 
 export interface ChatTheme {

@@ -522,7 +522,18 @@
     "aiConversationError": "Could not open AI conversation.",
     "searchAccessibility": "Search",
     "noConversationsMessage": "Accepted care-team and AI conversations will appear here.",
-    "createConversationUnavailable": "Create conversation API not yet available."
+    "createConversationUnavailable": "Create conversation API not yet available.",
+    "pendingInvites": "Pending invites",
+    "pendingInvitesSubtitle": "Group invites and message requests",
+    "pendingInvitesAccessibility": "Pending invites",
+    "noPendingInvites": "No pending invites",
+    "noPendingInvitesMessage": "Group invites and message requests will appear here.",
+    "loadingInvites": "Loading invites",
+    "invitesUnavailable": "Invites unavailable",
+    "accept": "Accept",
+    "reject": "Reject",
+    "groupMembers": "{{count}} members",
+    "messageRequest": "Message request"
   },
   "me": {
     "title": "Me",

@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { bffFetch } from "@/lib/api-client";
+import { useChatWs, type WsFrame } from "@/hooks/useChatWs";
 import type {
   Conversation,
   Message,
@@ -170,43 +171,39 @@ export function useConversations() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initial load
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    let cancelled = false;
+  const refetch = useCallback(async () => {
     setIsLoading(true);
-    bffFetch<{ data: unknown[] }>("/api/v1/conversations")
-      .then(({ data }) => {
-        if (!cancelled) {
-          const apiConversations = data.map(adaptConversation);
-          const apiAiConversation = apiConversations.find(
-            (conversation) => conversation.type === "ai"
-          );
-          const nonAiConversations = apiConversations.filter(
-            (conversation) => conversation.type !== "ai"
-          );
-          const aiConv = apiAiConversation
-            ?? (process.env.NODE_ENV === "development" ? FALLBACK_AI_CONVERSATION : undefined);
-          setConversations([
-            ...(aiConv ? [aiConv] : []),
-            ...nonAiConversations,
-          ]);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          if (process.env.NODE_ENV === "development") {
-            console.warn("[useChat] Failed to fetch conversations — using AI fallback for dev");
-            setConversations([FALLBACK_AI_CONVERSATION]);
-          } else {
-            setConversations([]);
-          }
-        }
-      })
-      .finally(() => { if (!cancelled) setIsLoading(false); });
-    return () => { cancelled = true; };
+    try {
+      const { data } = await bffFetch<{ data: unknown[] }>("/api/v1/conversations");
+      const apiConversations = data.map(adaptConversation);
+      const apiAiConversation = apiConversations.find(
+        (conversation) => conversation.type === "ai"
+      );
+      const nonAiConversations = apiConversations.filter(
+        (conversation) => conversation.type !== "ai"
+      );
+      const aiConv = apiAiConversation
+        ?? (process.env.NODE_ENV === "development" ? FALLBACK_AI_CONVERSATION : undefined);
+      setConversations([
+        ...(aiConv ? [aiConv] : []),
+        ...nonAiConversations,
+      ]);
+    } catch {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[useChat] Failed to fetch conversations — using AI fallback for dev");
+        setConversations([FALLBACK_AI_CONVERSATION]);
+      } else {
+        setConversations([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Initial load
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
 
   const sortedConversations = useMemo(() => [...conversations].sort((a, b) => {
     if (a.type === "ai") return -1;
@@ -387,6 +384,7 @@ export function useConversations() {
     applyIncomingMessage,
     createConversation,
     upsertConversation,
+    refetch,
   };
 }
 
@@ -1150,30 +1148,47 @@ export function useMessages(
 export function useStrangerRequests() {
   const [requests, setRequests] = useState<StrangerRequest[]>([]);
 
-  // Load pending conversations from API
-  useEffect(() => {
-    let cancelled = false;
-    bffFetch<{ data: unknown[] }>("/api/v1/conversations/pending")
-      .then(({ data }) => {
-        if (!cancelled) {
-          // Adapt to StrangerRequest shape from conversation DTOs
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const adapted: StrangerRequest[] = data.map((c: any) => {
-            const initiator = (c.participants ?? [])[0];
-            return {
-              id: String(c.id),
-              from_user: adaptParticipant(initiator ?? {}),
-              message_preview: c.last_message?.content ?? "",
-              status: "pending",
-              created_at: c.created_at ?? new Date().toISOString(),
-            };
-          });
-          setRequests(adapted);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+  // Load pending conversations from API (direct stranger DMs AND group invites)
+  const refetch = useCallback(async () => {
+    try {
+      const { data } = await bffFetch<{ data: unknown[] }>("/api/v1/conversations/pending");
+      // Adapt to StrangerRequest shape from conversation DTOs
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const adapted: StrangerRequest[] = (data ?? []).map((c: any) => {
+        const initiator = (c.participants ?? [])[0];
+        const type = (c.type ?? "direct") as StrangerRequest["conversation_type"];
+        return {
+          id: String(c.id),
+          from_user: adaptParticipant(initiator ?? {}),
+          message_preview: c.last_message?.content ?? "",
+          status: "pending",
+          created_at: c.created_at ?? new Date().toISOString(),
+          conversation_type: type,
+          group_title: c.title ?? c.name ?? undefined,
+          group_avatar_url: c.avatar_url ?? null,
+          member_count: Array.isArray(c.participants) ? c.participants.length : undefined,
+        };
+      });
+      setRequests(adapted);
+    } catch {
+      // keep current state on failure
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  // Realtime: a new group invite (or stranger DM) arrives as a
+  // conversation.updated frame on the invited user's global socket. Refetch
+  // the pending list so it appears without a manual reload.
+  const handleWsEvent = useCallback((frame: WsFrame) => {
+    if (frame.event === "conversation.updated" || frame.event === "conversation.created") {
+      void refetch();
+    }
+  }, [refetch]);
+  useChatWs({ onEvent: handleWsEvent });
 
   const pendingRequests = requests.filter((r) => r.status === "pending");
 
@@ -1206,7 +1221,7 @@ export function useStrangerRequests() {
     // TODO: block endpoint when added to backend
   }, []);
 
-  return { requests, pendingRequests, acceptRequest, rejectRequest, blockRequest };
+  return { requests, pendingRequests, acceptRequest, rejectRequest, blockRequest, refetch };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

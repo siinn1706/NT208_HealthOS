@@ -5,6 +5,7 @@ export {
   MessageCircle as IconChat,
   Pill as IconPill,
   User as IconUser,
+  Users as IconUsers,
   Bell as IconBell,
   Search as IconSearch,
   Plus as IconPlus,

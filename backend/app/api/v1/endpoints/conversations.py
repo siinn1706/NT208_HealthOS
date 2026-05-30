@@ -188,7 +188,24 @@ async def create_group_conversation(
     except ValueError as exc:
         raise _http_error(400, "CHAT_ERROR", str(exc))
     await db.commit()
-    return ConversationResponse(data=await chat_svc._build_conversation_dto(db, conv, current_user.id))
+    dto = await chat_svc._build_conversation_dto(db, conv, current_user.id)
+
+    # Notify each invited member (excluding the creator) so their client can
+    # surface the pending group invite in real time — when require_accept is on
+    # these members are is_accepted=False and won't poll the group otherwise.
+    invitee_ids = {uid for uid in body.member_ids if uid != current_user.id}
+    payload = dto.model_dump(mode="json")
+    ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    for uid in invitee_ids:
+        await ws_manager.send_to_user(
+            user_id=str(uid),
+            message={
+                "event": "conversation.updated",
+                "payload": payload,
+                "timestamp": ts,
+            },
+        )
+    return ConversationResponse(data=dto)
 
 
 @router.post(

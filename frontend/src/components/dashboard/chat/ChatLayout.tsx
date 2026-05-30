@@ -58,9 +58,21 @@ export function ChatLayout() {
     applyIncomingMessage,
     upsertConversation,
     createConversation,
+    refetch: refetchConversations,
   } = useConversations();
 
   const { pendingRequests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
+
+  // Accepting a pending invite (esp. a group) flips it to is_accepted=True on
+  // the server; refetch the conversation list so it moves out of "pending" and
+  // into the accepted list without a manual reload.
+  const handleAcceptStranger = useCallback(
+    async (id: string) => {
+      await acceptRequest(id);
+      await refetchConversations();
+    },
+    [acceptRequest, refetchConversations]
+  );
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId),
@@ -149,7 +161,7 @@ export function ChatLayout() {
           onPinConversation={pinConversation}
           onMuteConversation={muteConversation}
           onDeleteConversation={handleDeleteConversation}
-          onAcceptStranger={acceptRequest}
+          onAcceptStranger={handleAcceptStranger}
           onRejectStranger={rejectRequest}
           onBlockStranger={blockRequest}
           onCreateConversation={handleCreateConversation}

@@ -201,12 +201,16 @@ async def per_conversation_ws(
         disconnected_user = manager.disconnect(ws)
         _LOGGER.info("per_conv_ws disconnected user=%s conv=%s", user_id_str, conversation_id)
         if disconnected_user:
+            # disconnect() only flips presence to offline once the user's LAST
+            # socket is gone, so read the real value rather than hardcoding
+            # False — otherwise closing one of several tabs/devices would
+            # broadcast a spurious offline to peers while the user is still on.
             presence = manager.get_presence(disconnected_user)
             await manager.broadcast(conv_room, {
                 "event": "user.status",
                 "payload": {
                     "user_id": disconnected_user,
-                    "is_online": False,
+                    "is_online": presence.get("is_online", False),
                     "last_seen_at": presence.get("last_seen_at"),
                 },
                 "timestamp": ts_now(),
