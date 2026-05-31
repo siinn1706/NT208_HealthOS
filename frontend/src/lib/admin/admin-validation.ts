@@ -90,7 +90,7 @@ export function validationErrorResponse(zodError: ZodError) {
   return {
     error: {
       code: "VALIDATION_ERROR" as const,
-      details: zodError.errors,
+      details: zodError.issues,
     },
   };
 }

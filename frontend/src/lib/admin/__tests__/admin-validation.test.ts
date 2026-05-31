@@ -9,7 +9,19 @@ import {
   planPatchSchema,
   PLAN_CODES,
   SUBSCRIPTION_STATUSES,
+  validationErrorResponse,
 } from "../admin-validation";
+
+describe("validationErrorResponse", () => {
+  it("uses Zod 4 issues as validation details", () => {
+    const result = usersListQuerySchema.safeParse({ page: 0 });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(validationErrorResponse(result.error).error.details).toBe(result.error.issues);
+    }
+  });
+});
 
 /**
  * Validates: Requirements 3.2

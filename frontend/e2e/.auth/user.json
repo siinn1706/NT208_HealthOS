@@ -1,0 +1,53 @@
+{
+  "cookies": [
+    {
+      "name": "healthos.session",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNjY1NzUzZi0zNjg2LTQxYTUtYmE2Ni03NmU1ZDY1ZWJlYmYiLCJpYXQiOjE3ODAxMzQ4NzQsImV4cCI6MTc4MDEzODQ3NCwiaXNzIjoiaGVhbHRob3MtY29yZSIsImF1ZCI6ImhlYWx0aG9zLWNsaWVudHMiLCJqdGkiOiIxNTk0NjBkMS0xZWFhLTQ1NDQtYTE2YS1lZmQ4NTVjOGM3YmIiLCJ0eXAiOiJhY2Nlc3MifQ.COMvtT3pEs9YsaciJzOJNWLS7U6G87l4wm7iVA01XEM",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1780739674.502575,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "healthos.meta",
+      "value": "%7B%22onboarding_status%22%3A%22completed%22%2C%22is_admin%22%3Afalse%7D",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1780739674.502685,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "healthos.refresh",
+      "value": "XnU_Lt54b2rwW_KTsSHSMUXlwJmgewLkaQe3VwlEZcW4EbkRj0z_a7gU-1vDNg7VmvZcALGaqauH7_uhoOPaBw",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1782726874.502708,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "healthos.storage-migration.v2",
+          "value": "done"
+        },
+        {
+          "name": "theme",
+          "value": "system"
+        },
+        {
+          "name": "healthos.sidebar.collapsed",
+          "value": "0"
+        }
+      ]
+    }
+  ]
+}

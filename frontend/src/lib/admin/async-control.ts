@@ -50,7 +50,7 @@ export function debounce<T extends (...args: unknown[]) => Promise<unknown>>(
     });
 
     return promise;
-  } as T;
+  } as unknown as T;
 }
 
 /**
