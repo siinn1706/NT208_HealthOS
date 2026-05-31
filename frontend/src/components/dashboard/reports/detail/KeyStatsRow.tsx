@@ -16,8 +16,10 @@ interface KeyStatsRowProps {
 }
 
 export async function KeyStatsRow({ stats, higherIsBetter = true }: KeyStatsRowProps) {
-  const t = await getTranslations("reports.stats");
-  const locale = await getLocale();
+  const [t, locale] = await Promise.all([
+    getTranslations("reports.stats"),
+    getLocale(),
+  ]);
 
   // Resolve the actual numeric direction so the icon matches the data, not
   // just the backend's "improving / declining" label. e.g. for BMI an
@@ -72,7 +74,7 @@ export async function KeyStatsRow({ stats, higherIsBetter = true }: KeyStatsRowP
         <p className="text-[11px] text-muted-foreground font-medium">{t("trend")}</p>
         {typeof stats.change_percent === "number" && Number.isFinite(stats.change_percent) ? (
           <div className={`flex items-center gap-1 mt-1 ${trendCls}`}>
-            <TrendIcon className="h-5 w-5" aria-hidden />
+            <TrendIcon className="size-5" aria-hidden />
             <span className="text-lg font-bold tabular-nums">
               {stats.change_percent > 0 ? "+" : ""}
               {stats.change_percent}%

@@ -49,7 +49,7 @@ export function ConnectionStatusBanner({
           className
         )}
       >
-        <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
+        <ShieldAlert className="size-3.5 flex-shrink-0" aria-hidden />
         <span className="flex-1 truncate">{t("sessionExpired")}</span>
         <Link
           href={signInHref}
@@ -63,8 +63,7 @@ export function ConnectionStatusBanner({
 
   if (!isOnline) {
     return (
-      <div
-        role="status"
+      <output
         aria-live="polite"
         className={cn(
           "flex items-center gap-2 px-4 py-2 text-xs font-medium",
@@ -73,16 +72,15 @@ export function ConnectionStatusBanner({
           className
         )}
       >
-        <WifiOff className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
+        <WifiOff className="size-3.5 flex-shrink-0" aria-hidden />
         <span className="flex-1 truncate">{t("offline")}</span>
-      </div>
+      </output>
     );
   }
 
   if (isReconnecting) {
     return (
-      <div
-        role="status"
+      <output
         aria-live="polite"
         className={cn(
           "flex items-center gap-2 px-4 py-2 text-xs font-medium",
@@ -90,7 +88,7 @@ export function ConnectionStatusBanner({
           className
         )}
       >
-        <Loader2 className="w-3.5 h-3.5 flex-shrink-0 animate-spin" aria-hidden />
+        <Loader2 className="size-3.5 flex-shrink-0 animate-spin" aria-hidden />
         <span className="flex-1 truncate">{t("reconnecting")}</span>
         {onReconnect && (
           <button
@@ -101,7 +99,7 @@ export function ConnectionStatusBanner({
             {t("reconnectNow")}
           </button>
         )}
-      </div>
+      </output>
     );
   }
 

@@ -168,7 +168,7 @@ export function ProfileSection({ user, className }: ProfileSectionProps) {
                 {formatIso(user.last_seen_at)}
               </time>
             ) : (
-              <span className="text-[var(--admin-fg-muted)]">—</span>
+              <span className="text-[var(--admin-fg-muted)]">N/A</span>
             )}
           </FieldRow>
         </Group>

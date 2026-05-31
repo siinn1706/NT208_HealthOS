@@ -19,7 +19,7 @@ import {
   Cookie,
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { LazyMotion, domAnimation, m } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +38,11 @@ import { useTranslations } from "next-intl";
 
 import { IngredientListEditor } from "./IngredientListEditor";
 import { NutritionSummaryCard } from "./NutritionSummaryCard";
+import type { SnapPrefillPayload } from "./camera-analysis-normalizer";
 
 import { addMealSchema, type AddMealFormValues } from "@/lib/validators/meal-schema";
 import { bffFetch } from "@/lib/api-client";
+import { requestMealDiaryRefresh } from "@/lib/meal-diary-refresh";
 import { cn } from "@/lib/utils";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useConnection } from "@/components/providers/offline-provider";
@@ -53,25 +55,10 @@ function nowLocalDatetime(): string {
 
 const SNAP_PREFILL_KEY = "meal_snap_prefill";
 
-interface SnapPrefillPayload {
-  name?: string;
-  meal_type?: AddMealFormValues["meal_type"];
-  ingredients?: Array<{
-    ingredient_name?: string;
-    grams?: number;
-    calories?: number;
-    protein_g?: number;
-    carbs_g?: number;
-    fat_g?: number;
-  }>;
-  needs_review?: boolean;
-  confidence?: number | null;
-}
-
 /**
  * Consume the optional camera-snap prefill written to sessionStorage by
- * `<CameraCapture>` (UX plan §I). The payload is single-shot — once we read
- * it we wipe it so a later refresh of /dashboard/meals/add starts clean.
+ * `<CameraCapture>`. The payload is single-shot: once we read it, we wipe it
+ * so a later refresh of /dashboard/meals/add starts clean.
  */
 function readSnapPrefill(): SnapPrefillPayload | null {
   if (typeof window === "undefined") return null;
@@ -101,7 +88,7 @@ function SectionCard({
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-5">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+        <div className="mt-0.5 flex-shrink-0 size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
           {icon}
         </div>
         <div>
@@ -114,6 +101,29 @@ function SectionCard({
       <Separator />
       {children}
     </div>
+  );
+}
+
+function readNonNegativeNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
+}
+
+function MealTypeSelectLabel({
+  icon: Icon,
+  color,
+  label,
+}: {
+  icon: React.ElementType;
+  color: string;
+  label: string;
+}) {
+  return (
+    <span className="flex items-center gap-2">
+      <Icon className={`size-3.5 ${color}`} />
+      {label}
+    </span>
   );
 }
 
@@ -158,29 +168,46 @@ export function AddMealForm() {
 
   const mealType = watch("meal_type");
 
-  // Hydrate the form from the AI snap prefill on mount (UX plan §I). Reading
-  // sessionStorage requires the browser, so we run it inside `useEffect` to
-  // stay SSR-safe.
+  function navigateToMealsDiary(options: { refreshDiary?: boolean } = {}) {
+    if (options.refreshDiary) requestMealDiaryRefresh();
+    router.push("/dashboard/meals");
+  }
+
+  // Hydrate the form from the AI snap prefill on mount. Reading sessionStorage
+  // requires the browser, so we run it inside `useEffect` to stay SSR-safe.
   useEffect(() => {
     const prefill = readSnapPrefill();
     if (!prefill) return;
 
+    const prefilledName = typeof prefill.name === "string" ? prefill.name.trim() : "";
     const ingredients = Array.isArray(prefill.ingredients) && prefill.ingredients.length > 0
-      ? prefill.ingredients
-          .map((ing) => ({
-            ingredient_name: typeof ing.ingredient_name === "string" ? ing.ingredient_name : "",
+      ? prefill.ingredients.flatMap((ing) => {
+          const ingredientName = typeof ing.ingredient_name === "string" ? ing.ingredient_name.trim() : "";
+          if (ingredientName.length === 0) return [];
+          return [{
+            ingredient_name: ingredientName,
             grams: typeof ing.grams === "number" && ing.grams > 0 ? ing.grams : 1,
-            manual_calories:
-              typeof ing.calories === "number" && ing.calories >= 0
-                ? ing.calories
-                : undefined,
+            manual_calories: readNonNegativeNumber(ing.calories),
+            protein_g: readNonNegativeNumber(ing.protein_g),
+            carbs_g: readNonNegativeNumber(ing.carbs_g),
+            fat_g: readNonNegativeNumber(ing.fat_g),
             is_matched: false,
-          }))
-          .filter((ing) => ing.ingredient_name.length > 0)
+          }];
+        })
       : [];
+    const aggregateCalories = readNonNegativeNumber(prefill.estimatedCalories);
+    const aggregateFallback =
+      ingredients.length === 0 && prefilledName && aggregateCalories !== undefined
+        ? [{
+            ingredient_name: prefilledName,
+            grams: 100,
+            manual_calories: aggregateCalories,
+            is_matched: false,
+          }]
+        : [];
 
     resetForm({
-      name: typeof prefill.name === "string" ? prefill.name : "",
+      name: prefilledName,
       meal_type:
         prefill.meal_type === "breakfast" ||
         prefill.meal_type === "lunch" ||
@@ -193,7 +220,9 @@ export function AddMealForm() {
       ingredients:
         ingredients.length > 0
           ? ingredients
-          : [{ ingredient_name: "", grams: 0, is_matched: false }],
+          : aggregateFallback.length > 0
+            ? aggregateFallback
+            : [{ ingredient_name: "", grams: 0, is_matched: false }],
     });
 
     if (prefill.needs_review === true) {
@@ -218,11 +247,11 @@ export function AddMealForm() {
         description: `${data.name}`,
         action: {
           label: t("viewDiary"),
-          onClick: () => router.push("/dashboard/meals"),
+          onClick: () => navigateToMealsDiary({ refreshDiary: true }),
         },
       });
 
-      router.push("/dashboard/meals");
+      navigateToMealsDiary({ refreshDiary: true });
     } catch (err) {
       // If we look offline, save the mutation locally and let the queue
       // replay it when connection returns. Otherwise report a hard failure.
@@ -241,7 +270,7 @@ export function AddMealForm() {
         toast.success(ta("savedOffline"), {
           description: ta("savedOfflineDescription"),
         });
-        router.push("/dashboard/meals");
+        navigateToMealsDiary();
       } else {
         toast.error(t("saveFailed"));
       }
@@ -252,6 +281,7 @@ export function AddMealForm() {
 
   return (
     <FormProvider {...methods}>
+      <LazyMotion features={domAnimation}>
       <div className="max-w-[1100px] mx-auto">
         {/* Page header */}
         <div className="mb-6 flex items-center gap-3">
@@ -275,8 +305,7 @@ export function AddMealForm() {
         </div>
 
         {needsAiReview && (
-          <div
-            role="status"
+          <output
             className="mb-6 rounded-xl border border-warning/30 bg-warning/10 p-4 flex items-start gap-3"
           >
             <AlertTriangle
@@ -291,7 +320,7 @@ export function AddMealForm() {
                 {tc("lowConfidenceBody")}
               </p>
             </div>
-          </div>
+          </output>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -299,7 +328,7 @@ export function AddMealForm() {
             {/* Left column: form sections */}
             <div className="space-y-6">
               {/* ── Section 1: Thông tin chung ── */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0 }}
@@ -347,10 +376,11 @@ export function AddMealForm() {
                           <SelectContent>
                             {MEAL_TYPES.map((mt) => (
                               <SelectItem key={mt.value} value={mt.value}>
-                                <span className="flex items-center gap-2">
-                                  <mt.icon className={`size-3.5 ${mt.color}`} />
-                                  {mt.label}
-                                </span>
+                                <MealTypeSelectLabel
+                                  icon={mt.icon}
+                                  color={mt.color}
+                                  label={mt.label}
+                                />
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -378,10 +408,10 @@ export function AddMealForm() {
                     </div>
                   </div>
                 </SectionCard>
-              </motion.div>
+              </m.div>
 
               {/* ── Section 2: Thành phần ── */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.08 }}
@@ -393,10 +423,10 @@ export function AddMealForm() {
                 >
                   <IngredientListEditor />
                 </SectionCard>
-              </motion.div>
+              </m.div>
 
               {/* ── Section 3: Ghi chú ── */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.16 }}
@@ -418,10 +448,10 @@ export function AddMealForm() {
                     </p>
                   )}
                 </SectionCard>
-              </motion.div>
+              </m.div>
 
               {/* Submit area (mobile) */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.24 }}
@@ -450,21 +480,21 @@ export function AddMealForm() {
                     {isSubmitting ? ta("saving") : ta("submit")}
                   </Button>
                 </div>
-              </motion.div>
+              </m.div>
             </div>
 
             {/* Right column: sticky nutrition summary */}
             <div className="space-y-4">
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 }}
               >
                 <NutritionSummaryCard />
-              </motion.div>
+              </m.div>
 
               {/* Submit area (desktop) */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: 0.2 }}
@@ -487,11 +517,12 @@ export function AddMealForm() {
                 >
                   {ta("cancel")}
                 </Button>
-              </motion.div>
+              </m.div>
             </div>
           </div>
         </form>
       </div>
+      </LazyMotion>
     </FormProvider>
   );
 }

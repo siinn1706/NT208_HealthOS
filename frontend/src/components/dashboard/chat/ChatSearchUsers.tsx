@@ -105,14 +105,14 @@ export function ChatSearchUsers({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-primary" />
+            <UserPlus className="size-5 text-primary" />
             {t("searchUsers")}
           </DialogTitle>
           <DialogDescription className="sr-only">{t("searchUsers")}</DialogDescription>
         </DialogHeader>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             autoFocus
             value={query}
@@ -130,11 +130,11 @@ export function ChatSearchUsers({
               <ul className="space-y-1">
                 {results.map((user) => (
                   <li key={user.user_id}>
-                    <button
+                    <button type="button"
                       onClick={() => handleSelect(user)}
                       className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-secondary transition-colors cursor-pointer text-left"
                     >
-                      <Avatar className="w-9 h-9 flex-shrink-0">
+                      <Avatar className="size-9 flex-shrink-0">
                         <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
                           {getInitials(user.display_name)}
                         </AvatarFallback>

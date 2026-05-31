@@ -24,7 +24,7 @@ export function ProfileSection({
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-5 py-5">{children}</CardContent>
+      <CardContent className="p-5">{children}</CardContent>
     </Card>
   );
 }

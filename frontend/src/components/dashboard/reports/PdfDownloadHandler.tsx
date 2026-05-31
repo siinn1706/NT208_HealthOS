@@ -6,15 +6,15 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 /**
- * B7 P10 — Hooks `?pdf=<request_id>` in the URL into the signed-download flow.
+ * Hooks `?pdf=<request_id>` in the URL into the signed-download flow.
  *
  * Triggered when the user clicks the "Your PDF report is ready" notification
  * (deep-link `/dashboard/reports?pdf=<id>`). Hits the BFF's signed-URL
  * endpoint and opens the resulting URL in a new tab so the browser handles
  * the actual download. Renders nothing.
  *
- * B7 review P2-1 — after triggering the download (or surfacing an error),
- * scrub `?pdf=` from the URL so a refresh doesn't re-fire the effect.
+ * After triggering the download or surfacing an error, scrub `?pdf=` from the
+ * URL so a refresh doesn't re-fire the effect.
  */
 export function PdfDownloadHandler() {
   const router = useRouter();
@@ -24,12 +24,13 @@ export function PdfDownloadHandler() {
   // Track ids we've already handled this mount so the same `?pdf=…`
   // doesn't re-trigger when `searchParams` reference changes for unrelated
   // reasons (e.g. another query-param flip).
-  const handledRef = React.useRef<Set<string>>(new Set());
+  const handledRef = React.useRef<Set<string> | null>(null);
+  if (handledRef.current === null) handledRef.current = new Set();
 
   React.useEffect(() => {
     const id = searchParams.get("pdf");
-    if (!id || handledRef.current.has(id)) return;
-    handledRef.current.add(id);
+    if (!id || handledRef.current?.has(id)) return;
+    handledRef.current?.add(id);
 
     let cancelled = false;
     void (async () => {
@@ -54,6 +55,7 @@ export function PdfDownloadHandler() {
         const next = new URLSearchParams(searchParams.toString());
         next.delete("pdf");
         const qs = next.toString();
+        // oxlint-disable-next-line react-doctor/nextjs-no-client-side-redirect -- Scrubs a handled PDF deep-link after browser download handling.
         router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
       }
     })();

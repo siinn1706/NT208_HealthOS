@@ -6,12 +6,11 @@
  * master switch sits above the preview so the owner sees the dimmed
  * preview when their card is private.
  *
- * F1 — owns the editable draft state. The preview re-renders live as the
- * owner toggles visibility / NKDA / equipment notes / etc.; Save reconciles
- * the draft to the server.
+ * Owns the editable draft state. The preview re-renders live as the owner
+ * toggles visibility, NKDA, equipment notes, and related emergency details.
  *
- * F2 — wraps the master switch, missing-data banner, and tabbed manage pane
- * in `ec-print-hide` so `window.print()` produces a clean wallet card.
+ * Wraps the master switch, missing-data banner, and tabbed manage pane in
+ * `ec-print-hide` so `window.print()` produces a clean wallet card.
  */
 "use client";
 
@@ -79,17 +78,22 @@ function draftsEqual(a: EmergencyEditDraft, b: EmergencyEditDraft): boolean {
   return true;
 }
 
+function handlePrint() {
+  if (typeof window !== "undefined") window.print();
+}
+
 export function EmergencyCardManager({ view, initialLogs }: EmergencyCardManagerProps) {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("dashboard.emergencyCard");
   const [togglingPublish, setTogglingPublish] = React.useState(false);
 
-  // F1 — single source of truth for the editable overrides. Re-syncs from
-  // the server-derived view whenever the parent passes a fresh `view`
+  // Single source of truth for editable overrides. Re-sync from the
+  // server-derived view whenever the parent passes a fresh `view`
   // (e.g., after a successful save triggers `router.refresh()`).
   const serverDraft = React.useMemo(() => draftFromView(view), [view]);
   const [draft, setDraft] = React.useState<EmergencyEditDraft>(serverDraft);
+  // oxlint-disable-next-line react-doctor/no-derived-state-effect -- Editable form state must reset when router.refresh provides a fresh server view.
   React.useEffect(() => {
     setDraft(serverDraft);
   }, [serverDraft]);
@@ -151,10 +155,6 @@ export function EmergencyCardManager({ view, initialLogs }: EmergencyCardManager
     } finally {
       setIsSaving(false);
     }
-  }
-
-  function handlePrint() {
-    if (typeof window !== "undefined") window.print();
   }
 
   return (

@@ -29,12 +29,22 @@ type HistoryState =
   | { status: "success"; entries: SubscriptionHistoryEntry[] }
   | { status: "error"; reason: string };
 
+const SKELETON_CELL_WIDTHS = [
+  ["actor", "w-40"],
+  ["plan", "w-56"],
+  ["status", "w-32"],
+  ["expiry", "w-40"],
+  ["note", "w-48"],
+  ["created", "w-64"],
+] as const;
+
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      {[40, 56, 32, 40, 48, 64].map((w, i) => (
-        <td key={i} className="px-4 py-3">
-          <div className={`h-3 w-${w} rounded bg-[var(--admin-surface-muted)]`} />
+      {SKELETON_CELL_WIDTHS.map(([key, widthClass]) => (
+        // oxlint-disable-next-line react-doctor/control-has-associated-label -- Skeleton cell is hidden placeholder content with no interactive control.
+        <td key={key} className="px-4 py-3">
+          <div aria-hidden="true" className={`h-3 ${widthClass} rounded bg-[var(--admin-surface-muted)]`} />
         </td>
       ))}
     </tr>
@@ -87,6 +97,7 @@ export function SubscriptionHistoryTable({ userId, refreshTrigger }: Subscriptio
         <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
           <p className="text-sm text-[var(--admin-fg-muted)]">{state.reason}</p>
           <button
+            type="button"
             onClick={() => void load()}
             className="text-xs text-[var(--admin-brand)] underline-offset-4 hover:underline motion-safe:transition-colors"
           >

@@ -53,6 +53,7 @@ export default async function AdminLayout({
   const cookieHeader = cookieStore.toString();
 
   let session: SessionData | null = null;
+  let authRedirect: string | null = null;
 
   try {
     const res = await fetch(`${appUrl}/api/v1/auth/session`, {
@@ -61,16 +62,18 @@ export default async function AdminLayout({
     });
 
     if (res.status === 401) {
-      redirect(`/${locale}/login?from=/${locale}/admin`);
-    }
-
-    if (res.ok) {
+      authRedirect = `/${locale}/login?from=/${locale}/admin`;
+    } else if (res.ok) {
       const json = (await res.json().catch(() => null)) as SessionResponse | null;
       session = json?.data ?? null;
     }
   } catch (err) {
     unstable_rethrow(err);
     // On unexpected fetch error treat as non-admin → redirect to forbidden.
+  }
+
+  if (authRedirect) {
+    redirect(authRedirect);
   }
 
   // Server-side role gate: redirect non-admins to the forbidden page.

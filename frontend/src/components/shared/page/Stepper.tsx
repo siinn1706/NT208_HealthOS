@@ -59,7 +59,6 @@ export function Stepper({
 
   return (
     <ol
-      role="list"
       aria-label={ariaLabel}
       className={cn(
         "flex w-full",

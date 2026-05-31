@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, createContext, useContext, ReactNode } from "react";
+import { use, useCallback, useMemo, useState, createContext, ReactNode } from "react";
 import { useRouter } from "@/navigation";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ interface OnboardingContextType {
 const OnboardingContext = createContext<OnboardingContextType | null>(null);
 
 export function useOnboarding() {
-  const context = useContext(OnboardingContext);
+  const context = use(OnboardingContext);
   if (!context) {
     throw new Error("useOnboarding must be used within OnboardingWizard");
   }
@@ -64,9 +64,9 @@ export function OnboardingWizard({ children, totalSteps, onComplete }: Onboardin
   const [data, setData] = useState<OnboardingData>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const updateData = (updates: Partial<OnboardingData>) => {
+  const updateData = useCallback((updates: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   const handleNext = async () => {
     if (currentStep === totalSteps) {
@@ -90,17 +90,20 @@ export function OnboardingWizard({ children, totalSteps, onComplete }: Onboardin
     }
   };
 
-  return (
-    <OnboardingContext.Provider
-      value={{
+  const contextValue = useMemo(
+    () => ({
         data,
         updateData,
         currentStep,
         totalSteps,
         isLoading,
         setIsLoading,
-      }}
-    >
+    }),
+    [currentStep, data, isLoading, totalSteps, updateData],
+  );
+
+  return (
+    <OnboardingContext.Provider value={contextValue}>
       <div className="w-full max-w-2xl mx-auto">
         {/* Progress Stepper */}
         <div className="mb-8">

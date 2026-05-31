@@ -1,3 +1,4 @@
+// oxlint-disable react-doctor/nextjs-missing-metadata -- Plans metadata is supplied by the route layout.
 "use client";
 
 import { useState, useMemo } from "react";
@@ -27,6 +28,10 @@ import type { Locale } from "@/types";
 import { Repeat, ShieldCheck, Lock } from "lucide-react";
 
 const COMPARE_COLUMN_PLAN_IDS = ["plan-free", "plan-basic", "plan-family", "plan-pro"];
+const COMPARE_PRICE_FORMATTERS = {
+  en: new Intl.NumberFormat("en-US"),
+  vi: new Intl.NumberFormat("vi-VN"),
+} as const;
 const COMPARE_ROW_KEYS = [
   "records",
   "aiMeal",
@@ -45,6 +50,12 @@ const COMPARE_VALUES: Record<RowKey, Record<string, boolean | string>> = {
   doctor: { "plan-free": false, "plan-basic": false, "plan-family": false, "plan-pro": true },
   support: { "plan-free": false, "plan-basic": false, "plan-family": false, "plan-pro": true },
 };
+
+const HOW_BULLETS = [
+  { icon: Repeat, titleKey: "howItWorksBullet1Title", descKey: "howItWorksBullet1Desc" },
+  { icon: ShieldCheck, titleKey: "howItWorksBullet2Title", descKey: "howItWorksBullet2Desc" },
+  { icon: Lock, titleKey: "howItWorksBullet3Title", descKey: "howItWorksBullet3Desc" },
+] as const;
 
 export default function PlansPage() {
   const t = useTranslations("plans");
@@ -85,9 +96,9 @@ export default function PlansPage() {
             label: pickLocale(p.name, locale),
             caption: isFree
               ? t("free")
-              : new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-US").format(
-                  p.price
-                ) + "₫" + t("month"),
+              : COMPARE_PRICE_FORMATTERS[locale === "vi" ? "vi" : "en"].format(p.price) +
+                "₫" +
+                t("month"),
             recommended: p.recommended === true,
           },
         ];
@@ -107,12 +118,6 @@ export default function PlansPage() {
 
   const planFaqs = faqs.filter((f) => f.categoryId === "plans" || f.categoryId === "privacy");
 
-  const HOW_BULLETS = [
-    { icon: Repeat, titleKey: "howItWorksBullet1Title", descKey: "howItWorksBullet1Desc" },
-    { icon: ShieldCheck, titleKey: "howItWorksBullet2Title", descKey: "howItWorksBullet2Desc" },
-    { icon: Lock, titleKey: "howItWorksBullet3Title", descKey: "howItWorksBullet3Desc" },
-  ];
-
   return (
     <div className="pt-16 md:pt-20">
       {/* ── HERO ─────────────────────────────────────────────── */}
@@ -124,8 +129,8 @@ export default function PlansPage() {
       >
         <AtmosphereGrid variant="dots" tone="dark" interactive />
         <AtmosphereGlow />
-        <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-night-400/15 blur-[100px]" />
-        <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-warm-gold/10 blur-[80px]" />
+        <div className="absolute -top-20 -right-20 size-72 rounded-full bg-night-400/15 blur-[100px]" />
+        <div className="absolute -bottom-16 -left-16 size-64 rounded-full bg-warm-gold/10 blur-[80px]" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
@@ -177,8 +182,8 @@ export default function PlansPage() {
                 key={b.titleKey}
                 className="flex flex-col rounded-2xl border border-border/60 bg-card p-5"
               >
-                <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-night-700/15 to-night-400/15 text-night-700 dark:text-night-300">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
+                <span className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-night-700/15 to-night-400/15 text-night-700 dark:text-night-300">
+                  <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <h3 className="mb-1 text-base font-semibold text-foreground">
                   {t(b.titleKey)}

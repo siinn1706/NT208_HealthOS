@@ -2,10 +2,9 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { type Density, getDensity, saveDensity } from "@/lib/admin/ui-prefs";
+import type { Density } from "@/lib/admin/ui-prefs";
 
 export type { Density };
-export { getDensity, saveDensity };
 
 interface DensityToggleProps {
   value: Density;
@@ -20,11 +19,10 @@ const OPTIONS: { value: Density; label: string }[] = [
 /** Segmented density toggle (Compact / Comfortable). */
 export function DensityToggle({ value, onChange }: DensityToggleProps) {
   return (
-    <div
-      role="group"
-      aria-label="Row density"
+    <fieldset
       className="flex items-center rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-muted)] p-0.5"
     >
+      <legend className="sr-only">Row density</legend>
       {OPTIONS.map((opt) => (
         <button
           key={opt.value}
@@ -43,6 +41,6 @@ export function DensityToggle({ value, onChange }: DensityToggleProps) {
           {opt.label}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }

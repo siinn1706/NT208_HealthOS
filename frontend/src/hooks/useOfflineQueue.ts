@@ -43,7 +43,9 @@ export function useOfflineQueue(opts: FlushOptions = {}): UseOfflineQueueResult 
   const [scopeReady, setScopeReady] = React.useState(false);
   const { status } = useConnection();
   const optsRef = React.useRef(opts);
-  optsRef.current = opts;
+  React.useEffect(() => {
+    optsRef.current = opts;
+  }, [opts]);
 
   // Bind the underlying store to the authenticated user before any read/write
   // happens. Until this resolves the queue presents as empty, preventing

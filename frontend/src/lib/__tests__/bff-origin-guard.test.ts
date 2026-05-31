@@ -37,11 +37,11 @@ describe("assertFrontendEnvConfig", () => {
     delete process.env.BFF_CSRF_GUARD_MODE;
     delete process.env.DEV_BYPASS_ENABLED;
     delete process.env.DEV_BYPASS_CREDENTIALS;
-    process.env.NODE_ENV = "test";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
   });
 
   it("fails protected env when trusted origins are empty", async () => {
-    process.env.NODE_ENV = "production";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "production";
     process.env.BFF_TRUSTED_ORIGINS = "";
     const { assertFrontendEnvConfig } = await import("@/lib/env");
 
@@ -113,7 +113,7 @@ describe("assertSameOrigin — safe methods", () => {
   beforeEach(() => vi.resetModules());
 
   it.each(["GET", "HEAD", "OPTIONS"])("returns null for %s", async (method) => {
-    process.env.NODE_ENV = "development";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "development";
     const { assertSameOrigin } = await import("@/lib/bff-origin-guard");
     const req = makeReq(method, "/api/v1/users/me");
     expect(assertSameOrigin(req)).toBeNull();
@@ -124,7 +124,7 @@ describe("assertSameOrigin — exempt path prefixes", () => {
   beforeEach(() => vi.resetModules());
 
   it("returns null for /api/v1/public/** even with mismatched Origin", async () => {
-    process.env.NODE_ENV = "production";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "production";
     process.env.BFF_TRUSTED_ORIGINS = "https://prod.example.com";
     const { assertSameOrigin } = await import("@/lib/bff-origin-guard");
     const req = makeReq("POST", "/api/v1/public/emergency/abc/scan", {
@@ -138,7 +138,7 @@ describe("assertSameOrigin — exempt path prefixes", () => {
 describe("assertSameOrigin — production enforcement", () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.NODE_ENV = "production";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "production";
     process.env.BFF_CSRF_GUARD_MODE = "enforce";
   });
 
@@ -146,7 +146,7 @@ describe("assertSameOrigin — production enforcement", () => {
     delete process.env.BFF_TRUSTED_ORIGINS;
     delete process.env.BFF_CSRF_GUARD_MODE;
     // Restore to test environment
-    process.env.NODE_ENV = "test";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
   });
 
   it("rejects when Origin not in allow-list", async () => {
@@ -216,14 +216,14 @@ describe("assertSameOrigin — production enforcement", () => {
 describe("assertSameOrigin — development", () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.NODE_ENV = "development";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "development";
     delete process.env.BFF_TRUSTED_ORIGINS;
     process.env.BFF_CSRF_GUARD_MODE = "enforce";
   });
 
   afterEach(() => {
     delete process.env.BFF_CSRF_GUARD_MODE;
-    process.env.NODE_ENV = "test";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
   });
 
   it("passes for localhost origin without explicit allow-list", async () => {
@@ -236,7 +236,7 @@ describe("assertSameOrigin — development", () => {
 describe("assertSameOrigin — dry-run mode", () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.NODE_ENV = "development";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "development";
     process.env.BFF_TRUSTED_ORIGINS = "https://dev.healthos.example";
     process.env.BFF_CSRF_GUARD_MODE = "dry-run";
   });
@@ -244,7 +244,7 @@ describe("assertSameOrigin — dry-run mode", () => {
   afterEach(() => {
     delete process.env.BFF_TRUSTED_ORIGINS;
     delete process.env.BFF_CSRF_GUARD_MODE;
-    process.env.NODE_ENV = "test";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
   });
 
   it("returns null on mismatch (logs warn, does not block)", async () => {
@@ -262,7 +262,7 @@ describe("assertSameOrigin — dry-run mode", () => {
 describe("assertSameOrigin — token redaction in rejection log", () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.NODE_ENV = "production";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "production";
     process.env.BFF_TRUSTED_ORIGINS = "https://other.example.com";
     process.env.BFF_CSRF_GUARD_MODE = "enforce";
   });
@@ -270,7 +270,7 @@ describe("assertSameOrigin — token redaction in rejection log", () => {
   afterEach(() => {
     delete process.env.BFF_TRUSTED_ORIGINS;
     delete process.env.BFF_CSRF_GUARD_MODE;
-    process.env.NODE_ENV = "test";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
   });
 
   it("logs only host:port — no path, no query, no fragment", async () => {

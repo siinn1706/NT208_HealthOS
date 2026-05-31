@@ -52,15 +52,6 @@ export function ImportFromAppointmentDialog({
   const [submitting, setSubmitting] = React.useState(false);
   const [resultCounts, setResultCounts] = React.useState<{ created: number; skipped: number } | null>(null);
 
-  // When the dialog opens, reset selection to "all".
-  React.useEffect(() => {
-    if (open) {
-      setSelected(new Set(medicines.map((_, i) => i)));
-      setDoseTimes(["08:00"]);
-      setResultCounts(null);
-    }
-  }, [open, medicines]);
-
   const allSelected = selected.size === medicines.length;
 
   const toggle = (idx: number) => {
@@ -172,7 +163,7 @@ export function ImportFromAppointmentDialog({
                   const checked = selected.has(idx);
                   return (
                     <li
-                      key={idx}
+                      key={`${med.name}-${med.dosage}-${med.frequency}-${med.duration}`}
                       className={cn(
                         "rounded-md border px-3 py-2 text-sm transition-colors",
                         checked
@@ -189,7 +180,7 @@ export function ImportFromAppointmentDialog({
                         />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-foreground inline-flex items-center gap-2">
-                            <Pill className="w-3.5 h-3.5 text-muted-foreground" aria-hidden />
+                            <Pill className="size-3.5 text-muted-foreground" aria-hidden />
                             {med.name || (
                               <span className="text-muted-foreground italic">
                                 {t("missingName")}
@@ -226,6 +217,7 @@ export function ImportFromAppointmentDialog({
                     >
                       <input
                         type="time"
+                        aria-label={t("doseTimesLabel")}
                         value={time}
                         onChange={(e) => updateDoseTime(idx, e.target.value)}
                         className="h-7 w-[88px] bg-transparent text-xs outline-none"
@@ -237,7 +229,7 @@ export function ImportFromAppointmentDialog({
                           className="text-muted-foreground hover:text-destructive cursor-pointer"
                           aria-label="Remove time"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="size-3" />
                         </button>
                       )}
                     </div>
@@ -248,7 +240,7 @@ export function ImportFromAppointmentDialog({
                       onClick={addDoseTime}
                       className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 h-9 text-xs text-muted-foreground hover:bg-muted cursor-pointer"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="size-3" />
                       Add time
                     </button>
                   )}
@@ -281,7 +273,7 @@ export function ImportFromAppointmentDialog({
               type="submit"
               disabled={submitting || medicines.length === 0}
             >
-              {submitting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               {submitting ? t("submitting") : t("submit")}
             </Button>
           </DialogFooter>

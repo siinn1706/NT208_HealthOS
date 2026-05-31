@@ -21,9 +21,11 @@ export function ChatSearchBar({ messages, onClose, onJumpToMessage }: ChatSearch
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return messages
-      .filter((m) => !m.is_recalled && m.type === "text" && m.content.toLowerCase().includes(q))
-      .map((m) => m.id);
+    return messages.flatMap((m) =>
+      !m.is_recalled && m.type === "text" && m.content.toLowerCase().includes(q)
+        ? [m.id]
+        : []
+    );
   }, [query, messages]);
 
   const handlePrev = useCallback(() => {
@@ -89,31 +91,31 @@ export function ChatSearchBar({ messages, onClose, onJumpToMessage }: ChatSearch
         <Button
           variant="ghost"
           size="icon"
-          className="w-7 h-7"
+          className="size-7"
           onClick={handlePrev}
           disabled={results.length === 0}
           aria-label="Previous result"
         >
-          <ChevronUp className="w-4 h-4" />
+          <ChevronUp className="size-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="w-7 h-7"
+          className="size-7"
           onClick={handleNext}
           disabled={results.length === 0}
           aria-label="Next result"
         >
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className="size-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="w-7 h-7"
+          className="size-7"
           onClick={onClose}
           aria-label="Close search"
         >
-          <X className="w-4 h-4" />
+          <X className="size-4" />
         </Button>
       </div>
     </div>

@@ -8,8 +8,10 @@ export const CORE_API_URL =
 
 export const BFF_TRUSTED_ORIGINS: string[] = (process.env.BFF_TRUSTED_ORIGINS ?? "")
   .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+  .flatMap((s) => {
+    const trimmed = s.trim();
+    return trimmed ? [trimmed] : [];
+  });
 
 /**
  * Feature flag: enable the /admin/security page and its sidebar entry.
@@ -61,15 +63,15 @@ export const BFF_CSRF_GUARD_MODE: BffCsrfGuardMode = resolveBffCsrfGuardMode();
 export function parseBffTrustedOrigins(raw: string | undefined): string[] {
   return (raw ?? "")
     .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((value) => {
+    .flatMap((value) => {
+      value = value.trim();
+      if (!value) return [];
       const parsed = new URL(value);
       const normalized = value.replace(/\/$/, "");
       if (!["http:", "https:"].includes(parsed.protocol) || parsed.origin !== normalized) {
         throw new Error("BFF_TRUSTED_ORIGINS entries must be absolute origins.");
       }
-      return normalized;
+      return [normalized];
     });
 }
 

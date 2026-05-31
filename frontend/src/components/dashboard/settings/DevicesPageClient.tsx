@@ -85,7 +85,9 @@ interface DevicesPageClientProps {
   initialDevices?: Device[];
 }
 
-export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProps) {
+const EMPTY_DEVICES: Device[] = [];
+
+export function DevicesPageClient({ initialDevices = EMPTY_DEVICES }: DevicesPageClientProps) {
   const t = useTranslations("dashboard.devices");
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [connectingProvider, setConnectingProvider] = useState<DeviceProvider | null>(null);
@@ -199,15 +201,15 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {availableProviders.map(({ provider, label }) => (
-              <button
+              <button type="button"
                 key={provider}
                 onClick={() => handleConnect(provider)}
                 disabled={connectingProvider === provider}
                 className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-card p-4 hover:bg-muted/40 transition-colors cursor-pointer text-left disabled:opacity-60 disabled:cursor-not-allowed"
                 aria-label={`${t("tapToConnect")} ${label}`}
               >
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                  <Plus className="w-5 h-5 text-muted-foreground" />
+                <div className="size-10 rounded-xl bg-muted flex items-center justify-center">
+                  <Plus className="size-5 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{label}</p>
@@ -230,15 +232,24 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
       </p>
 
       {hcExplainerOpen && (
-        <div
-          role="dialog"
+        <dialog
+          open
           aria-modal="true"
           aria-labelledby="hc-explainer-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setHcExplainerOpen(false)}
+          className="fixed inset-0 z-50 h-dvh w-dvw max-w-none border-0 bg-black/50 p-4"
+          onCancel={(e) => {
+            e.preventDefault();
+            setHcExplainerOpen(false);
+          }}
         >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Close Health Connect explainer"
+            onClick={() => setHcExplainerOpen(false)}
+          />
           <div
-            className="max-w-md w-full rounded-2xl border border-border bg-card p-6 space-y-4"
+            className="relative mx-auto flex max-w-md flex-col gap-y-4 rounded-2xl border border-border bg-card p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="hc-explainer-title" className="text-lg font-semibold">
@@ -262,7 +273,7 @@ export function DevicesPageClient({ initialDevices = [] }: DevicesPageClientProp
               </button>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );

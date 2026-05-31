@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, use, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "@/navigation";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
@@ -52,7 +52,7 @@ interface OnboardingContextType {
 const OnboardingContext = createContext<OnboardingContextType | null>(null);
 
 export function useOnboarding() {
-  const context = useContext(OnboardingContext);
+  const context = use(OnboardingContext);
   if (!context) {
     throw new Error("useOnboarding must be used within OnboardingPage");
   }
@@ -160,6 +160,7 @@ export default function OnboardingPageClient() {
     const next = String(currentStep);
     if (params.get("step") !== next) {
       params.set("step", next);
+      // oxlint-disable-next-line react-doctor/nextjs-no-client-side-redirect -- Keeps wizard progress in the URL without navigating away.
       router.replace(`${pathname}?${params.toString()}` as never, { scroll: false });
     }
   }, [currentStep, draft.hydrated, pathname, router, searchParams]);
@@ -393,16 +394,18 @@ export default function OnboardingPageClient() {
     }
     return null;
   }, [draft.hydrated, draft.lastSavedAt, draft.status, t]);
+  const onboardingContextValue = useMemo(
+    () => ({
+      data: draft.data,
+      updateData,
+      fieldErrors,
+      clearFieldError,
+    }),
+    [clearFieldError, draft.data, fieldErrors, updateData],
+  );
 
   return (
-    <OnboardingContext.Provider
-      value={{
-        data: draft.data,
-        updateData,
-        fieldErrors,
-        clearFieldError,
-      }}
-    >
+    <OnboardingContext.Provider value={onboardingContextValue}>
       <div className="min-h-[100dvh] bg-gradient-to-b from-cyan-50 to-white py-8 px-4 dark:from-cyan-950/20 dark:to-background">
         <div className="mx-auto w-full max-w-2xl">
           {/* Stepper */}

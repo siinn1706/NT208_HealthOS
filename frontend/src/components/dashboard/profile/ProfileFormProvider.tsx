@@ -53,6 +53,7 @@ function profileToFormValues(profile: UserProfile): ProfileFormValues {
       chronic_conditions: medicalInfo.chronic_conditions ?? null,
       current_medications: medicalInfo.current_medications ?? null,
       notes: medicalInfo.notes ?? null,
+      insurance: medicalInfo.insurance ?? null,
     },
   };
 }
@@ -186,6 +187,7 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
   return (
     <TooltipProvider>
       <FormProvider {...form}>
+        {/* oxlint-disable-next-line react-doctor/no-prevent-default -- Client-side RHF form saves through BFF and has no server action equivalent. */}
         <form onSubmit={(e) => e.preventDefault()} noValidate className="space-y-5">
           {/* Header — avatar + name + edit/save/cancel buttons */}
           <ProfileHeader
@@ -201,12 +203,11 @@ export function ProfileFormProvider({ profile }: ProfileFormProviderProps) {
 
           {/* Save status banner */}
           {saveStatus === "success" && (
-            <div
-              role="status"
+            <output
               className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800/40 dark:bg-green-900/20 dark:text-green-400"
             >
               ✓ {t("saveSuccess")}
-            </div>
+            </output>
           )}
           {saveStatus === "error" && (
             <div

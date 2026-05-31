@@ -257,6 +257,7 @@
     "otpRequired": "Cần xác thực OTP",
     "otpSendFailed": "Không thể gửi OTP. Vui lòng thử lại.",
     "accountCreateFailed": "Tạo tài khoản thất bại. Vui lòng thử lại.",
+    "registrationFailed": "Gửi mã OTP thất bại. Vui lòng thử lại.",
     "alerts": {
       "heartRateHigh": "Nhịp tim {value} {unit} vượt ngưỡng an toàn {threshold} {unit}",
       "bpSystolicHigh": "Huyết áp tâm thu {value} {unit} vượt ngưỡng an toàn {threshold} {unit}",
@@ -2842,6 +2843,9 @@
     "targetBmi": "BMI mục tiêu",
     "bmi": "BMI",
     "bmiAutoHint": "BMI tự động tính từ cân nặng và chiều cao mục tiêu",
+    "targetWeightRequired": "Nhập cân nặng mục tiêu.",
+    "targetWeightRange": "Cân nặng mục tiêu phải trong khoảng 30 đến 200 kg.",
+    "deadlineMustBeTodayOrFuture": "Chọn hôm nay hoặc một ngày trong tương lai cho mục tiêu.",
     "save": "Lưu",
     "cancel": "Hủy",
     "currentBmi": "BMI hiện tại",

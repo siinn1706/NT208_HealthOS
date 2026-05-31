@@ -53,10 +53,9 @@ export function AdherenceRing({
     <div
       className={cn("relative inline-flex items-center justify-center", className)}
       style={{ width: size, height: size }}
-      role="img"
-      aria-label={ariaLabel}
     >
-      <svg width={size} height={size} className="-rotate-90">
+      <span className="sr-only">{ariaLabel}</span>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -79,8 +78,8 @@ export function AdherenceRing({
           />
         )}
       </svg>
-      <span className="absolute text-xs font-semibold text-foreground">
-        {empty ? "—" : `${percent}%`}
+      <span className="absolute text-xs font-semibold text-foreground" aria-hidden="true">
+        {empty ? "-" : `${percent}%`}
       </span>
     </div>
   );

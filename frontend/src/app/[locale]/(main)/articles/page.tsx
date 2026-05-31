@@ -1,3 +1,4 @@
+// oxlint-disable react-doctor/nextjs-missing-metadata -- Articles metadata is supplied by the route layout.
 "use client";
 
 import { useState, useMemo } from "react";

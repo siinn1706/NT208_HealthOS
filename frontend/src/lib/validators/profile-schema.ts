@@ -72,6 +72,14 @@ export function getProfileSchema(t: TranslateFn) {
         chronic_conditions: nullableOptionalString,
         current_medications: nullableOptionalString,
         notes: nullableOptionalString,
+        insurance: z
+          .object({
+            provider: z.string().min(1).max(128),
+            policy_number: z.string().min(1).max(128),
+            group_number: z.string().max(128).nullable().optional(),
+          })
+          .nullable()
+          .optional(),
       })
       .optional(),
   });

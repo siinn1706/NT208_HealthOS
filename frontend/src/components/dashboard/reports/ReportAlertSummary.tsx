@@ -16,9 +16,9 @@ export async function ReportAlertSummary({
   status,
   locale,
 }: ReportAlertSummaryProps) {
-  const t = await getTranslations("reports");
-
   if (status === "normal" || alerts.length === 0) return null;
+
+  const t = await getTranslations("reports");
 
   const criticalCount = alerts.filter((a) => a.severity === "critical").length;
   const warningCount  = alerts.filter((a) => a.severity === "warning").length;
@@ -31,9 +31,9 @@ export async function ReportAlertSummary({
       {/* Icon */}
       <div className="shrink-0">
         {status === "critical" ? (
-          <AlertOctagon className="h-6 w-6 text-destructive" aria-hidden />
+          <AlertOctagon className="size-6 text-destructive" aria-hidden />
         ) : (
-          <AlertTriangle className="h-6 w-6 text-amber-500" aria-hidden />
+          <AlertTriangle className="size-6 text-amber-500" aria-hidden />
         )}
       </div>
 
@@ -54,13 +54,13 @@ export async function ReportAlertSummary({
       <div className="flex gap-2 shrink-0">
         <Button asChild size="sm" variant="outline" className="h-8 text-xs gap-1.5">
           <Link href={`/${locale}/dashboard/reports`}>
-            <FileText className="h-3.5 w-3.5" aria-hidden />
+            <FileText className="size-3.5" aria-hidden />
             {t("viewDetail")}
           </Link>
         </Button>
         <Button asChild size="sm" variant="default" className="h-8 text-xs gap-1.5">
           <Link href={`/${locale}/dashboard/reports?share=1`}>
-            <Share2 className="h-3.5 w-3.5" aria-hidden />
+            <Share2 className="size-3.5" aria-hidden />
             {t("share")}
           </Link>
         </Button>

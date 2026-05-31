@@ -49,12 +49,20 @@ export function PermissionBanner({
   className,
 }: PermissionBannerProps) {
   const t = useTranslations("primitives.permissionBanner");
-  const [perm, setPerm] = React.useState<NotificationPermission | "unsupported" | null>(null);
+  const [permState, setPermState] = React.useState<{
+    kind: PermissionKind;
+    value: NotificationPermission | "unsupported" | null;
+  }>(() => ({
+    kind,
+    value: kind === "notifications" ? readNotificationPermission() : null,
+  }));
   const [dismissed, setDismissed] = React.useState(false);
-
-  React.useEffect(() => {
-    if (kind === "notifications") setPerm(readNotificationPermission());
-  }, [kind]);
+  const perm =
+    permState.kind === kind
+      ? permState.value
+      : kind === "notifications"
+        ? readNotificationPermission()
+        : null;
 
   const computedVisible = (() => {
     if (dismissed) return false;
@@ -76,13 +84,12 @@ export function PermissionBanner({
     }
     if (kind === "notifications" && typeof Notification !== "undefined") {
       const next = await Notification.requestPermission();
-      setPerm(next);
+      setPermState({ kind, value: next });
     }
   };
 
   return (
-    <div
-      role="status"
+    <output
       data-slot="permission-banner"
       data-kind={kind}
       className={cn(
@@ -118,12 +125,12 @@ export function PermissionBanner({
               onDismiss();
             }}
             aria-label={t("dismiss")}
-            className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-foreground/10 transition-colors cursor-pointer"
+            className="size-7 rounded-lg flex items-center justify-center hover:bg-foreground/10 transition-colors cursor-pointer"
           >
             <X className="size-3.5" />
           </button>
         )}
       </div>
-    </div>
+    </output>
   );
 }

@@ -11,7 +11,7 @@ function SkeletonCard({ rows = 2 }: { rows?: number }) {
         </div>
       </div>
       {/* Content */}
-      <div className="px-5 py-5">
+      <div className="p-5">
         <div
           className="grid gap-4"
           style={{
@@ -40,7 +40,7 @@ export default function ProfileLoading() {
       </div>
 
       {/* Profile header card skeleton */}
-      <div className="rounded-xl border border-border bg-card px-6 py-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-4">
           <Skeleton className="size-20 rounded-full" />
           <div className="space-y-2">

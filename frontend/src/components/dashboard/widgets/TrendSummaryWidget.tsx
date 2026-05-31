@@ -97,8 +97,8 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-border">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <BarChart3 className="w-4 h-4 text-primary" aria-hidden />
+          <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <BarChart3 className="size-4 text-primary" aria-hidden />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">{t("title")}</p>
@@ -118,7 +118,7 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
             {METRICS.map((m) => (
               <div key={m.key} className="rounded-lg border border-border p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: m.color }} />
+                  <div className="size-2 rounded-full animate-pulse" style={{ backgroundColor: m.color }} />
                   <div className="w-12 h-4 rounded-full bg-muted animate-pulse" />
                 </div>
                 <div className="h-3 w-16 rounded bg-muted animate-pulse" />
@@ -136,8 +136,8 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
               if (!data) return (
                 <div key={m.key} className="rounded-lg border border-border p-3 opacity-40">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
-                    <Minus className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="size-2 rounded-full" style={{ backgroundColor: m.color }} />
+                    <Minus className="size-3.5 text-muted-foreground" />
                   </div>
                   <p className="text-[11px] text-muted-foreground">{m.label}</p>
                   <p className="text-lg font-bold text-muted-foreground mt-0.5">--</p>
@@ -182,12 +182,12 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
                 >
                   {/* Top row: dot + trend pill */}
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
+                    <span className="size-2 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
                     <div className={cn(
                       "flex items-center gap-0.5 rounded-full px-1.5 py-0.5",
                       trendPillBg,
                     )}>
-                      <Icon className={cn("w-3 h-3 transition-transform group-hover:scale-110 flex-shrink-0", trendColor)} />
+                      <Icon className={cn("size-3 transition-transform group-hover:scale-110 flex-shrink-0", trendColor)} />
                       <span className={cn("text-[9px] font-bold tabular-nums", trendColor)}>
                         {sign}{data.change_percent.toFixed(1)}%
                       </span>

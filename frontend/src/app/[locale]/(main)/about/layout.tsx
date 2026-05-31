@@ -29,6 +29,7 @@ export default function AboutLayout({ children }: { children: React.ReactNode })
       <script
         type="application/ld+json"
         suppressHydrationWarning
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from static organization metadata.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
       />
       {children}

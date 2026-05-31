@@ -180,6 +180,7 @@ export function AtmosphereGrid({
         <div
           ref={spotlightRef}
           aria-hidden="true"
+          // oxlint-disable-next-line react-doctor/no-inline-exhaustive-style -- Pointer spotlight needs runtime CSS variables.
           style={{
             ...(explicitTone && spotlightImage
               ? { backgroundImage: spotlightImage, backgroundSize: bgSize }

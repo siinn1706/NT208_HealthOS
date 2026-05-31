@@ -37,6 +37,7 @@ function decodeUnverifiedGoogleIdTokenPayloadForNonce(idToken: string): { nonce?
   return JSON.parse(Buffer.from(encodedPayload, "base64url").toString());
 }
 
+// oxlint-disable-next-line react-doctor/nextjs-no-side-effect-in-get-handler -- OAuth providers must callback via GET; state/PKCE plus one-time provider codes guard replay.
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -143,6 +144,7 @@ export async function GET(request: NextRequest) {
 
     // ─── Call Core BE to Create/Retrieve User ────────────────────────────────
     const coreRes = await fetch(`${CORE_API_URL}/v1/auth/token`, {
+      cache: "no-store",
       method: "POST",
       headers: {
         "Content-Type": "application/json",

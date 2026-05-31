@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2, Stethoscope } from "lucide-react";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { normalizeAppointment } from "@/components/dashboard/appointments/appointment-normalizer";
 import {
   Sheet,
   SheetContent,
@@ -22,6 +23,10 @@ import type { Appointment } from "@/types/api";
 
 const STEP_KEYS = ["who", "when", "purpose", "review"] as const;
 type StepKey = (typeof STEP_KEYS)[number];
+
+const subscribeToTodaySnapshot = () => () => {};
+const getTodaySnapshot = () => new Date().toISOString().slice(0, 10);
+const getServerTodaySnapshot = () => undefined;
 
 interface AppointmentCreateSheetProps {
   open: boolean;
@@ -62,12 +67,18 @@ export function AppointmentCreateSheet({
   onCreated,
 }: AppointmentCreateSheetProps) {
   const t = useTranslations("dashboard.appointments.create");
+  const tAppointments = useTranslations("dashboard.appointments");
   const tVp = useTranslations("dashboard.visitPrep");
   const locale = useLocale();
   const router = useRouter();
   const [step, setStep] = useState<StepKey>("who");
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const todayIso = useSyncExternalStore(
+    subscribeToTodaySnapshot,
+    getTodaySnapshot,
+    getServerTodaySnapshot,
+  );
 
   const stepIndex = STEP_KEYS.indexOf(step);
 
@@ -117,7 +128,7 @@ export function AppointmentCreateSheet({
       });
       if (!res.ok) throw new Error("create failed");
       const json = await res.json().catch(() => null);
-      const created = (json?.data ?? json) as Appointment | null;
+      const created = normalizeAppointment(json?.data ?? json, tAppointments("noData"));
       if (created) onCreated?.(created);
       toast.success(t("saved"));
       handleOpenChange(false);
@@ -168,7 +179,7 @@ export function AppointmentCreateSheet({
       >
         <SheetHeader className="px-5 py-4 border-b border-border space-y-1">
           <SheetTitle className="flex items-center gap-2 text-base">
-            <Stethoscope className="h-4 w-4 text-primary" aria-hidden />
+            <Stethoscope className="size-4 text-primary" aria-hidden />
             {t("title")}
           </SheetTitle>
           <SheetDescription className="text-xs">{t("subtitle")}</SheetDescription>
@@ -180,7 +191,7 @@ export function AppointmentCreateSheet({
             <li
               key={s}
               className={cn(
-                "flex-1 text-[10px] font-medium uppercase tracking-wide text-center px-1 py-1 rounded-md border transition-colors",
+                "flex-1 text-[10px] font-medium uppercase tracking-wide text-center p-1 rounded-md border transition-colors",
                 idx === stepIndex
                   ? "bg-primary text-primary-foreground border-primary"
                   : idx < stepIndex
@@ -196,23 +207,26 @@ export function AppointmentCreateSheet({
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {step === "who" && (
             <>
-              <Field label={t("doctorName")} required>
+              <Field id="appointment-doctor-name" label={t("doctorName")} required>
                 <Input
+                  id="appointment-doctor-name"
                   autoFocus
                   placeholder={t("doctorNamePlaceholder")}
                   value={form.doctorName}
                   onChange={(e) => update("doctorName", e.target.value)}
                 />
               </Field>
-              <Field label={t("specialty")}>
+              <Field id="appointment-specialty" label={t("specialty")}>
                 <Input
+                  id="appointment-specialty"
                   placeholder={t("specialtyPlaceholder")}
                   value={form.specialty}
                   onChange={(e) => update("specialty", e.target.value)}
                 />
               </Field>
-              <Field label={t("clinic")}>
+              <Field id="appointment-clinic" label={t("clinic")}>
                 <Input
+                  id="appointment-clinic"
                   placeholder={t("clinicPlaceholder")}
                   value={form.clinic}
                   onChange={(e) => update("clinic", e.target.value)}
@@ -223,16 +237,18 @@ export function AppointmentCreateSheet({
 
           {step === "when" && (
             <>
-              <Field label={t("date")} required>
+              <Field id="appointment-date" label={t("date")} required>
                 <Input
+                  id="appointment-date"
                   type="date"
                   value={form.date}
                   onChange={(e) => update("date", e.target.value)}
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={todayIso}
                 />
               </Field>
-              <Field label={t("time")} required>
+              <Field id="appointment-time" label={t("time")} required>
                 <Input
+                  id="appointment-time"
                   type="time"
                   value={form.time}
                   onChange={(e) => update("time", e.target.value)}
@@ -243,15 +259,18 @@ export function AppointmentCreateSheet({
 
           {step === "purpose" && (
             <>
-              <Field label={t("reason")} required>
+              <Field id="appointment-reason" label={t("reason")} required>
                 <Input
+                  id="appointment-reason"
                   placeholder={t("reasonPlaceholder")}
                   value={form.reason}
                   onChange={(e) => update("reason", e.target.value)}
                 />
               </Field>
-              <Field label={t("notes")}>
+              <Field id="appointment-notes" label={t("notes")}>
                 <textarea
+                  id="appointment-notes"
+                  aria-label={t("notes")}
                   placeholder={t("notesPlaceholder")}
                   value={form.notes}
                   onChange={(e) => update("notes", e.target.value)}
@@ -308,17 +327,19 @@ export function AppointmentCreateSheet({
 }
 
 function Field({
+  id,
   label,
   children,
   required,
 }: {
+  id: string;
   label: string;
   children: React.ReactNode;
   required?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs">
+      <Label htmlFor={id} className="text-xs">
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
       </Label>

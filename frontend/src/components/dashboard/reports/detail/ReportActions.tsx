@@ -69,7 +69,7 @@ export function ReportActions({
           {/* Trend Analysis link */}
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs" asChild>
             <Link href={`/dashboard/reports/trends?metric=${encodeURIComponent(trendMetric)}`}>
-              <TrendingUp className="h-4 w-4" aria-hidden />
+              <TrendingUp className="size-4" aria-hidden />
               {t("analyzeTrends")}
             </Link>
           </Button>
@@ -81,7 +81,7 @@ export function ReportActions({
             className="gap-1.5 text-xs"
             onClick={() => setShareOpen(true)}
           >
-            <Share2 className="h-4 w-4" aria-hidden />
+            <Share2 className="size-4" aria-hidden />
             {t("share")}
           </Button>
 

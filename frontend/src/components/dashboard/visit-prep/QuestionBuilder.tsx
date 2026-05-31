@@ -14,6 +14,10 @@ import { getSuggestedQuestions } from "./VisitPrepApi";
 
 const MAX_QUESTIONS = 10;
 
+function getQuestionText(item: { text_vi: string; text_en: string }, locale: string) {
+  return locale === "vi" ? item.text_vi : item.text_en;
+}
+
 interface Props {
   briefId: string;
   visitType: VisitType;
@@ -59,12 +63,9 @@ export function QuestionBuilder({
   }, [briefId, visitType, primaryCategory]);
 
   const selectedSlugs = useMemo(
-    () => new Set(value.filter((q) => q.source === "template").map((q) => q.id)),
+    () => new Set(value.flatMap((q) => (q.source === "template" ? [q.id] : []))),
     [value],
   );
-
-  const renderText = (item: { text_vi: string; text_en: string }) =>
-    locale === "vi" ? item.text_vi : item.text_en;
 
   function addTemplate(tpl: QuestionTemplate) {
     if (value.length >= MAX_QUESTIONS) return;
@@ -101,9 +102,11 @@ export function QuestionBuilder({
   }
 
   function remove(id: string) {
-    const next = value
-      .filter((q) => !(q.id === id && !q.locked))
-      .map((q, idx) => ({ ...q, order: idx }));
+    const next = value.reduce<QuestionItem[]>((acc, q) => {
+      if (q.id === id && !q.locked) return acc;
+      acc.push({ ...q, order: acc.length });
+      return acc;
+    }, []);
     onChange(next);
   }
 
@@ -137,10 +140,10 @@ export function QuestionBuilder({
                   aria-pressed={checked}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span>{renderText(tpl)}</span>
+                    <span>{getQuestionText(tpl, locale)}</span>
                     {tpl.is_canonical && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        <Lock className="h-3 w-3" /> {t("lockedHint")}
+                        <Lock className="size-3" /> {t("lockedHint")}
                       </span>
                     )}
                   </div>
@@ -179,10 +182,10 @@ export function QuestionBuilder({
                   <span className="text-xs font-semibold text-muted-foreground mt-0.5">
                     {idx + 1}.
                   </span>
-                  <span className="flex-1">{renderText(q)}</span>
+                  <span className="flex-1">{getQuestionText(q, locale)}</span>
                   {q.locked ? (
                     <span title={t("lockedHint")} aria-label={t("lockedHint")}>
-                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Lock className="size-3.5 text-muted-foreground" />
                     </span>
                   ) : (
                     <button
@@ -192,7 +195,7 @@ export function QuestionBuilder({
                       aria-label={t("remove")}
                       className="text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="size-3.5" />
                     </button>
                   )}
                 </li>
@@ -205,6 +208,7 @@ export function QuestionBuilder({
           <div className="flex gap-2">
             <input
               type="text"
+              aria-label={t("addCustom")}
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
               placeholder={t("addCustomPlaceholder")}
@@ -218,7 +222,7 @@ export function QuestionBuilder({
               disabled={disabled || isFull || !customText.trim()}
               className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="size-3.5" />
               {t("add")}
             </button>
           </div>

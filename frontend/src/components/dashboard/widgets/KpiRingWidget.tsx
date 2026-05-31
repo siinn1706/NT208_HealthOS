@@ -51,8 +51,10 @@ function summaryHasError(summary: DataSlice<DashboardSummary>): boolean {
 
 // Server Component — renders static KPI data as cards with client chart children
 export async function KpiRingWidget({ summary }: KpiRingWidgetProps) {
-  const t = await getTranslations("dashboard.kpi");
-  const locale = await getLocale();
+  const [t, locale] = await Promise.all([
+    getTranslations("dashboard.kpi"),
+    getLocale(),
+  ]);
   const data = summary.status === "success" && summary.data ? summary.data.kpis : EMPTY_KPIS;
 
   if (summaryHasError(summary)) {
@@ -87,11 +89,13 @@ export async function KpiRingWidget({ summary }: KpiRingWidgetProps) {
             ) : (
               // Empty ring instead of a deceptive 0 reading. Keeps the
               // KPI card layout stable while clearly signalling "no data".
-              <div
-                className="size-[96px] rounded-full border-[6px] border-muted/40"
-                role="img"
-                aria-label={t("noData")}
-              />
+              <>
+                <div
+                  className="size-[96px] rounded-full border-[6px] border-muted/40"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">{t("noData")}</span>
+              </>
             )}
             <div className="text-center">
               <p className="text-base font-bold text-foreground">

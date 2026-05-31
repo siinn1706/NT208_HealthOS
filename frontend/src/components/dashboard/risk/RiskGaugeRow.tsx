@@ -24,40 +24,40 @@ const IMPACT_SYMBOLS = {
   neutral: "·",
 };
 
+const LEVEL_CONFIG: Record<RiskLevel, { color: string; trackColor: string; bg: string }> = {
+  low: {
+    color: "#4ADE80",
+    trackColor: "bg-green-400",
+    bg: "bg-green-400/10",
+  },
+  moderate: {
+    color: "#FBBF24",
+    trackColor: "bg-amber-400",
+    bg: "bg-amber-400/10",
+  },
+  high: {
+    color: "#F97316",
+    trackColor: "bg-orange-500",
+    bg: "bg-orange-500/10",
+  },
+  critical: {
+    color: "#EF4444",
+    trackColor: "bg-red-500",
+    bg: "bg-red-500/10",
+  },
+};
+
+const TREND_CONFIG: Record<RiskTrend, { icon: React.ElementType; labelKey: string; color: string }> = {
+  improving: { icon: TrendingDown, labelKey: "trend.improving", color: "text-green-500" },
+  stable: { icon: Minus, labelKey: "trend.stable", color: "text-muted-foreground" },
+  worsening: { icon: TrendingUp, labelKey: "trend.worsening", color: "text-orange-500" },
+};
+
 /** Manual lookup for API-returned Vietnamese disease names — REMOVED */
 
 export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProps) {
   const t = useTranslations("dashboard.risk");
   const [expanded, setExpanded] = useState(defaultExpanded);
-
-  const LEVEL_CONFIG: Record<RiskLevel, { color: string; trackColor: string; bg: string }> = {
-    low: {
-      color: "#4ADE80",
-      trackColor: "bg-green-400",
-      bg: "bg-green-400/10",
-    },
-    moderate: {
-      color: "#FBBF24",
-      trackColor: "bg-amber-400",
-      bg: "bg-amber-400/10",
-    },
-    high: {
-      color: "#F97316",
-      trackColor: "bg-orange-500",
-      bg: "bg-orange-500/10",
-    },
-    critical: {
-      color: "#EF4444",
-      trackColor: "bg-red-500",
-      bg: "bg-red-500/10",
-    },
-  };
-
-  const TREND_CONFIG: Record<RiskTrend, { icon: React.ElementType; labelKey: string; color: string }> = {
-    improving: { icon: TrendingDown, labelKey: "trend.improving", color: "text-green-500" },
-    stable: { icon: Minus, labelKey: "trend.stable", color: "text-muted-foreground" },
-    worsening: { icon: TrendingUp, labelKey: "trend.worsening", color: "text-orange-500" },
-  };
 
   const cfg = LEVEL_CONFIG[risk.level];
   const trendCfg = TREND_CONFIG[risk.trend];
@@ -70,23 +70,22 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
     : risk.condition;
 
   return (
-    <div
+    <section
       className={cn(
         "rounded-xl border border-border bg-card overflow-hidden transition-shadow",
         expanded && "shadow-sm"
       )}
-      role="region"
       aria-label={`Risk: ${conditionName}`}
     >
       {/* Summary row — clickable to expand */}
-      <button
+      <button type="button"
         className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-muted/40 transition-colors cursor-pointer"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
         {/* Probability circle */}
         <div
-          className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center border-2 font-bold text-sm"
+          className="flex-shrink-0 size-12 rounded-full flex items-center justify-center border-2 font-bold text-sm"
           style={{ borderColor: cfg.color, color: cfg.color }}
         >
           {pct}%
@@ -107,14 +106,16 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
 
           {/* Bar track */}
           <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <progress
+              className="sr-only"
+              value={pct}
+              max={100}
+              aria-label={`${conditionName}: ${pct}%`}
+            />
             <div
               className={cn("h-full rounded-full transition-all duration-500", cfg.trackColor)}
               style={{ width: `${pct}%` }}
-              role="progressbar"
-              aria-valuenow={pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`${conditionName}: ${pct}%`}
+              aria-hidden="true"
             />
           </div>
         </div>
@@ -133,7 +134,7 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
           <span
             className={cn("inline-flex items-center gap-1 text-[11px] font-medium", trendCfg.color)}
           >
-            <TrendIcon className="w-3 h-3" />
+            <TrendIcon className="size-3" />
             {t(trendCfg.labelKey)}
           </span>
         </div>
@@ -141,7 +142,7 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
         {/* Expand chevron */}
         <ChevronDown
           className={cn(
-            "w-4 h-4 text-muted-foreground transition-transform duration-200 flex-shrink-0 ml-1",
+            "size-4 text-muted-foreground transition-transform duration-200 flex-shrink-0 ml-1",
             expanded && "rotate-180"
           )}
         />
@@ -153,12 +154,12 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
           {/* Contributing factors */}
           <div className="pt-4">
             <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-2">
-              <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />
+              <AlertCircle className="size-3.5 text-muted-foreground" />
               {t("factors")}
             </p>
             <ul className="space-y-2">
-              {risk.factors.map((f, i) => (
-                <li key={i} className="flex items-start gap-2.5">
+              {risk.factors.map((f) => (
+                <li key={`${f.label}-${f.detail}-${f.impact}`} className="flex items-start gap-2.5">
                   <span
                     className={cn(
                       "flex-shrink-0 text-sm font-bold leading-none mt-0.5",
@@ -192,6 +193,6 @@ export function RiskGaugeRow({ risk, defaultExpanded = false }: RiskGaugeRowProp
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

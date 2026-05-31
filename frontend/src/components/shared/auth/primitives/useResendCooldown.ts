@@ -77,9 +77,16 @@ export function useResendCooldown(key: string, seconds = 60) {
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const deadline = loadDeadline(stableKey);
-    const initial = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-    setRemaining(initial);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const deadline = loadDeadline(stableKey);
+      const initial = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRemaining(initial);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [stableKey]);
 
   useEffect(() => {

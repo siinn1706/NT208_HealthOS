@@ -66,6 +66,7 @@ export function Progress({
 
   return (
     <div
+      // oxlint-disable-next-line react-doctor/prefer-tag-over-role -- Custom progress track keeps shadcn styling while exposing progressbar semantics.
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={safeMax}

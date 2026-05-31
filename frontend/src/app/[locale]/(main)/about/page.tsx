@@ -1,3 +1,4 @@
+// oxlint-disable react-doctor/nextjs-missing-metadata -- About metadata is supplied by the route layout.
 "use client";
 
 import { useState, useMemo } from "react";
@@ -186,6 +187,7 @@ export default function AboutPage() {
             {faqCategories.map((cat) => (
               <button
                 key={cat.id}
+                type="button"
                 onClick={() => setActiveCategory(cat.id)}
                 aria-pressed={activeCategory === cat.id}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-night-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${

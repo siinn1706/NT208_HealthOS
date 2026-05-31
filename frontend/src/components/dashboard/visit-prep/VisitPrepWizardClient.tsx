@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -48,6 +48,10 @@ const STEPS = ["visitType", "concerns", "questions", "routing", "review"] as con
 type StepKey = (typeof STEPS)[number];
 
 const MAX_CONCERNS = 5;
+
+function getQuestionText(item: QuestionItem, locale: string) {
+  return locale === "vi" ? item.text_vi : item.text_en;
+}
 
 function emptyConcern(): ConcernDraft {
   return {
@@ -241,6 +245,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
       const c = concerns[idx];
       if (!c.concern_text.trim() || c.id) continue;
       try {
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Draft saves update indexed state and triage in stable order.
         const saved = await persistConcernAt(idx);
         if (saved) {
           nextConcerns[idx] = symptomToDraft(saved);
@@ -378,7 +383,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
             rel="noopener"
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
           >
-            <Printer className="h-3.5 w-3.5" />
+            <Printer className="size-3.5" />
             {t("review.print")}
           </a>
           <a
@@ -387,7 +392,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
             rel="noopener"
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="size-3.5" />
             PDF
           </a>
           {brief.status !== "archived" && (
@@ -396,7 +401,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
               onClick={() => setAttachOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
             >
-              <Paperclip className="h-3.5 w-3.5" />
+              <Paperclip className="size-3.5" />
               {t("attach.attachAction")}
             </button>
           )}
@@ -406,12 +411,11 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
       <VisitPrepDisclaimer />
 
       {isReadOnly && (
-        <div
-          role="status"
+        <output
           className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground flex items-center gap-2"
         >
-          <Lock className="h-3.5 w-3.5" /> {tWiz("cannotEdit")}
-        </div>
+          <Lock className="size-3.5" /> {tWiz("cannotEdit")}
+        </output>
       )}
 
       <ol className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/20 p-2">
@@ -482,12 +486,11 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
                         // can see the per-concern Save button even when it
                         // sits below the fold. Auto-save also triggers on
                         // step navigation as a safety net.
-                        <span
-                          role="status"
+                        <output
                           className="inline-flex items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning"
                         >
                           {tWiz("unsavedBadge")}
-                        </span>
+                        </output>
                       )}
                       <button
                         type="button"
@@ -496,9 +499,9 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
                         className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                       >
                         {pending ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <Loader2 className="size-3.5 animate-spin" />
                         ) : (
-                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <CheckCircle2 className="size-3.5" />
                         )}
                         {c.id ? tWiz("savedAt", { when: "" }).trim() || "Save" : "Save concern"}
                       </button>
@@ -512,7 +515,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
                   onClick={() => setConcerns((prev) => [...prev, emptyConcern()])}
                   className="inline-flex items-center gap-2 rounded-lg border border-dashed border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-muted"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="size-4" />
                   {tWiz("addAnother")}
                 </button>
               )}
@@ -577,7 +580,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
                 disabled={pending}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
               >
-                {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {pending && <Loader2 className="size-3.5 animate-spin" />}
                 {pending ? tWiz("finalizing") : tWiz("finalize")}
               </button>
             )}
@@ -602,7 +605,7 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
           disabled={stepIndex === 0}
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="size-3.5" />
           {tWiz("back")}
         </button>
         <button
@@ -612,11 +615,12 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {tWiz("next")}
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="size-3.5" />
         </button>
       </nav>
 
       <VisitBriefAttachDialog
+        key={`${brief.id}:${attachOpen ? "open" : "closed"}:${attachToAppointmentId ?? "none"}`}
         open={attachOpen}
         onOpenChange={setAttachOpen}
         briefId={brief.id}
@@ -642,7 +646,6 @@ function ReviewSummary({
   const tCat = useTranslations("dashboard.visitPrep.concernCategories");
   const tType = useTranslations("dashboard.visitPrep.visitTypes");
   const locale = useLocale();
-  const renderQ = (q: QuestionItem) => (locale === "vi" ? q.text_vi : q.text_en);
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -652,9 +655,10 @@ function ReviewSummary({
           {t("review.concernsHeader")}
         </h4>
         <ul className="mt-2 space-y-2 text-sm">
-          {concerns
-            .filter((c) => c.concern_text.trim())
-            .map((c, idx) => (
+          {concerns.reduce<ReactNode[]>((items, c) => {
+            if (!c.concern_text.trim()) return items;
+            const idx = items.length;
+            items.push(
               <li key={c.id ?? idx} className="text-foreground">
                 <span className="font-medium">{c.concern_text}</span>
                 <span className="ml-2 text-xs text-muted-foreground">
@@ -662,7 +666,9 @@ function ReviewSummary({
                   {c.severity_0_10 != null && ` · ${c.severity_0_10}/10`}
                 </span>
               </li>
-            ))}
+            );
+            return items;
+          }, [])}
         </ul>
       </section>
       <section className="rounded-xl border border-border bg-card p-4">
@@ -678,7 +684,7 @@ function ReviewSummary({
                 <span className="text-xs font-semibold text-muted-foreground mr-1">
                   {idx + 1}.
                 </span>
-                {renderQ(q)}
+                {getQuestionText(q, locale)}
               </li>
             ))}
         </ol>

@@ -62,21 +62,12 @@ export function EmergencyMintDialog({
 }: EmergencyMintDialogProps) {
   const t = useTranslations("dashboard.emergencyCard.mint");
   const tField = useTranslations("dashboard.emergencyCard.fields");
-  const [label, setLabel] = React.useState("");
+  const [label, setLabel] = React.useState(() => t("defaultLabel"));
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [ackLowCompleteness, setAckLowCompleteness] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
   const lowCompleteness = completenessScore < PUBLISH_THRESHOLD;
-
-  React.useEffect(() => {
-    if (open) {
-      // Reset every open so a previous mint can't pollute the next one.
-      setLabel(t("defaultLabel"));
-      setAcknowledged(false);
-      setAckLowCompleteness(false);
-    }
-  }, [open, t]);
 
   async function handleMint() {
     if (!label.trim()) {

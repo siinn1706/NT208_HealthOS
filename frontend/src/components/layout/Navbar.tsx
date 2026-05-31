@@ -47,14 +47,14 @@ export function Navbar() {
           <Link href="/" className="flex items-center gap-2">
             <div
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg",
+                "flex size-9 items-center justify-center rounded-lg",
                 brandMarkGlassBadgeSurfaceClassName,
               )}
             >
-              <BrandMarkIcon className="h-5 w-5" />
+              <BrandMarkIcon className="size-5" />
             </div>
             <span className="text-xl font-bold text-white">
-              Health<span className="bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent">OS</span>
+              Health<span className="text-night-300">OS</span>
             </span>
           </Link>
 
@@ -84,7 +84,7 @@ export function Navbar() {
               locale={otherLocale}
               className="flex items-center gap-1.5 rounded-full border border-night-500/40 bg-transparent px-3 py-1.5 text-sm font-medium text-night-200 transition-colors hover:bg-night-800 hover:text-white"
             >
-              <Globe className="h-3.5 w-3.5" />
+              <Globe className="size-3.5" />
               {otherLocale.toUpperCase()}
             </Link>
             <Link href="/login">
@@ -94,7 +94,7 @@ export function Navbar() {
             </Link>
             <Link href="/register">
               <Button className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter,box-shadow] duration-150 ease-out hover:brightness-110 hover:shadow-night-400/40">
-                {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
+                {t("register")} <ChevronRight className="ml-1 size-4" />
               </Button>
             </Link>
           </div>
@@ -103,7 +103,7 @@ export function Navbar() {
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" className="text-white hover:bg-night-800">
-                <Menu className="h-6 w-6" />
+                <Menu className="size-6" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-80 bg-night-900 border-night-800 text-white">
@@ -132,7 +132,7 @@ export function Navbar() {
                   locale={otherLocale}
                   className="flex w-full items-center justify-center gap-2 rounded-full border border-night-500/40 bg-transparent py-2 text-sm font-medium text-white transition-colors hover:bg-night-800"
                 >
-                  <Globe className="h-4 w-4" />
+                  <Globe className="size-4" />
                   {otherLocale === "vi" ? "Tiếng Việt" : "English"}
                 </Link>
                 <Link href="/login" onClick={() => setMobileOpen(false)}>
@@ -142,7 +142,7 @@ export function Navbar() {
                 </Link>
                 <Link href="/register" onClick={() => setMobileOpen(false)}>
                   <Button className="w-full rounded-full bg-gradient-to-r from-night-700 to-night-400 text-white shadow-md shadow-night-400/20 transition-[filter] duration-150 ease-out hover:brightness-110">
-                    {t("register")} <ChevronRight className="ml-1 h-4 w-4" />
+                    {t("register")} <ChevronRight className="ml-1 size-4" />
                   </Button>
                 </Link>
               </div>

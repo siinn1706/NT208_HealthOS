@@ -236,6 +236,7 @@ export async function flush(opts: FlushOptions = {}): Promise<number> {
           "idempotency-key": entry.idempotencyKey,
           ...(entry.headers ?? {}),
         };
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Offline queue drains one entry at a time to preserve idempotent ordering.
         const res = await fetcher(entry.url, {
           method: entry.method,
           headers,

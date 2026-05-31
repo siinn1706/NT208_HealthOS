@@ -9,13 +9,15 @@ interface AnomalyTimelineProps {
 }
 
 export async function AnomalyTimeline({ anomalies, unit }: AnomalyTimelineProps) {
-  const t = await getTranslations("trends");
-  const tReports = await getTranslations("reports");
+  const [t, tReports] = await Promise.all([
+    getTranslations("trends"),
+    getTranslations("reports"),
+  ]);
 
   if (anomalies.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-3">
-        <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" aria-hidden />
+        <CheckCircle2 className="size-5 text-emerald-500 shrink-0" aria-hidden />
         <p className="text-sm text-muted-foreground">{t("noAnomalies")}</p>
       </div>
     );
@@ -35,7 +37,7 @@ export async function AnomalyTimeline({ anomalies, unit }: AnomalyTimelineProps)
             return (
               <li key={a.date} className="flex items-start gap-3 px-4 py-3">
                 <AlertTriangle
-                  className={`h-4 w-4 mt-0.5 shrink-0 ${isCritical ? "text-destructive" : "text-amber-500"}`}
+                  className={`size-4 mt-0.5 shrink-0 ${isCritical ? "text-destructive" : "text-amber-500"}`}
                   aria-hidden
                 />
                 <div className="flex-1">

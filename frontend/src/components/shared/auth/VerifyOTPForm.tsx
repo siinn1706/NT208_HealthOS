@@ -6,13 +6,11 @@ import { MailCheck } from "lucide-react";
 import { Link, useRouter } from "@/navigation";
 import { Button } from "@/components/ui/button";
 import { useNotification } from "@/hooks/use-notification";
-import {
-  AuthShell,
-  AuthBanner,
-  OtpField,
-  PendingButton,
-  useResendCooldown,
-} from "./primitives";
+import { AuthShell } from "./primitives/AuthShell";
+import { AuthBanner } from "./primitives/AuthBanner";
+import { OtpField } from "./primitives/OtpField";
+import { PendingButton } from "./primitives/PendingButton";
+import { useResendCooldown } from "./primitives/useResendCooldown";
 import { track } from "@/lib/analytics";
 
 interface VerifyOTPFormProps {

@@ -165,17 +165,17 @@ function SuggestionCard({ s, t }: { s: ExerciseSuggestion; t: ReturnType<typeof 
         <div className="flex items-start gap-3">
           {/* Gradient icon */}
           <div className={cn(
-            "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm",
+            "flex-shrink-0 size-9 rounded-xl flex items-center justify-center shadow-sm",
             `bg-gradient-to-br ${cat.gradient}`,
           )}>
-            <Icon className="w-[18px] h-[18px] text-white" aria-hidden />
+            <Icon className="size-[18px] text-white" aria-hidden />
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1">
               <p className="text-[13px] font-semibold text-foreground leading-tight flex items-center gap-1">
                 {isAi && (
-                  <Sparkles className="w-3 h-3 text-violet-500 flex-shrink-0" aria-label="AI-generated" />
+                  <Sparkles className="size-3 text-violet-500 flex-shrink-0" aria-label="AI-generated" />
                 )}
                 {title}
               </p>
@@ -197,13 +197,13 @@ function SuggestionCard({ s, t }: { s: ExerciseSuggestion; t: ReturnType<typeof 
         <div className="flex items-center gap-2 flex-wrap">
           {s.duration_minutes != null && (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 dark:bg-muted/30 px-2 py-1 rounded-full">
-              <Clock className="w-3 h-3" aria-hidden />
+              <Clock className="size-3" aria-hidden />
               {s.duration_minutes} {t("minutes")}
             </span>
           )}
           {cal > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-2 py-1 rounded-full">
-              <Flame className="w-3 h-3" aria-hidden />
+              <Flame className="size-3" aria-hidden />
               ~{cal} kcal
             </span>
           )}
@@ -260,8 +260,8 @@ function DayCell({
         <span className="text-[8px] text-muted-foreground/40 text-center leading-tight mt-auto">{t("restDay")}</span>
       ) : Icon && cat ? (
         <>
-          <div className={cn("w-6 h-6 rounded-full flex items-center justify-center", `bg-gradient-to-br ${cat.gradient}`)}>
-            <Icon className="w-3 h-3 text-white" aria-hidden />
+          <div className={cn("size-6 rounded-full flex items-center justify-center", `bg-gradient-to-br ${cat.gradient}`)}>
+            <Icon className="size-3 text-white" aria-hidden />
           </div>
           <span className="text-[8px] text-muted-foreground leading-tight text-center truncate w-full px-0.5">
             {t(`categories.${s0!.category}` as Parameters<typeof t>[0])}
@@ -282,9 +282,9 @@ function ExerciseSuggestionsSkeleton({ t }: { t: ReturnType<typeof useTranslatio
           className="rounded-xl border border-border/70 px-3.5 pt-4 pb-3.5 space-y-3"
         >
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-muted animate-pulse" />
+            <div className="size-9 rounded-xl bg-muted animate-pulse" />
             <div className="flex-1 space-y-2">
-              <div className="h-3 w-3/5 rounded-full bg-muted animate-pulse" />
+              <div className="size-3/5 rounded-full bg-muted animate-pulse" />
               <div className="h-2.5 w-full rounded-full bg-muted/80 animate-pulse" />
               <div className="h-2.5 w-4/5 rounded-full bg-muted/70 animate-pulse" />
             </div>
@@ -303,8 +303,8 @@ function ExerciseSuggestionsSkeleton({ t }: { t: ReturnType<typeof useTranslatio
 function ExerciseSuggestionsEmpty({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <div className="flex flex-col items-center py-8 gap-2 text-center">
-      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-        <Dumbbell className="w-5 h-5 text-muted-foreground/50" aria-hidden />
+      <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+        <Dumbbell className="size-5 text-muted-foreground/50" aria-hidden />
       </div>
       <p className="text-sm font-medium text-muted-foreground">{t("noData")}</p>
     </div>
@@ -314,8 +314,8 @@ function ExerciseSuggestionsEmpty({ t }: { t: ReturnType<typeof useTranslations>
 function ExerciseSuggestionsError({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <div className="flex flex-col items-center py-8 gap-2 text-center">
-      <div className="w-10 h-10 rounded-full bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400 flex items-center justify-center">
-        <AlertTriangle className="w-5 h-5" aria-hidden />
+      <div className="size-10 rounded-full bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400 flex items-center justify-center">
+        <AlertTriangle className="size-5" aria-hidden />
       </div>
       <p className="text-sm font-medium text-muted-foreground">{t("loadError")}</p>
     </div>
@@ -400,8 +400,8 @@ export function ExerciseSuggestionsWidget() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-orange-500/20">
-            <Dumbbell className="w-4 h-4 text-white" aria-hidden />
+          <div className="size-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-orange-500/20">
+            <Dumbbell className="size-4 text-white" aria-hidden />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground leading-tight">{t("title")}</p>
@@ -412,7 +412,7 @@ export function ExerciseSuggestionsWidget() {
         {/* Weekly kcal chip */}
         {totalKcalWeekly > 0 && (
           <div className="flex items-center gap-1 flex-shrink-0 bg-orange-50 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-900/40 px-2.5 py-1.5 rounded-full">
-            <TrendingUp className="w-3 h-3 text-orange-500" aria-hidden />
+            <TrendingUp className="size-3 text-orange-500" aria-hidden />
             <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 tabular-nums">
               ~{totalKcalWeekly.toLocaleString()} kcal
             </span>
@@ -424,10 +424,10 @@ export function ExerciseSuggestionsWidget() {
       {/* ── Tabs ── */}
       <div className="flex gap-1 px-3 pt-2.5 pb-1.5">
         {([
-          ["rec",  t("tabRecommendations"), <BarChart3 key="b" className="w-3.5 h-3.5" />],
-          ["week", t("tabWeekly"),          <Calendar  key="c" className="w-3.5 h-3.5" />],
+          ["rec",  t("tabRecommendations"), <BarChart3 key="b" className="size-3.5" />],
+          ["week", t("tabWeekly"),          <Calendar  key="c" className="size-3.5" />],
         ] as [Tab, string, React.ReactNode][]).map(([key, label, icon]) => (
-          <button
+          <button type="button"
             key={key}
             onClick={() => setTab(key)}
             className={cn(
@@ -507,8 +507,8 @@ export function ExerciseSuggestionsWidget() {
                       : s.title;
                     return (
                       <div key={s.id} className="flex items-center gap-2.5">
-                        <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0", `bg-gradient-to-br ${cat.gradient}`)}>
-                          <Icon className="w-3 h-3 text-white" aria-hidden />
+                        <div className={cn("size-6 rounded-lg flex items-center justify-center flex-shrink-0", `bg-gradient-to-br ${cat.gradient}`)}>
+                          <Icon className="size-3 text-white" aria-hidden />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-semibold text-foreground truncate">{title}</p>
@@ -533,7 +533,7 @@ export function ExerciseSuggestionsWidget() {
           href={`/${locale}/dashboard/progress`}
           className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-colors"
         >
-          {t("viewAll")} <ArrowRight className="w-3 h-3" />
+          {t("viewAll")} <ArrowRight className="size-3" />
         </Link>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { Trash2 } from "lucide-react";
 import type { ConcernCategory, DurationUnit, SymptomEntry } from "@/types/api";
@@ -18,6 +19,9 @@ const CATEGORIES: ConcernCategory[] = [
 ];
 
 const DURATION_UNITS: DurationUnit[] = ["hours", "days", "weeks", "months"];
+const subscribeToTodaySnapshot = () => () => {};
+const getTodaySnapshot = () => new Date().toISOString().slice(0, 10);
+const getServerTodaySnapshot = () => undefined;
 
 export type ConcernDraft = Pick<
   SymptomEntry,
@@ -54,6 +58,11 @@ export function ConcernEntryForm({
   const t = useTranslations("dashboard.visitPrep.concernForm");
   const tCat = useTranslations("dashboard.visitPrep.concernCategories");
   const tDur = useTranslations("dashboard.visitPrep.durationUnits");
+  const todayIso = useSyncExternalStore(
+    subscribeToTodaySnapshot,
+    getTodaySnapshot,
+    getServerTodaySnapshot,
+  );
 
   const update = <K extends keyof ConcernDraft>(key: K, next: ConcernDraft[K]) =>
     onChange({ ...value, [key]: next });
@@ -90,6 +99,7 @@ export function ConcernEntryForm({
           </span>
         </label>
         <textarea
+          aria-label={t("concernText")}
           value={value.concern_text}
           onChange={(e) => update("concern_text", e.target.value)}
           placeholder={t("concernTextPlaceholder")}
@@ -103,6 +113,7 @@ export function ConcernEntryForm({
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground">{t("category")}</label>
           <select
+            aria-label={t("category")}
             value={value.concern_category}
             onChange={(e) =>
               update("concern_category", e.target.value as ConcernCategory)
@@ -121,9 +132,10 @@ export function ConcernEntryForm({
           <label className="text-xs font-medium text-foreground">{t("onsetDate")}</label>
           <input
             type="date"
+            aria-label={t("onsetDate")}
             value={value.onset_date ?? ""}
             onChange={(e) => update("onset_date", e.target.value || null)}
-            max={new Date().toISOString().slice(0, 10)}
+            max={todayIso}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
@@ -135,6 +147,7 @@ export function ConcernEntryForm({
           <div className="flex items-center gap-2">
             <input
               type="number"
+              aria-label={t("durationValue")}
               min={0}
               value={value.duration_value ?? ""}
               onChange={(e) =>
@@ -147,6 +160,7 @@ export function ConcernEntryForm({
               className="w-24 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
             <select
+              aria-label={t("durationUnit")}
               value={value.duration_unit ?? ""}
               onChange={(e) =>
                 update("duration_unit", (e.target.value || null) as DurationUnit | null)
@@ -219,6 +233,7 @@ export function ConcernEntryForm({
               </label>
               <input
                 type="text"
+                aria-label={t(field === "triggers" ? "triggers" : field === "better_with" ? "betterWith" : "worseWith")}
                 value={value[field] ?? ""}
                 onChange={(e) => update(field, e.target.value || null)}
                 placeholder={t(
@@ -246,6 +261,7 @@ export function ConcernEntryForm({
                 {t(field === "meds_taken" ? "medsTaken" : "priorCare")}
               </label>
               <textarea
+                aria-label={t(field === "meds_taken" ? "medsTaken" : "priorCare")}
                 value={value[field] ?? ""}
                 onChange={(e) => update(field, e.target.value || null)}
                 rows={2}
@@ -268,7 +284,7 @@ export function ConcernEntryForm({
           onClick={onRemove}
           className="text-xs font-medium text-destructive inline-flex items-center gap-1.5 hover:underline"
         >
-          <Trash2 className="h-3.5 w-3.5" /> Remove
+          <Trash2 className="size-3.5" /> Remove
         </button>
       )}
     </fieldset>

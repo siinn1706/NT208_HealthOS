@@ -44,7 +44,7 @@ export function AutoShareBanner({
     return (
       <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/20 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <p className="flex-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-          {t("normalTitle")} — {t("normalSubtitle")}
+          {t("normalTitle")}: {t("normalSubtitle")}
         </p>
         <Button
           variant="outline"
@@ -52,7 +52,7 @@ export function AutoShareBanner({
           className="h-8 text-xs gap-1.5 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
           onClick={onOpenShareDialog}
         >
-          <Share2 className="h-3.5 w-3.5" aria-hidden />
+          <Share2 className="size-3.5" aria-hidden />
           {t("shareOptional")}
         </Button>
       </div>
@@ -64,7 +64,7 @@ export function AutoShareBanner({
     return (
       <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" aria-hidden />
+          <AlertTriangle className="size-5 text-amber-500 shrink-0" aria-hidden />
           <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
             Phát hiện chỉ số bất thường.{" "}
             {autoShareSettings.default_recipients.length === 0
@@ -79,7 +79,7 @@ export function AutoShareBanner({
             className="h-8 text-xs gap-1.5"
             onClick={onOpenShareDialog}
           >
-            <Share2 className="h-3.5 w-3.5" aria-hidden />
+            <Share2 className="size-3.5" aria-hidden />
             Chia sẻ
           </Button>
           <Button
@@ -88,7 +88,7 @@ export function AutoShareBanner({
             className="h-8 text-xs gap-1.5"
             onClick={onOpenSettings}
           >
-            <Settings className="h-3.5 w-3.5" aria-hidden />
+            <Settings className="size-3.5" aria-hidden />
             Cài đặt
           </Button>
         </div>
@@ -100,7 +100,7 @@ export function AutoShareBanner({
   if (autoShareTriggered) {
     return (
       <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-        <Share2 className="h-5 w-5 text-primary shrink-0" aria-hidden />
+        <Share2 className="size-5 text-primary shrink-0" aria-hidden />
         <p className="flex-1 text-sm text-muted-foreground">
           Đã tự động gửi báo cáo đến {autoShareSettings.default_recipients.length} người thân.
         </p>
@@ -118,7 +118,7 @@ export function AutoShareBanner({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Left: icon + message */}
         <div className="flex items-start gap-3 flex-1 min-w-0">
-          <AlertOctagon className="h-5 w-5 text-destructive shrink-0 mt-0.5" aria-hidden />
+          <AlertOctagon className="size-5 text-destructive shrink-0 mt-0.5" aria-hidden />
           <div>
             <p className="text-sm font-semibold text-destructive">{t("title")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -148,7 +148,7 @@ export function AutoShareBanner({
             className="h-8 text-xs gap-1.5"
             onClick={onOpenShareDialog}
           >
-            <Share2 className="h-3.5 w-3.5" aria-hidden />
+            <Share2 className="size-3.5" aria-hidden />
             {t("sendNow")}
           </Button>
           <Button
@@ -157,17 +157,17 @@ export function AutoShareBanner({
             className="h-8 text-xs gap-1.5"
             onClick={onOpenShareDialog}
           >
-            <Settings className="h-3.5 w-3.5" aria-hidden />
+            <Settings className="size-3.5" aria-hidden />
             {t("customize")}
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0"
+            className="size-8 p-0"
             onClick={cancelAutoShare}
             aria-label={t("cancel")}
           >
-            <X className="h-4 w-4" aria-hidden />
+            <X className="size-4" aria-hidden />
           </Button>
         </div>
       </div>

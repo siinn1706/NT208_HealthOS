@@ -98,7 +98,7 @@ export function GoalCreationWizard({
             <div key={s} className="flex items-center gap-2 flex-1">
               <div
                 className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-200 flex-shrink-0",
+                  "size-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-200 flex-shrink-0",
                   step > s
                     ? "bg-[#1965B3] border-[#1965B3] text-white"
                     : step === s
@@ -117,7 +117,7 @@ export function GoalCreationWizard({
                 {stepLabels[s]}
               </span>
               {s < 3 && (
-                <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <ChevronRight className="size-3 text-muted-foreground flex-shrink-0" />
               )}
             </div>
           ))}
@@ -128,7 +128,7 @@ export function GoalCreationWizard({
           {step === 1 && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {activityEntries.map(([type, config]) => (
-                <button
+                <button type="button"
                   key={type}
                   onClick={() => handleActivitySelect(type)}
                   className={cn(
@@ -159,7 +159,7 @@ export function GoalCreationWizard({
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {ACTIVITY_CONFIG[selectedActivity].milestones.map((m) => (
-                  <button
+                  <button type="button"
                     key={m.value}
                     onClick={() => handleMilestoneSelect(m)}
                     className={cn(
@@ -188,7 +188,7 @@ export function GoalCreationWizard({
             <div className="space-y-4">
               {confirmed ? (
                 <div className="flex flex-col items-center gap-3 py-8">
-                  <CheckCircle2 className="w-14 h-14 text-green-400" />
+                  <CheckCircle2 className="size-14 text-green-400" />
                   <p className="text-sm font-semibold text-foreground">
                     {t("setSuccess")}
                   </p>
@@ -250,7 +250,7 @@ export function GoalCreationWizard({
                 size="sm"
                 onClick={() => setStep((s) => (s - 1) as WizardStep)}
               >
-                <ChevronLeft className="w-4 h-4 mr-1" />
+                <ChevronLeft className="size-4 mr-1" />
                 {t("back")}
               </Button>
             ) : (

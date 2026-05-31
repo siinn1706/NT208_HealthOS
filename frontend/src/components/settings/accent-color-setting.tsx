@@ -151,7 +151,7 @@ export function AccentColorSetting() {
       {/* Low-contrast warning chip */}
       {hasLowContrast && (
         <div className="flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs text-warning">
-          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+          <AlertTriangle className="size-3.5 flex-shrink-0" aria-hidden />
           {t("accentLowContrast")}
         </div>
       )}
@@ -172,13 +172,13 @@ export function AccentColorSetting() {
                 isSaving && "opacity-60 cursor-not-allowed",
               )}
             >
-              <Save className="w-3.5 h-3.5" />
+              <Save className="size-3.5" />
               {saveStatus === "error" ? t("accentSaveFailed") : t("saveAccent")}
             </button>
           )}
           {!isDirty && saveStatus === "saved" && (
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-success/10 text-success">
-              <Save className="w-3.5 h-3.5" />
+              <Save className="size-3.5" />
               {t("accentSaved")}
             </span>
           )}
@@ -192,7 +192,7 @@ export function AccentColorSetting() {
                 (isSaving || isResetting) && "opacity-60 cursor-not-allowed",
               )}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="size-3.5" />
               {t("resetDefault")}
             </button>
           )}

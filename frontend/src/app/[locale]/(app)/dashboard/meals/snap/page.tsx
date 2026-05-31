@@ -17,7 +17,7 @@ export default async function MealSnapPage() {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-muted-foreground" aria-hidden />
+            <Camera className="size-5 text-muted-foreground" aria-hidden />
             {t("title")}
           </span>
         }

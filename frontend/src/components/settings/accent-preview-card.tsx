@@ -27,15 +27,15 @@ export function AccentPreviewCard({ accentHex }: AccentPreviewCardProps) {
     <div style={scopedVars} className="rounded-lg border border-border bg-card p-4 space-y-3">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
       <div className="flex items-center gap-3 flex-wrap">
-        <button className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium">
+        <button type="button" className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium">
           Button
         </button>
-        <button
+        <button type="button"
           className="relative w-9 h-5 rounded-full bg-primary cursor-default"
           aria-label="toggle preview"
           tabIndex={-1}
         >
-          <span className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow" />
+          <span className="absolute right-0.5 top-0.5 size-4 rounded-full bg-white shadow" />
         </button>
         <span className="text-xs text-foreground underline cursor-default">Link</span>
         <div className="h-6 w-16 rounded border border-border bg-transparent ring-1 ring-primary/40" />

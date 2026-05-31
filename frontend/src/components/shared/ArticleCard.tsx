@@ -9,6 +9,19 @@ import type { Article, Locale } from "@/types";
 import { Clock, Calendar } from "lucide-react";
 import { Link } from "@/navigation";
 
+const ARTICLE_DATE_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat(getLocaleTag("en"), {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }),
+  vi: new Intl.DateTimeFormat(getLocaleTag("vi"), {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }),
+};
+
 interface ArticleCardProps {
   article: Article;
   variant?: "featured" | "sidebar" | "list" | "rail";
@@ -22,11 +35,7 @@ export function ArticleCard({ article, variant = "list", categoryLabel = "" }: A
   const title = pickLocale(article.title, locale);
   const excerpt = pickLocale(article.excerpt, locale);
 
-  const formattedDate = new Intl.DateTimeFormat(getLocaleTag(locale), {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(article.date));
+  const formattedDate = ARTICLE_DATE_FORMATTERS[locale].format(new Date(article.date));
 
   const minRead = article.readingMinutes
     ? tArticles("minRead", { n: article.readingMinutes })
@@ -189,12 +198,12 @@ function MetaRow({ author, date, minRead, tone = "light", compact = false }: Met
       <span className="font-semibold">{author}</span>
       <span aria-hidden="true">•</span>
       <span className={chip}>
-        <Calendar className="h-3 w-3" aria-hidden="true" />
+        <Calendar className="size-3" aria-hidden="true" />
         {date}
       </span>
       {minRead && (
         <span className={chip}>
-          <Clock className="h-3 w-3" aria-hidden="true" />
+          <Clock className="size-3" aria-hidden="true" />
           {minRead}
         </span>
       )}

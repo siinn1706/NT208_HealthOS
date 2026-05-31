@@ -31,10 +31,12 @@ export function StaleDataIndicator({
   className,
 }: StaleDataIndicatorProps) {
   const t = useTranslations("state");
-  const [, force] = React.useReducer((x: number) => x + 1, 0);
+  const [nowMs, setNowMs] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    const id = window.setInterval(force, 60_000);
+    const update = () => setNowMs(Date.now());
+    update();
+    const id = window.setInterval(update, 60_000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -53,7 +55,7 @@ export function StaleDataIndicator({
   }
 
   const then = new Date(updatedAt).getTime();
-  const now = Date.now();
+  const now = nowMs ?? then;
   const { unit, n } = diffLabel(now, then);
   const isStale = now - then > staleAfterMs;
 
@@ -77,7 +79,7 @@ export function StaleDataIndicator({
         isStale ? "text-warning" : "text-muted-foreground",
         className,
       )}
-      title={new Date(then).toLocaleString()}
+      title={new Date(then).toISOString()}
     >
       {isStale ? (
         <AlertTriangle className="size-3" aria-hidden="true" />

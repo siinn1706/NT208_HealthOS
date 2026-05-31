@@ -28,6 +28,21 @@ import { PermissionBanner } from "@/components/ui/permission-banner";
 import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
 import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
 
+const KITCHENSINK_SECTIONS: Array<{ id: string; label: string }> = [
+  { id: "page", label: "Page" },
+  { id: "state", label: "State" },
+  { id: "empty", label: "Empty" },
+  { id: "auth", label: "Auth" },
+  { id: "stepper", label: "Stepper" },
+  { id: "tabs", label: "Tabs" },
+  { id: "chips", label: "Chips" },
+  { id: "data-state", label: "DataState" },
+  { id: "atmosphere", label: "Atmosphere" },
+  { id: "permission", label: "Permission" },
+];
+
+const KITCHENSINK_DEMO_NOW_MS = Date.UTC(2026, 4, 30, 10, 0, 0);
+
 /**
  * Section wrapper used by every primitive demo. Keeps spacing and headings
  * consistent so the page reads top-to-bottom like a styleguide.
@@ -62,19 +77,6 @@ export function KitchensinkClient() {
   const [pending, setPending] = React.useState(false);
   const [tab, setTab] = React.useState<string>("overview");
 
-  const sections: Array<{ id: string; label: string }> = [
-    { id: "page", label: "Page" },
-    { id: "state", label: "State" },
-    { id: "empty", label: "Empty" },
-    { id: "auth", label: "Auth" },
-    { id: "stepper", label: "Stepper" },
-    { id: "tabs", label: "Tabs" },
-    { id: "chips", label: "Chips" },
-    { id: "data-state", label: "DataState" },
-    { id: "atmosphere", label: "Atmosphere" },
-    { id: "permission", label: "Permission" },
-  ];
-
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <header className="border-b border-border bg-muted/30 px-6 py-4">
@@ -93,7 +95,7 @@ export function KitchensinkClient() {
             aria-label="Sections"
             className="mt-3 flex flex-wrap gap-2 text-xs"
           >
-            {sections.map((s) => (
+            {KITCHENSINK_SECTIONS.map((s) => (
               <a
                 key={s.id}
                 href={`#${s.id}`}
@@ -126,7 +128,7 @@ export function KitchensinkClient() {
               </Button>
             }
             meta={
-              <StaleDataIndicator updatedAt={new Date(Date.now() - 6 * 60_000)} />
+              <StaleDataIndicator updatedAt={new Date(KITCHENSINK_DEMO_NOW_MS - 6 * 60_000)} />
             }
           />
         </Section>
@@ -145,7 +147,7 @@ export function KitchensinkClient() {
           </Banner>
           <Banner variant="success" title="Reminder created" />
           <Banner variant="destructive" title="Could not save changes">
-            Please retry — your edits are kept locally.
+            Please retry; your edits are kept locally.
           </Banner>
 
           <div className="grid gap-3 md:grid-cols-2">
@@ -344,7 +346,7 @@ export function KitchensinkClient() {
               <FreshnessChip tier="stale" />
               <FreshnessChip tier="very_stale" />
               <FreshnessChip tier="no_data" />
-              <FreshnessChip tier="stale" variant="expanded" recordedAt={new Date(Date.now() - 3 * 3600_000).toISOString()} />
+              <FreshnessChip tier="stale" variant="expanded" recordedAt={new Date(KITCHENSINK_DEMO_NOW_MS - 3 * 3600_000).toISOString()} />
             </div>
           </div>
           <div className="space-y-3">
@@ -365,7 +367,7 @@ export function KitchensinkClient() {
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">OfflineIndicator</p>
             <div className="flex flex-wrap gap-2">
               <OfflineIndicator />
-              {/* Force render for preview via className — normally hidden when online */}
+              {/* Force render for preview via className, normally hidden when online */}
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-100">
                 <span className="size-3 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
                 Reconnecting…
@@ -462,37 +464,37 @@ export function KitchensinkClient() {
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">AtmosphereGlow — default (dark section)</p>
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGlow: default (dark section)</p>
               <div className="relative h-32 overflow-hidden rounded-xl bg-gradient-to-br from-night-900 via-night-800 to-night-900">
                 <AtmosphereGlow />
               </div>
             </div>
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">AtmosphereGlow — soft variant</p>
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGlow: soft variant</p>
               <div className="relative h-32 overflow-hidden rounded-xl bg-gradient-to-br from-night-900 via-night-800 to-night-900">
                 <AtmosphereGlow variant="soft" static />
               </div>
             </div>
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid — dark surface</p>
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid: dark surface</p>
               <div className="relative h-32 overflow-hidden rounded-xl bg-gradient-to-br from-night-900 via-night-800 to-night-900">
                 <AtmosphereGrid />
               </div>
             </div>
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid — light surface</p>
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid: light surface</p>
               <div className="relative h-32 overflow-hidden rounded-xl bg-card border border-border">
                 <AtmosphereGrid />
               </div>
             </div>
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid — dots, dark surface</p>
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid: dots, dark surface</p>
               <div className="relative h-32 overflow-hidden rounded-xl bg-gradient-to-br from-night-900 via-night-800 to-night-900">
                 <AtmosphereGrid variant="dots" tone="dark" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid — dots, light surface</p>
+              <p className="text-xs font-medium text-muted-foreground">AtmosphereGrid: dots, light surface</p>
               <div className="relative h-32 overflow-hidden rounded-xl border border-border bg-card">
                 <AtmosphereGrid variant="dots" tone="light" />
               </div>

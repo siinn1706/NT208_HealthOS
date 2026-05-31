@@ -17,14 +17,16 @@ import { NextRequest, NextResponse } from "next/server";
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
 // Mock requireAdminSession to return null (admin confirmed — guard passes)
-const requireAdminSessionMock = vi.hoisted(() => vi.fn<[], Promise<NextResponse | null>>());
+type RequireAdminSessionMock = () => Promise<NextResponse | null>;
+const requireAdminSessionMock = vi.hoisted(() => vi.fn<RequireAdminSessionMock>());
 
 vi.mock("@/lib/admin/bff-admin-guard", () => ({
   requireAdminSession: requireAdminSessionMock,
 }));
 
 // Mock coreProxy to simulate upstream timeout/transport error
-const coreProxyMock = vi.hoisted(() => vi.fn<[NextRequest, string], Promise<NextResponse>>());
+type CoreProxyMock = (req: NextRequest, path: string) => Promise<NextResponse>;
+const coreProxyMock = vi.hoisted(() => vi.fn<CoreProxyMock>());
 
 vi.mock("@/lib/core-api-proxy", () => ({
   coreProxy: coreProxyMock,

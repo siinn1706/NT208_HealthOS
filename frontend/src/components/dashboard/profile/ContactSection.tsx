@@ -32,7 +32,7 @@ function ReadOnlyRow({ label, value }: { label: string; value: string | null }) 
     <div className="space-y-0.5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="text-sm text-foreground">
-        {value ?? <span className="italic text-muted-foreground/60">—</span>}
+        {value ?? <span className="italic text-muted-foreground/60">N/A</span>}
       </p>
     </div>
   );

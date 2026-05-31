@@ -35,22 +35,29 @@ export function useBreachCheck(
   password: string,
   { minLength = 8, debounceMs = 1000 }: UseBreachCheckOptions = {},
 ): BreachCheckResult {
-  const [status, setStatus] = useState<BreachStatus>("idle");
-  const [count, setCount] = useState<number | null>(null);
+  const requestKey = `${password}\u0000${minLength}\u0000${debounceMs}`;
+  const isCheckable = password.length >= minLength;
+  const [resultState, setResultState] = useState<{
+    requestKey: string;
+    status: BreachStatus;
+    count: number | null;
+  }>({ requestKey: "", status: "idle", count: null });
   const abortRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const status = !isCheckable
+    ? "idle"
+    : resultState.requestKey === requestKey
+      ? resultState.status
+      : "checking";
+  const count = !isCheckable || resultState.requestKey !== requestKey ? null : resultState.count;
 
   useEffect(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (abortRef.current) abortRef.current.abort();
 
-    if (!password || password.length < minLength) {
-      setStatus("idle");
-      setCount(null);
+    if (!isCheckable) {
       return;
     }
-
-    setStatus("checking");
 
     timeoutRef.current = setTimeout(async () => {
       const controller = new AbortController();
@@ -64,8 +71,7 @@ export function useBreachCheck(
           typeof crypto.subtle === "undefined" ||
           typeof crypto.subtle.digest !== "function"
         ) {
-          setStatus("error");
-          setCount(null);
+          setResultState({ requestKey, status: "error", count: null });
           return;
         }
 
@@ -86,8 +92,7 @@ export function useBreachCheck(
         );
 
         if (!res.ok) {
-          setStatus("error");
-          setCount(null);
+          setResultState({ requestKey, status: "error", count: null });
           return;
         }
 
@@ -105,12 +110,14 @@ export function useBreachCheck(
             break;
           }
         }
-        setCount(matchCount);
-        setStatus(matchCount && matchCount > 0 ? "breached" : "safe");
+        setResultState({
+          requestKey,
+          status: matchCount && matchCount > 0 ? "breached" : "safe",
+          count: matchCount,
+        });
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setStatus("error");
-        setCount(null);
+        setResultState({ requestKey, status: "error", count: null });
       }
     }, debounceMs);
 
@@ -118,7 +125,7 @@ export function useBreachCheck(
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [password, minLength, debounceMs]);
+  }, [password, requestKey, isCheckable, debounceMs]);
 
   return { status, count, isBreached: status === "breached" };
 }

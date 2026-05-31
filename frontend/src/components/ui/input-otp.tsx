@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { OTPInput, OTPInputContext } from "input-otp"
-import { MinusIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -36,6 +35,7 @@ function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+// oxlint-disable-next-line react-doctor/no-multi-comp -- shadcn OTP primitive keeps tightly coupled slots in one file.
 function InputOTPSlot({
   index,
   className,
@@ -43,7 +43,7 @@ function InputOTPSlot({
 }: React.ComponentProps<"div"> & {
   index: number
 }) {
-  const inputOTPContext = React.useContext(OTPInputContext)
+  const inputOTPContext = React.use(OTPInputContext)
   const { char, hasFakeCaret, isActive } = inputOTPContext?.slots[index] ?? {}
 
   return (
@@ -66,11 +66,10 @@ function InputOTPSlot({
   )
 }
 
-function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
+// oxlint-disable-next-line react-doctor/no-multi-comp -- shadcn OTP separator is part of the same primitive family.
+function InputOTPSeparator({ className, ...props }: React.ComponentProps<"hr">) {
   return (
-    <div data-slot="input-otp-separator" role="separator" {...props}>
-      <MinusIcon />
-    </div>
+    <hr data-slot="input-otp-separator" className={cn("h-px w-3 border-0 bg-border", className)} {...props} />
   )
 }
 

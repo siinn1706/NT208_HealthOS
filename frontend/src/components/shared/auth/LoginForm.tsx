@@ -12,13 +12,11 @@ import { useNotification, ValidationMessages } from "@/hooks/use-notification";
 import { getSafePostLoginRedirectPath } from "@/lib/safe-post-login-redirect";
 import { isAdmin } from "@/lib/admin/admin-session";
 import { resolvePostLoginRedirectPath } from "@/lib/auth-post-login-redirect";
-import {
-  AuthShell,
-  AuthBanner,
-  PasswordField,
-  PendingButton,
-  FormFieldError,
-} from "./primitives";
+import { AuthShell } from "./primitives/AuthShell";
+import { AuthBanner } from "./primitives/AuthBanner";
+import { PasswordField } from "./primitives/PasswordField";
+import { PendingButton } from "./primitives/PendingButton";
+import { FormFieldError } from "./primitives/FormFieldError";
 import { track } from "@/lib/analytics";
 
 function GoogleIcon() {

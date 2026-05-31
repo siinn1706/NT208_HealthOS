@@ -94,6 +94,7 @@ export function QuickActionsWidget() {
           {ACTIONS.map(({ key, icon: Icon, color, bg }) => (
             <button
               key={key}
+              type="button"
               onClick={() => handleAction(key)}
               className={cn(
                 "flex flex-col items-center gap-2.5 rounded-lg p-4",

@@ -26,6 +26,16 @@ import {
 import { AdminEnvBadge } from "./AdminEnvBadge";
 
 // ── Types ────────────────────────────────────────────────────────────────────
+const SIDEBAR_COLLAPSE_EVENT = "healthos:admin-sidebar-collapse";
+
+function subscribeSidebarCollapse(onStoreChange: () => void) {
+  window.addEventListener(SIDEBAR_COLLAPSE_EVENT, onStoreChange);
+  return () => window.removeEventListener(SIDEBAR_COLLAPSE_EVENT, onStoreChange);
+}
+
+function getServerSidebarCollapsed() {
+  return false;
+}
 
 interface NavEntry {
   label: string;
@@ -121,16 +131,16 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   const pathnameWithoutLocale = stripLocale(pathname, routing.locales);
   const t = useTranslations("admin.shell");
 
-  // Hydrate collapse state from localStorage after mount (avoid SSR mismatch)
-  const [collapsed, setCollapsed] = React.useState(false);
-  React.useEffect(() => {
-    setCollapsed(getSidebarCollapsed());
-  }, []);
+  const collapsed = React.useSyncExternalStore(
+    subscribeSidebarCollapse,
+    getSidebarCollapsed,
+    getServerSidebarCollapsed,
+  );
 
   function toggleCollapsed() {
     const next = !collapsed;
-    setCollapsed(next);
     setSidebarCollapsed(next);
+    window.dispatchEvent(new Event(SIDEBAR_COLLAPSE_EVENT));
   }
 
   // Build nav groups
@@ -201,7 +211,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                 {group.heading}
               </p>
             )}
-            <ul className="space-y-0.5" role="list">
+            <ul className="space-y-0.5">
               {group.entries.map((entry) => (
                 <li key={entry.href}>
                   <NavItem

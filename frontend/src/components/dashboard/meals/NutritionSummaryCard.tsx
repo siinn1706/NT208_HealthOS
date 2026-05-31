@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useWatch, useFormContext } from "react-hook-form";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import { Beef, Wheat, Droplets } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -38,7 +38,7 @@ function MacroBar({ label, value, target, unit, colorClass, icon }: MacroBarProp
         </div>
         <div className="flex items-center gap-0.5">
           <AnimatePresence mode="popLayout">
-            <motion.span
+            <m.span
               key={Math.round(value)}
               initial={{ y: -6, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -50,7 +50,7 @@ function MacroBar({ label, value, target, unit, colorClass, icon }: MacroBarProp
               )}
             >
               {Math.round(value)}
-            </motion.span>
+            </m.span>
           </AnimatePresence>
           <span className="text-xs text-muted-foreground">
             / {target} {unit}
@@ -58,7 +58,7 @@ function MacroBar({ label, value, target, unit, colorClass, icon }: MacroBarProp
         </div>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-        <motion.div
+        <m.div
           className={cn("h-full rounded-full", colorClass, over && "opacity-70")}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
@@ -85,7 +85,12 @@ export function NutritionSummaryCard() {
         if (!ing.ingredient_name || !ing.grams || ing.grams <= 0) return acc;
 
         const dbItem = findIngredient(ing.ingredient_name);
-        if (dbItem) {
+        const hasAiMacros =
+          ing.protein_g !== undefined ||
+          ing.carbs_g !== undefined ||
+          ing.fat_g !== undefined;
+
+        if (dbItem && ing.is_matched !== false && !hasAiMacros) {
           const calc = calcNutrition(dbItem, ing.grams);
           acc.calories += calc.calories;
           acc.protein_g += calc.protein_g;
@@ -93,10 +98,9 @@ export function NutritionSummaryCard() {
           acc.fat_g += calc.fat_g;
         } else if (ing.manual_calories && ing.manual_calories > 0) {
           acc.calories += ing.manual_calories;
-          // Rough macro estimate for manual entries (carbs dominant)
-          acc.carbs_g += ing.manual_calories * 0.5 / 4;
-          acc.protein_g += ing.manual_calories * 0.15 / 4;
-          acc.fat_g += ing.manual_calories * 0.35 / 9;
+          acc.carbs_g += ing.carbs_g ?? ing.manual_calories * 0.5 / 4;
+          acc.protein_g += ing.protein_g ?? ing.manual_calories * 0.15 / 4;
+          acc.fat_g += ing.fat_g ?? ing.manual_calories * 0.35 / 9;
         }
         return acc;
       },
@@ -117,7 +121,8 @@ export function NutritionSummaryCard() {
   );
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-5 sticky top-6">
+    <LazyMotion features={domAnimation}>
+      <div className="rounded-xl border border-border bg-card p-5 space-y-5 sticky top-6">
       {/* Header */}
       <div>
         <h3 className="text-sm font-semibold text-foreground">Tổng dinh dưỡng</h3>
@@ -139,7 +144,7 @@ export function NutritionSummaryCard() {
               strokeWidth="8"
               className="text-muted"
             />
-            <motion.circle
+        <m.circle
               cx="50"
               cy="50"
               r="42"
@@ -159,7 +164,7 @@ export function NutritionSummaryCard() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <AnimatePresence mode="popLayout">
-              <motion.span
+              <m.span
                 key={Math.round(roundedTotals.calories)}
                 initial={{ y: -8, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -168,7 +173,7 @@ export function NutritionSummaryCard() {
                 className="text-2xl font-bold tabular-nums text-foreground leading-none"
               >
                 {Math.round(roundedTotals.calories)}
-              </motion.span>
+              </m.span>
             </AnimatePresence>
             <span className="text-xs text-muted-foreground mt-0.5">kcal</span>
             <span className="text-[10px] text-muted-foreground">
@@ -220,21 +225,21 @@ export function NutritionSummaryCard() {
           <div className="flex gap-1 h-2 rounded-full overflow-hidden">
             {roundedTotals.calories > 0 && (
               <>
-                <motion.div
+                <m.div
                   className="bg-[#41BCE6] h-full"
                   animate={{
                     width: `${Math.min(((roundedTotals.protein_g * 4) / roundedTotals.calories) * 100, 100)}%`,
                   }}
                   transition={{ duration: 0.3 }}
                 />
-                <motion.div
+                <m.div
                   className="bg-[#E7DEA7] h-full"
                   animate={{
                     width: `${Math.min(((roundedTotals.carbs_g * 4) / roundedTotals.calories) * 100, 100)}%`,
                   }}
                   transition={{ duration: 0.3 }}
                 />
-                <motion.div
+                <m.div
                   className="bg-[#E3B79A] h-full flex-1"
                   transition={{ duration: 0.3 }}
                 />
@@ -243,20 +248,21 @@ export function NutritionSummaryCard() {
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-sm bg-[#41BCE6]" />
+              <span className="inline-block size-2 rounded-sm bg-[#41BCE6]" />
               P {Math.round((roundedTotals.protein_g * 4 / Math.max(roundedTotals.calories, 1)) * 100)}%
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-sm bg-[#E7DEA7]" />
+              <span className="inline-block size-2 rounded-sm bg-[#E7DEA7]" />
               C {Math.round((roundedTotals.carbs_g * 4 / Math.max(roundedTotals.calories, 1)) * 100)}%
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-sm bg-[#E3B79A]" />
+              <span className="inline-block size-2 rounded-sm bg-[#E3B79A]" />
               F {Math.round((roundedTotals.fat_g * 9 / Math.max(roundedTotals.calories, 1)) * 100)}%
             </span>
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </LazyMotion>
   );
 }

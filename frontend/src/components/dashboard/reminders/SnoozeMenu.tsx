@@ -91,14 +91,14 @@ export function SnoozeMenu({ reminderId, onSnoozed, className }: SnoozeMenuProps
       <DropdownMenuTrigger
         aria-label={t("label")}
         className={cn(
-          "w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer",
+          "size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer",
           className,
         )}
       >
         {busy ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <Loader2 className="size-3.5 animate-spin" />
         ) : (
-          <Clock4 className="w-3.5 h-3.5" />
+          <Clock4 className="size-3.5" />
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[10rem]">

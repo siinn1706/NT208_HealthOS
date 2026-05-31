@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
+import { useCallback, useMemo, useRef, useImperativeHandle, type Ref } from "react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import type { EChartsOption, EChartsReactProps } from "echarts-for-react";
@@ -48,10 +48,10 @@ export interface EChartWrapperProps extends Omit<EChartsReactProps, "option"> {
   option: EChartsOption;
   height?: number | string;
   className?: string;
+  ref?: Ref<EChartWrapperRef>;
 }
 
-export const EChartWrapper = forwardRef<EChartWrapperRef, EChartWrapperProps>(
-  function EChartWrapper({ option, height = 280, className, ...rest }, ref) {
+export function EChartWrapper({ option, height = 280, className, ref, ...rest }: EChartWrapperProps) {
     const chartRef = useRef<echarts.ECharts | null>(null);
     const { resolvedTheme } = useTheme();
 
@@ -84,5 +84,4 @@ export const EChartWrapper = forwardRef<EChartWrapperRef, EChartWrapperProps>(
         />
       </div>
     );
-  }
-);
+}

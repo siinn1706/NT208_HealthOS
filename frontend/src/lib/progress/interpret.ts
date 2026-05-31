@@ -74,7 +74,7 @@ export function interpretBmiSeries(
   profile: InsightProfile = {},
   now: number = Date.now()
 ): InsightResult {
-  const sorted = [...series].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = series.toSorted((a, b) => a.date.localeCompare(b.date));
   const last = sorted[sorted.length - 1] ?? null;
   const lastReadingAt = last?.date ?? null;
   const nowIso = new Date(now).toISOString().slice(0, 10);

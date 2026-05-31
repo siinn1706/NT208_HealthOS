@@ -27,6 +27,68 @@ interface AppointmentHistoryTableProps {
   onSelect?: (appointment: Appointment) => void;
 }
 
+const STATUS_CONFIG: Record<
+  AppointmentStatus,
+  { icon: React.ElementType; labelKey: string; color: string; bg: string }
+> = {
+  booked: {
+    icon: CalendarPlus,
+    labelKey: "booked",
+    color: "text-info",
+    bg: "bg-info/10",
+  },
+  scheduled: {
+    icon: CalendarClock,
+    labelKey: "scheduled",
+    color: "text-info",
+    bg: "bg-info/10",
+  },
+  upcoming: {
+    icon: Clock,
+    labelKey: "upcoming",
+    color: "text-primary",
+    bg: "bg-primary/10",
+  },
+  in_progress: {
+    icon: Activity,
+    labelKey: "in_progress",
+    color: "text-info",
+    bg: "bg-info/10",
+  },
+  completed: {
+    icon: CheckCircle2,
+    labelKey: "completed",
+    color: "text-success",
+    bg: "bg-success/10",
+  },
+  cancelled: {
+    icon: XCircle,
+    labelKey: "cancelled",
+    color: "text-muted-foreground",
+    bg: "bg-muted",
+  },
+  no_show: {
+    icon: UserX,
+    labelKey: "no_show",
+    color: "text-warning",
+    bg: "bg-warning/10",
+  },
+  rescheduled: {
+    icon: RefreshCw,
+    labelKey: "rescheduled",
+    color: "text-info",
+    bg: "bg-info/10",
+  },
+};
+
+const ALL_FILTERS: { key: "all" | AppointmentStatus; labelKey: string }[] = [
+  { key: "all", labelKey: "filter.all" },
+  { key: "upcoming", labelKey: "upcoming" },
+  { key: "completed", labelKey: "completed" },
+  { key: "cancelled", labelKey: "cancelled" },
+  { key: "no_show", labelKey: "no_show" },
+];
+
 export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentHistoryTableProps) {
   const t = useTranslations("dashboard.appointments");
   const tStatus = useTranslations("dashboard.appointments.status");
@@ -36,68 +98,6 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
   const [openPrescription, setOpenPrescription] = useState<
     { prescription: Prescription; appointmentId: string } | null
   >(null);
-
-  const STATUS_CONFIG: Record<
-    AppointmentStatus,
-    { icon: React.ElementType; labelKey: string; color: string; bg: string }
-  > = {
-    booked: {
-      icon: CalendarPlus,
-      labelKey: "booked",
-      color: "text-info",
-      bg: "bg-info/10",
-    },
-    scheduled: {
-      icon: CalendarClock,
-      labelKey: "scheduled",
-      color: "text-info",
-      bg: "bg-info/10",
-    },
-    upcoming: {
-      icon: Clock,
-      labelKey: "upcoming",
-      color: "text-primary",
-      bg: "bg-primary/10",
-    },
-    in_progress: {
-      icon: Activity,
-      labelKey: "in_progress",
-      color: "text-info",
-      bg: "bg-info/10",
-    },
-    completed: {
-      icon: CheckCircle2,
-      labelKey: "completed",
-      color: "text-success",
-      bg: "bg-success/10",
-    },
-    cancelled: {
-      icon: XCircle,
-      labelKey: "cancelled",
-      color: "text-muted-foreground",
-      bg: "bg-muted",
-    },
-    no_show: {
-      icon: UserX,
-      labelKey: "no_show",
-      color: "text-warning",
-      bg: "bg-warning/10",
-    },
-    rescheduled: {
-      icon: RefreshCw,
-      labelKey: "rescheduled",
-      color: "text-info",
-      bg: "bg-info/10",
-    },
-  };
-
-  const ALL_FILTERS: { key: "all" | AppointmentStatus; labelKey: string }[] = [
-    { key: "all", labelKey: "filter.all" },
-    { key: "upcoming", labelKey: "upcoming" },
-    { key: "completed", labelKey: "completed" },
-    { key: "cancelled", labelKey: "cancelled" },
-    { key: "no_show", labelKey: "no_show" },
-  ];
 
   // Filter + Search
   const filtered = appointments.filter((a) => {
@@ -118,9 +118,10 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
           <input
             type="search"
+            aria-label={t("searchPlaceholder")}
             placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -135,9 +136,9 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
 
         {/* Status filter chips */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <SlidersHorizontal className="w-4 h-4 text-muted-foreground mr-1" aria-hidden />
+          <SlidersHorizontal className="size-4 text-muted-foreground mr-1" aria-hidden />
           {ALL_FILTERS.map(({ key, labelKey }) => (
-            <button
+            <button type="button"
               key={key}
               onClick={() => setFilter(key)}
               className={cn(
@@ -159,8 +160,8 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-              <Stethoscope className="w-6 h-6 text-muted-foreground" />
+            <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+              <Stethoscope className="size-6 text-muted-foreground" />
             </div>
             <p className="text-sm font-medium text-foreground">{t("emptyTitle")}</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -189,9 +190,19 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
                 : "--";
 
               return (
+                // oxlint-disable-next-line react-doctor/no-noninteractive-element-interactions -- Row has explicit button role, tab stop, and Enter/Space handling; nested prescription action must remain a separate button.
                 <li
                   key={appt.id}
+                  role={onSelect ? "button" : undefined}
+                  tabIndex={onSelect ? 0 : undefined}
                   onClick={() => onSelect?.(appt)}
+                  onKeyDown={(e) => {
+                    if (!onSelect) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(appt);
+                    }
+                  }}
                   className={cn(
                     "px-5 py-4 flex items-start gap-4",
                     (appt.status === "cancelled" || appt.status === "no_show") && "opacity-60",
@@ -233,7 +244,7 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
                           cfg.color
                         )}
                       >
-                        <StatusIcon className="w-3 h-3" />
+                        <StatusIcon className="size-3" />
                         {tStatus(cfg.labelKey)}
                       </span>
                     </div>
@@ -244,7 +255,7 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
                     {/* Meta footer */}
                     <div className="flex items-center gap-3 pt-0.5">
                       <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
+                        <Calendar className="size-3" />
                         {dateStr} · {timeStr}
                       </span>
                       {appt.notes && (
@@ -253,14 +264,15 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
                         </span>
                       )}
                       {appt.hasPrescription && appt.prescription && (
-                        <button
+                        <button type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            appt.prescription &&
+                            if (appt.prescription) {
                               setOpenPrescription({
                                 prescription: appt.prescription,
                                 appointmentId: appt.id,
                               });
+                            }
                           }}
                           className={cn(
                             "ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5",
@@ -269,9 +281,9 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
                           )}
                           aria-label={t("prescriptionAria", { name: appt.doctorName })}
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <FileText className="size-3.5" />
                           {t("viewPrescription")}
-                          <ChevronRight className="w-3 h-3" />
+                          <ChevronRight className="size-3" />
                         </button>
                       )}
                     </div>

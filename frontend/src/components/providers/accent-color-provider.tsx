@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, use, useCallback, useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import { applyTokensToRoot, deriveAccentTokens, removeAccentOverrides } from "@/lib/accent-utils";
 
@@ -50,12 +50,16 @@ export function AccentColorProvider({
     },
     [applyAccent],
   );
+  const contextValue = useMemo(
+    () => ({ accentColor, setAccentColor, applyAccent }),
+    [accentColor, applyAccent, setAccentColor],
+  );
 
   return (
-    <AccentColorContext.Provider value={{ accentColor, setAccentColor, applyAccent }}>
+    <AccentColorContext.Provider value={contextValue}>
       {children}
     </AccentColorContext.Provider>
   );
 }
 
-export const useAccentColor = () => useContext(AccentColorContext);
+export const useAccentColor = () => use(AccentColorContext);

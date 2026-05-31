@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Activity,
@@ -88,16 +88,17 @@ export function TodayInsightCard({
 }: TodayInsightCardProps) {
   const t = useTranslations();
   const tCard = useTranslations("progress.insight");
+  const [clientNowMs] = useState(() => Date.now());
 
   const result = useMemo(() => {
-    const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+    const nowMs = nowIso ? Date.parse(nowIso) : clientNowMs;
     return interpretBmiSeries(
       series,
       { targetBmi },
       { createdAt },
-      Number.isNaN(nowMs) ? Date.now() : nowMs
+      Number.isNaN(nowMs) ? clientNowMs : nowMs
     );
-  }, [series, targetBmi, createdAt, nowIso]);
+  }, [series, targetBmi, createdAt, nowIso, clientNowMs]);
 
   const visual = KIND_VISUAL[result.kind];
   const Icon = visual.icon;
@@ -116,8 +117,8 @@ export function TodayInsightCard({
     onAction?.();
   }
 
-  // The plan calls for a "Log now" CTA only when the kind is `stale` or
-  // `new_user` — for trending/stable variants the card is purely informative.
+  // Show the CTA only when the user can fix missing or stale measurements;
+  // trending/stable variants stay purely informative.
   const showCta =
     onAction &&
     (result.kind === "stale" ||
@@ -125,13 +126,12 @@ export function TodayInsightCard({
       result.kind === "no_readings");
 
   return (
-    <div
+    <output
       className={cn(
-        "rounded-xl border p-4 sm:p-5 ring-1",
+        "block w-full rounded-xl border p-4 sm:p-5 ring-1",
         visual.ring,
         className
       )}
-      role="status"
       aria-live="polite"
       data-insight-kind={result.kind}
     >
@@ -177,7 +177,7 @@ export function TodayInsightCard({
           )}
         </div>
       </div>
-    </div>
+    </output>
   );
 }
 

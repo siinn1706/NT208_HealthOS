@@ -74,7 +74,7 @@ export function AuditToolbar({ filters, onChange }: AuditToolbarProps) {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span tabIndex={0}>
+              <span>
                 <Button
                   variant="outline"
                   size="sm"

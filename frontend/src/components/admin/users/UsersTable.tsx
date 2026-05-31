@@ -7,6 +7,7 @@ import { UserStatusBadge } from "./user-status-badge";
 import { UserRowActions } from "./user-row-actions";
 import { PlanBadge } from "@/components/admin/shared/PlanBadge";
 import type { Density } from "@/components/admin/shared/density-toggle";
+import { ALL_COLUMNS, DEFAULT_VISIBLE } from "./users-table-columns";
 
 export interface UserRow {
   user_id: string;
@@ -30,24 +31,16 @@ export interface UsersTableProps {
 }
 
 const SKELETON_ROW_COUNT = 8;
-
-export const ALL_COLUMNS = [
-  { key: "user",         label: "User",         hideable: false },
-  { key: "email",        label: "Email" },
-  { key: "status",       label: "Status" },
-  { key: "role",         label: "Role" },
-  { key: "subscription", label: "Subscription" },
-  { key: "created_at",   label: "Created" },
-  { key: "last_seen_at", label: "Last seen" },
-  { key: "actions",      label: "",             hideable: false },
-] as const;
-
-export const DEFAULT_VISIBLE = new Set(ALL_COLUMNS.map((c) => c.key));
+const USER_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(new Date(iso));
+    return USER_DATE_FORMATTER.format(new Date(iso));
   } catch { return iso; }
 }
 
@@ -57,10 +50,10 @@ function cellPx(density: Density) {
 
 function SkeletonRow({ colCount }: { colCount: number }) {
   return (
-    <tr aria-hidden="true">
+    <tr>
       {/* bulk-select disabled cell */}
       <td className="px-3 py-2 w-8">
-        <Skeleton className="h-3.5 w-3.5 rounded" />
+        <Skeleton className="size-3.5 rounded" />
       </td>
       {Array.from({ length: colCount }).map((_, i) => (
         <td key={i} className="px-3 py-2">
@@ -101,8 +94,9 @@ export function UsersTable({
                 type="checkbox"
                 disabled
                 aria-disabled="true"
+                aria-label="Select all users"
                 title="Bulk actions not yet supported"
-                className="h-3.5 w-3.5 cursor-not-allowed opacity-40"
+                className="size-3.5 cursor-not-allowed opacity-40"
               />
             </th>
 
@@ -151,8 +145,9 @@ export function UsersTable({
                       type="checkbox"
                       disabled
                       aria-disabled="true"
+                      aria-label={`Select ${row.display_name ?? row.email ?? row.user_id}`}
                       title="Bulk actions not yet supported"
-                      className="h-3.5 w-3.5 cursor-not-allowed opacity-40"
+                      className="size-3.5 cursor-not-allowed opacity-40"
                     />
                   </td>
 
@@ -181,7 +176,7 @@ export function UsersTable({
 
                   {visibleColumns.has("role") && (
                     <td className={cn(px, "text-[var(--admin-fg-muted)]")}>
-                      {row.role ?? "—"}
+                      {row.role ?? "N/A"}
                     </td>
                   )}
 
@@ -190,7 +185,7 @@ export function UsersTable({
                       {row.subscription ? (
                         <PlanBadge code={row.subscription.plan_code} />
                       ) : (
-                        <span className="text-[var(--admin-fg-subtle)]">—</span>
+                        <span className="text-[var(--admin-fg-subtle)]">N/A</span>
                       )}
                     </td>
                   )}

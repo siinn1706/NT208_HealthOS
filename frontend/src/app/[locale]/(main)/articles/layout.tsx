@@ -36,6 +36,7 @@ export default async function ArticlesLayout({
       <script
         type="application/ld+json"
         suppressHydrationWarning
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from article metadata, not user HTML.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
       />
       {children}
