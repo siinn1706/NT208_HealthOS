@@ -68,7 +68,9 @@ export async function saveCurrentUser(user: CurrentUser): Promise<void> {
 export async function clearStoredSession(): Promise<void> {
   bumpSessionEpoch();
   cachedToken = undefined;
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_KEY);
-  await SecureStore.deleteItemAsync(USER_KEY);
+  await Promise.all([
+    SecureStore.deleteItemAsync(TOKEN_KEY),
+    SecureStore.deleteItemAsync(REFRESH_KEY),
+    SecureStore.deleteItemAsync(USER_KEY),
+  ]);
 }

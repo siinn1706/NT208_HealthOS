@@ -1,5 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +33,7 @@ function StageRow({ label, status }: { label: string; status: StageStatus }) {
       </View>
       <Text style={[typography.bodyMed, { color: status === 'pending' ? '#888' : '#111', flex: 1 }]}>{label}</Text>
       {status === 'active' && (
-        <Text style={[typography.caption, { color: '#3B82F6' }]}>Working...</Text>
+        <Text style={[typography.caption, { color: '#3B82F6' }]}>Working…</Text>
       )}
     </View>
   );
@@ -71,7 +78,7 @@ export function MealScanAnalyzingScreen() {
   const params = useLocalSearchParams<{ mealId?: string | string[]; jobId?: string | string[] }>();
   const mealId = Array.isArray(params.mealId) ? params.mealId[0] : params.mealId;
   const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
-  const scanLine = useRef(new Animated.Value(0)).current;
+  const scanLine = useSharedValue(0);
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState<string | null>(null);
 
@@ -104,12 +111,8 @@ export function MealScanAnalyzingScreen() {
   }, [done, failed, i18n, status]);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLine, { toValue: 1, duration: 1600, useNativeDriver: true }),
-        Animated.timing(scanLine, { toValue: 0, duration: 1600, useNativeDriver: true }),
-      ])
-    ).start();
+    scanLine.value = withRepeat(withTiming(1, { duration: 1600 }), -1, true);
+    return () => cancelAnimation(scanLine);
   }, [scanLine]);
 
   useEffect(() => {
@@ -153,7 +156,9 @@ export function MealScanAnalyzingScreen() {
     };
   }, [jobId, mealId, router]);
 
-  const translateY = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, 160] });
+  const scanLineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: scanLine.value * 160 }],
+  }));
 
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
@@ -172,7 +177,7 @@ export function MealScanAnalyzingScreen() {
         <DetectionBox label="Greens · 84%"       top={78} right={42} width={68} height={52} borderColor="#60A5FA" />
         <DetectionBox label="Rice noodles · 88%" bottom={52} left={70} width={78} height={58} borderColor="#FACC15" />
         {/* Scanning line — cyan glow */}
-        <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]} />
+        <Animated.View style={[styles.scanLine, scanLineStyle]} />
       </View>
 
       {/* Bottom sheet — white/light bg */}

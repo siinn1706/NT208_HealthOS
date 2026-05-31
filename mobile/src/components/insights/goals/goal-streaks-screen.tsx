@@ -6,30 +6,43 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Card } from '../../primitives/card';
 import { SectionHeader } from '../../layout/section-header';
-import { ApiState, MissingApiState } from '../../api/api-state';
+import { ApiState } from '../../api/api-state';
 import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { healthGoalService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
-import { useThemeContext } from '../../../theme/theme-provider';
 import { typography } from '../../../theme/typography';
-import { ChevronLeft, IconFire } from '../../../icons';
+import { ChevronLeft, IconFire, IconTarget } from '../../../icons';
+import { buildGoalProgressCells, deriveGoalStreakSummary, type GoalCellState } from './goal-progress-derived';
 
-// Heatmap config
-const DAY_LABELS  = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const WEEK_LABELS = ['W1', 'W2', 'W3', 'W4', 'W5'];
-const TOTAL_CELLS = WEEK_LABELS.length * DAY_LABELS.length; // 35
+
+function cellColor(state: GoalCellState, t: ReturnType<typeof useTheme>) {
+  if (state === 'target') return t.success;
+  if (state === 'recorded') return t.brand;
+  return t.bgElev;
+}
 
 export function GoalStreaksScreen() {
-  const t    = useTheme();
+  const t = useTheme();
   const { t: i18n } = useTranslation();
-  const { name: themeName } = useThemeContext();
-  const isNight = themeName === 'night';
 
   const loadGoal = useCallback(() => healthGoalService.current(), []);
   const goal = useApiQuery(queryKeys.healthGoal, loadGoal);
+  const target = goal.data?.target_weight_kg ?? null;
+  const loadProgress = useCallback(() => healthGoalService.progress({
+    metric: 'weight_kg',
+    target: target ?? 1,
+    period: '30d',
+  }), [target]);
+  const progress = useApiQuery(
+    queryKeys.healthGoalProgress('weight_kg', '30d'),
+    loadProgress,
+    { enabled: Boolean(target) },
+  );
 
-  if (goal.isLoading) {
+  if (goal.isLoading || progress.isLoading) {
     return (
       <Screen>
         <ApiState title={i18n('insights.loadingStreaks')} loading />
@@ -37,21 +50,35 @@ export function GoalStreaksScreen() {
     );
   }
 
-  if (goal.error) {
+  if (goal.error || progress.error) {
     return (
       <Screen>
-        <ApiState title={i18n('insights.streaksUnavailable')} message={goal.error.message} actionLabel={i18n('common.retry')} onAction={goal.reload} />
+        <ApiState
+          title={i18n('insights.streaksUnavailable')}
+          message={goal.error?.message ?? progress.error?.message}
+          actionLabel={i18n('common.retry')}
+          onAction={() => { void goal.reload(); void progress.reload(); }}
+        />
       </Screen>
     );
   }
 
-  // Heatmap colors per theme
-  const cellEmpty  = isNight ? 'rgba(91,168,200,0.10)' : '#DCEFF7';
-  const cellFilled = isNight ? '#5BA8C8'                : '#1965B3';
-  const cellSoft   = isNight ? 'rgba(91,168,200,0.30)'  : '#B8D9EA';
+  if (!goal.data || !target) {
+    return (
+      <Screen>
+        <ApiState
+          title={i18n('insights.noGoalConfigured')}
+          message={i18n('insights.noGoalMessage')}
+          actionLabel={i18n('insights.createGoal')}
+          onAction={() => router.push('/insights/goals/create' as never)}
+        />
+      </Screen>
+    );
+  }
 
-  // Hero gradient — warm peach-gold both themes
-  const heroColors: [string, string] = ['#E8C99A', '#D4A06A'];
+  const cells = buildGoalProgressCells(progress.data ?? [], 35);
+  const weeks = Array.from({ length: 5 }, (_, index) => cells.slice(index * 7, index * 7 + 7));
+  const summary = deriveGoalStreakSummary(progress.data ?? []);
 
   return (
     <Screen>
@@ -60,129 +87,106 @@ export function GoalStreaksScreen() {
         <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>{i18n('insights.streaks')}</Text>
       </Pressable>
 
-      {/* Hero */}
       <LinearGradient
-        colors={heroColors}
+        colors={[t.warningSoft, t.successSoft]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.hero, { borderRadius: t.radius.xl }]}
       >
-        <Text style={styles.fireEmoji}>🔥</Text>
-        <Text style={styles.streakCount}>{goal.data ? '0' : '--'}</Text>
-        <Text style={[typography.micro, { color: '#7A5020', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2 }]}>
-          DAY STREAK
-        </Text>
-        <Text style={[typography.caption, { color: '#8B5E30', marginTop: 6 }]}>
-          Best ever · 2 to break your record
+        <View style={[styles.heroIcon, { backgroundColor: t.bgElev, borderRadius: t.radius.lg }]}>
+          <IconFire size={34} color={t.warning} />
+        </View>
+        <Text style={[styles.streakCount, { color: t.ink }]}>{summary.currentStreak}</Text>
+        <Text style={[typography.micro, styles.upperLabel, { color: t.ink2 }]}>RECORDED DAY STREAK</Text>
+        <Text style={[typography.caption, { color: t.ink3, marginTop: 6 }]}>
+          Best ever {summary.bestStreak} d · {summary.recordedDays} recorded days
         </Text>
       </LinearGradient>
 
-      {/* Last 5 weeks heatmap */}
       <SectionHeader title={i18n('insights.last5Weeks')} />
       <Card style={styles.heatmapCard}>
-        {/* Day labels row */}
         <View style={styles.heatmapHeader}>
           <View style={styles.weekLabelCell} />
-          {DAY_LABELS.map((d, i) => (
-            <View key={i} style={styles.heatCell}>
-              <Text style={[typography.micro, { color: t.ink3 }]}>{d}</Text>
+          {DAY_LABELS.map((day, index) => (
+            <View key={`${day}-${index}`} style={styles.heatCell}>
+              <Text style={[typography.micro, { color: t.ink3 }]}>{day}</Text>
             </View>
           ))}
         </View>
 
-        {/* Grid rows */}
-        {WEEK_LABELS.map((wk, wi) => (
-          <View key={wi} style={styles.heatRow}>
+        {weeks.map((week, weekIndex) => (
+          <View key={WEEK_LABELS[weekIndex]} style={styles.heatRow}>
             <View style={styles.weekLabelCell}>
-              <Text style={[typography.micro, { color: t.ink4 }]}>{wk}</Text>
+              <Text style={[typography.micro, { color: t.ink4 }]}>{WEEK_LABELS[weekIndex]}</Text>
             </View>
-            {DAY_LABELS.map((_, di) => {
-              const isToday = wi === WEEK_LABELS.length - 1 && di === new Date().getDay() - 1;
-              return (
-                <View
-                  key={di}
-                  style={[
-                    styles.heatCell,
-                    {
-                      backgroundColor: cellEmpty,
-                      borderRadius: 6,
-                      borderWidth: isToday ? 1.5 : 0,
-                      borderColor: isToday ? cellFilled : 'transparent',
-                    },
-                  ]}
-                />
-              );
-            })}
+            {week.map((cell) => (
+              <View
+                key={cell.date}
+                accessibilityLabel={`${cell.date} ${cell.state}`}
+                style={[
+                  styles.heatCell,
+                  {
+                    backgroundColor: cellColor(cell.state, t),
+                    borderRadius: 6,
+                    borderColor: cell.state === 'empty' ? t.border : 'transparent',
+                    borderWidth: cell.state === 'empty' ? StyleSheet.hairlineWidth : 0,
+                  },
+                ]}
+              />
+            ))}
           </View>
         ))}
 
-        {/* Legend */}
         <View style={styles.legend}>
-          <Text style={[typography.micro, { color: t.ink4 }]}>Less</Text>
-          {[cellEmpty, cellSoft, cellFilled].map((c, i) => (
-            <View key={i} style={[styles.legendDot, { backgroundColor: c, borderRadius: 3 }]} />
-          ))}
-          <Text style={[typography.micro, { color: t.ink4 }]}>More</Text>
-          <View style={[styles.legendDot, { borderRadius: 3, borderWidth: 1.5, borderColor: cellFilled, backgroundColor: 'transparent' }]} />
-          <Text style={[typography.micro, { color: t.ink4 }]}>Today</Text>
+          <View style={[styles.legendDot, { backgroundColor: t.bgElev, borderColor: t.border, borderWidth: StyleSheet.hairlineWidth }]} />
+          <Text style={[typography.micro, { color: t.ink4 }]}>Empty</Text>
+          <View style={[styles.legendDot, { backgroundColor: t.brand }]} />
+          <Text style={[typography.micro, { color: t.ink4 }]}>Logged</Text>
+          <View style={[styles.legendDot, { backgroundColor: t.success }]} />
+          <Text style={[typography.micro, { color: t.ink4 }]}>At target</Text>
         </View>
-
-        {/* Data contract note */}
-        <MissingApiState
-          title="Streak calendar data unavailable"
-          contract="TODO: GET /v1/health-goals/{id}/streaks?period=month"
-        />
       </Card>
 
-      {/* By goal */}
       <SectionHeader title={i18n('insights.byGoal')} />
       <Card tight>
-        {[
-          { emoji: '🎯', label: goal.data ? (goal.data as any).category ?? 'Active goal' : 'Goal 1' },
-          { emoji: '💊', label: 'Medication' },
-        ].map((row, i) => (
-          <View
-            key={i}
-            style={[
-              styles.goalRow,
-              { borderBottomColor: t.border, borderBottomWidth: i === 0 ? StyleSheet.hairlineWidth : 0 },
-            ]}
-          >
-            <View style={[styles.goalIcon, { backgroundColor: t.brandSoft, borderRadius: t.radius.sm }]}>
-              <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
-            </View>
-            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{row.label}</Text>
-            <View style={[styles.fireBadge, { backgroundColor: t.warningSoft, borderRadius: t.radius.pill }]}>
-              <Text style={{ fontSize: 12 }}>🔥</Text>
-              <Text style={[typography.chip, { color: t.warning, marginLeft: 3 }]}>-- d</Text>
-            </View>
+        <View style={styles.goalRow}>
+          <View style={[styles.goalIcon, { backgroundColor: t.brandSoft, borderRadius: t.radius.sm }]}>
+            <IconTarget size={18} color={t.brand} />
           </View>
-        ))}
-        <MissingApiState
-          title="Per-goal streak summary unavailable"
-          contract="TODO: GET /v1/health-goals/{id}/streaks/summary"
-        />
+          <View style={styles.goalCopy}>
+            <Text style={[typography.bodyMed, { color: t.ink }]}>Target weight {target.toFixed(1)} kg</Text>
+            <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
+              {summary.targetHitDays} at-target days · latest {summary.latestValue !== null ? `${summary.latestValue.toFixed(1)} kg` : 'not logged'}
+            </Text>
+          </View>
+          <View style={[styles.fireBadge, { backgroundColor: t.warningSoft, borderRadius: t.radius.pill }]}>
+            <IconFire size={12} color={t.warning} />
+            <Text style={[typography.chip, { color: t.warning, marginLeft: 3 }]}>{summary.currentStreak} d</Text>
+          </View>
+        </View>
       </Card>
     </Screen>
   );
 }
 
 const CELL_SIZE = 32;
-const CELL_GAP  = 4;
+const CELL_GAP = 4;
 
 const styles = StyleSheet.create({
-  backBar:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  hero:          { padding: 24, alignItems: 'center', marginTop: 4, marginBottom: 4 },
-  fireEmoji:     { fontSize: 56 },
-  streakCount:   { fontSize: 64, fontWeight: '800', lineHeight: 72, color: '#5C3210' },
-  heatmapCard:   { padding: 14 },
+  backBar: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  hero: { padding: 24, alignItems: 'center', marginTop: 4, marginBottom: 4 },
+  heroIcon: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  streakCount: { fontSize: 64, fontWeight: '800', lineHeight: 72 },
+  upperLabel: { textTransform: 'uppercase' },
+  heatmapCard: { padding: 14 },
   heatmapHeader: { flexDirection: 'row', marginBottom: 4 },
-  heatRow:       { flexDirection: 'row', marginBottom: CELL_GAP },
+  heatRow: { flexDirection: 'row', marginBottom: CELL_GAP },
   weekLabelCell: { width: 24, alignItems: 'flex-end', justifyContent: 'center', paddingRight: 4 },
-  heatCell:      { width: CELL_SIZE, height: CELL_SIZE, marginLeft: CELL_GAP, alignItems: 'center', justifyContent: 'center' },
-  legend:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end' },
-  legendDot:     { width: 12, height: 12 },
-  goalRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  goalIcon:      { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  fireBadge:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 },
+  heatCell: { width: CELL_SIZE, height: CELL_SIZE, marginLeft: CELL_GAP, alignItems: 'center', justifyContent: 'center' },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end', flexWrap: 'wrap' },
+  legendDot: { width: 12, height: 12, borderRadius: 3 },
+  goalRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  goalIcon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  goalCopy: { flex: 1 },
+  fireBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 },
 });

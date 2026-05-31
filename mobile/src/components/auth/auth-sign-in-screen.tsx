@@ -48,12 +48,15 @@ export function AuthSignInScreen() {
         } as never);
         return;
       }
-      router.replace('/(tabs)/home');
     } catch (err) {
       setError(err instanceof Error ? err.message : i18n('auth.unableToSignIn'));
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleUnavailableOAuth(provider: 'Google' | 'Apple') {
+    setError(`${provider} sign-in is not configured in the native app yet. Use email and password.`);
   }
 
   return (
@@ -117,11 +120,21 @@ export function AuthSignInScreen() {
 
       {/* OAuth row */}
       <View style={styles.oauthRow}>
-        <TouchableOpacity style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]} accessibilityRole="button" accessibilityLabel={i18n('auth.continueWithGoogle')}>
+        <TouchableOpacity
+          style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]}
+          accessibilityRole="button"
+          accessibilityLabel={i18n('auth.continueWithGoogle')}
+          onPress={() => handleUnavailableOAuth('Google')}
+        >
           <GoogleMark size={20} />
           <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Google</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]} accessibilityRole="button" accessibilityLabel={i18n('auth.continueWithApple')}>
+        <TouchableOpacity
+          style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]}
+          accessibilityRole="button"
+          accessibilityLabel={i18n('auth.continueWithApple')}
+          onPress={() => handleUnavailableOAuth('Apple')}
+        >
           <AppleMark size={20} />
           <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Apple</Text>
         </TouchableOpacity>

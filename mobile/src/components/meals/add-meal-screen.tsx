@@ -5,11 +5,15 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { SectionHeader } from '../layout/section-header';
 import { Card } from '../primitives/card';
+import { Button } from '../primitives/button';
 import { IconButton } from '../primitives/icon-button';
+import { ApiState } from '../api/api-state';
 import { FoodRow } from './food-row';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { ChevronLeft, IconSearch, IconCamera, IconBarcode, IconUtensils, IconClock, IconX } from '../../icons';
+import { mealService } from '../../api/services';
+import { invalidateApiQuery } from '../../api/query';
 
 const SLOTS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
 type Slot = (typeof SLOTS)[number];
@@ -25,18 +29,21 @@ const RECENT: { name: string; serving: string; kcal: number }[] = [
   { name: 'Protein bar',       serving: '1 bar · 60g',   kcal: 220 },
 ];
 
-// Method cards: top row (2), bottom row (1 full-width)
-const METHOD_CARDS_TOP = [
-  { label: 'Barcode',       sub: 'Packaged foods', Icon: IconBarcode,  route: '/meals/scan' },
-  { label: 'Manual entry',  sub: 'Custom dish',    Icon: IconUtensils, route: '/meals/add'  },
-];
-const METHOD_CARD_HISTORY = { label: 'From history', sub: 'Recent meals', Icon: IconClock, route: '/meals/add' };
+function toMealType(slot: Slot) {
+  return slot.toLowerCase() as 'breakfast' | 'lunch' | 'dinner' | 'snack';
+}
 
 export function AddMealScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const router = useRouter();
   const [slot, setSlot] = useState<Slot>('Lunch');
+  const [manualVisible, setManualVisible] = useState(true);
+  const [manualName, setManualName] = useState('');
+  const [manualNotes, setManualNotes] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ title: string; message: string } | null>(null);
 
   const SLOT_LABELS: Record<Slot, string> = {
     Breakfast: i18n('meals.breakfast'),
@@ -46,10 +53,70 @@ export function AddMealScreen() {
   };
 
   const METHOD_CARDS_TOP_I18N = [
-    { label: i18n('meals.barcode'),      sub: i18n('meals.packagedFoods'), Icon: IconBarcode,  route: '/meals/scan' },
-    { label: i18n('meals.manualEntry'),  sub: i18n('meals.customDish'),    Icon: IconUtensils, route: '/meals/add'  },
+    {
+      label: i18n('meals.barcode'),
+      sub: i18n('meals.packagedFoods'),
+      Icon: IconBarcode,
+      onPress: () => setFeedback({
+        title: 'Barcode lookup unavailable',
+        message: 'Use Scan with AI or manual entry until a packaged-food lookup API is available.',
+      }),
+    },
+    {
+      label: i18n('meals.manualEntry'),
+      sub: i18n('meals.customDish'),
+      Icon: IconUtensils,
+      onPress: () => {
+        setFeedback(null);
+        setManualVisible(true);
+      },
+    },
   ];
-  const METHOD_CARD_HISTORY_I18N = { label: i18n('meals.fromHistory'), sub: i18n('meals.recentMeals'), Icon: IconClock, route: '/meals/add' };
+  const METHOD_CARD_HISTORY_I18N = {
+    label: i18n('meals.fromHistory'),
+    sub: i18n('meals.recentMeals'),
+    Icon: IconClock,
+    onPress: () => setFeedback({
+      title: 'Meal history reuse unavailable',
+      message: 'Recent and frequent rows are read-only examples until Core exposes reusable meal history.',
+    }),
+  };
+
+  async function handleManualSave() {
+    const name = manualName.trim();
+    if (!name) {
+      setFeedback({ title: 'Meal not saved', message: 'Enter a meal name before saving.' });
+      return;
+    }
+
+    setSaving(true);
+    setFeedback(null);
+    try {
+      await mealService.create({
+        name,
+        notes: manualNotes.trim() || null,
+        logged_at: new Date().toISOString(),
+        meal_type: toMealType(slot),
+      });
+      invalidateApiQuery('meals.');
+      router.replace('/meals' as never);
+    } catch (err) {
+      setFeedback({
+        title: 'Meal not saved',
+        message: err instanceof Error ? err.message : 'Unable to save meal.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSearchSubmit() {
+    if (!searchText.trim()) return;
+    setFeedback({
+      title: 'Food search unavailable',
+      message: 'Food database search is guarded until a real lookup API exists. Manual meal entry is available.',
+    });
+  }
 
   return (
     <Screen>
@@ -92,6 +159,10 @@ export function AddMealScreen() {
       <View style={[styles.searchBar, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.pill }]}>
         <IconSearch size={16} color={t.ink3} />
         <TextInput
+          value={searchText}
+          onChangeText={setSearchText}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
           style={[typography.body, styles.searchInput, { color: t.ink }]}
           placeholder={i18n('meals.searchFoods')}
           placeholderTextColor={t.ink3}
@@ -127,7 +198,7 @@ export function AddMealScreen() {
           {METHOD_CARDS_TOP_I18N.map((m) => (
             <Pressable
               key={m.label}
-              onPress={() => router.push(m.route as never)}
+              onPress={m.onPress}
               style={[styles.methodCardHalf, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}
             >
               <View style={[styles.methodIconSq, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
@@ -140,7 +211,7 @@ export function AddMealScreen() {
         </View>
         {/* Bottom row — full-width horizontal history card */}
         <Pressable
-          onPress={() => router.push(METHOD_CARD_HISTORY_I18N.route as never)}
+          onPress={METHOD_CARD_HISTORY_I18N.onPress}
           style={[styles.methodCardFull, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}
         >
           <View style={[styles.methodIconSq, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
@@ -153,6 +224,36 @@ export function AddMealScreen() {
         </Pressable>
       </View>
 
+      {feedback && <ApiState title={feedback.title} message={feedback.message} />}
+
+      {manualVisible && (
+        <Card style={styles.manualCard}>
+          <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n('meals.manualEntry')}</Text>
+          <TextInput
+            value={manualName}
+            onChangeText={setManualName}
+            placeholder="e.g. Grilled chicken rice"
+            placeholderTextColor={t.ink3}
+            style={[typography.body, styles.manualInput, { color: t.ink, borderColor: t.border, borderRadius: t.radius.md }]}
+          />
+          <TextInput
+            value={manualNotes}
+            onChangeText={setManualNotes}
+            placeholder="Notes, portion, ingredients"
+            placeholderTextColor={t.ink3}
+            multiline
+            numberOfLines={3}
+            style={[typography.body, styles.manualInput, styles.manualNotes, { color: t.ink, borderColor: t.border, borderRadius: t.radius.md }]}
+          />
+          <Button
+            label={saving ? 'Saving meal...' : 'Save meal'}
+            onPress={handleManualSave}
+            loading={saving}
+            disabled={saving || !manualName.trim()}
+          />
+        </Card>
+      )}
+
       {/* Frequent */}
       <SectionHeader title={i18n('meals.frequentForSlot', { slot: SLOT_LABELS[slot] })} />
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
@@ -164,6 +265,7 @@ export function AddMealScreen() {
             kcal={f.kcal}
             frequencyLabel={f.frequencyLabel}
             icon={<IconUtensils size={18} color={t.brand} />}
+            showAddButton={false}
           />
         ))}
       </Card>
@@ -171,7 +273,7 @@ export function AddMealScreen() {
       {/* Recent */}
       <SectionHeader title={i18n('meals.recentlyLogged')} />
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
-        {RECENT.map((f) => <FoodRow key={f.name} {...f} />)}
+        {RECENT.map((f) => <FoodRow key={f.name} {...f} showAddButton={false} />)}
       </Card>
     </Screen>
   );
@@ -197,4 +299,7 @@ const styles = StyleSheet.create({
   methodCardFull:     { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14, borderWidth: StyleSheet.hairlineWidth },
   methodCardFullText: { flex: 1 },
   methodIconSq:       { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  manualCard:         { gap: 10, marginTop: 8, marginBottom: 4 },
+  manualInput:        { borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 10 },
+  manualNotes:        { minHeight: 76, textAlignVertical: 'top' },
 });

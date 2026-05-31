@@ -11,7 +11,7 @@ import { IconButton } from '../primitives/icon-button';
 import { Card } from '../primitives/card';
 import { ApiState } from '../api/api-state';
 import { ProgressRing } from '../charts/progress-ring';
-import { IconBell, IconPlus, IconFilter } from '../../icons';
+import { IconBell, IconPlus } from '../../icons';
 import { ReminderRow, type ReminderRowData } from './reminder-row';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { notificationService, reminderService } from '../../api/services';
@@ -147,7 +147,6 @@ export function RemindersCenterScreen() {
         subtitle={`${upcoming.length} due today · ${overdue.length} overdue`}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconFilter size={20} color={t.ink3} />} accessibilityLabel={i18n('common.filter')} />
             <IconButton icon={<IconPlus size={20} color={t.brand} />} variant="filled" accessibilityLabel={i18n('reminders.newReminder')} onPress={() => router.push('/reminders/create' as never)} />
           </View>
         }

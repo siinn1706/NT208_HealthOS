@@ -59,3 +59,94 @@ describe('chatService.messages', () => {
     );
   });
 });
+
+describe('chatService conversation creation', () => {
+  it('searches existing users through Core lookup', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: [] } as never);
+
+    await chatService.lookupUsers('nguyen', 20);
+
+    expect(mockBuildQuery).toHaveBeenCalledWith({ q: 'nguyen', limit: 20 });
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/users/lookup?q=nguyen&limit=20');
+  });
+
+  it('creates direct conversations with target_user_id', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { id: 'conv-1' } } as never);
+
+    await chatService.createDirectConversation('user-2');
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/direct', {
+      method: 'POST',
+      json: { target_user_id: 'user-2' },
+    });
+  });
+
+  it('creates group conversations with title and member_ids', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { id: 'conv-2' } } as never);
+
+    await chatService.createGroupConversation('Care team', ['user-2', 'user-3']);
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations', {
+      method: 'POST',
+      json: { title: 'Care team', member_ids: ['user-2', 'user-3'] },
+    });
+  });
+
+  it('marks a conversation read up to the latest message', async () => {
+    mockApiRequest.mockResolvedValueOnce(undefined as never);
+
+    await chatService.markRead('conv/1', 'message-9');
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/conv%2F1/read', {
+      method: 'POST',
+      json: { last_read_message_id: 'message-9' },
+    });
+  });
+});
+
+describe('chatService.sendAttachmentMessage', () => {
+  it('sends attachment metadata through the existing message contract', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { id: 'msg-1' } } as never);
+
+    await chatService.sendAttachmentMessage('conv/1', {
+      url: 'https://example.test/labs.pdf',
+      name: 'Labs.pdf',
+      size: 1234,
+      mime_type: 'application/pdf',
+    }, 'Latest labs');
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/conv%2F1/messages', {
+      method: 'POST',
+      json: {
+        content: 'Latest labs',
+        content_type: 'file',
+        client_message_id: expect.stringMatching(/^mobile-\d+-\d+$/),
+        attachments: [{
+          url: 'https://example.test/labs.pdf',
+          name: 'Labs.pdf',
+          size: 1234,
+          mime_type: 'application/pdf',
+        }],
+      },
+    });
+  });
+
+  it('uses image content type and a stable fallback caption for image links', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { id: 'msg-2' } } as never);
+
+    await chatService.sendAttachmentMessage('conv-1', {
+      url: 'https://example.test/photo.jpg',
+      name: 'Photo.jpg',
+      size: 0,
+      mime_type: 'image/jpeg',
+    });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/conv-1/messages', {
+      method: 'POST',
+      json: expect.objectContaining({
+        content: 'Shared attachment: Photo.jpg',
+        content_type: 'image',
+      }),
+    });
+  });
+});

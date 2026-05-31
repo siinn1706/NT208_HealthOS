@@ -17,7 +17,7 @@ function useIsOffline(): boolean {
     const unsubscribe = NetInfo.addEventListener((state) => {
       setOffline(!(state.isConnected && state.isInternetReachable !== false));
     });
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
   return offline;
@@ -52,7 +52,7 @@ export function OfflineBanner() {
       <View style={styles.inner}>
         <Text style={[typography.caption, styles.icon]}>⚡</Text>
         <Text style={[typography.caption, { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold' }]}>
-          You're offline — changes may not save
+          You're offline - changes may not save
         </Text>
       </View>
     </Animated.View>
@@ -60,7 +60,7 @@ export function OfflineBanner() {
 }
 
 const styles = StyleSheet.create({
-  banner: { position: 'absolute', left: 0, right: 0, zIndex: 9998 },
+  banner: { position: 'absolute', left: 0, right: 0, zIndex: 40 },
   inner:  { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
   icon:   { color: '#FFFFFF' },
 });

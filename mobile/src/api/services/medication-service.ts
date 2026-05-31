@@ -1,5 +1,14 @@
 import { apiRequest, buildQuery } from '../client';
-import type { Adherence, DataResponse, MedicationDose, MedicationPlan, MedicationPlanCreateBody, MedicationPlanDetail } from '../../../../shared/api-contracts';
+import type {
+  Adherence,
+  DataResponse,
+  MedicationDose,
+  MedicationImportBody,
+  MedicationImportResult,
+  MedicationPlan,
+  MedicationPlanCreateBody,
+  MedicationPlanDetail,
+} from '../../../../shared/api-contracts';
 
 export const medicationService = {
   async list(status: MedicationPlan['status'] | 'all' = 'active') {
@@ -60,11 +69,15 @@ export const medicationService = {
     return response.data;
   },
 
-  async importFromAppointment(appointmentId: string) {
-    return apiRequest(`/v1/medications/import/${encodeURIComponent(appointmentId)}`, {
+  async importFromAppointment(
+    appointmentId: string,
+    body: MedicationImportBody = { default_dose_times: ['08:00'], default_repeat: 'daily' },
+  ) {
+    const response = await apiRequest<DataResponse<MedicationImportResult>>(`/v1/medications/import/${encodeURIComponent(appointmentId)}`, {
       method: 'POST',
-      json: { default_dose_times: ['08:00'], default_repeat: 'daily' },
+      json: body,
     });
+    return response.data;
   },
 
   async markDoseDone(reminderId: string, occurrenceId?: string) {

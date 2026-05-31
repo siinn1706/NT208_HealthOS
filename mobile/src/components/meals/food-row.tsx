@@ -21,8 +21,15 @@ interface FoodRowProps {
 
 export function FoodRow({ name, serving, kcal, icon, frequencyLabel, subtitle, showAddButton = true, onPress }: FoodRowProps) {
   const t = useTheme();
+  const interactive = typeof onPress === 'function';
+  const Container = interactive ? Pressable : View;
+  const visibleAddButton = showAddButton && interactive;
+
   return (
-    <Pressable onPress={onPress} style={[styles.row, { borderBottomColor: t.border }]}>
+    <Container
+      {...(interactive ? { onPress, accessibilityRole: 'button' as const } : {})}
+      style={[styles.row, { borderBottomColor: t.border }]}
+    >
       {icon && (
         <View style={[styles.iconSquare, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
           {icon}
@@ -43,13 +50,13 @@ export function FoodRow({ name, serving, kcal, icon, frequencyLabel, subtitle, s
         )}
       </View>
       <Text style={[typography.bodyMed, { color: t.ink2 }]}>{kcal} kcal</Text>
-      {showAddButton && (
+      {visibleAddButton && (
         // Solid brand bg, white icon, 36px touch target
         <View style={[styles.addBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}>
           <IconPlus size={16} color="#fff" />
         </View>
       )}
-    </Pressable>
+    </Container>
   );
 }
 

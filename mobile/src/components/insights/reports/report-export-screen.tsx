@@ -11,15 +11,30 @@ import { safeOpenUrl } from '../../../utils/safe-url';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ExportFormat = 'pdf' | 'csv' | 'summary';
 type Dest = 'doctor' | 'pdf' | 'link' | 'family';
 
 interface IncludeToggles {
   vitals: boolean;
   medication: boolean;
+  nutrition: boolean;
+  activity: boolean;
   sleep: boolean;
-  meals: boolean;
-  ai: boolean;
+  bmi: boolean;
+}
+
+const SECTION_BY_TOGGLE: Record<keyof IncludeToggles, string> = {
+  vitals: 'vitals',
+  medication: 'medication',
+  nutrition: 'nutrition',
+  activity: 'activity',
+  sleep: 'sleep',
+  bmi: 'bmi',
+};
+
+function selectedSections(includes: IncludeToggles) {
+  return (Object.keys(SECTION_BY_TOGGLE) as (keyof IncludeToggles)[])
+    .filter((key) => includes[key])
+    .map((key) => SECTION_BY_TOGGLE[key]);
 }
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
@@ -28,8 +43,6 @@ export function ReportExportScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
 
-  // Format state kept for export logic compatibility
-  const [format, setFormat] = useState<ExportFormat>('pdf');
   const [exporting, setExporting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +56,10 @@ export function ReportExportScreen() {
   const [includes, setIncludes] = useState<IncludeToggles>({
     vitals: true,
     medication: true,
+    nutrition: true,
+    activity: true,
     sleep: true,
-    meals: false,
-    ai: true,
+    bmi: true,
   });
 
   // ─── Async handlers (all original logic preserved) ────────────────────────
@@ -64,8 +78,9 @@ export function ReportExportScreen() {
   }
 
   async function handleExport() {
-    if (format !== 'pdf') {
-      setError('Only PDF export is available right now.');
+    const sections = selectedSections(includes);
+    if (sections.length === 0) {
+      setError('Choose at least one report section.');
       return;
     }
     setExporting(true);
@@ -75,7 +90,7 @@ export function ReportExportScreen() {
     try {
       const req = await reportService.requestPdf({
         period: '7d',
-        sections: ['vitals', 'nutrition', 'activity', 'sleep', 'bmi', 'medication'],
+        sections,
         locale: 'en',
         include_sensitive: false,
       });
@@ -118,11 +133,11 @@ export function ReportExportScreen() {
 
   // ─── Destination tile config ───────────────────────────────────────────────
 
-  const destinations: { key: Dest; label: string; Icon: React.ComponentType<{ size: number; color: string }> }[] = [
-    { key: 'doctor', label: 'Doctor',  Icon: IconHeartPulse },
-    { key: 'pdf',    label: 'PDF',     Icon: IconPaperclip  },
-    { key: 'link',   label: 'Link',    Icon: IconShield     },
-    { key: 'family', label: 'Family',  Icon: IconUser       },
+  const destinations: { key: Dest; label: string; Icon: React.ComponentType<{ size: number; color: string }>; supported: boolean }[] = [
+    { key: 'doctor', label: 'Doctor',  Icon: IconHeartPulse, supported: false },
+    { key: 'pdf',    label: 'PDF',     Icon: IconPaperclip,  supported: true  },
+    { key: 'link',   label: 'Link',    Icon: IconShield,     supported: false },
+    { key: 'family', label: 'Family',  Icon: IconUser,       supported: false },
   ];
 
   // ─── Include rows config ──────────────────────────────────────────────────
@@ -130,9 +145,10 @@ export function ReportExportScreen() {
   const includeRows: { key: keyof IncludeToggles; label: string; sub: string }[] = [
     { key: 'vitals',     label: 'Vitals trends',         sub: 'HR, BP, glucose · last 7 days'  },
     { key: 'medication', label: 'Medication adherence',  sub: '14 of 14 doses'                 },
+    { key: 'nutrition',  label: 'Meals & nutrition',     sub: 'Meal totals and nutrition notes' },
+    { key: 'activity',   label: 'Activity',              sub: 'Steps and movement trend'        },
     { key: 'sleep',      label: 'Sleep',                 sub: '7 nights, avg 7h 12m'           },
-    { key: 'meals',      label: 'Meals & nutrition',     sub: '21 meals, sodium flagged'       },
-    { key: 'ai',         label: 'AI recommendations',    sub: '3 items'                        },
+    { key: 'bmi',        label: 'BMI',                   sub: 'Body-mass trend'                },
   ];
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -157,17 +173,22 @@ export function ReportExportScreen() {
 
         {/* Destination tiles */}
         <View style={styles.destRow}>
-          {destinations.map(({ key, label, Icon }) => {
+          {destinations.map(({ key, label, Icon, supported }) => {
             const active = dest === key;
             return (
               <Pressable
                 key={key}
-                onPress={() => setDest(key)}
+                onPress={supported ? () => setDest(key) : undefined}
+                disabled={!supported}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityState={{ disabled: !supported, selected: active }}
                 style={[
                   styles.destTile,
                   {
                     backgroundColor: active ? t.brand : '#F5F5F5',
                     borderColor: active ? t.brand : '#E0E0E0',
+                    opacity: supported ? 1 : 0.45,
                   },
                 ]}
               >
@@ -212,7 +233,7 @@ export function ReportExportScreen() {
         <View style={styles.infoNote}>
           <IconShield size={16} color={t.brand} />
           <Text style={[typography.caption, { color: '#444', flex: 1, lineHeight: 18 }]}>
-            Identifying info (name, DOB) is included only when sharing with your care team. Link sharing is read-only and expires in 7 days.
+            PDF export is the supported destination. Sensitive identifiers stay excluded from this request.
           </Text>
         </View>
 

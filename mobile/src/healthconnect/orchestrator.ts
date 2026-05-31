@@ -13,6 +13,11 @@ import {
   type HealthConnectRecordType,
   isHealthConnectRecordType,
 } from './types';
+import {
+  getHealthConnectExternalAccountId,
+  getStoredHealthConnectDeviceId,
+  saveHealthConnectDeviceId,
+} from './health-connect-external-account-id';
 
 const MAX_BATCH_ITEMS = 500;
 const MAX_BATCH_BYTES = 256 * 1024;
@@ -293,21 +298,22 @@ async function resolveHealthConnectDevice(deviceId?: string): Promise<ConnectedD
     const exact = devices.find((device) => device.id === deviceId);
     if (exact) return exact;
   }
-  const connected = devices.find((device) => device.provider === HEALTH_CONNECT_PROVIDER && device.connected);
-  if (connected) return connected;
-  const existing = devices.find((device) => device.provider === HEALTH_CONNECT_PROVIDER);
-  if (existing && !existing.connected) {
-    return deviceService.connect({
-      provider: HEALTH_CONNECT_PROVIDER,
-      device_label: existing.device_label ?? DEFAULT_DEVICE_LABEL,
-      scopes: existing.scopes,
-    });
-  }
-  if (existing) return existing;
-  return deviceService.connect({
+
+  const storedDeviceId = await getStoredHealthConnectDeviceId();
+  const storedDevice = storedDeviceId ? devices.find((device) => device.id === storedDeviceId) : undefined;
+  if (storedDevice?.provider === HEALTH_CONNECT_PROVIDER && storedDevice.connected) return storedDevice;
+
+  const externalAccountId = await getHealthConnectExternalAccountId();
+  const device = await deviceService.connect({
     provider: HEALTH_CONNECT_PROVIDER,
-    device_label: DEFAULT_DEVICE_LABEL,
+    device_label: storedDevice?.device_label ?? DEFAULT_DEVICE_LABEL,
+    external_account_id: externalAccountId,
+    scopes: storedDevice?.scopes,
   });
+  if (device.id !== storedDeviceId) {
+    await saveHealthConnectDeviceId(device.id);
+  }
+  return device;
 }
 
 async function ingestBatchWithRetry(
@@ -329,8 +335,7 @@ async function ingestBatchWithRetry(
 }
 
 function areEqualStringArrays(left: string[], right: string[]) {
-  if (left.length !== right.length) return false;
-  return left.every((value, index) => value === right[index]);
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function stableStringify(value: unknown) {

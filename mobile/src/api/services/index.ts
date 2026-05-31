@@ -15,6 +15,8 @@ export { nutritionService } from './nutrition-service';
 export { reportService } from './report-service';
 export { riskService } from './risk-service';
 export { healthGoalService } from './health-goal-service';
+export { healthMetricService } from './health-metric-service';
 export { deviceService } from './device-service';
 export { emergencyService } from './emergency-service';
 export { securityService } from './security-service';
+export { accountExportService } from './account-export-service';

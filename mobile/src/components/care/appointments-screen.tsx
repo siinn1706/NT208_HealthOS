@@ -20,8 +20,17 @@ import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { makeWeekDays, toAppointmentRow, toHeroAppointment } from '../../api/viewModels';
 import { humanizeError } from '../../api/error-message';
+import type { Appointment } from '../../../../shared/api-contracts';
 
 type StatusFilter = 'All' | 'Upcoming' | 'Past';
+
+const PREP_INELIGIBLE_STATUSES = new Set<Appointment['status']>(['cancelled', 'completed', 'no_show', 'rescheduled']);
+
+function nextPrepAppointment(appointments: Appointment[], nowMs: number) {
+  return appointments
+    .filter((apt) => new Date(apt.appointment_date).getTime() >= nowMs && !PREP_INELIGIBLE_STATUSES.has(apt.status))
+    .sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime())[0] ?? null;
+}
 
 export function AppointmentsScreen() {
   const t = useTheme();
@@ -59,6 +68,8 @@ export function AppointmentsScreen() {
   const weekDays = makeWeekDays(appointments.data ?? []);
   const upcomingCount = (appointments.data ?? []).filter((apt) => new Date(apt.appointment_date).getTime() >= Date.now()).length;
   const pastCount = (appointments.data ?? []).filter((apt) => new Date(apt.appointment_date).getTime() < Date.now()).length;
+  const prepAppointment = nextPrepAppointment(appointments.data ?? [], Date.now());
+  const todayDate = new Date().getDate();
 
   return (
     <Screen>
@@ -82,7 +93,7 @@ export function AppointmentsScreen() {
           </View>
         }
       />
-      <WeekStrip days={weekDays} selectedDate={selectedDate ?? new Date().getDate()} onSelect={(d) => setSelectedDate((prev) => prev === d ? null : d)} />
+      <WeekStrip days={weekDays} selectedDate={selectedDate ?? todayDate} onSelect={(d) => setSelectedDate((prev) => prev === d ? null : d)} />
       {selectedDate !== null && (
         <Pressable onPress={() => setSelectedDate(null)} style={[styles.resetDate, { backgroundColor: t.brandSoft }]}>
           <Text style={{ color: t.brand, fontSize: 12 }}>{i18n('care.showingDay', { day: selectedDate })}</Text>
@@ -104,7 +115,12 @@ export function AppointmentsScreen() {
         const row = toAppointmentRow(apt);
         return <AptRow key={row.id} {...row} onPress={() => router.push(`/care/appointment/${row.id}` as never)} />;
       })}
-      <PrepForVisitCard onPress={() => router.push('/care/prep/new' as never)} />
+      {prepAppointment && (
+        <PrepForVisitCard
+          doctorName={prepAppointment.doctor_name}
+          onPress={() => router.push(`/care/prep/${prepAppointment.id}` as never)}
+        />
+      )}
       <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setFilterOpen(false)} />
         <View style={[styles.sheet, { backgroundColor: t.card, borderColor: t.border }]}>

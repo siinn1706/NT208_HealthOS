@@ -1,22 +1,32 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Pressable, View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
+import { IconPaperclip } from '../../icons';
+import { safeOpenUrl } from '../../utils/safe-url';
 import { Sparkline } from '../charts/sparkline';
 import { TypingDots } from './typing-dots';
+
+export interface BubbleAttachment {
+  url: string;
+  name: string;
+  size: number;
+  mimeType: string;
+}
 
 interface BubbleProps {
   side: 'ai' | 'me';
   text?: string;
   time?: string;
+  attachments?: BubbleAttachment[];
   hasSparkline?: boolean;
   isCaption?: boolean;
   isTyping?: boolean;
   index?: number;
 }
 
-export const Bubble = memo(function Bubble({ side, text, time, hasSparkline, isCaption, isTyping, index = 0 }: BubbleProps) {
+export const Bubble = memo(function Bubble({ side, text, time, attachments = [], hasSparkline, isCaption, isTyping, index = 0 }: BubbleProps) {
   const t = useTheme();
   const isMe = side === 'me';
 
@@ -60,6 +70,36 @@ export const Bubble = memo(function Bubble({ side, text, time, hasSparkline, isC
                 <Sparkline data={[72, 70, 74, 71, 68, 67, 68]} color={t.brand} width={160} height={40} />
               </View>
             )}
+            {attachments.length > 0 && (
+              <View style={styles.attachments}>
+                {attachments.map((attachment) => (
+                  <Pressable
+                    key={`${attachment.url}-${attachment.name}`}
+                    onPress={() => { void safeOpenUrl(attachment.url); }}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Open ${attachment.name}`}
+                    style={[
+                      styles.attachment,
+                      {
+                        borderColor: isMe ? 'rgba(255,255,255,0.35)' : t.border,
+                        backgroundColor: isMe ? 'rgba(255,255,255,0.12)' : t.bgElev,
+                        borderRadius: t.radius.md,
+                      },
+                    ]}
+                  >
+                    <IconPaperclip size={16} color={isMe ? '#FFF' : t.brand} />
+                    <View style={styles.attachmentText}>
+                      <Text numberOfLines={1} style={[typography.caption, { color: textColor, fontWeight: '700' }]}>
+                        {attachment.name}
+                      </Text>
+                      <Text numberOfLines={1} style={[typography.micro, { color: isMe ? 'rgba(255,255,255,0.72)' : t.ink3 }]}>
+                        {attachment.mimeType} · {formatBytes(attachment.size)}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </>
         )}
       </View>
@@ -72,9 +112,19 @@ export const Bubble = memo(function Bubble({ side, text, time, hasSparkline, isC
   );
 });
 
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 'size unknown';
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const styles = StyleSheet.create({
-  wrap:      { marginVertical: 4, maxWidth: '82%', alignSelf: 'flex-start' },
-  wrapMe:    { alignSelf: 'flex-end' },
-  bubble:    { padding: 12 },
-  sparkWrap: { marginTop: 8 },
+  wrap:           { marginVertical: 4, maxWidth: '82%', alignSelf: 'flex-start' },
+  wrapMe:         { alignSelf: 'flex-end' },
+  bubble:         { padding: 12 },
+  sparkWrap:      { marginTop: 8 },
+  attachments:    { marginTop: 10, gap: 8 },
+  attachment:     { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, padding: 9 },
+  attachmentText: { flex: 1, minWidth: 0 },
 });

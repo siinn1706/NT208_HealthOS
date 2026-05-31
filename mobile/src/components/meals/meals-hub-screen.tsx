@@ -27,7 +27,23 @@ function isoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function slotOf(loggedAt: string) {
+const MEAL_TYPE_SLOTS = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Snack',
+} as const;
+
+function normalizeMealTypeSlot(value: string | null | undefined) {
+  const key = value?.trim().toLowerCase();
+  if (!key) return null;
+  return MEAL_TYPE_SLOTS[key as keyof typeof MEAL_TYPE_SLOTS] ?? null;
+}
+
+export function slotOf(loggedAt: string, mealType?: string | null) {
+  const explicitSlot = normalizeMealTypeSlot(mealType);
+  if (explicitSlot) return explicitSlot;
+
   const hour = new Date(loggedAt).getHours();
   if (hour < 10) return 'Breakfast';
   if (hour < 14) return 'Lunch';
@@ -78,7 +94,10 @@ export function MealsHubScreen() {
       .slice()
       .sort((a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime())
       .map((meal) => {
-        const slot = slotOf(meal.logged_at);
+        const slot = slotOf(
+          meal.logged_at,
+          meal.nutrition_result?.meal_type ?? meal.nutrition_result?.serving_type,
+        );
         const kcal = meal.nutrition_result?.calories ?? 0;
         const carbs = Math.round(meal.nutrition_result?.carbs_g ?? 0);
         const protein = Math.round(meal.nutrition_result?.protein_g ?? 0);

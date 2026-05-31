@@ -38,6 +38,14 @@ function slotLabel(loggedAt: string) {
   return 'DINNER';
 }
 
+function statusSubtitle(status: string) {
+  if (status === 'ready' || status === 'analyzed') return 'AI scan · nutrition verified';
+  if (status === 'processing') return 'Nutrition analysis in progress';
+  if (status === 'failed') return 'Nutrition analysis failed';
+  if (status === 'pending') return 'Nutrition pending';
+  return 'Manual entry';
+}
+
 export function MealDetailScreen() {
   const router = useRouter();
   const t = useTheme();
@@ -141,15 +149,6 @@ export function MealDetailScreen() {
 
   const consumedPct = Math.min(model.calories / DAILY_TARGET_KCAL, 1);
   const loggedLabel = model.loggedAt.toLocaleString();
-
-  // Status subtitle — no raw status exposed
-  function statusSubtitle(status: string) {
-    if (status === 'ready' || status === 'analyzed') return 'AI scan · nutrition verified';
-    if (status === 'processing') return 'Nutrition analysis in progress';
-    if (status === 'failed') return 'Nutrition analysis failed';
-    if (status === 'pending') return 'Nutrition pending';
-    return 'Manual entry';
-  }
 
   return (
     <Screen>

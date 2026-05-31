@@ -40,7 +40,7 @@ export default function HomeScreen() {
     () => [
       { id: 'meal', label: i18n('home.quickActionMeal'), icon: 'IconCoffee', route: '/meals' },
       { id: 'vitals', label: i18n('home.quickActionVitals'), icon: 'IconActivity', route: '/home/vitals' },
-      { id: 'ai', label: i18n('home.quickActionAi'), icon: 'IconSparkle', route: '/(tabs)/chat' },
+      { id: 'ai', label: i18n('home.quickActionAi'), icon: 'IconSparkle', route: '/chat' },
       { id: 'insights', label: i18n('home.quickActionInsights'), icon: 'IconTrendUp', route: '/insights' },
     ],
     [i18n],
@@ -110,8 +110,8 @@ export default function HomeScreen() {
                 key={item.id}
                 {...item}
                 onPress={() => {
-                  if (item.icon === 'IconPill') router.push('/(tabs)/meds');
-                  else if (item.icon === 'IconVideo') router.push('/(tabs)/care');
+                  if (item.icon === 'IconPill') router.push('/meds');
+                  else if (item.icon === 'IconVideo') router.push('/care');
                   else router.push('/home/today');
                 }}
               />
@@ -122,7 +122,7 @@ export default function HomeScreen() {
 
           <SectionHeader title={i18n('home.aiInsightCard')} />
           {model.aiInsight ? (
-            <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/insights' as never)} />
+            <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/home/insight/current' as never)} />
           ) : (
             <ApiState title={i18n('home.noAiInsight')} message={i18n('home.noAiInsightMessage')} />
           )}

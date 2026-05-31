@@ -6,13 +6,14 @@ import { Screen } from '../../layout/screen';
 import { SectionHeader } from '../../layout/section-header';
 import { Card } from '../../primitives/card';
 import { Button } from '../../primitives/button';
-import { ApiState, MissingApiState } from '../../api/api-state';
+import { ApiState } from '../../api/api-state';
 import { ProgressRing } from '../../charts/progress-ring';
 import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { riskService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
+import { RiskDriverTrendsCard } from './risk-driver-trends-card';
 import {
   ChevronLeft, IconMore, IconHeartPulse,
   IconActivity, IconShield, IconLeaf,
@@ -114,6 +115,53 @@ function iconForLabel(label: string, color: string) {
   return <IconShield size={16} color={color} />;
 }
 
+function toRiskFactors(selected: Record<string, unknown> | null, t: ReturnType<typeof useTheme>) {
+  if (!selected) return [];
+  return asArray(selected.factors).reduce<{
+    name: string;
+    detail: string;
+    impact: ImpactLevel;
+    value: number;
+    icon: React.ReactNode;
+    iconBg: string;
+  }[]>((rows, value) => {
+    const item = asRecord(value);
+    const impactRaw = asString(item.impact, 'neutral');
+    const impact: ImpactLevel = impactRaw === 'negative' ? 'high' : impactRaw === 'positive' ? 'low' : 'medium';
+    const label = asString(item.label, 'Factor');
+    const detail = asString(item.detail, 'No detail');
+    const color = impact === 'high' ? t.danger : impact === 'medium' ? t.warning : t.success;
+    rows.push({
+      name: label.replace(/_/g, ' '),
+      detail,
+      impact,
+      value: impact === 'high' ? 0.75 : impact === 'medium' ? 0.45 : 0.2,
+      icon: iconForLabel(label, color),
+      iconBg: color + '18',
+    });
+    return rows;
+  }, []);
+}
+
+function toRiskSuggestions(selected: Record<string, unknown> | null) {
+  if (!selected) return [];
+  return asArray(selected.tips).reduce<{
+    priority: 'high' | 'medium' | 'low';
+    title: string;
+    detail: string;
+  }[]>((rows, value) => {
+    const item = asRecord(value);
+    const p = asString(item.priority, 'medium').toLowerCase();
+    const priority = p === 'high' || p === 'medium' || p === 'low' ? p : 'medium';
+    rows.push({
+      priority,
+      title: asString(item.title, 'Suggestion').replace(/_/g, ' '),
+      detail: asString(item.description, 'No detail').replace(/_/g, ' '),
+    });
+    return rows;
+  }, []);
+}
+
 // ─── Main Screen ───────────────────────────────────────────────────────────────
 
 export function RiskDetailScreen() {
@@ -133,31 +181,8 @@ export function RiskDetailScreen() {
     const selected = fromId ?? fromNumeric ?? rows[0] ?? null;
     const notFound = Boolean(rawId) && !fromId && !fromNumeric;
 
-    const factors = selected ? asArray(selected.factors).map(asRecord).map((item) => {
-      const impactRaw = asString(item.impact, 'neutral');
-      const impact: ImpactLevel = impactRaw === 'negative' ? 'high' : impactRaw === 'positive' ? 'low' : 'medium';
-      const label = asString(item.label, 'Factor');
-      const detail = asString(item.detail, 'No detail');
-      const color = impact === 'high' ? t.danger : impact === 'medium' ? t.warning : t.success;
-      return {
-        name: label.replace(/_/g, ' '),
-        detail,
-        impact,
-        value: impact === 'high' ? 0.75 : impact === 'medium' ? 0.45 : 0.2,
-        icon: iconForLabel(label, color),
-        iconBg: color + '18',
-      };
-    }) : [];
-
-    const suggestions = selected ? asArray(selected.tips).map(asRecord).map((item) => {
-      const p = asString(item.priority, 'medium').toLowerCase();
-      const priority = p === 'high' || p === 'medium' || p === 'low' ? p : 'medium';
-      return {
-        priority: priority as 'high' | 'medium' | 'low',
-        title: asString(item.title, 'Suggestion').replace(/_/g, ' '),
-        detail: asString(item.description, 'No detail').replace(/_/g, ' '),
-      };
-    }) : [];
+    const factors = toRiskFactors(selected, t);
+    const suggestions = toRiskSuggestions(selected);
 
     const probability = selected ? clamp(asNumber(selected.probability)) : 0;
     return {
@@ -231,12 +256,12 @@ export function RiskDetailScreen() {
             </View>
           </ProgressRing>
 
-          {/* Right: title + trend chip + timestamp */}
+          {/* Right: title + current estimate chip + timestamp */}
           <View style={styles.heroMeta}>
             <Text style={[typography.title, { color: t.ink }]} numberOfLines={3}>{condition} risk</Text>
             <View style={[styles.trendChip, { backgroundColor: trendColor + '18', borderRadius: t.radius.pill, marginTop: 8, alignSelf: 'flex-start' }]}>
               <Text style={[typography.micro, { color: trendColor, textTransform: 'uppercase', letterSpacing: 0.8 }]}>
-                {level.toUpperCase()} — TRENDING UP
+                {level.toUpperCase()} - CURRENT ESTIMATE
               </Text>
             </View>
             <Text style={[typography.caption, { color: t.ink3, marginTop: 8 }]}>
@@ -279,11 +304,12 @@ export function RiskDetailScreen() {
         </View>
       )}
 
-      {/* Track over time — missing endpoint */}
+      {/* Track existing risk drivers over time. */}
       <SectionHeader title={i18n('insights.trackOverTime')} />
-      <Card tight style={styles.trackCard}>
-        <MissingApiState title="Risk trend history unavailable" contract="TODO: add endpoint GET /v1/health/risk-predictions/{id}/history?period=30d" />
-      </Card>
+      <RiskDriverTrendsCard
+        riskId={asString(model.selected.id, condition)}
+        factors={asArray(model.selected.factors)}
+      />
 
       <Button
         label={i18n('insights.preventionPlan')}
@@ -315,5 +341,4 @@ const styles = StyleSheet.create({
   factorFill:   { height: 4 },
   suggList:     { gap: 10 },
   suggIcon:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  trackCard:    { overflow: 'hidden' },
 });

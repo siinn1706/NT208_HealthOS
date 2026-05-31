@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
 import { IconAlert, ChevronRight } from '../../icons';
 
 interface RefillAlertCardProps {
@@ -20,8 +19,8 @@ export function RefillAlertCard({ message, daysLeft: _daysLeft, pharmacy = 'Phar
         <IconAlert size={18} color={t.warning} />
       </View>
       <View style={styles.text}>
-        <Text style={[{ fontSize: 13, fontWeight: '700', color: t.ink }]}>{message}</Text>
-        <Text style={[{ fontSize: 11, color: t.ink3, marginTop: 1 }]}>{pharmacy} · Tap to request refill</Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: t.ink }}>{message}</Text>
+        <Text style={{ fontSize: 12, color: t.ink3, marginTop: 1 }}>{pharmacy} · Tap to request refill</Text>
       </View>
       <ChevronRight size={16} color={t.ink4} />
     </View>

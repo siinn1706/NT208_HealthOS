@@ -123,6 +123,14 @@ const INITIAL_ACTIONS: ActionItem[] = [
 
 const ALL_CATEGORIES: Category[] = ['Cardiovascular', 'Nutrition', 'Activity', 'Stress'];
 
+function getInitialStartedIds() {
+  const ids: string[] = [];
+  for (const action of INITIAL_ACTIONS) {
+    if (action.priority === 'HIGH') ids.push(action.id);
+  }
+  return ids;
+}
+
 // ─── Suggestion card ──────────────────────────────────────────────────────────
 
 function SuggestionCard({ item, started, onToggle }: { item: ActionItem; started: boolean; onToggle: () => void }) {
@@ -178,9 +186,7 @@ export function PreventionScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
-  const [startedIds, setStartedIds] = useState<Set<string>>(
-    new Set(INITIAL_ACTIONS.filter((a) => a.priority === 'HIGH').map((a) => a.id))
-  );
+  const [startedIds, setStartedIds] = useState<Set<string>>(() => new Set(getInitialStartedIds()));
 
   const toggle = (id: string) =>
     setStartedIds((prev) => {

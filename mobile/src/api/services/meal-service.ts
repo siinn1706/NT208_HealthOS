@@ -11,6 +11,17 @@ export interface MealCreateInput {
   name: string;
   notes?: string | null;
   logged_at?: string | null;
+  meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
+  ingredients?: {
+    ingredient_name: string;
+    grams: number;
+    manual_calories?: number | null;
+    calories?: number | null;
+    kcal?: number | null;
+    carbs_g?: number | null;
+    protein_g?: number | null;
+    fat_g?: number | null;
+  }[];
   image?: MobileUploadFile | null;
 }
 
@@ -65,6 +76,8 @@ export const mealService = {
         name: input.name,
         notes: input.notes,
         logged_at: input.logged_at,
+        meal_type: input.meal_type,
+        ingredients: input.ingredients,
       },
     });
     return response.data;

@@ -34,6 +34,7 @@ export function WizardStep3({
   const { t: i18n } = useTranslation();
   const [duration, setDuration] = useState('4 wk');
   const [trackingSource, setTracking] = useState<string>('wearable');
+  const todayLabel = new Date().toLocaleDateString();
 
   return (
     <View style={styles.stepBody}>
@@ -64,7 +65,7 @@ export function WizardStep3({
       {/* Start date field */}
       <Text style={[typography.bodyMed, { color: t.ink, marginTop: 18, marginBottom: 8 }]}>{i18n('insights.wizardStartDate')}</Text>
       <View style={[s.dateField, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.md }]}>
-        <Text style={[typography.bodyMed, { color: t.ink }]}>Today — {new Date().toLocaleDateString()}</Text>
+        <Text style={[typography.bodyMed, { color: t.ink }]}>Today - {todayLabel}</Text>
         <IconTarget size={16} color={t.ink4} />
       </View>
 

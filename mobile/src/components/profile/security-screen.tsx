@@ -20,6 +20,7 @@ import { useSession } from '../../auth/session-provider';
 import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { securityService, type MfaSetupPayload } from '../../api/services/security-service';
+import { PasswordResetPanel } from './password-reset-panel';
 
 interface SettingRowProps {
   label: string;
@@ -70,17 +71,34 @@ function SettingRow({ label, sub, iconColor, Icon, badge, toggle, value, onPress
 
 export function SecurityScreen() {
   const t = useTheme();
-  const { user } = useSession();
+  const { user, refreshUser } = useSession();
   const mfaQuery = useApiQuery(queryKeys.mfaStatus, () => securityService.mfaStatus());
   const logsQuery = useApiQuery(queryKeys.securityLogs, () => securityService.securityLogs({ limit: 8 }));
   const [setupPayload, setSetupPayload] = useState<MfaSetupPayload | null>(null);
   const [latestRecoveryCodes, setLatestRecoveryCodes] = useState<string[] | null>(null);
   const [mfaCode, setMfaCode] = useState('');
+  const [passwordResetOpen, setPasswordResetOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<'setup' | 'verify-setup' | 'verify' | 'disable' | 'regen' | null>(null);
 
   const mfaEnabled = Boolean(mfaQuery.data?.enabled);
+
+  function showUnavailable(message: string) {
+    setActionSuccess(null);
+    setActionError(message);
+  }
+
+  function pointToMfaControls() {
+    setActionError(null);
+    setActionSuccess('Use the MFA controls below to verify, regenerate recovery codes, or disable MFA.');
+  }
+
+  function openPasswordReset() {
+    setActionError(null);
+    setActionSuccess(null);
+    setPasswordResetOpen(true);
+  }
 
   async function startMfaSetup() {
     setBusyAction('setup');
@@ -184,7 +202,7 @@ export function SecurityScreen() {
         )}
       />
 
-      <TouchableOpacity style={[styles.statusHero, { backgroundColor: mfaEnabled ? t.successSoft : t.warningSoft, borderColor: `${mfaEnabled ? t.success : t.warning}40` }]} activeOpacity={0.8}>
+      <View style={[styles.statusHero, { backgroundColor: mfaEnabled ? t.successSoft : t.warningSoft, borderColor: `${mfaEnabled ? t.success : t.warning}40` }]}>
         <View style={[styles.statusIcon, { backgroundColor: mfaEnabled ? t.success : t.warning }]}>
           <IconShield size={26} color="#FFF" />
         </View>
@@ -198,7 +216,7 @@ export function SecurityScreen() {
               : 'Turn on two-factor authentication to protect your health records.'}
           </Text>
         </View>
-      </TouchableOpacity>
+      </View>
 
       <SectionHeader title="Sign-in" />
       <Card tight style={styles.sectionCard}>
@@ -206,22 +224,23 @@ export function SecurityScreen() {
           Icon={IconLock}
           iconColor="#1965B3"
           label="Password"
-          sub="Use a strong password and rotate periodically"
-          onPress={() => {}}
+          sub="Email-verified reset"
+          onPress={openPasswordReset}
         />
         <SettingRow
           Icon={IconShield}
           iconColor={mfaEnabled ? t.success : t.warning}
           label="Two-factor authentication"
           badge={{ label: mfaEnabled ? 'ON' : 'OFF', color: mfaEnabled ? t.success : t.warning, bg: mfaEnabled ? t.successSoft : t.warningSoft }}
-          onPress={() => {}}
+          onPress={mfaEnabled ? pointToMfaControls : startMfaSetup}
         />
         <SettingRow
           Icon={IconShield}
           iconColor="#7B5BB6"
           label="Face ID"
-          sub="On for sign-in and sensitive screens"
-          toggle={true}
+          sub="Requires native biometric app-lock support"
+          value="Unavailable"
+          onPress={() => showUnavailable('Face ID is not available until native biometric app-lock support is implemented.')}
         />
         <SettingRow
           Icon={IconLock}
@@ -229,9 +248,17 @@ export function SecurityScreen() {
           sub="6-digit PIN · auto-lock after 1 min"
           value="On"
           last
-          onPress={() => {}}
+          onPress={() => showUnavailable('Native app lock settings are not backed by a confirmed secure-storage contract yet.')}
         />
       </Card>
+
+      {passwordResetOpen && (
+        <PasswordResetPanel
+          email={user?.email}
+          onClose={() => setPasswordResetOpen(false)}
+          onSessionRefresh={refreshUser}
+        />
+      )}
 
       <Card style={styles.mfaCard}>
         {mfaQuery.isLoading && <ApiState title="Loading MFA status" loading />}
@@ -340,7 +367,7 @@ export function SecurityScreen() {
           iconColor="#1965B3"
           label="Active sessions"
           sub={user ? 'This device' : 'No active sessions'}
-          onPress={() => {}}
+          onPress={() => showUnavailable('Active session management is not available in the native app yet.')}
         />
         <SettingRow
           Icon={IconRefresh}
@@ -348,7 +375,7 @@ export function SecurityScreen() {
           label="Recent activity"
           sub="Sign-ins, password changes, MFA events"
           last
-          onPress={() => {}}
+          onPress={logsQuery.reload}
         />
       </Card>
 
@@ -393,13 +420,13 @@ export function SecurityScreen() {
           iconColor="#0F8F7E"
           label="Recovery email"
           value={user?.email ?? 'Not set'}
-          onPress={() => {}}
+          onPress={() => showUnavailable('Recovery email changes are not available in the native app yet.')}
         />
         <SettingRow
           Icon={IconLock}
           label="Recovery phone"
           value="Not set"
-          onPress={() => {}}
+          onPress={() => showUnavailable('Recovery phone setup is not available in the native app yet.')}
         />
         <SettingRow
           Icon={IconShield}
@@ -407,7 +434,7 @@ export function SecurityScreen() {
           label="Recovery codes"
           badge={{ label: latestRecoveryCodes ? 'READY' : 'GENERATE', color: t.brand, bg: t.brandSoft }}
           last
-          onPress={() => {}}
+          onPress={mfaEnabled ? pointToMfaControls : startMfaSetup}
         />
       </Card>
     </Screen>

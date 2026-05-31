@@ -1,21 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
 import { MissingApiState } from '../api/api-state';
-import { IconSparkle } from '../../icons';
-import { Button } from '../primitives/button';
-import { Screen } from '../layout/screen';
-import { TopBar } from '../layout/top-bar';
 import { TodayOverviewScreen } from './today-overview-screen';
 import { HealthScoreDetailScreen } from './health-score-detail-screen';
 import { QuickActionSheetScreen } from './quick-action-sheet-screen';
 import { VitalsDetailScreen } from './vitals-detail-screen';
+import { AiInsightDetailScreen } from './ai-insight-detail-screen';
 
 export type HomeDetailKind = 'today' | 'score' | 'vitals' | 'insight' | 'quick-action';
 
@@ -30,82 +24,6 @@ const TITLES: Record<HomeDetailKind, string> = {
   insight:      'AI Insight',
   'quick-action': 'Quick Actions',
 };
-
-const AI_INSIGHT_CAUSES = [
-  'Your heart rate variability has been trending lower over the past week.',
-  'Sleep data shows reduced deep-sleep minutes on 4 of the last 7 nights.',
-  'Step count was below your 7,000-step goal on 3 consecutive days.',
-];
-
-const AI_INSIGHT_ACTIONS = [
-  { label: 'Review heart rate trends', route: '/home/vitals' },
-  { label: 'View sleep report',        route: '/insights' },
-  { label: 'Check activity log',       route: '/insights' },
-];
-
-function AiInsightDetailScreen() {
-  const t = useTheme();
-  const { t: i18n } = useTranslation();
-  return (
-    <Screen>
-      <TopBar
-        title={i18n('home.aiInsightTitle')}
-        left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>{i18n('common.back')}</Text>}
-      />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
-        {/* Hero card */}
-        <LinearGradient
-          colors={[t.brandSoft, t.brandSoft + 'CC']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.aiHero, { borderRadius: t.radius.xl }]}
-        >
-          <View style={[styles.aiIconBox, { backgroundColor: t.brand, borderRadius: 12 }]}>
-            <IconSparkle size={24} color="#FFFFFF" />
-          </View>
-          <Text style={[typography.title, { color: t.ink, marginTop: 12 }]}>
-            Your recovery score dropped 12% this week
-          </Text>
-          <Text style={[typography.body, { color: t.ink3, marginTop: 6 }]}>
-            Based on heart rate, sleep, and activity data from the last 7 days.
-          </Text>
-        </LinearGradient>
-
-        {/* Causes */}
-        <Text style={[typography.caption, { color: t.ink3, letterSpacing: 0.6, textTransform: 'uppercase' }]}>
-          {i18n('home.whyThisMatters')}
-        </Text>
-        {AI_INSIGHT_CAUSES.map((cause, i) => (
-          <View key={i} style={styles.causeRow}>
-            <View style={[styles.causeDot, { backgroundColor: t.brand }]} />
-            <Text style={[typography.caption, { color: t.ink2, flex: 1, lineHeight: 22 }]}>{cause}</Text>
-          </View>
-        ))}
-
-        {/* Actions */}
-        <Text style={[typography.caption, { color: t.ink3, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 4 }]}>
-          {i18n('home.recommendations')}
-        </Text>
-        <View style={[styles.actionList, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
-          {AI_INSIGHT_ACTIONS.map((action, i) => (
-            <View key={i}>
-              {i > 0 && <View style={[styles.actionDivider, { backgroundColor: t.border }]} />}
-              <Pressable
-                style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={() => router.push(action.route as never)}
-              >
-                <Text style={[typography.body, { color: t.ink, flex: 1 }]}>{action.label}</Text>
-                <ChevronRight size={18} color={t.ink4} />
-              </Pressable>
-            </View>
-          ))}
-        </View>
-
-        <Button label={i18n('home.viewRelatedMetrics')} variant="soft" onPress={() => router.back()} />
-      </ScrollView>
-    </Screen>
-  );
-}
 
 function GuardedDetailScreen({ kind }: { kind: HomeDetailKind }) {
   const t = useTheme();
@@ -139,11 +57,4 @@ const styles = StyleSheet.create({
   container:     { flex: 1, paddingHorizontal: 24, paddingTop: 16 },
   back:          { fontSize: 15, marginBottom: 16 },
   title:         { fontSize: 26, fontWeight: '700', marginBottom: 8 },
-  aiHero:        { padding: 20 },
-  aiIconBox:     { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  causeRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  causeDot:      { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
-  actionList:    { overflow: 'hidden' },
-  actionRow:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-  actionDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
 });

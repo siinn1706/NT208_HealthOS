@@ -7,12 +7,12 @@ import { typography } from '../../theme/typography';
 import { Input } from '../primitives/input/input';
 import { Button } from '../primitives/button';
 import { ApiState } from '../api/api-state';
-import { IconCamera, IconPaperclip } from '../../icons';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { profileService } from '../../api/services';
 
 const PROVIDERS = ['Bảo Hiểm Y Tế (BHYT)', 'AIA', 'Manulife', 'Prudential', 'Other'];
+const INSURANCE_FIELD_LIMIT = 128;
 
 export function InsuranceForm() {
   const t = useTheme();
@@ -23,12 +23,13 @@ export function InsuranceForm() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [frontUploaded, setFrontUploaded] = useState(false);
-  const [backUploaded, setBackUploaded] = useState(false);
 
   async function handleSubmit() {
     if (!provider) { setError('Select an insurance provider.'); return; }
     if (!policyNum.trim()) { setError('Policy number is required.'); return; }
+    if (provider.trim().length > INSURANCE_FIELD_LIMIT) { setError('Provider must be 128 characters or fewer.'); return; }
+    if (policyNum.trim().length > INSURANCE_FIELD_LIMIT) { setError('Policy number must be 128 characters or fewer.'); return; }
+    if (groupNum.trim().length > INSURANCE_FIELD_LIMIT) { setError('Group number must be 128 characters or fewer.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -38,11 +39,9 @@ export function InsuranceForm() {
         medical_info: {
           ...existingMedical,
           insurance: {
-            provider,
+            provider: provider.trim(),
             policy_number: policyNum.trim(),
             group_number: groupNum.trim() || null,
-            card_front_uploaded: frontUploaded,
-            card_back_uploaded: backUploaded,
           },
         },
       });
@@ -94,43 +93,15 @@ export function InsuranceForm() {
         })}
       </View>
 
-      <Input label={i18n('forms.policyNumber')} value={policyNum} onChangeText={setPolicyNum} placeholder={i18n('forms.policyNumberPlaceholder')} style={s.field} />
-      <Input label={i18n('forms.groupNumber')} value={groupNum} onChangeText={setGroupNum} placeholder={i18n('forms.groupNumberPlaceholder')} style={s.field} />
+      <Input label={i18n('forms.policyNumber')} value={policyNum} onChangeText={setPolicyNum} placeholder={i18n('forms.policyNumberPlaceholder')} maxLength={INSURANCE_FIELD_LIMIT} style={s.field} />
+      <Input label={i18n('forms.groupNumber')} value={groupNum} onChangeText={setGroupNum} placeholder={i18n('forms.groupNumberPlaceholder')} maxLength={INSURANCE_FIELD_LIMIT} style={s.field} />
 
       <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.uploadCard')}</Text>
-      <View style={s.uploadRow}>
-        <Pressable
-          onPress={() => setFrontUploaded(true)}
-          style={[
-            s.uploadCard,
-            {
-              borderRadius: t.radius.lg,
-              borderColor: frontUploaded ? t.success : t.border,
-              backgroundColor: frontUploaded ? `${t.success}10` : t.card,
-            },
-          ]}
-        >
-          <IconCamera size={24} color={frontUploaded ? t.success : t.ink3} />
-          <Text style={[typography.caption, { color: frontUploaded ? t.success : t.ink3, marginTop: 6, textAlign: 'center' }]}>
-            {frontUploaded ? i18n('forms.frontUploaded') : i18n('forms.cardFront')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setBackUploaded(true)}
-          style={[
-            s.uploadCard,
-            {
-              borderRadius: t.radius.lg,
-              borderColor: backUploaded ? t.success : t.border,
-              backgroundColor: backUploaded ? `${t.success}10` : t.card,
-            },
-          ]}
-        >
-          <IconPaperclip size={24} color={backUploaded ? t.success : t.ink3} />
-          <Text style={[typography.caption, { color: backUploaded ? t.success : t.ink3, marginTop: 6, textAlign: 'center' }]}>
-            {backUploaded ? i18n('forms.backUploaded') : i18n('forms.cardBack')}
-          </Text>
-        </Pressable>
+      <View style={[s.infoCard, { borderRadius: t.radius.lg, borderColor: t.border, backgroundColor: t.card }]}>
+        <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n('forms.cardUploadUnavailableTitle')}</Text>
+        <Text style={[typography.caption, { color: t.ink3, marginTop: 4 }]}>
+          {i18n('forms.cardUploadUnavailableMessage')}
+        </Text>
       </View>
 
       <Button label={saving ? i18n('common.working') : i18n('forms.saveInsurance')} variant="solid" onPress={saving ? undefined : handleSubmit} style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]} />
@@ -145,7 +116,6 @@ const s = StyleSheet.create({
   field:        { marginBottom: 12 },
   providerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   providerChip: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
-  uploadRow:    { flexDirection: 'row', gap: 12 },
-  uploadCard:   { flex: 1, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dashed', paddingVertical: 24 },
+  infoCard:     { borderWidth: StyleSheet.hairlineWidth, padding: 14 },
   center:       { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
 });

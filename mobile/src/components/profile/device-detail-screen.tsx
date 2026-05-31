@@ -274,7 +274,7 @@ export function DeviceDetailScreen() {
             variant="subtle"
             icon={<IconMore size={20} color={t.ink3} />}
             accessibilityLabel="More options"
-            onPress={() => {}}
+            onPress={() => setActionError('More device options are not available in the native app yet.')}
           />
         )}
       />

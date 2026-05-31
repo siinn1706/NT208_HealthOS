@@ -12,6 +12,13 @@ export const reportService = {
     return response.data;
   },
 
+  async trendsBatch(metrics: string[], period: '7d' | '30d' | '90d' = '7d') {
+    const response = await apiRequest<DataResponse<Record<string, TrendAnalysis>>>(
+      `/v1/reports/trends/batch${buildQuery({ metrics: metrics.join(','), period })}`,
+    );
+    return response.data;
+  },
+
   async requestPdf(body: {
     period: '7d' | '30d' | '90d';
     sections: string[];

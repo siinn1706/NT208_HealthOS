@@ -96,11 +96,11 @@ export interface CurrentUser {
   phone?: string | null;
   address?: string | null;
   emergency_contacts?: Record<string, unknown>[] | null;
-  medical_info?: Record<string, unknown> | null;
+  medical_info?: MedicalInfo | null;
 }
 
 export interface UserProfileUpdate {
-  full_name?: string | null;
+  full_name?: string;
   date_of_birth?: string | null;
   gender?: 'male' | 'female' | 'other' | null;
   blood_type?: string | null;
@@ -110,6 +110,36 @@ export interface UserProfileUpdate {
   address?: string | null;
   avatar_url?: string | null;
   emergency_contacts?: Record<string, unknown>[] | null;
-  medical_info?: Record<string, unknown> | null;
+  medical_info?: MedicalInfo | null;
   onboarding_completed?: boolean;
+}
+
+export interface AccountDeletionRequestBody {
+  confirmation_email: string;
+  password?: string | null;
+  otp_code?: string | null;
+  reason?: string | null;
+}
+
+export interface AccountDeletionResult {
+  status: 'pending_deletion';
+  purge_at: string | null;
+}
+
+export interface AccountRestoreResult {
+  status: 'active';
+}
+
+export interface InsuranceInfo {
+  provider: string;
+  policy_number: string;
+  group_number?: string | null;
+}
+
+export interface MedicalInfo {
+  allergies?: string | null;
+  chronic_conditions?: string | null;
+  current_medications?: string | null;
+  notes?: string | null;
+  insurance?: InsuranceInfo | null;
 }

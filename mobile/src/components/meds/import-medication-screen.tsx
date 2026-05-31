@@ -9,10 +9,8 @@ import { TopBar } from '../layout/top-bar';
 import { Button } from '../primitives/button';
 import { IconButton } from '../primitives/icon-button';
 import { ChevronLeft, IconCamera, IconSearch, IconPill } from '../../icons';
-import { medicationService } from '../../api/services';
-import { invalidateApiQuery } from '../../api/query';
-import { queryKeys } from '../../api/queryKeys';
-import { ApiState, MissingApiState } from '../api/api-state';
+import { MissingApiState } from '../api/api-state';
+import { PrescriptionImportPanel } from './prescription-import-panel';
 
 const IMPORT_OPTION_KEYS = [
   { Icon: IconCamera, titleKey: 'scanPrescription',    subKey: 'scanPrescriptionSub' },
@@ -25,24 +23,7 @@ export function ImportMedicationScreen() {
   const { t: i18n } = useTranslation();
   const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
   const sourceAppointmentId = Array.isArray(appointmentId) ? appointmentId[0] : appointmentId;
-  const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [missingModalTitle, setMissingModalTitle] = useState<string | null>(null);
-
-  async function importFromAppointment() {
-    if (!sourceAppointmentId) return;
-    setImporting(true);
-    setError(null);
-    try {
-      await medicationService.importFromAppointment(sourceAppointmentId);
-      invalidateApiQuery(queryKeys.medications);
-      router.replace('/(tabs)/meds');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to import prescription.');
-    } finally {
-      setImporting(false);
-    }
-  }
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -69,26 +50,21 @@ export function ImportMedicationScreen() {
       </Modal>
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
-        {error && <ApiState title="Import failed" message={error} />}
-
         <Text style={[typography.body, { color: t.brand, lineHeight: 22 }]}>
           {i18n('meds.importDescription')}
         </Text>
 
-        {sourceAppointmentId && (
-          <Button
-            label={importing ? 'Importing...' : 'Import appointment prescription'}
-            variant="solid"
-            onPress={importing ? undefined : importFromAppointment}
-            style={importing ? { opacity: 0.4 } : undefined}
-          />
+        {sourceAppointmentId ? (
+          <PrescriptionImportPanel appointmentId={sourceAppointmentId} />
+        ) : (
+          <>
+            <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>{i18n('meds.connectedSources')}</Text>
+            <MissingApiState title={i18n('meds.connectedSources')} contract="Prescription source API not yet available." />
+
+            <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 8 }]}>{i18n('meds.pendingImports')}</Text>
+            <MissingApiState title={i18n('meds.pendingImports')} contract="Pending prescription import API not yet available." />
+          </>
         )}
-
-        <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>{i18n('meds.connectedSources')}</Text>
-        <MissingApiState title={i18n('meds.connectedSources')} contract="Prescription source API not yet available." />
-
-        <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 8 }]}>{i18n('meds.pendingImports')}</Text>
-        <MissingApiState title={i18n('meds.pendingImports')} contract="Pending prescription import API not yet available." />
 
         <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 8 }]}>{i18n('meds.addAnotherWay')}</Text>
         {IMPORT_OPTION_KEYS.map(opt => {

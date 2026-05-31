@@ -55,7 +55,7 @@ export function AuthForgotPasswordScreen() {
         router.replace('/auth/sign-in');
         return;
       }
-      router.replace('/(tabs)/home');
+      router.replace('/home');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to reset password.');
     } finally {

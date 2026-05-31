@@ -5,8 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import {
-  IconTarget, IconHeartPulse, IconMoon, IconLeaf, IconPill, IconActivity,
-  IconSparkle, IconCheck,
+  IconHeartPulse, IconSparkle, IconCheck,
 } from '../../../icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -22,12 +21,7 @@ interface CategoryMeta {
 }
 
 export const CATEGORIES: CategoryMeta[] = [
-  { key: 'Steps',      label: 'Steps',      sub: 'Daily step count',    icon: (c) => <IconActivity   size={18} color={c} /> },
-  { key: 'Sleep',      label: 'Sleep',      sub: 'Hours per night',     icon: (c) => <IconMoon       size={18} color={c} /> },
-  { key: 'Nutrition',  label: 'Nutrition',  sub: 'Sodium / calories',   icon: (c) => <IconLeaf       size={18} color={c} /> },
-  { key: 'Medication', label: 'Medication', sub: 'Dose adherence',      icon: (c) => <IconPill       size={18} color={c} /> },
-  { key: 'Weight',     label: 'Weight',     sub: 'Target body weight',  icon: (c) => <IconHeartPulse size={18} color={c} /> },
-  { key: 'Custom',     label: 'Custom',     sub: 'Any health metric',   icon: (c) => <IconTarget     size={18} color={c} /> },
+  { key: 'Weight', label: 'Weight', sub: 'Target body weight', icon: (c) => <IconHeartPulse size={18} color={c} /> },
 ];
 
 // ─── Step 1: Category grid ────────────────────────────────────────────────────
@@ -44,7 +38,7 @@ export function WizardStep1({ value, onChange }: { value: Category | null; onCha
         {i18n('insights.wizardStep1Title')}
       </Text>
 
-      {/* 2-column category card grid */}
+      {/* Category card grid */}
       <View style={s1.grid}>
         {CATEGORIES.map((cat) => {
           const active = value === cat.key;
@@ -79,13 +73,13 @@ export function WizardStep1({ value, onChange }: { value: Category | null; onCha
         })}
       </View>
 
-      {/* AI suggests callout */}
+      {/* Contract note */}
       <View style={[s1.aiCallout, { backgroundColor: t.brandSoft, borderColor: t.brand + '30', borderRadius: t.radius.md }]}>
         <View style={[s1.aiIcon, { backgroundColor: t.brand + '18', borderRadius: t.radius.sm }]}>
           <IconSparkle size={14} color={t.brand} />
         </View>
         <Text style={[typography.caption, { color: t.ink3, flex: 1 }]}>
-          {i18n('insights.wizardAiSuggests')} <Text style={{ color: t.brand, fontWeight: '600' }}>Steps</Text> {i18n('insights.wizardAiSuggestsSuffix')}
+          {i18n('insights.wizardBackendContract')}
         </Text>
       </View>
     </View>
@@ -100,7 +94,7 @@ const styles = StyleSheet.create({
 
 const s1 = StyleSheet.create({
   grid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  card:      { width: '47%', padding: 14, minHeight: 90, position: 'relative', borderWidth: StyleSheet.hairlineWidth },
+  card:      { width: '100%', padding: 14, minHeight: 90, position: 'relative', borderWidth: StyleSheet.hairlineWidth },
   checkBadge:{ position: 'absolute', top: 8, right: 8, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   iconTile:  { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   aiCallout: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderWidth: StyleSheet.hairlineWidth },

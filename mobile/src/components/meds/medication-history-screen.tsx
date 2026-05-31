@@ -10,7 +10,7 @@ import { Card } from '../primitives/card';
 import { IconButton } from '../primitives/icon-button';
 import { ApiState } from '../api/api-state';
 import { TimelineSkeleton } from '../api/skeletons';
-import { ChevronLeft, IconPill, IconFilter } from '../../icons';
+import { ChevronLeft, IconPill } from '../../icons';
 import { medicationService } from '../../api/services';
 import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -34,7 +34,6 @@ export function MedicationHistoryScreen() {
         <TopBar
           title={i18n('meds.medicationHistory')}
           left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel={i18n('common.back')} />}
-          right={<IconButton icon={<IconFilter size={18} color={t.ink3} />} accessibilityLabel={i18n('common.filter')} />}
         />
       </View>
 

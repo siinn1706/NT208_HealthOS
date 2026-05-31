@@ -43,11 +43,11 @@ export function QuickActionSheetScreen() {
 
   const ACTIONS: Action[] = [
     { id: 'scan',        label: i18n('home.quickScanMeal'),  crumb: i18n('home.quickScanCrumb'),    route: '/meals/scan',              color: '#D97706', Icon: Utensils   },
-    { id: 'meds',        label: i18n('home.quickLogDose'),   crumb: i18n('home.quickLogDoseCrumb'), route: '/(tabs)/meds',             color: '#41BCE6', Icon: Pill       },
+    { id: 'meds',        label: i18n('home.quickLogDose'),   crumb: i18n('home.quickLogDoseCrumb'), route: '/meds',                    color: '#41BCE6', Icon: Pill       },
     { id: 'vitals',      label: i18n('home.quickLogVitals'), crumb: i18n('home.quickVitalsCrumb'),  route: '/home/vitals',             color: '#1965B3', Icon: HeartPulse },
     { id: 'appointment', label: i18n('home.quickBookVisit'), crumb: i18n('home.quickBookCrumb'),    route: '/care/appointments/new',   color: '#7C3AED', Icon: CalendarPlus },
     { id: 'goal',        label: i18n('home.quickAddGoal'),   crumb: i18n('home.quickGoalCrumb'),    route: '/insights/goals/create',   color: '#12A88A', Icon: Target     },
-    { id: 'ai',          label: i18n('home.quickAskAi'),     crumb: i18n('home.quickAiCrumb'),      route: '/(tabs)/chat',             color: '#12A88A', Icon: Sparkles   },
+    { id: 'ai',          label: i18n('home.quickAskAi'),     crumb: i18n('home.quickAiCrumb'),      route: '/chat',                    color: '#12A88A', Icon: Sparkles   },
   ];
 
   return (

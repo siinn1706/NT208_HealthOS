@@ -12,6 +12,7 @@ import type {
   Reminder,
   VitalPoint,
 } from '../../../shared/api-contracts';
+import type { BubbleAttachment } from '../components/chat/bubble';
 
 export type DoseState = 'taken' | 'due' | 'missed' | 'upcoming' | 'skipped';
 
@@ -186,7 +187,20 @@ export function toBubble(message: Message, currentUserId?: string | null) {
     side: isMe ? 'me' as const : 'ai' as const,
     text: message.is_recalled ? 'Message removed' : message.content,
     time: formatShortTime(message.created_at),
+    attachments: normalizeMessageAttachments(message.attachments),
   };
+}
+
+function normalizeMessageAttachments(value: Message['attachments']): BubbleAttachment[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const url = typeof item.url === 'string' ? item.url : null;
+    const name = typeof item.name === 'string' ? item.name : null;
+    const size = typeof item.size === 'number' ? item.size : 0;
+    const mimeType = typeof item.mime_type === 'string' ? item.mime_type : 'application/octet-stream';
+    if (!url || !name) return [];
+    return [{ url, name, size, mimeType }];
+  });
 }
 
 export function toIdentity(user: CurrentUser | null) {
