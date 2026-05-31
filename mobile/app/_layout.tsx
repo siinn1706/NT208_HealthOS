@@ -17,6 +17,7 @@ import { SessionProvider, useSession } from '../src/auth/session-provider';
 import { ToastProvider } from '../src/components/primitives/feedback/toast';
 import { OfflineBanner } from '../src/components/api/offline-banner';
 import { ThemedStatusBar } from '../src/components/primitives/themed-status-bar';
+import { LanguagePreferenceHydrator } from '../src/i18n/language-preference-hydrator';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,7 +36,7 @@ function AuthGateStack() {
     return <Redirect href="/auth/welcome" />;
   }
   if (authenticated && root === 'auth') {
-    return <Redirect href="/(tabs)/home" />;
+    return <Redirect href="/home" />;
   }
   return <Stack screenOptions={{ headerShown: false }} />;
 }
@@ -61,6 +62,7 @@ export default function RootLayout() {
         <ThemeProvider>
           <SessionProvider>
             <ToastProvider>
+              <LanguagePreferenceHydrator />
               <ThemedStatusBar />
               <AuthGateStack />
               <OfflineBanner />

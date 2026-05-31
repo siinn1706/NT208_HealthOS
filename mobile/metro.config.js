@@ -15,4 +15,17 @@ config.resolver.nodeModulesPaths = Array.from(
   ]),
 );
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const pathRegex = (value) => value.split(/[\\/]+/).map(escapeRegex).join('[/\\\\]');
+const ignoredRepoPaths = ['.data', '.tmp', '.pytest_cache', '.git', 'backend/.venv', 'frontend/.next', 'plans'];
+const ignoredRepoPathPatterns = ignoredRepoPaths.map(
+  (repoPath) => new RegExp(`^${pathRegex(path.resolve(monorepoRoot, repoPath))}(?:[/\\\\].*)?$`),
+);
+const existingBlockList = config.resolver.blockList;
+
+config.resolver.blockList = [
+  ...(Array.isArray(existingBlockList) ? existingBlockList : [existingBlockList].filter(Boolean)),
+  ...ignoredRepoPathPatterns,
+];
+
 module.exports = config;

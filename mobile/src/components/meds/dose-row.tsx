@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
 import { IconCheck } from '../../icons';
 import type { DoseState } from '../../api/viewModels';
 
@@ -29,7 +28,7 @@ export const DoseRow = React.memo(function DoseRow({ time, name, state: currentS
       >
         {time}
       </Text>
-      <Text style={[{ fontSize: 14, fontWeight: '600', color: t.ink, flex: 1, marginRight: 8 }]} numberOfLines={1}>{name}</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: t.ink, flex: 1, marginRight: 8 }} numberOfLines={1}>{name}</Text>
       {taken ? (
         <View style={[styles.takenBadge, { backgroundColor: t.success }]}>
           <IconCheck size={14} color={t.onBrand} />
@@ -42,7 +41,7 @@ export const DoseRow = React.memo(function DoseRow({ time, name, state: currentS
           accessibilityLabel={i18n('meds.take')}
           style={[styles.takeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
         >
-          <Text style={[{ fontSize: 12, fontWeight: '600', color: t.onBrand }]}>{i18n('meds.take')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: t.onBrand }}>{i18n('meds.take')}</Text>
         </Pressable>
       )}
     </View>

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,23 +10,18 @@ import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
 import { IconButton } from '../primitives/icon-button';
 import { Checkbox } from '../primitives/input/checkbox';
-import { MissingApiState } from '../api/api-state';
+import { Button } from '../primitives/button';
 import { ApiState } from '../api/api-state';
 import { ChevronLeft } from '../../icons';
-import { useApiQuery } from '../../api/query';
+import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { formatDate, formatTime } from '../../api/viewModels';
-
-const CHECKLIST_ITEMS = [
-  'Bring insurance card',
-  'List current medications',
-  'Write down questions',
-  'Confirm appointment time',
-  'Arrange transport',
-  'Fast if required',
-  'Bring ID',
-];
+import {
+  VISIT_PREP_CHECKLIST_ITEMS,
+  buildVisitPrepChecklist,
+  mergeSavedVisitPrepChecklist,
+} from './visit-prep-checklist';
 
 export function VisitPrepScreen() {
   const t = useTheme();
@@ -34,18 +29,66 @@ export function VisitPrepScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
-  const [checked, setChecked] = useState<boolean[]>(CHECKLIST_ITEMS.map(() => false));
-
-  function toggleItem(index: number) {
-    setChecked((prev) => prev.map((v, i) => (i === index ? !v : v)));
-  }
-
-  const completedCount = checked.filter(Boolean).length;
-  const progress = completedCount / CHECKLIST_ITEMS.length;
+  const [checked, setChecked] = useState<boolean[]>(() => VISIT_PREP_CHECKLIST_ITEMS.map(() => false));
+  const [hydratedPrepId, setHydratedPrepId] = useState('');
+  const [prepDirty, setPrepDirty] = useState(false);
+  const [savingPrep, setSavingPrep] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const loadAppointment = useCallback(() => appointmentService.detail(apptId), [apptId]);
   const appointmentQuery = useApiQuery(queryKeys.appointment(apptId), loadAppointment, { enabled: Boolean(apptId) });
   const appointment = apptId ? (appointmentQuery.data ?? null) : null;
+  const loadPrep = useCallback(() => appointmentService.getPrep(apptId), [apptId]);
+  const prepQuery = useApiQuery(queryKeys.appointmentPrep(apptId), loadPrep, { enabled: Boolean(apptId) });
+  const checklistDisabled = prepQuery.isLoading || savingPrep;
+
+  const completedCount = checked.filter(Boolean).length;
+  const progress = completedCount / VISIT_PREP_CHECKLIST_ITEMS.length;
+
+  function toggleItem(index: number) {
+    if (checklistDisabled) return;
+    setPrepDirty(true);
+    setSaveMessage(null);
+    setSaveError(null);
+    setChecked((prev) => prev.map((v, i) => (i === index ? !v : v)));
+  }
+
+  useEffect(() => {
+    setHydratedPrepId('');
+    setPrepDirty(false);
+    setChecked(VISIT_PREP_CHECKLIST_ITEMS.map(() => false));
+    setSaveMessage(null);
+    setSaveError(null);
+  }, [apptId]);
+
+  useEffect(() => {
+    if (!apptId || hydratedPrepId === apptId || prepDirty || !prepQuery.data) return;
+    setChecked(mergeSavedVisitPrepChecklist(prepQuery.data.checklist_items));
+    setHydratedPrepId(apptId);
+  }, [apptId, hydratedPrepId, prepDirty, prepQuery.data]);
+
+  async function saveChecklist() {
+    if (!apptId || checklistDisabled) return;
+    setSavingPrep(true);
+    setSaveMessage(null);
+    setSaveError(null);
+    try {
+      const savedPrep = await appointmentService.updatePrep(apptId, {
+        checklist_items: buildVisitPrepChecklist(checked),
+      });
+      setChecked(mergeSavedVisitPrepChecklist(savedPrep.checklist_items));
+      setHydratedPrepId(apptId);
+      setPrepDirty(false);
+      invalidateApiQuery(queryKeys.appointmentPrep(apptId));
+      await prepQuery.reload();
+      setSaveMessage('Checklist saved.');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save checklist.');
+    } finally {
+      setSavingPrep(false);
+    }
+  }
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -77,7 +120,7 @@ export function VisitPrepScreen() {
             <View style={[s.barFill, { width: `${Math.round(progress * 100)}%` as any, backgroundColor: t.brand }]} />
           </View>
           <Text style={[typography.caption, { color: t.ink3, marginTop: 6 }]}>
-            {completedCount} / {CHECKLIST_ITEMS.length} items complete
+            {completedCount} / {VISIT_PREP_CHECKLIST_ITEMS.length} items complete
           </Text>
         </LinearGradient>
 
@@ -103,13 +146,17 @@ export function VisitPrepScreen() {
         {/* Checklist */}
         <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Before your visit</Text>
         <View style={[s.checklistCard, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}>
-          {CHECKLIST_ITEMS.map((item, index) => (
+          {VISIT_PREP_CHECKLIST_ITEMS.map((item, index) => (
             <React.Fragment key={item}>
               <View style={s.checkRow}>
                 <View pointerEvents="none">
                   <Checkbox value={checked[index]} onChange={() => {}} />
                 </View>
-                <Pressable onPress={() => toggleItem(index)} style={{ flex: 1 }}>
+                <Pressable
+                  disabled={checklistDisabled}
+                  onPress={() => toggleItem(index)}
+                  style={{ flex: 1 }}
+                >
                   <Text
                     style={[
                       typography.body,
@@ -123,14 +170,30 @@ export function VisitPrepScreen() {
                   </Text>
                 </Pressable>
               </View>
-              {index < CHECKLIST_ITEMS.length - 1 && (
+              {index < VISIT_PREP_CHECKLIST_ITEMS.length - 1 && (
                 <View style={[s.divider, { backgroundColor: t.border }]} />
               )}
             </React.Fragment>
           ))}
         </View>
 
-        <MissingApiState title="Visit prep save unavailable" contract="existing API reusable" />
+        {prepQuery.isLoading && <ApiState title="Loading saved checklist" loading />}
+        {prepQuery.error && (
+          <ApiState
+            title="Saved checklist unavailable"
+            message={prepQuery.error.message}
+            actionLabel="Retry"
+            onAction={prepQuery.reload}
+          />
+        )}
+        {saveError && <ApiState title="Checklist not saved" message={saveError} />}
+        {saveMessage && <ApiState title="Checklist saved" message={saveMessage} />}
+        <Button
+          label={savingPrep ? i18n('common.working') : 'Save checklist'}
+          variant="solid"
+          onPress={saveChecklist}
+          disabled={!apptId || checklistDisabled}
+        />
       </ScrollView>
     </SafeAreaView>
   );

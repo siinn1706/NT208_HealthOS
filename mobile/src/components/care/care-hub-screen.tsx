@@ -15,6 +15,7 @@ import { useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { humanizeError } from '../../api/error-message';
+import type { Appointment } from '../../../../shared/api-contracts';
 import {
   IconCalendar,
   ChevronRight,
@@ -64,9 +65,12 @@ export function CareHubScreen() {
 
   const nextAppointment = useMemo(() => {
     const rows = appointments.data ?? [];
-    return rows
-      .filter((apt) => !['cancelled', 'completed', 'no_show'].includes(apt.status) && new Date(apt.appointment_date).getTime() >= now)
-      .sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime())[0] ?? null;
+    return rows.reduce<Appointment | null>((next, apt) => {
+      const appointmentTime = new Date(apt.appointment_date).getTime();
+      if (['cancelled', 'completed', 'no_show'].includes(apt.status) || appointmentTime < now) return next;
+      if (!next) return apt;
+      return appointmentTime < new Date(next.appointment_date).getTime() ? apt : next;
+    }, null);
   }, [appointments.data, now]);
 
   const upcomingCount = useMemo(
@@ -75,9 +79,12 @@ export function CareHubScreen() {
   );
 
   const lastCompleted = useMemo(
-    () => (appointments.data ?? [])
-      .filter((apt) => ['completed'].includes(apt.status) || new Date(apt.appointment_date).getTime() < now)
-      .sort((a, b) => new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime())[0] ?? null,
+    () => (appointments.data ?? []).reduce<Appointment | null>((latest, apt) => {
+      const appointmentTime = new Date(apt.appointment_date).getTime();
+      if (apt.status !== 'completed' && appointmentTime >= now) return latest;
+      if (!latest) return apt;
+      return appointmentTime > new Date(latest.appointment_date).getTime() ? apt : latest;
+    }, null),
     [appointments.data, now],
   );
 
@@ -125,16 +132,16 @@ export function CareHubScreen() {
               <View style={styles.heroActions}>
                 {nextAppointment ? (
                   <>
-                    <Pressable style={[styles.heroBtnPrimary]} onPress={() => router.push('/care/appointments' as never)}>
+                    <Pressable style={styles.heroBtnPrimary} onPress={() => router.push('/care/appointments' as never)}>
                       <IconVideo size={16} color={heroFg} />
                       <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700', marginLeft: 6 }]}>{i18n('care.join')}</Text>
                     </Pressable>
-                    <Pressable style={[styles.heroBtnGhost]} onPress={() => router.push('/care/appointments' as never)}>
+                    <Pressable style={styles.heroBtnGhost} onPress={() => router.push('/care/appointments' as never)}>
                       <Text style={[typography.bodyMed, { color: '#FFF', fontWeight: '600' }]}>{i18n('care.prep')}</Text>
                     </Pressable>
                   </>
                 ) : (
-                  <Pressable style={[styles.heroBtnPrimary]} onPress={() => router.push('/care/appointments/new' as never)}>
+                  <Pressable style={styles.heroBtnPrimary} onPress={() => router.push('/care/appointments/new' as never)}>
                     <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700' }]}>{i18n('care.bookNow')}</Text>
                   </Pressable>
                 )}

@@ -8,7 +8,6 @@ import { TopBar } from '../../layout/top-bar';
 import { SectionHeader } from '../../layout/section-header';
 import { Card } from '../../primitives/card';
 import { Button } from '../../primitives/button';
-import { IconButton } from '../../primitives/icon-button';
 import { InsightsSegmentedTabs } from '../insights-segmented-tabs';
 import { ProgressRing } from '../../charts/progress-ring';
 import { useTheme } from '../../../theme/useTheme';
@@ -17,7 +16,7 @@ import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { reportService } from '../../../api/services';
 import {
-  IconSearch, IconFilter, IconRefresh, IconSparkle,
+  IconRefresh, IconSparkle,
   IconPlus, IconHeartPulse, IconShield, IconActivity, ChevronRight,
   IconAlert, IconPaperclip,
 } from '../../../icons';
@@ -88,7 +87,7 @@ function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
             >
               <View style={[genStyles.checkIcon, { backgroundColor: done ? t.success + '18' : active ? t.brand + '18' : t.border + '60', borderRadius: 999 }]}>
                 {done
-                  ? <Text style={{ fontSize: 10 }}>✓</Text>
+                  ? <Text style={{ fontSize: 12 }}>✓</Text>
                   : active
                     ? <View style={[genStyles.spinner, { borderColor: t.brand }]} />
                     : <View style={[genStyles.dot, { backgroundColor: t.ink4 }]} />
@@ -119,7 +118,7 @@ function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
 
 // ─── Reports Empty State ───────────────────────────────────────────────────────
 
-function ReportsEmptyState({ onLearn, onLog }: { onLearn?: () => void; onLog?: () => void }) {
+function ReportsEmptyState({ onLog }: { onLog?: () => void }) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const loggedDays = 3;
@@ -154,11 +153,7 @@ function ReportsEmptyState({ onLearn, onLog }: { onLearn?: () => void; onLog?: (
         {loggedDays} of {requiredDays} days logged
       </Text>
 
-      {/* Dual CTAs */}
-      <View style={emptyStyles.ctaRow}>
-        <Button label={i18n('insights.learnHow')} variant="ghost" size="lg" style={emptyStyles.cta} onPress={onLearn ?? (() => {})} />
-        <Button label={i18n('insights.logToday')} variant="solid" size="lg" style={emptyStyles.cta} onPress={onLog ?? (() => {})} />
-      </View>
+      <Button label={i18n('insights.logToday')} variant="solid" size="lg" style={emptyStyles.cta} onPress={onLog ?? (() => {})} />
 
       {/* Info note */}
       <View style={[emptyStyles.note, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
@@ -346,12 +341,6 @@ export function ReportsHubScreen() {
       <TopBar
         title={i18n('insights.title')}
         subtitle={i18n('insights.subtitle')}
-        right={
-          <View style={styles.topActions}>
-            <IconButton icon={<IconSearch size={20} color={t.ink3} />} variant="subtle" accessibilityLabel={i18n('common.search')} />
-            <IconButton icon={<IconFilter size={20} color={t.ink3} />} variant="subtle" accessibilityLabel={i18n('common.filter')} />
-          </View>
-        }
       />
 
       <InsightsSegmentedTabs active="reports" />
@@ -370,7 +359,7 @@ export function ReportsHubScreen() {
       {error && (
         <ReportsErrorState
           onRetry={() => { report7d.reload(); report30d.reload(); }}
-          onReconnect={() => {}}
+          onReconnect={() => router.push('/profile/devices' as never)}
         />
       )}
 
@@ -483,7 +472,6 @@ export function ReportsHubScreen() {
 }
 
 const styles = StyleSheet.create({
-  topActions:     { flexDirection: 'row', gap: 4 },
   heroCard:       { padding: 20, marginTop: 12, marginBottom: 12 },
   heroTag:        { flexDirection: 'row', alignItems: 'center' },
   heroButtons:    { flexDirection: 'row', gap: 10 },
@@ -516,8 +504,7 @@ const emptyStyles = StyleSheet.create({
   iconTile: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
   dotsRow:  { flexDirection: 'row', gap: 8, marginTop: 20 },
   dayDot:   { width: 10, height: 10, borderRadius: 5 },
-  ctaRow:   { flexDirection: 'row', gap: 12, marginTop: 24, width: '100%' },
-  cta:      { flex: 1 },
+  cta:      { marginTop: 24, width: '100%' },
   note:     { padding: 14, marginTop: 20, width: '100%' },
 });
 

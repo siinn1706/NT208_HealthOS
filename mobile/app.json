@@ -20,6 +20,7 @@
       "bundleIdentifier": "com.nt208.healthos"
     },
     "android": {
+      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/adaptive-icon.png",
         "backgroundColor": "#F4FCFE"

@@ -22,29 +22,29 @@ interface AuthFlowScreenProps {
   permissionKind?: 'notifications' | 'camera' | 'health-data';
 }
 
+function AuthFlowBody({ kind, permissionKind }: AuthFlowScreenProps) {
+  switch (kind) {
+    case 'welcome':     return <AuthWelcomeScreen />;
+    case 'sign-in':     return <AuthSignInScreen />;
+    case 'sign-up':     return <AuthSignUpScreen />;
+    case 'otp':         return <AuthOtpScreen />;
+    case 'mfa':         return <AuthMfaScreen />;
+    case 'setup':       return <AuthSetupScreen />;
+    case 'forgot':      return <AuthForgotPasswordScreen />;
+    case 'permissions': return <PermissionsScreen kind={permissionKind ?? 'notifications'} />;
+  }
+}
+
 export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
   const t = useTheme();
   const isWelcome = kind === 'welcome';
   const showHeader = !isWelcome;
   const showSkip = kind === 'permissions';
 
-  function renderInner() {
-    switch (kind) {
-      case 'welcome':     return <AuthWelcomeScreen />;
-      case 'sign-in':     return <AuthSignInScreen />;
-      case 'sign-up':     return <AuthSignUpScreen />;
-      case 'otp':         return <AuthOtpScreen />;
-      case 'mfa':         return <AuthMfaScreen />;
-      case 'setup':       return <AuthSetupScreen />;
-      case 'forgot':      return <AuthForgotPasswordScreen />;
-      case 'permissions': return <PermissionsScreen kind={permissionKind ?? 'notifications'} />;
-    }
-  }
-
   if (isWelcome) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: t.bg }]}>
-        {renderInner()}
+        <AuthFlowBody kind={kind} permissionKind={permissionKind} />
       </SafeAreaView>
     );
   }
@@ -62,7 +62,7 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
           />
           {showSkip && (
             <Pressable
-              onPress={() => router.replace('/(tabs)/home')}
+              onPress={() => router.replace('/home')}
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Skip"
@@ -80,7 +80,7 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {renderInner()}
+        <AuthFlowBody kind={kind} permissionKind={permissionKind} />
       </ScrollView>
     </SafeAreaView>
   );

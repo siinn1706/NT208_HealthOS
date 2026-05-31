@@ -1,25 +1,43 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { router } from 'expo-router';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
 import { ApiState } from '../api/api-state';
-import { IconBell, IconCalendar, IconTarget, IconActivity, IconCheck, IconMore } from '../../icons';
+import { IconBell, IconCalendar, IconTarget, IconActivity, IconCheck } from '../../icons';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { notificationService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
+import { ROUTES } from '../../lib/routes';
+import type { NotificationItem } from '../../../../shared/api-contracts';
 
 const TABS = ['All', 'Reminders', 'Care team', 'Insight'] as const;
 type TabKey = typeof TABS[number];
 
-const KIND_MAP: Record<TabKey, string | null> = {
+const KIND_MAP: Record<TabKey, string[] | null> = {
   All:        null,
-  Reminders:  'medication',
-  'Care team':'care',
-  Insight:    'insight',
+  Reminders:  ['reminder', 'medication', 'medicine'],
+  'Care team':['care', 'message', 'appointment'],
+  Insight:    ['insight', 'report', 'goal', 'activity', 'data_export'],
 };
+
+const MOBILE_ROUTE_PREFIXES = [
+  '/auth',
+  '/care',
+  '/chat',
+  '/home',
+  '/insights',
+  '/me',
+  '/meals',
+  '/meds',
+  '/profile',
+  '/reminders',
+] as const;
+
+const SAFE_ROUTE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 function toRelative(value: string) {
   const date = new Date(value);
@@ -53,33 +71,72 @@ function catColor(t: ReturnType<typeof useTheme>, kind: string) {
   return t.brand;
 }
 
-// Inline action buttons derived from notification kind
-function inlineActions(kind: string): string[] {
-  const k = kind.toLowerCase();
-  if (k.includes('medication') || k.includes('medicine')) return ['Take', 'Skip'];
-  if (k.includes('appointment')) return ['View'];
-  if (k.includes('message') || k.includes('care')) return ['Reply'];
-  return [];
+function isAllowedMobilePath(path: string): boolean {
+  return MOBILE_ROUTE_PREFIXES.some((prefix) => (
+    path === prefix || path.startsWith(`${prefix}/`)
+  ));
 }
 
-type Notif = {
-  id: string;
-  kind: string;
-  title: string;
-  body: string;
-  is_read: boolean;
-  created_at: string;
-};
+function safeRouteId(value: string): string | null {
+  return SAFE_ROUTE_ID_PATTERN.test(value) ? value : null;
+}
+
+function dashboardNotificationPath(pathname: string): string | null {
+  const medicationPrefix = '/dashboard/medications/';
+  if (pathname.startsWith(medicationPrefix)) {
+    const id = safeRouteId(pathname.slice(medicationPrefix.length));
+    return id ? `/meds/${encodeURIComponent(id)}` : ROUTES.meds;
+  }
+  if (pathname === '/dashboard/reminders') return ROUTES.reminders;
+  if (pathname === '/dashboard/reports') return ROUTES.insights;
+  if (pathname === '/dashboard/settings' || pathname === '/dashboard/profile') return ROUTES.me;
+  if (pathname === '/dashboard/emergency-card') return ROUTES.me;
+  if (pathname === '/dashboard/notifications') return '/reminders/notifications';
+  if (pathname === '/dashboard/health') return ROUTES.homeVitals;
+  if (pathname === '/dashboard/appointments') return ROUTES.careAppointments;
+  const appointmentPrefix = '/dashboard/appointments/';
+  if (pathname.startsWith(appointmentPrefix)) {
+    const id = safeRouteId(pathname.slice(appointmentPrefix.length));
+    return id ? `/care/appointment/${encodeURIComponent(id)}` : ROUTES.careAppointments;
+  }
+  return null;
+}
+
+function mobileNotificationPath(link: string | null): string | null {
+  const path = link?.trim();
+  if (!path) return null;
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://')) return null;
+  try {
+    const parsed = new URL(path, 'https://healthos.local');
+    if (parsed.pathname.startsWith('/dashboard/')) {
+      return dashboardNotificationPath(parsed.pathname);
+    }
+    return isAllowedMobilePath(parsed.pathname) ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+function actionErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim() ? error.message : fallback;
+}
+
+function matchesKind(item: Notif, tokens: string[] | null) {
+  if (!tokens) return true;
+  const kind = item.kind.toLowerCase();
+  return tokens.some((token) => kind.includes(token));
+}
+
+type Notif = NotificationItem;
 
 function NotifRow({
-  n, color, onRead,
-}: { n: Notif; color: string; onRead: () => void }) {
+  n, color, onPress,
+}: { n: Notif; color: string; onPress: () => void }) {
   const t = useTheme();
-  const actions = inlineActions(n.kind);
 
   return (
     <TouchableOpacity
-      onPress={onRead}
+      onPress={onPress}
       activeOpacity={0.75}
       style={[styles.notifRow, { backgroundColor: n.is_read ? 'transparent' : `${t.brand}06` }]}
     >
@@ -105,21 +162,6 @@ function NotifRow({
           <Text style={[styles.notifTime, { color: t.ink4 }]}>{toRelative(n.created_at)}</Text>
         </View>
         <Text style={[styles.notifBody, { color: t.ink3 }]} numberOfLines={2}>{n.body}</Text>
-
-        {/* Inline action buttons */}
-        {!n.is_read && actions.length > 0 && (
-          <View style={styles.actionRow}>
-            {actions.map((label) => (
-              <TouchableOpacity
-                key={label}
-                onPress={onRead}
-                style={[styles.miniBtn, { backgroundColor: t.bgElev, borderColor: t.border }]}
-              >
-                <Text style={[styles.miniBtnText, { color: t.ink }]}>{label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -129,6 +171,7 @@ export function NotificationsInboxScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const [tab, setTab] = useState<TabKey>('All');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(() => notificationService.list({ per_page: 100 }), []);
   const notifications = useApiQuery(queryKeys.notifications, load);
@@ -138,7 +181,7 @@ export function NotificationsInboxScreen() {
   const filtered = useMemo(() => {
     const match = KIND_MAP[tab];
     if (!match) return allList;
-    return allList.filter((item) => item.kind.toLowerCase().includes(match));
+    return allList.filter((item) => matchesKind(item, match));
   }, [allList, tab]);
 
   // Tab counts
@@ -148,7 +191,7 @@ export function NotificationsInboxScreen() {
     for (const tb of TABS) {
       if (tb === 'All') continue;
       const match = KIND_MAP[tb];
-      if (match) counts[tb] = allList.filter((n) => !n.is_read && n.kind.toLowerCase().includes(match)).length;
+      if (match) counts[tb] = allList.filter((n) => !n.is_read && matchesKind(n, match)).length;
     }
     return counts;
   }, [allList]);
@@ -158,32 +201,50 @@ export function NotificationsInboxScreen() {
   const earlierItems = useMemo(() => filtered.filter((n) => n.is_read || !isToday(n.created_at)), [filtered]);
 
   async function markAllRead() {
-    await notificationService.markAllRead();
-    invalidateApiQuery('notifications.');
-    notifications.reload();
+    setActionError(null);
+    try {
+      await notificationService.markAllRead();
+      invalidateApiQuery('notifications.');
+      void notifications.reload();
+    } catch (error) {
+      setActionError(actionErrorMessage(error, i18n('reminders.notificationActionFailed')));
+    }
   }
 
-  async function markRead(id: string) {
-    await notificationService.markRead(id);
-    invalidateApiQuery('notifications.');
-    notifications.reload();
+  async function markRead(id: string): Promise<boolean> {
+    setActionError(null);
+    try {
+      await notificationService.markRead(id);
+      invalidateApiQuery('notifications.');
+      void notifications.reload();
+      return true;
+    } catch (error) {
+      setActionError(actionErrorMessage(error, i18n('reminders.notificationActionFailed')));
+      return false;
+    }
+  }
+
+  async function openNotification(item: Notif) {
+    if (!item.is_read) {
+      await markRead(item.id);
+    }
+    const path = mobileNotificationPath(item.link);
+    if (path) router.push(path as never);
   }
 
   return (
     <Screen scroll={false} padding={false}>
       <TopBar
         title={i18n('reminders.notificationInbox')}
-        subtitle={`${tabCounts.All} ${i18n('reminders.unread')} · all caught up tomorrow`}
+        subtitle={`${tabCounts.All} ${i18n('reminders.unread')}`}
         right={
           <View style={styles.topBtns}>
             <TouchableOpacity
+              accessibilityLabel={i18n('reminders.markAllRead')}
               onPress={markAllRead}
               style={[styles.topIconBtn, { backgroundColor: t.bgElev, borderColor: t.border }]}
             >
               <IconCheck size={16} color={t.ink3} />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.topIconBtn, { backgroundColor: t.bgElev, borderColor: t.border }]}>
-              <IconMore size={16} color={t.ink3} />
             </TouchableOpacity>
           </View>
         }
@@ -221,6 +282,9 @@ export function NotificationsInboxScreen() {
           );
         })}
       </ScrollView>
+      {actionError && (
+        <Text style={[styles.actionError, { color: t.danger }]}>{actionError}</Text>
+      )}
 
       {notifications.isLoading && <ApiState title={i18n('api.loading')} loading />}
       {notifications.error && (
@@ -241,7 +305,7 @@ export function NotificationsInboxScreen() {
               <View style={[styles.groupCard, { backgroundColor: t.card, borderColor: t.border }]}>
                 {newItems.map((n, i) => (
                   <View key={n.id}>
-                    <NotifRow n={n} color={catColor(t, n.kind)} onRead={() => markRead(n.id)} />
+                    <NotifRow n={n} color={catColor(t, n.kind)} onPress={() => openNotification(n)} />
                     {i < newItems.length - 1 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
                   </View>
                 ))}
@@ -256,7 +320,7 @@ export function NotificationsInboxScreen() {
               <View style={[styles.groupCard, { backgroundColor: t.card, borderColor: t.border }]}>
                 {earlierItems.map((n, i) => (
                   <View key={n.id}>
-                    <NotifRow n={n} color={catColor(t, n.kind)} onRead={() => markRead(n.id)} />
+                    <NotifRow n={n} color={catColor(t, n.kind)} onPress={() => openNotification(n)} />
                     {i < earlierItems.length - 1 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
                   </View>
                 ))}
@@ -289,6 +353,7 @@ const styles = StyleSheet.create({
   tabPillText: { fontSize: 13, fontWeight: '600' },
   countBadge:  { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 100 },
   countBadgeText: { fontSize: 11, fontWeight: '700' },
+  actionError: { marginHorizontal: 20, marginBottom: 8, fontSize: 12, lineHeight: 17, fontWeight: '600' },
 
   // list
   listContent:  { paddingHorizontal: 20, paddingTop: 4 },
@@ -305,11 +370,6 @@ const styles = StyleSheet.create({
   notifTitle:   { flex: 1, fontSize: 13, lineHeight: 18 },
   notifTime:    { fontSize: 10, flexShrink: 0, marginTop: 2 },
   notifBody:    { fontSize: 12, lineHeight: 17, marginTop: 3 },
-
-  // inline actions
-  actionRow:    { flexDirection: 'row', gap: 8, marginTop: 8 },
-  miniBtn:      { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
-  miniBtnText:  { fontSize: 12, fontWeight: '600' },
 
   empty: { alignItems: 'center', paddingTop: 48 },
 });

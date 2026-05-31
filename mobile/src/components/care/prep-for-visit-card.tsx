@@ -6,11 +6,15 @@ import { IconSparkle } from '../../icons';
 import { Button } from '../primitives/button';
 
 interface PrepForVisitCardProps {
+  doctorName?: string | null;
   onPress?: () => void;
 }
 
-export function PrepForVisitCard({ onPress }: PrepForVisitCardProps) {
+export function PrepForVisitCard({ doctorName, onPress }: PrepForVisitCardProps) {
   const t = useTheme();
+  const subtitle = doctorName
+    ? `AI-generated questions for ${doctorName}`
+    : 'AI-generated questions for your next visit';
 
   return (
     <View
@@ -24,7 +28,7 @@ export function PrepForVisitCard({ onPress }: PrepForVisitCardProps) {
         <View style={styles.text}>
           <Text style={[typography.bodyMed, { color: t.ink }]}>Prep for your visit</Text>
           <Text style={[typography.caption, { color: t.ink3 }]}>
-            AI-generated questions for Dr. Nguyen
+            {subtitle}
           </Text>
         </View>
       </View>

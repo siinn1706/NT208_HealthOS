@@ -43,7 +43,7 @@ export default function PrimitivesPlayground() {
     <SafeAreaView style={{ flex: 1, backgroundColor: t.bg }}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={[typography.topBarTitle, { color: t.ink, marginBottom: 4 }]}>Primitives QA</Text>
-        <Text style={[typography.caption, { color: t.ink3, marginBottom: 24 }]}>All 3 themes — switch via Me → Preferences</Text>
+        <Text style={[typography.caption, { color: t.ink3, marginBottom: 24 }]}>All 3 themes - switch via Me → Preferences</Text>
 
         <Section title="Button sizes">
           <View style={styles.row}>

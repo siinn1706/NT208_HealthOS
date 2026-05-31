@@ -62,7 +62,7 @@ export function IdentityCard({ name, email, age, gender, city, level, verified, 
           </View>
         )}
       </View>
-      <Text style={[{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3, color: t.ink, marginTop: 12 }]}>{name}</Text>
+      <Text style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3, color: t.ink, marginTop: 12 }}>{name}</Text>
       {email && (
         <Text style={[typography.caption, { color: t.ink3, marginTop: 2, fontSize: 13 }]}>{email}</Text>
       )}

@@ -13,6 +13,8 @@ import { ChevronLeft, IconRefresh } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
+import { RefillStatusCard } from './refill-status-card';
+import { defaultRefillUnits, parseRefillUnits } from './refill-units';
 
 export function RefillLogScreen() {
   const t = useTheme();
@@ -27,17 +29,35 @@ export function RefillLogScreen() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(false);
 
+  const hasSupply = medication.data?.refill_supply_units !== null && medication.data?.refill_supply_units !== undefined;
   const currentUnits = medication.data?.refill_supply_units ?? 0;
-  const isRunningLow = currentUnits > 0 && currentUnits <= 7;
+  const refillUnitsFallback = defaultRefillUnits(medication.data?.refill_supply_units);
+  const refillUnitsPreview = parseRefillUnits(supplyUnits, refillUnitsFallback);
+  const isRunningLow = hasSupply && currentUnits <= 7;
+
+  function openConfirm() {
+    const parsed = parseRefillUnits(supplyUnits, refillUnitsFallback);
+    if ('errorKey' in parsed) {
+      setError(i18n(parsed.errorKey as any));
+      return;
+    }
+    setError(null);
+    setConfirmOpen(true);
+  }
 
   async function logRefill() {
     if (!medication.data) return;
+    const parsed = parseRefillUnits(supplyUnits, refillUnitsFallback);
+    if ('errorKey' in parsed) {
+      setConfirmOpen(false);
+      setError(i18n(parsed.errorKey as any));
+      return;
+    }
     setConfirmOpen(false);
     setSaving(true);
     setError(null);
     try {
-      const units = supplyUnits.trim() ? parseInt(supplyUnits, 10) : (medication.data.refill_supply_units ?? 30);
-      await medicationService.refill(medication.data.id, Number.isNaN(units) ? 30 : units);
+      await medicationService.refill(medication.data.id, parsed.units);
       invalidateApiQuery(queryKeys.medications);
       invalidateApiQuery(queryKeys.medication(medication.data.id));
       await medication.reload();
@@ -69,7 +89,10 @@ export function RefillLogScreen() {
           <View style={[s.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
             <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>{i18n('meds.logRefillConfirm')}</Text>
             <Text style={[typography.body, { color: t.ink2, marginBottom: 16 }]}>
-              This will record a refill of {supplyUnits.trim() ? supplyUnits : (medication.data?.refill_supply_units ?? 30)} units for {medication.data?.name}.
+              {i18n('meds.logRefillConfirmMessage', {
+                units: 'units' in refillUnitsPreview ? refillUnitsPreview.units : refillUnitsFallback,
+                name: medication.data?.name ?? '',
+              })}
             </Text>
             <View style={s.confirmRow}>
               <Button label={i18n('common.cancel')} variant="ghost" onPress={() => setConfirmOpen(false)} style={s.confirmBtn} />
@@ -83,7 +106,7 @@ export function RefillLogScreen() {
       <Modal visible={missingOpen} transparent animationType="fade" onRequestClose={() => setMissingOpen(false)}>
         <Pressable style={s.modalBackdrop} onPress={() => setMissingOpen(false)}>
           <View style={[s.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <MissingApiState title="Request refill" contract="Pharmacy refill request API not yet available." />
+            <MissingApiState title={i18n('meds.requestRefill')} contract="Pharmacy refill request API not yet available." />
             <Button label={i18n('common.close')} variant="ghost" onPress={() => setMissingOpen(false)} style={{ marginTop: 8 }} />
           </View>
         </Pressable>
@@ -98,7 +121,7 @@ export function RefillLogScreen() {
           <>
             {isRunningLow && (
               <View style={[s.alertCard, { backgroundColor: `${t.warning}18`, borderRadius: t.radius.lg, borderWidth: 1, borderColor: `${t.warning}40` }]}>
-                <Text style={[{ fontSize: 44, fontWeight: '700', color: t.warning, lineHeight: 50, textAlign: 'center' }]}>
+                <Text style={{ fontSize: 44, fontWeight: '700', color: t.warning, lineHeight: 50, textAlign: 'center' }}>
                   {currentUnits}
                 </Text>
                 <Text style={[typography.bodyMed, { color: t.warning, textAlign: 'center' }]}>{i18n('meds.unitsRemaining')}</Text>
@@ -108,17 +131,17 @@ export function RefillLogScreen() {
                 <Button
                   label={i18n('meds.requestRefill')}
                   variant="solid"
-                  style={[s.alertBtn]}
+                  style={s.alertBtn}
                   onPress={() => setMissingOpen(true)}
                 />
               </View>
             )}
 
-            <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>{i18n('meds.refillHistory')}</Text>
-            <MissingApiState title="Refill history" contract="Refill history API not yet available." />
+            <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>{i18n('meds.refillStatus')}</Text>
+            <RefillStatusCard medication={medication.data} />
 
             <Text style={[typography.micro, { color: t.brand, textAlign: 'center' }]}>
-              Contact your pharmacy to update refill history
+              {i18n('meds.contactPharmacyRefill')}
             </Text>
 
             <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 8 }]}>{i18n('meds.logRefill')}</Text>
@@ -128,7 +151,7 @@ export function RefillLogScreen() {
             <TextInput
               value={supplyUnits}
               onChangeText={setSupplyUnits}
-              placeholder={`${medication.data.refill_supply_units ?? 30}`}
+              placeholder={`${refillUnitsFallback}`}
               placeholderTextColor={t.ink4}
               keyboardType="numeric"
               style={[
@@ -141,7 +164,7 @@ export function RefillLogScreen() {
               label={saving ? i18n('meds.saving') : i18n('meds.logRefill')}
               variant="solid"
               icon={<IconRefresh size={16} color="#fff" />}
-              onPress={saving ? undefined : () => setConfirmOpen(true)}
+              onPress={saving ? undefined : openConfirm}
               style={saving && { opacity: 0.4 }}
             />
           </>

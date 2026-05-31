@@ -53,6 +53,7 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
   const [form, setForm] = useState<MedFormState>({ ...EMPTY, ...initialValues });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quickAddMessage, setQuickAddMessage] = useState<string | null>(null);
 
   function set<K extends keyof MedFormState>(key: K, value: MedFormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -87,7 +88,11 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
         await medicationService.create(toMedicationCreateBody(form));
       }
       invalidateApiQuery(queryKeys.medications);
-      router.back();
+      if (onSave) {
+        router.back();
+      } else {
+        router.replace('/meds' as never);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save medication.');
     } finally {
@@ -118,11 +123,20 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
         {/* Quick-add tiles — scan or search */}
         <View style={s.tileRow}>
           {[
-            { Icon: IconCamera, label: 'Scan barcode' },
-            { Icon: IconSearch, label: 'Search database' },
-          ].map(({ Icon, label }) => (
+            {
+              Icon: IconCamera,
+              label: 'Scan barcode',
+              message: 'Medication barcode scan is unavailable until a verified drug lookup API exists. Enter details manually.',
+            },
+            {
+              Icon: IconSearch,
+              label: 'Search database',
+              message: 'Medication database search is unavailable until a verified drug lookup API exists. Enter details manually.',
+            },
+          ].map(({ Icon, label, message }) => (
             <Pressable
               key={label}
+              onPress={() => setQuickAddMessage(message)}
               style={[s.tile, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.xl }]}
             >
               <Icon size={22} color={t.brand} />
@@ -130,6 +144,7 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
             </Pressable>
           ))}
         </View>
+        {quickAddMessage && <ApiState title="Medication lookup unavailable" message={quickAddMessage} />}
 
         <Text style={[typography.micro, s.label, { color: t.brand }]}>MEDICATION NAME</Text>
         <TextInput

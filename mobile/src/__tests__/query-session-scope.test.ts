@@ -86,4 +86,48 @@ describe('session scoped api query cache', () => {
     await waitFor(() => expect(first.result.current.isLoading).toBe(false));
     await waitFor(() => expect(second.result.current.isLoading).toBe(false));
   });
+
+  it('reloads mounted matching queries when invalidated', async () => {
+    const query = jest.fn()
+      .mockResolvedValueOnce(['old-med'])
+      .mockResolvedValueOnce(['fresh-med']);
+
+    const hook = renderHook(() => useApiQuery('medications.list', query));
+    await waitFor(() => expect(hook.result.current.data).toEqual(['old-med']));
+
+    act(() => {
+      invalidateApiQuery('medications.');
+    });
+
+    await waitFor(() => expect(hook.result.current.data).toEqual(['fresh-med']));
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not reload mounted queries for unrelated invalidation prefixes', async () => {
+    const query = jest.fn().mockResolvedValue(['med']);
+
+    const hook = renderHook(() => useApiQuery('medications.list', query));
+    await waitFor(() => expect(hook.result.current.data).toEqual(['med']));
+
+    act(() => {
+      invalidateApiQuery('appointments.');
+    });
+
+    await waitFor(() => expect(hook.result.current.isRefreshing).toBe(false));
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload mounted queries for session-wide invalidation', async () => {
+    const query = jest.fn().mockResolvedValue(['session-data']);
+
+    const hook = renderHook(() => useApiQuery('medications.list', query));
+    await waitFor(() => expect(hook.result.current.data).toEqual(['session-data']));
+
+    act(() => {
+      invalidateApiQuery();
+    });
+
+    await waitFor(() => expect(hook.result.current.isRefreshing).toBe(false));
+    expect(query).toHaveBeenCalledTimes(1);
+  });
 });

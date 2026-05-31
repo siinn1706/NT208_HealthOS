@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-native-reanimated';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 
@@ -12,31 +11,24 @@ interface SegmentedControlProps {
 
 export function SegmentedControl({ options, value, onChange }: SegmentedControlProps) {
   const t = useTheme();
-  const idx = options.indexOf(value);
-  const indicatorX = useSharedValue(idx);
+  const idx = Math.max(0, options.indexOf(value));
   const tabW = 100 / options.length;
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    left: withTiming(`${indicatorX.value * tabW}%`, { duration: t.motion.durations.fast }),
-    width: `${tabW}%`,
-  }));
-
-  function handlePress(option: string, i: number) {
-    indicatorX.value = i;
+  function handlePress(option: string) {
     onChange(option);
   }
 
   return (
     <View style={[styles.container, { backgroundColor: t.bgElev, borderRadius: t.radius.pill }]}>
-      <Animated.View
+      <View
         style={[
           styles.indicator,
-          indicatorStyle,
+          { left: `${idx * tabW}%`, width: `${tabW}%` },
           { backgroundColor: t.card, borderRadius: t.radius.pill, ...t.shadows.card },
         ]}
       />
       {options.map((option, i) => (
-        <Pressable key={option} onPress={() => handlePress(option, i)} style={styles.tab}>
+        <Pressable key={option} onPress={() => handlePress(option)} style={styles.tab}>
           <Text
             style={[
               typography.caption,

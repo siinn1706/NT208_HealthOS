@@ -38,6 +38,7 @@ beforeEach(() => {
 
 describe('createIdempotencyKey', () => {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const originalCrypto = globalThis.crypto;
 
   it('returns a valid v4 UUID', () => {
     expect(createIdempotencyKey()).toMatch(UUID_RE);
@@ -46,6 +47,25 @@ describe('createIdempotencyKey', () => {
   it('produces unique values on each call', () => {
     const keys = new Set(Array.from({ length: 20 }, () => createIdempotencyKey()));
     expect(keys.size).toBe(20);
+  });
+
+  it('falls back to getRandomValues when randomUUID is unavailable', () => {
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: {
+        getRandomValues: (bytes: Uint8Array) => {
+          bytes.fill(0x11);
+          return bytes;
+        },
+      },
+    });
+
+    expect(createIdempotencyKey()).toBe('11111111-1111-4111-9111-111111111111');
+
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: originalCrypto,
+    });
   });
 });
 

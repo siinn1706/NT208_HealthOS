@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, use, useCallback, useEffect, useMemo, useState } from 'react';
 import { setRefreshHandler, setUnauthorizedHandler } from '../api/client';
 import { invalidateApiQuery, setApiSessionScope } from '../api/query';
 import { authService, profileService } from '../api/services';
@@ -167,7 +167,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useSession() {
-  const value = useContext(SessionContext);
+  const value = use(SessionContext);
   if (!value) throw new Error('useSession must be used inside SessionProvider');
   return value;
 }

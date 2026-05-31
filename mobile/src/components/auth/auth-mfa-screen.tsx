@@ -36,7 +36,7 @@ export function AuthMfaScreen() {
     setError(null);
     try {
       await session.completeMfaSignIn(challengeId, code.trim());
-      router.replace('/(tabs)/home');
+      router.replace('/home');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to verify MFA code.');
     } finally {

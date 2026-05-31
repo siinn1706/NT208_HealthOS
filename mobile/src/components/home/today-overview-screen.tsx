@@ -62,9 +62,9 @@ export function TodayOverviewScreen() {
         <IconButton
           variant="subtle"
           icon={<MoreHorizontal size={18} color={t.ink} />}
-          onPress={() => {}}
           accessibilityLabel={i18n('common.more')}
           size={40}
+          disabled
         />
       </View>
 
@@ -102,7 +102,7 @@ export function TodayOverviewScreen() {
                     <Text style={[typography.display, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>{score}</Text>
                   </ProgressRing>
                   <View style={styles.heroLabels}>
-                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_700Bold', letterSpacing: 1.2, fontSize: 11, marginBottom: 4 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_700Bold', letterSpacing: 0.5, fontSize: 12, marginBottom: 4 }}>
                       {i18n('home.todaysHealth')}
                     </Text>
                     <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_700Bold' }]}>
@@ -115,7 +115,7 @@ export function TodayOverviewScreen() {
                 </View>
                 <Pressable
                   style={styles.heroBtn}
-                  onPress={() => router.push('/(tabs)/home')}
+                  onPress={() => router.push('/home/score')}
                   accessibilityRole="button"
                   accessibilityLabel={i18n('home.howCalculated')}
                 >

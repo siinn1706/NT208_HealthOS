@@ -6,6 +6,11 @@ import {
   type HealthConnectSyncAdapter,
 } from '../healthconnect/orchestrator';
 import { deviceService } from '../api/services/device-service';
+import {
+  getHealthConnectExternalAccountId,
+  getStoredHealthConnectDeviceId,
+  saveHealthConnectDeviceId,
+} from '../healthconnect/health-connect-external-account-id';
 
 jest.mock('../api/services/device-service', () => ({
   deviceService: {
@@ -19,8 +24,16 @@ jest.mock('../api/services/device-service', () => ({
     patchPermissions: jest.fn(),
   },
 }));
+jest.mock('../healthconnect/health-connect-external-account-id', () => ({
+  getHealthConnectExternalAccountId: jest.fn(),
+  getStoredHealthConnectDeviceId: jest.fn(),
+  saveHealthConnectDeviceId: jest.fn(),
+}));
 
 const mockedDeviceService = deviceService as jest.Mocked<typeof deviceService>;
+const mockGetHealthConnectExternalAccountId = getHealthConnectExternalAccountId as jest.MockedFunction<typeof getHealthConnectExternalAccountId>;
+const mockGetStoredHealthConnectDeviceId = getStoredHealthConnectDeviceId as jest.MockedFunction<typeof getStoredHealthConnectDeviceId>;
+const mockSaveHealthConnectDeviceId = saveHealthConnectDeviceId as jest.MockedFunction<typeof saveHealthConnectDeviceId>;
 
 const baseDevice = {
   id: 'dev-hc-1',
@@ -69,6 +82,8 @@ beforeEach(() => {
     skipped: 0,
     errors: [],
   } as never);
+  mockGetHealthConnectExternalAccountId.mockResolvedValue('health-connect:install-1');
+  mockGetStoredHealthConnectDeviceId.mockResolvedValue(null);
 });
 
 describe('healthconnect orchestrator', () => {
@@ -208,5 +223,51 @@ describe('healthconnect orchestrator', () => {
     await syncHealthConnect(adapter);
 
     expect(mockedDeviceService.patchPermissions).toHaveBeenCalledWith('dev-hc-1', ['HeartRate', 'Steps']);
+  });
+
+  it('sends a stable external account id when creating the Health Connect device row', async () => {
+    mockedDeviceService.list.mockResolvedValueOnce([]);
+
+    await syncHealthConnect(baseAdapter);
+
+    expect(mockedDeviceService.connect).toHaveBeenCalledWith({
+      provider: 'health_connect',
+      device_label: 'Health Connect',
+      external_account_id: 'health-connect:install-1',
+    });
+    expect(mockSaveHealthConnectDeviceId).toHaveBeenCalledWith('dev-hc-1');
+  });
+
+  it('resolves sync through the locally bound Core device id instead of another connected Health Connect row', async () => {
+    mockGetStoredHealthConnectDeviceId.mockResolvedValueOnce('dev-local');
+    mockedDeviceService.list.mockResolvedValueOnce([
+      {
+        ...baseDevice,
+        id: 'dev-other',
+        device_label: 'Other install',
+      },
+      {
+        ...baseDevice,
+        id: 'dev-local',
+        connected: false,
+        device_label: 'This install',
+        scopes: ['Steps'],
+      },
+    ]);
+    mockedDeviceService.connect.mockResolvedValueOnce({
+      ...baseDevice,
+      id: 'dev-local',
+      device_label: 'This install',
+    } as never);
+
+    await syncHealthConnect(baseAdapter);
+
+    expect(mockedDeviceService.connect).toHaveBeenCalledWith({
+      provider: 'health_connect',
+      device_label: 'This install',
+      external_account_id: 'health-connect:install-1',
+      scopes: ['Steps'],
+    });
+    expect(mockedDeviceService.getSyncState).toHaveBeenCalledWith('dev-local');
   });
 });

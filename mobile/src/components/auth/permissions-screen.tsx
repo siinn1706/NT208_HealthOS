@@ -60,13 +60,14 @@ interface PermissionsScreenProps {
   kind: PermissionKind;
 }
 
+function continueToHome() {
+  router.replace('/home');
+}
+
 export function PermissionsScreen({ kind }: PermissionsScreenProps) {
   const t = useTheme();
   const config = CONFIG[kind];
   const { Icon } = config;
-  function handleContinue() {
-    router.replace('/(tabs)/home');
-  }
 
   return (
     <View style={styles.root}>
@@ -111,8 +112,8 @@ export function PermissionsScreen({ kind }: PermissionsScreenProps) {
 
       {/* CTAs */}
       <View style={styles.ctas}>
-        <Button label={config.ctaLabel} size="lg" onPress={handleContinue} />
-        <Button label="Not now" variant="text" size="md" onPress={handleContinue} />
+        <Button label={config.ctaLabel} size="lg" onPress={continueToHome} />
+        <Button label="Not now" variant="text" size="md" onPress={continueToHome} />
       </View>
     </View>
   );

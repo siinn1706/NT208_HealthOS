@@ -24,6 +24,7 @@ export function TakeMedConfirmScreen() {
   const dose = doses.data?.find((item) => item.medication_plan_id === medicationId) ?? null;
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [loggedAt, setLoggedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function confirm() {
@@ -34,6 +35,7 @@ export function TakeMedConfirmScreen() {
       await medicationService.markDoseDone(dose.reminder_id, dose.occurrence_id);
       invalidateApiQuery(queryKeys.medications);
       invalidateApiQuery(queryKeys.medicationDosesToday);
+      setLoggedAt(new Date().toISOString());
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not mark dose as taken.');
@@ -74,7 +76,7 @@ export function TakeMedConfirmScreen() {
             </Text>
             <Text style={[typography.caption, { color: t.ink4, textAlign: 'center', marginTop: 4 }]}>
               {done
-                ? `Logged at ${formatTime(new Date().toISOString())}`
+                ? `Logged at ${formatTime(loggedAt ?? dose.scheduled_at)}`
                 : `Scheduled for ${formatTime(dose.scheduled_at)}`}
             </Text>
 

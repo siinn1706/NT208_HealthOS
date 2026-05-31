@@ -1,5 +1,13 @@
 import { apiRequest } from '../client';
-import type { Appointment, AppointmentCreateBody, AppointmentUpdateBody, DataResponse, PaginatedResponse } from '../../../../shared/api-contracts';
+import type {
+  Appointment,
+  AppointmentCreateBody,
+  AppointmentPrep,
+  AppointmentPrepUpdateBody,
+  AppointmentUpdateBody,
+  DataResponse,
+  PaginatedResponse,
+} from '../../../../shared/api-contracts';
 
 export const appointmentService = {
   async list(params: { limit?: number; cursor?: string } = {}) {
@@ -26,6 +34,19 @@ export const appointmentService = {
 
   async update(id: string, body: AppointmentUpdateBody) {
     const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      json: body,
+    });
+    return response.data;
+  },
+
+  async getPrep(id: string) {
+    const response = await apiRequest<DataResponse<AppointmentPrep>>(`/v1/appointments/${encodeURIComponent(id)}/prep`);
+    return response.data;
+  },
+
+  async updatePrep(id: string, body: AppointmentPrepUpdateBody) {
+    const response = await apiRequest<DataResponse<AppointmentPrep>>(`/v1/appointments/${encodeURIComponent(id)}/prep`, {
       method: 'PATCH',
       json: body,
     });

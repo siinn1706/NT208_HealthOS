@@ -1,13 +1,14 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, Modal, Pressable, TextInput, View, StyleSheet, Text } from 'react-native';
+import { FlatList, TextInput, View, StyleSheet } from 'react-native';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
 import { SectionHeader } from '../../src/components/layout/section-header';
 import { IconButton } from '../../src/components/primitives/icon-button';
-import { ApiState, MissingApiState } from '../../src/components/api/api-state';
+import { ApiState } from '../../src/components/api/api-state';
 import { ChatListSkeleton } from '../../src/components/api/skeletons';
 import { AiAssistantHero } from '../../src/components/chat/ai-assistant-hero';
 import { ConversationRow } from '../../src/components/chat/conversation-row';
+import { NewChatModal } from '../../src/components/chat/new-chat-modal';
 import { IconSearch, IconPlus } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +19,7 @@ import { queryKeys } from '../../src/api/queryKeys';
 import { toConversationRow } from '../../src/api/viewModels';
 import { humanizeError } from '../../src/api/error-message';
 import { useSession } from '../../src/auth/session-provider';
-import { typography } from '../../src/theme/typography';
+import type { Conversation } from '../../../shared/api-contracts';
 
 const AI_SUGGESTIONS = [
   'How am I doing today?',
@@ -85,6 +86,12 @@ export default function ChatScreen() {
       onPress={() => router.push(`/chat/${item.id}` as never)}
     />
   ), []);
+
+  const handleConversationCreated = useCallback((conversation: Conversation) => {
+    invalidateApiQuery(queryKeys.conversations);
+    setNewChatOpen(false);
+    router.push(`/chat/${conversation.id}` as never);
+  }, []);
 
   const listHeader = (
     <>
@@ -170,28 +177,11 @@ export default function ChatScreen() {
         contentContainerStyle={styles.listContent}
       />
 
-      {/* New chat modal */}
-      <Modal
+      <NewChatModal
         visible={newChatOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setNewChatOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <MissingApiState
-              title={i18n('chat.startNewConversation')}
-              contract={i18n('chat.createConversationUnavailable')}
-            />
-            <Pressable
-              onPress={() => setNewChatOpen(false)}
-              style={[styles.closeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
-            >
-              <Text style={[typography.bodyMed, { color: '#FFF' }]}>{i18n('common.close')}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setNewChatOpen(false)}
+        onCreated={handleConversationCreated}
+      />
     </Screen>
   );
 }
@@ -199,8 +189,5 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   actions:      { flexDirection: 'row', gap: 4 },
   searchInput:  { marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, fontSize: 14 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalSheet:   { width: '100%', padding: 20 },
-  closeBtn:     { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
   listContent:  { paddingBottom: 120 },
 });
