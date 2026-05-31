@@ -104,6 +104,9 @@ async def handle_ws_event(
 
     # ── Join conversation room ─────────────────────────────────────────────────
     elif event_type == "conv:join":
+        if not manager.check_signal_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending events too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         try:
             conv_id = uuid.UUID(conv_id_str)
@@ -267,6 +270,9 @@ async def handle_ws_event(
 
     # ── React to message ───────────────────────────────────────────────────────
     elif event_type in {"msg:react", "chat.message.react"}:
+        if not manager.check_signal_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending events too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         emoji = payload.get("emoji", "")
@@ -300,6 +306,9 @@ async def handle_ws_event(
 
     # ── Pin message ────────────────────────────────────────────────────────────
     elif event_type == "msg:pin":
+        if not manager.check_signal_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending events too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         try:
@@ -322,6 +331,9 @@ async def handle_ws_event(
 
     # ── Unpin message ──────────────────────────────────────────────────────────
     elif event_type == "msg:unpin":
+        if not manager.check_signal_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending events too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         msg_id_str = payload.get("message_id", "")
         try:
@@ -344,6 +356,9 @@ async def handle_ws_event(
 
     # ── Mark as read ───────────────────────────────────────────────────────────
     elif event_type in {"msg:read", "chat.message.read"}:
+        if not manager.check_signal_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending events too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         last_msg_id_str = payload.get("last_read_message_id", "")
         try:
@@ -370,6 +385,8 @@ async def handle_ws_event(
 
     # ── Typing indicator ───────────────────────────────────────────────────────
     elif event_type in {"typing", "chat.typing"}:
+        if not manager.check_signal_rate_limit(user_id_str):
+            return  # drop typing under flood — it's a best-effort signal
         conv_id_str = payload.get("conversation_id", "")
         is_typing = bool(payload.get("is_typing", True))
         try:
@@ -396,6 +413,9 @@ async def handle_ws_event(
 
     # ── Delta sync ─────────────────────────────────────────────────────────────
     elif event_type == "conv:sync":
+        if not manager.check_signal_rate_limit(user_id_str):
+            await ack_error("RATE_LIMITED", "You are sending events too fast.")
+            return
         conv_id_str = payload.get("conversation_id", "")
         after_msg_id_str = payload.get("after_message_id")
         limit = int(payload.get("limit", 50))

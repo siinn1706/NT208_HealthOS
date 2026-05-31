@@ -28,19 +28,21 @@ from fastapi import WebSocket
 
 
 class _RateLimiter:
-    """Token bucket rate limiter — 5 tokens/s, burst up to 10."""
+    """Token bucket rate limiter (defaults: 5 tokens/s, burst up to 10)."""
 
     RATE = 5.0   # tokens per second
     BURST = 10   # max bucket size
 
-    def __init__(self) -> None:
+    def __init__(self, rate: float | None = None, burst: int | None = None) -> None:
+        self.rate = rate if rate is not None else self.RATE
+        self.burst = burst if burst is not None else self.BURST
         self._buckets: dict[str, tuple[float, float]] = {}  # user_id → (tokens, last_refill_ts)
 
     def allow(self, user_id: str) -> bool:
         now = time.monotonic()
-        tokens, last = self._buckets.get(user_id, (self.BURST, now))
+        tokens, last = self._buckets.get(user_id, (self.burst, now))
         elapsed = now - last
-        tokens = min(self.BURST, tokens + elapsed * self.RATE)
+        tokens = min(self.burst, tokens + elapsed * self.rate)
         if tokens < 1:
             self._buckets[user_id] = (tokens, now)
             return False
@@ -74,6 +76,11 @@ class ConnectionManager:
         self.ws_to_rooms: dict[WebSocket, set[str]] = {}
         self.presence: dict[str, dict[str, Any]] = {}
         self._rate_limiter = _RateLimiter()
+        # Lighter, higher-rate bucket for frequent low-cost signal events
+        # (typing, read receipts, reactions, pins, conv sync/join) so a client
+        # can't flood them, while keeping them off the message bucket so fast
+        # signals never starve a real msg:send.
+        self._signal_rate_limiter = _RateLimiter(rate=20.0, burst=40)
         self._heartbeat_tasks: dict[WebSocket, asyncio.Task] = {}
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -118,6 +125,7 @@ class ConnectionManager:
             if not sockets:
                 self.user_connections.pop(user_id, None)
                 self._rate_limiter.cleanup(user_id)
+                self._signal_rate_limiter.cleanup(user_id)
                 self.presence[user_id] = {
                     "is_online": False,
                     "last_seen_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -176,6 +184,10 @@ class ConnectionManager:
 
     def check_rate_limit(self, user_id: str) -> bool:
         return self._rate_limiter.allow(user_id)
+
+    def check_signal_rate_limit(self, user_id: str) -> bool:
+        """Rate-limit high-frequency signal events (typing/read/react/pin/sync)."""
+        return self._signal_rate_limiter.allow(user_id)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Presence
