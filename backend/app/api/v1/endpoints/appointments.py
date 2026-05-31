@@ -16,7 +16,9 @@ from app.schemas.appointments import (
     AppointmentUpdateBody,
     AppointmentStatusUpdateBody,
 )
+from app.schemas.appointment_prep import AppointmentPrepResponse, AppointmentPrepUpdateBody
 from app.schemas.common import ErrorResponse, PaginationMeta
+from app.services import appointment_prep as prep_svc
 from app.services import appointments as appointment_svc
 from app.services.appointments import InvalidStatusTransition
 
@@ -95,6 +97,60 @@ async def get_appointment(
             detail={"code": "NOT_FOUND", "message": "Appointment not found."},
         )
     return AppointmentResponse(data=item)
+
+
+@router.get(
+    "/{appointment_id}/prep",
+    response_model=AppointmentPrepResponse,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Get appointment prep checklist",
+)
+async def get_appointment_prep(
+    appointment_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AppointmentPrepResponse:
+    item = await prep_svc.get_prep(
+        db=db,
+        user_id=current_user.id,
+        appointment_id=appointment_id,
+    )
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+        )
+    return AppointmentPrepResponse(data=item)
+
+
+@router.patch(
+    "/{appointment_id}/prep",
+    response_model=AppointmentPrepResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+    },
+    summary="Update appointment prep checklist",
+)
+async def update_appointment_prep(
+    appointment_id: uuid.UUID,
+    body: AppointmentPrepUpdateBody,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AppointmentPrepResponse:
+    item = await prep_svc.upsert_prep(
+        db=db,
+        user_id=current_user.id,
+        appointment_id=appointment_id,
+        body=body,
+    )
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+        )
+    await db.commit()
+    return AppointmentPrepResponse(data=item)
 
 
 @router.patch(

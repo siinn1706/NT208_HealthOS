@@ -9,6 +9,7 @@ from celery import Task
 logger = logging.getLogger(__name__)
 
 from app.adapters.database import get_sync_db_context
+from app.adapters.storage import presign_storage_url
 from app.core.config import settings
 from app.models.core import Meal, MealStatusEnum
 from app.tasks import celery_app
@@ -93,6 +94,11 @@ def update_meal_status_sync(
         db.commit()
 
 
+def _build_ai_worker_payload(meal_id: str, image_url: str) -> dict[str, str]:
+    """Build the worker payload with a short-lived download URL."""
+    return {"meal_id": meal_id, "image_url": presign_storage_url(image_url) or image_url}
+
+
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=10)
 def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
     """Analyze meal image via AI Worker and update meal record."""
@@ -104,7 +110,7 @@ def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
         with httpx.Client(timeout=60.0) as client:
             response = client.post(
                 f"{settings.ai_worker_url}/analyze",
-                json={"meal_id": meal_id, "image_url": image_url},
+                json=_build_ai_worker_payload(meal_id, image_url),
             )
             response.raise_for_status()
             result = response.json()

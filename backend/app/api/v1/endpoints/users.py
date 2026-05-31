@@ -62,6 +62,17 @@ _MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MiB
 _ALLOWED_AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
+def _merge_medical_info(current: object, incoming: object) -> object:
+    if incoming is None:
+        return None
+    if not isinstance(incoming, dict):
+        return incoming
+
+    merged = current.copy() if isinstance(current, dict) else {}
+    merged.update(incoming)
+    return merged
+
+
 def _to_current_user_response(current_user: User) -> CurrentUserResponse:
     profile = current_user.profile
     gender_value = None
@@ -247,8 +258,16 @@ async def update_current_user_profile(
 
     for field, value in update_data.items():
         # Handle emergency_contacts and medical_info (convert to dict for JSONB)
-        if field in ("emergency_contacts", "medical_info"):
-            setattr(profile, field, [item.model_dump() if hasattr(item, "model_dump") else item for item in value] if isinstance(value, list) else value)
+        if field == "emergency_contacts":
+            contacts = value
+            if isinstance(value, list):
+                contacts = [
+                    item.model_dump() if hasattr(item, "model_dump") else item
+                    for item in value
+                ]
+            setattr(profile, field, contacts)
+        elif field == "medical_info":
+            setattr(profile, field, _merge_medical_info(profile.medical_info, value))
         else:
             setattr(profile, field, value)
 

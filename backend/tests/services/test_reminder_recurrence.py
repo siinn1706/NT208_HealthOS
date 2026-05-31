@@ -1,9 +1,9 @@
-"""Unit tests for the reminder recurrence service (B7 P5 + review P2-2/P2-3).
+"""Unit tests for the reminder recurrence service.
 
 Covers:
   * Basic enumeration for `daily`, `weekly`, `monthly`, `once`.
   * Legacy `weekly` rows without a `weekday_mask` default to "every day"
-    (review P2-2 fix — silent regression to "one weekday only" is gone).
+    so existing reminders do not degrade to one weekday only.
   * Tz-aware computation against a non-DST tz (Asia/Ho_Chi_Minh) and a DST tz
     (Europe/London) — same wall-clock time produces different UTC offsets
     across the spring-forward boundary.
@@ -69,6 +69,20 @@ def test_daily_produces_one_slot_per_day_within_horizon():
     assert all(s.tzinfo is datetime.timezone.utc for s in slots)
 
 
+def test_daily_keeps_today_slot_when_time_already_passed():
+    reminder = _make_reminder(
+        repeat=ReminderRepeatEnum.DAILY,
+        time_of_day=datetime.time(8, 0),
+        start_date=datetime.date(2026, 5, 30),
+    )
+    since = datetime.datetime(2026, 5, 30, 8, 0, tzinfo=datetime.timezone.utc)
+    slots = compute_next_n(reminder, n=3, since=since, horizon_days=2)
+    tz = ZoneInfo("Asia/Ho_Chi_Minh")
+
+    assert slots[0].astimezone(tz).date() == datetime.date(2026, 5, 30)
+    assert slots[0].astimezone(tz).time() == datetime.time(8, 0)
+
+
 def test_weekly_with_explicit_mask_picks_only_those_weekdays():
     # Mon=0, Wed=2, Fri=4 → bits 0b00010101 == 21
     reminder = _make_reminder(
@@ -85,10 +99,8 @@ def test_weekly_with_explicit_mask_picks_only_those_weekdays():
         assert slot.astimezone(tz).weekday() in {0, 2, 4}
 
 
-def test_weekly_without_mask_defaults_to_every_day_review_p2_2():
-    """B7 review P2-2 — legacy weekly rows must NOT silently degrade to
-    one weekday/week. The old code defaulted to start_date.weekday().
-    """
+def test_weekly_without_mask_defaults_to_every_day():
+    """Legacy weekly rows must not silently degrade to one weekday per week."""
     # weekday_mask=None — simulates a legacy row before B7.
     reminder = _make_reminder(
         repeat=ReminderRepeatEnum.WEEKLY,

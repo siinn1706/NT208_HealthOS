@@ -17,7 +17,7 @@ from app.api.v1.endpoints import meals as meals_endpoint
 from app.core.security import get_current_user
 from app.main import app
 from app.models.core import Meal, MealStatusEnum, User
-from app.tasks.meal_analysis import _validate_nutrition
+from app.tasks.meal_analysis import _build_ai_worker_payload, _validate_nutrition
 
 
 class _MemoryRedis:
@@ -217,6 +217,22 @@ async def test_manual_payload_persists_nutrition_and_ingredients(
 
 
 @pytest.mark.asyncio
+async def test_calories_summary_static_route_returns_daily_totals(
+    authed_client: AsyncClient,
+):
+    res = await authed_client.post("/v1/meals", json=_manual_meal_payload())
+    assert res.status_code == 201
+
+    summary = await authed_client.get(
+        "/v1/meals/calories-summary",
+        params={"date_from": "2026-05-28", "date_to": "2026-05-28"},
+    )
+
+    assert summary.status_code == 200
+    assert summary.json()["data"] == [{"date": "2026-05-28", "total_calories": 363.0}]
+
+
+@pytest.mark.asyncio
 async def test_create_idempotency_replay_returns_committed_row_once(
     authed_client: AsyncClient,
     meal_api_state,
@@ -394,6 +410,23 @@ def test_ai_nutrition_validation_preserves_valid_ingredients():
             "confidence": 0.88,
         }
     ]
+
+
+def test_ai_worker_payload_uses_presigned_download_url(monkeypatch: pytest.MonkeyPatch):
+    raw_url = "http://localhost:9000/meals/user/photo.jpg"
+    signed_url = f"{raw_url}?X-Amz-Signature=test-signature"
+    presigned_inputs: list[str] = []
+
+    def fake_presign(url: str) -> str:
+        presigned_inputs.append(url)
+        return signed_url
+
+    monkeypatch.setattr("app.tasks.meal_analysis.presign_storage_url", fake_presign)
+
+    payload = _build_ai_worker_payload("meal-1", raw_url)
+
+    assert presigned_inputs == [raw_url]
+    assert payload == {"meal_id": "meal-1", "image_url": signed_url}
 
 
 @pytest.mark.asyncio

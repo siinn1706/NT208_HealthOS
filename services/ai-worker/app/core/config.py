@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -39,6 +40,7 @@ class Settings(BaseSettings):
     ai_allowed_image_hosts: str = ""  # comma-separated; empty = any non-private host
     ai_image_download_timeout_seconds: float = 15.0
     ai_block_private_networks: bool = True
+    storage_endpoint: str = "http://localhost:9000"
 
     ai_yolo_model_path: str = str(_DEFAULT_MODEL_PATH)
     ai_class_names_path: str = str(_DEFAULT_CLASS_NAMES_PATH)
@@ -61,6 +63,20 @@ class Settings(BaseSettings):
         if not raw:
             return frozenset()
         return frozenset(h.strip().lower() for h in raw.split(",") if h.strip())
+
+    @property
+    def storage_image_hosts_set(self) -> frozenset[str]:
+        parsed = urlparse((self.storage_endpoint or "").strip())
+        host = (parsed.hostname or "").lower()
+        if not host:
+            return frozenset()
+        if parsed.port is not None:
+            return frozenset({f"{host}:{parsed.port}"})
+        return frozenset({host})
+
+    @property
+    def trusted_image_hosts_set(self) -> frozenset[str]:
+        return self.storage_image_hosts_set
 
     @property
     def yolo_model_path(self) -> Path:
