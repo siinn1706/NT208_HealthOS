@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput, Switch, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
 import { Screen } from '../layout/screen';
-import { ChevronLeft, IconBell, IconCalendar, IconHeart, IconActivity, IconTarget, IconStethoscope, IconClock } from '../../icons';
+import { ChevronLeft, IconBell, IconCalendar, IconActivity, IconClock } from '../../icons';
 import { ApiState } from '../api/api-state';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -18,10 +17,7 @@ import { reminderService } from '../../api/services';
 const CATEGORY_KEYS = [
   { id: 'med',      labelKey: 'categoryMed',      Icon: IconBell },
   { id: 'appt',     labelKey: 'categoryAppt',     Icon: IconCalendar },
-  { id: 'vitals',   labelKey: 'categoryVitals',   Icon: IconHeart },
   { id: 'activity', labelKey: 'categoryActivity', Icon: IconActivity },
-  { id: 'goal',     labelKey: 'categoryGoal',     Icon: IconTarget },
-  { id: 'care',     labelKey: 'categoryCare',     Icon: IconStethoscope },
 ] as const;
 
 type CategoryId = typeof CATEGORY_KEYS[number]['id'];
@@ -33,7 +29,6 @@ const REPEAT_TYPE_KEYS: Record<string, string> = {
   Weekdays: 'repeatWeekdays',
   Custom: 'repeatCustom',
 };
-const SNOOZE_OPTS  = ['5 min', '15 min', '30 min', '1 hour', 'Custom'] as const;
 
 // ─── component ───────────────────────────────────────────────────────────────
 
@@ -43,11 +38,10 @@ export function CreateReminderScreen() {
 
   const [title,       setTitle]       = useState('');
   const [category,    setCategory]    = useState<CategoryId>('med');
+  const [time,        setTime]        = useState('08:00');
   const [activeDays,  setActiveDays]  = useState([0, 1, 2, 3, 4]); // M–F default
   const [repeatType,  setRepeatType]  = useState('Weekdays');
-  const [snooze,      setSnooze]      = useState('15 min');
   const [notes,       setNotes]       = useState('');
-  const [pushEnabled, setPushEnabled] = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState<string | null>(null);
 
@@ -59,15 +53,23 @@ export function CreateReminderScreen() {
 
   async function handleSave() {
     if (!title.trim()) { setError('Title is required.'); return; }
+    if (!isValidTime(time)) { setError('Time must use HH:MM format.'); return; }
+    const repeat = toRepeat(repeatType);
+    const weekdayMask = repeat === 'weekly' ? toWeekdayMask(activeDays) : undefined;
+    if (repeat === 'weekly' && !weekdayMask) {
+      setError('Select at least one repeat day.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       await reminderService.create({
         type:   toReminderType(category),
         title:  title.trim(),
-        time:   '08:00',
-        repeat: toRepeat(repeatType),
-        note:   [notes, `Snooze ${snooze}`, pushEnabled ? 'push:on' : 'push:off'].filter(Boolean).join(' · '),
+        time,
+        repeat,
+        weekday_mask: weekdayMask,
+        note: notes.trim() || null,
       });
       invalidateApiQuery('reminders.');
       invalidateApiQuery(queryKeys.unreadNotifications);
@@ -81,7 +83,6 @@ export function CreateReminderScreen() {
 
   const activeCatColor = (id: CategoryId) => {
     if (id === 'activity') return t.success;
-    if (id === 'goal')     return t.warning;
     return t.brand;
   };
 
@@ -149,33 +150,17 @@ export function CreateReminderScreen() {
         <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldTime')}</Text>
         <View style={[styles.inputRow, { backgroundColor: t.card, borderColor: t.border }]}>
           <IconClock size={16} color={t.ink3} style={{ marginRight: 10 }} />
-          <Text style={[styles.inputRowText, { color: t.ink }]}>07:30</Text>
+          <TextInput
+            value={time}
+            onChangeText={setTime}
+            placeholder="08:00"
+            placeholderTextColor={t.ink4}
+            keyboardType="numbers-and-punctuation"
+            style={[styles.timeInput, { color: t.ink }]}
+          />
         </View>
 
         {/* Repeat days */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldRepeat')}</Text>
-        <View style={styles.daysRow}>
-          {REPEAT_DAYS.map((day, idx) => {
-            const on = activeDays.includes(idx);
-            return (
-              <TouchableOpacity
-                key={`${day}-${idx}`}
-                onPress={() => toggleDay(idx)}
-                style={[
-                  styles.dayBtn,
-                  {
-                    backgroundColor: on ? t.brand : t.bgElev,
-                    borderColor:     on ? t.brand : t.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.dayBtnText, { color: on ? '#fff' : t.ink3 }]}>{day}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Repeat type */}
         <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldRepeatType')}</Text>
         <View style={styles.repeatTypeRow}>
           {REPEAT_TYPES.map((r) => {
@@ -201,28 +186,31 @@ export function CreateReminderScreen() {
           })}
         </View>
 
-        {/* Snooze options */}
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldSnooze')}</Text>
-        <View style={styles.snoozeRow}>
-          {SNOOZE_OPTS.map((s) => {
-            const active = snooze === s;
-            return (
-              <TouchableOpacity
-                key={s}
-                onPress={() => setSnooze(s)}
-                style={[
-                  styles.snoozeChip,
-                  {
-                    backgroundColor: active ? t.brandSoft : 'transparent',
-                    borderColor:     active ? t.brand : t.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.snoozeChipText, { color: active ? t.brand : t.ink3 }]}>{s}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {toRepeat(repeatType) === 'weekly' && (
+          <>
+            <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldRepeat')}</Text>
+            <View style={styles.daysRow}>
+              {REPEAT_DAYS.map((day, idx) => {
+                const on = activeDays.includes(idx);
+                return (
+                  <TouchableOpacity
+                    key={`${day}-${idx}`}
+                    onPress={() => toggleDay(idx)}
+                    style={[
+                      styles.dayBtn,
+                      {
+                        backgroundColor: on ? t.brand : t.bgElev,
+                        borderColor:     on ? t.brand : t.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.dayBtnText, { color: on ? '#fff' : t.ink3 }]}>{day}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Notes */}
         <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{i18n('reminders.fieldNotes')}</Text>
@@ -235,27 +223,6 @@ export function CreateReminderScreen() {
           numberOfLines={3}
           style={[styles.notesInput, { backgroundColor: t.card, borderColor: t.border, color: t.ink }]}
         />
-
-        {/* Push notification toggle row */}
-        <View style={[styles.pushRow, { backgroundColor: t.card, borderColor: t.border }]}>
-          <View style={[styles.pushIconCell, { backgroundColor: `${t.brand}14`, borderRadius: 10 }]}>
-            <IconBell size={16} color={t.brand} />
-          </View>
-          <View style={styles.pushText}>
-            <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600', fontSize: 14 }]}>
-              {i18n('reminders.pushNotification')}
-            </Text>
-            <Text style={[typography.body, { color: t.ink3, fontSize: 12 }]}>
-              {i18n('reminders.pushNotificationSub')}
-            </Text>
-          </View>
-          <Switch
-            value={pushEnabled}
-            onValueChange={setPushEnabled}
-            trackColor={{ true: t.brand, false: t.border }}
-            thumbColor="#FFF"
-          />
-        </View>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -273,9 +240,19 @@ function toReminderType(value: CategoryId): 'medicine' | 'appointment' | 'exerci
 }
 
 function toRepeat(value: string): 'once' | 'daily' | 'weekly' | 'monthly' {
-  if (value === 'Daily' || value === 'Weekdays') return 'daily';
-  if (value === 'Weekly') return 'weekly';
+  if (value === 'Daily') return 'daily';
+  if (value === 'Weekdays' || value === 'Custom') return 'weekly';
   return 'once';
+}
+
+function toWeekdayMask(days: number[]): number {
+  return days.reduce((mask, day) => mask | (1 << day), 0);
+}
+
+function isValidTime(value: string): boolean {
+  if (!/^\d{2}:\d{2}$/.test(value)) return false;
+  const [hh, mm] = value.split(':').map(Number);
+  return hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
 }
 
 // ─── styles ───────────────────────────────────────────────────────────────────
@@ -298,7 +275,7 @@ const styles = StyleSheet.create({
   // inputs
   input:        { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15 },
   inputRow:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 14 },
-  inputRowText: { fontSize: 15, fontWeight: '500' },
+  timeInput:    { flex: 1, padding: 0, fontSize: 15, fontWeight: '500' },
 
   // repeat days
   daysRow:      { flexDirection: 'row', gap: 6 },
@@ -310,16 +287,6 @@ const styles = StyleSheet.create({
   repeatTile:     { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   repeatTileText: { fontSize: 13, fontWeight: '600' },
 
-  // snooze
-  snoozeRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  snoozeChip:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100, borderWidth: 1 },
-  snoozeChipText: { fontSize: 13, fontWeight: '600' },
-
   // notes
   notesInput: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 14, minHeight: 80, textAlignVertical: 'top' },
-
-  // push toggle
-  pushRow:      { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 8 },
-  pushIconCell: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  pushText:     { flex: 1 },
 });

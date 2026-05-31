@@ -73,7 +73,7 @@ export default function MeScreen() {
       case 'security':    router.push('/profile/security' as never); break;
       // 'app-lock' toggle is handled inside MenuRow (local state only —
       //  UserPreference has no app_lock field, so we do not persist it)
-      case 'notifications': router.push('/onboarding/permissions/notifications' as never); break;
+      case 'notifications': router.push('/reminders/preferences' as never); break;
       case 'language':    setLanguageOpen(true); break;
       case 'logout':      setSignOutOpen(true); break;
       default: break;

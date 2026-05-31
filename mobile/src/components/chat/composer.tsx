@@ -7,23 +7,29 @@ import { IconPaperclip, IconSend } from '../../icons';
 interface ComposerProps {
   onSend?: (text: string) => void;
   onAttach?: () => void;
+  disabled?: boolean;
 }
 
-export function Composer({ onSend, onAttach }: ComposerProps) {
+export function Composer({ onSend, onAttach, disabled = false }: ComposerProps) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const [text, setText] = useState('');
 
   function handleSend() {
-    if (!text.trim()) return;
+    if (disabled || !text.trim()) return;
     onSend?.(text.trim());
     setText('');
   }
 
   return (
     <View style={[styles.bar, { backgroundColor: t.card, borderTopColor: t.border }]}>
-      <Pressable style={styles.icon} accessibilityLabel={i18n('chat.attachFile')} onPress={onAttach}>
-        <IconPaperclip size={20} color={t.ink3} />
+      <Pressable
+        style={styles.icon}
+        accessibilityLabel={i18n('chat.attachFile')}
+        onPress={onAttach}
+        disabled={disabled}
+      >
+        <IconPaperclip size={20} color={disabled ? t.ink4 : t.ink3} />
       </Pressable>
       <TextInput
         value={text}
@@ -31,13 +37,15 @@ export function Composer({ onSend, onAttach }: ComposerProps) {
         placeholder={i18n('chat.messagePlaceholder')}
         placeholderTextColor={t.ink4}
         style={[styles.input, { color: t.ink, backgroundColor: t.bgElev, borderColor: t.border, borderRadius: t.radius.pill }]}
+        editable={!disabled}
         multiline
         maxLength={1000}
         blurOnSubmit={false}
       />
       <Pressable
         onPress={handleSend}
-        style={[styles.send, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
+        disabled={disabled}
+        style={[styles.send, { backgroundColor: disabled ? t.ink4 : t.brand, borderRadius: t.radius.pill }]}
         accessibilityLabel={i18n('chat.sendMessage')}
       >
         <IconSend size={18} color="#FFF" />

@@ -25,6 +25,41 @@ export function getMessageFromChatEvent(event: ChatWsEvent): Message | null {
   return payload as unknown as Message;
 }
 
+const THREAD_RELOAD_EVENTS = new Set([
+  'msg:edit',
+  'msg:delete',
+  'msg:react',
+  'msg:read',
+  'msg:pinned',
+  'msg:unpinned',
+  'ai:started',
+  'ai:completed',
+  'chat.message.edited',
+  'chat.message.recalled',
+  'chat.message.reacted',
+  'chat.message.read',
+  'chat.message.pinned',
+  'chat.message.unpinned',
+  'chat.message.ai_started',
+  'chat.message.ai_completed',
+  'chat.conversation.updated',
+  'conversation.updated',
+]);
+
+export function getThreadReloadConversationIdFromChatEvent(event: ChatWsEvent): string | null {
+  if (!THREAD_RELOAD_EVENTS.has(event.event)) return null;
+  const payload = event.payload;
+  if (!payload || typeof payload !== 'object') return null;
+  return typeof payload.conversation_id === 'string' ? payload.conversation_id : null;
+}
+
+export function getRemovedConversationIdFromChatEvent(event: ChatWsEvent): string | null {
+  if (!['chat.conversation.removed', 'conversation.removed'].includes(event.event)) return null;
+  const payload = event.payload;
+  if (!payload || typeof payload !== 'object') return null;
+  return typeof payload.conversation_id === 'string' ? payload.conversation_id : null;
+}
+
 export const chatRealtimeService = {
   async wsTicket() {
     const response = await apiRequest<DataResponse<WsTicket>>('/v1/auth/ws-ticket');

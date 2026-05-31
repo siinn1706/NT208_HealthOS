@@ -19,6 +19,24 @@ const mockBuildQuery = buildQuery as jest.MockedFunction<typeof buildQuery>;
 
 beforeEach(() => jest.clearAllMocks());
 
+describe('chatService conversations', () => {
+  it('lists accepted conversations through the Core contract', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: [{ id: 'conv-1' }], total: 1 } as never);
+
+    await expect(chatService.conversations()).resolves.toEqual([{ id: 'conv-1' }]);
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations');
+  });
+
+  it('loads conversation detail by encoded id', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { id: 'conv/1' } } as never);
+
+    await expect(chatService.conversation('conv/1')).resolves.toEqual({ id: 'conv/1' });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/conv%2F1');
+  });
+});
+
 describe('chatService.messages', () => {
   it('preserves has_more and next_cursor while normalizing oldest-first order', async () => {
     mockApiRequest.mockResolvedValueOnce({
@@ -61,6 +79,28 @@ describe('chatService.messages', () => {
 });
 
 describe('chatService conversation creation', () => {
+  it('creates or opens the real AI conversation without a seed prompt', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { id: 'ai-conv' } } as never);
+
+    await expect(chatService.createAiConversation()).resolves.toEqual({ id: 'ai-conv' });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/ai', {
+      method: 'POST',
+      json: undefined,
+    });
+  });
+
+  it('passes AI suggestion text as Core initial_message', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: { id: 'ai-conv' } } as never);
+
+    await chatService.createAiConversation('Summarize my health this week');
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/ai', {
+      method: 'POST',
+      json: { initial_message: 'Summarize my health this week' },
+    });
+  });
+
   it('searches existing users through Core lookup', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: [] } as never);
 
@@ -148,5 +188,42 @@ describe('chatService.sendAttachmentMessage', () => {
         content_type: 'image',
       }),
     });
+  });
+
+  it('propagates Core attachment rejection instead of faking success', async () => {
+    mockApiRequest.mockRejectedValueOnce(new Error('Core rejected attachment'));
+
+    await expect(chatService.sendAttachmentMessage('conv-1', {
+      url: 'https://example.test/labs.pdf',
+      name: 'Labs.pdf',
+      size: 1234,
+      mime_type: 'application/pdf',
+    })).rejects.toThrow('Core rejected attachment');
+  });
+});
+
+describe('chatService.sendAiMessage', () => {
+  it('uses the Core SSE stream endpoint for AI follow-up messages', async () => {
+    mockApiRequest.mockResolvedValueOnce('event: done\ndata: {"status":"completed"}\n\n' as never);
+
+    await expect(chatService.sendAiMessage('conv/ai', 'Explain my trend')).resolves.toBeUndefined();
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/conv%2Fai/messages/stream', {
+      method: 'POST',
+      headers: { Accept: 'text/event-stream' },
+      timeoutMs: 120000,
+      json: {
+        content: 'Explain my trend',
+        content_type: 'text',
+        client_message_id: expect.stringMatching(/^mobile-\d+-\d+$/),
+        attachments: undefined,
+      },
+    });
+  });
+
+  it('surfaces SSE error events instead of treating the stream as success', async () => {
+    mockApiRequest.mockResolvedValueOnce('event: error\ndata: {"detail":"AI worker unavailable"}\n\n' as never);
+
+    await expect(chatService.sendAiMessage('conv-1', 'Retry')).rejects.toThrow('AI worker unavailable');
   });
 });

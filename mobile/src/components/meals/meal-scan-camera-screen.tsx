@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { typography } from '../../theme/typography';
 import { IconX, IconFlash, IconBarcode, IconFlip } from '../../icons';
 import { mealService } from '../../api/services';
-import { createIdempotencyKey } from '../../api/client';
 import { invalidateApiQuery } from '../../api/query';
 
 const BG = '#0B0F14';
@@ -41,22 +40,12 @@ function inferImageType(asset: ImagePicker.ImagePickerAsset) {
   return asset.mimeType || 'image/jpeg';
 }
 
-function buildRetrySignature(asset: ImagePicker.ImagePickerAsset) {
-  return [
-    asset.uri,
-    asset.assetId ?? '',
-    asset.fileName ?? '',
-    String(asset.fileSize ?? ''),
-  ].join('|');
-}
-
 export function MealScanCameraScreen() {
   const router = useRouter();
   const { t: i18n } = useTranslation();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const retryKeyRef = useRef<{ signature: string; key: string } | null>(null);
 
   const MODES = [i18n('meals.photo'), i18n('meals.multiPhoto'), i18n('meals.manual')];
 
@@ -64,26 +53,23 @@ export function MealScanCameraScreen() {
     setPreviewUri(asset.uri);
     setUploading(true);
     setError(null);
-    const signature = buildRetrySignature(asset);
-    const retryKey = retryKeyRef.current?.signature === signature
-      ? retryKeyRef.current.key
-      : createIdempotencyKey();
-    retryKeyRef.current = { signature, key: retryKey };
-
     try {
-      const meal = await mealService.create({
+      const analysis = await mealService.analyzePhoto({
         name: 'Scanned meal',
-        logged_at: new Date().toISOString(),
         image: {
           uri: asset.uri,
           name: inferImageName(asset),
           type: inferImageType(asset),
         },
-      }, { idempotencyKey: retryKey });
-      retryKeyRef.current = null;
+      });
       invalidateApiQuery('meals.');
-      const params = new URLSearchParams({ mealId: meal.id });
-      if (meal.job_id) params.set('jobId', meal.job_id);
+      const mealId = analysis.meal_id;
+      if (!mealId) {
+        setError('Photo analysis started, but Core did not return a meal id.');
+        return;
+      }
+      const params = new URLSearchParams({ mealId });
+      if (analysis.job_id) params.set('jobId', analysis.job_id);
       router.push(`/meals/scan-analyzing?${params.toString()}` as never);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload meal photo.');

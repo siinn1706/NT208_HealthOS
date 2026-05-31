@@ -55,6 +55,7 @@ interface SanitizedNextTokens {
 }
 
 export interface SyncHealthConnectOptions {
+  deviceId?: string;
   maxBatchAttempts?: number;
 }
 
@@ -81,7 +82,7 @@ export async function syncHealthConnect(
   adapter: HealthConnectSyncAdapter,
   options: SyncHealthConnectOptions = {},
 ): Promise<SyncHealthConnectResult> {
-  const device = await resolveHealthConnectDevice();
+  const device = await resolveHealthConnectDevice(options.deviceId);
   const [syncStateRows, grantedPermissionsRaw] = await Promise.all([
     deviceService.getSyncState(device.id),
     adapter.getGrantedPermissions(),
@@ -296,7 +297,13 @@ async function resolveHealthConnectDevice(deviceId?: string): Promise<ConnectedD
   const devices = await deviceService.list();
   if (deviceId) {
     const exact = devices.find((device) => device.id === deviceId);
-    if (exact) return exact;
+    if (!exact) {
+      throw new Error('Selected Health Connect device is no longer available.');
+    }
+    if (exact.provider !== HEALTH_CONNECT_PROVIDER) {
+      throw new Error('Selected device is not a Health Connect device.');
+    }
+    return exact;
   }
 
   const storedDeviceId = await getStoredHealthConnectDeviceId();

@@ -173,7 +173,7 @@ export function NotificationsInboxScreen() {
   const [tab, setTab] = useState<TabKey>('All');
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const load = useCallback(() => notificationService.list({ per_page: 100 }), []);
+  const load = useCallback(() => notificationService.list({ per_page: 50 }), []);
   const notifications = useApiQuery(queryKeys.notifications, load);
 
   const allList: Notif[] = useMemo(() => notifications.data?.data ?? [], [notifications.data]);
@@ -225,10 +225,11 @@ export function NotificationsInboxScreen() {
   }
 
   async function openNotification(item: Notif) {
-    if (!item.is_read) {
-      await markRead(item.id);
-    }
     const path = mobileNotificationPath(item.link);
+    if (!item.is_read) {
+      const didMarkRead = await markRead(item.id);
+      if (!didMarkRead) return;
+    }
     if (path) router.push(path as never);
   }
 

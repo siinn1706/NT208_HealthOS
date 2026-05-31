@@ -70,7 +70,7 @@ export function MasterPermissionCard({ value, onChange }: { value: boolean; onCh
       </View>
       <View style={s.masterText}>
         <Text style={[s.masterLabel, { color: t.ink }]}>Allow notifications</Text>
-        <Text style={[s.masterSub, { color: t.ink3 }]}>System permission · granted</Text>
+        <Text style={[s.masterSub, { color: t.ink3 }]}>Core preference · OS permission not managed in this build</Text>
       </View>
       <Toggle value={value} onChange={onChange} />
     </View>

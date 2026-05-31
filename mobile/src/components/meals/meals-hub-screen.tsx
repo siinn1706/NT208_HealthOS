@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -66,6 +66,7 @@ function fmtTime(value: string) {
 export function MealsHubScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
+  const [guardedMessage, setGuardedMessage] = useState<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const todayIso = isoDate(today);
@@ -160,7 +161,12 @@ export function MealsHubScreen() {
         subtitle={today.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric' })}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconCalendar size={20} color={t.ink3} />} variant="subtle" accessibilityLabel={i18n('common.calendar')} />
+            <IconButton
+              icon={<IconCalendar size={20} color={t.ink3} />}
+              variant="subtle"
+              accessibilityLabel={i18n('common.calendar')}
+              onPress={() => setGuardedMessage('Date picker is guarded until native date selection is wired. Current data uses today from Core /v1/meals.')}
+            />
             {/* Filled circle plus button */}
             <Pressable
               onPress={() => router.push('/meals/add' as never)}
@@ -174,6 +180,14 @@ export function MealsHubScreen() {
       />
 
       {(meals.isLoading || calories.isLoading) && <ApiState title={i18n('meals.loadingMeals')} loading />}
+      {guardedMessage && (
+        <ApiState
+          title="Action unavailable"
+          message={guardedMessage}
+          actionLabel={i18n('common.close')}
+          onAction={() => setGuardedMessage(null)}
+        />
+      )}
       {(meals.error || calories.error) && (
         <ApiState
           title={i18n('meals.mealsUnavailable')}

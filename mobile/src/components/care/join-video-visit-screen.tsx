@@ -1,145 +1,100 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import Animated, {
-  useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming,
-} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PhoneOff, ScreenShare, MicOff } from 'lucide-react-native';
 import { nightPalette as nt } from '../../theme/palettes';
-import { typography, tabularNums } from '../../theme/typography';
-import { ChevronLeft, IconMic, IconVideo, IconChat } from '../../icons';
+import { typography } from '../../theme/typography';
+import { Button } from '../primitives/button';
+import { ApiState, MissingApiState } from '../api/api-state';
+import { ChevronLeft, IconChat, IconVideo } from '../../icons';
 import { useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
+import { formatDate, formatTime } from '../../api/viewModels';
 
-function useBlink() {
-  const opacity = useSharedValue(1);
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(withTiming(0, { duration: 500 }), withTiming(1, { duration: 500 })),
-      -1,
-      false,
-    );
-    // opacity is a Reanimated shared value — intentionally omitted from deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return useAnimatedStyle(() => ({ opacity: opacity.value }));
-}
-
-function formatTimer(s: number) {
-  const m = String(Math.floor(s / 60)).padStart(2, '0');
-  const sec = String(s % 60).padStart(2, '0');
-  return `${m}:${sec}`;
-}
+const VIDEO_CONTRACT_GAP =
+  'Core exposes appointment scheduling/status only; no video-session, meeting URL, room token, or media service contract exists';
 
 export function JoinVideoVisitScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t: i18n } = useTranslation();
   const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
-  const [elapsed, setElapsed] = useState(0);
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
-  const [controlMessage, setControlMessage] = useState<string | null>(null);
-  const blinkStyle = useBlink();
-
-  useEffect(() => {
-    const timerId = setInterval(() => setElapsed((s) => s + 1), 1000);
-    return () => clearInterval(timerId);
-  }, []);
-
   const loadAppointment = useCallback(() => appointmentService.detail(apptId), [apptId]);
   const appointmentQuery = useApiQuery(queryKeys.appointment(apptId), loadAppointment, { enabled: Boolean(apptId) });
   const appointment = appointmentQuery.data ?? null;
-  const doctorName = appointment?.doctor_name ?? 'Doctor';
+
+  const unavailableTitle = appointment?.visit_type === 'video'
+    ? 'Video visit unavailable'
+    : 'No video visit for this appointment';
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: '#0A0D13' }]} edges={['top', 'bottom']}>
-      {/* Top bar */}
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <View style={s.topBar}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
+        <Pressable onPress={() => router.back()} style={s.backBtn} accessibilityRole="button" accessibilityLabel={i18n('common.back')}>
           <ChevronLeft size={22} color={nt.ink} />
         </Pressable>
         <Text style={[typography.bodyMed, { color: nt.ink }]}>{i18n('care.joinVideoVisit')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Self-preview — top-right */}
-      <LinearGradient
-        colors={['#1a2130', '#0B0F14']}
-        style={s.selfPreview}
-      >
-        <Text style={[typography.micro, { color: nt.ink3 }]}>You</Text>
-      </LinearGradient>
-
-      {/* Doctor avatar + info */}
-      <View style={s.center}>
-        <View style={s.glow} />
-        <LinearGradient colors={['#5BA8C8', '#1965B3']} style={s.avatar}>
-          <Text style={s.avatarInitial}>{doctorName.slice(0, 1).toUpperCase()}</Text>
+      <View style={s.content}>
+        <LinearGradient colors={['#1a2130', '#0B0F14']} style={s.contextCard}>
+          <View style={s.videoBadge}>
+            <IconVideo size={18} color={nt.ink} />
+          </View>
+          <Text style={[typography.title, { color: nt.ink, marginTop: 14 }]}>
+            {appointment?.doctor_name ?? 'Video appointment'}
+          </Text>
+          <Text style={[typography.caption, { color: nt.ink3, marginTop: 4 }]}>
+            {appointment
+              ? `${appointment.specialty ?? 'Appointment'} · ${formatDate(appointment.appointment_date)} at ${formatTime(appointment.appointment_date)}`
+              : 'Loading appointment context from Core'}
+          </Text>
         </LinearGradient>
-        <Text style={[typography.title, { color: nt.ink, marginTop: 16 }]}>{doctorName}</Text>
-        <Text style={[typography.caption, { color: nt.ink3, marginBottom: 12 }]}>
-          {appointment?.specialty ?? 'Specialist'}
-        </Text>
 
-        {/* LIVE timer */}
-        <View style={s.timerRow}>
-          <Animated.View style={[s.liveDot, blinkStyle]} />
-          <Text style={[typography.bodyMed, tabularNums, { color: nt.ink }]}>{formatTimer(elapsed)}</Text>
+        {appointmentQuery.isLoading && <ApiState title="Loading appointment" loading />}
+        {appointmentQuery.error && (
+          <ApiState
+            title="Appointment unavailable"
+            message={appointmentQuery.error.message}
+            actionLabel={i18n('common.retry')}
+            onAction={appointmentQuery.reload}
+          />
+        )}
+
+        {!appointmentQuery.isLoading && !appointmentQuery.error && (
+          <MissingApiState title={unavailableTitle} contract={VIDEO_CONTRACT_GAP} />
+        )}
+
+        <View style={s.actions}>
+          {apptId && (
+            <Button
+              label="Open appointment"
+              variant="solid"
+              onPress={() => router.push(`/care/appointment/${apptId}` as never)}
+            />
+          )}
+          <Button
+            label="Open chat"
+            variant="ghost"
+            icon={<IconChat size={16} color={nt.ink} />}
+            onPress={() => router.push('/chat' as never)}
+            labelColor={nt.ink}
+          />
         </View>
       </View>
-
-      {/* Control buttons */}
-      <View style={s.controls}>
-        <CtrlBtn
-          icon={micOn ? <IconMic size={24} color="#fff" /> : <MicOff size={24} color={nt.ink3} />}
-          onPress={() => setMicOn((v) => !v)}
-        />
-        <CtrlBtn
-          icon={camOn ? <IconVideo size={24} color="#fff" /> : <IconVideo size={24} color={nt.ink3} />}
-          onPress={() => setCamOn((v) => !v)}
-        />
-        <CtrlBtn icon={<ScreenShare size={24} color="#fff" />} onPress={() => setControlMessage('Screen sharing is not available in the native video visit demo.')} />
-        <CtrlBtn icon={<IconChat size={24} color="#fff" />} onPress={() => router.push('/chat' as never)} />
-        <CtrlBtn icon={<PhoneOff size={24} color="#fff" />} onPress={() => router.back()} danger />
-      </View>
-      {controlMessage && (
-        <Text style={[typography.caption, s.controlMessage]}>{controlMessage}</Text>
-      )}
     </SafeAreaView>
   );
 }
 
-function CtrlBtn({ icon, onPress, danger }: { icon: React.ReactNode; onPress: () => void; danger?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        s.ctrlBtn,
-        { backgroundColor: danger ? '#E54D4D' : 'rgba(255,255,255,0.18)', opacity: pressed ? 0.75 : 1 },
-      ]}
-    >
-      {icon}
-    </Pressable>
-  );
-}
-
 const s = StyleSheet.create({
-  safe:          { flex: 1 },
-  topBar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 },
-  backBtn:       { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  selfPreview:   { position: 'absolute', top: 80, right: 16, width: 96, height: 128, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 8, zIndex: 10 },
-  center:        { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  glow:          { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(91,168,200,0.18)' },
-  avatar:        { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 44, lineHeight: 52, fontFamily: 'Inter_800ExtraBold', color: '#fff' },
-  timerRow:      { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  liveDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
-  controls:      { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24, paddingBottom: 28 },
-  ctrlBtn:       { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  controlMessage:{ color: nt.ink3, textAlign: 'center', paddingHorizontal: 24, paddingBottom: 12 },
+  safe: { flex: 1, backgroundColor: '#0A0D13' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 20, gap: 14 },
+  contextCard: { borderRadius: 18, padding: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.16)' },
+  videoBadge: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.16)' },
+  actions: { gap: 10 },
 });

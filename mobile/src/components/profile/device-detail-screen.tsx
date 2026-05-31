@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
@@ -17,26 +17,12 @@ import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { deviceService, type ConnectedDevice } from '../../api/services/device-service';
 import { useHealthConnectSync } from '../../healthconnect/use-health-connect-sync';
-import type { HealthConnectSyncAdapter } from '../../healthconnect/orchestrator';
+import {
+  createUnavailableHealthConnectAdapter,
+  getHealthConnectNativeUnavailableMessage,
+} from '../../healthconnect/native-health-connect-adapter';
 
 type SyncState = 'ok' | 'failed' | 'stale' | 'syncing' | 'inactive';
-
-const HEALTH_CONNECT_SCOPES = [
-  'Steps',
-  'HeartRate',
-  'SleepSession',
-  'Weight',
-  'BloodPressure',
-  'ExerciseSession',
-] as const;
-
-function createLocalHealthConnectAdapter(scopes: string[]): HealthConnectSyncAdapter {
-  const snapshot = [...scopes];
-  return {
-    getGrantedPermissions: async () => snapshot,
-    readChanges: async () => ({ records: [], deletions: [] }),
-  };
-}
 
 function toSyncState(device: ConnectedDevice): SyncState {
   switch ((device.last_sync_status ?? '').toLowerCase()) {
@@ -91,26 +77,17 @@ export function DeviceDetailScreen() {
     { enabled: Boolean(id && device) },
   );
 
-  const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [syncingLegacy, setSyncingLegacy] = useState(false);
   const [resettingSyncState, setResettingSyncState] = useState(false);
-  const [savingScopes, setSavingScopes] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const healthConnectAdapter = useMemo(
-    () => createLocalHealthConnectAdapter(device?.scopes ?? []),
-    [device?.scopes],
-  );
+  const healthConnectAdapter = useMemo(() => createUnavailableHealthConnectAdapter(), []);
+  const healthConnectNativeMessage = useMemo(() => getHealthConnectNativeUnavailableMessage(), []);
   const {
     sync: syncHealthConnectNow,
     reset: resetHealthConnectNow,
     isSyncing: syncingHealthConnect,
   } = useHealthConnectSync(healthConnectAdapter);
-
-  useEffect(() => {
-    if (device?.scopes) setSelectedScopes(device.scopes);
-    else setSelectedScopes([]);
-  }, [device?.id, device?.scopes]);
 
   if (devicesQuery.isLoading) {
     return (
@@ -183,7 +160,7 @@ export function DeviceDetailScreen() {
     setActionError(null);
     try {
       if (isHealthConnect) {
-        await syncHealthConnectNow();
+        await syncHealthConnectNow({ deviceId: id });
       } else {
         await deviceService.sync(id);
       }
@@ -208,20 +185,6 @@ export function DeviceDetailScreen() {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not disconnect device.');
       setDeleting(false);
-    }
-  }
-
-  async function handleSaveScopes() {
-    setSavingScopes(true);
-    setActionError(null);
-    try {
-      await deviceService.patchPermissions(id, selectedScopes);
-      invalidateApiQuery(queryKeys.devices);
-      await devicesQuery.reload();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not update permissions.');
-    } finally {
-      setSavingScopes(false);
     }
   }
 
@@ -251,10 +214,6 @@ export function DeviceDetailScreen() {
     } finally {
       setResettingSyncState(false);
     }
-  }
-
-  function toggleScope(scope: string) {
-    setSelectedScopes((prev) => (prev.includes(scope) ? prev.filter((item) => item !== scope) : [...prev, scope]));
   }
 
   return (
@@ -357,33 +316,23 @@ export function DeviceDetailScreen() {
 
         {isHealthConnect && (
           <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-            <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 8 }]}>Data types to sync</Text>
-            {HEALTH_CONNECT_SCOPES.map((scope) => {
-              const selected = selectedScopes.includes(scope);
-              return (
-                <TouchableOpacity
-                  key={scope}
-                  onPress={() => toggleScope(scope)}
-                  activeOpacity={0.75}
-                  style={[
-                    styles.scopeRow,
-                    {
-                      backgroundColor: selected ? t.brandSoft : t.card,
-                      borderColor: selected ? `${t.brand}60` : t.border,
-                    },
-                  ]}
-                >
-                  <Text style={[typography.bodyMed, { color: selected ? t.brand : t.ink }]}>{scope}</Text>
-                </TouchableOpacity>
-              );
-            })}
-            <Button
-              label={savingScopes ? 'Saving…' : 'Save permissions'}
-              variant="solid"
-              onPress={handleSaveScopes}
-              disabled={savingScopes || deleting}
-              style={{ marginTop: 12 }}
-            />
+            <ApiState title="Health Connect native access unavailable" message={healthConnectNativeMessage} />
+            <View style={[styles.scopeSummary, { borderColor: t.border, backgroundColor: t.bgElev }]}>
+              <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '700' }]}>Granted permissions from Core</Text>
+              {(device.scopes?.length ?? 0) > 0 ? (
+                <View style={styles.scopeList}>
+                  {device.scopes?.map((scope) => (
+                    <View key={scope} style={[styles.scopeChip, { backgroundColor: t.brandSoft }]}>
+                      <Text style={[typography.micro, { color: t.brand, fontWeight: '700' }]}>{scope}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={[typography.micro, { color: t.ink3, marginTop: 6 }]}>
+                  No granted permissions reported by native Health Connect yet.
+                </Text>
+              )}
+            </View>
           </View>
         )}
       </Card>
@@ -411,6 +360,8 @@ const styles = StyleSheet.create({
   sectionCard: { marginHorizontal: 16, marginBottom: 8 },
   stateRow: { paddingVertical: 10 },
   settingsCard: { marginHorizontal: 16, paddingHorizontal: 4, paddingVertical: 4 },
-  scopeRow: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
+  scopeSummary: { marginTop: 10, borderWidth: 1, borderRadius: 10, padding: 12 },
+  scopeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  scopeChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   alertRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
 });

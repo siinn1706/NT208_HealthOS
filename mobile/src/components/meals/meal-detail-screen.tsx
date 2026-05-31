@@ -61,6 +61,7 @@ export function MealDetailScreen() {
   const [draftName, setDraftName] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [guardedMessage, setGuardedMessage] = useState<string | null>(null);
 
   const model = useMemo(() => {
     if (!meal.data) return null;
@@ -157,10 +158,25 @@ export function MealDetailScreen() {
         right={
           <View style={styles.topActions}>
             <Pressable hitSlop={8} onPress={meal.reload}><IconRefresh size={20} color={t.ink3} /></Pressable>
-            <Pressable hitSlop={8} style={{ marginLeft: 8 }}><IconMore size={20} color={t.ink3} /></Pressable>
+            <Pressable
+              hitSlop={8}
+              style={{ marginLeft: 8 }}
+              onPress={() => setGuardedMessage('Meal delete is unavailable because Core does not expose DELETE /v1/meals/{meal_id}.')}
+            >
+              <IconMore size={20} color={t.ink3} />
+            </Pressable>
           </View>
         }
       />
+
+      {guardedMessage && (
+        <ApiState
+          title="Action unavailable"
+          message={guardedMessage}
+          actionLabel={i18n('common.close')}
+          onAction={() => setGuardedMessage(null)}
+        />
+      )}
 
       {/* Hero photo — consistent borderRadius via style, no double-application */}
       <View style={[styles.heroPhoto, { backgroundColor: t.card, borderRadius: t.radius.lg, borderColor: t.border }]}>
@@ -297,7 +313,17 @@ export function MealDetailScreen() {
       )}
 
       <View style={styles.btnRow}>
-        <Button label={i18n('meals.duplicate')} variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} />
+        {!isEditing && (
+          <Button label="Log another" variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} />
+        )}
+        {!isEditing && (
+          <Button
+            label="Delete unavailable"
+            variant="ghost"
+            style={{ flex: 1 }}
+            onPress={() => setGuardedMessage('Meal delete is unavailable because Core does not expose DELETE /v1/meals/{meal_id}.')}
+          />
+        )}
         {isEditing && <Button label={i18n('common.cancel')} variant="ghost" style={{ flex: 1 }} onPress={() => setIsEditing(false)} />}
         <Button
           label={isEditing ? (savingEdit ? i18n('common.working') : i18n('common.save')) : i18n('meals.editMeal')}

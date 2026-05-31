@@ -9,9 +9,10 @@ import { BottomSheet } from '../primitives/sheet/bottom-sheet';
 import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { reminderService } from '../../api/services';
+import type { ReminderOccurrence } from '../../../../shared/api-contracts';
 import {
-  ChevronLeft, IconMore, IconCheck, IconBell, IconCalendar,
-  IconActivity, IconClock, IconAlert, IconX,
+  ChevronLeft, IconCheck, IconBell, IconCalendar,
+  IconActivity, IconClock, IconX,
 } from '../../icons';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -62,12 +63,34 @@ type SheetType = 'done' | 'snooze' | 'skip' | null;
 
 const SNOOZE_OPTS = [
   { label: '5 min',  minutes: 5 },
-  { label: '15 min', minutes: 15, subtitle: 'Until 12:45' },
+  { label: '15 min', minutes: 15 },
   { label: '30 min', minutes: 30 },
   { label: '1 hour', minutes: 60 },
 ];
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+function isActionableStatus(status: string) {
+  return status === 'pending' || status === 'fired';
+}
+
+function occurrenceStatusLabel(status?: string | null) {
+  if (status === 'done') return 'Done';
+  if (status === 'skipped') return 'Skipped';
+  if (status === 'missed') return 'Missed';
+  if (status === 'snoozed') return 'Snoozed';
+  if (status === 'fired') return 'Due';
+  if (status === 'cancelled') return 'Cancelled';
+  return 'Pending';
+}
+
+function occurrenceStatusColor(t: ReturnType<typeof useTheme>, status?: string | null) {
+  if (status === 'done') return t.success;
+  if (status === 'skipped' || status === 'missed') return t.warning;
+  if (status === 'fired') return t.danger;
+  if (status === 'snoozed') return t.brand;
+  return t.success;
+}
 
 // ─── main component ──────────────────────────────────────────────────────────
 
@@ -77,6 +100,7 @@ export function ReminderDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const reminderId = Array.isArray(params.id) ? params.id[0] : params.id;
   const [isMarking, setIsMarking] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [snoozeMins, setSnoozeMins] = useState(15);
 
@@ -140,40 +164,93 @@ export function ReminderDetailScreen() {
     const missedCount = lateCount;
     const onTimeCount = doneCount;
     const adherence  = past.length ? Math.round((doneCount / past.length) * 100) : 0;
-    const nextPending = reminderOccurrences.find(
-      (occ) => new Date(occ.scheduled_at).getTime() <= now.getTime() && occ.status !== 'done',
-    );
+    const latestFirst = [...reminderOccurrences].reverse();
+    const todayKey = dateKey(now);
+    const nextActionable = reminderOccurrences.find((occ) => isActionableStatus(occ.status));
+    const currentOccurrence = latestFirst.find((occ) => occ.scheduled_at.startsWith(todayKey))
+      ?? latestFirst.find((occ) => new Date(occ.scheduled_at).getTime() <= now.getTime())
+      ?? nextActionable
+      ?? reminderOccurrences[0]
+      ?? null;
     const nextFuture = reminderOccurrences.find(
       (occ) => new Date(occ.scheduled_at).getTime() > now.getTime(),
     );
 
-    return { history, streak, adherence, missedCount, onTimeCount, lateCount, nextPending, nextFuture };
+    return { history, streak, adherence, missedCount, onTimeCount, lateCount, nextActionable, currentOccurrence, nextFuture };
   }, [now, reminderOccurrences]);
+
+  function invalidateReminderMutationCaches() {
+    invalidateApiQuery('reminders.');
+    if (reminder?.type === 'medicine' || reminder?.medication_plan_id) {
+      invalidateApiQuery('medications.');
+    }
+  }
+
+  function actionableOccurrenceId(occ: ReminderOccurrence | null | undefined) {
+    return occ && isActionableStatus(occ.status) ? occ.id : undefined;
+  }
 
   async function handleMarkDone() {
     if (!reminderId || isMarking) return;
     setIsMarking(true);
+    setActionError(null);
     setActiveSheet(null);
     try {
-      if (summary.nextPending?.id) {
-        await reminderService.markDone(reminderId, summary.nextPending.id);
-      } else if (reminder && !reminder.done) {
-        await reminderService.updateDone(reminderId, true);
-      }
-      invalidateApiQuery('reminders.');
-      reminders.reload();
-      occurrences.reload();
+      await reminderService.markDone(reminderId, actionableOccurrenceId(summary.nextActionable));
+      invalidateReminderMutationCaches();
+      await Promise.all([reminders.reload(), occurrences.reload()]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not mark reminder done.');
     } finally {
       setIsMarking(false);
     }
   }
 
   async function handleSnooze() {
-    if (!reminderId) return;
+    if (!reminderId || isMarking) return;
+    setIsMarking(true);
+    setActionError(null);
     setActiveSheet(null);
-    await reminderService.snooze(reminderId, { minutes: snoozeMins });
-    invalidateApiQuery('reminders.');
-    reminders.reload();
+    try {
+      await reminderService.snooze(reminderId, { minutes: snoozeMins, occurrence_id: actionableOccurrenceId(summary.nextActionable) });
+      invalidateReminderMutationCaches();
+      await Promise.all([reminders.reload(), occurrences.reload()]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not snooze reminder.');
+    } finally {
+      setIsMarking(false);
+    }
+  }
+
+  async function handleSkip() {
+    if (!reminderId || isMarking) return;
+    setIsMarking(true);
+    setActionError(null);
+    setActiveSheet(null);
+    try {
+      await reminderService.skip(reminderId, actionableOccurrenceId(summary.nextActionable));
+      invalidateReminderMutationCaches();
+      await Promise.all([reminders.reload(), occurrences.reload()]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not skip reminder.');
+    } finally {
+      setIsMarking(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!reminderId || isMarking) return;
+    setIsMarking(true);
+    setActionError(null);
+    try {
+      await reminderService.delete(reminderId);
+      invalidateReminderMutationCaches();
+      router.replace('/reminders' as never);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not delete reminder.');
+    } finally {
+      setIsMarking(false);
+    }
   }
 
   if (!reminderId) {
@@ -191,6 +268,8 @@ export function ReminderDetailScreen() {
 
   const cat   = mapCat(reminder.type);
   const color = catColor(t, cat);
+  const statusColor = occurrenceStatusColor(t, summary.currentOccurrence?.status);
+  const statusText = occurrenceStatusLabel(summary.currentOccurrence?.status);
   const nextTime = fmtClock(reminder.next_occurrence_at ?? reminder.time);
   const nextRelative = summary.nextFuture
     ? (() => {
@@ -209,14 +288,6 @@ export function ReminderDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={20} color={t.ink} />
         </TouchableOpacity>
-        <View style={styles.backBtns}>
-          <TouchableOpacity style={[styles.iconCircle, { backgroundColor: t.bgElev, borderColor: t.border }]}>
-            <IconBell size={16} color={t.ink3} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconCircle, { backgroundColor: t.bgElev, borderColor: t.border }]}>
-            <IconMore size={16} color={t.ink3} />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -231,9 +302,9 @@ export function ReminderDetailScreen() {
               {reminder.repeat ?? 'Once'} · {nextTime}
             </Text>
             <View style={styles.heroChips}>
-              <View style={[styles.statusChip, { backgroundColor: `${t.success}18` }]}>
-                <View style={[styles.statusDot, { backgroundColor: t.success }]} />
-                <Text style={[styles.chipText, { color: t.success }]}>On time</Text>
+              <View style={[styles.statusChip, { backgroundColor: `${statusColor}18` }]}>
+                <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                <Text style={[styles.chipText, { color: statusColor }]}>{statusText}</Text>
               </View>
               <View style={[styles.statusChip, { backgroundColor: `${color}14` }]}>
                 <Text style={[styles.chipText, { color }]}>{categoryLabel(reminder.type)}</Text>
@@ -319,36 +390,38 @@ export function ReminderDetailScreen() {
 
         {occurrences.isLoading && <ApiState title={i18n('api.loading')} loading />}
         {occurrences.error && <ApiState title={i18n('api.unavailable')} message={occurrences.error.message} actionLabel={i18n('common.retry')} onAction={occurrences.reload} />}
+        {actionError && <ApiState title="Reminder action failed" message={actionError} />}
 
         {/* Settings group */}
         <Text style={[styles.groupLabel, { color: t.ink, paddingHorizontal: 20 }]}>Settings</Text>
         <View style={[styles.settingsCard, { backgroundColor: t.card, borderColor: t.border, marginHorizontal: 20 }]}>
-          {[
-            { icon: <IconBell size={16} color={t.brand} />, label: 'Notifications', value: 'Push + sound' },
-            { icon: <IconClock size={16} color={t.ink3} />, label: 'Snooze', value: '15, 30 min' },
-            { icon: <IconCalendar size={16} color={t.ink3} />, label: 'Repeats', value: reminder.repeat ?? 'Once' },
-            { icon: <IconAlert size={16} color={t.ink3} />, label: 'Critical alert', value: 'Off' },
-          ].map((row, i, arr) => (
-            <TouchableOpacity
-              key={row.label}
-              style={[
-                styles.settingsRow,
-                i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
-              ]}
-            >
-              <View style={[styles.settingsIconCell, { backgroundColor: `${t.brand}14`, borderRadius: 9 }]}>
-                {row.icon}
-              </View>
-              <Text style={[styles.settingsLabel, { color: t.ink }]}>{row.label}</Text>
-              <Text style={[styles.settingsValue, { color: t.ink3 }]}>{row.value}</Text>
-              <ChevronLeft size={14} color={t.ink4} style={{ transform: [{ rotate: '180deg' }] }} />
-            </TouchableOpacity>
-          ))}
+          <TouchableOpacity
+            style={[styles.settingsRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border }]}
+            onPress={() => router.push('/reminders/preferences' as never)}
+          >
+            <View style={[styles.settingsIconCell, { backgroundColor: `${t.brand}14`, borderRadius: 9 }]}>
+              <IconBell size={16} color={t.brand} />
+            </View>
+            <Text style={[styles.settingsLabel, { color: t.ink }]}>Notification preferences</Text>
+            <ChevronLeft size={14} color={t.ink4} style={{ transform: [{ rotate: '180deg' }] }} />
+          </TouchableOpacity>
+          <View style={styles.settingsRow}>
+            <View style={[styles.settingsIconCell, { backgroundColor: `${t.brand}14`, borderRadius: 9 }]}>
+              <IconCalendar size={16} color={t.ink3} />
+            </View>
+            <Text style={[styles.settingsLabel, { color: t.ink }]}>Repeats</Text>
+            <Text style={[styles.settingsValue, { color: t.ink3 }]}>{reminder.repeat ?? 'Once'}</Text>
+          </View>
         </View>
 
         {/* Delete */}
-        <TouchableOpacity style={[styles.deleteBtn, { borderColor: t.danger }]}>
-          <Text style={[styles.deleteBtnText, { color: t.danger }]}>Delete Reminder</Text>
+        <TouchableOpacity
+          style={[styles.deleteBtn, { borderColor: t.danger }, isMarking && { opacity: 0.5 }]}
+          onPress={isMarking ? undefined : handleDelete}
+        >
+          <Text style={[styles.deleteBtnText, { color: t.danger }]}>
+            {isMarking ? 'Saving...' : 'Delete Reminder'}
+          </Text>
         </TouchableOpacity>
 
         <View style={{ height: 32 }} />
@@ -401,18 +474,9 @@ export function ReminderDetailScreen() {
                   ]}
                 >
                   <Text style={[styles.snoozeTileLabel, { color: selected ? t.brand : t.ink }]}>{opt.label}</Text>
-                  {opt.subtitle && selected && (
-                    <Text style={[styles.snoozeTileSub, { color: t.ink3 }]}>{opt.subtitle}</Text>
-                  )}
                 </TouchableOpacity>
               );
             })}
-            {/* Dashed custom tile */}
-            <TouchableOpacity
-              style={[styles.snoozeTileWide, { borderColor: t.border, borderStyle: 'dashed', borderWidth: 1, backgroundColor: 'transparent' }]}
-            >
-              <Text style={[styles.snoozeTileLabel, { color: t.ink3 }]}>Custom time</Text>
-            </TouchableOpacity>
           </View>
           <View style={styles.sheetBtns}>
             <TouchableOpacity style={[styles.sheetBtn, { borderColor: t.border, borderWidth: 1 }]} onPress={() => setActiveSheet(null)}>
@@ -441,7 +505,7 @@ export function ReminderDetailScreen() {
             <TouchableOpacity style={[styles.sheetBtn, { borderColor: t.border, borderWidth: 1 }]} onPress={() => setActiveSheet(null)}>
               <Text style={[styles.sheetBtnText, { color: t.ink }]}>{i18n('common.cancel')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.sheetBtn, { backgroundColor: `${t.danger}15`, borderColor: t.danger, borderWidth: 1 }]} onPress={() => setActiveSheet(null)}>
+            <TouchableOpacity style={[styles.sheetBtn, { backgroundColor: `${t.danger}15`, borderColor: t.danger, borderWidth: 1 }]} onPress={handleSkip}>
               <Text style={[styles.sheetBtnText, { color: t.danger }]}>Skip dose</Text>
             </TouchableOpacity>
           </View>
@@ -457,8 +521,6 @@ const styles = StyleSheet.create({
   // back bar
   backBar:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   backBtn:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backBtns:  { flexDirection: 'row', gap: 8 },
-  iconCircle:{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
 
   // hero
   heroRow:   { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
@@ -524,7 +586,5 @@ const styles = StyleSheet.create({
   // snooze tiles
   snoozeGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   snoozeTile:     { width: '46%', height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  snoozeTileWide: { width: '100%', height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   snoozeTileLabel:{ fontSize: 14, fontWeight: '700' },
-  snoozeTileSub:  { fontSize: 11, marginTop: 2 },
 });

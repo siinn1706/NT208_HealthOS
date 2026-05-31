@@ -12,7 +12,7 @@ import { queryKeys } from '../../../api/queryKeys';
 import { reportService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography, tabularNums } from '../../../theme/typography';
-import { ChevronLeft, IconMore, IconPaperclip, IconCheck, IconSparkle } from '../../../icons';
+import { ChevronLeft, IconRefresh, IconPaperclip, IconCheck, IconSparkle } from '../../../icons';
 
 function BackBar({ title, right }: { title: string; right?: React.ReactNode }) {
   const t = useTheme();
@@ -200,8 +200,8 @@ export function ReportDetailScreen() {
             <Pressable onPress={() => router.push('/insights/reports/export' as never)} hitSlop={8} style={styles.iconBtn}>
               <IconPaperclip size={20} color={t.ink3} />
             </Pressable>
-            <Pressable hitSlop={8} style={styles.iconBtn}>
-              <IconMore size={20} color={t.ink3} />
+            <Pressable onPress={report.reload} hitSlop={8} style={styles.iconBtn}>
+              <IconRefresh size={20} color={t.ink3} />
             </Pressable>
           </View>
         }

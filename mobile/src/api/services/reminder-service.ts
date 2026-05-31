@@ -1,20 +1,14 @@
 import { apiRequest, buildQuery } from '../client';
-import type { DataResponse, Reminder } from '../../../../shared/api-contracts';
-
-type OccurrenceResult = {
-  id: string;
-  reminder_id: string;
-  title: string;
-  type: string;
-  scheduled_at: string;
-  status: string;
-  snoozed_until?: string | null;
-  done_at?: string | null;
-  skipped_at?: string | null;
-};
+import type {
+  DataResponse,
+  Reminder,
+  ReminderCreateBody,
+  ReminderOccurrence,
+  ReminderType,
+} from '../../../../shared/api-contracts';
 
 export const reminderService = {
-  async list(type?: 'medicine' | 'appointment' | 'exercise') {
+  async list(type?: ReminderType) {
     const response = await apiRequest<DataResponse<Reminder[]>>(`/v1/reminders${buildQuery({ type })}`);
     return response.data;
   },
@@ -24,18 +18,7 @@ export const reminderService = {
     return response.data;
   },
 
-  async create(body: {
-    type: 'medicine' | 'appointment' | 'exercise';
-    title: string;
-    time: string;
-    repeat?: 'once' | 'daily' | 'weekly' | 'monthly';
-    note?: string;
-    tzid?: string;
-    weekday_mask?: number;
-    day_of_month?: number;
-    start_date?: string;
-    end_date?: string;
-  }) {
+  async create(body: ReminderCreateBody) {
     const response = await apiRequest<DataResponse<Reminder>>('/v1/reminders', {
       method: 'POST',
       json: body,
@@ -56,7 +39,7 @@ export const reminderService = {
   },
 
   async occurrences(params: { from?: string; to?: string; today?: boolean; tzid?: string; status?: string } = {}) {
-    const response = await apiRequest<DataResponse<OccurrenceResult[]>>(`/v1/reminders/occurrences${buildQuery({
+    const response = await apiRequest<DataResponse<ReminderOccurrence[]>>(`/v1/reminders/occurrences${buildQuery({
       from: params.from,
       to: params.to,
       today: params.today,
@@ -67,7 +50,7 @@ export const reminderService = {
   },
 
   async markDone(reminderId: string, occurrence_id?: string) {
-    const response = await apiRequest<DataResponse<OccurrenceResult>>(`/v1/reminders/${encodeURIComponent(reminderId)}/done`, {
+    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/v1/reminders/${encodeURIComponent(reminderId)}/done`, {
       method: 'POST',
       json: occurrence_id ? { occurrence_id } : {},
     });
@@ -75,7 +58,7 @@ export const reminderService = {
   },
 
   async skip(reminderId: string, occurrence_id?: string) {
-    const response = await apiRequest<DataResponse<OccurrenceResult>>(`/v1/reminders/${encodeURIComponent(reminderId)}/skip`, {
+    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/v1/reminders/${encodeURIComponent(reminderId)}/skip`, {
       method: 'POST',
       json: occurrence_id ? { occurrence_id } : {},
     });
@@ -83,7 +66,7 @@ export const reminderService = {
   },
 
   async snooze(reminderId: string, body: { until?: string; minutes?: number; occurrence_id?: string }) {
-    const response = await apiRequest<DataResponse<OccurrenceResult & { snoozed_until?: string | null }>>(`/v1/reminders/${encodeURIComponent(reminderId)}/snooze`, {
+    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/v1/reminders/${encodeURIComponent(reminderId)}/snooze`, {
       method: 'POST',
       json: body,
     });

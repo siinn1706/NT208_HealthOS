@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -11,15 +11,11 @@ import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 
-const DURATION_OPTIONS = ['1 wk', '2 wks', '1 mo', 'Custom'];
-
 export function PauseMedScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
-  const [selectedDuration, setSelectedDuration] = useState(0);
-  const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +27,8 @@ export function PauseMedScreen() {
       await medicationService.pause(medicationId);
       invalidateApiQuery(queryKeys.medications);
       invalidateApiQuery(queryKeys.medication(medicationId));
+      invalidateApiQuery(queryKeys.medicationDosesToday);
+      invalidateApiQuery(queryKeys.remindersAll);
       router.back();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not pause medication.');
@@ -56,53 +54,16 @@ export function PauseMedScreen() {
           <View style={s.flex}>
             <Text style={[typography.title, { color: t.ink }]}>{i18n('meds.pause')}?</Text>
             <Text style={[typography.caption, { color: t.brand, marginTop: 2 }]}>
-              Suspends all dose reminders for the selected duration
+              Suspends all dose reminders until you resume it
             </Text>
           </View>
         </View>
 
         {error && <ApiState title="Pause failed" message={error} />}
 
-        {/* Duration chips — one row of 4 */}
-        <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>PAUSE DURATION</Text>
-        <View style={s.durationRow}>
-          {DURATION_OPTIONS.map((opt, i) => {
-            const active = selectedDuration === i;
-            return (
-              <Pressable
-                key={opt}
-                onPress={() => setSelectedDuration(i)}
-                style={[
-                  s.durationChip,
-                  {
-                    borderRadius: t.radius.pill,
-                    backgroundColor: active ? t.brandSoft : t.card,
-                    borderColor: active ? t.brand : t.border,
-                  },
-                ]}
-              >
-                <Text style={[typography.caption, { color: active ? t.brand : t.ink2 }]}>{opt}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Reason input */}
-        <TextInput
-          value={reason}
-          onChangeText={setReason}
-          placeholder="Reason (optional)…"
-          placeholderTextColor={t.ink4}
-          style={[
-            s.reasonInput,
-            {
-              backgroundColor: t.card,
-              borderColor: t.border,
-              borderRadius: t.radius.md,
-              color: t.ink,
-            },
-          ]}
-        />
+        <Text style={[typography.caption, s.contractNote, { color: t.ink3, backgroundColor: t.card, borderColor: t.border }]}>
+          This pauses the plan until you resume it. Timed pauses and pause reasons are not supported by the current Core contract.
+        </Text>
 
         {/* Actions — ghost cancel + orange pause */}
         <View style={s.actions}>
@@ -128,9 +89,6 @@ const s = StyleSheet.create({
   header:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
   iconTile:     { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   flex:         { flex: 1 },
-  sectionLabel: { textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  durationRow:  { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  durationChip: { flex: 1, alignItems: 'center', paddingVertical: 10, borderWidth: 1 },
-  reasonInput:  { borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, marginBottom: 16 },
+  contractNote: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, lineHeight: 18, marginBottom: 16 },
   actions:      { flexDirection: 'row', gap: 10 },
 });

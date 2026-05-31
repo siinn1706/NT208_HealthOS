@@ -28,6 +28,7 @@ jest.mock('react-i18next', () => ({
         'care.past': 'Past',
         'care.all': 'All',
         'care.appointments': 'Appointments',
+        'care.join': 'Join',
         'care.thisWeek': 'This week',
         'care.createAppointment': 'Create appointment',
         'care.bookAppointmentCta': 'Book appointment',
@@ -125,5 +126,32 @@ describe('AppointmentsScreen prep route', () => {
     const { queryByText } = render(<AppointmentsScreen />);
 
     expect(queryByText('View questions')).toBeNull();
+  });
+
+  it('routes the appointment hero join CTA to the guarded video route for the current appointment', () => {
+    mockUseApiQuery.mockReturnValue({
+      ...baseQueryState,
+      data: [
+        {
+          id: 'apt-video',
+          appointment_date: '2099-06-02T09:00:00.000Z',
+          doctor_name: 'Dr Video',
+          specialty: 'Virtual care',
+          clinic: 'Video visit',
+          diagnosis: null,
+          visit_type: 'video',
+          status: 'scheduled',
+          notes: null,
+          has_prescription: false,
+          prescription: null,
+        },
+      ],
+    } as never);
+
+    const { getByText } = render(<AppointmentsScreen />);
+
+    fireEvent.press(getByText('Join'));
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/care/video/apt-video');
   });
 });

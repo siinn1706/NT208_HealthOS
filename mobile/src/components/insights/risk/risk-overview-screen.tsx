@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,7 @@ import { RiskGauge } from './risk-gauge';
 import { Skeleton } from '../../primitives/feedback/skeleton';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
-import { useApiQuery } from '../../../api/query';
+import { invalidateApiQuery, useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { riskService } from '../../../api/services';
 import {
@@ -141,6 +141,24 @@ export function RiskOverviewScreen() {
   const { t: i18n } = useTranslation();
   const loadRisk = useCallback(() => riskService.summary(), []);
   const risk = useApiQuery(queryKeys.riskSummary, loadRisk);
+  const [refreshing, setRefreshing] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const reloadRisk = risk.reload;
+
+  const refreshRisk = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setFeedback(null);
+    try {
+      await riskService.refresh();
+      invalidateApiQuery(queryKeys.riskSummary);
+      await reloadRisk();
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : 'Could not refresh risk predictions.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing, reloadRisk]);
 
   const parsed = useMemo(() => {
     const payload = (risk.data && typeof risk.data === 'object') ? (risk.data as Record<string, unknown>) : {};
@@ -161,11 +179,15 @@ export function RiskOverviewScreen() {
     <Screen>
       <TopBar
         title={i18n('insights.title')}
-        subtitle={risk.isLoading ? i18n('insights.refreshing') : i18n('insights.personalizedRisk')}
+        subtitle={(risk.isLoading || refreshing) ? i18n('insights.refreshing') : i18n('insights.personalizedRisk')}
         right={
           <View style={styles.topActions}>
-            <IconButton icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel={i18n('common.retry')} onPress={() => risk.reload()} />
-            <IconButton icon={<IconMore size={20} color={t.ink3} />} accessibilityLabel={i18n('common.more')} />
+            <IconButton icon={<IconRefresh size={20} color={t.ink3} />} accessibilityLabel={i18n('common.retry')} onPress={refreshRisk} disabled={refreshing} />
+            <IconButton
+              icon={<IconMore size={20} color={t.ink3} />}
+              accessibilityLabel={i18n('common.more')}
+              onPress={() => setFeedback('More risk actions are guarded until Core exposes saved prevention-plan actions.')}
+            />
           </View>
         }
       />
@@ -173,7 +195,16 @@ export function RiskOverviewScreen() {
       <InsightsSegmentedTabs active="risk" />
 
       {/* Loading → custom skeleton refresh state */}
-      {risk.isLoading && <RiskRefreshState />}
+      {(risk.isLoading || refreshing) && <RiskRefreshState />}
+
+      {feedback && (
+        <ApiState
+          title="Risk action unavailable"
+          message={feedback}
+          actionLabel={i18n('common.close')}
+          onAction={() => setFeedback(null)}
+        />
+      )}
 
       {risk.error && (
         <ApiState
@@ -184,7 +215,7 @@ export function RiskOverviewScreen() {
         />
       )}
 
-      {!risk.isLoading && !risk.error && (
+      {!risk.isLoading && !refreshing && !risk.error && (
         <>
           {/* Hero card with risk gauge */}
           <Card style={{ ...styles.heroCard, backgroundColor: t.warning + '12', borderColor: t.warning + '30' }}>

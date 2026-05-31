@@ -34,6 +34,8 @@ export interface MealAnalysisStatus {
   job_id: string | null;
   status: string;
   nutrition_result?: MealNutritionResult | null;
+  result?: MealNutritionResult | null;
+  error?: { code: string; message: string } | null;
 }
 
 export const mealService = {
@@ -72,15 +74,27 @@ export const mealService = {
     const response = await apiRequest<DataResponse<Meal>>('/v1/meals', {
       method: 'POST',
       headers,
-      json: {
+      json: compactBody({
         name: input.name,
         notes: input.notes,
         logged_at: input.logged_at,
         meal_type: input.meal_type,
         ingredients: input.ingredients,
-      },
+      }),
     });
     return response.data;
+  },
+
+  async analyzePhoto(input: { name?: string | null; image: MobileUploadFile }) {
+    const form = createUploadFormData(
+      { name: input.name },
+      { fieldName: 'image', ...input.image },
+    );
+    return apiRequest<MealAnalysisStatus>('/v1/meals/analyze-photo', {
+      method: 'POST',
+      body: form,
+      timeoutMs: 60000,
+    });
   },
 
   async detail(id: string) {
@@ -94,10 +108,6 @@ export const mealService = {
       json: body,
     });
     return response.data;
-  },
-
-  async delete(id: string) {
-    return apiRequest<void>(`/v1/meals/${encodeURIComponent(id)}`, { method: 'DELETE' });
   },
 
   async analysisStatus(id: string) {
@@ -121,3 +131,9 @@ export const mealService = {
     return response.data;
   },
 };
+
+function compactBody<T extends Record<string, unknown>>(body: T) {
+  return Object.fromEntries(
+    Object.entries(body).filter(([, value]) => value !== undefined),
+  );
+}

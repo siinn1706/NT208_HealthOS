@@ -86,6 +86,29 @@ describe('mealService photo analysis', () => {
     expect(result).toEqual(meal);
   });
 
+  it('starts photo analysis through the existing analyze-photo contract', async () => {
+    const form = { _parts: [] } as unknown as FormData;
+    const file = { uri: 'file:///scan.jpg', name: 'scan.jpg', type: 'image/jpeg' };
+    mockCreateUploadFormData.mockReturnValueOnce(form);
+    mockApiRequest.mockResolvedValueOnce({ job_id: 'job-1', status: 'processing', meal_id: 'meal-1' });
+
+    await expect(mealService.analyzePhoto({ name: 'Lunch', image: file })).resolves.toEqual({
+      job_id: 'job-1',
+      status: 'processing',
+      meal_id: 'meal-1',
+    });
+
+    expect(mockCreateUploadFormData).toHaveBeenCalledWith(
+      { name: 'Lunch' },
+      { fieldName: 'image', ...file },
+    );
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/analyze-photo', {
+      method: 'POST',
+      body: form,
+      timeoutMs: 60000,
+    });
+  });
+
   it('checks meal analysis status by meal id', async () => {
     mockApiRequest.mockResolvedValueOnce({ status: 'ready', job_id: 'job-1' });
 
@@ -100,5 +123,9 @@ describe('mealService photo analysis', () => {
     await expect(mealService.analysisStatusByJob('job/1')).resolves.toEqual({ status: 'processing', job_id: 'job/1' });
 
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/analyze-photo/job%2F1');
+  });
+
+  it('does not expose a delete method without a Core delete endpoint', () => {
+    expect('delete' in mealService).toBe(false);
   });
 });

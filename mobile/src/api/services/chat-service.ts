@@ -27,6 +27,11 @@ interface SendMessageOptions {
   contentType?: MessageContentType;
 }
 
+interface ParsedSseEvent {
+  event: string;
+  data: Record<string, unknown> | string | null;
+}
+
 function nextClientMessageId() {
   return `mobile-${Date.now()}-${++msgSeq}`;
 }
@@ -46,6 +51,39 @@ async function sendChatMessage(conversationId: string, content: string, options:
     },
   });
   return response.data;
+}
+
+function parseSseEvents(text: string): ParsedSseEvent[] {
+  return text.split(/\r?\n\r?\n/)
+    .map((frame) => {
+      const lines = frame.split(/\r?\n/);
+      const eventLine = lines.find((line) => line.startsWith('event:'));
+      const dataLines = lines.filter((line) => line.startsWith('data:'));
+      const rawData = dataLines.map((line) => line.slice(5).trim()).join('\n');
+      let data: ParsedSseEvent['data'] = rawData || null;
+      if (rawData) {
+        try {
+          data = JSON.parse(rawData) as Record<string, unknown>;
+        } catch {
+          data = rawData;
+        }
+      }
+      return {
+        event: eventLine?.slice(6).trim() ?? 'message',
+        data,
+      };
+    })
+    .filter((event) => event.event);
+}
+
+function aiStreamFailureMessage(text: string): string | null {
+  const errorEvent = parseSseEvents(text).find((event) => event.event === 'error');
+  if (!errorEvent) return null;
+  const data = errorEvent.data;
+  if (data && typeof data === 'object') {
+    return String(data.detail ?? data.message ?? data.code ?? 'AI response failed.');
+  }
+  return typeof data === 'string' && data.trim() ? data : 'AI response failed.';
 }
 
 export const chatService = {
@@ -106,6 +144,22 @@ export const chatService = {
 
   async sendMessage(conversationId: string, content: string, options: SendMessageOptions = {}) {
     return sendChatMessage(conversationId, content, options);
+  },
+
+  async sendAiMessage(conversationId: string, content: string, options: SendMessageOptions = {}) {
+    const streamText = await apiRequest<string>(`/v1/conversations/${encodeURIComponent(conversationId)}/messages/stream`, {
+      method: 'POST',
+      headers: { Accept: 'text/event-stream' },
+      timeoutMs: 120000,
+      json: {
+        content,
+        content_type: options.contentType ?? 'text',
+        client_message_id: nextClientMessageId(),
+        attachments: options.attachments,
+      },
+    });
+    const failure = aiStreamFailureMessage(streamText);
+    if (failure) throw new Error(failure);
   },
 
   async sendAttachmentMessage(conversationId: string, attachment: ChatAttachmentInput, caption?: string | null) {

@@ -18,6 +18,7 @@ import { ToastProvider } from '../src/components/primitives/feedback/toast';
 import { OfflineBanner } from '../src/components/api/offline-banner';
 import { ThemedStatusBar } from '../src/components/primitives/themed-status-bar';
 import { LanguagePreferenceHydrator } from '../src/i18n/language-preference-hydrator';
+import { AppearancePreferenceHydrator } from '../src/theme/appearance-preference-hydrator';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -63,6 +64,7 @@ export default function RootLayout() {
           <SessionProvider>
             <ToastProvider>
               <LanguagePreferenceHydrator />
+              <AppearancePreferenceHydrator />
               <ThemedStatusBar />
               <AuthGateStack />
               <OfflineBanner />

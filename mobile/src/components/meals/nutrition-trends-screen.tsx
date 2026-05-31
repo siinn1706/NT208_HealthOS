@@ -1,222 +1,189 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
-import { SectionHeader } from '../layout/section-header';
+import { TopBar } from '../layout/top-bar';
 import { Card } from '../primitives/card';
+import { Button } from '../primitives/button';
+import { IconButton } from '../primitives/icon-button';
+import { ApiState } from '../api/api-state';
 import { MacroDonut } from './macro-donut';
 import { useTheme } from '../../theme/useTheme';
-import { typography, tabularNums } from '../../theme/typography';
-import { ChevronLeft, IconCalendar, IconTrendUp, IconCheck, IconAlert } from '../../icons';
+import { typography } from '../../theme/typography';
+import { useApiQuery } from '../../api/query';
+import { queryKeys } from '../../api/queryKeys';
+import { mealService, reportService } from '../../api/services';
+import { ChevronLeft, IconCalendar } from '../../icons';
+import type { Meal } from '../../../../shared/api-contracts';
 
-type Period = 'Day' | 'Week' | 'Month' | 'Year';
-const PERIODS: Period[] = ['Day', 'Week', 'Month', 'Year'];
+type Period = '7d' | '30d' | '90d';
 
-// Stub bar data — 7 days
-const BAR_DATA = [1820, 2050, 1640, 1900, 1420, 1980, 1760];
-const BAR_TARGET = 2100;
-const BAR_MAX = Math.max(...BAR_DATA, BAR_TARGET) * 1.1;
+const PERIOD_DAYS: Record<Period, number> = { '7d': 7, '30d': 30, '90d': 90 };
 
-const INSIGHTS = [
-  { tone: 'success', icon: 'check', title: 'Protein improving',  body: 'You hit your protein goal 5 out of 7 days — up from 3 last week.' },
-  { tone: 'warn',    icon: 'alert', title: 'Sodium too high',    body: 'Average sodium was 2,380 mg/day. Aim for under 2,300 mg.' },
-  { tone: 'brand',   icon: 'trend', title: 'Calories on track',  body: 'Weekly average (1,901 kcal) is within 10% of your 2,100 kcal goal.' },
-];
+function toDateInput(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
-const TOP_FOODS = [
-  { rank: 1, name: 'Bún chả',           serving: '4× this week', kcal: 620 },
-  { rank: 2, name: 'Oatmeal & berries', serving: '5× this week', kcal: 380 },
-  { rank: 3, name: 'Cơm tấm',           serving: '2× this week', kcal: 590 },
-];
+function rangeFor(period: Period) {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(end.getDate() - (PERIOD_DAYS[period] - 1));
+  return { start: toDateInput(start), end: toDateInput(end) };
+}
 
-// Legend data with grams for sub-line
-const LEGEND_DATA = [
-  { label: 'Carbs',   pct: 54, target: '50%', color: '#E3B79A', grams: 228 },
-  { label: 'Protein', pct: 26, target: '25%', color: null,      grams: 105 }, // t.brand
-  { label: 'Fat',     pct: 20, target: '25%', color: '#5B90C4', grams: 63  },
-];
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+}
 
-function BackBar({ title, right }: { title: string; right?: React.ReactNode }) {
-  const router = useRouter();
-  const t = useTheme();
-  return (
-    <View style={styles.backBar}>
-      <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-        <ChevronLeft size={24} color={t.ink} />
-      </Pressable>
-      <Text style={[typography.h3, { flex: 1, color: t.ink }]}>{title}</Text>
-      {right}
-    </View>
-  );
+function asString(value: unknown, fallback: string) {
+  return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function mealName(meal: Meal) {
+  return meal.nutrition_result?.dish_name || meal.name || 'Meal';
 }
 
 export function NutritionTrendsScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
-  const [period, setPeriod] = useState<Period>('Week');
+  const [period, setPeriod] = useState<Period>('7d');
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const range = useMemo(() => rangeFor(period), [period]);
+  const rangeKey = `${period}.${range.start}.${range.end}`;
 
-  const donutSegments = [
-    { value: 54, color: '#E3B79A' },
-    { value: 26, color: t.brand   },
-    { value: 20, color: '#5B90C4' },
-  ];
+  const loadSummary = useCallback(() => mealService.caloriesSummary(range.start, range.end), [range.end, range.start]);
+  const loadMeals = useCallback(
+    () => mealService.list({ page: 1, per_page: 100, date_from: range.start, date_to: range.end }),
+    [range.end, range.start],
+  );
+  const loadTrend = useCallback(() => reportService.trends('calories', period), [period]);
+  const summary = useApiQuery(queryKeys.mealCaloriesSummary(rangeKey), loadSummary);
+  const meals = useApiQuery(queryKeys.meals(`trends.${rangeKey}`), loadMeals);
+  const trend = useApiQuery(queryKeys.reportTrend('calories', period), loadTrend);
+  const reloadSummary = summary.reload;
+  const reloadMeals = meals.reload;
+  const reloadTrend = trend.reload;
+
+  const mealRows = meals.data ?? [];
+  const calorieRows = summary.data ?? [];
+  const isLoading = summary.isLoading || meals.isLoading || trend.isLoading;
+  const error = summary.error ?? meals.error ?? trend.error;
+  const total = calorieRows.reduce((sum, row) => sum + row.total_calories, 0);
+  const avg = calorieRows.length ? Math.round(total / calorieRows.length) : 0;
+  const peak = calorieRows.reduce((max, row) => Math.max(max, row.total_calories), 0);
+  const macro = mealRows.reduce<{ carbs: number; protein: number; fat: number }>((acc, meal) => {
+    acc.carbs += meal.nutrition_result?.carbs_g ?? 0;
+    acc.protein += meal.nutrition_result?.protein_g ?? 0;
+    acc.fat += meal.nutrition_result?.fat_g ?? 0;
+    return acc;
+  }, { carbs: 0, protein: 0, fat: 0 });
+  const trendPayload = asRecord(trend.data);
+  const trendLabel = asString(trendPayload.trend, calorieRows.length > 1 ? 'stable' : 'not enough data');
+  const trendChange = typeof trendPayload.change_percent === 'number' && Number.isFinite(trendPayload.change_percent)
+    ? trendPayload.change_percent
+    : null;
+  const topMeals = [...mealRows]
+    .sort((a, b) => (b.nutrition_result?.calories ?? 0) - (a.nutrition_result?.calories ?? 0))
+    .slice(0, 3);
+
+  const reload = useCallback(() => {
+    void reloadSummary();
+    void reloadMeals();
+    void reloadTrend();
+  }, [reloadMeals, reloadSummary, reloadTrend]);
 
   return (
     <Screen>
-      <BackBar
+      <TopBar
         title={i18n('meals.nutritionTrends')}
-        right={<Pressable hitSlop={8}><IconCalendar size={20} color={t.ink3} /></Pressable>}
+        subtitle={`${range.start} - ${range.end}`}
+        left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel={i18n('common.back')} />}
+        right={<IconButton icon={<IconCalendar size={20} color={t.ink3} />} onPress={() => setFeedback('Custom date ranges need a Core-backed date picker flow. Use the period controls for now.')} accessibilityLabel="Change range" />}
       />
 
-      {/* Period segmented control — active pill with subtle card bg */}
-      <View style={[styles.segControl, { backgroundColor: t.bgElev, borderRadius: t.radius.lg }]}>
-        {PERIODS.map((p) => (
+      <View style={styles.periods}>
+        {(['7d', '30d', '90d'] as Period[]).map((item) => (
           <Pressable
-            key={p}
-            onPress={() => setPeriod(p)}
-            style={[
-              styles.segItem,
-              { borderRadius: t.radius.md },
-              period === p && { backgroundColor: t.card, ...t.shadows.card },
-            ]}
+            key={item}
+            onPress={() => setPeriod(item)}
+            style={[styles.periodBtn, { backgroundColor: item === period ? t.brand : t.card, borderColor: item === period ? t.brand : t.border, borderRadius: t.radius.pill }]}
           >
-            <Text style={[typography.chip, { color: period === p ? t.ink : t.ink3 }]}>{p}</Text>
+            <Text style={[typography.chip, { color: item === period ? '#fff' : t.ink3 }]}>{item}</Text>
           </Pressable>
         ))}
       </View>
 
-      {/* Average card + bar chart */}
-      <Card tight style={styles.avgCard}>
-        <View style={styles.avgRow}>
-          <View>
-            {/* Renamed to AVG DAILY INTAKE */}
-            <Text style={[typography.micro, { color: t.ink3 }]}>{i18n('meals.avgDailyIntake')}</Text>
-            <Text style={[typography.title, tabularNums, { color: t.ink, marginTop: 2 }]}>1,901 kcal</Text>
-            {/* Target subtitle */}
-            <Text style={[typography.caption, { color: t.ink3 }]}>Target · 2,100 kcal</Text>
-          </View>
-          <View style={[styles.deltaBadge, { backgroundColor: t.success + '22', borderRadius: t.radius.pill }]}>
-            <IconTrendUp size={12} color={t.success} />
-            <Text style={[typography.micro, { color: t.success, marginLeft: 3 }]}>▼ 9% vs prev</Text>
-          </View>
-        </View>
+      {feedback && <ApiState title="Date range unavailable" message={feedback} actionLabel={i18n('common.close')} onAction={() => setFeedback(null)} />}
+      {isLoading && <ApiState title={i18n('meals.loadingMeals')} loading />}
+      {error && <ApiState title={i18n('meals.mealsUnavailable')} message={error.message} actionLabel={i18n('common.retry')} onAction={reload} />}
+      {!isLoading && !error && calorieRows.length === 0 && (
+        <ApiState title={i18n('meals.noMealsLogged')} message={i18n('meals.addFirstMeal')} actionLabel={i18n('meals.addMeal')} onAction={() => router.push('/meals/add' as never)} />
+      )}
 
-        {/* Bar chart */}
-        <View style={styles.barChart}>
-          {BAR_DATA.map((v, i) => {
-            const h = Math.max((v / BAR_MAX) * 80, 4);
-            const isToday = i === 4;
-            return (
-              <View key={i} style={styles.barCol}>
-                <View style={[styles.bar, { height: h, backgroundColor: isToday ? t.brand : t.brandSoft }]} />
-                <Text style={[typography.micro, { color: t.ink3, marginTop: 3 }]}>
-                  {['M','T','W','T','F','S','S'][i]}
-                </Text>
-              </View>
-            );
-          })}
-          {/* Dashed target line */}
-          <View style={[styles.targetLine, {
-            bottom: 18 + (BAR_TARGET / BAR_MAX) * 80,
-            borderColor: t.ink3,
-          }]} />
-        </View>
-      </Card>
-
-      {/* Macro split */}
-      <SectionHeader title={i18n('meals.macroSplit')} />
-      <Card tight>
-        <View style={styles.macroSplit}>
-          {/* MacroDonut with center text overlay */}
-          <MacroDonut segments={donutSegments} size={110} stroke={20}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={[typography.bodyMed, tabularNums, { color: t.ink }]}>1,901</Text>
-              <Text style={[typography.micro, { color: t.ink3 }]}>KCAL AVG</Text>
-            </View>
-          </MacroDonut>
-          <View style={styles.macroLegend}>
-            {LEGEND_DATA.map((m) => (
-              <View key={m.label} style={styles.legendRow}>
-                {/* Square dot (borderRadius: 2) */}
-                <View style={[styles.legendDot, { backgroundColor: m.color ?? t.brand, borderRadius: 2 }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[typography.caption, { color: t.ink2 }]}>{m.label}</Text>
-                  <Text style={[typography.micro, { color: t.ink3 }]}>{m.grams}g · target {m.target}</Text>
-                </View>
-                <Text style={[typography.chip, tabularNums, { color: t.ink }]}>{m.pct}%</Text>
-              </View>
-            ))}
+      {!isLoading && !error && calorieRows.length > 0 && (
+        <>
+          <View style={styles.stats}>
+            <StatCard label={i18n('meals.avgDaily')} value={`${avg} ${i18n('common.kcal')}`} />
+            <StatCard label={i18n('meals.calories')} value={`${Math.round(total)} ${i18n('common.kcal')}`} />
+            <StatCard label="Peak day" value={`${Math.round(peak)} ${i18n('common.kcal')}`} />
           </View>
-        </View>
-      </Card>
 
-      {/* Insights — filled 36px icon square */}
-      <SectionHeader title={i18n('meals.insights')} />
-      {INSIGHTS.map((ins) => {
-        const toneColor = ins.tone === 'success' ? t.success : ins.tone === 'warn' ? t.warning : t.brand;
-        const bgColor = toneColor + '15';
-        return (
-          <Card key={ins.title} tight style={{ ...styles.insightCard, backgroundColor: bgColor, borderColor: toneColor + '33' }}>
-            <View style={styles.insightRow}>
-              {/* Filled icon square */}
-              <View style={[styles.insightIconSq, { backgroundColor: toneColor + '20', borderRadius: 10 }]}>
-                {ins.icon === 'check' && <IconCheck size={18} color={toneColor} />}
-                {ins.icon === 'alert' && <IconAlert size={18} color={toneColor} />}
-                {ins.icon === 'trend' && <IconTrendUp size={18} color={toneColor} />}
-              </View>
-              <View style={styles.insightText}>
-                <Text style={[typography.bodyMed, { color: t.ink }]}>{ins.title}</Text>
-                <Text style={[typography.caption, { color: t.ink2 }]}>{ins.body}</Text>
-              </View>
+          <Card style={styles.splitCard}>
+            <MacroDonut
+              segments={[
+                { value: macro.carbs, color: '#E3B79A' },
+                { value: macro.protein, color: t.brand },
+                { value: macro.fat, color: '#5B90C4' },
+              ]}
+              size={118}
+            >
+              <Text style={[typography.h3, { color: t.ink }]}>{Math.round(total)}</Text>
+              <Text style={[typography.micro, { color: t.ink3 }]}>{i18n('common.kcal')}</Text>
+            </MacroDonut>
+            <View style={styles.splitText}>
+              <Text style={[typography.h3, { color: t.ink }]}>Core calorie trend: {trendLabel}</Text>
+              <Text style={[typography.body, { color: t.ink3 }]}>
+                {trendChange !== null ? `${Math.round(trendChange)}% change from Core reports` : 'Core reports did not return a percentage change yet.'}
+              </Text>
+              <Text style={[typography.caption, { color: t.ink4 }]}>Meals analyzed: {mealRows.length}</Text>
             </View>
           </Card>
-        );
-      })}
 
-      {/* Top foods */}
-      <SectionHeader title={i18n('meals.topFoods')} />
-      <Card style={{ padding: 0, paddingHorizontal: 12 }}>
-        {TOP_FOODS.map((f) => (
-          <View key={f.name} style={[styles.topFoodRow, { borderBottomColor: t.border }]}>
-            <View style={[styles.rankBadge, { backgroundColor: t.brandSoft }]}>
-              <Text style={[typography.chip, { color: t.brand }]}>{f.rank}</Text>
-            </View>
-            <View style={styles.topFoodInfo}>
-              <Text style={[typography.bodyMed, { color: t.ink }]}>{f.name}</Text>
-              <Text style={[typography.caption, { color: t.ink3 }]}>{f.serving}</Text>
-            </View>
-            <Text style={[typography.caption, tabularNums, { color: t.ink2 }]}>{f.kcal} kcal</Text>
-          </View>
-        ))}
-      </Card>
+          <Card style={styles.list}>
+            {topMeals.length === 0 ? (
+              <Text style={[typography.body, { color: t.ink3 }]}>No analyzed meals returned for this period.</Text>
+            ) : topMeals.map((meal) => (
+              <Pressable key={meal.id} onPress={() => router.push(`/meals/${meal.id}` as never)} style={[styles.row, { borderBottomColor: t.border }]}>
+                <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{mealName(meal)}</Text>
+                <Text style={[typography.bodyMed, { color: t.brand }]}>{Math.round(meal.nutrition_result?.calories ?? 0)} {i18n('common.kcal')}</Text>
+              </Pressable>
+            ))}
+          </Card>
+          <Button label={i18n('common.retry')} variant="ghost" onPress={reload} />
+        </>
+      )}
     </Screen>
   );
 }
 
+function StatCard({ label, value }: { label: string; value: string }) {
+  const t = useTheme();
+  return (
+    <Card style={styles.stat}>
+      <Text style={[typography.micro, { color: t.ink3 }]}>{label}</Text>
+      <Text style={[typography.h3, { color: t.ink }]}>{value}</Text>
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
-  backBar:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  backBtn:       { width: 40 },
-  segControl:    { flexDirection: 'row', padding: 4, marginBottom: 14 },
-  segItem:       { flex: 1, alignItems: 'center', paddingVertical: 8 },
-  avgCard:       { marginBottom: 4 },
-  avgRow:        { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 },
-  deltaBadge:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5 },
-  barChart:      { flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 6, position: 'relative' },
-  barCol:        { flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: 98 },
-  bar:           { width: '100%', borderRadius: 4 },
-  targetLine:    { position: 'absolute', left: 0, right: 0, height: 1, borderWidth: 1, borderStyle: 'dashed' },
-  macroSplit:    { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  macroLegend:   { flex: 1, gap: 10 },
-  legendRow:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  // Square legend dot
-  legendDot:     { width: 10, height: 10 },
-  insightCard:   { marginBottom: 8, borderWidth: 1 },
-  insightRow:    { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  // 36px filled icon square
-  insightIconSq: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  insightText:   { flex: 1, gap: 3 },
-  topFoodRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
-  rankBadge:     { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  topFoodInfo:   { flex: 1, gap: 2 },
+  periods: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  periodBtn: { borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 8 },
+  stats: { flexDirection: 'row', gap: 10 },
+  stat: { flex: 1, gap: 4 },
+  splitCard: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  splitText: { flex: 1, gap: 6 },
+  list: { gap: 0 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
 });

@@ -99,4 +99,13 @@ describe('MeScreen language row', () => {
     expect(mockRouterPush).toHaveBeenCalledWith('/profile/health');
     expect(mockRouterPush).not.toHaveBeenCalledWith('/auth/setup');
   });
+
+  it('opens real notification preferences instead of onboarding permission copy', () => {
+    const { getByText } = render(<MeScreen />);
+
+    fireEvent.press(getByText('Notifications'));
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/reminders/preferences');
+    expect(mockRouterPush).not.toHaveBeenCalledWith('/onboarding/permissions/notifications');
+  });
 });

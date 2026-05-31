@@ -14,6 +14,9 @@ export type ReminderRowData = {
   category: ReminderCategory;
   overdue?: boolean;
   done?: boolean;
+  terminal?: boolean;
+  statusLabel?: string;
+  statusColor?: string;
   joined?: boolean;
 };
 
@@ -38,14 +41,16 @@ function CategoryIcon({ category, color }: { category: ReminderCategory; color: 
 }
 
 export function ReminderRow({
-  title, subtitle, time, category, overdue, done, joined, showDivider,
+  title, subtitle, time, category, overdue, done, terminal, statusLabel, statusColor, joined, showDivider,
   onDone, onSnooze, onMore, onPress,
 }: Props) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
 
   const catColor = overdue ? t.danger : category === 'activity' ? t.success : category === 'goal' ? t.warning : t.brand;
-  const rowBg = overdue ? `${t.danger}0F` : done ? t.bgElev : t.card;
+  const isTerminal = Boolean(done || terminal);
+  const chipColor = statusColor ?? t.success;
+  const rowBg = overdue ? `${t.danger}0F` : isTerminal ? t.bgElev : t.card;
 
   const joinedStyle = joined
     ? {
@@ -103,19 +108,28 @@ export function ReminderRow({
 
       {/* Right slot: action button or more dots or done chip */}
       <View style={styles.rightSlot}>
-        {done ? (
-          <View style={[styles.doneChip, { backgroundColor: `${t.success}15` }]}>
-            <IconCheck size={10} color={t.success} />
-            <Text style={[styles.doneChipText, { color: t.success }]}>{i18n('reminders.done')}</Text>
+        {isTerminal ? (
+          <View style={[styles.doneChip, { backgroundColor: `${chipColor}15` }]}>
+            <IconCheck size={10} color={chipColor} />
+            <Text style={[styles.doneChipText, { color: chipColor }]}>{statusLabel ?? i18n('reminders.done')}</Text>
           </View>
         ) : overdue && onDone ? (
           <TouchableOpacity onPress={onDone} style={[styles.actionPill, { backgroundColor: t.danger }]}>
             <Text style={[styles.actionPillText, { color: '#fff' }]}>{i18n('reminders.resolve')}</Text>
           </TouchableOpacity>
-        ) : !overdue && onDone ? (
-          <TouchableOpacity onPress={onDone} style={[styles.actionPill, { backgroundColor: t.brand }]}>
-            <Text style={[styles.actionPillText, { color: '#fff' }]}>{i18n('reminders.done')}</Text>
-          </TouchableOpacity>
+        ) : !overdue && (onDone || onSnooze) ? (
+          <View style={styles.actionGroup}>
+            {onSnooze && (
+              <TouchableOpacity onPress={onSnooze} style={[styles.actionPill, styles.secondaryPill, { borderColor: t.border }]}>
+                <Text style={[styles.actionPillText, { color: t.ink3 }]}>Snooze</Text>
+              </TouchableOpacity>
+            )}
+            {onDone && (
+              <TouchableOpacity onPress={onDone} style={[styles.actionPill, { backgroundColor: t.brand }]}>
+                <Text style={[styles.actionPillText, { color: '#fff' }]}>{i18n('reminders.done')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         ) : onMore ? (
           <TouchableOpacity onPress={onMore} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <IconMore size={16} color={t.ink4} />
@@ -151,7 +165,9 @@ const styles = StyleSheet.create({
   timeInline:  { fontSize: 12, fontWeight: '500', flexShrink: 0 },
   subtitleText:{ fontSize: 11, marginTop: 2 },
   rightSlot:   { marginLeft: 10, alignItems: 'flex-end', flexShrink: 0 },
+  actionGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   actionPill:  { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100, minWidth: 60, alignItems: 'center' },
+  secondaryPill: { borderWidth: 1, backgroundColor: 'transparent', minWidth: 0, paddingHorizontal: 10 },
   actionPillText: { fontSize: 12, fontWeight: '700' },
   doneChip:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 100 },
   doneChipText:{ fontSize: 10, fontWeight: '600', marginLeft: 3 },

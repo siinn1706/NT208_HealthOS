@@ -40,7 +40,9 @@ export function MissedDoseScreen() {
       if (choice === 'skipped') await medicationService.skipDose(dose.reminder_id, dose.occurrence_id);
       else await medicationService.markDoseDone(dose.reminder_id, dose.occurrence_id);
       invalidateApiQuery(queryKeys.medications);
+      invalidateApiQuery(queryKeys.medication(medicationId));
       invalidateApiQuery(queryKeys.medicationDosesToday);
+      invalidateApiQuery(queryKeys.remindersAll);
       router.back();
     } catch (err) {
       setChoiceError(err instanceof Error ? err.message : 'Could not save your choice.');

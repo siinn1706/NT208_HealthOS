@@ -24,9 +24,8 @@ export function MedicationHistoryScreen() {
   const archived = (history.data ?? []).filter((med) => med.status !== 'active');
   const all = history.data ?? [];
   const paused = all.filter((m) => m.status === 'paused').length;
-  const adherenceAvg = all.length
-    ? Math.round(all.reduce((sum, m) => sum + (m.dose_count > 0 ? 80 : 0), 0) / all.length)
-    : 0;
+  const completed = all.filter((m) => m.status === 'completed').length;
+  const cancelled = all.filter((m) => m.status === 'cancelled').length;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -50,9 +49,9 @@ export function MedicationHistoryScreen() {
         {!history.isLoading && all.length > 0 && (
           <Card style={s.statsCard}>
             {[
-              { label: 'Adherence', value: `${adherenceAvg}%`, color: t.success },
-              { label: 'Medications', value: String(all.length),  color: t.ink    },
-              { label: 'Missed',     value: String(paused),        color: t.danger },
+              { label: 'Archived', value: String(archived.length), color: t.ink },
+              { label: 'Paused', value: String(paused), color: t.warning },
+              { label: 'Completed', value: String(completed), color: t.success },
             ].map((stat, i, arr) => (
               <View
                 key={stat.label}
@@ -70,6 +69,12 @@ export function MedicationHistoryScreen() {
 
         {/* NOTE: Per-day medication dose history is not available via the current API contract.
             Showing archived medication list instead. */}
+        {!history.isLoading && !history.error && all.length > 0 && (
+          <ApiState
+            title="Dose history unavailable"
+            message={`Core exposes current plan status and aggregate adherence, not a per-day medication history feed. Cancelled plans: ${cancelled}.`}
+          />
+        )}
         {archived.length > 0 && (
           <>
             <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }]}>
