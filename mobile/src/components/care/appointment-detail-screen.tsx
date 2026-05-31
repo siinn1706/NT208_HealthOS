@@ -22,6 +22,8 @@ import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { formatDate, formatTime } from '../../api/viewModels';
+import { AppointmentRescheduleSheet } from './appointment-reschedule-sheet';
+import { PrescriptionFilesCard } from './prescription-files-card';
 
 export function AppointmentDetailScreen() {
   const t = useTheme();
@@ -36,9 +38,8 @@ export function AppointmentDetailScreen() {
 
   // More menu sheet state
   const [moreOpen, setMoreOpen] = useState(false);
-  // Reschedule placeholder sheet state
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  // Attachments placeholder sheet state
+  // Attachments sheet state
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
   // Cancel confirmation state
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -170,7 +171,18 @@ export function AppointmentDetailScreen() {
             </View>
 
             <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.attachments')}</Text>
-            <MissingApiState title="General appointment attachments unavailable" contract="unclear and needs manual confirmation" />
+            {appointment.has_prescription ? (
+              <PrescriptionFilesCard
+                appointmentId={appointment.id}
+                showTitle={false}
+                helperText="Files are stored through the verified prescription asset contract for this appointment."
+              />
+            ) : (
+              <MissingApiState
+                title="Appointment attachments unavailable"
+                contract="Generic appointment upload/storage API is not implemented; only prescription files have a Core storage contract."
+              />
+            )}
 
             {appointment.has_prescription && (
               <PressableCard
@@ -200,7 +212,7 @@ export function AppointmentDetailScreen() {
 
             <View style={s.actions}>
               <Button
-                label={i18n('care.prep')}
+                label="Reschedule"
                 variant="ghost"
                 style={s.actionBtn}
                 onPress={() => setRescheduleOpen(true)}
@@ -233,18 +245,29 @@ export function AppointmentDetailScreen() {
         </View>
       </BottomSheet>
 
-      {/* Reschedule placeholder sheet */}
-      <BottomSheet visible={rescheduleOpen} onClose={() => setRescheduleOpen(false)}>
-        <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
-          <MissingApiState title="Reschedule UI pending date/time picker" contract="PATCH /v1/appointments/{id} is available" />
-          <Button label={i18n('common.close')} variant="soft" onPress={() => setRescheduleOpen(false)} style={{ marginTop: 8 }} />
-        </View>
-      </BottomSheet>
+      <AppointmentRescheduleSheet
+        visible={rescheduleOpen}
+        appointment={appointment}
+        onClose={() => setRescheduleOpen(false)}
+      />
 
-      {/* Attachments placeholder sheet */}
+      {/* Attachments sheet */}
       <BottomSheet visible={attachmentsOpen} onClose={() => setAttachmentsOpen(false)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
-          <MissingApiState title="Attachments unavailable" contract="unclear and needs manual confirmation" />
+          {attachmentsOpen && (
+            appointment?.has_prescription ? (
+              <PrescriptionFilesCard
+                appointmentId={appointment.id}
+                showTitle={false}
+                helperText="Prescription files are backed by the appointment prescription asset API."
+              />
+            ) : (
+              <MissingApiState
+                title="Attachments unavailable"
+                contract="Generic appointment upload/storage API is not implemented; only prescription files have a Core storage contract."
+              />
+            )
+          )}
           <Button label={i18n('common.close')} variant="soft" onPress={() => setAttachmentsOpen(false)} style={{ marginTop: 8 }} />
         </View>
       </BottomSheet>

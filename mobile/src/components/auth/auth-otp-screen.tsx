@@ -69,7 +69,7 @@ export function AuthOtpScreen() {
   const t = useTheme();
   const session = useSession();
   const params = useLocalSearchParams<{ email?: string; purpose?: string }>();
-  const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
+  const [digits, setDigits] = useState<string[]>(() => Array(OTP_LEN).fill(''));
   const [focusIdx, setFocusIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,8 +139,8 @@ export function AuthOtpScreen() {
       }
       await session.refreshUser();
       if (params.purpose === 'reset_password') router.replace('/auth/sign-in');
-      else if (params.purpose === 'login') router.replace('/(tabs)/home');
-      else router.replace('/auth/setup');
+      else if (params.purpose === 'login') router.replace('/home');
+      else router.replace('/onboarding/setup' as never);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code.');
     } finally {

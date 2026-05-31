@@ -45,14 +45,14 @@
       return ("#" + t(f(0)) + t(f(8)) + t(f(4))).toUpperCase();
     }
     function Y(c) {
-      var L = function (v) {
+      var linearizeChannel = function (v) {
         v /= 255;
         return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
       };
       return (
-        0.2126 * L(parseInt(c.slice(1, 3), 16)) +
-        0.7152 * L(parseInt(c.slice(3, 5), 16)) +
-        0.0722 * L(parseInt(c.slice(5, 7), 16))
+        0.2126 * linearizeChannel(parseInt(c.slice(1, 3), 16)) +
+        0.7152 * linearizeChannel(parseInt(c.slice(3, 5), 16)) +
+        0.0722 * linearizeChannel(parseInt(c.slice(5, 7), 16))
       );
     }
     function C(b) {
@@ -77,7 +77,7 @@
         if (e === "light") return 0;
         try {
           return matchMedia("(prefers-color-scheme: dark)").matches ? 1 : 0;
-        } catch (z) {
+        } catch {
           return document.documentElement.classList.contains("dark") ? 1 : 0;
         }
       })(),
@@ -96,7 +96,7 @@
     S.setProperty("--ring", P);
     S.setProperty("--chart-1", P);
     S.setProperty("--chart-2", G);
-  } catch (e) {
+  } catch {
     /* noop — AccentColorProvider repairs on mount */
   }
 })();

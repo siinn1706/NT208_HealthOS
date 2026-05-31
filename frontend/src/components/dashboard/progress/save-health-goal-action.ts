@@ -3,17 +3,16 @@
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 import { CORE_API_URL } from "@/lib/env";
+import {
+  extractHealthGoalErrorMessage,
+  type SaveGoalResult,
+  type SavedGoal,
+} from "./health-goal-action-contract";
 
-/** Shape of the goal object returned by Core BE (wrapped in { data: ... }) */
-export interface SavedGoal {
-  id: string;
-  target_weight_kg: number | null;
-  deadline: string | null;
+async function requireAuth(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
 }
-
-export type SaveGoalResult =
-  | { ok: true; goal: SavedGoal }
-  | { ok: false; message: string };
 
 /**
  * Server action: save (create or update) a health goal.
@@ -28,8 +27,7 @@ export async function saveHealthGoalAction(
     deadline: string | null;
   }
 ): Promise<SaveGoalResult> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const token = await requireAuth();
 
   if (!token) {
     return { ok: false, message: "Session expired" };
@@ -57,7 +55,7 @@ export async function saveHealthGoalAction(
       let msg = `Error ${beRes.status}`;
       try {
         const errJson = await beRes.json();
-        msg = (errJson as { message?: string }).message ?? msg;
+        msg = extractHealthGoalErrorMessage(errJson, msg);
       } catch {
         // use status-based message
       }

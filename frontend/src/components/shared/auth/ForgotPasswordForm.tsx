@@ -8,16 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useNotification } from "@/hooks/use-notification";
-import {
-  AuthShell,
-  AuthBanner,
-  PasswordField,
-  OtpField,
-  PendingButton,
-  FormFieldError,
-  useResendCooldown,
-  useBreachCheck,
-} from "./primitives";
+import { AuthShell } from "./primitives/AuthShell";
+import { AuthBanner } from "./primitives/AuthBanner";
+import { PasswordField } from "./primitives/PasswordField";
+import { OtpField } from "./primitives/OtpField";
+import { PendingButton } from "./primitives/PendingButton";
+import { FormFieldError } from "./primitives/FormFieldError";
+import { useResendCooldown } from "./primitives/useResendCooldown";
+import { useBreachCheck } from "./primitives/useBreachCheck";
 import { PasswordStrengthMeter } from "./password-strength-meter";
 import { track } from "@/lib/analytics";
 

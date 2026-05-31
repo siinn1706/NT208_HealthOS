@@ -57,6 +57,15 @@ def test_openapi_no_drift(live_schema: dict) -> None:
         )
 
 
+@pytest.mark.parametrize("component_name", ["CurrentUser", "InsuranceInfo", "MedicalInfo", "UserProfileUpdate"])
+def test_profile_component_no_drift(live_schema: dict, component_name: str) -> None:
+    """Profile-related component schemas must match because clients generate from them."""
+    committed = _load_yaml(_CONTRACT_PATH)
+    live_component = live_schema["components"]["schemas"][component_name]
+    committed_component = committed["components"]["schemas"][component_name]
+    assert committed_component == live_component
+
+
 def test_no_snapshot_update_flag_exists() -> None:
     """Ensure no --snapshot-update pytest option is registered (tampering guard)."""
     import _pytest.config as _pc

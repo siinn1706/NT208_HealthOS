@@ -17,7 +17,12 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import type { UserBmiData } from "@/data/gamification";
-import { saveHealthGoalAction, type SavedGoal } from "./save-health-goal-action";
+import { saveHealthGoalAction } from "./save-health-goal-action";
+import type { SavedGoal } from "./health-goal-action-contract";
+import {
+  getLocalDateInputValue,
+  validateHealthGoalForm,
+} from "./health-goal-dialog-validation";
 
 interface HealthGoalDialogProps {
   open: boolean;
@@ -57,19 +62,21 @@ export function HealthGoalDialog({
       deadline: initialGoal?.deadline ?? "",
     },
   });
+  const { reset } = form;
 
   // Reset form when dialog opens with new initialGoal
   useEffect(() => {
     if (open) {
-      form.reset({
+      reset({
         targetWeightKg: initialGoal?.targetWeightKg?.toString() ?? "",
         deadline: initialGoal?.deadline ?? "",
       });
     }
-  }, [open, initialGoal]);
+  }, [open, initialGoal, reset]);
 
   const profileHeight = initialGoal?.heightCm ?? 0;
   const targetWeight = Number(form.watch("targetWeightKg"));
+  const todayDateInput = getLocalDateInputValue();
 
   // BMI = weight / height² — use profile height (single source of truth)
   const computedBmi =
@@ -90,13 +97,15 @@ export function HealthGoalDialog({
   }
 
   async function handleSave() {
+    const validation = validateHealthGoalForm(form.getValues(), todayDateInput);
+    if (!validation.ok) {
+      toast.error(t(validation.messageKey));
+      return;
+    }
+
     setSaving(true);
     try {
-      const formData = form.getValues();
-      const result = await saveHealthGoalAction(initialGoal?.goalId ?? null, {
-        target_weight_kg: formData.targetWeightKg ? Number(formData.targetWeightKg) : null,
-        deadline: formData.deadline || null,
-      });
+      const result = await saveHealthGoalAction(initialGoal?.goalId ?? null, validation.payload);
 
       if (!result.ok) {
         toast.error(result.message);
@@ -126,6 +135,7 @@ export function HealthGoalDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {/* oxlint-disable-next-line react-doctor/no-prevent-default -- This client dialog uses the existing validated save action path and must keep local form state open on validation errors. */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -142,6 +152,7 @@ export function HealthGoalDialog({
               min={30}
               max={200}
               step={0.1}
+              required
               placeholder="65.0"
               {...form.register("targetWeightKg")}
               className="h-9"
@@ -181,6 +192,7 @@ export function HealthGoalDialog({
             <Input
               id="goal-deadline"
               type="date"
+              min={todayDateInput}
               {...form.register("deadline")}
               className="h-9"
             />
@@ -201,7 +213,7 @@ export function HealthGoalDialog({
               disabled={saving}
               className="cursor-pointer"
             >
-              {saving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {saving && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               {t("save")}
             </Button>
           </DialogFooter>

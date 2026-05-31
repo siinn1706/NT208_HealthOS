@@ -49,8 +49,6 @@ export function AuthSetupScreen() {
     return null;
   }
 
-  const isValid = validate() === null;
-
   async function handleFinish() {
     const msg = validate();
     if (msg) { setError(msg); return; }
@@ -64,7 +62,7 @@ export function AuthSetupScreen() {
         weight_kg: weight ? Number(weight) : null,
         onboarding_completed: true,
       });
-      router.replace('/(tabs)/home');
+      router.replace('/home');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save profile.');
     } finally {
@@ -126,7 +124,7 @@ export function AuthSetupScreen() {
               accessibilityState={{ selected: active }}
               accessibilityLabel={opt.label}
             >
-              <Text style={[{ fontSize: 14, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular', color: active ? t.brand : t.ink2 }]}>
+              <Text style={{ fontSize: 14, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular', color: active ? t.brand : t.ink2 }}>
                 {opt.label}
               </Text>
             </TouchableOpacity>

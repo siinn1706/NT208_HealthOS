@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CHAT_UNREAD_REFRESH_EVENT } from "@/hooks/useChat";
 
 /**
@@ -9,9 +9,15 @@ import { CHAT_UNREAD_REFRESH_EVENT } from "@/hooks/useChat";
  */
 export function useUnreadConversations(intervalMs = 30_000) {
   const [count, setCount] = useState(0);
+  const intervalMsRef = useRef(intervalMs);
+
+  useEffect(() => {
+    intervalMsRef.current = intervalMs;
+  }, [intervalMs]);
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: number | null = null;
 
     const fetchUnread = async () => {
       try {
@@ -25,17 +31,25 @@ export function useUnreadConversations(intervalMs = 30_000) {
         /* ignore */
       }
     };
-    fetchUnread();
-    const id = window.setInterval(fetchUnread, intervalMs);
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timeoutId = window.setTimeout(() => {
+        void fetchUnread().finally(scheduleNext);
+      }, intervalMsRef.current);
+    };
+
+    void fetchUnread();
+    scheduleNext();
     window.addEventListener(CHAT_UNREAD_REFRESH_EVENT, fetchUnread);
     window.addEventListener("focus", fetchUnread);
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
       window.removeEventListener(CHAT_UNREAD_REFRESH_EVENT, fetchUnread);
       window.removeEventListener("focus", fetchUnread);
     };
-  }, [intervalMs]);
+  }, []);
 
   return count;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Activity,
@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PrescriptionViewerDialog } from "./PrescriptionViewerDialog";
+import { normalizeAppointment } from "./appointment-normalizer";
 import type { Appointment, AppointmentStatus } from "@/types/api";
 
 type ActionLabelKey = "markInProgress" | "markCompleted" | "markNoShow" | "markCancelled";
@@ -64,6 +65,17 @@ const STATUS_ACTIONS: Partial<
   ],
 };
 
+const STATUS_BADGE_COLOR: Record<AppointmentStatus, string> = {
+  booked: "bg-info/10 text-info",
+  scheduled: "bg-info/10 text-info",
+  upcoming: "bg-primary/10 text-primary",
+  in_progress: "bg-info/10 text-info",
+  completed: "bg-success/10 text-success",
+  cancelled: "bg-muted text-muted-foreground",
+  no_show: "bg-warning/10 text-warning",
+  rescheduled: "bg-info/10 text-info",
+};
+
 interface FormState {
   doctorName: string;
   specialty: string;
@@ -94,56 +106,6 @@ function initForm(appt: Appointment): FormState {
   };
 }
 
-// Normalise the raw BE AppointmentDTO object coming back from PATCH/status responses.
-function normalizeDto(raw: unknown, fallback: string): Appointment | null {
-  if (!raw || typeof raw !== "object") return null;
-  const d = raw as Record<string, unknown>;
-  const pRaw =
-    d.prescription && typeof d.prescription === "object"
-      ? (d.prescription as Record<string, unknown>)
-      : null;
-
-  return {
-    id: typeof d.id === "string" ? d.id : "",
-    date: typeof d.appointment_date === "string" ? d.appointment_date : "",
-    doctorName:
-      typeof d.doctor_name === "string" && d.doctor_name.trim()
-        ? d.doctor_name
-        : fallback,
-    specialty:
-      typeof d.specialty === "string" && d.specialty.trim()
-        ? d.specialty
-        : "N/A",
-    clinic:
-      typeof d.clinic === "string" && d.clinic.trim() ? d.clinic : "N/A",
-    diagnosis:
-      typeof d.diagnosis === "string" && d.diagnosis.trim()
-        ? d.diagnosis
-        : fallback,
-    status: (typeof d.status === "string"
-      ? d.status
-      : "upcoming") as AppointmentStatus,
-    hasPrescription: Boolean(d.has_prescription),
-    prescription: pRaw
-      ? {
-          id: typeof pRaw.id === "string" ? pRaw.id : "",
-          issuedAt:
-            typeof pRaw.issued_at === "string" ? pRaw.issued_at : "",
-          doctor:
-            typeof pRaw.doctor === "string" ? pRaw.doctor : fallback,
-          clinic:
-            typeof pRaw.clinic === "string" ? pRaw.clinic : fallback,
-          diagnosis:
-            typeof pRaw.diagnosis === "string" ? pRaw.diagnosis : fallback,
-          medicines: Array.isArray(pRaw.medicines) ? pRaw.medicines : [],
-          notes:
-            typeof pRaw.notes === "string" ? pRaw.notes : null,
-        }
-      : null,
-    notes: typeof d.notes === "string" ? d.notes : undefined,
-  };
-}
-
 interface Props {
   appointment: Appointment | null;
   open: boolean;
@@ -162,31 +124,22 @@ export function AppointmentDetailSheet({
   const locale = useLocale();
 
   const [mode, setMode] = useState<"read" | "edit">("read");
-  const [form, setForm] = useState<FormState>({
-    doctorName: "",
-    specialty: "",
-    clinic: "",
-    date: "",
-    time: "09:00",
-    reason: "",
-    notes: "",
-  });
+  const [form, setForm] = useState<FormState>(() =>
+    appointment
+      ? initForm(appointment)
+      : {
+          doctorName: "",
+          specialty: "",
+          clinic: "",
+          date: "",
+          time: "09:00",
+          reason: "",
+          notes: "",
+        },
+  );
   const [saving, setSaving] = useState(false);
   const [statusBusy, setStatusBusy] = useState<string | null>(null);
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
-
-  // Reset to read mode whenever a different appointment is selected.
-  useEffect(() => {
-    setMode("read");
-    setPrescriptionOpen(false);
-  }, [appointment?.id]);
-
-  // Populate edit form when entering edit mode.
-  useEffect(() => {
-    if (mode === "edit" && appointment) {
-      setForm(initForm(appointment));
-    }
-  }, [mode, appointment]);
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -222,7 +175,7 @@ export function AppointmentDetailSheet({
       );
       if (!res.ok) throw new Error("save failed");
       const json = await res.json().catch(() => null);
-      const updated = normalizeDto(json?.data, t("noData"));
+      const updated = normalizeAppointment(json?.data, t("noData"));
       if (updated) {
         onUpdated(updated);
         setMode("read");
@@ -249,7 +202,7 @@ export function AppointmentDetailSheet({
       );
       if (!res.ok) throw new Error("status update failed");
       const json = await res.json().catch(() => null);
-      const updated = normalizeDto(json?.data, t("noData"));
+      const updated = normalizeAppointment(json?.data, t("noData"));
       if (updated) {
         onUpdated(updated);
         toast.success(t("statusAction.updated"));
@@ -294,7 +247,7 @@ export function AppointmentDetailSheet({
           <SheetHeader className="px-5 py-4 border-b border-border space-y-0">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <Stethoscope className="h-4 w-4 text-primary flex-shrink-0" aria-hidden />
+                <Stethoscope className="size-4 text-primary flex-shrink-0" aria-hidden />
                 <SheetTitle className="text-base truncate">
                   {mode === "edit" ? t("edit.title") : t("detail.title")}
                 </SheetTitle>
@@ -304,7 +257,10 @@ export function AppointmentDetailSheet({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setMode("edit")}
+                  onClick={() => {
+                    setForm(initForm(appointment));
+                    setMode("edit");
+                  }}
                   className="flex-shrink-0 gap-1.5"
                 >
                   <Edit2 className="size-3.5" aria-hidden />
@@ -399,7 +355,7 @@ export function AppointmentDetailSheet({
                       "px-4 py-3 text-left transition-colors hover:bg-primary/10",
                     )}
                   >
-                    <FileText className="h-4 w-4 text-primary flex-shrink-0" aria-hidden />
+                    <FileText className="size-4 text-primary flex-shrink-0" aria-hidden />
                     <span className="flex-1 text-sm font-medium text-primary">
                       {t("viewPrescription")}
                     </span>
@@ -490,6 +446,7 @@ export function AppointmentDetailSheet({
                 </Field>
                 <Field label={t("edit.notes")}>
                   <textarea
+                    aria-label={t("edit.notes")}
                     value={form.notes}
                     onChange={(e) => update("notes", e.target.value)}
                     rows={3}
@@ -534,21 +491,11 @@ function StatusBadge({
   status: AppointmentStatus;
   tStatus: ReturnType<typeof useTranslations>;
 }) {
-  const COLOR: Record<AppointmentStatus, string> = {
-    booked:      "bg-info/10 text-info",
-    scheduled:   "bg-info/10 text-info",
-    upcoming:    "bg-primary/10 text-primary",
-    in_progress: "bg-info/10 text-info",
-    completed:   "bg-success/10 text-success",
-    cancelled:   "bg-muted text-muted-foreground",
-    no_show:     "bg-warning/10 text-warning",
-    rescheduled: "bg-info/10 text-info",
-  };
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
-        COLOR[status],
+        STATUS_BADGE_COLOR[status],
       )}
     >
       {tStatus(status)}
@@ -567,7 +514,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" aria-hidden />
+      <Icon className="size-4 text-muted-foreground mt-0.5 flex-shrink-0" aria-hidden />
       <div className="min-w-0">
         <p className="text-sm text-foreground leading-snug">{label}</p>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}

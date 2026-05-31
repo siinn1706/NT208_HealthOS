@@ -1,31 +1,79 @@
 import React, { useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, type DimensionValue } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Card } from '../../primitives/card';
 import { SectionHeader } from '../../layout/section-header';
-import { ApiState, MissingApiState } from '../../api/api-state';
+import { ApiState } from '../../api/api-state';
 import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { healthGoalService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
-import { ChevronLeft } from '../../../icons';
+import { ChevronLeft, IconActivity, IconBadge, IconFire, IconLock, IconTarget } from '../../../icons';
+import {
+  deriveGoalMilestones,
+  summarizeGoalMilestones,
+  type GoalMilestone,
+  type GoalMilestoneIcon,
+} from './goal-progress-derived';
 
-const STAT_CELLS = [
-  { label: 'EARNED',      value: '--' },
-  { label: 'IN PROGRESS', value: '--' },
-  { label: 'LOCKED',      value: '--' },
-];
+function iconForMilestone(icon: GoalMilestoneIcon, color: string) {
+  if (icon === 'activity') return <IconActivity size={18} color={color} />;
+  if (icon === 'fire') return <IconFire size={18} color={color} />;
+  if (icon === 'badge') return <IconBadge size={18} color={color} />;
+  return <IconTarget size={18} color={color} />;
+}
+
+function statusColor(status: GoalMilestone['status'], t: ReturnType<typeof useTheme>) {
+  if (status === 'earned') return t.success;
+  if (status === 'in_progress') return t.brand;
+  return t.ink4;
+}
+
+function MilestoneRow({ milestone, last }: { milestone: GoalMilestone; last?: boolean }) {
+  const t = useTheme();
+  const tone = statusColor(milestone.status, t);
+  const fillWidth = `${Math.round(milestone.progress * 100)}%` as DimensionValue;
+
+  return (
+    <View style={[styles.progressRow, { borderBottomColor: t.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }]}>
+      <View style={[styles.progressIcon, { backgroundColor: milestone.status === 'locked' ? t.bgElev : tone + '18', borderRadius: t.radius.sm }]}>
+        {milestone.status === 'locked' ? <IconLock size={18} color={tone} /> : iconForMilestone(milestone.icon, tone)}
+      </View>
+      <View style={styles.progressCopy}>
+        <View style={styles.rowHeader}>
+          <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{milestone.title}</Text>
+          <Text style={[typography.micro, styles.upperLabel, { color: tone }]}>{milestone.status.replace('_', ' ')}</Text>
+        </View>
+        <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{milestone.description}</Text>
+        <View style={[styles.progBarTrack, { backgroundColor: t.border, borderRadius: t.radius.pill, marginTop: 8 }]}>
+          <View style={[styles.progBarFill, { backgroundColor: tone, borderRadius: t.radius.pill, width: fillWidth }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export function GoalMilestonesScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const loadGoal = useCallback(() => healthGoalService.current(), []);
   const goal = useApiQuery(queryKeys.healthGoal, loadGoal);
+  const target = goal.data?.target_weight_kg ?? null;
+  const loadProgress = useCallback(() => healthGoalService.progress({
+    metric: 'weight_kg',
+    target: target ?? 1,
+    period: '30d',
+  }), [target]);
+  const progress = useApiQuery(
+    queryKeys.healthGoalProgress('weight_kg', '30d'),
+    loadProgress,
+    { enabled: Boolean(target) },
+  );
 
-  if (goal.isLoading) {
+  if (goal.isLoading || progress.isLoading) {
     return (
       <Screen>
         <ApiState title={i18n('insights.loadingMilestones')} loading />
@@ -33,13 +81,36 @@ export function GoalMilestonesScreen() {
     );
   }
 
-  if (goal.error) {
+  if (goal.error || progress.error) {
     return (
       <Screen>
-        <ApiState title={i18n('insights.milestonesUnavailable')} message={goal.error.message} actionLabel={i18n('common.retry')} onAction={goal.reload} />
+        <ApiState
+          title={i18n('insights.milestonesUnavailable')}
+          message={goal.error?.message ?? progress.error?.message}
+          actionLabel={i18n('common.retry')}
+          onAction={() => { void goal.reload(); void progress.reload(); }}
+        />
       </Screen>
     );
   }
+
+  if (!goal.data || !target) {
+    return (
+      <Screen>
+        <ApiState
+          title={i18n('insights.noGoalConfigured')}
+          message={i18n('insights.noGoalMessage')}
+          actionLabel={i18n('insights.createGoal')}
+          onAction={() => router.push('/insights/goals/create' as never)}
+        />
+      </Screen>
+    );
+  }
+
+  const milestones = deriveGoalMilestones(goal.data, progress.data ?? []);
+  const summary = summarizeGoalMilestones(milestones);
+  const earned = milestones.filter((item) => item.status === 'earned');
+  const inProgress = milestones.filter((item) => item.status === 'in_progress');
 
   return (
     <Screen>
@@ -48,14 +119,17 @@ export function GoalMilestonesScreen() {
         <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>{i18n('insights.milestones')}</Text>
       </Pressable>
 
-      {/* Top stat strip: Earned / In Progress / Locked */}
       <Card style={styles.statStrip}>
-        {STAT_CELLS.map((cell, i) => (
+        {[
+          { label: 'EARNED', value: summary.earned },
+          { label: 'IN PROGRESS', value: summary.inProgress },
+          { label: 'LOCKED', value: summary.locked },
+        ].map((cell, index) => (
           <React.Fragment key={cell.label}>
-            {i > 0 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
+            {index > 0 && <View style={[styles.divider, { backgroundColor: t.border }]} />}
             <View style={styles.statCell}>
               <Text style={[typography.h3, { color: t.ink }]}>{cell.value}</Text>
-              <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }]}>
+              <Text style={[typography.micro, styles.upperLabel, { color: t.ink3, marginTop: 2 }]}>
                 {cell.label}
               </Text>
             </View>
@@ -63,84 +137,48 @@ export function GoalMilestonesScreen() {
         ))}
       </Card>
 
-      {/* Just earned */}
       <SectionHeader title={i18n('insights.justEarned')} />
-      <View style={[styles.earnedCard, { backgroundColor: t.successSoft, borderRadius: t.radius.xl }]}>
-        <View style={[styles.badgeIcon, { backgroundColor: t.success + '22', borderRadius: t.radius.md }]}>
-          <Text style={{ fontSize: 24 }}>🏅</Text>
-        </View>
-        <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={[typography.micro, { color: t.success, textTransform: 'uppercase', letterSpacing: 0.5 }]}>
-            Earned
-          </Text>
-          <Text style={[typography.title, { color: t.ink, marginTop: 2 }]}>Walking warrior</Text>
-          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>50,000 steps in a week</Text>
-        </View>
-        {/* TODO(api): GET /v1/health-goals/{id}/milestones — earned section */}
-      </View>
-      <MissingApiState title="Earned milestones unavailable" contract="TODO: GET /v1/health-goals/{id}/milestones" />
+      {earned.length > 0 ? (
+        <Card tight>
+          {earned.map((milestone, index) => (
+            <MilestoneRow key={milestone.id} milestone={milestone} last={index === earned.length - 1} />
+          ))}
+        </Card>
+      ) : (
+        <ApiState title="No earned milestones yet" message="Log Core weight readings to unlock progress milestones." />
+      )}
 
-      {/* In progress */}
       <SectionHeader title={i18n('insights.inProgress')} />
-      <Card tight>
-        {[
-          { emoji: '🚶', title: 'Step master',     sub: '7,500 / 10,000 steps/day for 7 d' },
-          { emoji: '😴', title: 'Sleep champion',  sub: '5 / 7 nights ≥ 8 h'             },
-          { emoji: '💊', title: 'Pill streak',     sub: '12 / 30 days on time'            },
-        ].map((row, i) => (
-          <View
-            key={i}
-            style={[
-              styles.progressRow,
-              { borderBottomColor: t.border, borderBottomWidth: i < 2 ? StyleSheet.hairlineWidth : 0 },
-            ]}
-          >
-            <View style={[styles.progressIcon, { backgroundColor: t.brandSoft, borderRadius: t.radius.sm }]}>
-              <Text style={{ fontSize: 18 }}>{row.emoji}</Text>
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[typography.bodyMed, { color: t.ink }]}>{row.title}</Text>
-              <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{row.sub}</Text>
-              {/* Progress bar placeholder */}
-              <View style={[styles.progBarTrack, { backgroundColor: t.border, borderRadius: t.radius.pill, marginTop: 6 }]}>
-                <View style={[styles.progBarFill, { backgroundColor: t.brand, borderRadius: t.radius.pill, width: '40%' }]} />
-              </View>
-            </View>
-          </View>
-        ))}
-        {/* TODO(api): GET /v1/health-goals/{id}/milestones/progress */}
-        <MissingApiState title="Milestone progress unavailable" contract="TODO: GET /v1/health-goals/{id}/milestones/progress" />
-      </Card>
+      {inProgress.length > 0 ? (
+        <Card tight>
+          {inProgress.map((milestone, index) => (
+            <MilestoneRow key={milestone.id} milestone={milestone} last={index === inProgress.length - 1} />
+          ))}
+        </Card>
+      ) : (
+        <ApiState title="No milestones in progress" message="All available milestones are either earned or locked." />
+      )}
 
-      {/* All milestones badge grid */}
       <SectionHeader title={i18n('insights.allMilestones')} />
-      <Card style={styles.badgeGrid}>
-        {['🏅', '🌟', '🔥', '💪', '🎯', '🏃'].map((em, i) => (
-          <View
-            key={i}
-            style={[styles.badgeCell, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}
-          >
-            <Text style={{ fontSize: 28 }}>{em}</Text>
-          </View>
+      <Card tight>
+        {milestones.map((milestone, index) => (
+          <MilestoneRow key={milestone.id} milestone={milestone} last={index === milestones.length - 1} />
         ))}
-        {/* TODO(api): GET /v1/health-goals/{id}/milestones — full badge grid */}
-        <MissingApiState title="All milestones unavailable" contract="TODO: GET /v1/health-goals/{id}/milestones" />
       </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  backBar:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  statStrip:    { flexDirection: 'row', paddingVertical: 16, paddingHorizontal: 8 },
-  statCell:     { flex: 1, alignItems: 'center' },
-  divider:      { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
-  earnedCard:   { flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 4 },
-  badgeIcon:    { width: 54, height: 54, alignItems: 'center', justifyContent: 'center' },
-  progressRow:  { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingVertical: 14 },
+  backBar: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  statStrip: { flexDirection: 'row', paddingVertical: 16, paddingHorizontal: 8 },
+  statCell: { flex: 1, alignItems: 'center' },
+  divider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
+  upperLabel: { textTransform: 'uppercase' },
+  progressRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingVertical: 14 },
   progressIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  progressCopy: { flex: 1, marginLeft: 12 },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   progBarTrack: { height: 5, width: '100%' },
-  progBarFill:  { height: 5 },
-  badgeGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 14 },
-  badgeCell:    { width: 64, height: 64, alignItems: 'center', justifyContent: 'center' },
+  progBarFill: { height: 5 },
 });

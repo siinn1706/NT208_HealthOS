@@ -131,9 +131,9 @@ function StatPill({
           {value != null ? (Number.isInteger(value) ? value : value.toFixed(1)) : "—"}
         </span>
         <span className="text-[10px] text-muted-foreground ml-0.5">{unit}</span>
-        {trend === "up"   && <TrendingUp   className="w-3 h-3 ml-0.5 text-emerald-500 flex-shrink-0" />}
-        {trend === "down" && <TrendingDown className="w-3 h-3 ml-0.5 text-red-400    flex-shrink-0" />}
-        {trend === "flat" && <Minus        className="w-3 h-3 ml-0.5 text-muted-foreground flex-shrink-0" />}
+        {trend === "up"   && <TrendingUp   className="size-3 ml-0.5 text-emerald-500 flex-shrink-0" />}
+        {trend === "down" && <TrendingDown className="size-3 ml-0.5 text-red-400    flex-shrink-0" />}
+        {trend === "flat" && <Minus        className="size-3 ml-0.5 text-muted-foreground flex-shrink-0" />}
       </div>
     </div>
   );
@@ -350,8 +350,12 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
     const requestSeq = ++requestSeqRef.current;
     const days = periodToDays(targetPeriod);
     startTransition(async () => {
-      const result = await fetchExtended(days);
       if (requestSeq !== requestSeqRef.current || targetPeriod !== periodRef.current) {
+        return;
+      }
+      const result = await fetchExtended(days);
+      const isStale = requestSeq !== requestSeqRef.current || targetPeriod !== periodRef.current;
+      if (isStale) {
         return;
       }
       if (result.status === "success" || result.status === "empty") {
@@ -376,6 +380,7 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
 
   // On mount, load full extended data for the default period.
   useEffect(() => {
+    // oxlint-disable-next-line react-doctor/no-pass-data-to-parent -- This initializes local chart data from the widget's own BFF loader.
     refreshExtended(periodRef.current);
   }, [refreshExtended]);
 
@@ -434,7 +439,7 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
       {/* ── Tabs (scrollable row on small screens) ── */}
       <div className="flex gap-1 px-3 pt-2.5 pb-1 overflow-x-auto scrollbar-none">
         {TABS.map(({ key, lk, Icon }) => (
-          <button
+          <button type="button"
             key={key}
             onClick={() => setActiveTab(key)}
             className={cn(
@@ -444,7 +449,7 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
           >
-            <Icon className="w-3.5 h-3.5" aria-hidden />
+            <Icon className="size-3.5" aria-hidden />
             {t(lk as Parameters<typeof t>[0])}
           </button>
         ))}
@@ -494,18 +499,18 @@ export function VitalsChartWidget({ initialData, initialPeriod = "7d" }: VitalsC
       <div className="px-3 pb-3">
         {isPending ? (
           <div className="flex items-center justify-center h-[220px] text-sm text-muted-foreground gap-2">
-            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             {t("loading")}
           </div>
         ) : hasError ? (
           <div className="flex flex-col items-center justify-center h-[220px] gap-2 text-muted-foreground text-center px-4">
-            <Activity className="w-8 h-8 opacity-30" />
+            <Activity className="size-8 opacity-30" />
             <p className="text-sm font-medium text-foreground">{t("loadError")}</p>
             <p className="text-xs">{sliceError?.message ?? t("noData")}</p>
           </div>
         ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center h-[220px] gap-2 text-muted-foreground">
-            <Activity className="w-8 h-8 opacity-30" />
+            <Activity className="size-8 opacity-30" />
             <p className="text-sm">{t("noData")}</p>
           </div>
         ) : (

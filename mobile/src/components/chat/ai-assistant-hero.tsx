@@ -32,7 +32,7 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggesti
             <IconRobot size={22} color="#FFFFFF" />
           </View>
           <View style={styles.info}>
-            <Text style={[{ fontSize: 15, fontWeight: '700', color: t.ink }]}>{i18n('chat.aiName')}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: t.ink }}>{i18n('chat.aiName')}</Text>
             <View style={styles.online}>
               <View style={[styles.dot, { backgroundColor: t.success }]} />
               <Text style={[typography.micro, { color: t.ink3 }]}>{i18n('chat.aiStatus')}</Text>
@@ -43,7 +43,10 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggesti
           {suggestions.map((s) => (
             <Pressable
               key={s}
-              onPress={() => { onSuggestionPress ? onSuggestionPress(s) : onSuggestion?.(s); }}
+              onPress={() => {
+                if (onSuggestionPress) onSuggestionPress(s);
+                else onSuggestion?.(s);
+              }}
               style={[styles.chip, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.pill }]}
             >
               <Text style={[typography.micro, { color: t.brand }]}>{s}</Text>

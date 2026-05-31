@@ -10,6 +10,11 @@ import { pickLocale } from "@/types";
 import type { Plan, Locale } from "@/types";
 import { Link } from "@/navigation";
 
+const PLAN_PRICE_FORMATTERS: Record<Locale, Intl.NumberFormat> = {
+  en: new Intl.NumberFormat(getLocaleTag("en")),
+  vi: new Intl.NumberFormat(getLocaleTag("vi")),
+};
+
 interface PlanCardProps {
   plan: Plan;
 }
@@ -25,7 +30,7 @@ export function PlanCard({ plan }: PlanCardProps) {
   const isFree = plan.price === 0;
   const priceDisplay = isFree
     ? t("free")
-    : new Intl.NumberFormat(getLocaleTag(locale)).format(plan.price) + "₫";
+    : PLAN_PRICE_FORMATTERS[locale].format(plan.price) + "₫";
 
   const isRecommended = plan.recommended === true;
   const isPromoted = isRecommended || plan.popular;
@@ -44,9 +49,9 @@ export function PlanCard({ plan }: PlanCardProps) {
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <Badge className="flex items-center gap-1 border-0 bg-gradient-to-r from-night-700 to-night-400 px-3 py-1 text-xs font-semibold text-white shadow-md shadow-night-400/20">
             {isRecommended ? (
-              <Sparkles className="h-3 w-3 fill-current" aria-hidden="true" />
+              <Sparkles className="size-3 fill-current" aria-hidden="true" />
             ) : (
-              <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+              <Star className="size-3 fill-current" aria-hidden="true" />
             )}
             {isRecommended ? t("recommended") : t("popular")}
           </Badge>
@@ -76,9 +81,9 @@ export function PlanCard({ plan }: PlanCardProps) {
             {t("includes")}
           </p>
           <ul className="space-y-2">
-            {features.map((feature, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-foreground/80">
-                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-night-400" />
+            {features.map((feature) => (
+              <li key={feature} className="flex items-start gap-2 text-sm text-foreground/80">
+                <Check className="mt-0.5 size-4 flex-shrink-0 text-night-400" />
                 <span>{feature}</span>
               </li>
             ))}

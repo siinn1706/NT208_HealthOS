@@ -175,7 +175,7 @@ export default function MedicationDetailPage() {
           href={"/dashboard/medications" as never}
           className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
-          <ArrowLeft className="w-4 h-4" /> {t("pageTitle")}
+          <ArrowLeft className="size-4" /> {t("pageTitle")}
         </Link>
       </div>
     );
@@ -192,12 +192,12 @@ export default function MedicationDetailPage() {
             href={"/dashboard/medications" as never}
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="w-3 h-3" /> {t("pageTitle")}
+            <ArrowLeft className="size-3" /> {t("pageTitle")}
           </Link>
         }
         title={
           <span className="flex items-center gap-2">
-            <Pill className="h-5 w-5 text-primary" aria-hidden />
+            <Pill className="size-5 text-primary" aria-hidden />
             {plan.name}
             {plan.strength && (
               <span className="text-sm font-normal text-muted-foreground">
@@ -224,9 +224,9 @@ export default function MedicationDetailPage() {
               className="gap-2"
             >
               {actionBusy === "pause" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="size-3.5 animate-spin" />
               ) : (
-                <Pause className="w-4 h-4" />
+                <Pause className="size-4" />
               )}
               {tDetail("pause")}
             </Button>
@@ -238,9 +238,9 @@ export default function MedicationDetailPage() {
               className="gap-2"
             >
               {actionBusy === "resume" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="size-3.5 animate-spin" />
               ) : (
-                <Play className="w-4 h-4" />
+                <Play className="size-4" />
               )}
               {tDetail("resume")}
             </Button>
@@ -254,7 +254,7 @@ export default function MedicationDetailPage() {
               onClick={() => setEditOpen(true)}
               className="gap-2"
             >
-              <Pencil className="w-3.5 h-3.5" />
+              <Pencil className="size-3.5" />
               {tDetail("edit")}
             </Button>
             <Button
@@ -264,7 +264,7 @@ export default function MedicationDetailPage() {
               className="gap-2 text-destructive hover:text-destructive"
               disabled={plan.status === "cancelled"}
             >
-              <Archive className="w-3.5 h-3.5" />
+              <Archive className="size-3.5" />
               {tDetail("archive")}
             </Button>
           </>
@@ -337,7 +337,7 @@ export default function MedicationDetailPage() {
                     )}
                   >
                     <span className="inline-flex items-center gap-2 font-medium text-foreground">
-                      <Clock className="w-3.5 h-3.5 text-muted-foreground" aria-hidden />
+                      <Clock className="size-3.5 text-muted-foreground" aria-hidden />
                       {d.time}
                     </span>
                     <span className="text-xs text-muted-foreground">{next}</span>
@@ -351,7 +351,7 @@ export default function MedicationDetailPage() {
         {/* Linked appointment */}
         {plan.appointment_id && (
           <section className="rounded-xl border border-border bg-card p-5 flex items-center gap-3">
-            <Stethoscope className="w-5 h-5 text-primary flex-shrink-0" aria-hidden />
+            <Stethoscope className="size-5 text-primary flex-shrink-0" aria-hidden />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">
                 {tDetail("linkedAppointment")}
@@ -378,6 +378,7 @@ export default function MedicationDetailPage() {
       </div>
 
       <EditMedicationDrawer
+        key={`${plan.id}:${editOpen ? "open" : "closed"}`}
         open={editOpen}
         onOpenChange={setEditOpen}
         plan={plan}
@@ -400,7 +401,7 @@ export default function MedicationDetailPage() {
               disabled={actionBusy !== null}
             >
               {actionBusy === "archive" && (
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
               )}
               {tDetail("archiveConfirm")}
             </AlertDialogAction>

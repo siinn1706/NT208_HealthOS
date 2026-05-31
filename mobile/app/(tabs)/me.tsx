@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -11,11 +11,11 @@ import { EmergencyCard } from '../../src/components/profile/emergency-card';
 import { MenuGroup } from '../../src/components/profile/menu-group';
 import {
   AppearanceSheet,
-  SettingsSheet,
   EmergencySheet,
   SignOutModal,
-  MissingApiModal,
 } from '../../src/components/profile/me-screen-modals';
+import { SettingsSheet } from '../../src/components/profile/account-settings-sheet';
+import { LanguageSettingsSheet } from '../../src/components/profile/language-settings-sheet';
 import { IconSettings } from '../../src/icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
@@ -26,26 +26,28 @@ export default function MeScreen() {
   const t = useTheme();
   const router = useRouter();
   const session = useSession();
-  const { t: i18n } = useTranslation();
+  const { t: i18n, i18n: i18nInstance } = useTranslation();
 
   const identity = toIdentity(session.user);
 
   // Sheet / modal visibility
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signOutLoading, setSignOutLoading] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
-  // Single shared "not yet available" modal
-  const [missingApiOpen, setMissingApiOpen] = useState(false);
-  const [missingApiTitle, setMissingApiTitle] = useState('');
-
-  function openMissingApi(title: string) {
-    setMissingApiTitle(title);
-    setMissingApiOpen(true);
-  }
+  const localizedProfileMenuGroups = useMemo(() => {
+    const languageCode = i18nInstance.language?.toLowerCase().startsWith('vi') ? 'VI' : 'EN';
+    return profileMenuGroups.map((group) => ({
+      ...group,
+      items: group.items.map((item) => (
+        item.id === 'language' ? { ...item, val: languageCode } : item
+      )),
+    }));
+  }, [i18nInstance.language]);
 
   const handleSignOut = useCallback(async () => {
     setSignOutLoading(true);
@@ -63,7 +65,7 @@ export default function MeScreen() {
   function handleMenuPress(id: string) {
     switch (id) {
       case 'appearance':  setAppearanceOpen(true); break;
-      case 'profile':     router.push('/auth/setup'); break;
+      case 'profile':     router.push('/profile/health' as never); break;
       case 'devices':     router.push('/profile/devices' as never); break;
       case 'emergency':   setEmergencyOpen(true); break;
       case 'goals':       router.push('/insights/goals' as never); break;
@@ -72,7 +74,7 @@ export default function MeScreen() {
       // 'app-lock' toggle is handled inside MenuRow (local state only —
       //  UserPreference has no app_lock field, so we do not persist it)
       case 'notifications': router.push('/onboarding/permissions/notifications' as never); break;
-      case 'language':    openMissingApi(i18n('me.languageUnavailable')); break;
+      case 'language':    setLanguageOpen(true); break;
       case 'logout':      setSignOutOpen(true); break;
       default: break;
     }
@@ -107,7 +109,7 @@ export default function MeScreen() {
 
         <EmergencyCard variant="soft" onShare={() => setEmergencyOpen(true)} />
 
-        {profileMenuGroups.map((g) => (
+        {localizedProfileMenuGroups.map((g) => (
           <MenuGroup key={g.title} title={g.title} items={g.items} onItemPress={handleMenuPress} />
         ))}
 
@@ -118,6 +120,7 @@ export default function MeScreen() {
 
       <AppearanceSheet visible={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
       <SettingsSheet   visible={settingsOpen}   onClose={() => setSettingsOpen(false)} />
+      <LanguageSettingsSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
       <EmergencySheet
         visible={emergencyOpen}
         onClose={() => setEmergencyOpen(false)}
@@ -128,11 +131,6 @@ export default function MeScreen() {
         error={signOutError}
         onConfirm={handleSignOut}
         onCancel={() => { setSignOutOpen(false); setSignOutError(null); }}
-      />
-      <MissingApiModal
-        visible={missingApiOpen}
-        title={missingApiTitle}
-        onClose={() => setMissingApiOpen(false)}
       />
     </>
   );

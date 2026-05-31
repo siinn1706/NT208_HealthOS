@@ -1,17 +1,21 @@
-// CreateGoalScreen — 4-step wizard for creating a new health goal
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { Button } from '../../primitives/button';
+import { ApiState } from '../../api/api-state';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { ChevronLeft } from '../../../icons';
-import { type Category, type Schedule, WizardStep1 } from './create-goal-wizard-steps';
+import { invalidateApiQuery } from '../../../api/query';
+import { healthGoalService } from '../../../api/services/health-goal-service';
+import { queryKeys } from '../../../api/queryKeys';
+import { type Category, WizardStep1 } from './create-goal-wizard-steps';
 import { WizardStep2 } from './create-goal-wizard-step2-target';
-import { WizardStep3 } from './create-goal-wizard-step3-schedule';
-import { WizardStep4 } from './create-goal-wizard-step4-review';
+import { parseWeightGoalTarget } from './weight-goal-target';
+
+const TOTAL_STEPS = 2;
 
 // ─── Segmented step progress bar ─────────────────────────────────────────────
 
@@ -38,21 +42,34 @@ export function CreateGoalScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const [step, setStep]         = useState(1);
-  const [category, setCategory] = useState<Category | null>(null);
-  const [target, setTarget]     = useState('8000');
-  const [schedule, setSchedule] = useState<Schedule>('Daily');
-  const [days, setDays]         = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+  const [category, setCategory] = useState<Category | null>('Weight');
+  const [target, setTarget]     = useState('70');
+  const [saving, setSaving]     = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const toggleDay = (d: string) =>
-    setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
+  const targetKg = parseWeightGoalTarget(target);
+  const showTargetError = step === 2 && target.trim().length > 0 && targetKg === null;
 
   const canNext =
-    (step === 1 && category !== null) ||
-    (step === 2 && target.trim() !== '') ||
-    step === 3 ||
-    step === 4;
+    (step === 1 && category === 'Weight') ||
+    (step === 2 && targetKg !== null);
 
   const goBack = () => step > 1 ? setStep((s) => s - 1) : router.back();
+
+  async function saveGoal() {
+    if (targetKg === null || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await healthGoalService.upsert({ target_weight_kg: targetKg });
+      invalidateApiQuery(queryKeys.healthGoal);
+      router.back();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : i18n('insights.goalSaveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Screen>
@@ -63,22 +80,25 @@ export function CreateGoalScreen() {
         </Pressable>
         <Text style={[typography.h3, { flex: 1, color: t.ink, textAlign: 'center' }]}>{i18n('insights.newGoalTitle')}</Text>
         <Text style={[typography.bodyMed, { color: t.ink3, minWidth: 40, textAlign: 'right' }]}>
-          {step} / 4
+          {step} / {TOTAL_STEPS}
         </Text>
       </View>
 
       {/* Segmented progress bar */}
-      <StepProgress current={step} total={4} />
+      <StepProgress current={step} total={TOTAL_STEPS} />
 
       {/* Step content */}
       {step === 1 && <WizardStep1 value={category} onChange={setCategory} />}
-      {step === 2 && <WizardStep2 category={category} value={target} onChange={setTarget} days={days} onDay={toggleDay} />}
-      {step === 3 && <WizardStep3 schedule={schedule} days={days} onSchedule={setSchedule} onDay={toggleDay} />}
-      {step === 4 && <WizardStep4 category={category} target={target} schedule={schedule} days={days} />}
+      {step === 2 && <WizardStep2 category={category} value={target} onChange={(value) => { setTarget(value); setSaveError(null); }} />}
+
+      {showTargetError && (
+        <ApiState title={i18n('insights.goalTargetInvalid')} message={i18n('insights.goalTargetRange')} />
+      )}
+      {saveError && <ApiState title={i18n('insights.goalSaveFailed')} message={saveError} />}
 
       {/* Footer: back + continue (step 1 has only continue) */}
       <View style={styles.footer}>
-        {step > 1 && step < 4 && (
+        {step > 1 && (
           <Button
             label={i18n('common.back')}
             variant="ghost"
@@ -87,7 +107,7 @@ export function CreateGoalScreen() {
             onPress={goBack}
           />
         )}
-        {step < 4 ? (
+        {step < TOTAL_STEPS ? (
           <Button
             label={i18n('insights.continue')}
             variant="solid"
@@ -98,11 +118,13 @@ export function CreateGoalScreen() {
           />
         ) : (
           <Button
-            label={i18n('insights.commitStart')}
+            label={saving ? i18n('common.working') : i18n('insights.saveGoal')}
             variant="solid"
             size="lg"
             style={styles.footerBtnFull}
-            onPress={() => router.back()}
+            onPress={saveGoal}
+            disabled={!canNext || saving}
+            loading={saving}
           />
         )}
       </View>

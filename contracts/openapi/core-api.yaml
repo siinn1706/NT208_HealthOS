@@ -1,5 +1,19 @@
 components:
   schemas:
+    AddMembersBody:
+      properties:
+        user_ids:
+          items:
+            format: uuid
+            type: string
+          maxItems: 50
+          minItems: 1
+          title: User Ids
+          type: array
+      required:
+      - user_ids
+      title: AddMembersBody
+      type: object
     AdherenceDTO:
       properties:
         missed:
@@ -45,6 +59,382 @@ components:
       required:
       - data
       title: AdherenceResponse
+      type: object
+    AdminBanUserBody:
+      properties:
+        banned_until:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Banned Until
+        reason:
+          maxLength: 500
+          minLength: 1
+          title: Reason
+          type: string
+      required:
+      - reason
+      title: AdminBanUserBody
+      type: object
+    AdminCurrentSubscriptionSummary:
+      properties:
+        current_period_end:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Current Period End
+        id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Id
+        plan_code:
+          title: Plan Code
+          type: string
+        plan_name:
+          title: Plan Name
+          type: string
+        status:
+          title: Status
+          type: string
+      required:
+      - plan_code
+      - plan_name
+      - status
+      title: AdminCurrentSubscriptionSummary
+      type: object
+    AdminLoginSessionSummary:
+      properties:
+        active_refresh_sessions:
+          title: Active Refresh Sessions
+          type: integer
+        last_refresh_used_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Last Refresh Used At
+        refresh_session_count:
+          title: Refresh Session Count
+          type: integer
+        revoked_refresh_sessions:
+          title: Revoked Refresh Sessions
+          type: integer
+        tokens_invalidated_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Tokens Invalidated At
+      required:
+      - refresh_session_count
+      - active_refresh_sessions
+      - revoked_refresh_sessions
+      title: AdminLoginSessionSummary
+      type: object
+    AdminOverview:
+      properties:
+        active_users:
+          title: Active Users
+          type: integer
+        banned_users:
+          title: Banned Users
+          type: integer
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        online_users_estimate:
+          title: Online Users Estimate
+          type: integer
+        soft_deleted_users:
+          title: Soft Deleted Users
+          type: integer
+        total_active_subscriptions:
+          title: Total Active Subscriptions
+          type: integer
+        total_subscription_plans:
+          title: Total Subscription Plans
+          type: integer
+        total_users:
+          title: Total Users
+          type: integer
+      required:
+      - total_users
+      - active_users
+      - banned_users
+      - soft_deleted_users
+      - online_users_estimate
+      - total_subscription_plans
+      - total_active_subscriptions
+      - created_at
+      title: AdminOverview
+      type: object
+    AdminOverviewResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminOverview'
+      required:
+      - data
+      title: AdminOverviewResponse
+      type: object
+    AdminProfileSummary:
+      properties:
+        address:
+          anyOf:
+          - maxLength: 512
+            type: string
+          - type: 'null'
+          title: Address
+        avatar_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
+        blood_type:
+          anyOf:
+          - maxLength: 16
+            type: string
+          - type: 'null'
+          title: Blood Type
+        date_of_birth:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Date Of Birth
+        full_name:
+          maxLength: 255
+          minLength: 1
+          title: Full Name
+          type: string
+        gender:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Gender
+        height_cm:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Height Cm
+        phone:
+          anyOf:
+          - maxLength: 32
+            type: string
+          - type: 'null'
+          title: Phone
+        weight_kg:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Weight Kg
+      title: AdminProfileSummary
+      type: object
+    AdminUserDetail:
+      properties:
+        account_status:
+          enum:
+          - active
+          - banned
+          - deleted
+          - system
+          title: Account Status
+          type: string
+        banned_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Banned At
+        banned_by_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Banned By Id
+        banned_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Banned Reason
+        banned_until:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Banned Until
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        current_subscription:
+          anyOf:
+          - $ref: '#/components/schemas/AdminCurrentSubscriptionSummary'
+          - type: 'null'
+        deleted_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Deleted At
+        display_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Display Name
+        email:
+          title: Email
+          type: string
+        email_verified_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Email Verified At
+        id:
+          format: uuid
+          title: Id
+          type: string
+        is_system:
+          title: Is System
+          type: boolean
+        last_seen_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Last Seen At
+        login_session_summary:
+          $ref: '#/components/schemas/AdminLoginSessionSummary'
+        onboarding_status:
+          title: Onboarding Status
+          type: string
+        profile_summary:
+          anyOf:
+          - $ref: '#/components/schemas/AdminProfileSummary'
+          - type: 'null'
+        roles:
+          items:
+            type: string
+          title: Roles
+          type: array
+        subscription:
+          anyOf:
+          - $ref: '#/components/schemas/AdminCurrentSubscriptionSummary'
+          - type: 'null'
+        username:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Username
+      required:
+      - id
+      - email
+      - onboarding_status
+      - created_at
+      - roles
+      - login_session_summary
+      - account_status
+      - is_system
+      title: AdminUserDetail
+      type: object
+    AdminUserDetailResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminUserDetail'
+      required:
+      - data
+      title: AdminUserDetailResponse
+      type: object
+    AdminUserListItem:
+      properties:
+        banned_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Banned At
+        banned_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Banned Reason
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        current_subscription:
+          anyOf:
+          - $ref: '#/components/schemas/AdminCurrentSubscriptionSummary'
+          - type: 'null'
+        deleted_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Deleted At
+        display_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Display Name
+        email:
+          title: Email
+          type: string
+        email_verified_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Email Verified At
+        id:
+          format: uuid
+          title: Id
+          type: string
+        last_seen_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Last Seen At
+        onboarding_status:
+          title: Onboarding Status
+          type: string
+        roles:
+          items:
+            type: string
+          title: Roles
+          type: array
+        username:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Username
+      required:
+      - id
+      - email
+      - onboarding_status
+      - created_at
+      - roles
+      title: AdminUserListItem
+      type: object
+    AdminUserListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/AdminUserListItem'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+      - data
+      - meta
+      title: AdminUserListResponse
       type: object
     AggregationResponse:
       properties:
@@ -240,6 +630,79 @@ components:
       - meta
       title: AppointmentListResponse
       type: object
+    AppointmentPrepChecklistItem:
+      properties:
+        checked:
+          default: false
+          title: Checked
+          type: boolean
+        id:
+          maxLength: 80
+          minLength: 1
+          title: Id
+          type: string
+        label:
+          maxLength: 160
+          minLength: 1
+          title: Label
+          type: string
+      required:
+      - id
+      - label
+      title: AppointmentPrepChecklistItem
+      type: object
+    AppointmentPrepDTO:
+      properties:
+        appointment_id:
+          format: uuid
+          title: Appointment Id
+          type: string
+        checklist_items:
+          items:
+            $ref: '#/components/schemas/AppointmentPrepChecklistItem'
+          title: Checklist Items
+          type: array
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+        updated_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Updated At
+      required:
+      - appointment_id
+      title: AppointmentPrepDTO
+      type: object
+    AppointmentPrepResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/AppointmentPrepDTO'
+      required:
+      - data
+      title: AppointmentPrepResponse
+      type: object
+    AppointmentPrepUpdateBody:
+      properties:
+        checklist_items:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/AppointmentPrepChecklistItem'
+            maxItems: 20
+            type: array
+          - type: 'null'
+          title: Checklist Items
+        notes:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          title: Notes
+      title: AppointmentPrepUpdateBody
+      type: object
     AppointmentResponse:
       properties:
         data:
@@ -416,10 +879,11 @@ components:
           title: Image
           type: string
         name:
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Name
-          type: string
       required:
-      - name
       - image
       title: Body_analyze_meal_photo_v1_meals_analyze_photo_post
       type: object
@@ -576,10 +1040,8 @@ components:
           - type: 'null'
           title: Device Label
         external_account_id:
-          anyOf:
-          - type: string
-          - type: 'null'
           title: External Account Id
+          type: 'null'
         id:
           format: uuid
           title: Id
@@ -654,15 +1116,6 @@ components:
       required:
       - data
       title: ConnectedDeviceResponse
-      type: object
-    GoogleConnectResponse:
-      properties:
-        authorization_url:
-          title: Authorization Url
-          type: string
-      required:
-      - authorization_url
-      title: GoogleConnectResponse
       type: object
     ConversationDTO:
       properties:
@@ -881,10 +1334,8 @@ components:
           type: string
         medical_info:
           anyOf:
-          - additionalProperties: true
-            type: object
+          - $ref: '#/components/schemas/MedicalInfo'
           - type: 'null'
-          title: Medical Info
         onboarding_completed_at:
           anyOf:
           - type: string
@@ -1841,6 +2292,23 @@ components:
       - data
       title: GoalProgressResponse
       type: object
+    GoogleConnectResponse:
+      description: 'Body of POST /wearables/google/connect.
+
+
+        The FE does ``window.location.href = authorization_url`` so the user
+
+        leaves the SPA and lands on Google''s consent screen. The signed
+
+        ``state`` is embedded in the URL — callers never see it directly.'
+      properties:
+        authorization_url:
+          title: Authorization Url
+          type: string
+      required:
+      - authorization_url
+      title: GoogleConnectResponse
+      type: object
     HTTPValidationError:
       properties:
         detail:
@@ -2421,6 +2889,30 @@ components:
           title: Name
       title: MealUpdateBody
       type: object
+    InsuranceInfo:
+      description: Insurance details stored inside user profile medical_info.
+      properties:
+        group_number:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Group Number
+        policy_number:
+          maxLength: 128
+          minLength: 1
+          title: Policy Number
+          type: string
+        provider:
+          maxLength: 128
+          minLength: 1
+          title: Provider
+          type: string
+      required:
+      - provider
+      - policy_number
+      title: InsuranceInfo
+      type: object
     MedicalInfo:
       description: Medical information.
       properties:
@@ -2442,6 +2934,10 @@ components:
             type: string
           - type: 'null'
           title: Current Medications
+        insurance:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceInfo'
+          - type: 'null'
         notes:
           anyOf:
           - maxLength: 4000
@@ -3302,6 +3798,36 @@ components:
       - weight_kg
       - blood_pressure_systolic
       - blood_pressure_diastolic
+      - heart_rate_resting
+      - heart_rate_max
+      - hrv_rmssd
+      - spo2
+      - respiratory_rate
+      - vo2_max
+      - distance_m
+      - calories_active
+      - calories_total
+      - floors_climbed
+      - active_minutes
+      - exercise_session_minutes
+      - sleep_light
+      - sleep_deep
+      - sleep_rem
+      - sleep_awake
+      - sleep_efficiency
+      - body_fat_percentage
+      - lean_body_mass
+      - bone_mass
+      - body_water
+      - bmi
+      - height_cm
+      - body_temperature
+      - skin_temperature_delta
+      - blood_glucose
+      - hydration_ml
+      - stress_score
+      - menstrual_flow
+      - mindfulness_minutes
       title: MetricTypeEnum
       type: string
     MfaLoginRequired:
@@ -3535,6 +4061,24 @@ components:
           - type: number
           - type: 'null'
           title: Fat G
+        ingredients:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          title: Ingredients
+        meal_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Meal Type
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
         protein_g:
           anyOf:
           - type: number
@@ -5163,6 +5707,16 @@ components:
       - content
       title: SendMessageBody
       type: object
+    SetMemberRoleBody:
+      properties:
+        role:
+          pattern: ^(admin|member)$
+          title: Role
+          type: string
+      required:
+      - role
+      title: SetMemberRoleBody
+      type: object
     SignedAssetUrlData:
       properties:
         expires_in_s:
@@ -5193,6 +5747,264 @@ components:
       required:
       - data
       title: SignedAssetUrlResponse
+      type: object
+    SubscriptionPlanCreateBody:
+      properties:
+        billing_period:
+          enum:
+          - free
+          - monthly
+          - yearly
+          title: Billing Period
+          type: string
+        code:
+          maxLength: 64
+          minLength: 1
+          pattern: ^[a-z0-9][a-z0-9_-]*$
+          title: Code
+          type: string
+        description_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description En
+        description_vi:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description Vi
+        features_en:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Features En
+        features_vi:
+          items:
+            type: string
+          title: Features Vi
+          type: array
+        is_active:
+          default: true
+          title: Is Active
+          type: boolean
+        is_recommended:
+          default: false
+          title: Is Recommended
+          type: boolean
+        limits:
+          additionalProperties: true
+          title: Limits
+          type: object
+        name_en:
+          anyOf:
+          - maxLength: 255
+            type: string
+          - type: 'null'
+          title: Name En
+        name_vi:
+          maxLength: 255
+          minLength: 1
+          title: Name Vi
+          type: string
+        price_vnd:
+          default: 0
+          minimum: 0.0
+          title: Price Vnd
+          type: integer
+        sort_order:
+          default: 0
+          title: Sort Order
+          type: integer
+      required:
+      - code
+      - name_vi
+      - billing_period
+      title: SubscriptionPlanCreateBody
+      type: object
+    SubscriptionPlanDTO:
+      properties:
+        billing_period:
+          enum:
+          - free
+          - monthly
+          - yearly
+          title: Billing Period
+          type: string
+        code:
+          title: Code
+          type: string
+        created_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Created At
+        description_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description En
+        description_vi:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description Vi
+        features_en:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Features En
+        features_vi:
+          items:
+            type: string
+          title: Features Vi
+          type: array
+        id:
+          format: uuid
+          title: Id
+          type: string
+        is_active:
+          title: Is Active
+          type: boolean
+        is_recommended:
+          title: Is Recommended
+          type: boolean
+        limits:
+          additionalProperties: true
+          title: Limits
+          type: object
+        name_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name En
+        name_vi:
+          title: Name Vi
+          type: string
+        price_vnd:
+          title: Price Vnd
+          type: integer
+        sort_order:
+          title: Sort Order
+          type: integer
+        updated_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Updated At
+      required:
+      - id
+      - code
+      - name_vi
+      - price_vnd
+      - billing_period
+      - features_vi
+      - limits
+      - is_active
+      - is_recommended
+      - sort_order
+      title: SubscriptionPlanDTO
+      type: object
+    SubscriptionPlanListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/SubscriptionPlanDTO'
+          title: Data
+          type: array
+      required:
+      - data
+      title: SubscriptionPlanListResponse
+      type: object
+    SubscriptionPlanResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/SubscriptionPlanDTO'
+      required:
+      - data
+      title: SubscriptionPlanResponse
+      type: object
+    SubscriptionPlanUpdateBody:
+      properties:
+        billing_period:
+          anyOf:
+          - enum:
+            - free
+            - monthly
+            - yearly
+            type: string
+          - type: 'null'
+          title: Billing Period
+        description_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description En
+        description_vi:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description Vi
+        features_en:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Features En
+        features_vi:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Features Vi
+        is_active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Active
+        is_recommended:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Recommended
+        limits:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Limits
+        name_en:
+          anyOf:
+          - maxLength: 255
+            type: string
+          - type: 'null'
+          title: Name En
+        name_vi:
+          anyOf:
+          - maxLength: 255
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Name Vi
+        price_vnd:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Price Vnd
+        sort_order:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Sort Order
+      title: SubscriptionPlanUpdateBody
       type: object
     SymptomEntryCreateBody:
       properties:
@@ -5541,15 +6353,15 @@ components:
           type: object
       title: SyncStateUpdateBody
       type: object
-    TrendAnalysisResponse:
+    TransferOwnershipBody:
       properties:
-        data:
-          additionalProperties: true
-          title: Data
-          type: object
+        new_owner_id:
+          format: uuid
+          title: New Owner Id
+          type: string
       required:
-      - data
-      title: TrendAnalysisResponse
+      - new_owner_id
+      title: TransferOwnershipBody
       type: object
     TrendAnalysisBatchResponse:
       properties:
@@ -5562,6 +6374,16 @@ components:
       required:
       - data
       title: TrendAnalysisBatchResponse
+      type: object
+    TrendAnalysisResponse:
+      properties:
+        data:
+          additionalProperties: true
+          title: Data
+          type: object
+      required:
+      - data
+      title: TrendAnalysisResponse
       type: object
     TriageOutcomeDTO:
       properties:
@@ -5652,6 +6474,24 @@ components:
       required:
       - data
       title: UnreadCountResponse
+      type: object
+    UpdateGroupMetadataBody:
+      properties:
+        avatar_url:
+          anyOf:
+          - maxLength: 512
+            pattern: ^https?://
+            type: string
+          - type: 'null'
+          title: Avatar Url
+        title:
+          anyOf:
+          - maxLength: 100
+            minLength: 2
+            type: string
+          - type: 'null'
+          title: Title
+      title: UpdateGroupMetadataBody
       type: object
     UserLookupResponse:
       properties:
@@ -5744,7 +6584,8 @@ components:
       properties:
         address:
           anyOf:
-          - type: string
+          - maxLength: 512
+            type: string
           - type: 'null'
           title: Address
         avatar_url:
@@ -5755,7 +6596,8 @@ components:
           title: Avatar Url
         blood_type:
           anyOf:
-          - type: string
+          - maxLength: 16
+            type: string
           - type: 'null'
           title: Blood Type
         date_of_birth:
@@ -5772,10 +6614,10 @@ components:
           - type: 'null'
           title: Emergency Contacts
         full_name:
-          anyOf:
-          - type: string
-          - type: 'null'
+          maxLength: 255
+          minLength: 1
           title: Full Name
+          type: string
         gender:
           anyOf:
           - enum:
@@ -5803,7 +6645,8 @@ components:
           title: Onboarding Completed
         phone:
           anyOf:
-          - type: string
+          - maxLength: 32
+            type: string
           - type: 'null'
           title: Phone
         weight_kg:
@@ -5814,6 +6657,102 @@ components:
           - type: 'null'
           title: Weight Kg
       title: UserProfileUpdate
+      type: object
+    UserSubscriptionResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/UserSubscriptionSummary'
+      required:
+      - data
+      title: UserSubscriptionResponse
+      type: object
+    UserSubscriptionSummary:
+      properties:
+        expires_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Expires At
+        features_en:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Features En
+        features_vi:
+          items:
+            type: string
+          title: Features Vi
+          type: array
+        limits:
+          additionalProperties: true
+          title: Limits
+          type: object
+        plan:
+          $ref: '#/components/schemas/SubscriptionPlanDTO'
+        started_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Started At
+        status:
+          title: Status
+          type: string
+        subscription_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Subscription Id
+      required:
+      - status
+      - plan
+      - limits
+      - features_vi
+      title: UserSubscriptionSummary
+      type: object
+    UserSubscriptionUpdateBody:
+      properties:
+        admin_note:
+          anyOf:
+          - maxLength: 1000
+            type: string
+          - type: 'null'
+          title: Admin Note
+        expires_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Expires At
+        plan_code:
+          anyOf:
+          - maxLength: 64
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Plan Code
+        plan_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Plan Id
+        status:
+          anyOf:
+          - enum:
+            - active
+            - trialing
+            - past_due
+            - canceled
+            - expired
+            type: string
+          - type: 'null'
+          title: Status
+      title: UserSubscriptionUpdateBody
       type: object
     ValidationError:
       properties:
@@ -6150,6 +7089,7 @@ components:
       - garmin
       - fitbit
       - health_connect
+      - google_health
       title: WearableSourceEnum
       type: string
     WsTicket:
@@ -6199,7 +7139,7 @@ info:
     **Versioning:** `info.version` follows semver; bump on breaking changes only.
 
 
-    **Contract drift:** device, wearable, and sync routes are checked by exact path; new proxy calls must be declared before use.'
+    **Device endpoints:** paths under `/v1/devices`, `/v1/wearables`, `/v1/sync` are frozen this pass (see plan `260522-1900-openapi-contract-alignment`).'
   title: HealthOS Core API
   version: 1.0.0
 openapi: 3.1.0
@@ -6290,6 +7230,677 @@ paths:
       security:
       - bearerAuth: []
       summary: Health Ready
+  /v1/admin/overview:
+    get:
+      operationId: get_admin_overview_v1_admin_overview_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverviewResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get Admin Overview
+      tags:
+      - Admin
+  /v1/admin/subscription-plans:
+    get:
+      operationId: list_admin_subscription_plans_v1_admin_subscription_plans_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlanListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: List Admin Subscription Plans
+      tags:
+      - Admin
+    post:
+      operationId: create_admin_subscription_plan_v1_admin_subscription_plans_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionPlanCreateBody'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlanResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Create Admin Subscription Plan
+      tags:
+      - Admin
+  /v1/admin/subscription-plans/{plan_id}:
+    patch:
+      operationId: update_admin_subscription_plan_v1_admin_subscription_plans__plan_id__patch
+      parameters:
+      - in: path
+        name: plan_id
+        required: true
+        schema:
+          format: uuid
+          title: Plan Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionPlanUpdateBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlanResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Update Admin Subscription Plan
+      tags:
+      - Admin
+  /v1/admin/users:
+    get:
+      operationId: list_admin_users_v1_admin_users_get
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - in: query
+        name: status
+        required: false
+        schema:
+          default: all
+          enum:
+          - all
+          - active
+          - banned
+          - deleted
+          title: Status
+          type: string
+      - in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          minimum: 1
+          title: Page
+          type: integer
+      - in: query
+        name: per_page
+        required: false
+        schema:
+          default: 20
+          maximum: 100
+          minimum: 1
+          title: Per Page
+          type: integer
+      - in: query
+        name: sort
+        required: false
+        schema:
+          default: created_at_desc
+          enum:
+          - created_at_desc
+          - created_at_asc
+          - email_asc
+          title: Sort
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: List Admin Users
+      tags:
+      - Admin
+  /v1/admin/users/{user_id}:
+    get:
+      operationId: get_admin_user_detail_v1_admin_users__user_id__get
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          format: uuid
+          title: User Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetailResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get Admin User Detail
+      tags:
+      - Admin
+  /v1/admin/users/{user_id}/ban:
+    post:
+      operationId: ban_admin_user_v1_admin_users__user_id__ban_post
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          format: uuid
+          title: User Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminBanUserBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetailResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Ban Admin User
+      tags:
+      - Admin
+  /v1/admin/users/{user_id}/subscription:
+    get:
+      operationId: get_admin_user_subscription_v1_admin_users__user_id__subscription_get
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          format: uuid
+          title: User Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSubscriptionResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get Admin User Subscription
+      tags:
+      - Admin
+    patch:
+      operationId: update_admin_user_subscription_v1_admin_users__user_id__subscription_patch
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          format: uuid
+          title: User Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSubscriptionUpdateBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSubscriptionResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Update Admin User Subscription
+      tags:
+      - Admin
+  /v1/admin/users/{user_id}/unban:
+    post:
+      operationId: unban_admin_user_v1_admin_users__user_id__unban_post
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          format: uuid
+          title: User Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetailResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Unban Admin User
+      tags:
+      - Admin
   /v1/appointments:
     get:
       operationId: list_appointments_v1_appointments_get
@@ -6570,6 +8181,141 @@ paths:
       security:
       - bearerAuth: []
       summary: Update appointment detail
+      tags:
+      - Appointments
+  /v1/appointments/{appointment_id}/prep:
+    get:
+      operationId: get_appointment_prep_v1_appointments__appointment_id__prep_get
+      parameters:
+      - in: path
+        name: appointment_id
+        required: true
+        schema:
+          format: uuid
+          title: Appointment Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentPrepResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get appointment prep checklist
+      tags:
+      - Appointments
+    patch:
+      operationId: update_appointment_prep_v1_appointments__appointment_id__prep_patch
+      parameters:
+      - in: path
+        name: appointment_id
+        required: true
+        schema:
+          format: uuid
+          title: Appointment Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentPrepUpdateBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentPrepResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Update appointment prep checklist
       tags:
       - Appointments
   /v1/appointments/{appointment_id}/prescription/assets:
@@ -6997,15 +8743,64 @@ paths:
   /v1/auth/check-password-breach:
     post:
       deprecated: true
-      description: 'Removed. Use ``GET /auth/check-password-breach/range/{prefix}`` (HIBP k-anonymity).'
+      description: Removed — use ``GET /auth/check-password-breach/range/{prefix}`` instead.
       operationId: check_password_breach_endpoint_v1_auth_check_password_breach_post
       responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
         '410':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Gone
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
       summary: Check Password Breach Endpoint
       tags:
       - Auth
@@ -8003,6 +9798,1109 @@ paths:
       summary: Issue Ws Ticket
       tags:
       - Auth
+  /v1/chat/conversations:
+    get:
+      operationId: list_conversations_v1_chat_conversations_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: List accepted conversations
+      tags:
+      - Chat REST
+    post:
+      operationId: create_direct_conversation_v1_chat_conversations_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectConversationBody'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Create or get a direct conversation
+      tags:
+      - Chat REST
+  /v1/chat/conversations/pending:
+    get:
+      operationId: list_pending_conversations_v1_chat_conversations_pending_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: List pending conversation requests
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}:
+    get:
+      operationId: get_conversation_v1_chat_conversations__conversation_id__get
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get a single conversation
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/accept:
+    post:
+      operationId: accept_conversation_v1_chat_conversations__conversation_id__accept_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Accept a stranger conversation request
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/messages:
+    get:
+      operationId: get_messages_v1_chat_conversations__conversation_id__messages_get
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: query
+        name: before
+        required: false
+        schema:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Before
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get messages (cursor-based, newest-first)
+      tags:
+      - Chat REST
+    post:
+      operationId: send_message_v1_chat_conversations__conversation_id__messages_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageBody'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Send a message (REST fallback; prefer WebSocket for real-time)
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/messages/{message_id}:
+    delete:
+      operationId: recall_message_v1_chat_conversations__conversation_id__messages__message_id__delete
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: path
+        name: message_id
+        required: true
+        schema:
+          format: uuid
+          title: Message Id
+          type: string
+      - in: query
+        name: for_everyone
+        required: false
+        schema:
+          default: true
+          title: For Everyone
+          type: boolean
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Recall (soft-delete) a message
+      tags:
+      - Chat REST
+    patch:
+      operationId: edit_message_v1_chat_conversations__conversation_id__messages__message_id__patch
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: path
+        name: message_id
+        required: true
+        schema:
+          format: uuid
+          title: Message Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditMessageBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Edit a message
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/messages/{message_id}/pin:
+    delete:
+      operationId: unpin_message_v1_chat_conversations__conversation_id__messages__message_id__pin_delete
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: path
+        name: message_id
+        required: true
+        schema:
+          format: uuid
+          title: Message Id
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Unpin a message
+      tags:
+      - Chat REST
+    post:
+      operationId: pin_message_v1_chat_conversations__conversation_id__messages__message_id__pin_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: path
+        name: message_id
+        required: true
+        schema:
+          format: uuid
+          title: Message Id
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Pin a message
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/messages/{message_id}/reactions:
+    post:
+      operationId: react_to_message_v1_chat_conversations__conversation_id__messages__message_id__reactions_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: path
+        name: message_id
+        required: true
+        schema:
+          format: uuid
+          title: Message Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReactMessageBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Toggle an emoji reaction on a message
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/pinned:
+    get:
+      operationId: get_pinned_messages_v1_chat_conversations__conversation_id__pinned_get
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PinnedMessageListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get pinned messages
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/read:
+    post:
+      operationId: mark_read_v1_chat_conversations__conversation_id__read_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReadBody'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Mark messages as read up to a cursor
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/reject:
+    post:
+      operationId: reject_conversation_v1_chat_conversations__conversation_id__reject_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Reject a stranger conversation request
+      tags:
+      - Chat REST
+  /v1/chat/conversations/{conversation_id}/settings:
+    patch:
+      operationId: update_conversation_settings_v1_chat_conversations__conversation_id__settings_patch
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationSettingsBody'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Update per-user conversation settings (mute, pin, theme)
+      tags:
+      - Chat REST
+  /v1/chat/users/search:
+    get:
+      operationId: search_users_v1_chat_users_search_get
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          default: ''
+          maxLength: 100
+          minLength: 1
+          title: Q
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLookupResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Search users by display name or email
+      tags:
+      - Chat REST
   /v1/conversations:
     get:
       operationId: list_conversations_v1_conversations_get
@@ -8342,6 +11240,82 @@ paths:
       summary: Get a single conversation
       tags:
       - Chat
+    patch:
+      operationId: update_group_metadata_v1_conversations__conversation_id__patch
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGroupMetadataBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Update group title and/or avatar (owner/admin only)
+      tags:
+      - Chat
   /v1/conversations/{conversation_id}/accept:
     post:
       operationId: accept_conversation_v1_conversations__conversation_id__accept_post
@@ -8401,6 +11375,288 @@ paths:
       security:
       - bearerAuth: []
       summary: Accept a pending conversation request
+      tags:
+      - Chat
+  /v1/conversations/{conversation_id}/leave:
+    post:
+      operationId: leave_group_v1_conversations__conversation_id__leave_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Leave a group conversation
+      tags:
+      - Chat
+  /v1/conversations/{conversation_id}/members:
+    post:
+      operationId: add_group_members_v1_conversations__conversation_id__members_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMembersBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Add members to a group conversation (owner/admin only)
+      tags:
+      - Chat
+  /v1/conversations/{conversation_id}/members/{user_id}:
+    delete:
+      operationId: remove_group_member_v1_conversations__conversation_id__members__user_id__delete
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          format: uuid
+          title: User Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Remove a member from a group conversation (owner/admin only)
+      tags:
+      - Chat
+  /v1/conversations/{conversation_id}/members/{user_id}/role:
+    post:
+      operationId: set_member_role_v1_conversations__conversation_id__members__user_id__role_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          format: uuid
+          title: User Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetMemberRoleBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Promote or demote a member's role (owner only)
       tags:
       - Chat
   /v1/conversations/{conversation_id}/messages:
@@ -8554,7 +11810,7 @@ paths:
       - Chat
   /v1/conversations/{conversation_id}/messages/stream:
     post:
-      description: 'B7 P6 — SSE pipe for AI replies.
+      description: 'SSE pipe for AI replies.
 
 
         Persists the user''s message synchronously, then streams an `assistant`
@@ -9269,6 +12525,77 @@ paths:
       security:
       - bearerAuth: []
       summary: Update conversation settings (mute, pin, theme)
+      tags:
+      - Chat
+  /v1/conversations/{conversation_id}/transfer-owner:
+    post:
+      operationId: transfer_ownership_v1_conversations__conversation_id__transfer_owner_post
+      parameters:
+      - in: path
+        name: conversation_id
+        required: true
+        schema:
+          format: uuid
+          title: Conversation Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferOwnershipBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Transfer group ownership to another member (owner only)
       tags:
       - Chat
   /v1/dashboard/exercise-suggestions:
@@ -9993,118 +13320,6 @@ paths:
       summary: Replace sync-state tokens for a device
       tags:
       - Devices
-  /v1/wearables/google/callback:
-    get:
-      operationId: google_callback_v1_wearables_google_callback_get
-      parameters:
-      - in: query
-        name: code
-        required: true
-        schema:
-          maxLength: 2048
-          minLength: 1
-          title: Code
-          type: string
-      - in: query
-        name: state
-        required: true
-        schema:
-          maxLength: 4096
-          minLength: 1
-          title: State
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConnectedDeviceResponse'
-          description: Successful Response
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad Request
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        '409':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Conflict
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-        '503':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Service Unavailable
-      security:
-      - bearerAuth: []
-      summary: Google Health OAuth callback - finish the connection
-      tags:
-      - Wearables
-  /v1/wearables/google/connect:
-    post:
-      operationId: google_connect_v1_wearables_google_connect_post
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GoogleConnectResponse'
-          description: Successful Response
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        '503':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Service Unavailable
-      security:
-      - bearerAuth: []
-      summary: Begin Google Health OAuth - return consent URL
-      tags:
-      - Wearables
-  /v1/wearables/google/webhook:
-    post:
-      operationId: google_webhook_v1_wearables_google_webhook_post
-      responses:
-        '204':
-          description: Successful Response
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        '503':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Service Unavailable
-      security:
-      - bearerAuth: []
-      summary: Google Health push-notification receiver
-      tags:
-      - Wearables
   /v1/goals/progress:
     get:
       operationId: get_goal_progress_v1_goals_progress_get
@@ -15055,6 +18270,95 @@ paths:
       summary: List Security Logs
       tags:
       - Security Logs
+  /v1/subscription-plans:
+    get:
+      operationId: list_subscription_plans_v1_subscription_plans_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlanListResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal Server Error
+      security: []
+      summary: List active subscription plans for pricing
+      tags:
+      - Subscriptions
+  /v1/subscription/me:
+    get:
+      operationId: get_my_subscription_v1_subscription_me_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSubscriptionResponse'
+          description: Successful Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - bearerAuth: []
+      summary: Get the current user's subscription summary
+      tags:
+      - Subscriptions
   /v1/users/lookup:
     get:
       operationId: lookup_users_v1_users_lookup_get
@@ -17399,5 +20703,266 @@ paths:
       summary: Get vitals timeseries
       tags:
       - Vitals
+  /v1/wearables/google/callback:
+    get:
+      description: "**FROZEN — Device scope.** See plan `260522-1900-openapi-contract-alignment` for device-endpoint handling.\n\
+        \nExchange the authorization ``code`` for tokens, persist a\n``ConnectedDevice`` row, enqueue an initial backfill,\
+        \ and return\nthe device DTO (same shape as ``POST /v1/devices``).\n\nThe route deliberately keeps the response 200\
+        \ (not a redirect): the\nBFF route handler decides whether to redirect the browser back to\n``/dashboard/health``\
+        \ — the Core BE just delivers the data.\n\nFailure modes:\n  * Bad state / replay   → 400 (CSRF, expired link, or\
+        \ second use).\n  * Bad code             → 400 (Google rejected the exchange).\n  * Token-encrypt fails  → 503 (operator\
+        \ forgot ``FERNET_KEY``).\n  * Unique-violation     → handled by ``device_svc`` upsert pattern."
+      operationId: google_callback_v1_wearables_google_callback_get
+      parameters:
+      - in: query
+        name: code
+        required: true
+        schema:
+          maxLength: 2048
+          minLength: 1
+          title: Code
+          type: string
+      - in: query
+        name: state
+        required: true
+        schema:
+          maxLength: 4096
+          minLength: 1
+          title: State
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectedDeviceResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      security:
+      - bearerAuth: []
+      summary: Google Health OAuth callback — finish the connection
+      tags:
+      - Wearables
+  /v1/wearables/google/connect:
+    post:
+      description: '**FROZEN — Device scope.** See plan `260522-1900-openapi-contract-alignment` for device-endpoint handling.
+
+
+        Return a fresh Google OAuth consent URL bound to ``current_user``.
+
+
+        The URL embeds a one-time signed state (``oauth_state.mint_state``)
+
+        so the callback can prove the round-trip was initiated by THIS user
+
+        in THIS browser session.  The nonce is stored in Redis with a 10-minute
+
+        TTL; ``consume_state`` atomically removes it so any replay of the same
+
+        state URL is rejected even before the JWT expires.'
+      operationId: google_connect_v1_wearables_google_connect_post
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleConnectResponse'
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      security:
+      - bearerAuth: []
+      summary: Begin Google Health OAuth — return consent URL
+      tags:
+      - Wearables
+  /v1/wearables/google/webhook:
+    post:
+      description: '**FROZEN — Device scope.** See plan `260522-1900-openapi-contract-alignment` for device-endpoint handling.
+
+
+        Receive a push from Google Health and enqueue an on-demand sync.
+
+
+        Google Health''s webhook contract is not yet GA (see
+
+        ``google_health.register_webhook`` — it returns ``None``). This
+
+        endpoint is registered now so deployment can flip on push delivery
+
+        later without a code change. Until Google starts calling it, the
+
+        only sync path is the 15-minute Beat poller.
+
+
+        Auth model: HMAC-SHA256 over the raw body using
+
+        ``settings.google_health_webhook_secret``. NEVER use JWT here —
+
+        Google won''t carry a user JWT.
+
+
+        Body shape (when Google ships it): we expect a JSON envelope
+
+        carrying the affected Google ``sub`` (the same ``external_account_id``
+
+        we persisted at OAuth time). We look up the matching
+
+        ``ConnectedDevice`` and enqueue ``sync_google_health_user`` for it.'
+      operationId: google_webhook_v1_wearables_google_webhook_post
+      responses:
+        '204':
+          description: Successful Response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      security:
+      - bearerAuth: []
+      summary: Google Health push-notification receiver
+      tags:
+      - Wearables
 security:
 - bearerAuth: []

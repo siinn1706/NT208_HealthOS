@@ -120,6 +120,53 @@ def test_accepts_allowed_host(monkeypatch: Any) -> None:
     assert result is not None
 
 
+def test_allowed_host_still_rejects_private_dns_when_not_storage(monkeypatch: Any) -> None:
+    monkeypatch.setattr(settings, "ai_allowed_image_hosts", "cdn.example.com")
+    monkeypatch.setattr(settings, "storage_endpoint", "http://localhost:9000")
+    monkeypatch.setattr(settings, "ai_block_private_networks", True)
+    monkeypatch.setattr(
+        "app.services.image_loader.socket.getaddrinfo",
+        lambda *a, **kw: _addrinfo_for("127.0.0.1"),
+    )
+
+    with pytest.raises(ImageLoadError):
+        load_image_from_url("https://cdn.example.com/food.jpg", timeout_seconds=5.0)
+
+
+def test_accepts_configured_storage_endpoint_when_private_block_enabled(monkeypatch: Any) -> None:
+    monkeypatch.setattr(settings, "ai_allowed_image_hosts", "")
+    monkeypatch.setattr(settings, "storage_endpoint", "http://localhost:9000")
+    monkeypatch.setattr(settings, "ai_block_private_networks", True)
+    monkeypatch.setattr(
+        "app.services.image_loader.socket.getaddrinfo",
+        lambda *a, **kw: _addrinfo_for("127.0.0.1"),
+    )
+    png = _make_png_bytes()
+
+    with patch("app.services.image_loader.httpx.Client") as mock_cls:
+        mock_client = mock_cls.return_value.__enter__.return_value
+        mock_response = mock_client.stream.return_value.__enter__.return_value
+        mock_response.is_redirect = False
+        mock_response.raise_for_status.return_value = None
+        mock_response.headers = {"content-type": "image/png"}
+        mock_response.iter_bytes.return_value = [png]
+        result = load_image_from_url("http://localhost:9000/meals/food.png", timeout_seconds=5.0)
+    assert result is not None
+
+
+def test_storage_endpoint_trust_does_not_open_other_private_ports(monkeypatch: Any) -> None:
+    monkeypatch.setattr(settings, "ai_allowed_image_hosts", "")
+    monkeypatch.setattr(settings, "storage_endpoint", "http://localhost:9000")
+    monkeypatch.setattr(settings, "ai_block_private_networks", True)
+    monkeypatch.setattr(
+        "app.services.image_loader.socket.getaddrinfo",
+        lambda *a, **kw: _addrinfo_for("127.0.0.1"),
+    )
+
+    with pytest.raises(ImageLoadError):
+        load_image_from_url("http://localhost:9001/not-storage.png", timeout_seconds=5.0)
+
+
 # ── DoS: oversized response ───────────────────────────────────────────────────
 
 def test_rejects_oversized_response(monkeypatch: Any) -> None:

@@ -10,28 +10,15 @@ import { IconButton } from '../primitives/icon-button';
 import { Button } from '../primitives/button';
 import { MissingApiState } from '../api/api-state';
 import { BottomSheet } from '../primitives/sheet/bottom-sheet';
-import { ChevronLeft, IconPaperclip, IconCamera, IconCheck, IconX } from '../../icons';
+import { ChevronLeft, IconPaperclip, IconCamera } from '../../icons';
 
 type ActionSheet = 'library' | 'camera' | null;
-type UploadState = 'idle' | 'progress' | 'done' | 'error';
-
-interface UploadSlot {
-  id: string;
-  name: string;
-  state: UploadState;
-  progress?: number;
-}
 
 export function AttachmentUploadScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const [activeSheet, setActiveSheet] = useState<ActionSheet>(null);
-  const [slots] = useState<UploadSlot[]>([
-    { id: '1', name: 'lab_results.pdf', state: 'done' },
-    { id: '2', name: 'xray_scan.png', state: 'progress', progress: 0.62 },
-    { id: '3', name: 'referral_letter.pdf', state: 'error' },
-  ]);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -73,24 +60,10 @@ export function AttachmentUploadScreen() {
           </Pressable>
         </View>
 
-        {/* File slots — single clipped grouped card */}
-        {slots.length > 0 && (
-          <>
-            <Text style={[typography.h3, { color: t.ink }]}>Uploads</Text>
-            <View style={[s.uploadsCard, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.md }]}>
-              {slots.map((slot, i) => (
-                <View key={slot.id}>
-                  <UploadRow slot={slot} />
-                  {i < slots.length - 1 && (
-                    <View style={[s.uploadDivider, { backgroundColor: t.border, marginLeft: 60 }]} />
-                  )}
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        <MissingApiState title="Attachment upload unavailable" contract="unclear and needs manual confirmation" />
+        <MissingApiState
+          title="Attachment upload unavailable"
+          contract="Generic appointment upload/storage API is not implemented; prescription files use the separate prescription asset contract."
+        />
       </View>
 
       <BottomSheet visible={activeSheet === 'library'} onClose={() => setActiveSheet(null)}>
@@ -110,31 +83,6 @@ export function AttachmentUploadScreen() {
   );
 }
 
-function UploadRow({ slot }: { slot: UploadSlot }) {
-  const t = useTheme();
-  const stateColor = slot.state === 'done' ? t.success : slot.state === 'error' ? t.danger : t.brand;
-  return (
-    <View style={[s.uploadRow, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.md }]}>
-      <View style={[s.uploadRowIcon, { backgroundColor: stateColor + '18', borderRadius: t.radius.sm }]}>
-        {slot.state === 'done' && <IconCheck size={14} color={stateColor} />}
-        {slot.state === 'error' && <IconX size={14} color={stateColor} />}
-        {(slot.state === 'progress' || slot.state === 'idle') && <IconPaperclip size={14} color={stateColor} />}
-      </View>
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{slot.name}</Text>
-        {slot.state === 'progress' && slot.progress !== undefined && (
-          <View style={[s.barTrack, { backgroundColor: t.border }]}>
-            <View style={[s.barFill, { width: `${Math.round(slot.progress * 100)}%` as any, backgroundColor: t.brand }]} />
-          </View>
-        )}
-        {slot.state === 'done' && <Text style={[typography.caption, { color: t.success }]}>Uploaded</Text>}
-        {slot.state === 'error' && <Text style={[typography.caption, { color: t.danger }]}>Upload failed — tap to retry</Text>}
-        {slot.state === 'idle' && <Text style={[typography.caption, { color: t.ink4 }]}>Waiting…</Text>}
-      </View>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   safe:         { flex: 1 },
   bar:          { paddingHorizontal: 16 },
@@ -144,10 +92,4 @@ const s = StyleSheet.create({
   uploadIcon:   { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   divider:      { height: StyleSheet.hairlineWidth },
   sheetInner:   { paddingHorizontal: 20, paddingTop: 8 },
-  uploadsCard:  { borderWidth: 1, overflow: 'hidden' },
-  uploadDivider:{ height: StyleSheet.hairlineWidth },
-  uploadRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
-  uploadRowIcon:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  barTrack:     { height: 4, borderRadius: 2, overflow: 'hidden' },
-  barFill:      { height: 4, borderRadius: 2 },
 });

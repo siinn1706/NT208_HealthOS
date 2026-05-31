@@ -87,8 +87,8 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
   // server ignored have been removed.
   const [includeSensitive, setIncludeSensitive] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
-  const [selectedSections, setSelectedSections] = useState<string[]>(
-    report.sections.map((s) => s.category),
+  const [selectedSections, setSelectedSections] = useState<string[]>(() =>
+    report.sections.map((s) => s.category)
   );
 
   function toggleSection(cat: string) {
@@ -131,7 +131,7 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Download className="h-4 w-4" aria-hidden />
+            <Download className="size-4" aria-hidden />
             {t("exportPdf")}
           </DialogTitle>
           <DialogDescription>{tExp("dialogDescription")}</DialogDescription>
@@ -143,7 +143,7 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
             role="note"
             className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-warning"
           >
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <div className="space-y-1">
               <p className="text-xs font-semibold">{tExp("piiTitle")}</p>
               <p className="text-[11px] leading-relaxed text-warning/90">{tExp("piiBody")}</p>
@@ -214,9 +214,9 @@ export function ExportPdfDialog({ open, onOpenChange, report }: ExportPdfDialogP
             className="gap-2"
           >
             {generating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
             ) : (
-              <Download className="h-3.5 w-3.5" aria-hidden />
+              <Download className="size-3.5" aria-hidden />
             )}
             {generating ? t("exportPdfLoading") : t("exportPdf")}
           </Button>
@@ -246,7 +246,7 @@ export function ExportPdfInlineButton({ report, size = "sm" }: ExportPdfInlineBu
         onClick={() => setOpen(true)}
         aria-label={t("exportPdf")}
       >
-        <Download className="h-3.5 w-3.5" aria-hidden />
+        <Download className="size-3.5" aria-hidden />
         {t("exportPdf")}
       </Button>
       <ExportPdfDialog open={open} onOpenChange={setOpen} report={report} />

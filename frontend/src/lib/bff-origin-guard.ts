@@ -41,9 +41,9 @@ function checkColdStart(isProd: boolean, allowedOrigins: string[]): void {
 export function parseAllowedOrigins(rawEnv: string, isProd: boolean): string[] {
   const explicit: string[] = rawEnv
     .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
     .flatMap((urlStr) => {
+      urlStr = urlStr.trim();
+      if (!urlStr) return [];
       try {
         const u = new URL(urlStr);
         return [u.host]; // "example.com" or "example.com:8080"

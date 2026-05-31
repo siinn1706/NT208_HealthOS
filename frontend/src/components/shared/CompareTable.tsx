@@ -62,7 +62,7 @@ export function CompareTable({
           <tr className="border-b border-border bg-muted/40">
             <th
               scope="col"
-              className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              className="p-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
             >
               {featureColumnLabel}
             </th>
@@ -71,7 +71,7 @@ export function CompareTable({
                 key={col.id}
                 scope="col"
                 className={cn(
-                  "px-4 py-4 text-left",
+                  "p-4 text-left",
                   col.recommended && "bg-night-400/10"
                 )}
               >
@@ -118,12 +118,12 @@ export function CompareTable({
                       <span>{v}</span>
                     ) : v ? (
                       <span className="inline-flex items-center gap-1.5 text-night-700 dark:text-night-300">
-                        <Check className="h-4 w-4" aria-hidden="true" />
+                        <Check className="size-4" aria-hidden="true" />
                         <span className="sr-only">{includedLabel}</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-muted-foreground/60">
-                        <Minus className="h-4 w-4" aria-hidden="true" />
+                        <Minus className="size-4" aria-hidden="true" />
                         <span className="sr-only">{notIncludedLabel}</span>
                       </span>
                     )}

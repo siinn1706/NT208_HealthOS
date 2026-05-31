@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { User } from "lucide-react";
@@ -27,13 +28,16 @@ interface BasicInfoSectionProps {
 }
 
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+const subscribeToTodaySnapshot = () => () => {};
+const getTodaySnapshot = () => new Date().toISOString().split("T")[0];
+const getServerTodaySnapshot = () => undefined;
 
 function ReadOnlyRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="space-y-0.5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="text-sm text-foreground">
-        {value ?? <span className="italic text-muted-foreground/60">—</span>}
+        {value ?? <span className="italic text-muted-foreground/60">N/A</span>}
       </p>
     </div>
   );
@@ -42,6 +46,11 @@ function ReadOnlyRow({ label, value }: { label: string; value: string | null }) 
 export function BasicInfoSection({ isEditing }: BasicInfoSectionProps) {
   const t = useTranslations("dashboard.profile");
   const form = useFormContext<ProfileFormValues>();
+  const todayIso = useSyncExternalStore(
+    subscribeToTodaySnapshot,
+    getTodaySnapshot,
+    getServerTodaySnapshot,
+  );
 
   const values = form.getValues();
 
@@ -90,7 +99,7 @@ export function BasicInfoSection({ isEditing }: BasicInfoSectionProps) {
               <FormControl>
                 <Input
                   type="date"
-                  max={new Date().toISOString().split("T")[0]}
+                  max={todayIso}
                   {...field}
                   value={field.value ?? ""}
                   onChange={(e) => field.onChange(e.target.value || null)}

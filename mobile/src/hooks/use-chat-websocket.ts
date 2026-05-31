@@ -13,7 +13,7 @@ interface UseChatWebSocketOptions {
 }
 
 export function useChatWebSocket({ conversationId, enabled = true, onMessage }: UseChatWebSocketOptions) {
-  const [state, setState] = useState<ChatWsState>('idle');
+  const [connectionState, setConnectionState] = useState<ChatWsState>('idle');
   const onMessageRef = useRef(onMessage);
 
   useEffect(() => {
@@ -22,7 +22,6 @@ export function useChatWebSocket({ conversationId, enabled = true, onMessage }: 
 
   useEffect(() => {
     if (!enabled || !conversationId) {
-      setState('idle');
       return;
     }
 
@@ -43,7 +42,7 @@ export function useChatWebSocket({ conversationId, enabled = true, onMessage }: 
       clearReconnectTimer();
       const delay = Math.min(BASE_RECONNECT_DELAY_MS * (2 ** reconnectAttempt), MAX_RECONNECT_DELAY_MS);
       reconnectAttempt += 1;
-      setState('fallback');
+      setConnectionState('fallback');
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         connect();
@@ -52,7 +51,7 @@ export function useChatWebSocket({ conversationId, enabled = true, onMessage }: 
 
     const connect = () => {
       if (closed) return;
-      setState('connecting');
+      setConnectionState('connecting');
       chatRealtimeService.openSocket()
         .then((ws) => {
           if (closed) {
@@ -63,7 +62,7 @@ export function useChatWebSocket({ conversationId, enabled = true, onMessage }: 
           ws.onopen = () => {
             if (closed) return;
             reconnectAttempt = 0;
-            setState('connected');
+            setConnectionState('connected');
             ws.send(JSON.stringify({ event: 'client:hello', payload: {} }));
             ws.send(JSON.stringify({ event: 'conv:join', payload: { conversation_id: conversationId } }));
           };
@@ -83,7 +82,7 @@ export function useChatWebSocket({ conversationId, enabled = true, onMessage }: 
             }
           };
           ws.onerror = () => {
-            if (!closed) setState('error');
+            if (!closed) setConnectionState('error');
           };
           ws.onclose = () => {
             if (!closed) scheduleReconnect();
@@ -103,5 +102,6 @@ export function useChatWebSocket({ conversationId, enabled = true, onMessage }: 
     };
   }, [conversationId, enabled]);
 
+  const state = enabled && conversationId ? connectionState : 'idle';
   return { state, isLive: state === 'connected' };
 }

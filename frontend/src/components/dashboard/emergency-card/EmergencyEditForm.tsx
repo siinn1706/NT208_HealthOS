@@ -79,6 +79,7 @@ export function EmergencyEditForm({
   }
 
   return (
+    // oxlint-disable-next-line react-doctor/no-prevent-default -- Emergency card draft is client-side state saved by the parent dialog.
     <form
       className="space-y-5"
       onSubmit={(e) => {

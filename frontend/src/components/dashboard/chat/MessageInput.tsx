@@ -10,7 +10,7 @@ import { MessageReplyPreview } from "./MessageReplyPreview";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import type { Message } from "@/types/api";
 import { useChatDrafts } from "@/hooks/useChatDrafts";
 
@@ -105,7 +105,7 @@ export function MessageInput({
     }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+  function handleDraftChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const next = e.target.value;
     setValue(next);
     if (!editingMessage) setDraft(next);
@@ -135,14 +135,15 @@ export function MessageInput({
     // iOS home indicator without leaving a visible gap when the on-screen
     // keyboard is closed. `sticky bottom-0` pins it inside the chat scroll
     // container on mobile so the input is always reachable.
-    <div
-      className="sticky bottom-0 z-10 border-t border-border bg-background/80 backdrop-blur-sm"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-    >
+    <LazyMotion features={domAnimation}>
+      <div
+        className="sticky bottom-0 z-10 border-t border-border bg-background/80 backdrop-blur-sm"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
       {/* Animated reply / edit indicator */}
       <AnimatePresence>
         {hasReplyOrEdit && (
-          <motion.div
+          <m.div
             className="overflow-hidden px-4 pt-2"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -151,19 +152,19 @@ export function MessageInput({
           >
             {editingMessage ? (
               /* Edit bar — amber accent, pencil icon */
-              <div className="flex items-center justify-between px-3 py-2 bg-secondary/60 border-l-2 border-amber-500 rounded-r-md text-xs text-muted-foreground">
+              <div className="flex items-center justify-between rounded-md bg-secondary/60 px-3 py-2 text-xs text-muted-foreground ring-1 ring-amber-500/20">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Pencil className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                  <Pencil className="size-3.5 flex-shrink-0 text-amber-500" />
                   <span className="font-medium text-amber-600 dark:text-amber-400">
                     {t("editingMessage")}
                   </span>
                 </div>
-                <button
+                <button type="button"
                   onClick={onCancelEdit}
                   aria-label={t("cancelEdit")}
                   className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="size-4" />
                 </button>
               </div>
             ) : replyTo ? (
@@ -175,7 +176,7 @@ export function MessageInput({
                 mode="input"
               />
             ) : null}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
@@ -184,28 +185,28 @@ export function MessageInput({
         {/* Attachment popover */}
         <Popover open={attachOpen} onOpenChange={setAttachOpen}>
           <PopoverTrigger asChild>
-            <button
+            <button type="button"
               aria-label={t("attachFile")}
               disabled={disabled}
-              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-40"
+              className="flex-shrink-0 size-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-40"
             >
-              <Paperclip className="w-4 h-4" />
+              <Paperclip className="size-4" />
             </button>
           </PopoverTrigger>
           <PopoverContent side="top" align="start" className="w-44 p-1" sideOffset={8}>
-            <button
+            <button type="button"
               onClick={() => { toast.info(t("uploadComingSoon")); setAttachOpen(false); }}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-secondary transition-colors cursor-pointer"
             >
-              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              <ImageIcon className="size-4 text-muted-foreground" />
               {t("attachImage")}
             </button>
             <Separator className="my-1" />
-            <button
+            <button type="button"
               onClick={() => { toast.info(t("uploadComingSoon")); setAttachOpen(false); }}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-secondary transition-colors cursor-pointer"
             >
-              <FileText className="w-4 h-4 text-muted-foreground" />
+              <FileText className="size-4 text-muted-foreground" />
               {t("attachFile")}
             </button>
           </PopoverContent>
@@ -216,7 +217,7 @@ export function MessageInput({
           <Textarea
             ref={textareaRef}
             value={value}
-            onChange={handleChange}
+            onChange={handleDraftChange}
             onKeyDown={handleKeyDown}
             placeholder={t("typeMessage")}
             rows={1}
@@ -236,12 +237,12 @@ export function MessageInput({
         {/* Full emoji picker */}
         <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
           <PopoverTrigger asChild>
-            <button
+            <button type="button"
               aria-label="Emoji"
               disabled={disabled}
-              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-40"
+              className="flex-shrink-0 size-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-40"
             >
-              <Smile className="w-4 h-4" />
+              <Smile className="size-4" />
             </button>
           </PopoverTrigger>
           <PopoverContent side="top" className="w-auto p-0 border-0 shadow-xl" sideOffset={8}>
@@ -259,7 +260,7 @@ export function MessageInput({
         </Popover>
 
         {/* Send button — disabled state + press animation */}
-        <motion.button
+        <m.button
           type="button"
           onClick={handleSend}
           disabled={!value.trim() || disabled}
@@ -267,7 +268,7 @@ export function MessageInput({
           whileTap={!disabled ? { scale: 0.85 } : {}}
           transition={{ duration: 0.1 }}
           className={cn(
-            "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center",
+            "flex-shrink-0 size-9 rounded-full flex items-center justify-center",
             "transition-all duration-150 ease-out cursor-pointer",
             value.trim()
               ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
@@ -275,9 +276,10 @@ export function MessageInput({
             editingMessage && "bg-amber-500 hover:bg-amber-600 text-white"
           )}
         >
-          <Send className="w-4 h-4" />
-        </motion.button>
+          <Send className="size-4" />
+        </m.button>
       </div>
-    </div>
+      </div>
+    </LazyMotion>
   );
 }

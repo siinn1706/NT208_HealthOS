@@ -76,6 +76,7 @@ export default function AdminUserDetailPage() {
   // Unban
   const [isUnbanning, setIsUnbanning] = React.useState(false);
 
+  // oxlint-disable-next-line react-doctor/nextjs-no-client-fetch-for-server-data, react-doctor/no-fetch-in-effect -- Session identity is client-only state for admin action guards.
   React.useEffect(() => {
     fetch("/api/v1/auth/session", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
@@ -122,7 +123,7 @@ export default function AdminUserDetailPage() {
     } finally {
       setIsAssigning(false);
     }
-  }, [id, fetchUser]);
+  }, [id, fetchUser, tSub]);
 
   function handleBanClick() { setBanError(null); setIsBanModalOpen(true); }
   function handleBanModalClose() { if (isBanning) return; setIsBanModalOpen(false); setBanError(null); }
@@ -202,6 +203,7 @@ export default function AdminUserDetailPage() {
       </div>
 
       <BanUserModal
+        key={`${id}:${isBanModalOpen ? "open" : "closed"}`}
         userId={id}
         isOpen={isBanModalOpen}
         onClose={handleBanModalClose}

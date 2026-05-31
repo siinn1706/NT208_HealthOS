@@ -55,9 +55,16 @@ export default function MedsScreen() {
     ? { percent: Object.values(adherenceRecord).reduce((sum, a) => sum + a.percent, 0) / plans.length }
     : null;
   const firstAdherence = plans[0] ? adherenceRecord[plans[0].id] ?? null : null;
-  const refillPlan = plans
-    .filter((plan) => plan.next_refill_estimated_at)
-    .sort((a, b) => new Date(a.next_refill_estimated_at ?? 0).getTime() - new Date(b.next_refill_estimated_at ?? 0).getTime())[0];
+  const refillPlan = plans.reduce<MedicationPlan | null>((soonest, plan) => {
+    if (!plan.next_refill_estimated_at) return soonest;
+    if (!soonest?.next_refill_estimated_at) return plan;
+    return new Date(plan.next_refill_estimated_at).getTime() < new Date(soonest.next_refill_estimated_at).getTime()
+      ? plan
+      : soonest;
+  }, null);
+  const refillDaysLeft = refillPlan?.next_refill_estimated_at
+    ? Math.max(0, Math.ceil((new Date(refillPlan.next_refill_estimated_at).getTime() - Date.now()) / 86400000))
+    : 0;
 
   return (
     <Screen>
@@ -101,7 +108,7 @@ export default function MedsScreen() {
       {refillPlan?.next_refill_estimated_at && (
         <RefillAlertCard
           message={`${refillPlan.name} refill due soon`}
-          daysLeft={Math.max(0, Math.ceil((new Date(refillPlan.next_refill_estimated_at).getTime() - Date.now()) / 86400000))}
+          daysLeft={refillDaysLeft}
           onPress={() => router.push(('/meds/refill/' + refillPlan.id) as never)}
         />
       )}

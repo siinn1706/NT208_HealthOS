@@ -10,7 +10,10 @@ interface StreakCalendarProps {
   longestStreak: number;
 }
 
-const DAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+type StreakCell = {
+  key: string;
+  entry: UserStreakEntry | undefined;
+};
 
 // Generate locale-aware short day labels
 function getDayLabels(locale: string): string[] {
@@ -40,13 +43,16 @@ export function StreakCalendar({
   const locale = useLocale();
 
   // Build 8×7 grid (56 cells, oldest first)
-  const cells: (UserStreakEntry | undefined)[] = Array.from(
+  const cells: StreakCell[] = Array.from(
     { length: 56 },
-    (_, i) => history[i]
+    (_, i) => ({
+      key: history[i]?.date ?? `empty-streak-cell-${i}`,
+      entry: history[i],
+    })
   );
 
   // Split into 8 weeks
-  const weeks: (UserStreakEntry | undefined)[][] = Array.from(
+  const weeks: StreakCell[][] = Array.from(
     { length: 8 },
     (_, w) => cells.slice(w * 7, w * 7 + 7)
   );
@@ -57,11 +63,11 @@ export function StreakCalendar({
         <p className="text-sm font-semibold text-foreground">{t("streakCalendar.title")}</p>
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#41BCE6]" />
+            <span className="size-2 rounded-full bg-[#41BCE6]" />
             <span className="text-muted-foreground">{t("streakCalendar.active")}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-muted/50" />
+            <span className="size-2 rounded-full bg-muted/50" />
             <span className="text-muted-foreground">{t("streakCalendar.rest")}</span>
           </div>
         </div>
@@ -106,11 +112,11 @@ export function StreakCalendar({
           </div>
           {/* Week rows */}
           <div className="space-y-1">
-            {weeks.map((week, wi) => (
-              <div key={wi} className="grid grid-cols-7 gap-1">
-                {week.map((entry, di) => (
+            {weeks.map((week) => (
+              <div key={week.map((cell) => cell.key).join("|")} className="grid grid-cols-7 gap-1">
+                {week.map(({ key, entry }) => (
                   <div
-                    key={di}
+                    key={key}
                     title={
                       entry
                         ? `${entry.date}: ${entry.completed ? t("streakCalendar.activitiesCount", { n: entry.activitiesCount }) : t("streakCalendar.rest")}`

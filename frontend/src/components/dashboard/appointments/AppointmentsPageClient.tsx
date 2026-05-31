@@ -29,8 +29,7 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Review fix U3: deep-link from a routing-card "Book an appointment" CTA
-  // (or any other surface) auto-opens the create sheet via `?create=1`.
+  // Deep links from booking CTAs auto-open the create sheet via `?create=1`.
   // Strips the param after opening so back-nav doesn't re-trigger the sheet.
   useEffect(() => {
     if (searchParams.get("create") === "1") {
@@ -38,6 +37,7 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
       const next = new URLSearchParams(searchParams.toString());
       next.delete("create");
       const qs = next.toString();
+      // oxlint-disable-next-line react-doctor/nextjs-no-client-side-redirect -- Scrubs a handled sheet-opening query param after local UI state is set.
       router.replace(qs ? `?${qs}` : "?", { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,7 +52,7 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Stethoscope className="h-5 w-5 text-primary" aria-hidden />
+            <Stethoscope className="size-5 text-primary" aria-hidden />
             {t("pageTitle")}
           </span>
         }
@@ -64,7 +64,7 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
             className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
             aria-label={t("addNewAria")}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             {t("addNew")}
           </button>
         }
@@ -76,6 +76,7 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
         onCreated={(created) => setAppointments((prev) => [created, ...prev])}
       />
       <AppointmentDetailSheet
+        key={selectedAppointment?.id ?? "no-appointment"}
         appointment={selectedAppointment}
         open={detailOpen}
         onOpenChange={setDetailOpen}
@@ -125,8 +126,8 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
         href="/dashboard/visit-prep"
         className="group flex items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 transition-colors hover:bg-primary/10"
       >
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <ClipboardCheck className="h-5 w-5" aria-hidden />
+        <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+          <ClipboardCheck className="size-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">{tVp("pageTitle")}</p>

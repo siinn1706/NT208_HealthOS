@@ -10,6 +10,7 @@ import { FormFieldError } from "./FormFieldError";
 
 export interface PasswordFieldProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+  ref?: React.Ref<HTMLInputElement>;
   id: string;
   label: React.ReactNode;
   error?: React.ReactNode | null | false;
@@ -25,27 +26,24 @@ export interface PasswordFieldProps
   requiredMark?: boolean;
 }
 
-export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldProps>(
-  function PasswordField(
-    {
-      id,
-      label,
-      error,
-      hint,
-      labelTrailing,
-      inputContainerClassName,
-      renderBelow,
-      className,
-      value,
-      onChange,
-      placeholder = "••••••••",
-      autoComplete = "current-password",
-      requiredMark,
-      required,
-      ...rest
-    },
-    ref,
-  ) {
+export function PasswordField({
+  id,
+  label,
+  error,
+  hint,
+  labelTrailing,
+  inputContainerClassName,
+  renderBelow,
+  className,
+  value,
+  onChange,
+  placeholder = "••••••••",
+  autoComplete = "current-password",
+  requiredMark,
+  required,
+  ref,
+  ...rest
+}: PasswordFieldProps) {
     const t = useTranslations("auth");
     const [show, setShow] = React.useState(false);
     const [internal, setInternal] = React.useState(typeof value === "string" ? value : "");
@@ -112,5 +110,4 @@ export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldPro
         {renderBelow?.(stringValue)}
       </div>
     );
-  },
-);
+}

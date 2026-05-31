@@ -52,10 +52,10 @@ function HealthScoreRing({ score, scoreGood, scoreAverage, scoreNeedsWork }: {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-28 h-28">
+      <div className="relative size-28">
         <svg
           viewBox="0 0 100 100"
-          className="w-full h-full -rotate-90"
+          className="size-full -rotate-90"
           aria-hidden
         >
           {/* Track */}
@@ -95,9 +95,11 @@ function HealthScoreRing({ score, scoreGood, scoreAverage, scoreNeedsWork }: {
 }
 
 export default async function RiskPage() {
-  const t = await getTranslations("dashboard.risk");
-  const locale = await getLocale();
-  const data = await fetchRiskPredictions();
+  const [t, locale, data] = await Promise.all([
+    getTranslations("dashboard.risk"),
+    getLocale(),
+    fetchRiskPredictions(),
+  ]);
   const hasData = data !== null;
 
   const generated = data?.generatedAt
@@ -119,7 +121,7 @@ export default async function RiskPage() {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-muted-foreground" aria-hidden />
+            <Brain className="size-5 text-muted-foreground" aria-hidden />
             {t("title")}
           </span>
         }
@@ -171,7 +173,7 @@ export default async function RiskPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center text-center gap-2 py-6">
-            <Brain className="h-6 w-6 text-muted-foreground" aria-hidden />
+            <Brain className="size-6 text-muted-foreground" aria-hidden />
             <p className="text-sm font-medium text-foreground">{t("noModelOutputTitle")}</p>
             <p className="text-xs text-muted-foreground max-w-md">{t("noModelOutputBody")}</p>
           </div>
@@ -194,7 +196,7 @@ export default async function RiskPage() {
 
       {/* ── Medical disclaimer ── */}
       <div className="rounded-xl border border-border bg-muted/20 px-5 py-4 flex items-start gap-3">
-        <ShieldCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" aria-hidden />
+        <ShieldCheck className="size-4 text-muted-foreground flex-shrink-0 mt-0.5" aria-hidden />
         <p className="text-xs text-muted-foreground leading-relaxed">{t("disclaimer")}</p>
       </div>
       </div>

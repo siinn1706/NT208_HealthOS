@@ -8,18 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNotification, ValidationMessages } from "@/hooks/use-notification";
 import { PasswordStrengthMeter } from "./password-strength-meter";
-import {
-  AuthShell,
-  AuthBanner,
-  BrandMarkIcon,
-  brandMarkGlassBadgeSurfaceClassName,
-  PasswordField,
-  PendingButton,
-  FormFieldError,
-  useBreachCheck,
-} from "./primitives";
+import { AuthShell, BrandMarkIcon, brandMarkGlassBadgeSurfaceClassName } from "./primitives/AuthShell";
+import { AuthBanner } from "./primitives/AuthBanner";
+import { PasswordField } from "./primitives/PasswordField";
+import { PendingButton } from "./primitives/PendingButton";
+import { FormFieldError } from "./primitives/FormFieldError";
+import { useBreachCheck } from "./primitives/useBreachCheck";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 export function RegisterForm() {
   const t = useTranslations("auth");
@@ -58,10 +58,6 @@ export function RegisterForm() {
   useEffect(() => {
     if (topError && bannerRef.current) bannerRef.current.focus();
   }, [topError]);
-
-  const isValidEmail = (value: string): boolean => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  };
 
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
@@ -234,7 +230,8 @@ export function RegisterForm() {
       const res = await fetch(`/api/v1/auth/check-email?email=${encodeURIComponent(normalized)}`);
       const data = await res.json();
 
-      if (latestEmailRef.current !== normalized) {
+      const isStale = latestEmailRef.current !== normalized;
+      if (isStale) {
         return;
       }
 

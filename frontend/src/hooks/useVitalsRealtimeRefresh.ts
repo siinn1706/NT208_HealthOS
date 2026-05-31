@@ -56,17 +56,16 @@ export function useVitalsRealtimeRefresh({
     }
   }, []);
 
-  const handleReconnect = useCallback(() => {
-    if (!enabled) return;
-    clearTimer();
-    runRefresh(reconnectRefreshRef.current);
-  }, [clearTimer, enabled, runRefresh]);
-
   useEffect(() => {
     if (!enabled) {
       clearTimer();
       return;
     }
+
+    const handleReconnect = () => {
+      clearTimer();
+      runRefresh(reconnectRefreshRef.current);
+    };
 
     const handleVitalsEvent = (event: Event) => {
       if (!isVitalsUpdatedEvent(event)) return;
@@ -85,7 +84,7 @@ export function useVitalsRealtimeRefresh({
       window.removeEventListener(VITALS_REALTIME_RECONNECT_EVENT, handleReconnect);
       clearTimer();
     };
-  }, [clearTimer, debounceMs, enabled, handleReconnect, runRefresh]);
+  }, [clearTimer, debounceMs, enabled, runRefresh]);
 
   useEffect(() => clearTimer, [clearTimer]);
 

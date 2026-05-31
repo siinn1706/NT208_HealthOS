@@ -15,7 +15,7 @@ import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page";
 import type { AggregationPoint, ReportPeriod } from "@/types/api";
-import type { SavedGoal } from "./save-health-goal-action";
+import type { SavedGoal } from "./health-goal-action-contract";
 import { track } from "@/lib/analytics";
 
 interface ProgressPageClientProps {
@@ -150,8 +150,8 @@ export function ProgressPageClient({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* BMI Card */}
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-5 h-5 text-blue-500" />
+          <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+            <TrendingUp className="size-5 text-blue-500" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 flex-wrap">
@@ -177,8 +177,8 @@ export function ProgressPageClient({
 
         {/* Weight Card */}
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
-            <Scale className="w-5 h-5 text-purple-500" />
+          <div className="size-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+            <Scale className="size-5 text-purple-500" />
           </div>
           <div>
             <div className="flex items-center gap-1 flex-wrap">
@@ -200,8 +200,8 @@ export function ProgressPageClient({
 
         {/* Height Card */}
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
-            <Ruler className="w-5 h-5 text-orange-500" />
+          <div className="size-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+            <Ruler className="size-5 text-orange-500" />
           </div>
           <div>
             <div className="flex items-center gap-1 flex-wrap">
@@ -218,11 +218,11 @@ export function ProgressPageClient({
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 shrink-0" />
+          <span className="size-2 rounded-full bg-blue-500 dark:bg-blue-400 shrink-0" />
           {t("legendCurrent")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 shrink-0" />
+          <span className="size-2 rounded-full bg-green-500 dark:bg-green-400 shrink-0" />
           {t("legendTarget")}
         </span>
       </div>

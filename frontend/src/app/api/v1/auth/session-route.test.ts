@@ -33,7 +33,7 @@ describe("/api/v1/auth/session route", () => {
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     process.env.CORE_API_URL = "http://core.example";
-    process.env.NODE_ENV = "test";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
     delete process.env.NEXT_PUBLIC_APP_ENV;
     delete process.env.APP_ENV;
     delete process.env.BFF_TRUSTED_ORIGINS;
@@ -42,7 +42,7 @@ describe("/api/v1/auth/session route", () => {
   });
 
   it("does not use dev bypass unless explicitly enabled", async () => {
-    process.env.NODE_ENV = "development";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "development";
     process.env.DEV_BYPASS_CREDENTIALS = "admin:admin";
     cookiesMock.mockResolvedValue({ get: () => undefined });
     fetchMock.mockResolvedValue(
@@ -65,7 +65,7 @@ describe("/api/v1/auth/session route", () => {
   });
 
   it("allows dev bypass only in unprotected env with explicit flag", async () => {
-    process.env.NODE_ENV = "development";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "development";
     process.env.DEV_BYPASS_ENABLED = "true";
     process.env.DEV_BYPASS_CREDENTIALS = "admin:admin";
     cookiesMock.mockResolvedValue({ get: () => undefined });
@@ -86,7 +86,7 @@ describe("/api/v1/auth/session route", () => {
   });
 
   it("does not use dev bypass in staging even when configured", async () => {
-    process.env.NODE_ENV = "development";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "development";
     process.env.NEXT_PUBLIC_APP_ENV = "staging";
     process.env.BFF_TRUSTED_ORIGINS = "http://localhost";
     process.env.DEV_BYPASS_ENABLED = "true";

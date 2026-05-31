@@ -45,6 +45,7 @@ export default async function ServicesLayout({
       <script
         type="application/ld+json"
         suppressHydrationWarning
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from static service metadata.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }}
       />
       {children}

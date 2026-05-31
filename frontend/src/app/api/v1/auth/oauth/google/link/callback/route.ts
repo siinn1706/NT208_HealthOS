@@ -35,6 +35,7 @@ function profileRedirect(
   return res;
 }
 
+// oxlint-disable-next-line react-doctor/nextjs-no-side-effect-in-get-handler -- OAuth providers must callback via GET; state/PKCE/session binding plus one-time provider codes guard replay.
 export async function GET(request: NextRequest) {
   const context = readOAuthContext(request, "google", "link", [
     process.env.OAUTH_GOOGLE_LINK_CALLBACK_URL,
@@ -101,6 +102,7 @@ export async function GET(request: NextRequest) {
     }
 
     const coreRes = await fetch(`${CORE_API_URL}/v1/auth/oauth/links/attach`, {
+      cache: "no-store",
       method: "POST",
       headers: {
         "Content-Type": "application/json",

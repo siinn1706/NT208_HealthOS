@@ -55,11 +55,11 @@ function SidebarLink({ link, isActive, collapsed, unreadCount, onClick }: Sideba
         )}
       >
         <span className="relative flex-shrink-0">
-          <Icon className="h-5 w-5" aria-hidden="true" />
+          <Icon className="size-5" aria-hidden="true" />
           {showBadge && collapsed && (
             <span
               aria-label={`${unreadCount} unread`}
-              className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary"
+              className="absolute -right-1 -top-1 size-2 rounded-full bg-primary"
             />
           )}
         </span>
@@ -136,11 +136,11 @@ export function SidebarNavGrouped({
       >
         <div
           className={cn(
-            "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg",
+            "flex size-8 flex-shrink-0 items-center justify-center rounded-lg",
             brandMarkGlassBadgeSurfaceClassName,
           )}
         >
-          <BrandMarkIcon className="h-5 w-5" />
+          <BrandMarkIcon className="size-5" />
         </div>
         {!collapsed && (
           <span className="text-lg font-bold tracking-tight text-sidebar-foreground">HealthOS</span>
@@ -178,20 +178,20 @@ export function SidebarNavGrouped({
       </nav>
 
       {!hideCollapseToggle && (
-        <button
+        <button type="button"
           onClick={handleToggle}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!collapsed}
           className={cn(
-            "mx-auto mb-4 flex h-8 w-8 items-center justify-center rounded-full",
+            "mx-auto mb-4 flex size-8 items-center justify-center rounded-full",
             "bg-sidebar-accent text-muted-foreground transition-colors duration-200 hover:bg-primary hover:text-primary-foreground",
             "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           )}
         >
           {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="size-4" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="size-4" />
           )}
         </button>
       )}

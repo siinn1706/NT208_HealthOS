@@ -71,7 +71,7 @@ function ReadOnlyRow({ label, value }: { label: string; value: string | null }) 
     <div className="space-y-0.5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="text-sm text-foreground">
-        {value ?? <span className="italic text-muted-foreground/60">—</span>}
+        {value ?? <span className="italic text-muted-foreground/60">N/A</span>}
       </p>
     </div>
   );
@@ -124,7 +124,7 @@ export function EmergencyContactSection({
               ? t(`relationships.${relKey}` as Parameters<typeof t>[0])
               : rel;
             return (
-              <div key={index}>
+              <div key={`${contact.name ?? ""}-${contact.phone ?? ""}-${contact.relationship ?? ""}`}>
                 {index > 0 && <Separator className="mb-5" />}
                 <p className="mb-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {t("contactN", { n: index + 1 })}

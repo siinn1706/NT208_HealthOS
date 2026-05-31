@@ -61,7 +61,7 @@ export function ProgressRing({
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        role="img"
+        role="progressbar"
         aria-valuemin={0}
         aria-valuemax={safeMax}
         aria-valuenow={clamped}

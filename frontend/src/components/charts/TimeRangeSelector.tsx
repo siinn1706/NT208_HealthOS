@@ -69,7 +69,7 @@ export function TimeRangeSelector({
             size="sm"
             className="gap-1"
           >
-            <CalendarIcon className="h-3 w-3" />
+            <CalendarIcon className="size-3" />
             {value === "custom" && dateFrom && dateTo
               ? `${formatDisplay(dateFrom)} - ${formatDisplay(dateTo)}`
               : t("custom")}
@@ -82,6 +82,7 @@ export function TimeRangeSelector({
                 <span className="text-xs text-muted-foreground">{t("fromDate")}</span>
                 <input
                   type="date"
+                  aria-label={t("fromDate")}
                   value={tempFrom}
                   onChange={(e) => setTempFrom(e.target.value)}
                   className="rounded-md border border-input bg-background px-2 py-1 text-sm"
@@ -91,6 +92,7 @@ export function TimeRangeSelector({
                 <span className="text-xs text-muted-foreground">{t("toDate")}</span>
                 <input
                   type="date"
+                  aria-label={t("toDate")}
                   value={tempTo}
                   onChange={(e) => setTempTo(e.target.value)}
                   className="rounded-md border border-input bg-background px-2 py-1 text-sm"

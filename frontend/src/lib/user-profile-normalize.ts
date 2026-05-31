@@ -1,5 +1,16 @@
 import type { UserProfile } from "@/types/api";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeInsurance(value: any) {
+  if (!value || typeof value !== "object") return null;
+  if (typeof value.provider !== "string" || typeof value.policy_number !== "string") return null;
+  return {
+    provider: value.provider,
+    policy_number: value.policy_number,
+    group_number: typeof value.group_number === "string" ? value.group_number : null,
+  };
+}
+
 export function emptyProfile(): UserProfile {
   return {
     id: "",
@@ -19,12 +30,13 @@ export function emptyProfile(): UserProfile {
     weight_kg: null,
     address: null,
     emergency_contacts: [],
-    medical_info: {
-      allergies: null,
-      chronic_conditions: null,
-      current_medications: null,
-      notes: null,
-    },
+      medical_info: {
+        allergies: null,
+        chronic_conditions: null,
+        current_medications: null,
+        notes: null,
+        insurance: null,
+      },
   };
 }
 
@@ -83,6 +95,7 @@ export function normalizeProfile(data: any): UserProfile {
                 ? data.medical_info.current_medications
                 : null,
             notes: typeof data.medical_info.notes === "string" ? data.medical_info.notes : null,
+            insurance: normalizeInsurance(data.medical_info.insurance),
           }
         : fallback.medical_info,
     created_at: typeof data?.created_at === "string" ? data.created_at : "",

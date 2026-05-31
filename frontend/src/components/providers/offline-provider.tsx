@@ -72,5 +72,5 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useConnection() {
-  return React.useContext(ConnectionContext);
+  return React.use(ConnectionContext);
 }

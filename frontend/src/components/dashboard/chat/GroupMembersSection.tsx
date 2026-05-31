@@ -73,8 +73,8 @@ export function GroupMembersSection({
             {t("members", { count: participants.length })}
           </span>
           {isAdmin && onAddMembers && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddMembers}>
-              <UserPlus className="w-3.5 h-3.5" />
+            <Button variant="ghost" size="icon" className="size-7" onClick={onAddMembers}>
+              <UserPlus className="size-3.5" />
             </Button>
           )}
         </div>
@@ -89,7 +89,7 @@ export function GroupMembersSection({
           return (
             <div key={p.user_id} className="flex items-center gap-2.5 py-1.5">
               <div className="relative flex-shrink-0">
-                <Avatar className="w-8 h-8">
+                <Avatar className="size-8">
                   <AvatarFallback className="text-xs">
                     {getInitials(p.display_name || "?")}
                   </AvatarFallback>
@@ -108,8 +108,8 @@ export function GroupMembersSection({
               {(canManage || canTransfer) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    <Button variant="ghost" size="icon" className="size-7 shrink-0">
+                      <MoreHorizontal className="size-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">

@@ -35,7 +35,7 @@ async function bffFetch(path: string): Promise<unknown> {
 
 /** Compute current streak (consecutive completed days ending today). */
 function computeCurrentStreak(history: UserStreakEntry[]): number {
-  const sorted = [...history].sort(
+  const sorted = history.toSorted(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   let streak = 0;

@@ -16,7 +16,7 @@ const RANK_ICONS: Record<number, string> = {
 };
 
 function ChangeIndicator({ change }: { change: number }) {
-  if (change === 0) return <span className="text-muted-foreground text-[10px]">—</span>;
+  if (change === 0) return <span className="text-muted-foreground text-[10px]">-</span>;
   return (
     <span
       className={cn(
@@ -66,7 +66,7 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
               )}
             >
               {/* Rank */}
-              <div className="flex items-center justify-center w-8 h-8">
+              <div className="flex items-center justify-center size-8">
                 {rankIcon ? (
                   <span className="text-xl">{rankIcon}</span>
                 ) : (
@@ -86,7 +86,7 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
               {/* User info */}
               <div className="flex items-center gap-3 min-w-0">
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                  className="size-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
                   style={{ backgroundColor: entry.avatarColor }}
                 >
                   {entry.avatarInitial}

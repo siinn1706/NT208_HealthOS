@@ -1,10 +1,10 @@
 export const ROUTES = {
   // Tabs
-  home:  '/(tabs)/home',
-  care:  '/(tabs)/care',
-  chat:  '/(tabs)/chat',
-  meds:  '/(tabs)/meds',
-  me:    '/(tabs)/me',
+  home:  '/home',
+  care:  '/care',
+  chat:  '/chat',
+  meds:  '/meds',
+  me:    '/me',
   // Auth
   authWelcome:  '/auth/welcome',
   authSignIn:   '/auth/sign-in',
@@ -30,6 +30,7 @@ export const ROUTES = {
   medsHistory: '/meds/history',
   medsImport:  '/meds/import',
   // Profile
+  profileHealth:   '/profile/health',
   profileDevices:  '/profile/devices',
   profileSecurity: '/profile/security',
   // Insights

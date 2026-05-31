@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, use, useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -19,6 +19,7 @@ interface ToastItem {
   id: string;
   message: string;
   variant: ToastVariant;
+  routeVersion: number;
 }
 
 interface ToastContextValue {
@@ -28,7 +29,7 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function useToast(): ToastContextValue {
-  const ctx = useContext(ToastContext);
+  const ctx = use(ToastContext);
   if (!ctx) throw new Error('useToast must be inside ToastProvider');
   return ctx;
 }
@@ -92,11 +93,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const counter = useRef(0);
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-
-  // Dismiss all toasts on navigation
-  useEffect(() => {
-    setToasts([]);
-  }, [pathname]);
+  const routeRef = useRef({ pathname, version: 0 });
+  if (routeRef.current.pathname !== pathname) {
+    routeRef.current = { pathname, version: routeRef.current.version + 1 };
+  }
+  const currentRouteVersion = routeRef.current.version;
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -104,18 +105,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const show = useCallback((message: string, variant: ToastVariant = 'info') => {
     setToasts((prev) => {
+      const visible = prev.filter((t) => t.routeVersion === currentRouteVersion);
       // Dedup: skip if identical toast already visible
-      if (prev.some((t) => t.message === message && t.variant === variant)) return prev;
+      if (visible.some((t) => t.message === message && t.variant === variant)) return prev;
       const id = String(++counter.current);
-      return [...prev.slice(-2), { id, message, variant }];
+      const retainedHidden = prev.filter((t) => t.routeVersion !== currentRouteVersion).slice(-4);
+      return [...retainedHidden, ...visible.slice(-2), { id, message, variant, routeVersion: currentRouteVersion }];
     });
-  }, []);
+  }, [currentRouteVersion]);
+  const visibleToasts = useMemo(
+    () => toasts.filter((item) => item.routeVersion === currentRouteVersion),
+    [currentRouteVersion, toasts],
+  );
+  const contextValue = useMemo(() => ({ show }), [show]);
 
   return (
-    <ToastContext.Provider value={{ show }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <View style={[styles.stack, { top: insets.top + 12 }]} pointerEvents="box-none">
-        {toasts.map((item) => (
+        {visibleToasts.map((item) => (
           <ToastBanner key={item.id} item={item} onDismiss={dismiss} />
         ))}
       </View>
@@ -124,7 +132,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  stack:  { position: 'absolute', left: 16, right: 16, gap: 8, zIndex: 9999 },
+  stack:  { position: 'absolute', left: 16, right: 16, gap: 8, zIndex: 50 },
   banner: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, overflow: 'hidden', minHeight: 52 },
   accent: { width: 4, alignSelf: 'stretch' },
   msg:    { flex: 1, paddingHorizontal: 12, paddingVertical: 14 },

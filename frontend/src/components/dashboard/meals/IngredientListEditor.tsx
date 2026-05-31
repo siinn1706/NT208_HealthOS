@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import { useLocale } from "next-intl";
 import { Trash2, Plus, Search, CheckCircle2, HelpCircle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,14 +30,13 @@ async function fetchServerIngredients(query: string): Promise<CatalogIngredient[
     if (!res.ok) return [];
     const json = await res.json().catch(() => null);
     const rows = Array.isArray(json?.data) ? json.data : [];
-    return rows
-      .map((r: Record<string, unknown>): CatalogIngredient | null => {
+    return rows.flatMap((r: Record<string, unknown>): CatalogIngredient[] => {
         const id = typeof r.id === "string" ? r.id : null;
         const slug = typeof r.slug === "string" ? r.slug : null;
         const nameVi = typeof r.name_vi === "string" ? r.name_vi : null;
         const nameEn = typeof r.name_en === "string" ? r.name_en : null;
-        if (!nameVi || !nameEn) return null;
-        return {
+        if (!nameVi || !nameEn) return [];
+        return [{
           id: slug ?? id ?? nameVi,
           server_id: id ?? undefined,
           name_vi: nameVi,
@@ -49,9 +48,8 @@ async function fetchServerIngredients(query: string): Promise<CatalogIngredient[
           carbs_per_100g: Number(r.carbs_per_100g ?? 0),
           fat_per_100g: Number(r.fat_per_100g ?? 0),
           unit_hint: typeof r.unit_hint === "string" ? r.unit_hint : "gram",
-        };
-      })
-      .filter(Boolean) as CatalogIngredient[];
+        }];
+      });
   } catch {
     return [];
   }
@@ -170,6 +168,7 @@ export function IngredientListEditor({
   const ingErrors = errors?.ingredients;
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="space-y-3">
       {/* Header row */}
       <div className="hidden sm:grid grid-cols-[1fr_100px_100px_36px] gap-2 px-1">
@@ -189,7 +188,7 @@ export function IngredientListEditor({
             : undefined;
 
           return (
-            <motion.div
+            <m.div
               key={field.id}
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -227,7 +226,7 @@ export function IngredientListEditor({
                   {/* Autocomplete dropdown */}
                   <AnimatePresence>
                     {focusedRow === index && suggestions.length > 0 && (
-                      <motion.div
+                      <m.div
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
@@ -274,7 +273,7 @@ export function IngredientListEditor({
                             Không tìm thấy? Gõ tên tự do + nhập calo thủ công bên dưới.
                           </p>
                         </div>
-                      </motion.div>
+                      </m.div>
                     )}
                   </AnimatePresence>
                 </div>
@@ -332,7 +331,7 @@ export function IngredientListEditor({
 
               {/* Manual calories input (shown when no DB match) */}
               {!isMatched && currentName.length > 0 && (
-                <motion.div
+                <m.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
@@ -340,7 +339,7 @@ export function IngredientListEditor({
                 >
                   <HelpCircle className="size-3.5 text-amber-500 flex-shrink-0" />
                   <span className="text-xs text-muted-foreground">
-                    Thành phần tự do — nhập calo thủ công (tùy chọn):
+                    Thành phần tự do: nhập calo thủ công (tùy chọn):
                   </span>
                   <div className="relative w-24">
                     <Input
@@ -357,7 +356,7 @@ export function IngredientListEditor({
                       kcal
                     </span>
                   </div>
-                </motion.div>
+                </m.div>
               )}
 
               {/* Row-level errors */}
@@ -375,7 +374,7 @@ export function IngredientListEditor({
                   )}
                 </div>
               )}
-            </motion.div>
+            </m.div>
           );
         })}
       </AnimatePresence>
@@ -397,5 +396,6 @@ export function IngredientListEditor({
         Thêm thành phần
       </Button>
     </div>
+    </LazyMotion>
   );
 }

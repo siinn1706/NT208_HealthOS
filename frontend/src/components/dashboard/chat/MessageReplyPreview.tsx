@@ -31,7 +31,7 @@ export function MessageReplyPreview({ replyTo, currentUserId, onCancel }: Messag
         : truncateChatPreview(replyTo.content);
 
   return (
-    <div className="flex items-start gap-2 px-4 py-2 bg-secondary/60 border-l-2 border-primary rounded-r-md">
+    <div className="flex items-start gap-2 rounded-md bg-secondary/60 px-4 py-2 ring-1 ring-primary/20">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-primary truncate">
           {t("replyingTo")} {senderName}
@@ -44,7 +44,7 @@ export function MessageReplyPreview({ replyTo, currentUserId, onCancel }: Messag
         aria-label={t("cancelReply")}
         className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
-        <X className="w-4 h-4" />
+        <X className="size-4" />
       </button>
     </div>
   );

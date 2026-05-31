@@ -16,6 +16,8 @@ plans/
 guide/
 AGENTS.md
 scripts/
+!mobile/scripts/
+!mobile/scripts/check-route-matrix.mjs
 .kiro/
 
 
@@ -63,6 +65,7 @@ infra/logs/*
 
 # Runtime/test artifacts
 frontend/test-results/
+frontend/e2e/.auth/
 TEST-MANIFEST.md
 
 # Generated OpenAPI dumps (regenerate via backend/scripts/dump_openapi.py)

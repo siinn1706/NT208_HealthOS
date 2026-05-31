@@ -74,6 +74,16 @@ function periodLabel(period: '7d' | '30d' | '90d') {
   return 'Weekly report';
 }
 
+function alertMessages(value: unknown) {
+  const messages: string[] = [];
+  for (const rawItem of asArray(value)) {
+    const message = asString(asRecord(rawItem).message);
+    if (message) messages.push(message);
+    if (messages.length >= 4) break;
+  }
+  return messages;
+}
+
 export function ReportDetailScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
@@ -105,11 +115,7 @@ export function ReportDetailScreen() {
     const sleepSeries = sleepData.map((point) => asNumber(point.value));
     const medSeries = medData.map((point) => asNumber(point.value));
 
-    const alerts = asArray(data.alerts).map(asRecord);
-    const bullets = alerts
-      .map((item) => asString(item.message))
-      .filter(Boolean)
-      .slice(0, 4);
+    const bullets = alertMessages(data.alerts);
 
     const normalCount = statuses.filter((status) => status === 'normal').length;
     const score = sections.length ? Math.round((normalCount / sections.length) * 100) : 0;

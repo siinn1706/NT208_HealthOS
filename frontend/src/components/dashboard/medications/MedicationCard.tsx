@@ -69,16 +69,16 @@ export function MedicationCard({ plan, adherence }: MedicationCardProps) {
     >
       <div className="flex items-start gap-4">
         <div
-          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+          className="flex-shrink-0 size-10 rounded-xl flex items-center justify-center"
           style={{ background: "rgba(231, 222, 167, 0.18)" }}
           aria-hidden
         >
           {plan.status === "paused" ? (
-            <Pause className="w-5 h-5 text-muted-foreground" />
+            <Pause className="size-5 text-muted-foreground" />
           ) : plan.status === "cancelled" ? (
-            <Archive className="w-5 h-5 text-muted-foreground" />
+            <Archive className="size-5 text-muted-foreground" />
           ) : (
-            <Pill className="w-5 h-5" style={{ color: "#C9A95A" }} />
+            <Pill className="size-5" style={{ color: "#C9A95A" }} />
           )}
         </div>
 
@@ -97,19 +97,19 @@ export function MedicationCard({ plan, adherence }: MedicationCardProps) {
 
           <div className="mt-1.5 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <Clock className="w-3 h-3" aria-hidden />
+              <Clock className="size-3" aria-hidden />
               <span className="text-muted-foreground/80">{t("nextDose")}:</span>
               <span className="text-foreground/80">{nextDoseDisplay}</span>
             </span>
             <span className="inline-flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" aria-hidden />
+              <CheckCircle2 className="size-3" aria-hidden />
               {t("doses", { n: plan.dose_count })}
             </span>
           </div>
 
           {showRefill && (
             <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-warm-gold/40 bg-warm-gold/10 px-2 py-1 text-[11px] font-medium text-foreground">
-              <Droplet className="w-3 h-3 text-warm-gold" aria-hidden />
+              <Droplet className="size-3 text-warm-gold" aria-hidden />
               {refillOverdue
                 ? t("refillOverdue")
                 : t("refillIn", { days: Math.max(0, refillDays!) })}

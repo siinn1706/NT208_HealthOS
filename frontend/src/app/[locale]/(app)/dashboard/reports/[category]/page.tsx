@@ -31,8 +31,7 @@ interface DetailPageProps {
 }
 
 export default async function CategoryDetailPage({ params, searchParams }: DetailPageProps) {
-  const { category, locale } = await params;
-  const { period: rawPeriod } = await searchParams;
+  const [{ category, locale }, { period: rawPeriod }] = await Promise.all([params, searchParams]);
 
   // Validate category
   if (!VALID_CATEGORIES.includes(category as ReportCategory)) {
@@ -63,11 +62,11 @@ export default async function CategoryDetailPage({ params, searchParams }: Detai
         title={
           <span className="flex items-center gap-3">
             <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl"
               style={{ background: meta.bgColor, color: meta.iconColor }}
               aria-hidden
             >
-              <CategoryIcon className="h-5 w-5" />
+              <CategoryIcon className="size-5" />
             </span>
             {t(`categories.${category}`)}
           </span>
@@ -76,14 +75,14 @@ export default async function CategoryDetailPage({ params, searchParams }: Detai
         breadcrumbs={
           <nav aria-label="Breadcrumb" className="flex items-center gap-1">
             <Link href="/dashboard" className="hover:text-foreground transition-colors flex items-center gap-1">
-              <Home className="h-3 w-3" aria-hidden />
+              <Home className="size-3" aria-hidden />
               Dashboard
             </Link>
-            <ChevronRight className="h-3 w-3" aria-hidden />
+            <ChevronRight className="size-3" aria-hidden />
             <Link href={`/dashboard/reports?period=${period}`} className="hover:text-foreground transition-colors">
               {t("title")}
             </Link>
-            <ChevronRight className="h-3 w-3" aria-hidden />
+            <ChevronRight className="size-3" aria-hidden />
             <span className="text-foreground font-medium">{t(`categories.${category}`)}</span>
           </nav>
         }
@@ -130,8 +129,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Detai
 }
 
 export async function generateMetadata({ params }: DetailPageProps) {
-  const { category } = await params;
-  const t = await getTranslations("reports");
+  const [{ category }, t] = await Promise.all([params, getTranslations("reports")]);
   const label = VALID_CATEGORIES.includes(category as ReportCategory)
     ? t(`categories.${category}`)
     : "Báo cáo";

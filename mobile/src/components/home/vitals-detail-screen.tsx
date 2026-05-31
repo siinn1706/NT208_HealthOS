@@ -15,6 +15,7 @@ import { dashboardService } from '../../api/services';
 import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import type { VitalPoint } from '../../../../shared/api-contracts';
+import { VitalsManualEntryCard } from './vitals-manual-entry-card';
 
 const RANGES: { key: RangeKey; label: string; days: number }[] = [
   { key: '1D', label: '1D', days: 1 },
@@ -25,9 +26,12 @@ const RANGES: { key: RangeKey; label: string; days: number }[] = [
 ];
 
 function toChartPoints(data: VitalPoint[]) {
-  return data
-    .map((point, i) => ({ x: i, y: point.heart_rate ?? 0 }))
-    .filter((p) => p.y > 0);
+  const points: { x: number; y: number }[] = [];
+  data.forEach((point, index) => {
+    const y = point.heart_rate ?? 0;
+    if (y > 0) points.push({ x: index, y });
+  });
+  return points;
 }
 
 export function VitalsDetailScreen() {
@@ -55,6 +59,8 @@ export function VitalsDetailScreen() {
         title={i18n('home.vitals')}
         left={<Text style={[typography.body, { color: t.brand }]} onPress={() => router.back()}>{i18n('common.back')}</Text>}
       />
+
+      <VitalsManualEntryCard />
 
       {/* Hero value */}
       <View style={styles.heroRow}>

@@ -132,7 +132,10 @@ describe("useMessages — AI streaming reducers", () => {
   });
 
   it("sends the active locale with AI streaming requests", async () => {
-    const fetchMock = vi.fn(async () => {
+    const fetchMock = vi.fn<(
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => Promise<Response>>(async () => {
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
           controller.enqueue(new TextEncoder().encode("event: done\ndata: {}\n\n"));

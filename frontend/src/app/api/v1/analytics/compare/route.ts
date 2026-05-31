@@ -59,17 +59,16 @@ export async function GET(req: NextRequest) {
         typeof r === "object" && r !== null && "recorded_at" in r && "value" in r && typeof r.recorded_at === "string" && typeof r.value === "number"
       );
 
-      // Daily average per metric
-      const dailyAvg = new Map<string, number[]>();
+      const dailyAvg: Record<string, number[]> = {};
       for (const m of valid) {
         const day = m.recorded_at.slice(0, 10);
         dateSet.add(day);
-        if (!dailyAvg.has(day)) dailyAvg.set(day, []);
-        dailyAvg.get(day)!.push(m.value);
+        dailyAvg[day] ??= [];
+        dailyAvg[day].push(m.value);
       }
 
       metricData[metric] = {};
-      for (const [day, values] of dailyAvg) {
+      for (const [day, values] of Object.entries(dailyAvg)) {
         metricData[metric][day] = Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100;
       }
     })

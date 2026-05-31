@@ -4,17 +4,20 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
-import { Button } from '../../primitives/button';
 import { Card } from '../../primitives/card';
 import { SectionHeader } from '../../layout/section-header';
-import { ApiState, MissingApiState } from '../../api/api-state';
+import { ApiState } from '../../api/api-state';
 import { useApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { healthGoalService, profileService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { ProgressRing } from '../../charts/progress-ring';
-import { ChevronLeft, IconMore, IconBell, IconFire } from '../../../icons';
+import { ChevronLeft, IconFire, IconTarget } from '../../../icons';
+import { GoalWeightProgressCard } from './goal-weight-progress-card';
+import { GoalWeightLogCard } from './goal-weight-log-card';
+import { GoalWeightRecordListCard } from './goal-weight-record-list-card';
+import { deriveGoalStreakSummary } from './goal-progress-derived';
 
 export function GoalDetailScreen() {
   const t = useTheme();
@@ -27,6 +30,15 @@ export function GoalDetailScreen() {
 
   const goal = useApiQuery(queryKeys.healthGoal, loadGoal);
   const profile = useApiQuery(queryKeys.profile, loadProfile);
+  const progressQuery = useApiQuery(
+    queryKeys.healthGoalProgress('weight_kg', '7d'),
+    () => healthGoalService.progress({
+      metric: 'weight_kg',
+      target: goal.data?.target_weight_kg ?? 1,
+      period: '7d',
+    }),
+    { enabled: Boolean(goal.data?.target_weight_kg) },
+  );
 
   if (goal.isLoading || profile.isLoading) {
     return (
@@ -61,12 +73,13 @@ export function GoalDetailScreen() {
   }
 
   const target = goal.data.target_weight_kg ?? 0;
-  const current = profile.data?.weight_kg ?? null;
-  const progress = current && target > 0 ? Math.max(0, Math.min(1, target / current)) : 0;
+  const latestLoggedWeight = progressQuery.data?.at(-1)?.value ?? null;
+  const current = latestLoggedWeight ?? profile.data?.weight_kg ?? null;
+  const goalProgressRatio = current && target > 0 ? Math.max(0, Math.min(1, target / current)) : 0;
   const remaining = current && target > 0 ? Math.max(0, current - target) : null;
   const totalSteps = current && target > 0 ? Math.round(current * 1000) : 8000;
-  const doneSteps  = Math.round(totalSteps * progress);
-  const toGo       = totalSteps - doneSteps;
+  const doneSteps  = Math.round(totalSteps * goalProgressRatio);
+  const streakSummary = deriveGoalStreakSummary(progressQuery.data ?? []);
 
   return (
     <Screen>
@@ -75,14 +88,6 @@ export function GoalDetailScreen() {
           <ChevronLeft size={20} color={t.ink} />
           <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 4 }]}>{i18n('common.back')}</Text>
         </Pressable>
-        <View style={styles.headerActions}>
-          <Pressable style={[styles.iconBtn, { borderColor: t.border }]} hitSlop={6}>
-            <IconBell size={18} color={t.ink3} />
-          </Pressable>
-          <Pressable style={[styles.iconBtn, { borderColor: t.border }]} hitSlop={6}>
-            <IconMore size={18} color={t.ink3} />
-          </Pressable>
-        </View>
       </View>
 
       {/* Hero gradient card */}
@@ -100,7 +105,7 @@ export function GoalDetailScreen() {
         </Text>
 
         <ProgressRing
-          value={progress}
+          value={goalProgressRatio}
           size={94}
           stroke={9}
           color="#fff"
@@ -123,34 +128,29 @@ export function GoalDetailScreen() {
       {/* Streak + Best stat cards */}
       <View style={styles.statRow}>
         <Card style={styles.statCard}>
-          <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={[typography.h3, { color: t.ink }]}>--</Text>
-          <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5 }]}>STREAK</Text>
-          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{i18n('insights.streakUnavailable')}</Text>
+          <View style={[styles.statIcon, { backgroundColor: t.warningSoft }]}>
+            <IconFire size={18} color={t.warning} />
+          </View>
+          <Text style={[typography.h3, { color: t.ink }]}>{streakSummary.currentStreak}</Text>
+          <Text style={[typography.micro, styles.upperLabel, { color: t.brand }]}>STREAK</Text>
+          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>Recorded days</Text>
         </Card>
         <Card style={styles.statCard}>
-          <Text style={styles.statEmoji}>🏆</Text>
-          <Text style={[typography.h3, { color: t.ink }]}>--</Text>
-          <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5 }]}>BEST</Text>
-          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{i18n('insights.bestUnavailable')}</Text>
+          <View style={[styles.statIcon, { backgroundColor: t.brandSoft }]}>
+            <IconTarget size={18} color={t.brand} />
+          </View>
+          <Text style={[typography.h3, { color: t.ink }]}>{streakSummary.bestStreak}</Text>
+          <Text style={[typography.micro, styles.upperLabel, { color: t.brand }]}>BEST</Text>
+          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>At target {streakSummary.targetHitDays} d</Text>
         </Card>
       </View>
 
       <SectionHeader title={i18n('insights.thisWeek')} />
-      <Card>
-        {/* TODO(api): GET /v1/health-goals/{id}/progress?period=7d */}
-        <MissingApiState title="Weekly progress chart unavailable" contract="TODO: GET /v1/health-goals/{id}/progress?period=7d" />
-      </Card>
+      <GoalWeightProgressCard target={target} progress={progressQuery} />
 
       <SectionHeader title={i18n('insights.checkInHistory')} />
-      <Card>
-        {/* TODO(api): GET /v1/health-goals/{id}/checkins */}
-        <MissingApiState title="Check-in history unavailable" contract="TODO: GET /v1/health-goals/{id}/checkins" />
-      </Card>
-
-      <View style={styles.footer}>
-        <Button label={i18n('insights.logProgress')} disabled />
-      </View>
+      <GoalWeightRecordListCard progress={progressQuery} />
+      <GoalWeightLogCard onSaved={() => { void progressQuery.reload(); }} />
     </Screen>
   );
 }
@@ -158,14 +158,12 @@ export function GoalDetailScreen() {
 const styles = StyleSheet.create({
   backBar:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
   backBtn:      { flexDirection: 'row', alignItems: 'center' },
-  headerActions:{ flexDirection: 'row', gap: 8 },
-  iconBtn:      { width: 40, height: 40, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   hero:         { padding: 20, alignItems: 'center', marginTop: 4, marginBottom: 4, overflow: 'hidden' },
   halo:         { position: 'absolute', right: -30, bottom: -50, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.08)' },
   ringCenter:   { alignItems: 'center' },
   ringMain:     { fontSize: 22, fontWeight: '800', lineHeight: 26 },
   statRow:      { flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 4 },
   statCard:     { flex: 1, padding: 14, alignItems: 'flex-start' },
-  statEmoji:    { fontSize: 22, marginBottom: 6 },
-  footer:       { paddingTop: 16 },
+  statIcon:     { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  upperLabel:   { textTransform: 'uppercase' },
 });

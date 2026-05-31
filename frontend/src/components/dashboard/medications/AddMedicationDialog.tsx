@@ -87,14 +87,14 @@ export function AddMedicationDialog({
   const [repeat, setRepeat] = React.useState<Repeat>("daily");
   const [weekdayMask, setWeekdayMask] = React.useState(0);
   const [dayOfMonth, setDayOfMonth] = React.useState(1);
-  const [startDate, setStartDate] = React.useState(todayIso());
+  const [startDate, setStartDate] = React.useState(() => todayIso());
   const [endDate, setEndDate] = React.useState("");
   const [instructions, setInstructions] = React.useState("");
   const [prescriber, setPrescriber] = React.useState("");
   const [clinic, setClinic] = React.useState("");
   const [supplyUnits, setSupplyUnits] = React.useState("");
   const [refillCadence, setRefillCadence] = React.useState("");
-  const [tzid, setTzid] = React.useState(detectTzid());
+  const [tzid, setTzid] = React.useState(() => detectTzid());
   const [notes, setNotes] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [showRefill, setShowRefill] = React.useState(false);
@@ -285,7 +285,7 @@ export function AddMedicationDialog({
                       aria-label={tForm("removeTime")}
                       className="text-muted-foreground hover:text-destructive cursor-pointer"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="size-3" />
                     </button>
                   )}
                 </div>
@@ -296,7 +296,7 @@ export function AddMedicationDialog({
                   onClick={addDoseTime}
                   className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 h-9 text-xs text-muted-foreground hover:bg-muted cursor-pointer"
                 >
-                  <Plus className="w-3 h-3" />
+                  <Plus className="size-3" />
                   {tForm("addTime")}
                 </button>
               )}
@@ -458,7 +458,7 @@ export function AddMedicationDialog({
               {tForm("cancel")}
             </Button>
             <Button type="submit" disabled={!canSubmit || saving} className="cursor-pointer">
-              {saving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {saving && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               {saving ? tForm("submitting") : tForm("submit")}
             </Button>
           </DialogFooter>

@@ -109,22 +109,6 @@ export function AppearanceSheet({ visible, onClose }: { visible: boolean; onClos
   );
 }
 
-export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const t = useTheme();
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: t.card, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
-        <SheetHandle />
-        <SheetHeader title="Settings" onClose={onClose} />
-        <Text style={[typography.body, { color: t.ink3, margin: 20, marginTop: 8 }]}>
-          General settings will be available here.
-        </Text>
-      </View>
-    </Modal>
-  );
-}
-
 export function EmergencySheet({
   visible,
   onClose,

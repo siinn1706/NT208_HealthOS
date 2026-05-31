@@ -168,7 +168,10 @@ export async function getTrendAnalysisBatch(
   period: ReportPeriod = "30d"
 ): Promise<TrendAnalysisBatch> {
   const requested = Array.from(
-    new Set(metrics.map((metric) => metric.trim().toLowerCase()).filter(Boolean))
+    new Set(metrics.flatMap((metric) => {
+      const normalized = metric.trim().toLowerCase();
+      return normalized ? [normalized] : [];
+    }))
   );
   if (requested.length === 0) return {};
 

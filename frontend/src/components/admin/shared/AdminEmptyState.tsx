@@ -46,8 +46,7 @@ export function AdminEmptyState({
   const isInline = variant === "inline";
 
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
       className={cn(
         "flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[var(--admin-border)] bg-[var(--admin-surface-muted)] text-center",
@@ -80,6 +79,6 @@ export function AdminEmptyState({
           {tc("clearFilters")}
         </Button>
       )}
-    </div>
+    </output>
   );
 }

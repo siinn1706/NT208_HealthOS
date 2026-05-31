@@ -12,6 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, StateView } from "@/components/shared/state";
 
 const PAGE_SIZE = 25;
+const RELATIVE_TIME_FORMATTERS = {
+  en: new Intl.RelativeTimeFormat("en", { numeric: "auto" }),
+  vi: new Intl.RelativeTimeFormat("vi", { numeric: "auto" }),
+} as const;
 
 type NotificationItem = {
   id: string;
@@ -35,7 +39,7 @@ function relativeTime(iso: string, locale: string): string {
   if (Number.isNaN(date.getTime())) return "";
   const diffSec = Math.floor((date.getTime() - Date.now()) / 1000);
   const abs = Math.abs(diffSec);
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const rtf = locale.startsWith("vi") ? RELATIVE_TIME_FORMATTERS.vi : RELATIVE_TIME_FORMATTERS.en;
   if (abs < 60) return rtf.format(diffSec, "second");
   if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
   if (abs < 86_400) return rtf.format(Math.round(diffSec / 3600), "hour");
@@ -164,7 +168,7 @@ export default function NotificationsAllPage({
             icon={<Bell className="size-6" aria-hidden="true" />}
           />
         ) : (
-          <ul role="list" className="divide-y divide-border rounded-md border border-border bg-card">
+          <ul className="divide-y divide-border rounded-md border border-border bg-card">
             {items.map((n) => (
               <li key={n.id}>
                 <button
@@ -177,7 +181,7 @@ export default function NotificationsAllPage({
                 >
                   <div className="flex w-full items-start gap-3">
                     {!n.is_read && (
-                      <span aria-hidden="true" className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      <span aria-hidden="true" className="mt-1.5 inline-block size-2 shrink-0 rounded-full bg-primary" />
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{n.title}</p>

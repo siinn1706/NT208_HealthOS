@@ -43,7 +43,7 @@ function getDevBypassMap(): Map<string, { email: string; display_name: string }>
   for (const entry of raw.split(",")) {
     const [loginId, password] = entry.trim().split(":");
     if (loginId && password) {
-      const email = loginId.includes("@") ? loginId : `${loginId}@healthos.local`;
+      const email = /@/.test(loginId) ? loginId : `${loginId}@healthos.local`;
       map.set(`${loginId}::${password}`, { email, display_name: loginId });
     }
   }

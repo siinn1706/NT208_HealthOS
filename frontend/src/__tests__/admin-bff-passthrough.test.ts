@@ -23,7 +23,9 @@ vi.mock("@/lib/admin/bff-admin-guard", () => ({
 
 // Mock coreProxy to return a NextResponse with the given status and body.
 // The mock is configured per-test via mockCoreProxy().
-const mockCoreProxyFn = vi.fn<[NextRequest, string], Promise<NextResponse>>();
+type CoreProxyMock = (req: NextRequest, path: string) => Promise<NextResponse>;
+
+const mockCoreProxyFn = vi.fn<CoreProxyMock>();
 
 vi.mock("@/lib/core-api-proxy", () => ({
   coreProxy: (...args: [NextRequest, string]) => mockCoreProxyFn(...args),
@@ -60,7 +62,7 @@ function makeRequest(
   body?: unknown,
 ): NextRequest {
   const url = `https://example.com${path}`;
-  const init: RequestInit = { method };
+  const init: { method: string; body?: string; headers?: Record<string, string> } = { method };
   if (body !== undefined) {
     init.body = JSON.stringify(body);
     init.headers = { "Content-Type": "application/json" };

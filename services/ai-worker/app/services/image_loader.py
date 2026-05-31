@@ -55,8 +55,14 @@ def _resolve_safe_ips(host: str, block_private: bool) -> list[str]:
     return ips
 
 
-def _validate_url(url: str) -> tuple[str, str]:
-    """Return (scheme, host_lower). Raise ImageLoadError on policy violation."""
+def _is_trusted_image_host(host_lower: str, port: int | None) -> bool:
+    host_with_port = f"{host_lower}:{port}" if port is not None else host_lower
+    trusted = settings.trusted_image_hosts_set
+    return host_lower in trusted or host_with_port in trusted
+
+
+def _validate_url(url: str) -> tuple[str, str, bool]:
+    """Return (scheme, host_lower, trusted_private_host). Raise on policy violation."""
     try:
         parsed = urlparse(url)
     except Exception as exc:
@@ -73,24 +79,28 @@ def _validate_url(url: str) -> tuple[str, str]:
         raise ImageLoadError("Image URL must not contain credentials.")
 
     host_lower = host.lower()
-    port = parsed.port
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ImageLoadError("Invalid image URL port.") from exc
     host_with_port = f"{host_lower}:{port}" if port else host_lower
+    trusted_private_host = _is_trusted_image_host(host_lower, port)
 
     allowed = settings.allowed_image_hosts_set
     if allowed:
-        if host_lower not in allowed and host_with_port not in allowed:
+        if host_lower not in allowed and host_with_port not in allowed and not trusted_private_host:
             raise ImageLoadError("Image host not in allowed list.")
 
     # Reject literal private IPs immediately (no DNS involved)
     try:
         ip_obj = ipaddress.ip_address(host_lower)
-        if settings.ai_block_private_networks and _is_private_ip(ip_obj):
+        if settings.ai_block_private_networks and not trusted_private_host and _is_private_ip(ip_obj):
             raise ImageLoadError("Image host resolves to a disallowed network.")
-        return scheme, host_lower
+        return scheme, host_lower, trusted_private_host
     except ValueError:
         pass  # not a literal IP — proceed to DNS resolution
 
-    return scheme, host_lower
+    return scheme, host_lower, trusted_private_host
 
 
 # ── Main loader ───────────────────────────────────────────────────────────────
@@ -105,7 +115,7 @@ def load_image_from_url(image_url: str, timeout_seconds: float) -> Image.Image:
     hops = 0
 
     while True:
-        _, host = _validate_url(current_url)
+        _, host, trusted_private_host = _validate_url(current_url)
         parsed = urlparse(current_url)
         raw_host = parsed.hostname or host
 
@@ -113,7 +123,10 @@ def load_image_from_url(image_url: str, timeout_seconds: float) -> Image.Image:
         try:
             ipaddress.ip_address(raw_host)
         except ValueError:
-            _resolve_safe_ips(raw_host, settings.ai_block_private_networks)
+            _resolve_safe_ips(
+                raw_host,
+                settings.ai_block_private_networks and not trusted_private_host,
+            )
 
         try:
             with httpx.Client(timeout=timeout_seconds, follow_redirects=False) as client:

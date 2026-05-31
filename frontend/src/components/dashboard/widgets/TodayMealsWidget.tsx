@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import {
   ChevronDown,
   ChevronUp,
@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "@/navigation";
 import { formatTime } from "@/lib/format-utils";
+import { consumeMealDiaryRefreshRequest } from "@/lib/meal-diary-refresh";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { Meal } from "@/types/api";
@@ -33,12 +35,6 @@ interface TodayMealsWidgetProps {
 function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslations> }) {
   const [expanded, setExpanded] = useState(false);
   const locale = useLocale();
-  const { [meal.meal_type ?? "snack"]: cfg } = {
-    breakfast: { icon: Sunrise, label: tm("mealTypes.breakfast"),  color: "text-orange-400" },
-    lunch:     { icon: Sun,     label: tm("mealTypes.lunch"),      color: "text-yellow-400" },
-    dinner:    { icon: Moon,    label: tm("mealTypes.dinner"),     color: "text-indigo-400" },
-    snack:     { icon: Cookie,  label: tm("mealTypes.snack"),      color: "text-emerald-400" },
-  } as Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; color: string }>;
   const hr = formatTime(meal.logged_at, locale);
   const nr = meal.nutrition_result;
 
@@ -50,7 +46,7 @@ function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslati
         onClick={() => setExpanded((e) => !e)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left"
       >
-        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+        <div className="flex-shrink-0 size-9 rounded-full bg-primary/10 flex items-center justify-center">
           <UtensilsCrossed className="size-4 text-primary" />
         </div>
 
@@ -94,7 +90,7 @@ function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslati
       {/* Expanded details */}
       <AnimatePresence initial={false}>
         {expanded && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -178,9 +174,9 @@ function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslati
                     {tm("ingredients")}
                   </p>
                   <ul className="space-y-1">
-                    {meal.ingredients.map((ing, i) => (
+                    {meal.ingredients.map((ing) => (
                       <li
-                        key={i}
+                        key={`${ing.ingredient_name}-${ing.grams}-${ing.calories}`}
                         className="flex items-center justify-between text-xs"
                       >
                         <span className="text-foreground/80 truncate">
@@ -200,7 +196,7 @@ function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslati
                 </div>
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
@@ -210,7 +206,15 @@ function MealCard({ meal, tm }: { meal: Meal; tm: ReturnType<typeof useTranslati
 export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
   const locale = useLocale();
   const tm = useTranslations("dashboard.meals");
-  const sorted = [...meals].sort(
+  const router = useRouter();
+
+  useEffect(() => {
+    if (consumeMealDiaryRefreshRequest()) {
+      router.refresh();
+    }
+  }, [router]);
+
+  const sorted = meals.toSorted(
     (a, b) =>
       (MEAL_TYPE_ORDER[a.meal_type ?? "snack"] ?? 2) -
       (MEAL_TYPE_ORDER[b.meal_type ?? "snack"] ?? 2)
@@ -222,6 +226,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
   );
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -248,7 +253,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
       {/* Meal list */}
       {sorted.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 gap-3">
-          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+          <div className="size-14 rounded-full bg-muted flex items-center justify-center">
             <UtensilsCrossed className="size-6 text-muted-foreground" />
           </div>
           <div className="text-center">
@@ -275,18 +280,19 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
         <div className="space-y-2">
           <AnimatePresence initial={false}>
             {sorted.map((meal, i) => (
-              <motion.div
+              <m.div
                 key={meal.id}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.2 }}
               >
                 <MealCard meal={meal} tm={tm} />
-              </motion.div>
+              </m.div>
             ))}
           </AnimatePresence>
         </div>
       )}
     </div>
+    </LazyMotion>
   );
 }

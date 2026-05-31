@@ -27,13 +27,13 @@ export function RefillBanner({ plan, onRefilled }: RefillBannerProps) {
   const t = useTranslations("dashboard.medications.detail.refill");
   const locale = useLocale();
 
-  const [open, setOpen] = React.useState(false);
-  const [value, setValue] = React.useState<string>("");
+  const [dialogState, setDialogState] = React.useState({
+    open: false,
+    value: String(plan.refill_supply_units ?? ""),
+  });
   const [saving, setSaving] = React.useState(false);
-
-  React.useEffect(() => {
-    if (open) setValue(String(plan.refill_supply_units ?? ""));
-  }, [open, plan.refill_supply_units]);
+  const open = dialogState.open;
+  const value = dialogState.value;
 
   const supply = plan.refill_supply_units;
   const nextDate = plan.next_refill_estimated_at
@@ -69,7 +69,7 @@ export function RefillBanner({ plan, onRefilled }: RefillBannerProps) {
       const json = await res.json().catch(() => null);
       const updated = (json?.data ?? null) as MedicationPlan | null;
       if (updated) onRefilled?.(updated);
-      setOpen(false);
+      setDialogState((prev) => ({ ...prev, open: false }));
     } finally {
       setSaving(false);
     }
@@ -80,7 +80,7 @@ export function RefillBanner({ plan, onRefilled }: RefillBannerProps) {
       aria-label={t("title")}
       className="rounded-xl border border-warm-gold/40 bg-warm-gold/10 px-4 py-3 flex items-center gap-3"
     >
-      <Droplet className="w-5 h-5 text-warm-gold flex-shrink-0" aria-hidden />
+      <Droplet className="size-5 text-warm-gold flex-shrink-0" aria-hidden />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground">
           {isOverdue ? t("overdue") : t("title")}
@@ -94,12 +94,25 @@ export function RefillBanner({ plan, onRefilled }: RefillBannerProps) {
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={() =>
+          setDialogState({
+            open: true,
+            value: String(plan.refill_supply_units ?? ""),
+          })
+        }
       >
         {t("log")}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) =>
+          setDialogState((prev) => ({
+            open: nextOpen,
+            value: nextOpen ? String(plan.refill_supply_units ?? "") : prev.value,
+          }))
+        }
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t("log")}</DialogTitle>
@@ -114,7 +127,9 @@ export function RefillBanner({ plan, onRefilled }: RefillBannerProps) {
                 min={0}
                 max={100000}
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(e) =>
+                  setDialogState((prev) => ({ ...prev, value: e.target.value }))
+                }
                 className="h-9"
               />
             </div>
@@ -122,13 +137,13 @@ export function RefillBanner({ plan, onRefilled }: RefillBannerProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => setDialogState((prev) => ({ ...prev, open: false }))}
                 disabled={saving}
               >
                 {t("cancel")}
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                {saving && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
                 {saving ? t("saving") : t("log")}
               </Button>
             </DialogFooter>

@@ -92,32 +92,32 @@ export function MessageActions({
         {/* More actions dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
+            <button type="button"
               aria-label={t("messageActions")}
               className={cn(
                 "rounded-lg flex items-center justify-center cursor-pointer hover:bg-accent transition-colors",
-                isVertical ? "w-full h-11 px-3 justify-start gap-2 text-sm font-medium" : "w-7 h-7 rounded-full"
+                isVertical ? "w-full h-11 px-3 justify-start gap-2 text-sm font-medium" : "size-7 rounded-full"
               )}
               title={t("moreActions")}
             >
-              <MoreHorizontal className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <MoreHorizontal className="size-4 text-muted-foreground flex-shrink-0" />
               {isVertical && <span>{t("moreActions")}</span>}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align={align} className="w-44">
             <DropdownMenuItem onClick={onCopy} className="gap-2 cursor-pointer" aria-label={t("copyMessage")}>
-              <Copy className="w-4 h-4" />
+              <Copy className="size-4" />
               {t("copyMessage")}
             </DropdownMenuItem>
 
             <DropdownMenuItem onClick={onPin} className="gap-2 cursor-pointer" aria-label={message.is_pinned ? t("unpinMessage") : t("pinMessage")}>
-              {message.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+              {message.is_pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
               {message.is_pinned ? t("unpinMessage") : t("pinMessage")}
             </DropdownMenuItem>
 
             {onForward && (
               <DropdownMenuItem onClick={onForward} className="gap-2 cursor-pointer" aria-label={t("forwardMessage")}>
-                <Share2 className="w-4 h-4" />
+                <Share2 className="size-4" />
                 {t("forwardMessage")}
               </DropdownMenuItem>
             )}
@@ -126,7 +126,7 @@ export function MessageActions({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onEdit} className="gap-2 cursor-pointer" aria-label={t("editMessage")}>
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="size-4" />
                   {t("editMessage")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -134,7 +134,7 @@ export function MessageActions({
                   className="gap-2 cursor-pointer text-destructive focus:text-destructive"
                   aria-label={t("recallMessage")}
                 >
-                  <Undo2 className="w-4 h-4" />
+                  <Undo2 className="size-4" />
                   {t("recallMessage")}
                 </DropdownMenuItem>
               </>
@@ -146,33 +146,33 @@ export function MessageActions({
               className="gap-2 cursor-pointer text-destructive focus:text-destructive"
               aria-label={t("deleteMessage")}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="size-4" />
               {t("deleteMessage")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Reply button */}
-        <button
+        <button type="button"
           onClick={onReply}
           aria-label={t("replyTo")}
           className={cn(
             "flex items-center justify-center cursor-pointer hover:bg-accent transition-colors",
-            isVertical ? "w-full h-11 px-3 rounded-lg justify-start gap-2 text-sm font-medium" : "w-7 h-7 rounded-full"
+            isVertical ? "w-full h-11 px-3 rounded-lg justify-start gap-2 text-sm font-medium" : "size-7 rounded-full"
           )}
           title={t("replyTo")}
         >
-          <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <Reply className="size-4 text-muted-foreground flex-shrink-0" />
           {isVertical && <span>{t("replyTo")}</span>}
         </button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
+            <button type="button"
               aria-label={t("react")}
               className={cn(
                 "flex items-center justify-center cursor-pointer hover:bg-accent transition-colors",
-                isVertical ? "w-full h-11 px-3 rounded-lg justify-start gap-2 text-sm font-medium" : "w-7 h-7 rounded-full"
+                isVertical ? "w-full h-11 px-3 rounded-lg justify-start gap-2 text-sm font-medium" : "size-7 rounded-full"
               )}
               title={t("react")}
             >

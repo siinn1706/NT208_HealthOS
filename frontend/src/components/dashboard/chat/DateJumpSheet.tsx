@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { CalendarDays } from "lucide-react";
 import { vi as viLocale } from "date-fns/locale/vi";
@@ -41,8 +41,14 @@ export function DateJumpSheet({
   const locale = useLocale();
   const t = useTranslations("chat");
   const [isJumping, setIsJumping] = useState(false);
-  const [month, setMonth] = useState<Date>(() => initialMonth ?? new Date());
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [monthState, setMonthState] = useState<{ focusedTime: number; month: Date }>(() => {
+    const initial = initialMonth ?? new Date();
+    return { focusedTime: initial.getTime(), month: initial };
+  });
+  const [feedbackState, setFeedbackState] = useState<{ open: boolean; message: string | null }>({
+    open,
+    message: null,
+  });
 
   const datesWithMessages = useMemo(() => {
     const withMessages = new Set<string>();
@@ -58,14 +64,19 @@ export function DateJumpSheet({
     return new Date();
   }, [initialMonth, messages]);
 
-  useEffect(() => {
-    if (open) {
-      setMonth(focusedMonth);
-      setFeedback(null);
-    }
-  }, [focusedMonth, open]);
+  const focusedMonthTime = focusedMonth.getTime();
+  const month = open && monthState.focusedTime === focusedMonthTime ? monthState.month : focusedMonth;
+  const feedback = feedbackState.open === open ? feedbackState.message : null;
 
   const dfLocale = locale === "vi" ? viLocale : enLocale;
+
+  const setFeedback = (message: string | null) => {
+    setFeedbackState({ open, message });
+  };
+
+  const handleMonthChange = (nextMonth: Date) => {
+    setMonthState({ focusedTime: focusedMonthTime, month: nextMonth });
+  };
 
   const handleSelect = async (date: Date | undefined) => {
     if (!date || isJumping) return;
@@ -108,7 +119,7 @@ export function DateJumpSheet({
             disabled={messages.length === 0 || isJumping}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-secondary transition-colors text-left disabled:opacity-50 disabled:pointer-events-none"
           >
-            <CalendarDays className="w-5 h-5 text-primary flex-shrink-0" />
+            <CalendarDays className="size-5 text-primary flex-shrink-0" />
             <div>
               <div className="text-sm font-medium">{t("today")}</div>
               <div className="text-xs text-muted-foreground">{t("dateJumpTodaySubtitle")}</div>
@@ -128,7 +139,7 @@ export function DateJumpSheet({
               <Calendar
                 mode="single"
                 month={month}
-                onMonthChange={setMonth}
+                onMonthChange={handleMonthChange}
                 onSelect={(date) => {
                   void handleSelect(date);
                 }}

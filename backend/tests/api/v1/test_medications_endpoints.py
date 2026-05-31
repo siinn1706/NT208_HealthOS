@@ -12,17 +12,21 @@ import uuid
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete, select
 
+from app.adapters.database import AsyncSessionLocal, engine
 from app.adapters.redis_client import get_redis
 from app.core.security import get_current_user
 from app.main import app
+from app.models.audit import AuditEventTypeEnum, AuditLog
 # Force the SQLAlchemy mapper to wire up before any test instantiates a model.
 from app.models import health_goal  # noqa: F401
+from app.models.core import User
 
 
 class _FakeRedis:
     """Minimal in-memory Redis stub — same shape as the devices test fixture
-    plus `incr`/`expire`/`ttl` for the new per-user rate limiter (review M16).
+    plus `incr`/`expire`/`ttl` for the per-user rate limiter.
     """
 
     def __init__(self) -> None:
@@ -92,8 +96,35 @@ async def authed_client(fake_user):
     # asyncpg + pytest-asyncio + ASGITransport on Windows leaks pooled
     # connections across tests when the same engine is reused. Dispose
     # explicitly so the next test gets a fresh pool.
-    from app.adapters.database import engine
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def persisted_user():
+    user_id = uuid.uuid4()
+    user = User(
+        id=user_id,
+        email=f"med-endpoint-{uuid.uuid4().hex[:8]}@test.local",
+        username=f"med_endpoint_{uuid.uuid4().hex[:8]}",
+        display_name="Medication Endpoint",
+        hashed_password="x",
+    )
+    async with AsyncSessionLocal() as db:
+        db.add(user)
+        await db.commit()
+
+    try:
+        yield type(
+            "User",
+            (),
+            {"id": user_id, "email": user.email, "hashed_password": "x"},
+        )()
+    finally:
+        async with AsyncSessionLocal() as db:
+            await db.execute(delete(AuditLog).where(AuditLog.user_id == user_id))
+            await db.execute(delete(User).where(User.id == user_id))
+            await db.commit()
+        await engine.dispose()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +219,47 @@ async def test_create_rejects_end_before_start(authed_client):
         },
     )
     assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_persists_plan_and_audit_event(persisted_user):
+    fake = _FakeRedis()
+    app.dependency_overrides[get_redis] = lambda: fake
+
+    async def override():
+        return persisted_user
+
+    app.dependency_overrides[get_current_user] = override
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.post(
+                "/v1/medications",
+                json={
+                    "name": "Lisinopril",
+                    "dose_times": ["08:00"],
+                    "repeat": "daily",
+                    "start_date": "2026-05-30",
+                    "tzid": "Asia/Ho_Chi_Minh",
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 201
+    body = res.json()
+    assert body["data"]["name"] == "Lisinopril"
+    assert body["data"]["dose_count"] == 1
+    async with AsyncSessionLocal() as db:
+        events = (
+            await db.execute(
+                select(AuditLog).where(AuditLog.user_id == persisted_user.id)
+            )
+        ).scalars().all()
+    assert any(
+        event.event_type == AuditEventTypeEnum.MEDICATION_PLAN_CREATED
+        for event in events
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

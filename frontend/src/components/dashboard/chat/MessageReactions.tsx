@@ -41,14 +41,15 @@ export function MessageReactions({
   const t = useTranslations("chat");
   const [openEmoji, setOpenEmoji] = useState<string | null>(null);
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null);
-  const chipRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const chipRefs = useRef<Map<string, HTMLDivElement> | null>(null);
+  if (chipRefs.current === null) chipRefs.current = new Map();
   /** When this changes, the open chip may have unmounted (e.g. reaction removed) — re-measure. */
   const reactionsKey = reactions.map((r) => r.emoji).join("\0");
 
   useLayoutEffect(() => {
     if (!openEmoji) return;
     const update = () => {
-      const chip = chipRefs.current.get(openEmoji) ?? null;
+      const chip = chipRefs.current?.get(openEmoji) ?? null;
       const next = measureChip(chip);
       if (next) setAnchorRect(next);
       else {
@@ -86,8 +87,8 @@ export function MessageReactions({
             <div
               key={r.emoji}
               ref={(el) => {
-                if (el) chipRefs.current.set(r.emoji, el);
-                else chipRefs.current.delete(r.emoji);
+                if (el) chipRefs.current?.set(r.emoji, el);
+                else chipRefs.current?.delete(r.emoji);
               }}
               className={cn(
                 "inline-flex items-stretch rounded-full border overflow-hidden",
@@ -131,7 +132,7 @@ export function MessageReactions({
                   "text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors cursor-pointer"
                 )}
               >
-                <ChevronDown className="w-3.5 h-3.5" />
+                <ChevronDown className="size-3.5" />
               </button>
             </div>
           );

@@ -3,7 +3,7 @@
 // EditPlanModal.tsx — modal for editing a subscription plan's mutable fields
 // Requirements: 9.3, 9.4, 9.5, 9.8, 9.9, 13.5
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -93,33 +93,14 @@ export function EditPlanModal({
   error,
 }: EditPlanModalProps) {
   // -------------------------------------------------------------------------
-  // Local form state — initialised from `plan` whenever it changes
+  // Local form state — keyed by the caller whenever a different plan opens.
   // -------------------------------------------------------------------------
-  const [isActive, setIsActive] = useState(false);
-  const [isRecommended, setIsRecommended] = useState(false);
-  const [priceVnd, setPriceVnd] = useState("");
-  const [description, setDescription] = useState("");
-  const [features, setFeatures] = useState("");
-  const [limits, setLimits] = useState("");
-
-  // Sync state when the plan prop changes (new plan opened) or modal closes
-  useEffect(() => {
-    if (!plan) {
-      setIsActive(false);
-      setIsRecommended(false);
-      setPriceVnd("");
-      setDescription("");
-      setFeatures("");
-      setLimits("");
-      return;
-    }
-    setIsActive(plan.is_active);
-    setIsRecommended(plan.is_recommended);
-    setPriceVnd(String(plan.price_vnd));
-    setDescription(plan.description ?? "");
-    setFeatures(stringifyJson(plan.features));
-    setLimits(stringifyJson(plan.limits));
-  }, [plan]);
+  const [isActive, setIsActive] = useState(() => plan?.is_active ?? false);
+  const [isRecommended, setIsRecommended] = useState(() => plan?.is_recommended ?? false);
+  const [priceVnd, setPriceVnd] = useState(() => plan ? String(plan.price_vnd) : "");
+  const [description, setDescription] = useState(() => plan?.description ?? "");
+  const [features, setFeatures] = useState(() => stringifyJson(plan?.features));
+  const [limits, setLimits] = useState(() => stringifyJson(plan?.limits));
 
   // -------------------------------------------------------------------------
   // Validation
@@ -179,7 +160,7 @@ export function EditPlanModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit Plan — {plan.name_en}</DialogTitle>
+          <DialogTitle>Edit Plan: {plan.name_en}</DialogTitle>
           <DialogDescription>
             Update the mutable fields for the{" "}
             <span className="font-medium">{plan.code}</span> plan. Only changed

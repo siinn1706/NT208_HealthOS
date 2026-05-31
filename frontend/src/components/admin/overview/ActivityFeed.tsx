@@ -13,6 +13,12 @@ const CATEGORIES: { value: Category; label: string }[] = [
   { value: "subscriptions", label: "Subscriptions" },
   { value: "security", label: "Security" },
 ];
+const ACTIVITY_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 function matchesCategory(event: RecentEvent, cat: Category): boolean {
   if (cat === "all") return true;
@@ -22,12 +28,7 @@ function matchesCategory(event: RecentEvent, cat: Category): boolean {
 
 function formatTimestamp(iso: string): string {
   try {
-    return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(iso));
+    return ACTIVITY_TIMESTAMP_FORMATTER.format(new Date(iso));
   } catch {
     return iso;
   }
@@ -76,7 +77,8 @@ export function ActivityFeed({ events, isLoading, maxItems = 50 }: ActivityFeedP
         >
           Recent Activity
         </h2>
-        <div className="flex items-center gap-1" role="group" aria-label="Filter by category">
+        <fieldset className="flex items-center gap-1">
+          <legend className="sr-only">Filter by category</legend>
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
@@ -95,7 +97,7 @@ export function ActivityFeed({ events, isLoading, maxItems = 50 }: ActivityFeedP
               {cat.label}
             </button>
           ))}
-        </div>
+        </fieldset>
       </div>
 
       {/* Events list */}

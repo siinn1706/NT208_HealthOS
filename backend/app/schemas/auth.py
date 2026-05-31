@@ -205,6 +205,14 @@ class EmergencyContact(BaseModel):
     relationship: str
 
 
+class InsuranceInfo(BaseModel):
+    """Insurance details stored inside user profile medical_info."""
+
+    provider: str = Field(min_length=1, max_length=128)
+    policy_number: str = Field(min_length=1, max_length=128)
+    group_number: Optional[str] = Field(None, max_length=128)
+
+
 class MedicalInfo(BaseModel):
     """Medical information."""
 
@@ -212,24 +220,37 @@ class MedicalInfo(BaseModel):
     chronic_conditions: Optional[str] = Field(None, max_length=2000)
     current_medications: Optional[str] = Field(None, max_length=2000)
     notes: Optional[str] = Field(None, max_length=4000)
+    insurance: Optional[InsuranceInfo] = None
 
 
 class UserProfileUpdate(BaseModel):
     """Request body for updating user profile."""
 
-    full_name: Optional[str] = None
+    full_name: str = Field(None, min_length=1, max_length=255)
     date_of_birth: Optional[datetime.date] = None
     gender: Optional[Literal["male", "female", "other"]] = None
-    blood_type: Optional[str] = None
+    blood_type: Optional[str] = Field(None, max_length=16)
     height_cm: Optional[float] = Field(None, ge=50, le=300)
     weight_kg: Optional[float] = Field(None, ge=1, le=500)
-    phone: Optional[str] = None
-    address: Optional[str] = None
+    phone: Optional[str] = Field(None, max_length=32)
+    address: Optional[str] = Field(None, max_length=512)
     avatar_url: Optional[str] = Field(None, max_length=512)
     emergency_contacts: Optional[list[EmergencyContact]] = None
     medical_info: Optional[MedicalInfo] = None
     # None = no-op (field absent); False = explicitly mark incomplete; True = mark complete
     onboarding_completed: Optional[bool] = None
+
+    @field_validator("full_name", mode="before")
+    @classmethod
+    def validate_full_name(cls, v: object) -> object:
+        if v is None:
+            raise ValueError("full_name cannot be null")
+        if not isinstance(v, str):
+            raise ValueError("full_name must be a string")
+        s = v.strip()
+        if not s:
+            raise ValueError("full_name cannot be empty")
+        return s
 
     @field_validator("avatar_url", mode="before")
     @classmethod
@@ -322,7 +343,7 @@ class CurrentUser(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     emergency_contacts: Optional[list[dict[str, Any]]] = None
-    medical_info: Optional[dict[str, Any]] = None
+    medical_info: Optional[MedicalInfo] = None
 
 
 class CurrentUserResponse(DataResponse[CurrentUser]):

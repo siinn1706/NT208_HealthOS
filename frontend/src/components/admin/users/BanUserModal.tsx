@@ -73,7 +73,6 @@ export interface BanUserModalProps {
  * Validates: Requirements 7.5, 7.6, 7.12
  */
 export function BanUserModal({
-  userId,
   isOpen,
   onClose,
   onSubmit,
@@ -82,15 +81,7 @@ export function BanUserModal({
 }: BanUserModalProps) {
   const t = useTranslations("admin.userDetail.ban");
   const tc = useTranslations("admin.common");
-  // Controlled reason state — preserved across failed submissions (R7.12).
   const [reason, setReason] = React.useState("");
-
-  // Reset reason when the modal opens for a new user.
-  React.useEffect(() => {
-    if (isOpen) {
-      setReason("");
-    }
-  }, [isOpen, userId]);
 
   const trimmedReason = reason.trim();
   const isReasonValid =

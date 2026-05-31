@@ -270,13 +270,13 @@ function GradientSwatch({
 }) {
   const isNone = grad.id === "none";
   return (
-    <button
+    <button type="button"
       onClick={onSelect}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       title={grad.name}
       className={cn(
-        "relative w-11 h-11 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
+        "relative size-11 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
         "transition-[transform,box-shadow] duration-150 ease-out cursor-pointer motion-safe:hover:scale-110 hover:shadow-md",
         isSelected
           ? "border-primary shadow-sm shadow-primary/40 scale-105"
@@ -285,12 +285,12 @@ function GradientSwatch({
       style={!isNone ? { background: grad.css } : {}}
     >
       {isNone && (
-        <X className={cn("w-4 h-4", isSelected ? "text-primary" : "text-muted-foreground")} />
+        <X className={cn("size-4", isSelected ? "text-primary" : "text-muted-foreground")} />
       )}
       {isSelected && !isNone && (
         <div className="absolute inset-0 rounded-full flex items-end justify-end p-0.5">
-          <div className="w-4 h-4 rounded-full bg-primary border-2 border-white flex items-center justify-center">
-            <Check className="w-2.5 h-2.5 text-white" />
+          <div className="size-4 rounded-full bg-primary border-2 border-white flex items-center justify-center">
+            <Check className="size-2.5 text-white" />
           </div>
         </div>
       )}
@@ -350,7 +350,7 @@ function PatternCard({
   const bgUrl = fullReady ? fullUrl : thumb;
 
   return (
-    <button
+    <button type="button"
       onClick={onSelect}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -367,7 +367,7 @@ function PatternCard({
 
       {isNone ? (
         <div className="absolute inset-0 flex items-center justify-center">
-          <X className={cn("w-5 h-5", isSelected ? "text-primary" : "text-muted-foreground/70")} />
+          <X className={cn("size-5", isSelected ? "text-primary" : "text-muted-foreground/70")} />
         </div>
       ) : bgUrl ? (
         <div
@@ -384,8 +384,8 @@ function PatternCard({
 
       {isSelected && (
         <div className="absolute inset-0 bg-primary/10 flex items-end justify-end p-1.5">
-          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
-            <Check className="w-3.5 h-3.5 text-white" />
+          <div className="size-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
+            <Check className="size-3.5 text-white" />
           </div>
         </div>
       )}

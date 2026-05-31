@@ -126,6 +126,10 @@ export function MealScanCameraScreen() {
     }
   }
 
+  function showCameraControlUnavailable(label: string) {
+    setError(`${label} is unavailable in this native demo until a real camera control contract is added.`);
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
       <StatusBar style="light" />
@@ -136,10 +140,10 @@ export function MealScanCameraScreen() {
           <IconX size={20} color={WHITE} />
         </Pressable>
         <View style={styles.topRight}>
-          <Pressable hitSlop={8} style={styles.ghostBtn}>
+          <Pressable onPress={() => showCameraControlUnavailable('Flash')} hitSlop={8} style={styles.ghostBtn}>
             <IconFlash size={18} color={WHITE} />
           </Pressable>
-          <Pressable onPress={() => {}} hitSlop={8} style={styles.ghostBtn}>
+          <Pressable onPress={() => showCameraControlUnavailable('Barcode scan')} hitSlop={8} style={styles.ghostBtn}>
             <IconBarcode size={18} color={WHITE} />
           </Pressable>
         </View>
@@ -216,7 +220,7 @@ export function MealScanCameraScreen() {
             {uploading ? <ActivityIndicator color={BG} /> : <View style={styles.shutterInner} />}
           </Pressable>
           <View style={styles.shutterSide}>
-            <Pressable hitSlop={8}>
+            <Pressable onPress={() => showCameraControlUnavailable('Camera switch')} hitSlop={8}>
               <IconFlip size={24} color={WHITE} />
             </Pressable>
           </View>

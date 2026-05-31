@@ -81,7 +81,7 @@ export function AddReminderDialog({
   // B7 — schedule extensions; defaults keep the form behaving like the legacy version.
   const [weekdayMask, setWeekdayMask] = useState<number>(0);
   const [dayOfMonth, setDayOfMonth] = useState<number>(1);
-  const [tzid, setTzid] = useState<string>(detectBrowserTzid());
+  const [tzid, setTzid] = useState<string>(() => detectBrowserTzid());
 
   function reset() {
     setType("medicine");
@@ -290,7 +290,7 @@ export function AddReminderDialog({
               disabled={saving || !title.trim() || !time}
               className="cursor-pointer"
             >
-              {saving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {saving && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               {t("addReminder")}
             </Button>
           </DialogFooter>

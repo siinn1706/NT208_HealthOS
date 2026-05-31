@@ -16,7 +16,12 @@ import { useThemeContext } from '../../theme/theme-provider';
 import { typography } from '../../theme/typography';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
-import { deviceService, type DeviceProvider } from '../../api/services/device-service';
+import { deviceService, type DeviceConnectBody, type DeviceProvider } from '../../api/services/device-service';
+import {
+  getHealthConnectExternalAccountId,
+  saveHealthConnectDeviceId,
+} from '../../healthconnect/health-connect-external-account-id';
+import { HEALTH_CONNECT_PROVIDER } from '../../healthconnect/types';
 
 const HERO_GRADIENTS: Record<string, readonly [string, string]> = {
   calm: ['#1965B3', '#3A8FD4'],
@@ -62,10 +67,17 @@ export function AddDeviceScreen() {
     setBusySourceId(source.id);
     setActionError(null);
     try {
-      const connected = await deviceService.connect({
+      const body: DeviceConnectBody = {
         provider: source.provider,
         device_label: source.name,
-      });
+      };
+      if (source.provider === HEALTH_CONNECT_PROVIDER) {
+        body.external_account_id = await getHealthConnectExternalAccountId();
+      }
+      const connected = await deviceService.connect(body);
+      if (source.provider === HEALTH_CONNECT_PROVIDER) {
+        await saveHealthConnectDeviceId(connected.id);
+      }
       invalidateApiQuery(queryKeys.devices);
       router.replace((`/profile/devices/${connected.id}`) as never);
     } catch (err) {

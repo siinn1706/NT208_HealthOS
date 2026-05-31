@@ -14,7 +14,7 @@ export function TypingIndicator() {
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="w-2 h-2 bg-primary/60 rounded-full inline-block animate-bounce"
+            className="size-2 bg-primary/60 rounded-full inline-block animate-pulse"
             style={{ animationDelay: `${i * 150}ms`, animationDuration: "0.8s" }}
           />
         ))}

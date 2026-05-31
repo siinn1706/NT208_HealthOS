@@ -107,11 +107,11 @@ function VitalTile({
   return (
     <div className="rounded-xl border border-border bg-card p-4 flex items-start gap-4 min-h-[100px]">
       <div
-        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+        className="flex-shrink-0 size-10 rounded-full flex items-center justify-center"
         style={{ background: `color-mix(in srgb, ${color} 12%, transparent)` }}
         aria-hidden
       >
-        <Icon className="w-5 h-5" style={{ color }} />
+        <Icon className="size-5" style={{ color }} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
@@ -167,11 +167,15 @@ export default function HealthPage() {
   const refreshHealthData = useCallback((targetPeriod: ReportPeriod) => {
     const requestSeq = ++healthRequestSeqRef.current;
     startTransition(async () => {
+      if (requestSeq !== healthRequestSeqRef.current || targetPeriod !== periodRef.current) {
+        return;
+      }
       const [vitals, comparison] = await Promise.all([
         fetchVitals(targetPeriod),
         fetchComparison(targetPeriod),
       ]);
-      if (requestSeq !== healthRequestSeqRef.current || targetPeriod !== periodRef.current) {
+      const isStale = requestSeq !== healthRequestSeqRef.current || targetPeriod !== periodRef.current;
+      if (isStale) {
         return;
       }
       if (Array.isArray(vitals)) {
@@ -243,7 +247,7 @@ export default function HealthPage() {
             className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             aria-label={t("addMetricAria")}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             {t("addMetric")}
           </Link>
         }
@@ -329,7 +333,7 @@ export default function HealthPage() {
         <div className="rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
             <p className="text-sm font-semibold text-foreground">{t("connectedDevices")}</p>
-            <Droplets className="w-4 h-4 text-muted-foreground" />
+            <Droplets className="size-4 text-muted-foreground" />
           </div>
           <ul className="divide-y divide-border">
             {devices.length === 0 ? (
@@ -372,7 +376,7 @@ export default function HealthPage() {
 
       {/* Manual entry notice */}
       <div className="rounded-xl border border-border bg-card/50 px-5 py-4 flex items-start gap-3">
-        <Activity className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+        <Activity className="size-4 text-muted-foreground mt-0.5 flex-shrink-0" />
         <div>
           <p className="text-sm font-medium text-foreground">{t("manualEntry")}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{t("manualEntryHint")}</p>

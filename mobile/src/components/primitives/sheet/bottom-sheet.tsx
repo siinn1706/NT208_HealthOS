@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Modal, Pressable, StyleSheet, Dimensions } from 'react-native';
+import { View, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   withTiming,
@@ -17,12 +17,12 @@ interface BottomSheetProps {
   maxHeightRatio?: number;
 }
 
-const SCREEN_H = Dimensions.get('window').height;
 const DRAG_CLOSE_THRESHOLD = 80;
 
 export function BottomSheet({ visible, onClose, children, maxHeightRatio = 0.85 }: BottomSheetProps) {
   const t = useTheme();
-  const maxH = SCREEN_H * maxHeightRatio;
+  const { height } = useWindowDimensions();
+  const maxH = height * maxHeightRatio;
 
   const translateY = useSharedValue(maxH);
   const scrimOpacity = useSharedValue(0);

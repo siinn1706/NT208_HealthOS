@@ -43,6 +43,7 @@ export function JoinVideoVisitScreen() {
   const [elapsed, setElapsed] = useState(0);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [controlMessage, setControlMessage] = useState<string | null>(null);
   const blinkStyle = useBlink();
 
   useEffect(() => {
@@ -102,10 +103,13 @@ export function JoinVideoVisitScreen() {
           icon={camOn ? <IconVideo size={24} color="#fff" /> : <IconVideo size={24} color={nt.ink3} />}
           onPress={() => setCamOn((v) => !v)}
         />
-        <CtrlBtn icon={<ScreenShare size={24} color="#fff" />} onPress={() => {}} />
-        <CtrlBtn icon={<IconChat size={24} color="#fff" />} onPress={() => router.push('/(tabs)/chat' as never)} />
+        <CtrlBtn icon={<ScreenShare size={24} color="#fff" />} onPress={() => setControlMessage('Screen sharing is not available in the native video visit demo.')} />
+        <CtrlBtn icon={<IconChat size={24} color="#fff" />} onPress={() => router.push('/chat' as never)} />
         <CtrlBtn icon={<PhoneOff size={24} color="#fff" />} onPress={() => router.back()} danger />
       </View>
+      {controlMessage && (
+        <Text style={[typography.caption, s.controlMessage]}>{controlMessage}</Text>
+      )}
     </SafeAreaView>
   );
 }
@@ -137,4 +141,5 @@ const s = StyleSheet.create({
   liveDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
   controls:      { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24, paddingBottom: 28 },
   ctrlBtn:       { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  controlMessage:{ color: nt.ink3, textAlign: 'center', paddingHorizontal: 24, paddingBottom: 12 },
 });

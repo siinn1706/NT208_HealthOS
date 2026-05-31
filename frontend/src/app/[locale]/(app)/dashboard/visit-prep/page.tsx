@@ -31,15 +31,17 @@ async function fetchBriefs(): Promise<VisitBrief[]> {
 }
 
 export default async function VisitPrepListPage() {
-  const t = await getTranslations("dashboard.visitPrep");
-  const briefs = await fetchBriefs();
+  const [t, briefs] = await Promise.all([
+    getTranslations("dashboard.visitPrep"),
+    fetchBriefs(),
+  ]);
 
   return (
     <>
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-primary" aria-hidden />
+            <ClipboardCheck className="size-5 text-primary" aria-hidden />
             {t("pageTitle")}
           </span>
         }
@@ -50,7 +52,7 @@ export default async function VisitPrepListPage() {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             aria-label={t("newBriefAria")}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             {t("newBrief")}
           </Link>
         }
@@ -58,8 +60,8 @@ export default async function VisitPrepListPage() {
       <div className="max-w-[1200px] mx-auto space-y-5 px-4 py-5 sm:px-6 lg:px-8">
         {briefs.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-10 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <ClipboardCheck className="h-6 w-6 text-muted-foreground" />
+            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-muted">
+              <ClipboardCheck className="size-6 text-muted-foreground" />
             </div>
             <p className="text-sm text-foreground">{t("list.empty")}</p>
             <Link

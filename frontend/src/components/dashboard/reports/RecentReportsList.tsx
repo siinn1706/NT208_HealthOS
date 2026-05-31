@@ -12,8 +12,10 @@ interface RecentReportsListProps {
 }
 
 export async function RecentReportsList({ locale }: RecentReportsListProps) {
-  const t = await getTranslations("reports");
-  const reports = await listRecentReports();
+  const [t, reports] = await Promise.all([
+    getTranslations("reports"),
+    listRecentReports(),
+  ]);
   const periodLabels = {
     "7d": t("period7d"),
     "30d": t("period30d"),
@@ -23,7 +25,7 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
   if (reports.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" aria-hidden />
+        <FileText className="size-8 mx-auto text-muted-foreground mb-2" aria-hidden />
         <p className="text-sm text-muted-foreground">{t("noRecentReports")}</p>
       </div>
     );
@@ -38,7 +40,7 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
         <div key={report.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors">
           {/* Icon */}
           <div className="shrink-0 rounded-lg border border-border bg-muted/50 p-2">
-            <FileText className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <FileText className="size-4 text-muted-foreground" aria-hidden />
           </div>
 
           {/* Info */}
@@ -66,25 +68,25 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="size-7"
               aria-label={t("downloadPdfAria")}
             >
-              <Download className="h-3.5 w-3.5" aria-hidden />
+              <Download className="size-3.5" aria-hidden />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="size-7"
               aria-label={t("shareReportAria")}
             >
-              <Share2 className="h-3.5 w-3.5" aria-hidden />
+              <Share2 className="size-3.5" aria-hidden />
             </Button>
             <Link
               href={`/${locale}/dashboard/reports?period=${report.period}`}
               aria-label={t("viewReportAria")}
             >
-              <Button variant="ghost" size="icon" className="h-7 w-7">
-                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              <Button variant="ghost" size="icon" className="size-7">
+                <ChevronRight className="size-3.5" aria-hidden />
               </Button>
             </Link>
           </div>

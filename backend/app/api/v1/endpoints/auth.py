@@ -109,6 +109,18 @@ BFF_EXCHANGE_NONCE_PREFIX = "auth:bff_exchange_nonce:"
 BFF_EXCHANGE_REQUIRED_ENVS = {"production", "staging"}
 
 
+def _can_use_debug_otp_delivery_fallback() -> bool:
+    return settings.debug and settings.resolved_runtime_env() not in {"production", "staging"}
+
+
+def _smtp_configured() -> bool:
+    return bool(settings.smtp_host and settings.smtp_user and settings.smtp_password)
+
+
+def _should_skip_otp_email_delivery_for_dev() -> bool:
+    return _can_use_debug_otp_delivery_fallback() and not _smtp_configured()
+
+
 def _mfa_login_challenge_key(challenge_id: str) -> str:
     return f"auth:mfa:login:{challenge_id}"
 
@@ -925,15 +937,28 @@ async def request_email_otp(
     await redis.setex(otp_key, expires_in_seconds, hashed_code)
     await redis.setex(cooldown_key, 60, "1")
 
-    try:
-        await asyncio.to_thread(send_otp_email, body.email, code, body.purpose)
-    except Exception as exc:  # pragma: no cover - external I/O
-        # Best-effort cleanup: remove the stored OTP so user can retry
-        await redis.delete(otp_key)
-        from app.exceptions import ServerException
-        raise ServerException(
-            message="Không thể gửi email OTP. Vui lòng thử lại sau.",
-        ) from exc
+    if _should_skip_otp_email_delivery_for_dev():
+        logger.warning(
+            "Skipping OTP email delivery because SMTP is not configured in debug runtime",
+            extra={"purpose": body.purpose},
+        )
+    else:
+        try:
+            await asyncio.to_thread(send_otp_email, body.email, code, body.purpose)
+        except Exception as exc:  # pragma: no cover - external I/O
+            if _can_use_debug_otp_delivery_fallback():
+                logger.warning(
+                    "OTP email delivery failed in debug runtime; using response OTP echo",
+                    extra={"purpose": body.purpose},
+                    exc_info=True,
+                )
+            else:
+                # Best-effort cleanup: remove the stored OTP so user can retry
+                await redis.delete(otp_key)
+                from app.exceptions import ServerException
+                raise ServerException(
+                    message="Không thể gửi email OTP. Vui lòng thử lại sau.",
+                ) from exc
 
     log_event("auth", "otp_request", "ok", email_hash=hash_email(body.email))
 

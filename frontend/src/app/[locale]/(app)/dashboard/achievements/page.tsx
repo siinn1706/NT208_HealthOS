@@ -17,10 +17,12 @@ function Skeleton() {
 }
 
 async function GamificationGoalsContent() {
-  const t = await getTranslations("dashboard.achievements");
-  const tg = await getTranslations("dashboard.goals");
-  const locale = await getLocale();
-  const summary = await getGamificationSummary();
+  const [t, tg, locale, summary] = await Promise.all([
+    getTranslations("dashboard.achievements"),
+    getTranslations("dashboard.goals"),
+    getLocale(),
+    getGamificationSummary(),
+  ]);
   const { currentUser, activeGoals, streakHistory, recentUnlocked } = summary;
 
   return (
@@ -30,8 +32,8 @@ async function GamificationGoalsContent() {
       {/* Stats overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-            <Flame className="w-5 h-5 text-orange-500" />
+          <div className="size-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+            <Flame className="size-5 text-orange-500" />
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{currentUser.currentStreak}</p>
@@ -39,8 +41,8 @@ async function GamificationGoalsContent() {
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-amber-500" />
+          <div className="size-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <TrendingUp className="size-5 text-amber-500" />
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{currentUser.longestStreak}</p>
@@ -48,8 +50,8 @@ async function GamificationGoalsContent() {
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <Award className="w-5 h-5 text-blue-500" />
+          <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <Award className="size-5 text-blue-500" />
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">
@@ -68,8 +70,8 @@ async function GamificationGoalsContent() {
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <Target className="w-5 h-5 text-green-500" />
+          <div className="size-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+            <Target className="size-5 text-green-500" />
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{currentUser.totalScore}</p>
@@ -116,7 +118,7 @@ async function GamificationGoalsContent() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-2 h-2 rounded-full"
+                        className="size-2 rounded-full"
                         style={{ backgroundColor: goal.color }}
                       />
                       <span className="text-sm font-medium text-foreground">
@@ -155,8 +157,8 @@ async function GamificationGoalsContent() {
                 key={milestone.id}
                 className="rounded-lg border border-border bg-background p-3 flex items-start gap-3"
               >
-                <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                  <Award className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <div className="size-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                  <Award className="size-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">

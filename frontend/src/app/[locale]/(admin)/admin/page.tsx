@@ -28,7 +28,8 @@ const MAX_RETRIES = 3;
 export default function AdminOverviewPage() {
   const [state, setState] = React.useState<FetchState>({ status: "loading" });
   const [inFlight, setInFlight] = React.useState(false);
-  const gate = React.useRef(retryGate(MAX_RETRIES));
+  const gate = React.useRef<ReturnType<typeof retryGate> | null>(null);
+  if (gate.current === null) gate.current = retryGate(MAX_RETRIES);
   const [retriesLeft, setRetriesLeft] = React.useState(MAX_RETRIES);
 
   const fetchOverview = React.useCallback(async () => {
@@ -36,11 +37,11 @@ export default function AdminOverviewPage() {
     setState({ status: "loading" });
     try {
       const res = await adminFetch<OverviewResponse>("/api/v1/admin/overview", { timeoutMs: 10_000 });
-      gate.current.reset();
+      gate.current?.reset();
       setRetriesLeft(MAX_RETRIES);
       setState({ status: "success", data: res.data });
     } catch (err) {
-      gate.current.recordAttempt();
+      gate.current?.recordAttempt();
       setRetriesLeft((prev) => Math.max(0, prev - 1));
       setState({ status: "error", reason: err instanceof Error ? err.message : "An unexpected error occurred." });
     } finally {
@@ -48,18 +49,19 @@ export default function AdminOverviewPage() {
     }
   }, []);
 
-  const debouncedFetch = React.useRef(debounce(fetchOverview, 500));
+  const debouncedFetch = React.useRef<ReturnType<typeof debounce> | null>(null);
+  if (debouncedFetch.current === null) debouncedFetch.current = debounce(fetchOverview, 500);
   React.useEffect(() => { debouncedFetch.current = debounce(fetchOverview, 500); }, [fetchOverview]);
   React.useEffect(() => { void fetchOverview(); }, [fetchOverview]);
 
   const handleRetry = React.useCallback(() => {
-    if (!gate.current.canRetry()) return;
+    if (gate.current?.canRetry() === false) return;
     void fetchOverview();
   }, [fetchOverview]);
 
   const handleRefresh = React.useCallback(() => {
     if (inFlight) return;
-    void debouncedFetch.current();
+    void debouncedFetch.current?.();
   }, [inFlight]);
 
   const overviewData = state.status === "success" ? state.data : null;
@@ -75,11 +77,10 @@ export default function AdminOverviewPage() {
       {/* Page header */}
       <AdminPageHeader title="Overview">
         {/* Time-range control — visual-only until BFF supports it */}
-        <div
-          role="group"
-          aria-label="Time range"
+        <fieldset
           className="flex items-center rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-muted)]"
         >
+          <legend className="sr-only">Time range</legend>
           {(["7d", "30d", "90d"] as const).map((range) => (
             <button
               key={range}
@@ -91,7 +92,7 @@ export default function AdminOverviewPage() {
               {range}
             </button>
           ))}
-        </div>
+        </fieldset>
 
         <Button
           variant="outline"

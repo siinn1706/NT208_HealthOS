@@ -89,13 +89,12 @@ async function fetchTodayOccurrences(filterType?: FilterType): Promise<{
     const json = await res.json().catch(() => null);
     const list: OccurrenceFromApi[] = Array.isArray(json?.data) ? json.data : [];
     // Map occurrences → the legacy `Reminder` shape the rest of the page expects.
-    const reminders: Reminder[] = list
-      .filter((o) => !filterType || filterType === "all" || o.type === filterType)
-      .map((o) => {
+    const reminders: Reminder[] = list.flatMap((o) => {
+        if (filterType && filterType !== "all" && o.type !== filterType) return [];
         const dt = new Date(o.scheduled_at);
         const hh = String(dt.getHours()).padStart(2, "0");
         const mm = String(dt.getMinutes()).padStart(2, "0");
-        return {
+        return [{
           // Use the parent reminder id for skip/snooze actions; keep occurrence
           // id available via the spread for future per-occurrence actions.
           id: o.reminder_id,
@@ -104,7 +103,7 @@ async function fetchTodayOccurrences(filterType?: FilterType): Promise<{
           time: `${hh}:${mm}`,
           repeat: "once",
           done: o.status === "done",
-        };
+        }];
       });
     return { ok: true, data: reminders };
   } catch {
@@ -188,6 +187,7 @@ export default function RemindersPage() {
     if (filter === "all") next.delete("type");
     else next.set("type", filter);
     const qs = next.toString();
+    // oxlint-disable-next-line react-doctor/nextjs-no-client-side-redirect -- Syncs filter controls to query params without leaving the reminders view.
     router.replace(qs ? `?${qs}` : "?", { scroll: false });
   }, [filter, stateTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -259,12 +259,12 @@ export default function RemindersPage() {
         title={t("reminders.pageTitle")}
         description={t("reminders.pageSubtitle")}
         primaryAction={
-          <button
+          <button type="button"
             onClick={() => setDialogOpen(true)}
             className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
             aria-label={t("reminders.addReminder")}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             {t("reminders.addReminder")}
           </button>
         }
@@ -310,7 +310,7 @@ export default function RemindersPage() {
         {/* Type filters */}
         <div className="flex items-center gap-2 flex-wrap">
           {FILTER_TYPES.map((f) => (
-            <button
+            <button type="button"
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
@@ -322,7 +322,7 @@ export default function RemindersPage() {
             >
               {f === "all" ? (
                 <>
-                  <Bell className="w-3 h-3" />
+                  <Bell className="size-3" />
                   {t("reminders.filterAll")}
                 </>
               ) : (
@@ -331,7 +331,7 @@ export default function RemindersPage() {
                   const Icon = cfg.icon;
                   return (
                     <>
-                      <Icon className="w-3 h-3" />
+                      <Icon className="size-3" />
                       {cfg.label}
                     </>
                   );
@@ -347,7 +347,7 @@ export default function RemindersPage() {
             <div className="divide-y divide-border">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex items-start gap-4 px-5 py-4">
-                  <Skeleton className="w-9 h-9 rounded-full" />
+                  <Skeleton className="size-9 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-2/3 rounded" />
                     <Skeleton className="h-3 w-1/3 rounded" />
@@ -357,13 +357,13 @@ export default function RemindersPage() {
             </div>
           ) : errorState ? (
             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-2 px-6">
-              <Bell className="w-8 h-8 opacity-40" />
+              <Bell className="size-8 opacity-40" />
               <p className="text-sm font-medium">{t("reminders.loadErrorTitle")}</p>
               <p className="text-xs max-w-sm">{errorState}</p>
             </div>
           ) : displayed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <Bell className="w-8 h-8 opacity-40" />
+              <Bell className="size-8 opacity-40" />
               <p className="text-sm">{t("reminders.empty")}</p>
             </div>
           ) : (
@@ -392,10 +392,10 @@ export default function RemindersPage() {
                   >
                     {/* Icon */}
                     <div
-                      className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5"
+                      className="flex-shrink-0 size-9 rounded-full flex items-center justify-center mt-0.5"
                       style={{ background: `${cfg.color}20` }}
                     >
-                      <Icon className="w-4 h-4" style={{ color: cfg.color }} />
+                      <Icon className="size-4" style={{ color: cfg.color }} />
                     </div>
 
                     {/* Content */}
@@ -417,7 +417,7 @@ export default function RemindersPage() {
                         </span>
                         {isAppointmentLinked && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-primary/40 text-primary inline-flex items-center gap-1">
-                            <Stethoscope className="w-2.5 h-2.5" />
+                            <Stethoscope className="size-2.5" />
                             {t("reminders.appointmentLinked")}
                           </span>
                         )}
@@ -426,19 +426,19 @@ export default function RemindersPage() {
                             href={`/dashboard/medications/${linkedPlanId}`}
                             className="text-[10px] px-1.5 py-0.5 rounded-full border border-warm-gold/40 text-warm-gold inline-flex items-center gap-1 hover:bg-warm-gold/10 transition-colors"
                           >
-                            <Pill className="w-2.5 h-2.5" />
+                            <Pill className="size-2.5" />
                             {t("reminders.medicationLinked")}
                           </a>
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
+                          <Clock className="size-3" />
                           {r.time}
                         </span>
                         {r.repeat && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Repeat className="w-3 h-3" />
+                            <Repeat className="size-3" />
                             <RecurringExplanation
                               repeat={r.repeat as ReminderRepeat}
                               time={r.time}
@@ -454,24 +454,24 @@ export default function RemindersPage() {
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
                       {!r.done && <SnoozeMenu reminderId={r.id} onSnoozed={() => setRefreshKey((k) => k + 1)} />}
-                      <button
+                      <button type="button"
                         onClick={() => toggleDone(r.id)}
                         aria-label={t("reminders.ack")}
                         className={cn(
-                          "w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer",
+                          "size-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer",
                           r.done
                             ? "text-muted-foreground hover:bg-muted"
                             : "text-green-500 hover:bg-green-500/10",
                         )}
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="size-4" />
                       </button>
-                      <button
+                      <button type="button"
                         onClick={() => setPendingDelete(r)}
                         aria-label={t("reminders.deleteLabel")}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                        className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="size-3.5" />
                       </button>
                     </div>
                   </li>

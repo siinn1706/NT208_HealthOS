@@ -27,18 +27,18 @@ export const MedCard = React.memo(function MedCard({ name, dose, adherence, refi
           <IconPill size={20} color={t.brand} />
         </View>
         <View style={styles.info}>
-          <Text style={[{ fontSize: 15, fontWeight: '700', color: t.ink }]}>{name}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: t.ink }}>{name}</Text>
           <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>{dose}</Text>
           <View style={styles.progressRow}>
             <View style={[styles.track, { backgroundColor: t.border }]}>
               <View style={[styles.fill, { width: `${pct}%` as any, backgroundColor: t.brand }]} />
             </View>
-            <Text style={[{ fontSize: 11, fontWeight: '700', color: t.brand, fontVariant: ['tabular-nums'] as any }]}>{pct}%</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: t.brand, fontVariant: ['tabular-nums'] as any }}>{pct}%</Text>
           </View>
         </View>
         <View style={styles.refill}>
-          <Text style={[{ fontSize: 10, color: t.ink4, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }]}>{i18n('meds.refill')}</Text>
-          <Text style={[{ fontSize: 13, fontWeight: '700', color: t.ink, fontVariant: ['tabular-nums'] as any, marginTop: 2 }]}>{refillDays}d</Text>
+          <Text style={{ fontSize: 12, color: t.ink4, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>{i18n('meds.refill')}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: t.ink, fontVariant: ['tabular-nums'] as any, marginTop: 2 }}>{refillDays}d</Text>
         </View>
       </View>
     </>

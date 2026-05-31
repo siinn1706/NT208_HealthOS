@@ -33,8 +33,7 @@ interface ReportsPageProps {
  * re-fetches in place.
  */
 export default async function ReportsPage({ params, searchParams }: ReportsPageProps) {
-  const { locale } = await params;
-  const { period: rawPeriod } = await searchParams;
+  const [{ locale }, { period: rawPeriod }] = await Promise.all([params, searchParams]);
 
   const period: ReportPeriod =
     rawPeriod === "30d" || rawPeriod === "90d" ? rawPeriod : "7d";
@@ -50,7 +49,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <FileBarChart2 className="h-5 w-5 text-muted-foreground" aria-hidden />
+            <FileBarChart2 className="size-5 text-muted-foreground" aria-hidden />
             {t("title")}
           </span>
         }
@@ -73,8 +72,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       {report.ai_summary && (
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
-              <Sparkles className="w-4 h-4 text-white" aria-hidden />
+            <div className="flex-shrink-0 size-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
+              <Sparkles className="size-4 text-white" aria-hidden />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground mb-1">{t("aiSummaryTitle")}</p>

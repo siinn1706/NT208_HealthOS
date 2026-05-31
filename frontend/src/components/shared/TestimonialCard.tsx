@@ -17,11 +17,11 @@ export function TestimonialCard({ testimonial }: TestimonialCardProps) {
   return (
     <Card className="h-full min-w-[320px] max-w-md rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-0.5 hover:border-night-400/40 hover:shadow-md">
       <CardContent className="p-6">
-        <div className="mb-4 text-3xl bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent">&ldquo;</div>
+        <div className="mb-4 text-3xl text-night-400">&ldquo;</div>
         <p className="mb-6 text-sm leading-relaxed text-muted-foreground line-clamp-5">
           {quote}
         </p>
-        <div className="text-3xl bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent text-right">&rdquo;</div>
+        <div className="text-right text-3xl text-night-400">&rdquo;</div>
         <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
           <Image
             src={testimonial.image}

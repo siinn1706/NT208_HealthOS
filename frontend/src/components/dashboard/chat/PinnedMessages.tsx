@@ -30,7 +30,7 @@ export function PinnedMessages({
   return (
     <div className="border-b border-border bg-secondary/30 px-4 py-1.5">
       <div className="flex items-center gap-2">
-        <Pin className="w-3 h-3 text-primary flex-shrink-0" />
+        <Pin className="size-3 text-primary flex-shrink-0" />
         <div className="flex-1 min-w-0">
           {displayed.map((msg) => {
             const senderName =
@@ -41,7 +41,7 @@ export function PinnedMessages({
                   : msg.sender_display_name ?? participantNameById[msg.sender_id] ?? t("unknownUser");
 
             return (
-              <button
+              <button type="button"
                 key={msg.id}
                 onClick={() => onJump?.(msg.id)}
                 className="block w-full text-left cursor-pointer group"
@@ -61,7 +61,7 @@ export function PinnedMessages({
             aria-label={expanded ? t("collapsePinned") : t("expandPinned")}
             className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
           </button>
         )}
       </div>

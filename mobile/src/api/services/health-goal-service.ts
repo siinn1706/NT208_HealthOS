@@ -1,5 +1,14 @@
-import { apiRequest } from '../client';
+import { apiRequest, buildQuery } from '../client';
 import type { DataResponse, HealthGoal } from '../../../../shared/api-contracts';
+
+export type GoalProgressPeriod = '7d' | '30d' | '90d';
+
+export interface GoalProgressPoint {
+  date: string;
+  value: number;
+  target: number;
+  progress_percent: number | null;
+}
 
 export const healthGoalService = {
   async current() {
@@ -12,6 +21,15 @@ export const healthGoalService = {
       method: 'POST',
       json: body,
     });
+    return response.data;
+  },
+
+  async progress(params: { metric: 'weight_kg'; target: number; period?: GoalProgressPeriod }) {
+    const response = await apiRequest<DataResponse<GoalProgressPoint[]>>(`/v1/goals/progress${buildQuery({
+      metric: params.metric,
+      target: params.target,
+      period: params.period ?? '7d',
+    })}`);
     return response.data;
   },
 };

@@ -37,8 +37,8 @@ async function fetchUpcomingAppointments(): Promise<Appointment[]> {
     if (!Array.isArray(json?.data)) return [];
     const now = Date.now();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (json!.data as any[])
-      .map((item) => ({
+    const upcoming = (json!.data as any[]).flatMap((item) => {
+        const appointment = {
         id: item?.id ?? "",
         date: item?.appointment_date ?? "",
         doctorName: item?.doctor_name ?? "",
@@ -48,16 +48,15 @@ async function fetchUpcomingAppointments(): Promise<Appointment[]> {
         status: item?.status ?? "upcoming",
         hasPrescription: false,
         prescription: null,
-      }))
-      .filter((a) => {
-        if (!a.id || !a.date) return false;
-        const ts = new Date(a.date).getTime();
-        if (Number.isNaN(ts)) return false;
-        // upcoming-ish: future OR within 1 day past (so the user can attach
-        // a brief on the morning of the visit even if BE clock drifted).
-        return ts >= now - 24 * 60 * 60 * 1000;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) as Appointment[];
+      };
+      if (!appointment.id || !appointment.date) return [];
+      const ts = new Date(appointment.date).getTime();
+      if (Number.isNaN(ts)) return [];
+      // upcoming-ish: future OR within 1 day past (so the user can attach
+      // a brief on the morning of the visit even if BE clock drifted).
+      return ts >= now - 24 * 60 * 60 * 1000 ? [appointment] : [];
+    });
+    return upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) as Appointment[];
   } catch {
     return [];
   }
@@ -72,25 +71,39 @@ export function VisitBriefAttachDialog({
 }: Props) {
   const t = useTranslations("dashboard.visitPrep.attach");
   const locale = useLocale();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const loadContext = open ? briefId : null;
+  const [loadState, setLoadState] = useState<{
+    context: string | null;
+    appointments: Appointment[];
+    loading: boolean;
+    error: string | null;
+  }>({ context: null, appointments: [], loading: false, error: null });
   const [attaching, setAttaching] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const appointments = loadState.context === loadContext ? loadState.appointments : [];
+  const loading = open && (loadState.context === loadContext ? loadState.loading : true);
+  const error = loadState.context === loadContext ? loadState.error : null;
+
+  const setContextError = (message: string | null) => {
+    setLoadState((prev) => ({
+      context: loadContext,
+      appointments: prev.context === loadContext ? prev.appointments : [],
+      loading: false,
+      error: message,
+    }));
+  };
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    const context = loadContext;
     void fetchUpcomingAppointments().then((items) => {
       if (cancelled) return;
-      setAppointments(items);
-      setLoading(false);
+      setLoadState({ context, appointments: items, loading: false, error: null });
     });
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, loadContext]);
 
   useEffect(() => {
     if (open && preselectAppointmentId) {
@@ -101,13 +114,13 @@ export function VisitBriefAttachDialog({
 
   async function handleAttach(appointmentId: string, skipPreselect = false) {
     setAttaching(appointmentId);
-    setError(null);
+    setContextError(null);
     try {
       const link = await attachToAppointment(briefId, appointmentId);
       onAttached?.(link);
       if (!skipPreselect) onOpenChange(false);
     } catch (err) {
-      setError((err as Error).message);
+      setContextError((err as Error).message);
     } finally {
       setAttaching(null);
     }
@@ -118,7 +131,7 @@ export function VisitBriefAttachDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Stethoscope className="h-4 w-4 text-primary" aria-hidden />
+            <Stethoscope className="size-4 text-primary" aria-hidden />
             {t("title")}
           </DialogTitle>
           <DialogDescription>{t("subtitle")}</DialogDescription>
@@ -133,7 +146,7 @@ export function VisitBriefAttachDialog({
               href="/dashboard/appointments"
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
             >
-              <CalendarPlus className="h-3.5 w-3.5" />
+              <CalendarPlus className="size-3.5" />
               {t("createAppointment")}
             </Link>
           </div>

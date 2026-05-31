@@ -22,7 +22,7 @@ export interface UseMultipartOfflineQueueResult {
 }
 
 /**
- * React adapter around the IndexedDB-backed multipart queue (B7 P7).
+ * React adapter around the IndexedDB-backed multipart queue.
  *
  * Mirrors `useOfflineQueue` for the JSON queue. Auto-flushes when the
  * connection transitions back to "online" or when an entry is added. The
@@ -35,7 +35,9 @@ export function useMultipartOfflineQueue(
   const [entries, setEntries] = React.useState<MultipartQueueEntry[]>([]);
   const { status } = useConnection();
   const optsRef = React.useRef(opts);
-  optsRef.current = opts;
+  React.useEffect(() => {
+    optsRef.current = opts;
+  }, [opts]);
 
   React.useEffect(() => {
     let cancelled = false;

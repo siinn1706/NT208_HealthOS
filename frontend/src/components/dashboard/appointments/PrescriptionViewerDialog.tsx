@@ -92,10 +92,10 @@ export function PrescriptionViewerDialog({
           <>
             <DialogHeader className="flex-row items-start gap-3 px-5 py-4 border-b border-border bg-muted/30 text-left space-y-0">
               <div
-                className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"
+                className="flex-shrink-0 size-10 rounded-xl bg-primary/10 flex items-center justify-center"
                 aria-hidden
               >
-                <FileText className="w-5 h-5 text-primary" />
+                <FileText className="size-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-sm font-semibold text-foreground">
@@ -112,15 +112,15 @@ export function PrescriptionViewerDialog({
 
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Pill className="w-4 h-4 text-muted-foreground" aria-hidden />
+                  <Pill className="size-4 text-muted-foreground" aria-hidden />
                   <p className="text-sm font-semibold text-foreground">
                     {t("medicineList", { count: prescription.medicines.length })}
                   </p>
                 </div>
                 <ul className="space-y-3">
-                  {prescription.medicines.map((med, i) => (
+                  {prescription.medicines.map((med) => (
                     <li
-                      key={i}
+                      key={`${med.name}-${med.dosage}-${med.frequency}-${med.duration}`}
                       className="rounded-xl border border-border bg-background p-4 space-y-2"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -175,7 +175,7 @@ export function PrescriptionViewerDialog({
                   className="w-full justify-center gap-2"
                   onClick={() => setImportOpen(true)}
                 >
-                  <PlusSquare className="w-4 h-4" />
+                  <PlusSquare className="size-4" />
                   {tMedImport("submit")}
                 </Button>
               )}
@@ -199,6 +199,7 @@ export function PrescriptionViewerDialog({
       </DialogContent>
       {canImport && appointmentId && prescription && (
         <ImportFromAppointmentDialog
+          key={`${appointmentId}:${importOpen ? "open" : "closed"}:${prescription.medicines.length}`}
           open={importOpen}
           onOpenChange={setImportOpen}
           appointmentId={appointmentId}
@@ -347,7 +348,7 @@ function AttachmentsPanel({
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Paperclip className="w-4 h-4 text-muted-foreground" aria-hidden />
+          <Paperclip className="size-4 text-muted-foreground" aria-hidden />
           <p className="text-sm font-semibold text-foreground">{t("title")}</p>
         </div>
         <Button
@@ -358,12 +359,13 @@ function AttachmentsPanel({
           disabled={uploading}
           className="gap-2"
         >
-          <Upload className="w-3.5 h-3.5" aria-hidden />
+          <Upload className="size-3.5" aria-hidden />
           {uploading ? t("uploading") : t("upload")}
         </Button>
         <input
           ref={fileInputRef}
           type="file"
+          aria-label={t("upload")}
           accept="application/pdf,image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={handleFileChange}
@@ -383,7 +385,7 @@ function AttachmentsPanel({
           {t("none")}
         </p>
       ) : (
-        <ul role="list" className="divide-y divide-border rounded-md border border-border">
+        <ul className="divide-y divide-border rounded-md border border-border">
           {assets.map((asset) => (
             <li key={asset.id} className="flex items-center gap-2 px-3 py-2">
               <FileText className="size-4 text-muted-foreground" aria-hidden />
@@ -464,7 +466,7 @@ function PrescriptionMeta({
           className="rounded-xl border border-border bg-background p-3 flex items-start gap-2.5"
         >
           <Icon
-            className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0"
+            className="size-4 text-muted-foreground mt-0.5 flex-shrink-0"
             aria-hidden
           />
           <div className="min-w-0">

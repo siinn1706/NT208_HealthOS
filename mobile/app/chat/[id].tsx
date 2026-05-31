@@ -7,8 +7,9 @@ import { typography } from '../../src/theme/typography';
 import { Bubble } from '../../src/components/chat/bubble';
 import { DateChip } from '../../src/components/chat/date-chip';
 import { Composer } from '../../src/components/chat/composer';
+import { AttachmentLinkModal } from '../../src/components/chat/attachment-link-modal';
 import { IconButton } from '../../src/components/primitives/icon-button';
-import { ApiState, MissingApiState } from '../../src/components/api/api-state';
+import { ApiState } from '../../src/components/api/api-state';
 import { ChevronLeft, IconMore, IconRobot } from '../../src/icons';
 import { useApiQuery, invalidateApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
@@ -16,8 +17,10 @@ import { queryKeys } from '../../src/api/queryKeys';
 import { toBubble } from '../../src/api/viewModels';
 import { useSession } from '../../src/auth/session-provider';
 import { useChatWebSocket } from '../../src/hooks/use-chat-websocket';
+import { useChatReadReceipts } from '../../src/hooks/use-chat-read-receipts';
 import { mergeMessagesChronologically } from '../../src/chat/message-pagination';
 import type { Message, MessageListResponse } from '../../../shared/api-contracts';
+import type { ChatAttachmentInput } from '../../src/api/services/chat-service';
 
 const CHAT_PAGE_SIZE = 50;
 
@@ -44,6 +47,8 @@ export default function AiConversationScreen() {
 
   // Attach missing-API modal
   const [attachOpen, setAttachOpen] = useState(false);
+  const [attaching, setAttaching] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!conversationId) {
@@ -89,6 +94,33 @@ export default function AiConversationScreen() {
     }
   }
 
+  async function handleSendAttachment(attachment: ChatAttachmentInput, caption: string) {
+    if (!conversationId) return;
+    setAttaching(true);
+    setAttachError(null);
+    try {
+      const saved = await chatService.sendAttachmentMessage(conversationId, attachment, caption);
+      setMessages((prev) => mergeMessagesChronologically(prev, [saved]));
+      invalidateApiQuery(queryKeys.conversations);
+      setAttachOpen(false);
+    } catch (err: unknown) {
+      setAttachError(err instanceof Error ? err.message : 'Failed to send attachment. Please try again.');
+    } finally {
+      setAttaching(false);
+    }
+  }
+
+  function handleOpenAttachmentModal() {
+    setAttachError(null);
+    setAttachOpen(true);
+  }
+
+  function handleCloseAttachmentModal() {
+    if (attaching) return;
+    setAttachError(null);
+    setAttachOpen(false);
+  }
+
   const handleLoadOlder = useCallback(async () => {
     if (!conversationId || !hasMore || !nextCursor || loadingOlder) return;
     setLoadingOlder(true);
@@ -107,6 +139,13 @@ export default function AiConversationScreen() {
       setLoadingOlder(false);
     }
   }, [conversationId, hasMore, loadingOlder, nextCursor]);
+
+  const latestMessageId = messages[messages.length - 1]?.id ?? null;
+  useChatReadReceipts({
+    conversationId,
+    latestMessageId,
+    enabled: Boolean(conversationId) && !messageQuery.isLoading && !messageQuery.error,
+  });
 
   // FlatList inverted: reverse messages so newest is at bottom (index 0 = newest)
   const reversed = useMemo(() => [...messages].reverse(), [messages]);
@@ -205,7 +244,7 @@ export default function AiConversationScreen() {
         />
         <Composer
           onSend={handleSend}
-          onAttach={() => setAttachOpen(true)}
+          onAttach={handleOpenAttachmentModal}
         />
       </KeyboardAvoidingView>
 
@@ -235,28 +274,13 @@ export default function AiConversationScreen() {
         </View>
       </Modal>
 
-      {/* Attach file missing-API modal */}
-      <Modal
+      <AttachmentLinkModal
         visible={attachOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setAttachOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <MissingApiState
-              title="Attach file"
-              contract="File attachment API pending"
-            />
-            <Pressable
-              onPress={() => setAttachOpen(false)}
-              style={[styles.closeBtn, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
-            >
-              <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        submitting={attaching}
+        error={attachError}
+        onClose={handleCloseAttachmentModal}
+        onSubmit={handleSendAttachment}
+      />
     </SafeAreaView>
   );
 }
@@ -272,5 +296,4 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalSheet:   { width: '100%', padding: 20 },
   optionBtn:    { paddingVertical: 14, paddingHorizontal: 16, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center' },
-  closeBtn:     { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
 });

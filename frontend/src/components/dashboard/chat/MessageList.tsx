@@ -1,8 +1,7 @@
 "use client";
 
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, Ref } from "react";
 import {
-  forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -40,17 +39,21 @@ function findFirstIndexForDate(messages: Message[], targetDateKey: string): numb
   return undefined;
 }
 
-const ChatVirtuosoList = forwardRef<HTMLDivElement, ComponentPropsWithoutRef<"div">>(
-  function ChatVirtuosoList({ style, children, ...props }, ref) {
+type ChatVirtuosoListProps = ComponentPropsWithoutRef<"div"> & {
+  ref?: Ref<HTMLDivElement>;
+};
+
+function ChatVirtuosoList({ style, children, ref, ...props }: ChatVirtuosoListProps) {
     return (
+      // oxlint-disable-next-line react-doctor/prefer-tag-over-role -- react-virtuoso measures a div list wrapper.
       <div ref={ref} role="list" style={style} {...props}>
         {children}
       </div>
     );
-  }
-);
+}
 
 interface MessageListProps {
+  ref?: Ref<MessageListHandle>;
   conversationId: string;
   messages: Message[];
   currentUserId: string | null;
@@ -84,8 +87,13 @@ export interface MessageListHandle {
   scrollToIndex: (index: number) => void;
 }
 
-export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
+export function MessageList(props: MessageListProps) {
+  return <MessageListContent key={props.conversationId} {...props} />;
+}
+
+function MessageListContent(
   {
+    ref,
     conversationId,
     messages,
     currentUserId,
@@ -105,8 +113,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     onJumpToReply,
     onRetry,
     onDiscard,
-  },
-  ref
+  }: MessageListProps
 ) {
   const locale = useLocale();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -124,7 +131,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const [jumpInitialDate, setJumpInitialDate] = useState<Date | null>(null);
   const [topVisibleIndex, setTopVisibleIndex] = useState(0);
   const [firstItemIndex, setFirstItemIndex] = useState(INITIAL_FIRST_ITEM_INDEX);
-  const [newWhileScrolledCount, setNewWhileScrolledCount] = useState(0);
   const [pendingJumpTargetIndex, setPendingJumpTargetIndex] = useState<number | null>(null);
 
   const timeChipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,6 +146,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const messagesRef = useRef(messages);
   const hasMoreRef = useRef(hasMore);
   const loadMoreRef = useRef(loadMore);
+  const lastSeenMessageCountRef = useRef(messages.length);
 
   const topDate =
     messages.length > 0 && topVisibleIndex >= 0 && topVisibleIndex < messages.length
@@ -160,21 +167,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
     };
   }, []);
-
-  // Reset virtualisation anchors when switching conversations
-  useEffect(() => {
-    setFirstItemIndex(INITIAL_FIRST_ITEM_INDEX);
-    setTopVisibleIndex(0);
-    setNewWhileScrolledCount(0);
-    prevFirstMsgIdRef.current = undefined;
-    prevMessagesLenRef.current = 0;
-    prevLenForAppendRef.current = 0;
-    prevLastMsgIdRef.current = null;
-    prevTailSignatureRef.current = null;
-    atBottomRef.current = true;
-    shouldFollowTailRef.current = true;
-    setIsAtBottom(true);
-  }, [conversationId]);
 
   // When older messages are prepended, shift firstItemIndex so scroll position is preserved
   useEffect(() => {
@@ -219,9 +211,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       if (nearBottom && !atBottomRef.current) {
         atBottomRef.current = true;
         shouldFollowTailRef.current = true;
+        lastSeenMessageCountRef.current = messagesRef.current.length;
         setIsAtBottom(true);
         setShowTimeChip(false);
-        setNewWhileScrolledCount(0);
         if (timeChipTimerRef.current) clearTimeout(timeChipTimerRef.current);
       }
     };
@@ -235,8 +227,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     setIsAtBottom(atBottom);
     if (atBottom) {
       shouldFollowTailRef.current = true;
+      lastSeenMessageCountRef.current = messagesRef.current.length;
       setShowTimeChip(false);
-      setNewWhileScrolledCount(0);
       if (timeChipTimerRef.current) clearTimeout(timeChipTimerRef.current);
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
     } else {
@@ -309,7 +301,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       });
       scheduleScrollerBottomSweep(behavior);
     } else if (grew && isNewTail) {
-      setNewWhileScrolledCount((c) => c + 1);
+      return;
     }
   }, [messages, currentUserId, scheduleScrollerBottomSweep]);
 
@@ -328,7 +320,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       shouldFollowTailRef.current = jumpingToBottom;
       setIsAtBottom(jumpingToBottom);
       if (jumpingToBottom) {
-        setNewWhileScrolledCount(0);
+        lastSeenMessageCountRef.current = messagesRef.current.length;
       }
     },
     [firstItemIndex, messages.length]
@@ -345,8 +337,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     scheduleScrollerBottomSweep("smooth");
     atBottomRef.current = true;
     shouldFollowTailRef.current = true;
+    lastSeenMessageCountRef.current = messagesRef.current.length;
     setIsAtBottom(true);
-    setNewWhileScrolledCount(0);
     setShowTimeChip(false);
     if (timeChipTimerRef.current) clearTimeout(timeChipTimerRef.current);
   }, [scheduleScrollerBottomSweep]);
@@ -412,9 +404,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       attempts < MAX_DATE_JUMP_LOADS
     ) {
       attempts += 1;
-      const loadedCount = await loadMoreRef.current();
       if (pendingJumpRequestIdRef.current !== requestId) return false;
+      // oxlint-disable-next-line react-doctor/async-await-in-loop -- Date jump must load pages sequentially until the target date exists.
+      const loadedCount = await loadMoreRef.current();
       if (loadedCount === 0) break;
+      if (pendingJumpRequestIdRef.current !== requestId) return false;
       targetIndex = findFirstIndexForDate(messagesRef.current, targetDateKey);
     }
 
@@ -492,13 +486,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         );
 
       return (
-        <div
+        <li
           id={`msg-${msg.id}`}
           className={msg.id === highlightedId ? "animate-msg-highlight rounded-xl" : undefined}
           onAnimationEnd={() => {
             if (msg.id === highlightedId) setHighlightedId(null);
           }}
-          role="listitem"
         >
           <MessageBubble
             message={msg}
@@ -523,7 +516,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             onRetry={onRetry}
             onDiscard={onDiscard}
           />
-        </div>
+        </li>
       );
     },
     [
@@ -571,6 +564,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   }, [hasMore, loadMore]);
 
   const showScrollBtn = !isAtBottom;
+  const newWhileScrolledCount = isAtBottom
+    ? 0
+    : Math.max(0, messages.length - lastSeenMessageCountRef.current);
 
   return (
     <>
@@ -627,7 +623,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           visible={showScrollBtn}
           pendingCount={newWhileScrolledCount}
           onClick={() => {
-            setNewWhileScrolledCount(0);
+            lastSeenMessageCountRef.current = messagesRef.current.length;
             scrollToBottomImpl();
           }}
         />
@@ -646,4 +642,4 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       />
     </>
   );
-});
+}

@@ -49,11 +49,13 @@ export default function MainLayout({
       <script
         type="application/ld+json"
         suppressHydrationWarning
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from a static object.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
       />
       <script
         type="application/ld+json"
         suppressHydrationWarning
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from a static object.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
       />
       <SkipToMain />

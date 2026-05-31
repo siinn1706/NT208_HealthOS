@@ -68,7 +68,14 @@ export function PasswordStrengthMeter({ password }: PasswordStrengthMeterProps) 
 
   return (
     <div className="space-y-1.5">
-      <div className="flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={strength.score}>
+      <div
+        className="flex gap-1"
+        // oxlint-disable-next-line react-doctor/prefer-tag-over-role -- Multi-segment visual meter cannot be represented by a single native progress bar.
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={5}
+        aria-valuenow={strength.score}
+      >
         {[0, 1, 2, 3, 4].map((i) => (
           <div
             key={i}

@@ -258,6 +258,7 @@ export async function flushMultipart(opts: FlushMultipartOptions = {}): Promise<
         const headers: Record<string, string> = {
           "Idempotency-Key": entry.idempotencyKey,
         };
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Multipart queue drains one entry at a time to preserve idempotent ordering.
         const res = await fetcher(entry.url, {
           method: entry.method,
           headers,
@@ -265,18 +266,22 @@ export async function flushMultipart(opts: FlushMultipartOptions = {}): Promise<
           credentials: "include",
         });
         if (res.ok) {
+          // oxlint-disable-next-line react-doctor/async-await-in-loop -- Queue mutation follows the current upload result.
           await removeMultipart(entry.id);
           drained += 1;
           opts.onSuccess?.(entry, res);
           continue;
         }
         if (res.status >= 400 && res.status < 500) {
+          // oxlint-disable-next-line react-doctor/async-await-in-loop -- Queue mutation follows the current upload result.
           await removeMultipart(entry.id);
           opts.onDrop?.(entry, "client-error");
           continue;
         }
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Retry accounting depends on the current upload result.
         await bumpAttempts(entry, `HTTP ${res.status}`, opts);
       } catch (err) {
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Retry accounting depends on the current upload error.
         await bumpAttempts(entry, err instanceof Error ? err.message : "network", opts);
         opts.onTransientFailure?.(entry, err);
       }

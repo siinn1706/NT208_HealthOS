@@ -17,6 +17,7 @@ import type { Adherence, MedicationPlan } from "@/types/api";
 type StatusFilter = "active" | "paused" | "all";
 
 const FILTERS: StatusFilter[] = ["active", "paused", "all"];
+const REFILL_SOON_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 type FetchResult<T> = { ok: true; data: T } | { ok: false; aborted: boolean };
 
@@ -72,18 +73,24 @@ export default function MedicationsHubPage() {
   const [loading, setLoading] = React.useState(true);
   const [errorState, setErrorState] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [refillBaselineMs] = React.useState(() => Date.now());
   // Stale-load guard (review M10) — every reload bumps a sequence number; only
   // the latest one is allowed to commit state, so rapid filter changes can't
   // interleave and leave the UI showing the wrong filter.
   const reloadSeqRef = React.useRef(0);
+  const markReloadStale = React.useCallback(() => {
+    reloadSeqRef.current += 1;
+  }, []);
 
   const reload = React.useCallback(async () => {
     const seq = ++reloadSeqRef.current;
     const controller = new AbortController();
     setLoading(true);
     setErrorState(false);
-    const result = await fetchPlans(filter, controller.signal);
     if (seq !== reloadSeqRef.current) return; // stale
+    const result = await fetchPlans(filter, controller.signal);
+    const isPlanLoadStale = seq !== reloadSeqRef.current;
+    if (isPlanLoadStale) return; // stale
     if (!result.ok) {
       if (!result.aborted) setErrorState(true);
       setLoading(false);
@@ -97,18 +104,17 @@ export default function MedicationsHubPage() {
         fresh[p.id] = await fetchAdherence(p.id, controller.signal);
       }),
     );
-    if (seq !== reloadSeqRef.current) return;
+    const isAdherenceLoadStale = seq !== reloadSeqRef.current;
+    if (isAdherenceLoadStale) return;
     setAdherenceById(fresh);
   }, [filter]);
 
   React.useEffect(() => {
     void reload();
-    return () => {
-      // Bump the seq so any in-flight reload's commit is dropped. AbortSignal
-      // wiring above keeps the network tear-down tidy too.
-      reloadSeqRef.current++;
-    };
-  }, [reload]);
+    // Bump the seq so any in-flight reload's commit is dropped. AbortSignal
+    // wiring above keeps the network tear-down tidy too.
+    return markReloadStale;
+  }, [markReloadStale, reload]);
 
   const handleCreated = (plan: MedicationPlan) => {
     setPlans((prev) => [plan, ...prev]);
@@ -121,24 +127,20 @@ export default function MedicationsHubPage() {
   };
 
   const activeCount = plans.filter((p) => p.status === "active").length;
-  // Sample `Date.now()` once per render in a memo so React's purity lint
-  // doesn't fire and so the comparison is stable across the same render
-  // pass. The "refill due in next 7 days" tile is a coarse surface; we
-  // don't need realtime-second precision.
   const refillSoon = React.useMemo(() => {
-    const cutoff = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const cutoff = refillBaselineMs + REFILL_SOON_WINDOW_MS;
     return plans.filter((p) => {
       if (!p.next_refill_estimated_at) return false;
       return new Date(p.next_refill_estimated_at).getTime() <= cutoff;
     }).length;
-  }, [plans]);
+  }, [plans, refillBaselineMs]);
 
   return (
     <>
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Pill className="h-5 w-5 text-primary" aria-hidden />
+            <Pill className="size-5 text-primary" aria-hidden />
             {t("pageTitle")}
           </span>
         }
@@ -150,7 +152,7 @@ export default function MedicationsHubPage() {
             className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
             aria-label={t("addAria")}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             {t("add")}
           </button>
         }
@@ -224,7 +226,7 @@ export default function MedicationsHubPage() {
           </div>
         ) : plans.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-3 px-6">
-            <Pill className="w-8 h-8 opacity-40" />
+            <Pill className="size-8 opacity-40" />
             <p className="text-sm font-medium text-foreground">{t("noPlans")}</p>
             <p className="text-xs max-w-sm">{t("noPlansDesc")}</p>
             <div className="flex items-center gap-2 mt-2">
@@ -233,14 +235,14 @@ export default function MedicationsHubPage() {
                 onClick={() => setDialogOpen(true)}
                 className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="size-4" />
                 {t("add")}
               </button>
               <Link
                 href={"/dashboard/appointments" as never}
                 className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
               >
-                <Stethoscope className="w-4 h-4" />
+                <Stethoscope className="size-4" />
                 {t("importFromAppointment")}
               </Link>
             </div>

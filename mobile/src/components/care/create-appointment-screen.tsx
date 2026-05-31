@@ -8,13 +8,17 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
 import { SegmentedControl } from '../primitives/input/segmented-control';
-import { BottomSheet } from '../primitives/sheet/bottom-sheet';
 import { TopBar } from '../layout/top-bar';
-import { ApiState, MissingApiState } from '../api/api-state';
+import { ApiState } from '../api/api-state';
 import { appointmentService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { IconStethoscope, IconCalendar, IconClock, IconMapPin } from '../../icons';
+import {
+  AppointmentProviderSuggestionsSheet,
+  type AppointmentProviderSuggestion,
+} from './appointment-provider-suggestions-sheet';
+import { toIsoAppointment } from './appointment-date-time';
 
 type VisitType = 'video' | 'in-person';
 const VISIT_LABELS = ['Video', 'In-person'];
@@ -68,6 +72,14 @@ export function CreateAppointmentScreen() {
     }
   }
 
+  function applyProviderSuggestion(provider: AppointmentProviderSuggestion) {
+    setDoctor(provider.doctorName);
+    setSpecialty(provider.specialty ?? '');
+    setClinic(provider.clinic ?? '');
+    setFieldErrors((prev) => ({ ...prev, doctor: undefined }));
+    setDoctorSheetOpen(false);
+  }
+
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
       <View style={s.topBarWrap}>
@@ -104,7 +116,7 @@ export function CreateAppointmentScreen() {
         <Input
           label="Doctor / Provider *"
           leadingIcon={<IconStethoscope size={16} color={t.ink3} />}
-          trailingText="Search"
+          trailingText="Recent"
           onTrailingPress={() => setDoctorSheetOpen(true)}
           placeholder="Doctor name"
           value={doctor}
@@ -189,23 +201,14 @@ export function CreateAppointmentScreen() {
         />
       </ScrollView>
 
-      <BottomSheet visible={doctorSheetOpen} onClose={() => setDoctorSheetOpen(false)}>
-        <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
-          <MissingApiState title="Provider search not yet available" contract="provider search API not implemented" />
-          <Button label={i18n('common.close')} variant="soft" onPress={() => setDoctorSheetOpen(false)} style={{ marginTop: 8 }} />
-        </View>
-      </BottomSheet>
+      <AppointmentProviderSuggestionsSheet
+        visible={doctorSheetOpen}
+        bottomInset={insets.bottom}
+        onClose={() => setDoctorSheetOpen(false)}
+        onSelect={applyProviderSuggestion}
+      />
     </SafeAreaView>
   );
-}
-
-function toIsoAppointment(date: string, time: string) {
-  const raw = `${date.trim()} ${time.trim()}`.trim();
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error('Enter a valid appointment date and time.');
-  }
-  return parsed.toISOString();
 }
 
 const s = StyleSheet.create({
@@ -217,5 +220,4 @@ const s = StyleSheet.create({
   textareaWrap: { borderWidth: 1, overflow: 'hidden' },
   textarea:     { padding: 14, minHeight: 96 },
   submitBtn:    { marginTop: 16 },
-  sheetInner:   { paddingHorizontal: 20, paddingTop: 8 },
 });

@@ -1,12 +1,19 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.6-admin-redesign | **Last Updated**: 2026-05-29
+> **Version**: 1.3.6-admin-redesign | **Last Updated**: 2026-05-31
 
 ---
 
 ## [Unreleased]
 
 ### Added
+
+#### Mobile Runtime Follow-Up Hardening (2026-05-30)
+- **Query invalidation**: Mobile cache invalidation now blocks stale in-flight writes and loading cleanup races, preventing older requests from repopulating fresh state.
+- **Meal entry truthfulness**: Add Meal manual entry now persists through `mealService.create`; food search, history, and barcode paths remain unavailable with guarded feedback instead of fake-success flows.
+- **Report export semantics**: Export toggles now map to PDF sections, unsupported destinations are disabled, and `include_sensitive` stays `false`.
+- **No-response controls**: Reviewed mobile controls now either perform real actions, show unavailable feedback, or stay disabled when the underlying feature is not shipped.
+- **Verification**: Mobile typecheck, route matrix, lint, and Jest passed; later Android runtime evidence is tracked under Mobile Android Runtime Routing and Config.
 
 #### Medical RAG Retrieval for AI Chat (2026-05-28)
 - **Knowledge store**: Added curated medical source/chunk ORM models, Alembic migration `041_medical_knowledge_rag`, lexical search index, and portable 384-dimension embedding storage.
@@ -23,6 +30,239 @@
 - **Env/docs/tests**: Worker env templates expose the new DeepSeek and embedding knobs; tests cover payloads, JSON fallback, streaming reasoning suppression, embedding service, and endpoint validation.
 
 ### Fixed
+
+#### Frontend BMI Goal Deadline Validation (2026-05-31)
+- **Past-date guard**: Web BMI goal dialog now blocks past target dates and empty/out-of-range target weights before submitting to Core, matching the existing `POST/PATCH /v1/health-goals` contract.
+- **Error clarity**: Health-goal save action now reads FastAPI validation details so any remaining Core 422 response shows the actual validation reason instead of generic `Error 422`.
+- **Regression coverage**: Added focused Vitest coverage for local-date min handling, client validation, dialog no-submit behavior, and Core error-message extraction.
+- **Verification**: Focused Vitest, targeted ESLint, frontend `tsc --noEmit`, and i18n parity check passed.
+
+#### Mobile Appointment Prescription File Wiring (2026-05-31)
+- **Attachment contract**: Native Appointment Detail now renders appointment prescription files through existing Core `GET/POST/DELETE /v1/appointments/{id}/prescription/assets` instead of showing a generic attachment missing-API guard when a prescription exists.
+- **Shared file UI**: Prescription Detail and Appointment Detail now share one prescription-files card for metadata listing, upload, signed download URL opening, delete, empty, loading, and error states.
+- **Contract truthfulness**: Generic appointment attachments still show explicit unavailable feedback when no prescription asset contract applies; the UI does not pretend a generic appointment upload API exists.
+- **Regression coverage**: Added focused Jest coverage proving Appointment Detail queries the prescription asset key once, renders Core asset metadata, and keeps non-prescription appointment attachments guarded.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, and backend prescription schema probe passed; Jest is now 67 suites / 220 tests and route matrix checks 70 routes.
+
+#### Mobile Risk Detail Driver Trends (2026-05-31)
+- **Risk trend contract**: Native Risk Detail no longer shows a missing risk-history endpoint guard; it renders 30-day trend data for the selected risk drivers through existing Core `GET /v1/reports/trends/batch`.
+- **Truthful scope**: The section is labeled as driver trends, not risk probability history, and the hero chip now shows a current estimate instead of a fake trend because Core exposes report metric trends but not historical risk-score snapshots.
+- **Driver mapping**: Risk factors such as systolic/diastolic BP, BMI, and physical activity map to supported report trend metrics without duplicate batch requests.
+- **Regression coverage**: Added focused Jest coverage for Risk Detail rendering, factor-to-metric mapping, and the mobile report service batch-trends URL.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, and backend `TrendAnalysisBatchResponse` schema probe passed; Jest is now 69 suites / 223 tests and route matrix checks 70 routes.
+
+#### Mobile Reminder Preferences Contract Alignment (2026-05-31)
+- **Dead control fix**: Native Reminder Preferences `Reset to defaults` now PATCHes Core `/v1/notifications/preferences` defaults instead of rendering an inert touch target.
+- **Contract truthfulness**: Removed non-persisted care-category and quiet-day controls; the screen now exposes Core-backed `critical_bypass`, supported categories, channels, and quiet window only.
+- **Modularization**: Split preference defaults/row configs and layout rows out of the screen so each touched source file stays under 200 lines.
+- **Regression coverage**: Added focused Jest coverage for reset persistence, critical-bypass save payload, and absence of non-Core fake controls.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, and backend `NotificationPreferencesUpdateBody` schema probe passed; Jest is now 70 suites / 226 tests and route matrix checks 70 routes.
+
+#### Mobile Appointment Provider Picker Wiring (2026-05-31)
+- **Provider affordance**: Native Create Appointment no longer opens a missing-API placeholder from the Doctor / Provider trailing action; it now shows recent providers derived from existing Core `GET /v1/appointments` history.
+- **Form continuity**: Selecting a recent provider pre-fills doctor, specialty, and clinic fields while preserving manual entry when no prior provider exists.
+- **Contract truthfulness**: The UI is labeled Recent instead of Search because Core has no provider-search endpoint; it reuses appointment history without pretending a provider directory exists.
+- **Regression coverage**: Added focused Jest coverage for provider-history selection, booking payload fields, query wiring, and provider dedupe/sort behavior.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, backend `AppointmentCreateBody` schema probe, and `git diff --check` passed; Jest is now 62 suites / 210 tests and route matrix checks 70 routes.
+
+#### Mobile Goal Streak/Milestone Progress Wiring (2026-05-31)
+- **Progress-derived streaks**: Native Goal Streaks now uses existing Core `GET /v1/health-goals` and `GET /v1/goals/progress` data for the 30-day heatmap, recorded-day streak, best streak, and target-hit count.
+- **Progress-derived milestones**: Native Goal Milestones now derives target, weigh-in, tracking-streak, and target-reached milestones from the same Core progress data instead of static badge rows.
+- **Contract truthfulness**: Removed fake medication/step/sleep placeholder rows and `MissingApiState` guards for non-existent streak/milestone endpoints; copy now reflects recorded weight progress only.
+- **Regression coverage**: Added focused helper and screen tests for heatmap cell states, streak counts, milestone status, query wiring, and absence of old missing-API guards.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, and backend `GoalProgressResponse` schema probe passed; Jest is now 65 suites / 215 tests and route matrix checks 70 routes.
+
+#### Mobile Goal Detail Weight Logging (2026-05-31)
+- **Log progress contract**: Native Goal Detail no longer renders a disabled Log Progress button; it saves manual `weight_kg` readings through existing Core `POST /v1/health-metrics`.
+- **Recent records**: The check-in history placeholder is replaced by recent Core weight progress rows from `GET /v1/goals/progress`, with explicit empty/error states.
+- **Current progress**: Goal Detail streak/best cards now use recorded Core progress data instead of static `--` placeholders.
+- **Regression coverage**: Added focused service/card/screen tests for `weight_kg` payloads, Core range validation, query invalidation, and absence of the old check-in missing guard.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, and backend `HealthMetricCreate(weight_kg)` schema probe passed; Jest is now 66 suites / 218 tests and route matrix checks 70 routes.
+
+#### Mobile Manual Vitals Entry Wiring (2026-05-31)
+- **Vitals persistence**: Native Home → Vitals now saves manual heart rate and blood pressure readings through existing Core `POST /v1/health-metrics` instead of only showing read-only trends from dashboard vitals.
+- **Contract validation**: The mobile form mirrors Core medical bounds for heart rate and blood pressure, and requires complete systolic/diastolic pairs before submit.
+- **Cache refresh**: Successful saves invalidate dashboard, report, and risk query scopes so dependent mobile screens can reload fresh metric data.
+- **Regression coverage**: Added focused service and UI tests for the health-metrics payload, validation, multi-reading save, and cache invalidation behavior.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, backend `HealthMetricCreate` schema probe, and `git diff --check` passed; Jest is now 61 suites / 208 tests and route matrix checks 70 routes.
+
+#### Mobile Goal Detail Progress Wiring (2026-05-31)
+- **Progress chart contract**: Native Goal Detail now renders weekly weight progress through existing Core `GET /v1/goals/progress` instead of showing a missing-API guard for a non-existent health-goal progress route.
+- **No-op cleanup**: Removed the enabled header bell/more controls from Goal Detail because they had no shipped action.
+- **Regression coverage**: Added focused service and screen tests for Core progress URL shape and Goal Detail rendering real progress data.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, backend `GoalProgressResponse` schema probe, and `git diff --check` passed; Jest is now 59 suites / 205 tests and route matrix checks 70 routes.
+
+#### Mobile Signup Onboarding Route Wiring (2026-05-31)
+- **Signup setup route**: Signup OTP success now routes to authenticated `/onboarding/setup` instead of `/auth/setup`, which AuthGate redirects away from after a session is created.
+- **Onboarding continuity**: The existing body-basics setup screen remains reused, but now lives behind an onboarding route that authenticated users may reach.
+- **Regression coverage**: Added focused OTP-screen coverage proving signup verification refreshes the session and routes to `/onboarding/setup`.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; route matrix now checks 70 routes and Jest is 57 suites / 203 tests.
+
+#### Mobile Account Deletion Wiring (2026-05-31)
+- **Delete contract**: Native Me settings now schedules account deletion through existing Core `DELETE /v1/users/me` instead of leaving destructive account settings unwired.
+- **Verification path**: The sheet supports exact email confirmation plus password or delete-account OTP, and it requests OTP via existing `/v1/auth/request-otp` purpose `delete_account`.
+- **Session safety**: Successful scheduling clears the local mobile session so AuthGate returns the device to the public auth flow after Core revokes sessions.
+- **Regression coverage**: Added focused service and settings-sheet tests for delete payload shape, OTP request, session clearing, and mismatched-email blocking.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, and backend `DeleteAccountBody` schema probe passed; live destructive deletion was not executed.
+
+#### Mobile Chat Attachment Link Wiring (2026-05-31)
+- **Attachment contract**: Native Chat no longer opens a `MissingApiState` for the paperclip action; it sends HTTPS attachment metadata through the existing Core `POST /v1/conversations/{id}/messages` `attachments` contract.
+- **Safe UI path**: The attachment modal validates HTTPS URL, name, MIME type, and Core's 100 MiB size bound before submit, without pretending that binary file upload exists.
+- **Message rendering**: Chat bubbles now render returned attachment metadata and open links through the existing safe URL helper.
+- **Regression coverage**: Added focused Jest coverage for attachment payload serialization, modal validation/submission, and attachment bubble rendering/open behavior.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, and backend `SendMessageBody` attachment contract probe passed; Jest is now 55 suites / 197 tests and route matrix checks 69 routes.
+
+#### Frontend Registration i18n Fallback (2026-05-31)
+- **Registration error copy**: Added missing `errors.registrationFailed` translations for English and Vietnamese so failed signup OTP requests no longer throw a Next Intl `MISSING_MESSAGE` console error.
+- **Regression coverage**: `i18n-parity.test.ts` now scans auth form `tErrors("...")` calls and fails when either locale is missing the referenced `errors.*` key.
+
+#### Mobile Health Profile Route Wiring (2026-05-31)
+- **Profile route**: Native Me → Health profile now opens authenticated `/profile/health` instead of `/auth/setup`, which authenticated users are redirected away from by AuthGate.
+- **Profile persistence**: Added a Core-backed health profile screen for full name, date of birth, sex, blood type, height, weight, phone, and address using existing `PATCH /v1/users/me`.
+- **Contract validation**: Core profile update validation now rejects `full_name: null` and mirrors existing DB string limits for full name, blood type, phone, and address; committed OpenAPI/TS contracts now match.
+- **Cache refresh**: Successful saves invalidate profile, dashboard, and health-goal queries so dependent mobile screens reload current body/profile data.
+- **Regression coverage**: Added focused Jest coverage for route selection, profile prefill/save payload, query invalidation, validation failures, stale success clearing, and impossible calendar dates; backend coverage verifies profile contract rejection before DB mutation.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, backend profile tests, backend OpenAPI drift tests, and frontend TypeScript passed; this slice raised Jest to 50 suites / 183 tests and route matrix checks 69 routes.
+
+#### Mobile Insurance Persistence Contract (2026-05-31)
+- **Persistence truthfulness**: Native Insurance form now saves provider, policy number, and group number into Core `medical_info.insurance` instead of reporting success for data Core dropped.
+- **Cross-surface safety**: Core profile PATCH now merges `medical_info` objects against the locked profile row, and web profile saves no longer send hidden stale insurance fields that can erase native insurance.
+- **Contract alignment**: Core `MedicalInfo`, response OpenAPI, shared TS contracts, frontend validators, and mobile types now include `InsuranceInfo` with 128-character field bounds.
+- **Regression coverage**: Added mobile Insurance form tests for Core payload and max-length blocking; backend profile tests verify direct insurance persistence and partial web-style medical-info patches preserving existing insurance.
+- **Verification**: Backend profile/OpenAPI tests passed: 14 tests. Frontend TypeScript, mobile typecheck, mobile lint, route matrix, full Jest, and Android Expo export passed; this slice raised Jest to 51 suites / 185 tests and route matrix checks 69 routes.
+
+#### Mobile Health Connect Device Identity (2026-05-31)
+- **Android connect contract**: Native Health Connect connect and sync paths now send Core's required stable `external_account_id` instead of calling `POST /v1/devices` with an invalid payload.
+- **Install isolation**: Mobile stores the Core Health Connect device id locally and resolves sync through that id or an idempotent reconnect, preventing one Android install from syncing into another install's redacted device row.
+- **Race prevention**: First-run external-id creation is serialized through an in-flight promise so concurrent sync/connect calls cannot generate two local ids.
+- **Regression coverage**: Added focused Jest coverage for id creation/reuse, concurrent first-run calls, Add Device payload/device-id persistence, and multi-row Health Connect resolver selection.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Android Expo export, backend `DeviceConnectBody` contract probe, and focused code-review recheck passed; Jest is now 53 suites / 192 tests and route matrix checks 69 routes.
+
+#### Mobile Notification Inbox Link Wiring (2026-05-31)
+- **Notification routing**: Native Notification Inbox now keeps Core `link`/`reference_id` data and maps known backend `/dashboard/...` notification links to native routes after marking the item read.
+- **Routing safety**: External links, unknown dashboard paths, and unsupported relative paths no longer route into unmatched Expo screens.
+- **Contract truthfulness**: Removed unsupported inline `Take`, `Skip`, `View`, and `Reply` actions because the current notification API only supports read/read-all/preferences.
+- **No-op cleanup**: Removed the enabled top-bar overflow icon that had no action and removed the fake `all caught up tomorrow` subtitle.
+- **Failure states**: Mark-read and mark-all-read failures now surface inline instead of rejecting from touch handlers.
+- **Regression coverage**: Added focused Jest coverage for backend medication/reminder links, Core `reminder` kind filtering, unknown dashboard links, external-link rejection, service failures, mark-read invalidation, and absence of fake inline actions.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; Jest is now 49 suites / 173 tests and route matrix checks 68 routes.
+
+#### Mobile Goal Creation Wiring (2026-05-31)
+- **Goal create contract**: Native Goal Create now saves through existing Core `POST /v1/health-goals` instead of returning without persistence.
+- **Contract truthfulness**: The active wizard now exposes only the supported target-weight goal path and no longer suggests unsupported category, schedule, reminder, or source persistence.
+- **Validation**: Target weight input is strictly validated against the backend 30-200 kg range before submit.
+- **Regression coverage**: Added focused Jest coverage for successful save, invalid target blocking, and weight-target parsing.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; Jest is now 48 suites / 166 tests and route matrix checks 68 routes.
+
+#### Mobile Medication Refill Status Wiring (2026-05-31)
+- **Refill status panel**: Native Medication Refill no longer shows a missing-API banner for refill history; it renders Core-backed supply units, latest logged refill, cadence, and next refill estimate from the medication detail payload.
+- **Contract boundary**: Pharmacy refill requests remain explicitly unavailable because no existing backend request contract exists.
+- **Regression coverage**: Added focused Jest coverage for the refill status panel, zero-supply state, null-supply state, and strict refill-unit validation.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; Jest is now 46 suites / 162 tests and route matrix checks 68 routes.
+
+#### Mobile Home Insight Detail Wiring (2026-05-31)
+- **Health score formula**: Native Health Score detail no longer shows a missing-API banner for the formula; it renders the current Core-backed score source from `health_score` when present or the mobile dashboard-goal average fallback.
+- **AI insight detail**: Native Home AI Insight no longer opens a static sample recovery-score screen; it opens `/home/insight/current`, reads Core dashboard insight/alert/KPI data, and routes the primary action by insight category.
+- **Regression coverage**: Added focused Jest coverage for the score formula panel and Core-backed AI insight detail.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; Jest is now 45 suites / 157 tests and route matrix checks 68 routes.
+
+#### Mobile Prescription Medication Import (2026-05-31)
+- **Prescription import UI**: Native Medication Import now loads the source appointment prescription, shows selectable medicines, and imports the selected rows through existing Core `POST /v1/medications/import/{appointment_id}`.
+- **Import contract typing**: Shared contracts now include medication import request/result shapes, and the mobile medication service unwraps the Core response payload.
+- **Cache refresh**: Successful imports invalidate medication list and today's dose queries so the Meds hub can reload imported plans/reminders.
+- **Failure states**: Empty prescriptions, appointment load errors, validation gaps, and backend import failures render explicit states instead of placeholder-only feedback.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; Jest is now 41 suites / 150 tests.
+
+#### Mobile Appointment Reschedule Wiring (2026-05-31)
+- **Reschedule action**: Native Appointment Detail no longer opens a missing-API placeholder for rescheduling; it opens a date/time sheet backed by existing Core `PATCH /v1/appointments/{id}`.
+- **Shared date handling**: Appointment create and reschedule now share the same date/time-to-ISO conversion helper.
+- **Cache refresh**: Successful reschedules invalidate appointment list and detail queries so mounted care screens can reload fresh Core data.
+- **Failure states**: Invalid date/time input and backend save failures render explicit errors without reporting fake success.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; later medication import evidence raises Jest to 41 suites / 150 tests.
+
+#### Mobile Language Preference Settings (2026-05-31)
+- **Language row wiring**: Native Me no longer opens a missing-API modal for Language; it opens a preferences-backed language sheet.
+- **Preference persistence**: Mobile loads and saves locale through existing Core `/v1/preferences/me`, then updates the active i18n language after a successful backend save.
+- **Boot hydration**: Authenticated mobile startup now hydrates saved locale from the same Core preference endpoint instead of staying device-locale-only after restart.
+- **Failure states**: The sheet shows retryable load errors and does not switch the app language when preference save fails.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; later appointment reschedule evidence raises Jest to 39 suites / 147 tests.
+
+#### Mobile Security Password Reset (2026-05-31)
+- **Password action**: Native Security no longer exposes password as a no-op; it opens an email-OTP reset panel backed by existing Core auth endpoints.
+- **Reset lifecycle**: Mobile requests a reset OTP, verifies the code, submits the new password, and refreshes the current session after success.
+- **Guarded controls**: Security Face ID/app lock/session/recovery rows now show explicit unavailable feedback or reload real logs instead of silently accepting taps.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; later Language settings evidence raises Jest to 38 suites / 144 tests.
+
+#### Mobile Account Export Settings (2026-05-31)
+- **Settings sheet wiring**: Native Me settings no longer shows a placeholder; it now requests account data export jobs through Core `/v1/users/me/export`.
+- **Export lifecycle**: Mobile can poll export status and open completed signed download URLs through the existing HTTPS-only safe URL helper.
+- **Contracts**: Shared contracts now include account data export request/download shapes, with mobile service coverage for request/status/download routes.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; later Language settings evidence raises Jest to 38 suites / 144 tests.
+
+#### Mobile Chat Conversation Creation (2026-05-31)
+- **New chat wiring**: Native Chat no longer shows a missing-API modal for new conversations; it searches existing Core users through `/v1/users/lookup`.
+- **Direct/group creation**: Mobile can create direct conversations through `/v1/conversations/direct` and group conversations through `/v1/conversations`, then opens the created conversation.
+- **Contracts**: Shared mobile contracts now include chat user lookup results and chat service coverage verifies lookup/direct/group request payloads.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; later Language settings evidence raises Jest to 38 suites / 144 tests.
+
+#### Mobile Appointment Prep CTA Route (2026-05-31)
+- **Prep route correctness**: The appointments hub no longer sends "Prep for your visit" to `/care/prep/new`; it opens the next eligible appointment's prep checklist and hides the CTA when no eligible appointment exists.
+- **Prep copy accuracy**: The prep CTA now names the selected appointment doctor instead of hardcoding a placeholder doctor.
+- **Reminder filter control**: Removed the redundant enabled-but-unhandled Reminders top filter icon; visible reminder chips remain the real API-backed filter control.
+- **Reports controls**: Removed unsupported Reports search/filter icons, removed the empty-state `Learn how` no-op button, and routed error-state reconnect to device connections.
+- **Medication history control**: Removed the Medication History filter icon because the current API-backed screen has no supported filter action.
+- **Route guard coverage**: The mobile route matrix now also scans static router targets and normalizes dynamic template segments, passing with 67 checked routes.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and Android Expo export passed; later chat wiring evidence raises Jest to 33 suites / 131 tests.
+
+#### Mobile Android Runtime Routing and Config (2026-05-30)
+- **Android system UI**: Added `expo-system-ui` and enabled `android.edgeToEdgeEnabled`, so Expo Android config honors automatic theme style and no longer emits the prior system UI / edge-to-edge warnings.
+- **Android launch path**: `npm run android` now launches Expo Go explicitly, avoiding stale custom dev clients that can produce native-module mismatches.
+- **Native route startup**: Replaced navigable tab URLs using Expo Router group segments such as `/(tabs)/home` with public paths like `/home`, preventing Android deep links from landing on `Unmatched Route`.
+- **Route guard**: The mobile route matrix now normalizes route groups as non-URL segments and passes with 31 public routes.
+- **Metro watcher stability**: Metro now blocklists generated/runtime repo directories while preserving repo-root watch access for shared contracts, preventing `.data/minio` watcher crashes during Android bundling.
+- **Native login**: Expo Go rendered the native welcome screen and signed into Home against local Core API with a disposable DB-seeded user.
+- **Post-login navigation**: Removed a redundant non-MFA sign-in redirect so AuthGate owns the auth-to-home transition and the visible development navigation warning no longer appears.
+- **Core meal summary route**: Moved `/v1/meals/calories-summary` before the dynamic `/{meal_id}` route and cast JSONB calories before aggregation, fixing the native Meals hub `Meals unavailable / Dữ liệu không hợp lệ` state.
+- **Native meal persistence**: Android Expo Go manual Add Meal saved `CodexMeal220000` through Core; DB verification found the persisted row for the mobile runtime user with analyzed manual nutrition.
+- **Meal slot display**: Meals hub now prefers persisted `nutrition_result.meal_type` before deriving a slot from clock time, so a saved Lunch no longer displays as Dinner only because of local time.
+- **Mounted query refresh**: `invalidateApiQuery` now notifies mounted matching queries to reload after cache invalidation while still ignoring invalidated in-flight responses.
+- **Native medication persistence**: Android Expo Go manual Add Medication saved `CodexMed222212`; the Meds hub immediately refreshed to `2 active` and DB verification found the active medication row.
+- **Native appointment persistence**: Android Expo Go manual appointment create saved `CodexDoctor2250`; the Care hub immediately refreshed to the appointment hero and `1 upcoming`, with DB verification of the upcoming appointment row.
+- **Runtime evidence**: Android emulator screenshots and UI dumps confirmed the original route-group red screen, the stale custom dev-client Reanimated mismatch, Expo Go startup after the Metro fix, native login to Home, and meal/medication/appointment persistence through Core DB. Broader reports/chat/profile no-dead-control coverage remains open.
+- **Verification**: Mobile typecheck, route matrix, lint, Jest, `expo-doctor`, Expo Android config introspection, Android bundle export, backend meal endpoint pytest, live Core route probe, and native Expo Go login/meal/medication/appointment saves passed.
+
+#### Frontend Persistence Review Remediation (2026-05-30)
+- **Meal diary reload**: Server-render meal fetch now paginates within Core's `per_page <= 100` limit, preventing successful creates from reloading as an empty diary.
+- **Appointments**: Create, initial load, and detail update paths now share one DTO normalizer; create-sheet labels are associated with inputs.
+- **Medication create**: Added medication audit enum migration and endpoint regression so plan creation commits with audit logging instead of returning Core 500.
+- **Reminder Today reload**: Recurrence materialization now keeps same-day recurring slots even when the reminder time has already passed.
+- **Dev/build gates**: React Grab is opt-in, kitchensink freshness render is deterministic, Zod/Vitest/TypeScript test drift is fixed, and landing E2E uses a stable nav selector.
+- **Verification**: Backend medication/reminder pytest passed; focused Vitest passed; `npm run build`, `npx tsc --noEmit --pretty false`, and landing Playwright passed. Authenticated persistence Playwright suite is env-gated and skipped locally without credentials.
+
+#### Meal Photo Analysis Edit Handoff (2026-05-30)
+- **Calorie display**: Web snap results now read Core `nutrition_result.ingredients` and fall back to aggregate `nutrition_result.calories`, preventing analyzed meals from showing `0 kcal` when AI returns only total nutrition.
+- **Editable review**: Aggregate AI nutrition now creates an editable prefill row for the manual meal form, so users can adjust the dish and calories after analysis.
+- **Confirm & Edit prefill**: The snap result handoff now stores a slim editable payload instead of the base64 image preview, preventing large uploaded photos from making the manual form open blank.
+- **Nutrition detail continuity**: AI macro values are preserved through the edit form schema and summary card instead of being replaced by rough calorie-based estimates.
+- **Meals entrypoint**: The Dinh duong page header now exposes the existing photo capture/upload flow beside manual meal entry.
+- **Diary refresh after save**: The manual meal form now refreshes the diary route after a successful save, preventing the success toast from returning users to a stale empty nutrition log.
+- **Diary server fetch origin**: Meals page server data now resolves BFF URLs from the active request origin in dev, so the today widget and weekly calorie chart read the same origin that accepted the meal create request.
+- **Verification**: Focused Vitest passed: 14 tests across meals, dashboard data, and camera handoff. Targeted ESLint passed for touched meal/server-data files. Browser snapshot confirmed the new header action. Full frontend TypeScript remains blocked by unrelated baseline admin/test/config errors.
+
+#### Meal Photo Analysis Runtime Wiring (2026-05-30)
+- **Queue startup**: Local `start_queue_worker.bat` now starts the backend Celery app that owns `app.tasks.meal_analysis`; Docker queue workers use the same `app.tasks:celery_app` entrypoint.
+- **Local bucket bootstrap**: Core storage upload now lazily creates missing local/dev MinIO buckets before retrying `put_object`, preventing `/v1/meals/analyze-photo` from returning 500 when the `meals` bucket is absent.
+- **Local storage fetch**: AI Worker image loading keeps private-network blocking on by default, but permits the configured object-storage endpoint host so local MinIO meal photos can be analyzed.
+- **Private object fetch**: Meal analysis tasks now send AI Worker a short-lived presigned GET URL instead of the raw MinIO object URL, so private `meals` bucket objects can be downloaded for YOLO calorie analysis.
+- **Regression coverage**: Added queue-start command tests, AI Worker image-loader tests for storage host trust without opening other private ports, and a Celery payload test that requires presigned worker download URLs.
+- **Verification**: Backend meal endpoint pytest passed: 15 tests. AI Worker analyze/image-loader pytest passed: 19 tests. Direct presigned worker probe returned 200 with nutrition. Python compile passed for the meal task and endpoint modules.
+
+#### Mobile Appointment Prep Persistence and Upload Truthfulness (2026-05-30)
+- **Appointment prep persistence**: Added DB-backed `appointment_preps` storage, Core `GET/PATCH /v1/appointments/{appointment_id}/prep`, OpenAPI/shared contracts, and mobile service wiring.
+- **Visit prep UI**: Mobile checklist now saves/reloads through Core and guards local edits from late GET responses.
+- **Upload truthfulness**: Insurance-card UI no longer stores fake front/back upload flags; generic appointment attachment upload no longer displays fake local uploaded files.
+- **Runtime hardening**: Mobile idempotency keys now fall back when `crypto.randomUUID` is unavailable.
+- **Verification**: Mobile typecheck, route matrix, 9 focused Jest suites, backend focused pytest, backend smoke, mobile lint, and diff check passed.
 
 #### Meal Photo Analyze Contract (2026-05-29)
 - **Severity/impact**: Medium user-facing bug where web meal photo analysis returned `422` before queueing because Core required a pre-analysis `name` field that the camera flow does not know yet.

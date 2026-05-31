@@ -264,11 +264,9 @@ export function useConversations() {
   }, [applyConversationData]);
 
   // Initial load
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => { void loadConversations(); }, [loadConversations]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const sortedConversations = useMemo(() => [...conversations].sort((a, b) => {
+  const sortedConversations = useMemo(() => conversations.toSorted((a, b) => {
     if (a.type === "ai") return -1;
     if (b.type === "ai") return 1;
     if (a.is_pinned && !b.is_pinned) return -1;
@@ -648,52 +646,86 @@ export function useMessages(
   options: UseMessagesOptions = {}
 ) {
   const { locale = "vi", selfReactionLabel = "You" } = options;
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [messageState, setMessageState] = useState<{
+    conversationId: string | null;
+    messages: Message[];
+  }>({ conversationId, messages: [] });
+  const [loadState, setLoadState] = useState<{
+    conversationId: string | null;
+    isLoading: boolean;
+    hasMore: boolean;
+  }>({ conversationId: null, isLoading: false, hasMore: false });
   const [isTyping, setIsTyping] = useState(false);
   // AI streaming state. `null` means no stream in flight.
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
-  const [hasMore, setHasMore] = useState(false);
   const lastCursorRef = useRef<string | null>(null);
   const activeConversationIdRef = useRef(conversationId);
   activeConversationIdRef.current = conversationId;
-  const preservedLocalMessageConversationsRef = useRef<Map<string, string>>(new Map());
+  const preservedLocalMessageConversationsRef = useRef<Map<string, string> | null>(null);
+  if (preservedLocalMessageConversationsRef.current === null) {
+    preservedLocalMessageConversationsRef.current = new Map();
+  }
+  const messages = useMemo(
+    () => messageState.conversationId === conversationId ? messageState.messages : [],
+    [messageState, conversationId],
+  );
+  const isRemoteConversation = Boolean(
+    conversationId && conversationId !== FALLBACK_AI_CONVERSATION.id,
+  );
+  const isLoading =
+    isRemoteConversation &&
+    (loadState.conversationId === conversationId ? loadState.isLoading : true);
+  const hasMore = loadState.conversationId === conversationId ? loadState.hasMore : false;
+
+  const setMessages = useCallback((next: Message[] | ((prev: Message[]) => Message[])) => {
+    const targetConversationId = activeConversationIdRef.current;
+    setMessageState((prev) => {
+      const previousMessages =
+        prev.conversationId === targetConversationId ? prev.messages : [];
+      const resolved = typeof next === "function" ? next(previousMessages) : next;
+      return { conversationId: targetConversationId, messages: resolved };
+    });
+  }, []);
+
+  const setLoadForConversation = useCallback((
+    targetConversationId: string | null,
+    patch: Partial<{ isLoading: boolean; hasMore: boolean }>,
+  ) => {
+    setLoadState((prev) => {
+      const base =
+        prev.conversationId === targetConversationId
+          ? prev
+          : { conversationId: targetConversationId, isLoading: false, hasMore: false };
+      return { ...base, ...patch };
+    });
+  }, []);
 
   useEffect(() => {
     if (!conversationId || conversationId === FALLBACK_AI_CONVERSATION.id) {
-      preservedLocalMessageConversationsRef.current.clear();
-      setMessages([]);
+      preservedLocalMessageConversationsRef.current?.clear();
       return;
     }
-    const preservedEntries = preservedLocalMessageConversationsRef.current.entries();
+    const preservedEntries = preservedLocalMessageConversationsRef.current?.entries() ?? [];
     for (const [messageId, preservedConversationId] of preservedEntries) {
       if (preservedConversationId !== conversationId) {
-        preservedLocalMessageConversationsRef.current.delete(messageId);
+        preservedLocalMessageConversationsRef.current?.delete(messageId);
       }
     }
-    setMessages((prev) => prev.filter((message) => message.conversation_id === conversationId));
   }, [conversationId]);
 
   // Load messages when conversationId changes
   useEffect(() => {
     if (!conversationId) {
-      setMessages([]);
-      setHasMore(false);
-      setIsLoading(false);
       return;
     }
 
     if (conversationId === FALLBACK_AI_CONVERSATION.id) {
-      setMessages([]);
-      setHasMore(false);
       lastCursorRef.current = null;
-      setIsLoading(false);
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
     lastCursorRef.current = null;
 
     bffFetch<{ data: unknown[]; has_more: boolean; next_cursor: string | null }>(
@@ -707,28 +739,33 @@ export function useMessages(
             const merged = mergeRemoteMessagesWithLocal(
               remoteMessages,
               prev,
-              preservedLocalMessageConversationsRef.current,
+              preservedLocalMessageConversationsRef.current!,
               conversationId,
             );
             prunePreservedLocalMessages(
-              preservedLocalMessageConversationsRef.current,
+              preservedLocalMessageConversationsRef.current!,
               conversationId,
               merged,
               remoteMessages,
             );
             return merged;
           });
-          setHasMore(has_more);
+          setLoadForConversation(conversationId, { hasMore: has_more, isLoading: false });
           lastCursorRef.current = next_cursor ?? null;
         }
       })
       .catch(() => {
-        if (!cancelled) setMessages([]);
+        if (!cancelled) {
+          setMessages([]);
+          setLoadForConversation(conversationId, { hasMore: false, isLoading: false });
+        }
       })
-      .finally(() => { if (!cancelled) setIsLoading(false); });
+      .finally(() => {
+        if (!cancelled) setLoadForConversation(conversationId, { isLoading: false });
+      });
 
     return () => { cancelled = true; };
-  }, [conversationId]);
+  }, [conversationId, setLoadForConversation, setMessages]);
 
   /**
    * Refetch the active conversation's most recent page from the BFF.
@@ -756,23 +793,23 @@ export function useMessages(
         const merged = mergeRemoteMessagesWithLocal(
           remoteMessages,
           prev,
-          preservedLocalMessageConversationsRef.current,
+          preservedLocalMessageConversationsRef.current!,
           requestConversationId,
         );
         prunePreservedLocalMessages(
-          preservedLocalMessageConversationsRef.current,
+          preservedLocalMessageConversationsRef.current!,
           requestConversationId,
           merged,
           remoteMessages,
         );
         return merged;
       });
-      setHasMore(has_more);
+      setLoadForConversation(requestConversationId, { hasMore: has_more, isLoading: false });
       lastCursorRef.current = next_cursor ?? null;
     } catch {
       /* leave existing state — next manual interaction will retry */
     }
-  }, [conversationId]);
+  }, [conversationId, setLoadForConversation, setMessages]);
 
   const loadMoreInFlightRef = useRef<Promise<number> | null>(null);
 
@@ -791,7 +828,7 @@ export function useMessages(
         }>(`/api/v1/conversations/${conversationId}/messages?limit=50&before=${encodeURIComponent(beforeCursor)}`);
         const older = data.map(adaptMessage).reverse();
         if (older.length === 0) {
-          setHasMore(has_more);
+          setLoadForConversation(conversationId, { hasMore: has_more });
           lastCursorRef.current = next_cursor ?? null;
           return 0;
         }
@@ -802,7 +839,7 @@ export function useMessages(
           prepended = mergedOlder.length;
           return [...mergedOlder, ...prev];
         });
-        setHasMore(has_more);
+        setLoadForConversation(conversationId, { hasMore: has_more });
         lastCursorRef.current = next_cursor ?? null;
         return prepended;
       } catch {
@@ -814,13 +851,13 @@ export function useMessages(
 
     loadMoreInFlightRef.current = request;
     return request;
-  }, [conversationId, hasMore]);
+  }, [conversationId, hasMore, setLoadForConversation, setMessages]);
 
   /** Called by WS event handler to upsert a message into state. */
   const upsertMessage = useCallback((raw: unknown) => {
     const msg = adaptMessage(raw);
     if (msg.conversation_id !== activeConversationIdRef.current) return;
-    preservedLocalMessageConversationsRef.current.set(msg.id, msg.conversation_id);
+    preservedLocalMessageConversationsRef.current?.set(msg.id, msg.conversation_id);
     setMessages((prev) => {
       const idx = prev.findIndex((m) => m.id === msg.id);
       if (idx >= 0) {
@@ -830,14 +867,14 @@ export function useMessages(
       }
       return [...prev, msg];
     });
-  }, []);
+  }, [setMessages]);
 
   /** Called by WS pin/unpin events — toggles is_pinned on a message already in state. */
   const setPinnedState = useCallback((msgId: string, isPinned: boolean) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === msgId ? { ...m, is_pinned: isPinned } : m))
     );
-  }, []);
+  }, [setMessages]);
 
   /** Called by WS typing event. */
   const setRemoteTyping = useCallback((typing: boolean) => {
@@ -883,7 +920,7 @@ export function useMessages(
         return [...prev, placeholder];
       });
     },
-    []
+    [setMessages]
   );
 
   /** Append a delta to the streaming bubble identified by message_id. */
@@ -900,7 +937,7 @@ export function useMessages(
         )
       );
     },
-    []
+    [setMessages]
   );
 
   /** Replace the placeholder content with the final MessageDTO from the BE. */
@@ -913,7 +950,7 @@ export function useMessages(
       next[idx] = { ...msg, status: "read" };
       return next;
     });
-  }, []);
+  }, [setMessages]);
 
   /**
    * AI streaming send.
@@ -1008,14 +1045,15 @@ export function useMessages(
         // Each event has `event: NAME\n` (optional) and `data: PAYLOAD\n` lines.
         // Multiple `data:` lines concatenate with `\n`.
         while (true) {
+          // oxlint-disable-next-line react-doctor/async-await-in-loop -- SSE streams are read sequentially from one reader.
           const { value, done } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
-          let separator = buffer.indexOf("\n\n");
+          let separator = buffer.search(/\n\n/);
           while (separator >= 0) {
             const frame = buffer.slice(0, separator);
             buffer = buffer.slice(separator + 2);
-            separator = buffer.indexOf("\n\n");
+            separator = buffer.search(/\n\n/);
             const lines = frame.split("\n");
             let eventName = "message";
             const dataParts: string[] = [];
@@ -1069,7 +1107,7 @@ export function useMessages(
       }
       return optimisticUser;
     },
-    [currentUserId, locale],
+    [currentUserId, locale, setMessages],
   );
 
   const stopStreaming = useCallback(() => {
@@ -1123,7 +1161,7 @@ export function useMessages(
       };
       const shouldReflectInState = convId === activeConversationIdRef.current;
       if (shouldReflectInState) {
-        preservedLocalMessageConversationsRef.current.set(optimisticId, convId);
+        preservedLocalMessageConversationsRef.current?.set(optimisticId, convId);
         setMessages((prev) => [...prev, optimistic]);
         onMessageSent?.(optimistic);
       }
@@ -1146,8 +1184,8 @@ export function useMessages(
           convId === activeConversationIdRef.current &&
           confirmed.conversation_id === activeConversationIdRef.current;
         if (canReflectConfirmed) {
-          preservedLocalMessageConversationsRef.current.delete(optimisticId);
-          preservedLocalMessageConversationsRef.current.set(confirmed.id, confirmed.conversation_id);
+          preservedLocalMessageConversationsRef.current?.delete(optimisticId);
+          preservedLocalMessageConversationsRef.current?.set(confirmed.id, confirmed.conversation_id);
           setMessages((prev) => {
             const next = prev.map((m) => (m.id === optimisticId ? confirmed : m));
             const firstConfirmedIdx = next.findIndex((m) => m.id === confirmed.id);
@@ -1188,7 +1226,7 @@ export function useMessages(
         return failed;
       }
     },
-    [currentUserId]
+    [currentUserId, setMessages]
   );
 
   /**
@@ -1206,11 +1244,11 @@ export function useMessages(
       if (target.status !== "failed" && target.status !== "queued") return null;
       if (currentUserId && target.sender_id !== currentUserId) return null;
       const replyToId = target.reply_to?.id;
-      preservedLocalMessageConversationsRef.current.delete(messageId);
+      preservedLocalMessageConversationsRef.current?.delete(messageId);
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
       return sendMessage(target.conversation_id, target.content, replyToId);
     },
-    [messages, currentUserId, sendMessage]
+    [messages, currentUserId, sendMessage, setMessages]
   );
 
   /**
@@ -1219,14 +1257,14 @@ export function useMessages(
    * worker until `ai:completed` arrives.
    */
   const discardMessage = useCallback((messageId: string) => {
-    preservedLocalMessageConversationsRef.current.delete(messageId);
+    preservedLocalMessageConversationsRef.current?.delete(messageId);
     setMessages((prev) => {
       const target = prev.find((m) => m.id === messageId);
       if (!target) return prev;
       if (target.status !== "failed" && target.status !== "queued") return prev;
       return prev.filter((m) => m.id !== messageId);
     });
-  }, []);
+  }, [setMessages]);
 
   /**
    * Promote a `failed` (network-error) message to `queued`, signalling that
@@ -1245,7 +1283,7 @@ export function useMessages(
         return { ...m, status: "queued" as const, error_code: undefined };
       })
     );
-  }, []);
+  }, [setMessages]);
 
   /**
    * Synthesise an optimistic `queued` message without firing a network call —
@@ -1284,11 +1322,11 @@ export function useMessages(
         is_pinned: false,
         created_at: new Date().toISOString(),
       };
-      preservedLocalMessageConversationsRef.current.set(optimisticId, convId);
+      preservedLocalMessageConversationsRef.current?.set(optimisticId, convId);
       setMessages((prev) => [...prev, optimistic]);
       return optimistic;
     },
-    [currentUserId]
+    [currentUserId, setMessages]
   );
 
   const editMessage = useCallback(async (convId: string, messageId: string, content: string) => {
@@ -1312,7 +1350,7 @@ export function useMessages(
       // Rollback to state before optimistic update
       if (prevMessages) setMessages(prevMessages);
     }
-  }, []);
+  }, [setMessages]);
 
   const recallMessage = useCallback(async (convId: string, messageId: string) => {
     let prevMessages: Message[] | null = null;
@@ -1329,11 +1367,11 @@ export function useMessages(
       // Rollback — message was not actually recalled
       if (prevMessages) setMessages(prevMessages);
     }
-  }, []);
+  }, [setMessages]);
 
   const deleteMessage = useCallback(async (convId: string, messageId: string) => {
     let prevMessages: Message[] | null = null;
-    preservedLocalMessageConversationsRef.current.delete(messageId);
+    preservedLocalMessageConversationsRef.current?.delete(messageId);
     setMessages((prev) => {
       prevMessages = prev;
       return prev.filter((m) => m.id !== messageId);
@@ -1347,7 +1385,7 @@ export function useMessages(
       // Rollback — message was not actually deleted
       if (prevMessages) setMessages(prevMessages);
     }
-  }, []);
+  }, [setMessages]);
 
   const pinMessage = useCallback(async (convId: string, messageId: string) => {
     let wasPinned = false;
@@ -1365,7 +1403,7 @@ export function useMessages(
     } catch {
       // optimistic stays
     }
-  }, []);
+  }, [setMessages]);
 
   const reactToMessage = useCallback(
     async (convId: string, messageId: string, emoji: string) => {
@@ -1428,7 +1466,7 @@ export function useMessages(
         // optimistic stays
       }
     },
-    [currentUserId, selfReactionLabel]
+    [currentUserId, selfReactionLabel, setMessages]
   );
 
   // `simulateAIReply` was removed. Faking AI replies in the UI without an

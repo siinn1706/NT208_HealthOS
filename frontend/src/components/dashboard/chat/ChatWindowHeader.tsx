@@ -69,12 +69,12 @@ export function ChatWindowHeader({
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background/80 backdrop-blur-sm">
         {/* Back button (mobile) */}
         {onBack && (
-          <button
+          <button type="button"
             onClick={onBack}
             aria-label="Back"
-            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
+            className="md:hidden size-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="size-5" />
           </button>
         )}
 
@@ -83,11 +83,11 @@ export function ChatWindowHeader({
           {isAi ? (
             <AiChatBadge size="md" />
           ) : isGroup ? (
-            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-              <Users className="w-5 h-5 text-accent" />
+            <div className="size-10 rounded-full bg-accent/20 flex items-center justify-center">
+              <Users className="size-5 text-accent" />
             </div>
           ) : (
-            <Avatar className="w-10 h-10">
+            <Avatar className="size-10">
               <AvatarFallback className="bg-secondary text-foreground text-sm font-semibold">
                 {getInitials(name)}
               </AvatarFallback>
@@ -110,7 +110,7 @@ export function ChatWindowHeader({
               t("members", { count: conversation.participants.length })
             ) : other?.is_online ? (
               <span className="flex items-center gap-1">
-                <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                <Circle className="size-2 fill-green-500 text-green-500" />
                 {t("online")}
               </span>
             ) : other?.last_seen ? (
@@ -124,35 +124,35 @@ export function ChatWindowHeader({
         {/* Action buttons */}
         <div className="flex items-center gap-1">
           {onSearch && (
-            <button
+            <button type="button"
               onClick={onSearch}
               aria-label={t("searchInChat")}
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
+              className="size-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
             >
-              <Search className="w-4 h-4 text-muted-foreground" />
+              <Search className="size-4 text-muted-foreground" />
             </button>
           )}
           {onInfoOpen && (
-            <button
+            <button type="button"
               onClick={onInfoOpen}
               aria-label={t("conversationInfo")}
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
+              className="size-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
             >
-              <Info className="w-4 h-4 text-muted-foreground" />
+              <Info className="size-4 text-muted-foreground" />
             </button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
+              <button type="button"
                 aria-label={t("moreOptions")}
-                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
+                className="size-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
               >
-                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                <MoreVertical className="size-4 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem onClick={() => setShowThemePicker(true)} className="gap-2 cursor-pointer">
-                <Palette className="w-4 h-4" />
+                <Palette className="size-4" />
                 {t("changeTheme")}
               </DropdownMenuItem>
 
@@ -160,11 +160,11 @@ export function ChatWindowHeader({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onPin} className="gap-2 cursor-pointer">
-                    {conversation.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                    {conversation.is_pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
                     {conversation.is_pinned ? t("unpinChat") : t("pinChat")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onMute} className="gap-2 cursor-pointer">
-                    {conversation.is_muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                    {conversation.is_muted ? <Bell className="size-4" /> : <BellOff className="size-4" />}
                     {conversation.is_muted ? t("unmuteChat") : t("muteChat")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -172,7 +172,7 @@ export function ChatWindowHeader({
                     onClick={onDelete}
                     className="gap-2 cursor-pointer text-destructive focus:text-destructive"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="size-4" />
                     {t("deleteChat")}
                   </DropdownMenuItem>
                 </>

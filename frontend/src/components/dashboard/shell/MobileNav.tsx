@@ -54,12 +54,12 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
             href={link.href as never}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-0.5 px-2 py-2 min-h-[44px] text-xs font-medium",
+              "relative flex flex-1 flex-col items-center justify-center gap-0.5 p-2 min-h-[44px] text-xs font-medium",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
             <span className="relative">
-              <Icon className="h-5 w-5" aria-hidden="true" />
+              <Icon className="size-5" aria-hidden="true" />
               {showBadge && (
                 <span
                   aria-label={tShell("notificationsUnreadAria", { n: unread })}
@@ -77,10 +77,10 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
         type="button"
         variant="ghost"
         onClick={onOpenDrawer}
-        className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 rounded-none px-2 py-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 rounded-none p-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
         aria-label={tShell("openDrawer")}
       >
-        <Menu className="h-5 w-5" aria-hidden="true" />
+        <Menu className="size-5" aria-hidden="true" />
         <span>{tShell("more")}</span>
       </Button>
     </nav>

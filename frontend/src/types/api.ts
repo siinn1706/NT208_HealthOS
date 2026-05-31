@@ -49,6 +49,13 @@ export interface MedicalInfo {
   chronic_conditions: string | null;
   current_medications: string | null;
   notes: string | null;
+  insurance?: InsuranceInfo | null;
+}
+
+export interface InsuranceInfo {
+  provider: string;
+  policy_number: string;
+  group_number?: string | null;
 }
 
 export interface UserProfile extends User {
@@ -66,7 +73,7 @@ export interface UserProfile extends User {
 
 /** Fields accepted by PATCH /v1/users/me — must stay in sync with BE UserProfileUpdate schema. */
 export interface UserProfileUpdate {
-  full_name?: string | null;
+  full_name?: string;
   date_of_birth?: string | null;
   gender?: "male" | "female" | "other" | null;
   blood_type?: string | null;
@@ -78,6 +85,7 @@ export interface UserProfileUpdate {
   avatar_url?: string | null;
   emergency_contacts?: EmergencyContact[] | null;
   medical_info?: MedicalInfo | null;
+  onboarding_completed?: boolean;
 }
 
 // ─── Meals ──────────────────────────────────────────────────────────
