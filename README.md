@@ -164,8 +164,9 @@ docker compose -f infra/docker/docker-compose.dev.yml up -d
 ```bash
 .\start_infra.bat        # Postgres, Redis, MinIO
 .\start_BE.bat           # FastAPI backend
+.\start_queue_worker.bat # Backend Celery worker for async jobs, including meal analysis
+.\start_ai_worker.bat    # AI worker (required for meal photo analysis)
 .\start_FE.bat           # Next.js frontend
-.\start_ai_worker.bat    # AI worker (optional)
 ```
 
 ### Manual (core services only)
