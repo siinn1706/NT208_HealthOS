@@ -13,6 +13,7 @@ export default defineConfig({
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     testTimeout: 20000,
     pool: 'forks',
+    maxWorkers: 4,
   },
   resolve: {
     alias: {
