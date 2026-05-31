@@ -31,11 +31,11 @@ export interface CurrentUser {
   phone?: string | null;
   address?: string | null;
   emergency_contacts?: Array<Record<string, unknown>> | null;
-  medical_info?: Record<string, unknown> | null;
+  medical_info?: MedicalInfo | null;
 }
 
 export interface UserProfileUpdate {
-  full_name?: string | null;
+  full_name?: string;
   date_of_birth?: string | null;
   gender?: 'male' | 'female' | 'other' | null;
   blood_type?: string | null;
@@ -45,8 +45,22 @@ export interface UserProfileUpdate {
   address?: string | null;
   avatar_url?: string | null;
   emergency_contacts?: Array<Record<string, unknown>> | null;
-  medical_info?: Record<string, unknown> | null;
+  medical_info?: MedicalInfo | null;
   onboarding_completed?: boolean;
+}
+
+export interface InsuranceInfo {
+  provider: string;
+  policy_number: string;
+  group_number?: string | null;
+}
+
+export interface MedicalInfo {
+  allergies?: string | null;
+  chronic_conditions?: string | null;
+  current_medications?: string | null;
+  notes?: string | null;
+  insurance?: InsuranceInfo | null;
 }
 
 export interface MfaLoginRequired {
@@ -183,6 +197,24 @@ export interface AppointmentUpdateBody {
   notes?: string | null;
 }
 
+export interface AppointmentPrepChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
+export interface AppointmentPrep {
+  appointment_id: string;
+  checklist_items: AppointmentPrepChecklistItem[];
+  notes: string | null;
+  updated_at: string | null;
+}
+
+export interface AppointmentPrepUpdateBody {
+  checklist_items?: AppointmentPrepChecklistItem[] | null;
+  notes?: string | null;
+}
+
 export type MedicationStatus = 'active' | 'paused' | 'completed' | 'cancelled';
 export type MedicationForm = 'tablet' | 'capsule' | 'liquid' | 'injection' | 'drops' | 'other';
 
@@ -242,6 +274,24 @@ export interface MedicationPlanCreateBody {
   review_due_at?: string | null;
   notes?: string | null;
   appointment_id?: string | null;
+}
+
+export interface MedicationImportBody {
+  default_dose_times?: string[] | null;
+  default_repeat?: 'once' | 'daily' | 'weekly' | 'monthly';
+  medicine_indices?: number[] | null;
+}
+
+export interface MedicationImportSkipped {
+  medicine_index: number;
+  name: string;
+  reason: string;
+  existing_plan_id?: string | null;
+}
+
+export interface MedicationImportResult {
+  created: MedicationPlan[];
+  skipped: MedicationImportSkipped[];
 }
 
 export interface MedicationDose {
@@ -319,10 +369,36 @@ export interface MessageListResponse {
   next_cursor: string | null;
 }
 
+export interface ChatUserLookupResult {
+  id: string;
+  display_name: string;
+  email: string;
+  avatar_url: string | null;
+}
+
 export interface UserPreference {
   theme_mode: 'system' | 'light' | 'dark';
   accent_color: string | null;
   locale: 'en' | 'vi';
+}
+
+export type AccountDataExportStatus = 'pending' | 'running' | 'completed' | 'failed' | 'expired';
+
+export interface AccountDataExportRequest {
+  id: string;
+  status: AccountDataExportStatus;
+  requested_at: string;
+  completed_at: string | null;
+  expires_at: string | null;
+  bytes: number | null;
+  error: string | null;
+}
+
+export interface AccountDataExportDownload {
+  url: string;
+  expires_in_s: number;
+  bytes: number;
+  expires_at: string;
 }
 
 export interface Notification {
@@ -381,6 +457,7 @@ export interface NotificationPreferences {
 export interface MealNutritionResult {
   dish_name: string | null;
   serving_type: string | null;
+  meal_type?: string | null;
   calories: number | null;
   protein_g: number | null;
   carbs_g: number | null;

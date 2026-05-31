@@ -135,6 +135,87 @@ async def test_request_otp_reset_password_unknown_email_returns_generic_success(
     assert redis.values["auth:otp:cooldown:reset_password:unknown@example.com"] == "1"
 
 
+@pytest.mark.asyncio
+async def test_request_otp_signup_debug_without_smtp_returns_otp(monkeypatch):
+    """Local debug signup must not 500 when SMTP credentials are not configured."""
+    import app.adapters.database as db_module
+
+    monkeypatch.setattr(db_module, "AsyncSessionLocal", lambda: _FakeSessionContext())
+
+    async def _not_breached(_password):
+        return False, 0
+
+    monkeypatch.setattr(auth_endpoints, "check_password_breach", _not_breached)
+    monkeypatch.setattr(auth_endpoints.settings, "debug", True)
+    monkeypatch.setattr(auth_endpoints.settings, "smtp_host", None)
+    monkeypatch.setattr(auth_endpoints.settings, "smtp_user", None)
+    monkeypatch.setattr(auth_endpoints.settings, "smtp_password", None)
+    monkeypatch.setattr(auth_endpoints.settings, "app_env", "development")
+    monkeypatch.setattr(auth_endpoints.settings, "node_env", "")
+
+    def _smtp_should_not_run(*_args, **_kwargs):
+        raise AssertionError("debug/no-SMTP signup should not call SMTP")
+
+    monkeypatch.setattr(auth_endpoints, "send_otp_email", _smtp_should_not_run)
+
+    redis = _FakeRedis()
+    body = RequestOtpBody(
+        email="new-user@example.com",
+        purpose="signup",
+        username="newuser",
+        password="Str0ng!LocalOtp123",
+        name="New User",
+    )
+
+    res = await request_email_otp(body=body, redis=redis, _rate=None)
+
+    assert res.data.delivery == "email"
+    assert res.data.expires_in_seconds == OTP_TTL_SECONDS
+    assert res.data.otp is not None
+    assert hash_otp_code(res.data.otp) == redis.values["auth:otp:signup:new-user@example.com"]
+    assert redis.values["auth:otp:cooldown:signup:new-user@example.com"] == "1"
+    assert "signup:pending:new-user@example.com" in redis.values
+
+
+@pytest.mark.asyncio
+async def test_request_otp_signup_debug_smtp_failure_keeps_otp(monkeypatch):
+    """Local debug signup should still expose OTP if configured SMTP fails."""
+    import app.adapters.database as db_module
+
+    monkeypatch.setattr(db_module, "AsyncSessionLocal", lambda: _FakeSessionContext())
+
+    async def _not_breached(_password):
+        return False, 0
+
+    monkeypatch.setattr(auth_endpoints, "check_password_breach", _not_breached)
+    monkeypatch.setattr(auth_endpoints.settings, "debug", True)
+    monkeypatch.setattr(auth_endpoints.settings, "smtp_host", "smtp.example.com")
+    monkeypatch.setattr(auth_endpoints.settings, "smtp_user", "dev@example.com")
+    monkeypatch.setattr(auth_endpoints.settings, "smtp_password", "bad-password")
+    monkeypatch.setattr(auth_endpoints.settings, "app_env", "development")
+    monkeypatch.setattr(auth_endpoints.settings, "node_env", "")
+
+    def _smtp_fails(*_args, **_kwargs):
+        raise RuntimeError("smtp unavailable")
+
+    monkeypatch.setattr(auth_endpoints, "send_otp_email", _smtp_fails)
+
+    redis = _FakeRedis()
+    body = RequestOtpBody(
+        email="smtp-fail@example.com",
+        purpose="signup",
+        username="smtpfail",
+        password="Str0ng!LocalOtp123",
+        name="SMTP Fail",
+    )
+
+    res = await request_email_otp(body=body, redis=redis, _rate=None)
+
+    assert res.data.otp is not None
+    assert hash_otp_code(res.data.otp) == redis.values["auth:otp:signup:smtp-fail@example.com"]
+    assert redis.values["auth:otp:cooldown:signup:smtp-fail@example.com"] == "1"
+
+
 def test_request_otp_uses_cryptographic_rng():
     source = inspect.getsource(auth_endpoints.request_email_otp)
 

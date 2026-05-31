@@ -24,6 +24,7 @@ def test_base_metadata_includes_all_non_device_tables():
         "question_sets",
         "question_templates",
         "appointment_brief_links",
+        "appointment_preps",
         "user_bmi_goals",
         "subscription_plans",
         "user_subscriptions",

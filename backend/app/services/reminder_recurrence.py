@@ -1,4 +1,4 @@
-"""B7 P5 — recurrence subset that matches the current Reminders UI.
+"""Recurrence subset that matches the current Reminders UI.
 
 Intentionally NOT a full RFC 5545 RRULE engine. The UI today ships four repeat
 modes (`once`, `daily`, `weekly`, `monthly`) — we model exactly those, plus
@@ -67,6 +67,12 @@ def _to_utc(dt: datetime.datetime) -> datetime.datetime:
     return dt.astimezone(datetime.timezone.utc)
 
 
+def _local_today_start_utc(now_utc: datetime.datetime, tz: ZoneInfo) -> datetime.datetime:
+    now_local = now_utc.astimezone(tz)
+    start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    return _to_utc(start_local)
+
+
 def compute_next_n(
     reminder: Reminder,
     *,
@@ -82,6 +88,7 @@ def compute_next_n(
     tz = _resolve_tz(reminder.tzid)
     now_utc = since or datetime.datetime.now(datetime.timezone.utc)
     now_local = now_utc.astimezone(tz)
+    today_start_utc = _local_today_start_utc(now_utc, tz)
     horizon_utc = now_utc + datetime.timedelta(days=horizon_days)
     end_date = (reminder.end_date or horizon_utc.date()) if reminder.end_date else horizon_utc.date()
 
@@ -102,7 +109,7 @@ def compute_next_n(
         while len(out) < n and cursor <= end_date:
             scheduled_local = _localized_at(cursor, time, tz)
             scheduled_utc = _to_utc(scheduled_local)
-            if scheduled_utc <= horizon_utc and scheduled_utc >= now_utc - datetime.timedelta(minutes=1):
+            if scheduled_utc <= horizon_utc and scheduled_utc >= today_start_utc:
                 out.append(scheduled_utc)
             cursor += datetime.timedelta(days=1)
         return out
@@ -110,20 +117,16 @@ def compute_next_n(
     if repeat == ReminderRepeatEnum.WEEKLY:
         weekdays = _bits_to_weekdays(reminder.weekday_mask)
         if not weekdays:
-            # B7 review P2-2 — legacy `repeat='weekly'` rows had no weekday
-            # bitmap; the original semantics were ambiguous but conservative
-            # users expected "every day of the week" rather than "one
-            # specific weekday derived from start_date" (which would silently
-            # cut their meds notifications by 6/7). Default to the full set
-            # so legacy reminders keep firing as often as before; the new
-            # FE form requires an explicit mask for new weekly rows.
+            # Legacy `repeat='weekly'` rows had no weekday bitmap. Defaulting
+            # to the full set preserves the old "every day" behavior instead
+            # of silently reducing notifications to one weekday.
             weekdays = {0, 1, 2, 3, 4, 5, 6}
         cursor = max(now_local.date(), start_date)
         while len(out) < n and cursor <= end_date:
             if cursor.weekday() in weekdays:
                 scheduled_local = _localized_at(cursor, time, tz)
                 scheduled_utc = _to_utc(scheduled_local)
-                if scheduled_utc <= horizon_utc and scheduled_utc >= now_utc - datetime.timedelta(minutes=1):
+                if scheduled_utc <= horizon_utc and scheduled_utc >= today_start_utc:
                     out.append(scheduled_utc)
             cursor += datetime.timedelta(days=1)
         return out
@@ -145,7 +148,7 @@ def compute_next_n(
                 break
             scheduled_local = _localized_at(day_date, time, tz)
             scheduled_utc = _to_utc(scheduled_local)
-            if scheduled_utc <= horizon_utc and scheduled_utc >= now_utc - datetime.timedelta(minutes=1):
+            if scheduled_utc <= horizon_utc and scheduled_utc >= today_start_utc:
                 out.append(scheduled_utc)
             # Advance to next month.
             if cursor_month == 12:

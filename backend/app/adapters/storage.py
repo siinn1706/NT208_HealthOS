@@ -12,6 +12,7 @@ from typing import Optional
 
 import boto3
 from botocore.client import Config
+from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
@@ -23,6 +24,30 @@ logger = logging.getLogger(__name__)
 DEFAULT_GET_EXPIRY_S = 300       # 5 minutes — prescription assets, report PDFs.
 DEFAULT_PUT_EXPIRY_S = 600       # 10 minutes — single-shot upload window.
 DEFAULT_EXPORT_EXPIRY_S = 300    # 5 minutes — re-issued each click.
+PROTECTED_BUCKET_AUTOCREATE_ENVS = {"production", "staging"}
+
+
+def _client_error_code(exc: ClientError) -> str:
+    return str(exc.response.get("Error", {}).get("Code", ""))
+
+
+def _is_missing_bucket_error(exc: ClientError) -> bool:
+    return _client_error_code(exc) in {"NoSuchBucket", "404", "NotFound"}
+
+
+def _can_auto_create_bucket() -> bool:
+    runtime_env = settings.resolved_runtime_env()
+    return runtime_env not in PROTECTED_BUCKET_AUTOCREATE_ENVS
+
+
+def _create_bucket_for_dev(client, bucket: str) -> None:
+    """Create local/dev buckets on demand; production storage must be provisioned."""
+    try:
+        client.create_bucket(Bucket=bucket)
+    except ClientError as exc:
+        if _client_error_code(exc) in {"BucketAlreadyOwnedByYou", "BucketAlreadyExists"}:
+            return
+        raise
 
 
 def get_storage_client():
@@ -51,6 +76,18 @@ def upload_file(
     client = get_storage_client()
     try:
         client.put_object(Bucket=bucket, Key=key, Body=file_bytes, ContentType=content_type)
+    except ClientError as exc:
+        if _is_missing_bucket_error(exc) and _can_auto_create_bucket():
+            logger.warning("Storage bucket %s missing; creating for local/dev runtime", bucket)
+            try:
+                _create_bucket_for_dev(client, bucket)
+                client.put_object(Bucket=bucket, Key=key, Body=file_bytes, ContentType=content_type)
+            except Exception as retry_exc:
+                logger.exception("Failed to upload file to %s/%s", bucket, key)
+                raise RuntimeError(f"File upload failed: {retry_exc}") from retry_exc
+        else:
+            logger.exception("Failed to upload file to %s/%s", bucket, key)
+            raise RuntimeError(f"File upload failed: {exc}") from exc
     except Exception as exc:
         logger.exception("Failed to upload file to %s/%s", bucket, key)
         raise RuntimeError(f"File upload failed: {exc}") from exc
