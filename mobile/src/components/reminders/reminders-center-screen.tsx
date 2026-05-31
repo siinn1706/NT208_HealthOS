@@ -16,16 +16,21 @@ import { ReminderRow, type ReminderRowData } from './reminder-row';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { notificationService, reminderService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
+import type { Reminder, ReminderOccurrence } from '../../../../shared/api-contracts';
 
 const FILTER_KEYS = [
   { key: 'filterAll',         type: null },
   { key: 'filterMedication',  type: 'medicine' as const },
   { key: 'filterAppointment', type: 'appointment' as const },
-  { key: 'filterVitals',      type: null },
   { key: 'filterActivity',    type: 'exercise' as const },
 ] as const;
 
 type FilterKey = typeof FILTER_KEYS[number]['key'];
+type ReminderCenterRow = ReminderRowData & {
+  occurrenceId: string;
+  reminderType: string;
+  status: string;
+};
 
 function timeLabel(value?: string | null, fallback?: string | null) {
   const source = value ?? fallback;
@@ -43,6 +48,33 @@ function mapCategory(type: string): ReminderRowData['category'] {
   return 'care';
 }
 
+function statusLabel(status: string) {
+  if (status === 'done') return 'Done';
+  if (status === 'skipped') return 'Skipped';
+  if (status === 'missed') return 'Missed';
+  if (status === 'snoozed') return 'Snoozed';
+  if (status === 'cancelled') return 'Cancelled';
+  if (status === 'fired') return 'Due';
+  return 'Pending';
+}
+
+function isTerminalStatus(status: string) {
+  return ['done', 'skipped', 'missed', 'cancelled'].includes(status);
+}
+
+function isActionableStatus(status: string) {
+  return status === 'pending' || status === 'fired';
+}
+
+function statusColor(t: ReturnType<typeof useTheme>, status: string) {
+  if (status === 'done') return t.success;
+  if (status === 'skipped' || status === 'missed') return t.warning;
+  if (status === 'cancelled') return t.ink3;
+  if (status === 'fired') return t.danger;
+  if (status === 'snoozed') return t.brand;
+  return t.brand;
+}
+
 // 8-segment status rail — maps rows to colored segments
 function SegmentRail({ rows, done, upcoming, overdue }: {
   rows: ReminderRowData[];
@@ -56,12 +88,14 @@ function SegmentRail({ rows, done, upcoming, overdue }: {
     const row = rows[i];
     if (!row) return 'empty';
     if (row.done)    return 'done';
+    if (row.terminal) return 'terminal';
     if (row.overdue) return 'overdue';
     return 'upcoming';
   });
 
   const colorMap: Record<string, string> = {
     done: t.success,
+    terminal: t.warning,
     upcoming: t.brand,
     overdue: t.danger,
     empty: t.border,
@@ -91,51 +125,95 @@ export function RemindersCenterScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('filterAll');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadReminders = useCallback(() => {
     const entry = FILTER_KEYS.find((f) => f.key === activeFilter);
     return reminderService.list(entry?.type ?? undefined);
   }, [activeFilter]);
+  const loadOccurrences = useCallback(() => reminderService.occurrences({
+    today: true,
+    tzid: 'Asia/Ho_Chi_Minh',
+    status: 'pending,fired,snoozed,done,skipped,missed',
+  }), []);
   const loadUnread = useCallback(() => notificationService.unreadCount(), []);
 
   const reminders = useApiQuery(queryKeys.remindersAll + '.' + activeFilter, loadReminders);
+  const occurrences = useApiQuery(queryKeys.reminderOccurrences(`today.${activeFilter}`), loadOccurrences);
   const unread = useApiQuery(queryKeys.unreadNotifications, loadUnread);
 
-  const rows = useMemo<ReminderRowData[]>(() => {
-    return (reminders.data ?? []).map((item) => {
-      const nextAt = item.next_occurrence_at ?? null;
-      const overdue = Boolean(!item.done && nextAt && new Date(nextAt).getTime() < Date.now());
-      return {
-        id: item.id,
-        title: item.title,
-        subtitle: item.note ?? `${item.type} · ${item.repeat ?? 'once'}`,
-        time: timeLabel(nextAt, item.time),
-        category: mapCategory(item.type),
-        overdue,
-        done: Boolean(item.done),
-      };
-    });
-  }, [reminders.data]);
+  const rows = useMemo<ReminderCenterRow[]>(() => {
+    const entry = FILTER_KEYS.find((f) => f.key === activeFilter);
+    const typeFilter = entry?.type ?? null;
+    const reminderById = new Map((reminders.data ?? []).map((item: Reminder) => [item.id, item]));
+    return (occurrences.data ?? [])
+      .filter((item: ReminderOccurrence) => !typeFilter || item.type === typeFilter)
+      .map((item: ReminderOccurrence) => {
+        const reminder = reminderById.get(item.reminder_id);
+        const occurrenceTime = item.snoozed_until ?? item.scheduled_at;
+        const overdue = Boolean(
+          isActionableStatus(item.status)
+          && new Date(item.scheduled_at).getTime() < Date.now(),
+        );
+        return {
+          id: item.reminder_id,
+          occurrenceId: item.id,
+          title: item.title,
+          subtitle: reminder?.note ?? `${item.type} · ${statusLabel(item.status)}`,
+          time: timeLabel(occurrenceTime),
+          category: mapCategory(item.type),
+          overdue,
+          done: item.status === 'done',
+          terminal: isTerminalStatus(item.status),
+          status: item.status,
+          statusLabel: statusLabel(item.status),
+          statusColor: statusColor(t, item.status),
+          reminderType: item.type,
+        };
+      });
+  }, [activeFilter, occurrences.data, reminders.data, t]);
 
   const overdue = rows.filter((r) => r.overdue);
-  const upcoming = rows.filter((r) => !r.overdue && !r.done);
+  const upcoming = rows.filter((r) => !r.overdue && !r.done && !r.terminal);
   const done = rows.filter((r) => r.done);
+  const resolved = rows.filter((r) => r.terminal && !r.done);
+  const left = rows.filter((r) => !r.done && !r.terminal).length;
 
   // Derive next upcoming reminder info
   const nextUpcoming = upcoming[0];
   const nextReminderTime = nextUpcoming?.time ?? '--';
   const nextReminderTitle = nextUpcoming?.title ?? 'None';
 
-  async function markDone(reminderId: string) {
-    await reminderService.updateDone(reminderId, true);
-    invalidateApiQuery('reminders.');
-    reminders.reload();
+  async function markDone(row: ReminderCenterRow) {
+    setActionError(null);
+    if (!isActionableStatus(row.status)) {
+      setActionError('No pending occurrence is available for this reminder.');
+      return;
+    }
+    try {
+      await reminderService.markDone(row.id, row.occurrenceId);
+      invalidateApiQuery('reminders.');
+      if (row.reminderType === 'medicine') invalidateApiQuery('medications.');
+      await Promise.all([reminders.reload(), occurrences.reload()]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not mark reminder done.');
+    }
   }
 
-  async function snooze(reminderId: string) {
-    await reminderService.snooze(reminderId, { minutes: 10 });
-    invalidateApiQuery('reminders.');
-    reminders.reload();
+  async function snooze(row: ReminderCenterRow) {
+    setActionError(null);
+    if (!isActionableStatus(row.status)) {
+      setActionError('No pending occurrence is available for this reminder.');
+      return;
+    }
+    try {
+      await reminderService.snooze(row.id, { minutes: 10, occurrence_id: row.occurrenceId });
+      invalidateApiQuery('reminders.');
+      if (row.reminderType === 'medicine') invalidateApiQuery('medications.');
+      await Promise.all([reminders.reload(), occurrences.reload()]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not snooze reminder.');
+    }
   }
 
   const progressValue = rows.length > 0 ? done.length / rows.length : 0;
@@ -161,7 +239,7 @@ export function RemindersCenterScreen() {
           <View style={styles.snapshotText}>
             <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.8 }]}>{i18n('reminders.today')}</Text>
             <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '800', fontSize: 17, marginTop: 2 }]}>
-              {done.length} done · {rows.length - done.length} left
+              {done.length} done · {left} left
             </Text>
             <Text style={[typography.micro, { color: t.ink3, marginTop: 2 }]} numberOfLines={1}>
               Next at {nextReminderTime} · {nextReminderTitle}
@@ -198,7 +276,10 @@ export function RemindersCenterScreen() {
 
       {reminders.isLoading && <ApiState title={i18n('api.loading')} loading />}
       {reminders.error && <ApiState title={i18n('api.unavailable')} message={reminders.error.message} actionLabel={i18n('common.retry')} onAction={reminders.reload} />}
-      {!reminders.isLoading && !reminders.error && rows.length === 0 && (
+      {occurrences.isLoading && <ApiState title={i18n('api.loading')} loading />}
+      {occurrences.error && <ApiState title={i18n('api.unavailable')} message={occurrences.error.message} actionLabel={i18n('common.retry')} onAction={occurrences.reload} />}
+      {actionError && <ApiState title="Reminder action failed" message={actionError} />}
+      {!reminders.isLoading && !reminders.error && !occurrences.isLoading && !occurrences.error && rows.length === 0 && (
         <ApiState title={i18n('reminders.noReminders')} message={i18n('reminders.noRemindersMessage')} />
       )}
 
@@ -208,11 +289,11 @@ export function RemindersCenterScreen() {
           <Card style={[styles.joinedCard, { backgroundColor: `${t.danger}08`, borderColor: `${t.danger}30`, padding: 0, overflow: 'hidden' }]}>
             {overdue.map((r, i) => (
               <ReminderRow
-                key={r.id}
+                key={`${r.id}.${r.occurrenceId}`}
                 {...r}
                 joined
                 showDivider={i < overdue.length - 1}
-                onDone={() => { markDone(r.id); }}
+                onDone={() => { markDone(r); }}
                 onPress={() => router.push(`/reminders/${r.id}` as never)}
               />
             ))}
@@ -227,12 +308,12 @@ export function RemindersCenterScreen() {
           <Card style={[styles.joinedCard, { padding: 0, overflow: 'hidden' }]}>
             {upcoming.map((r, i) => (
               <ReminderRow
-                key={r.id}
+                key={`${r.id}.${r.occurrenceId}`}
                 {...r}
                 joined
                 showDivider={i < upcoming.length - 1}
-                onDone={() => { markDone(r.id); }}
-                onSnooze={() => { snooze(r.id); }}
+                onDone={() => { markDone(r); }}
+                onSnooze={() => { snooze(r); }}
                 onPress={() => router.push(`/reminders/${r.id}` as never)}
               />
             ))}
@@ -243,7 +324,14 @@ export function RemindersCenterScreen() {
       {done.length > 0 && (
         <>
           <SectionHeader title={i18n('reminders.doneToday')} />
-          {done.map((r) => <ReminderRow key={r.id} {...r} onPress={() => router.push(`/reminders/${r.id}` as never)} />)}
+          {done.map((r) => <ReminderRow key={`${r.id}.${r.occurrenceId}`} {...r} onPress={() => router.push(`/reminders/${r.id}` as never)} />)}
+        </>
+      )}
+
+      {resolved.length > 0 && (
+        <>
+          <SectionHeader title="Resolved today" />
+          {resolved.map((r) => <ReminderRow key={`${r.id}.${r.occurrenceId}`} {...r} onPress={() => router.push(`/reminders/${r.id}` as never)} />)}
         </>
       )}
 

@@ -72,7 +72,7 @@ beforeEach(() => {
 
 describe('AddMedicationScreen', () => {
   it('persists a medication and replaces back to the meds hub', async () => {
-    const { getAllByText, getByPlaceholderText } = render(<AddMedicationScreen />);
+    const { getAllByText, getByPlaceholderText, queryByText } = render(<AddMedicationScreen />);
 
     fireEvent.changeText(getByPlaceholderText('e.g. Metformin'), 'Metformin');
     fireEvent.changeText(getByPlaceholderText('e.g. 500 mg'), '500 mg');
@@ -85,6 +85,10 @@ describe('AddMedicationScreen', () => {
       }));
     });
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith('medications.list');
+    expect(mockInvalidateApiQuery).toHaveBeenCalledWith('medications.today');
+    expect(mockInvalidateApiQuery).toHaveBeenCalledWith('reminders.list');
+    expect(queryByText('PRN')).toBeNull();
+    expect(queryByText('Remind me to take')).toBeNull();
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/meds'));
     expect(mockBack).not.toHaveBeenCalled();
   });

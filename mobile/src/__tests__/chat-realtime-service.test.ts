@@ -1,5 +1,11 @@
 /* eslint-env jest */
-import { buildChatWsUrl, chatRealtimeService } from '../api/services/chat-realtime-service';
+import {
+  buildChatWsUrl,
+  chatRealtimeService,
+  getMessageFromChatEvent,
+  getRemovedConversationIdFromChatEvent,
+  getThreadReloadConversationIdFromChatEvent,
+} from '../api/services/chat-realtime-service';
 import { apiRequest } from '../api/client';
 
 jest.mock('../api/client', () => ({
@@ -24,5 +30,52 @@ describe('chatRealtimeService', () => {
     expect(buildChatWsUrl('a ticket/with symbols', 'wss://api.example.test/')).toBe(
       'wss://api.example.test/ws?token=a%20ticket%2Fwith%20symbols',
     );
+  });
+
+  it('normalizes legacy and canonical message events', () => {
+    const message = {
+      id: 'msg-1',
+      conversation_id: 'conv-1',
+      content: 'Hello',
+    };
+
+    expect(getMessageFromChatEvent({ event: 'msg:new', payload: message })).toBe(message);
+    expect(getMessageFromChatEvent({ event: 'chat.message.sent', payload: message })).toBe(message);
+  });
+
+  it('ignores malformed and non-message websocket frames', () => {
+    expect(getMessageFromChatEvent({ event: 'ping', payload: {} })).toBeNull();
+    expect(getMessageFromChatEvent({ event: 'chat.message.sent', payload: { id: 'msg-1' } })).toBeNull();
+    expect(getMessageFromChatEvent({ event: 'chat.message.sent' })).toBeNull();
+  });
+
+  it('extracts conversation ids from non-message events that require a thread reload', () => {
+    expect(getThreadReloadConversationIdFromChatEvent({
+      event: 'chat.message.read',
+      payload: { conversation_id: 'conv-1', last_read_message_id: 'msg-1' },
+    })).toBe('conv-1');
+    expect(getThreadReloadConversationIdFromChatEvent({
+      event: 'ai:completed',
+      payload: { conversation_id: 'conv-1', message_id: 'ai-msg-1' },
+    })).toBe('conv-1');
+    expect(getThreadReloadConversationIdFromChatEvent({
+      event: 'chat.conversation.updated',
+      payload: { conversation_id: 'conv-1' },
+    })).toBe('conv-1');
+    expect(getThreadReloadConversationIdFromChatEvent({
+      event: 'typing',
+      payload: { conversation_id: 'conv-1' },
+    })).toBeNull();
+  });
+
+  it('extracts removed conversation events for thread exit handling', () => {
+    expect(getRemovedConversationIdFromChatEvent({
+      event: 'chat.conversation.removed',
+      payload: { conversation_id: 'conv-1' },
+    })).toBe('conv-1');
+    expect(getRemovedConversationIdFromChatEvent({
+      event: 'chat.conversation.updated',
+      payload: { conversation_id: 'conv-1' },
+    })).toBeNull();
   });
 });

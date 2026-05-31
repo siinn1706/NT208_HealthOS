@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Message } from '../../../shared/api-contracts';
-import { chatRealtimeService, getMessageFromChatEvent } from '../api/services/chat-realtime-service';
+import {
+  chatRealtimeService,
+  getMessageFromChatEvent,
+  getRemovedConversationIdFromChatEvent,
+  getThreadReloadConversationIdFromChatEvent,
+} from '../api/services/chat-realtime-service';
 
-type ChatWsState = 'idle' | 'connecting' | 'connected' | 'fallback' | 'error';
+export type ChatWsState = 'idle' | 'connecting' | 'connected' | 'fallback' | 'error';
 const BASE_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 15000;
 
@@ -10,15 +15,33 @@ interface UseChatWebSocketOptions {
   conversationId: string;
   enabled?: boolean;
   onMessage?: (message: Message) => void;
+  onThreadEvent?: () => void;
+  onConversationRemoved?: () => void;
 }
 
-export function useChatWebSocket({ conversationId, enabled = true, onMessage }: UseChatWebSocketOptions) {
+export function useChatWebSocket({
+  conversationId,
+  enabled = true,
+  onMessage,
+  onThreadEvent,
+  onConversationRemoved,
+}: UseChatWebSocketOptions) {
   const [connectionState, setConnectionState] = useState<ChatWsState>('idle');
   const onMessageRef = useRef(onMessage);
+  const onThreadEventRef = useRef(onThreadEvent);
+  const onConversationRemovedRef = useRef(onConversationRemoved);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+
+  useEffect(() => {
+    onThreadEventRef.current = onThreadEvent;
+  }, [onThreadEvent]);
+
+  useEffect(() => {
+    onConversationRemovedRef.current = onConversationRemoved;
+  }, [onConversationRemoved]);
 
   useEffect(() => {
     if (!enabled || !conversationId) {
@@ -76,6 +99,16 @@ export function useChatWebSocket({ conversationId, enabled = true, onMessage }: 
               const message = getMessageFromChatEvent(frame);
               if (message && message.conversation_id === conversationId) {
                 onMessageRef.current?.(message);
+                return;
+              }
+              const removedConversationId = getRemovedConversationIdFromChatEvent(frame);
+              if (removedConversationId === conversationId) {
+                onConversationRemovedRef.current?.();
+                return;
+              }
+              const reloadConversationId = getThreadReloadConversationIdFromChatEvent(frame);
+              if (reloadConversationId === conversationId) {
+                onThreadEventRef.current?.();
               }
             } catch {
               // Ignore malformed realtime frames and keep REST state intact.

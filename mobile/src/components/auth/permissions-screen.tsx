@@ -23,36 +23,36 @@ const CONFIG: Record<PermissionKind, {
 }> = {
   notifications: {
     Icon: Bell,
-    title: 'Turn on reminders',
-    description: "We'll nudge you when it's time for medication or a scheduled appointment. Nothing else — ever.",
+    title: 'Review reminder settings',
+    description: 'Notification delivery is controlled from reminder preferences. This Expo build does not request OS push permissions here.',
     features: [
-      { label: 'Medication reminders', Icon: Pill },
-      { label: 'Appointment alerts',   Icon: CalendarCheck },
-      { label: 'Weekly health digest', Icon: Sparkles },
+      { label: 'Medication reminders can be configured later', Icon: Pill },
+      { label: 'Appointment alerts use Core preferences',       Icon: CalendarCheck },
+      { label: 'Weekly digest controls stay account-backed',    Icon: Sparkles },
     ],
-    ctaLabel: 'Allow notifications',
+    ctaLabel: 'Continue',
   },
   camera: {
     Icon: Camera,
-    title: 'Snap meals & scans',
-    description: 'Use your camera to log food, scan prescriptions, or capture lab reports. Images stay on your device unless you save them.',
+    title: 'Camera access when needed',
+    description: 'Camera permission is requested inside the specific scan flow. This setup screen does not grant camera access.',
     features: [
-      { label: 'Log meals from photo',   Icon: Coffee },
-      { label: 'Scan prescriptions',     Icon: Pill },
-      { label: 'Capture lab reports',    Icon: Activity },
+      { label: 'Meal photo scan asks at capture time', Icon: Coffee },
+      { label: 'Prescription scan remains guarded',    Icon: Pill },
+      { label: 'Lab report capture is not shipped yet', Icon: Activity },
     ],
-    ctaLabel: 'Allow camera',
+    ctaLabel: 'Continue',
   },
   'health-data': {
     Icon: Activity,
-    title: 'Connect your health data',
-    description: 'Link Apple Health, Google Health Connect, or a wearable to auto-sync vitals and activity. Read-only by default.',
+    title: 'Health Connect status',
+    description: 'Core device identity is supported. Real Health Connect permission reads need an Android development build with native support.',
     features: [
-      { label: 'Heart rate & vitals', Icon: Heart },
-      { label: 'Steps & activity',    Icon: Footprints },
-      { label: 'Sleep tracking',      Icon: Moon },
+      { label: 'Heart rate sync requires native module', Icon: Heart },
+      { label: 'Steps sync requires native module',      Icon: Footprints },
+      { label: 'Sleep sync requires native module',      Icon: Moon },
     ],
-    ctaLabel: 'Connect Health Connect',
+    ctaLabel: 'Continue',
   },
 };
 
@@ -106,7 +106,7 @@ export function PermissionsScreen({ kind }: PermissionsScreenProps) {
       <View style={[styles.footerMicro, { marginBottom: 12 }]}>
         <Lock size={11} color={t.ink3} />
         <Text style={[typography.caption, { color: t.ink3, fontSize: 12, marginLeft: 4 }]}>
-          Private by default · revoke anytime
+          Private by default · enable only from supported feature screens
         </Text>
       </View>
 

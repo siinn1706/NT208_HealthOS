@@ -7,9 +7,8 @@ import { View, Text, Modal, Pressable, StyleSheet, ActivityIndicator, ScrollView
 import { useTheme } from '../../theme/useTheme';
 import { useThemeContext } from '../../theme/theme-provider';
 import { typography } from '../../theme/typography';
-import type { ThemeName } from '../../theme/tokens';
 import { IconCheck } from '../../icons';
-import { ApiState, MissingApiState } from '../api/api-state';
+import { ApiState } from '../api/api-state';
 import { EmergencyCard } from './emergency-card';
 import { Button } from '../primitives/button';
 import { Toggle } from '../primitives/toggle';
@@ -17,6 +16,12 @@ import { Input } from '../primitives/input/input';
 import { Card } from '../primitives/card';
 import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
+import { preferenceService } from '../../api/services/preference-service';
+import {
+  preferenceToThemeSelection,
+  themeSelectionToPreference,
+  type ThemeSelection,
+} from '../../theme/theme-preference-mapping';
 import {
   emergencyService,
   type AssistanceNeed,
@@ -62,10 +67,10 @@ function SheetHeader({ title, onClose }: { title: string; onClose: () => void })
   );
 }
 
-const THEME_OPTIONS: { key: ThemeName | 'system'; label: string; desc: string }[] = [
-  { key: 'calm', label: 'Calm Clinic', desc: 'Clean light blues' },
-  { key: 'night', label: 'Night Sky', desc: 'Deep dark tones' },
-  { key: 'warm', label: 'Warm Care', desc: 'Earthy warm palette' },
+const THEME_OPTIONS: { key: ThemeSelection; label: string; desc: string }[] = [
+  { key: 'calm', label: 'Calm Clinic', desc: 'Saved as light mode with calm accent' },
+  { key: 'night', label: 'Night Sky', desc: 'Saved as dark mode' },
+  { key: 'warm', label: 'Warm Care', desc: 'Saved as light mode with warm accent' },
   { key: 'system', label: 'System', desc: 'Follows device setting' },
 ];
 
@@ -84,6 +89,28 @@ function toEmergencyDraft(profile: EmergencyProfileOwnerView): EmergencyDraft {
 export function AppearanceSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useTheme();
   const { name, setTheme } = useThemeContext();
+  const preferences = useApiQuery(queryKeys.preferences, () => preferenceService.me(), { enabled: visible });
+  const [savingTheme, setSavingTheme] = useState<ThemeSelection | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const selectedTheme = preferences.data ? preferenceToThemeSelection(preferences.data) : name;
+
+  async function chooseTheme(nextTheme: ThemeSelection) {
+    if (savingTheme) return;
+    const previousTheme = selectedTheme;
+    setSavingTheme(nextTheme);
+    setError(null);
+    setTheme(nextTheme);
+    try {
+      await preferenceService.update(themeSelectionToPreference(nextTheme));
+      invalidateApiQuery(queryKeys.preferences);
+      onClose();
+    } catch (err) {
+      setTheme(previousTheme);
+      setError(err instanceof Error ? err.message : 'Could not save appearance preference.');
+    } finally {
+      setSavingTheme(null);
+    }
+  }
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -91,19 +118,28 @@ export function AppearanceSheet({ visible, onClose }: { visible: boolean; onClos
       <View style={[styles.sheet, { backgroundColor: t.card, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
         <SheetHandle />
         <Text style={[typography.h3, { color: t.ink, margin: 20, marginBottom: 12 }]}>Appearance</Text>
+        {preferences.error && (
+          <ApiState title="Appearance preference unavailable" message={preferences.error.message} actionLabel="Retry" onAction={preferences.reload} />
+        )}
         {THEME_OPTIONS.map((opt) => (
           <Pressable
             key={opt.key}
-            onPress={() => { setTheme(opt.key); onClose(); }}
+            disabled={Boolean(savingTheme)}
+            onPress={() => { void chooseTheme(opt.key); }}
             style={[styles.themeRow, { borderBottomColor: t.border }]}
           >
             <View style={styles.themeInfo}>
               <Text style={[typography.bodyMed, { color: t.ink }]}>{opt.label}</Text>
               <Text style={[typography.caption, { color: t.ink3 }]}>{opt.desc}</Text>
             </View>
-            {name === opt.key && <IconCheck size={18} color={t.brand} />}
+            {savingTheme === opt.key ? (
+              <Text style={[typography.caption, { color: t.brand }]}>Saving</Text>
+            ) : selectedTheme === opt.key ? (
+              <IconCheck size={18} color={t.brand} />
+            ) : null}
           </Pressable>
         ))}
+        {error && <ApiState title="Appearance update failed" message={error} />}
       </View>
     </Modal>
   );
@@ -442,28 +478,6 @@ export function SignOutModal({
             />
           </View>
           {loading && <ActivityIndicator color={t.brand} style={{ marginTop: 12 }} />}
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-export function MissingApiModal({
-  visible,
-  title,
-  onClose,
-}: {
-  visible: boolean;
-  title: string;
-  onClose: () => void;
-}) {
-  const t = useTheme();
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View style={[styles.overlay, styles.centered]}>
-        <View style={[styles.dialog, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-          <MissingApiState title={title} contract="not yet available" />
-          <Button label="Close" variant="ghost" onPress={onClose} style={{ marginTop: 12 }} />
         </View>
       </View>
     </Modal>

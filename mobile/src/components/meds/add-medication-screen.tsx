@@ -8,15 +8,14 @@ import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
 import { Button } from '../primitives/button';
 import { IconButton } from '../primitives/icon-button';
-import { Toggle } from '../primitives/toggle';
 import { SegmentedControl } from '../primitives/input/segmented-control';
-import { ChevronLeft, IconCamera, IconSearch, IconBell } from '../../icons';
+import { ChevronLeft, IconCamera, IconSearch } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { ApiState } from '../api/api-state';
 
-export const FREQ_OPTIONS = ['1×', '2×', '3×', 'PRN'];
+export const FREQ_OPTIONS = ['1×', '2×', '3×'];
 const TAKE_WITH_OPTIONS = ['Water', 'Food', 'Milk', 'Empty stomach'];
 
 export interface MedFormState {
@@ -27,7 +26,6 @@ export interface MedFormState {
   notes: string;
   prescriber: string;
   takeWith: string[];
-  reminderEnabled: boolean;
 }
 
 const EMPTY: MedFormState = {
@@ -38,7 +36,6 @@ const EMPTY: MedFormState = {
   notes: '',
   prescriber: '',
   takeWith: [],
-  reminderEnabled: true,
 };
 
 interface AddMedicationScreenProps {
@@ -88,6 +85,8 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
         await medicationService.create(toMedicationCreateBody(form));
       }
       invalidateApiQuery(queryKeys.medications);
+      invalidateApiQuery(queryKeys.medicationDosesToday);
+      invalidateApiQuery(queryKeys.remindersAll);
       if (onSave) {
         router.back();
       } else {
@@ -223,15 +222,6 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
           style={[inputStyle, s.multiline]}
         />
 
-        {/* Reminder toggle — pale brandSoft capsule */}
-        <View style={[s.reminderRow, { backgroundColor: t.brandSoft, borderRadius: t.radius.xxl }]}>
-          <View style={[s.reminderIcon, { backgroundColor: `${t.brand}1A`, borderRadius: t.radius.md }]}>
-            <IconBell size={18} color={t.brand} />
-          </View>
-          <Text style={[typography.bodyMed, s.flex, { color: t.ink }]}>Remind me to take</Text>
-          <Toggle value={form.reminderEnabled} onChange={v => set('reminderEnabled', v)} />
-        </View>
-
         <Button
           label={saving ? i18n('meds.saving') : i18n('meds.addMedication')}
           variant="solid"
@@ -245,16 +235,19 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
 
 export function toMedicationCreateBody(form: MedFormState) {
   const freqIdx = FREQ_OPTIONS.indexOf(form.frequency);
-  const doseTimes = [['08:00'], ['08:00', '20:00'], ['08:00', '14:00', '20:00'], ['08:00']][freqIdx >= 0 ? freqIdx : 0] ?? ['08:00'];
+  const doseTimes = [['08:00'], ['08:00', '20:00'], ['08:00', '14:00', '20:00']][freqIdx >= 0 ? freqIdx : 0] ?? ['08:00'];
+  const takeWith = form.takeWith.length > 0 ? `Take with ${form.takeWith.join(', ').toLowerCase()}.` : '';
+  const notes = [form.notes.trim(), takeWith].filter(Boolean).join('\n');
   return {
     name: form.name.trim(),
     strength: form.dosage.trim() || null,
     form: 'tablet' as const,
+    instructions: takeWith || null,
     prescriber: form.prescriber.trim() || null,
     start_date: normalizeDate(form.startDate) ?? undefined,
     dose_times: doseTimes,
     repeat: 'daily' as const,
-    notes: form.notes.trim() || null,
+    notes: notes || null,
   };
 }
 
@@ -278,6 +271,4 @@ const s = StyleSheet.create({
   pill:        { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
   tileRow:     { flexDirection: 'row', gap: 10, marginTop: 10, marginBottom: 4 },
   tile:        { flex: 1, alignItems: 'center', paddingVertical: 16, borderWidth: StyleSheet.hairlineWidth },
-  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginTop: 14 },
-  reminderIcon:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

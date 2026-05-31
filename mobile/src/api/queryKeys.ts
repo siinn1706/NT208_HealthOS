@@ -8,6 +8,7 @@ export const queryKeys = {
   appointmentPrep: (id: string) => `appointments.prep.${id}`,
   prescriptionAssets: (appointmentId: string) => `appointments.prescription-assets.${appointmentId}`,
   conversations: 'chat.conversations',
+  conversation: (conversationId: string) => `chat.conversation.${conversationId}`,
   messages: (conversationId: string) => `chat.messages.${conversationId}`,
   medications: 'medications.list',
   medication: (id: string) => `medications.detail.${id}`,

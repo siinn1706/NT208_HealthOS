@@ -17,7 +17,7 @@ export const notificationService = {
   },
 
   async markRead(id: string) {
-    const response = await apiRequest<DataResponse<NotificationItem>>(`/v1/notifications/${id}/read`, {
+    const response = await apiRequest<DataResponse<NotificationItem>>(`/v1/notifications/${encodeURIComponent(id)}/read`, {
       method: 'POST',
     });
     return response.data;

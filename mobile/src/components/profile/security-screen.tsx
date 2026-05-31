@@ -245,8 +245,8 @@ export function SecurityScreen() {
         <SettingRow
           Icon={IconLock}
           label="App lock"
-          sub="6-digit PIN · auto-lock after 1 min"
-          value="On"
+          sub="Requires native secure app-lock support"
+          value="Unavailable"
           last
           onPress={() => showUnavailable('Native app lock settings are not backed by a confirmed secure-storage contract yet.')}
         />

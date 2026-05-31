@@ -11,6 +11,38 @@ const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 beforeEach(() => jest.clearAllMocks());
 
 describe('appointmentService', () => {
+  it('creates appointments through the Core POST endpoint', async () => {
+    const body = {
+      appointment_date: '2099-06-05T10:30:00.000Z',
+      doctor_name: 'Dr Create',
+      specialty: 'Cardiology',
+      clinic: 'Core Clinic',
+      reason: 'Follow up',
+      notes: 'Bring prior lab work.',
+    };
+    mockApiRequest.mockResolvedValueOnce({
+      data: {
+        id: 'apt-new',
+        ...body,
+        diagnosis: null,
+        visit_type: null,
+        status: 'scheduled',
+        has_prescription: false,
+        prescription: null,
+      },
+    } as never);
+
+    await expect(appointmentService.create(body)).resolves.toMatchObject({
+      id: 'apt-new',
+      doctor_name: 'Dr Create',
+    });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments', {
+      method: 'POST',
+      json: body,
+    });
+  });
+
   it('updates appointment detail fields through the Core PATCH endpoint', async () => {
     mockApiRequest.mockResolvedValueOnce({
       data: {
@@ -72,6 +104,34 @@ describe('appointmentService', () => {
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/prep', {
       method: 'PATCH',
       json: { checklist_items: checklist },
+    });
+  });
+
+  it('updates appointment status through the FSM endpoint', async () => {
+    mockApiRequest.mockResolvedValueOnce({
+      data: {
+        id: 'apt-1',
+        appointment_date: '2099-06-04T10:30:00.000Z',
+        doctor_name: 'Dr Care',
+        specialty: 'Primary care',
+        clinic: 'Clinic A',
+        diagnosis: null,
+        visit_type: 'in-person',
+        status: 'cancelled',
+        notes: null,
+        has_prescription: false,
+        prescription: null,
+      },
+    } as never);
+
+    await expect(appointmentService.updateStatus('apt/1', 'cancelled')).resolves.toMatchObject({
+      id: 'apt-1',
+      status: 'cancelled',
+    });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt%2F1/status', {
+      method: 'PATCH',
+      json: { status: 'cancelled' },
     });
   });
 });

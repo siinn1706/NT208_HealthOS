@@ -3,13 +3,17 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useChatWebSocket } from '../hooks/use-chat-websocket';
 
 const mockOpenSocket = jest.fn();
-const mockGetMessageFromChatEvent = jest.fn<null, [unknown]>(() => null);
+const mockGetMessageFromChatEvent = jest.fn((_event: unknown): null => null);
+const mockGetThreadReloadConversationIdFromChatEvent = jest.fn((_event: unknown): string | null => null);
+const mockGetRemovedConversationIdFromChatEvent = jest.fn((_event: unknown): string | null => null);
 
 jest.mock('../api/services/chat-realtime-service', () => ({
   chatRealtimeService: {
     openSocket: () => mockOpenSocket(),
   },
   getMessageFromChatEvent: (event: unknown) => mockGetMessageFromChatEvent(event),
+  getThreadReloadConversationIdFromChatEvent: (event: unknown) => mockGetThreadReloadConversationIdFromChatEvent(event),
+  getRemovedConversationIdFromChatEvent: (event: unknown) => mockGetRemovedConversationIdFromChatEvent(event),
 }));
 
 class FakeWebSocket {
@@ -74,5 +78,48 @@ describe('useChatWebSocket reconnect behavior', () => {
     expect(result.current.isLive).toBe(true);
 
     unmount();
+  });
+
+  it('requests a thread reload for non-message events in the active conversation', async () => {
+    const socket = new FakeWebSocket();
+    const reload = jest.fn();
+    mockOpenSocket.mockResolvedValueOnce(socket as unknown as WebSocket);
+    mockGetThreadReloadConversationIdFromChatEvent.mockReturnValueOnce('conv-1');
+
+    renderHook(() => useChatWebSocket({
+      conversationId: 'conv-1',
+      enabled: true,
+      onThreadEvent: reload,
+    }));
+
+    await waitFor(() => expect(mockOpenSocket).toHaveBeenCalledTimes(1));
+    act(() => {
+      socket.onmessage?.({ data: JSON.stringify({ event: 'chat.message.read', payload: { conversation_id: 'conv-1' } }) });
+    });
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('notifies when the active conversation is removed', async () => {
+    const socket = new FakeWebSocket();
+    const removed = jest.fn();
+    const reload = jest.fn();
+    mockOpenSocket.mockResolvedValueOnce(socket as unknown as WebSocket);
+    mockGetRemovedConversationIdFromChatEvent.mockReturnValueOnce('conv-1');
+
+    renderHook(() => useChatWebSocket({
+      conversationId: 'conv-1',
+      enabled: true,
+      onThreadEvent: reload,
+      onConversationRemoved: removed,
+    }));
+
+    await waitFor(() => expect(mockOpenSocket).toHaveBeenCalledTimes(1));
+    act(() => {
+      socket.onmessage?.({ data: JSON.stringify({ event: 'chat.conversation.removed', payload: { conversation_id: 'conv-1' } }) });
+    });
+
+    expect(removed).toHaveBeenCalledTimes(1);
+    expect(reload).not.toHaveBeenCalled();
   });
 });

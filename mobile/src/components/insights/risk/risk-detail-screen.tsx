@@ -15,7 +15,7 @@ import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 import { RiskDriverTrendsCard } from './risk-driver-trends-card';
 import {
-  ChevronLeft, IconMore, IconHeartPulse,
+  ChevronLeft, IconRefresh, IconHeartPulse,
   IconActivity, IconShield, IconLeaf,
 } from '../../../icons';
 
@@ -241,7 +241,7 @@ export function RiskDetailScreen() {
         title={`${condition} risk`}
         right={
           <Pressable hitSlop={8} style={styles.moreBtn} onPress={risk.reload}>
-            <IconMore size={20} color={t.ink3} />
+            <IconRefresh size={20} color={t.ink3} />
           </Pressable>
         }
       />

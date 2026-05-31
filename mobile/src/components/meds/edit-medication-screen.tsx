@@ -34,6 +34,8 @@ export function EditMedicationScreen() {
     await medicationService.update(medicationId, toMedicationCreateBody(values));
     invalidateApiQuery(queryKeys.medications);
     invalidateApiQuery(queryKeys.medication(medicationId));
+    invalidateApiQuery(queryKeys.medicationDosesToday);
+    invalidateApiQuery(queryKeys.remindersAll);
   }
 
   if (medication.isLoading) {

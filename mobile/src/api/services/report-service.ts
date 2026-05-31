@@ -7,6 +7,14 @@ export const reportService = {
     return response.data;
   },
 
+  async generate(period: '7d' | '30d' | '90d' = '7d') {
+    const response = await apiRequest<DataResponse<HealthReport>>(`/v1/reports${buildQuery({ period })}`, {
+      method: 'POST',
+      timeoutMs: 60000,
+    });
+    return response.data;
+  },
+
   async trends(metric: string, period: '7d' | '30d' | '90d' = '7d') {
     const response = await apiRequest<DataResponse<TrendAnalysis>>(`/v1/reports/trends${buildQuery({ metric, period })}`);
     return response.data;

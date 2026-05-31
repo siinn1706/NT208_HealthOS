@@ -1,26 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, FlatList, StyleSheet, Modal, Pressable, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../src/theme/useTheme';
-import { typography } from '../../src/theme/typography';
-import { Bubble } from '../../src/components/chat/bubble';
-import { DateChip } from '../../src/components/chat/date-chip';
 import { Composer } from '../../src/components/chat/composer';
 import { AttachmentLinkModal } from '../../src/components/chat/attachment-link-modal';
-import { IconButton } from '../../src/components/primitives/icon-button';
-import { ApiState } from '../../src/components/api/api-state';
-import { ChevronLeft, IconMore, IconRobot } from '../../src/icons';
+import { ChatThreadHeader } from '../../src/components/chat/chat-thread-header';
+import { ChatThreadOptionsModal } from '../../src/components/chat/chat-thread-options-modal';
+import { ChatMessageList } from '../../src/components/chat/chat-message-list';
 import { useApiQuery, invalidateApiQuery } from '../../src/api/query';
 import { chatService } from '../../src/api/services';
 import { queryKeys } from '../../src/api/queryKeys';
-import { toBubble } from '../../src/api/viewModels';
 import { useSession } from '../../src/auth/session-provider';
 import { useChatWebSocket } from '../../src/hooks/use-chat-websocket';
 import { useChatReadReceipts } from '../../src/hooks/use-chat-read-receipts';
+import { useChatFallbackPolling } from '../../src/hooks/use-chat-fallback-polling';
+import { useChatThreadActions } from '../../src/hooks/use-chat-thread-actions';
 import { mergeMessagesChronologically } from '../../src/chat/message-pagination';
-import type { Message, MessageListResponse } from '../../../shared/api-contracts';
-import type { ChatAttachmentInput } from '../../src/api/services/chat-service';
+import { getConversationDisplay } from '../../src/chat/conversation-display';
+import type { Conversation, Message, MessageListResponse } from '../../../shared/api-contracts';
 
 const CHAT_PAGE_SIZE = 50;
 
@@ -33,22 +31,21 @@ export default function AiConversationScreen() {
     () => chatService.messages(conversationId, { limit: CHAT_PAGE_SIZE }),
     [conversationId],
   );
+  const loadConversation = useCallback(
+    () => chatService.conversation(conversationId),
+    [conversationId],
+  );
   const messageQuery = useApiQuery<MessageListResponse>(queryKeys.messages(conversationId), loadMessages, { enabled: Boolean(conversationId) });
+  const conversationQuery = useApiQuery<Conversation>(queryKeys.conversation(conversationId), loadConversation, { enabled: Boolean(conversationId) });
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [olderError, setOlderError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-
-  // More options modal
   const [moreOpen, setMoreOpen] = useState(false);
-
-  // Attach missing-API modal
-  const [attachOpen, setAttachOpen] = useState(false);
-  const [attaching, setAttaching] = useState(false);
-  const [attachError, setAttachError] = useState<string | null>(null);
+  const appendMessage = useCallback((message: Message) => {
+    setMessages((prev) => mergeMessagesChronologically(prev, [message]));
+  }, []);
 
   useEffect(() => {
     if (!conversationId) {
@@ -59,67 +56,55 @@ export default function AiConversationScreen() {
     }
   }, [conversationId]);
 
-  useEffect(() => {
-    if (messageQuery.data && !sending) {
-      setMessages(messageQuery.data.data);
-      setHasMore(messageQuery.data.has_more);
-      setNextCursor(messageQuery.data.next_cursor);
-      setOlderError(null);
-    }
-  }, [messageQuery.data, sending]);
-
   const handleRealtimeMessage = useCallback((message: Message) => {
-    setMessages((prev) => mergeMessagesChronologically(prev, [message]));
+    appendMessage(message);
     invalidateApiQuery(queryKeys.conversations);
-  }, []);
+  }, [appendMessage]);
+
+  const reloadMessages = messageQuery.reload;
+  const reloadConversation = conversationQuery.reload;
+  const reloadThread = useCallback(async () => {
+    await Promise.all([reloadMessages(), reloadConversation()]);
+  }, [reloadConversation, reloadMessages]);
 
   const realtime = useChatWebSocket({
     conversationId,
     enabled: Boolean(conversationId),
     onMessage: handleRealtimeMessage,
+    onThreadEvent: () => { void reloadThread(); },
+    onConversationRemoved: () => {
+      invalidateApiQuery(queryKeys.conversations);
+      router.back();
+    },
   });
 
-  async function handleSend(text: string) {
-    if (!conversationId) return;
-    setSending(true);
-    setSendError(null);
-    try {
-      const saved = await chatService.sendMessage(conversationId, text);
-      setMessages((prev) => mergeMessagesChronologically(prev, [saved]));
-      invalidateApiQuery(queryKeys.conversations);
-    } catch (err: unknown) {
-      setSendError(err instanceof Error ? err.message : 'Failed to send message. Please try again.');
-    } finally {
-      setSending(false);
-    }
-  }
+  useChatFallbackPolling({
+    enabled: Boolean(conversationId),
+    realtimeState: realtime.state,
+    reload: reloadThread,
+  });
 
-  async function handleSendAttachment(attachment: ChatAttachmentInput, caption: string) {
-    if (!conversationId) return;
-    setAttaching(true);
-    setAttachError(null);
-    try {
-      const saved = await chatService.sendAttachmentMessage(conversationId, attachment, caption);
-      setMessages((prev) => mergeMessagesChronologically(prev, [saved]));
-      invalidateApiQuery(queryKeys.conversations);
-      setAttachOpen(false);
-    } catch (err: unknown) {
-      setAttachError(err instanceof Error ? err.message : 'Failed to send attachment. Please try again.');
-    } finally {
-      setAttaching(false);
-    }
-  }
+  const conversationDisplay = useMemo(
+    () => getConversationDisplay(conversationQuery.data, user?.id),
+    [conversationQuery.data, user?.id],
+  );
 
-  function handleOpenAttachmentModal() {
-    setAttachError(null);
-    setAttachOpen(true);
-  }
+  const chatActions = useChatThreadActions({
+    conversationId,
+    isAiThread: conversationDisplay.isAi,
+    canSend: Boolean(conversationQuery.data),
+    reloadThread,
+    appendMessage,
+  });
 
-  function handleCloseAttachmentModal() {
-    if (attaching) return;
-    setAttachError(null);
-    setAttachOpen(false);
-  }
+  useEffect(() => {
+    const page = messageQuery.data;
+    if (chatActions.sending || !page) return;
+    setMessages((prev) => mergeMessagesChronologically(prev, page.data));
+    setHasMore(page.has_more);
+    setNextCursor(page.next_cursor);
+    setOlderError(null);
+  }, [conversationId, messageQuery.data, chatActions.sending]);
 
   const handleLoadOlder = useCallback(async () => {
     if (!conversationId || !hasMore || !nextCursor || loadingOlder) return;
@@ -147,153 +132,54 @@ export default function AiConversationScreen() {
     enabled: Boolean(conversationId) && !messageQuery.isLoading && !messageQuery.error,
   });
 
-  // FlatList inverted: reverse messages so newest is at bottom (index 0 = newest)
-  const reversed = useMemo(() => [...messages].reverse(), [messages]);
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: Message; index: number }) => (
-      <Bubble {...toBubble(item, user?.id)} index={messages.length - 1 - index} />
-    ),
-    [messages.length, user?.id],
-  );
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} edges={['top', 'bottom']}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: t.border, backgroundColor: t.card }]}>
-        <IconButton
-          icon={<ChevronLeft size={22} color={t.ink} />}
-          onPress={() => router.back()}
-          accessibilityLabel="Back"
-        />
-        <View style={[styles.avatarWrap, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
-          <IconRobot size={20} color={t.brand} />
-        </View>
-        <View style={styles.headerInfo}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={[typography.h3, { color: t.ink, fontSize: 16, fontWeight: '700' }]}>HealthOS AI</Text>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: realtime.isLive ? t.success : t.warning }} />
-          </View>
-          <Text style={[typography.micro, { color: t.ink3 }]}>
-            {realtime.isLive ? 'Live updates' : 'REST fallback'} · Never medical advice
-          </Text>
-        </View>
-        <IconButton
-          icon={<IconMore size={20} color={t.ink3} />}
-          accessibilityLabel="More"
-          onPress={() => setMoreOpen(true)}
-        />
-      </View>
+      <ChatThreadHeader
+        display={conversationDisplay}
+        realtimeState={realtime.state}
+        onBack={() => router.back()}
+        onMore={() => setMoreOpen(true)}
+      />
 
-      {/* Messages */}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {messageQuery.isLoading && (
-          <ApiState title="Loading messages" loading />
-        )}
-        {messageQuery.error && (
-          <ApiState
-            title="Messages unavailable"
-            message={messageQuery.error.message}
-            actionLabel="Retry"
-            onAction={messageQuery.reload}
-          />
-        )}
-        {!messageQuery.isLoading && !messageQuery.error && messages.length === 0 && !sending && (
-          <ApiState title="No messages yet" message="Start the conversation below." />
-        )}
-        {sendError && (
-          <ApiState
-            title="Send failed"
-            message={sendError}
-            actionLabel="Dismiss"
-            onAction={() => setSendError(null)}
-          />
-        )}
-        <FlatList
-          data={reversed}
-          inverted
-          keyExtractor={(m) => m.id}
-          renderItem={renderItem}
-          initialNumToRender={15}
-          windowSize={10}
-          maxToRenderPerBatch={10}
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={sending ? <Bubble side="me" isTyping /> : null}
-          ListFooterComponent={(
-            <View style={styles.historyFooter}>
-              {hasMore && (
-                <Pressable
-                  style={[styles.loadOlderBtn, { borderColor: t.border, backgroundColor: t.card }]}
-                  onPress={handleLoadOlder}
-                  disabled={loadingOlder}
-                >
-                  <Text style={[typography.caption, { color: t.ink }]}>
-                    {loadingOlder ? 'Loading earlier messages...' : 'Load earlier messages'}
-                  </Text>
-                </Pressable>
-              )}
-              {olderError && (
-                <Text style={[typography.micro, { color: t.danger, textAlign: 'center', marginBottom: 8 }]}>
-                  {olderError}
-                </Text>
-              )}
-              <DateChip label="Today" />
-            </View>
-          )}
-          contentContainerStyle={styles.messages}
+        <ChatMessageList
+          messages={messages}
+          currentUserId={user?.id}
+          loading={messageQuery.isLoading}
+          error={messageQuery.error}
+          sending={chatActions.sending}
+          sendError={chatActions.sendError}
+          hasMore={hasMore}
+          loadingOlder={loadingOlder}
+          olderError={olderError}
+          onRetry={() => { void messageQuery.reload(); }}
+          onDismissSendError={chatActions.dismissSendError}
+          onLoadOlder={() => { void handleLoadOlder(); }}
         />
         <Composer
-          onSend={handleSend}
-          onAttach={handleOpenAttachmentModal}
+          onSend={chatActions.handleSend}
+          onAttach={chatActions.openAttachmentModal}
+          disabled={!chatActions.canSend}
         />
       </KeyboardAvoidingView>
 
-      {/* More options modal */}
-      <Modal
+      <ChatThreadOptionsModal
         visible={moreOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMoreOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <Text style={[typography.h3, { color: t.ink, marginBottom: 16 }]}>Options</Text>
-            <Pressable
-              onPress={() => { messageQuery.reload(); setMoreOpen(false); }}
-              style={[styles.optionBtn, { borderColor: t.border, borderRadius: t.radius.md }]}
-            >
-              <Text style={[typography.bodyMed, { color: t.ink }]}>Refresh</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setMoreOpen(false)}
-              style={[styles.optionBtn, { borderColor: t.border, borderRadius: t.radius.md, marginTop: 8 }]}
-            >
-              <Text style={[typography.bodyMed, { color: t.ink3 }]}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setMoreOpen(false)}
+        onRefresh={() => { void reloadThread(); setMoreOpen(false); }}
+      />
 
       <AttachmentLinkModal
-        visible={attachOpen}
-        submitting={attaching}
-        error={attachError}
-        onClose={handleCloseAttachmentModal}
-        onSubmit={handleSendAttachment}
+        visible={chatActions.attachOpen}
+        submitting={chatActions.attaching}
+        error={chatActions.attachError}
+        onClose={chatActions.closeAttachmentModal}
+        onSubmit={chatActions.handleSendAttachment}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:    { flex: 1 },
-  header:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
-  avatarWrap:   { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  headerInfo:   { flex: 1 },
-  messages:     { paddingHorizontal: 16, paddingBottom: 16 },
-  historyFooter:{ alignItems: 'center', marginTop: 8, gap: 6 },
-  loadOlderBtn: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalSheet:   { width: '100%', padding: 20 },
-  optionBtn:    { paddingVertical: 14, paddingHorizontal: 16, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center' },
+  container: { flex: 1 },
 });

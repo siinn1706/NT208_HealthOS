@@ -28,6 +28,9 @@ export function ArchiveMedScreen() {
     try {
       await medicationService.archive(medicationId);
       invalidateApiQuery(queryKeys.medications);
+      invalidateApiQuery(queryKeys.medication(medicationId));
+      invalidateApiQuery(queryKeys.medicationDosesToday);
+      invalidateApiQuery(queryKeys.remindersAll);
       router.replace('/meds');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not archive medication.');

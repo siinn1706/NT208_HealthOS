@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../../layout/screen';
 import { TopBar } from '../../layout/top-bar';
 import { SectionHeader } from '../../layout/section-header';
+import { ApiState as ApiStatusCard } from '../../api/api-state';
 import { Card } from '../../primitives/card';
 import { Button } from '../../primitives/button';
 import { InsightsSegmentedTabs } from '../insights-segmented-tabs';
@@ -51,7 +52,7 @@ const GENERATE_STEPS = [
   { label: 'Finalizing report', sub: 'Formatting recommendations' },
 ];
 
-function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
+function ReportGeneratingState({ onRefresh }: { onRefresh: () => void }) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const activeStep = 1; // second step is in-progress
@@ -106,11 +107,11 @@ function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
       </Card>
 
       <Button
-        label={i18n('common.cancel')}
+        label={i18n('common.retry')}
         variant="ghost"
         size="lg"
         style={{ marginTop: 20, minWidth: 160 }}
-        onPress={onCancel ?? (() => {})}
+        onPress={onRefresh}
       />
     </View>
   );
@@ -118,7 +119,7 @@ function ReportGeneratingState({ onCancel }: { onCancel?: () => void }) {
 
 // ─── Reports Empty State ───────────────────────────────────────────────────────
 
-function ReportsEmptyState({ onLog }: { onLog?: () => void }) {
+function ReportsEmptyState({ onLog }: { onLog: () => void }) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const loggedDays = 3;
@@ -153,7 +154,7 @@ function ReportsEmptyState({ onLog }: { onLog?: () => void }) {
         {loggedDays} of {requiredDays} days logged
       </Text>
 
-      <Button label={i18n('insights.logToday')} variant="solid" size="lg" style={emptyStyles.cta} onPress={onLog ?? (() => {})} />
+      <Button label={i18n('insights.logToday')} variant="solid" size="lg" style={emptyStyles.cta} onPress={onLog} />
 
       {/* Info note */}
       <View style={[emptyStyles.note, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
@@ -174,7 +175,7 @@ const DATA_SOURCES = [
   { icon: <IconShield     size={16} color="#D97706" />, name: 'Risk prediction', status: 'ok'   },
 ];
 
-function ReportsErrorState({ onRetry, onReconnect }: { onRetry?: () => void; onReconnect?: () => void }) {
+function ReportsErrorState({ onRetry, onReconnect }: { onRetry: () => void; onReconnect: () => void }) {
   const t = useTheme();
   return (
     <View style={errStyles.wrap}>
@@ -219,8 +220,8 @@ function ReportsErrorState({ onRetry, onReconnect }: { onRetry?: () => void; onR
       </Card>
 
       <View style={errStyles.btnRow}>
-        <Button label="Reconnect" variant="ghost" size="lg" style={errStyles.btn} onPress={onReconnect ?? (() => {})} />
-        <Button label="Try again" variant="solid" size="lg" style={errStyles.btn} onPress={onRetry ?? (() => {})} />
+        <Button label="Reconnect" variant="ghost" size="lg" style={errStyles.btn} onPress={onReconnect} />
+        <Button label="Try again" variant="solid" size="lg" style={errStyles.btn} onPress={onRetry} />
       </View>
 
       <Text style={[typography.caption, { color: t.ink3, textAlign: 'center', marginTop: 12 }]}>
@@ -245,6 +246,7 @@ function ReportRow({
   title: string;
   subtitle: string;
   tone: Tone;
+  route: string;
   onPress: () => void;
 }) {
   const t = useTheme();
@@ -291,6 +293,8 @@ export function ReportsHubScreen() {
   const loadMonthly = useCallback(() => reportService.get('30d'), []);
   const report7d = useApiQuery(queryKeys.reports('7d'), loadWeekly);
   const report30d = useApiQuery(queryKeys.reports('30d'), loadMonthly);
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const hero = useMemo(() => {
     const data = asRecord(report7d.data);
@@ -316,6 +320,7 @@ export function ReportsHubScreen() {
         title: str(asRecord(asArray(data.sections)[0]).summary, sections > 0 ? `${sections} sections available` : 'No report sections yet'),
         subtitle: generated,
         tone,
+        route: `/insights/reports/${period}`,
       };
     };
     return [
@@ -327,14 +332,30 @@ export function ReportsHubScreen() {
         title: 'Open risk insights for full prevention plan',
         subtitle: 'Derived from health-risk endpoint',
         tone: 'warning' as Tone,
+        route: '/insights/risk',
       },
     ];
-  }, [report7d.data, report30d.data]);
+  }, [i18n, report7d.data, report30d.data]);
 
   const loading = report7d.isLoading || report30d.isLoading;
   const error = report7d.error ?? report30d.error;
 
   const isEmpty = !loading && !error && hero.sections === 0;
+  const reloadMonthlyReport = report30d.reload;
+
+  const handleGenerateReport = useCallback(async () => {
+    if (generating) return;
+    setGenerating(true);
+    setGenerationError(null);
+    try {
+      await reportService.generate('30d');
+      await reloadMonthlyReport();
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : 'Could not generate report.');
+    } finally {
+      setGenerating(false);
+    }
+  }, [generating, reloadMonthlyReport]);
 
   return (
     <Screen>
@@ -348,7 +369,7 @@ export function ReportsHubScreen() {
       {/* Loading → custom generating state */}
       {loading && (
         <ReportGeneratingState
-          onCancel={() => {
+          onRefresh={() => {
             report7d.reload();
             report30d.reload();
           }}
@@ -420,6 +441,7 @@ export function ReportsHubScreen() {
 
           {/* Status card — monthly report queued */}
           <Pressable
+            onPress={() => router.push('/insights/reports/30d' as never)}
             style={[styles.statusCard, { backgroundColor: t.card, borderColor: t.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: t.radius.lg }]}
           >
             <View style={styles.statusRow}>
@@ -440,8 +462,8 @@ export function ReportsHubScreen() {
             <QuickTile
               icon={<IconPlus size={18} color={t.brand} />}
               label={i18n('insights.generateReport')}
-              sub="On-demand"
-              onPress={() => report30d.reload()}
+              sub={generating ? 'Generating' : 'On-demand'}
+              onPress={handleGenerateReport}
             />
             <QuickTile
               icon={<IconHeartPulse size={18} color={t.brand} />}
@@ -450,6 +472,16 @@ export function ReportsHubScreen() {
               onPress={() => router.push('/insights/reports/export' as never)}
             />
           </View>
+
+          {(generating || generationError) && (
+            <ApiStatusCard
+              title={generating ? i18n('insights.buildingReport') : 'Report generation unavailable'}
+              message={generationError ?? 'Requesting the existing Core report generator.'}
+              loading={generating}
+              actionLabel={generationError ? i18n('common.retry') : undefined}
+              onAction={generationError ? handleGenerateReport : undefined}
+            />
+          )}
 
           <SectionHeader title={i18n('insights.library')} action={i18n('common.seeAll')} onActionPress={() => router.push('/insights/reports/export' as never)} />
           <Card tight>
@@ -461,7 +493,8 @@ export function ReportsHubScreen() {
                 title={row.title}
                 subtitle={row.subtitle}
                 tone={row.tone}
-                onPress={() => router.push('/insights/reports/7d' as never)}
+                route={row.route}
+                onPress={() => router.push(row.route as never)}
               />
             ))}
           </Card>

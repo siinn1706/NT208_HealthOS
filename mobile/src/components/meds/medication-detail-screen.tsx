@@ -13,7 +13,6 @@ import { Chip } from '../primitives/chip';
 import { ApiState } from '../api/api-state';
 import { ProgressRing } from '../charts/progress-ring';
 import { IconPill, IconClock, IconStethoscope, IconCalendar, ChevronLeft, IconMore } from '../../icons';
-import { AdherenceBarChart } from './adherence-bar-chart';
 import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { medicationService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
@@ -42,9 +41,8 @@ export function MedicationDetailScreen() {
   const [pauseSaving, setPauseSaving] = useState(false);
   const [pauseError, setPauseError] = useState<string | null>(null);
 
-  // Approximate taken/scheduled from adherence percent × 30 days
-  const taken = adherence ? Math.round(percent * 30) : 0;
-  const scheduled = 30;
+  const taken = adherence?.taken ?? 0;
+  const scheduled = adherence?.scheduled ?? 0;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -135,15 +133,9 @@ export function MedicationDetailScreen() {
                   {Math.round(percent * 100)}%
                 </Text>
                 {adherence && (
-                  <AdherenceBarChart
-                    values={Array.from({ length: 30 }, (_, i) => {
-                      const base = adherence.percent > 1 ? adherence.percent / 100 : adherence.percent;
-                      return Math.max(0, Math.min(1, base + (((i * 7 + 3) % 5) - 2) * 0.08));
-                    })}
-                    height={30}
-                    successColor={t.success}
-                    noDataColor={t.border}
-                  />
+                  <Text style={[typography.caption, { color: t.ink3 }]}>
+                    {taken} taken · {adherence.skipped} skipped · {adherence.missed} missed
+                  </Text>
                 )}
               </View>
               <ProgressRing value={percent} size={80} stroke={7} color={t.success} track={t.border}>
@@ -175,6 +167,8 @@ export function MedicationDetailScreen() {
                         try {
                           await medicationService.markDoseDone(dose.reminder_id);
                           invalidateApiQuery(queryKeys.medications);
+                          invalidateApiQuery(queryKeys.medicationDosesToday);
+                          invalidateApiQuery(queryKeys.remindersAll);
                           await medication.reload();
                         } catch (err) {
                           setDoseError(err instanceof Error ? err.message : 'Could not mark dose as taken.');
@@ -220,17 +214,18 @@ export function MedicationDetailScreen() {
                 variant="ghost"
                 style={[s.flex, pauseSaving && { opacity: 0.4 }]}
                 onPress={pauseSaving ? undefined : async () => {
+                  if (detail.status !== 'paused') {
+                    router.push(`/meds/pause/${detail.id}` as never);
+                    return;
+                  }
                   setPauseSaving(true);
                   setPauseError(null);
                   try {
-                    if (detail.status === 'paused') {
-                      await medicationService.resume(detail.id);
-                    } else {
-                      router.push(`/meds/pause/${detail.id}` as never);
-                      return;
-                    }
+                    await medicationService.resume(detail.id);
                     invalidateApiQuery(queryKeys.medications);
                     invalidateApiQuery(queryKeys.medication(medicationId));
+                    invalidateApiQuery(queryKeys.medicationDosesToday);
+                    invalidateApiQuery(queryKeys.remindersAll);
                     await medication.reload();
                   } catch (err) {
                     setPauseError(err instanceof Error ? err.message : 'Action failed.');

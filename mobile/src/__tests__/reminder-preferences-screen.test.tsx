@@ -113,6 +113,8 @@ describe('ReminderPreferencesScreen', () => {
     const { getByText, queryByText, queryByLabelText } = renderPreferences();
 
     expect(getByText('Critical alert bypass')).toBeTruthy();
+    expect(getByText('Core preference · OS permission not managed in this build')).toBeTruthy();
+    expect(queryByText('System permission · granted')).toBeNull();
     expect(queryByText('Care team messages')).toBeNull();
     expect(queryByLabelText('Mon')).toBeNull();
     expect(queryByLabelText('Tue')).toBeNull();

@@ -31,6 +31,57 @@
 
 ### Fixed
 
+#### Mobile Home, Meals, Reports, Risk, and Insights Completion (2026-05-31)
+- **Meal contract alignment**: Meal scan now uses Core `POST /v1/meals/analyze-photo`; meal delete and scan correction controls are guarded because no Core delete/correction contract exists.
+- **Nutrition trends**: Native meal trends now combine `GET /v1/meals/calories-summary`, `GET /v1/meals`, and Core report `GET /v1/reports/trends?metric=calories` instead of static trend content.
+- **Report generation**: Report hub now calls Core `POST /v1/reports?period=30d`, reloads the monthly report after success, and routes report rows to weekly, monthly, or risk screens.
+- **Risk actions**: Risk overview refresh now uses Core `POST /v1/health/risk-predictions`, invalidates `risk.summary`, and prevention cards derive from Core risk tips while saved tracking remains guarded.
+- **Regression coverage**: Added focused Jest coverage for meal analyze-photo/no-delete, report generate/trends, risk refresh service calls, report hub generation, nutrition trends, and prevention tracking guards.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and `git diff --check` passed; route matrix checks 71 routes and Jest is 88 suites / 299 tests.
+
+#### Mobile Devices, Health Connect, and Android Runtime Completion (2026-05-31)
+- **Device contract alignment**: Native Devices now uses Core-backed list, connect, sync, disconnect, ingest, sync-state, and permission wrappers; Health Connect sends a stable per-install `external_account_id` and reuses the stored Core device id where possible.
+- **Health Connect truthfulness**: Device Detail no longer simulates native permission grants or empty record reads in Expo Go/current Android builds; unavailable native access is guarded before ingest, permission patch, or sync calls.
+- **Sync-state actions**: Device Detail reads Core sync-state rows, resets selected tokens through `PUT /v1/devices/{id}/sync-state`, reloads after reset, and manual sync targets the selected Core device id.
+- **Android runtime checks**: Verified Android package `com.nt208.healthos`, scheme `nt208`, edge-to-edge/system UI setup, Metro monorepo exclusions, and absence of Health Connect native plugin support in the current Expo config.
+- **Regression coverage**: Added focused Device Detail tests for native-unavailable Health Connect access, sync-state reset reload, disconnect invalidation, and no fake ingest/permission/sync success.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, Expo Doctor, Android Expo export, and `git diff --check` passed; route matrix checks 71 routes, lint reports 29 warnings / 0 errors, Jest is 87 suites / 294 tests, Expo Doctor is 18/18, and Android export wrote `_expo/static/js/android/entry-1ec57e04c20b8cb310cb9b0c0db31727.hbc` at 7.06 MB.
+
+#### Mobile Medications/Reminders/Notifications Completion (2026-05-31)
+- **Medication flows**: Native Meds now uses Core-backed medication list, today dose, detail, adherence aggregate, create, edit, pause, resume, archive, refill, appointment import, take-dose, and skip-dose contracts with mutation invalidation.
+- **Reminder flows**: Native Reminders now uses Core-backed list, create, occurrences, done, skip, snooze, delete, and preferences contracts; no-op detail controls were removed or wired to real actions.
+- **Notification flow guard**: Notification inbox now marks read, read-all, and preferences through Core; safe deep links open only after mark-read succeeds, and unsafe or unknown links stay in-app.
+- **Truthful unsupported paths**: Pharmacy refill requests, barcode/drug search/source discovery, pending import sources, inline notification actions, and per-day medication history remain explicitly unavailable instead of fake-success UI.
+- **Regression coverage**: Added focused Jest coverage for medication/reminder/notification service payloads, create/detail UI actions, failed notification read routing, unsupported no-op removal, and medication history truthfulness.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and `git diff --check` passed; route matrix checks 71 routes, lint has 25 warnings / 0 errors, and Jest is 88 suites / 304 tests.
+
+#### Mobile Care Domains Completion (2026-05-31)
+- **Appointment contracts**: Native Care/Appointments uses existing Core `GET/POST /v1/appointments`, `GET/PATCH /v1/appointments/{id}`, and `PATCH /v1/appointments/{id}/status` wrappers for list, detail, create, reschedule, and cancel flows.
+- **Prep persistence**: Native Prep checklist uses Core `GET/PATCH /v1/appointments/{id}/prep`, invalidates the prep query, and reloads saved state after PATCH.
+- **Prescription assets**: Appointment and Prescription detail file actions use Core `GET/POST /v1/appointments/{id}/prescription/assets`, `GET /v1/appointments/{id}/prescription/assets/{asset_id}/url`, and `DELETE /v1/appointments/{id}/prescription/assets/{asset_id}`.
+- **Guarded gaps**: `/care/video/{id}` no longer renders a fake live call; it shows a video-session unavailable state because no meeting URL, room token, or media contract exists. Generic appointment uploads remain guarded because only prescription asset storage is confirmed.
+- **Route/test coverage**: Added focused Jest coverage for appointment create/update/status payloads, prep save/reload, prescription asset upload/download/delete actions, guarded video state, and Care route behavior.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and `git diff --check` passed; route matrix checks 71 routes, lint has 29 warnings / 0 errors, and Jest is 87 suites / 294 tests.
+
+#### Mobile Profile/Auth/Security Completion Pass (2026-05-31)
+- **Me menu routing**: Native Me -> Notifications now opens the real Core-backed reminder notification preferences route instead of the onboarding permission education screen.
+- **Truthful security guards**: App lock no longer displays as enabled; app lock, biometrics, recovery contact edits, and user session controls stay unavailable unless Core/native support exists.
+- **Preference persistence**: Appearance now saves through existing Core preferences using `theme_mode` and `accent_color`, with an authenticated hydrator matching the existing language preference pattern.
+- **Onboarding truthfulness**: Permission setup screens no longer claim they grant OS notification/camera/Health Connect permissions from unsupported CTAs.
+- **Dead code removal**: Removed unused Me `MissingApiModal` while keeping the shared `MissingApiState` used by other guarded surfaces.
+- **Regression coverage**: Added focused Jest coverage for notification routing, app-lock guard state, permission setup copy, appearance preference mapping/hydration/save behavior, and retained existing auth/profile/security/emergency/session tests.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and `git diff --check` passed; route matrix checks 71 routes, lint has 25 warnings / 0 errors, and Jest is 88 suites / 299 tests.
+
+#### Mobile Chat AI Realtime Completion (2026-05-31)
+- **Thread contract**: Native `/chat/[id]` now loads Core conversation detail for direct, group, and AI headers instead of assuming every thread is HealthOS AI.
+- **AI entrypoint**: Chat hero and suggestion chips now call the real Core `POST /v1/conversations/ai` get-or-create contract; suggestion text is sent as `initial_message`.
+- **AI follow-ups**: AI thread sends now use Core `POST /v1/conversations/{id}/messages/stream`, surface SSE error events, and reload the transcript after stream completion.
+- **Send race guard**: Thread sends are blocked until Core conversation detail identifies the conversation type, preventing AI threads from racing onto the plain message endpoint.
+- **Realtime fallback**: Mobile chat keeps the ws-ticket `/ws` path, normalizes legacy/canonical message events, reloads on read/edit/recalled/reaction/pin/conversation update/AI start/completion events, exits removed conversations, and polls REST while websocket state is fallback/error.
+- **Attachment truthfulness**: HTTPS metadata/link attachments still submit through `POST /v1/conversations/{id}/messages`; Core rejection is surfaced instead of faking success.
+- **Regression coverage**: Added focused Jest coverage for AI creation, AI stream send routing, websocket event normalization, fallback polling, service URL/payloads, mark-read, and no fake attachment success.
+- **Verification**: Mobile typecheck, route matrix, lint, full Jest, and `git diff --check` passed; route matrix checks 71 routes, lint has 25 warnings / 0 errors, and Jest is 88 suites / 302 tests.
+
 #### Frontend BMI Goal Deadline Validation (2026-05-31)
 - **Past-date guard**: Web BMI goal dialog now blocks past target dates and empty/out-of-range target weights before submitting to Core, matching the existing `POST/PATCH /v1/health-goals` contract.
 - **Error clarity**: Health-goal save action now reads FastAPI validation details so any remaining Core 422 response shows the actual validation reason instead of generic `Error 422`.

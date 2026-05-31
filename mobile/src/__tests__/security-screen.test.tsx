@@ -88,6 +88,17 @@ describe('SecurityScreen', () => {
     expect(getByText(/Face ID is not available/i)).toBeTruthy();
   });
 
+  it('does not present unsupported app lock as enabled', () => {
+    const { getByText, getAllByText } = render(<SecurityScreen />);
+
+    expect(getAllByText('Unavailable').length).toBeGreaterThanOrEqual(1);
+    expect(() => getByText('On')).toThrow();
+
+    fireEvent.press(getByText('App lock'));
+
+    expect(getByText(/Native app lock settings are not backed/i)).toBeTruthy();
+  });
+
   it('resets password with the native email OTP flow', async () => {
     const { getByText, getByPlaceholderText } = render(<SecurityScreen />);
 

@@ -34,7 +34,9 @@ export function TakeMedConfirmScreen() {
     try {
       await medicationService.markDoseDone(dose.reminder_id, dose.occurrence_id);
       invalidateApiQuery(queryKeys.medications);
+      invalidateApiQuery(queryKeys.medication(medicationId));
       invalidateApiQuery(queryKeys.medicationDosesToday);
+      invalidateApiQuery(queryKeys.remindersAll);
       setLoggedAt(new Date().toISOString());
       setDone(true);
     } catch (err) {

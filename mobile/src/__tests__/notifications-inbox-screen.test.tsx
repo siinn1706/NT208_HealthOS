@@ -62,6 +62,7 @@ const mockNotificationService = notificationService as jest.Mocked<typeof notifi
 const mockRouterPush = router.push as jest.MockedFunction<typeof router.push>;
 
 const queryReload = jest.fn();
+let loadNotifications: (() => Promise<unknown>) | null = null;
 
 function notification(overrides: Partial<NotificationItem>): NotificationItem {
   return {
@@ -79,17 +80,20 @@ function notification(overrides: Partial<NotificationItem>): NotificationItem {
 }
 
 function renderInbox(items: NotificationItem[]) {
-  mockUseApiQuery.mockReturnValue({
-    data: {
-      data: items,
-      meta: { next_cursor: null, has_more: false, per_page: 100 },
-    },
-    error: null,
-    isLoading: false,
-    isRefreshing: false,
-    isEmpty: items.length === 0,
-    reload: queryReload,
-  } as never);
+  mockUseApiQuery.mockImplementation((_, queryFn) => {
+    loadNotifications = queryFn as () => Promise<unknown>;
+    return {
+      data: {
+        data: items,
+        meta: { next_cursor: null, has_more: false, per_page: 50 },
+      },
+      error: null,
+      isLoading: false,
+      isRefreshing: false,
+      isEmpty: items.length === 0,
+      reload: queryReload,
+    } as never;
+  });
 
   return render(<NotificationsInboxScreen />);
 }
@@ -100,6 +104,19 @@ describe('NotificationsInboxScreen', () => {
     queryReload.mockClear();
     mockNotificationService.markRead.mockResolvedValue(notification({ is_read: true }));
     mockNotificationService.markAllRead.mockResolvedValue(1);
+    mockNotificationService.list.mockResolvedValue({
+      data: [],
+      meta: { next_cursor: null, has_more: false, per_page: 50 },
+    });
+    loadNotifications = null;
+  });
+
+  it('requests a Core-supported notification page size', async () => {
+    renderInbox([notification({})]);
+
+    await loadNotifications?.();
+
+    expect(mockNotificationService.list).toHaveBeenCalledWith({ per_page: 50 });
   });
 
   it('opens known backend medication links as native routes after marking the item read', async () => {
@@ -172,7 +189,7 @@ describe('NotificationsInboxScreen', () => {
     expect(mockRouterPush).not.toHaveBeenCalled();
   });
 
-  it('shows mark-read failures and still opens safe notification targets', async () => {
+  it('shows mark-read failures without opening safe notification targets', async () => {
     mockNotificationService.markRead.mockRejectedValueOnce(new Error('Network failed'));
     const item = notification({});
     const { getByText } = renderInbox([item]);
@@ -180,7 +197,7 @@ describe('NotificationsInboxScreen', () => {
     fireEvent.press(getByText('Morning dose'));
 
     await waitFor(() => expect(getByText('Network failed')).toBeTruthy());
-    expect(mockRouterPush).toHaveBeenCalledWith('/meds/plan-1');
+    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 
   it('shows mark-all-read failures without unhandled touch errors', async () => {

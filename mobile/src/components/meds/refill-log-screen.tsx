@@ -60,6 +60,7 @@ export function RefillLogScreen() {
       await medicationService.refill(medication.data.id, parsed.units);
       invalidateApiQuery(queryKeys.medications);
       invalidateApiQuery(queryKeys.medication(medication.data.id));
+      invalidateApiQuery(queryKeys.medicationDosesToday);
       await medication.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not log refill.');

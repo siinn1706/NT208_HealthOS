@@ -131,10 +131,41 @@ export interface Reminder {
   time?: string | null;
   repeat?: string | null;
   note?: string | null;
+  tzid?: string | null;
+  weekday_mask?: number | null;
+  day_of_month?: number | null;
   due_at?: string | null;
   next_occurrence_at?: string | null;
   done?: boolean;
   medication_plan_id?: string | null;
+}
+
+export type ReminderType = 'medicine' | 'appointment' | 'exercise';
+export type ReminderRepeat = 'once' | 'daily' | 'weekly' | 'monthly';
+
+export interface ReminderCreateBody {
+  type: ReminderType;
+  title: string;
+  time: string;
+  repeat?: ReminderRepeat;
+  note?: string | null;
+  tzid?: string | null;
+  weekday_mask?: number | null;
+  day_of_month?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+export interface ReminderOccurrence {
+  id: string;
+  reminder_id: string;
+  title: string;
+  type: string;
+  scheduled_at: string;
+  status: string;
+  snoozed_until?: string | null;
+  done_at?: string | null;
+  skipped_at?: string | null;
 }
 
 export type AppointmentStatus =
@@ -271,6 +302,8 @@ export interface MedicationPlanCreateBody {
   repeat: 'once' | 'daily' | 'weekly' | 'monthly';
   refill_supply_units?: number | null;
   refill_cadence_days?: number | null;
+  weekday_mask?: number | null;
+  day_of_month?: number | null;
   review_due_at?: string | null;
   notes?: string | null;
   appointment_id?: string | null;

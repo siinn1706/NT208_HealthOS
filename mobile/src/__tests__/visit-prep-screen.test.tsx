@@ -1,13 +1,23 @@
 /* eslint-env jest */
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { VisitPrepScreen } from '../components/care/visit-prep-screen';
-import { useApiQuery } from '../api/query';
+import { appointmentService } from '../api/services';
+import { invalidateApiQuery, useApiQuery } from '../api/query';
+import { queryKeys } from '../api/queryKeys';
 
 jest.mock('../api/query', () => ({
   invalidateApiQuery: jest.fn(),
   useApiQuery: jest.fn(),
+}));
+
+jest.mock('../api/services', () => ({
+  appointmentService: {
+    detail: jest.fn(),
+    getPrep: jest.fn(),
+    updatePrep: jest.fn(),
+  },
 }));
 
 jest.mock('expo-router', () => ({
@@ -32,6 +42,8 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 const mockUseApiQuery = useApiQuery as jest.MockedFunction<typeof useApiQuery>;
+const mockUpdatePrep = appointmentService.updatePrep as jest.MockedFunction<typeof appointmentService.updatePrep>;
+const mockInvalidateApiQuery = invalidateApiQuery as jest.MockedFunction<typeof invalidateApiQuery>;
 
 const baseQueryState = {
   error: null,
@@ -84,5 +96,37 @@ describe('VisitPrepScreen', () => {
     rerender(<VisitPrepScreen />);
 
     expect(StyleSheet.flatten(getByText('Bring insurance card').props.style).textDecorationLine).toBe('line-through');
+  });
+
+  it('saves prep checklist through Core, invalidates prep cache, and reloads saved prep', async () => {
+    const reloadPrep = jest.fn().mockResolvedValue(undefined);
+    mockUpdatePrep.mockResolvedValue({
+      appointment_id: 'apt-1',
+      checklist_items: [
+        { id: '1-bring-insurance-card', label: 'Bring insurance card', checked: true },
+      ],
+      notes: null,
+      updated_at: '2026-05-31T10:00:00.000Z',
+    });
+    mockUseApiQuery.mockImplementation((key) => (
+      key === queryKeys.appointmentPrep('apt-1')
+        ? { ...baseQueryState, data: null, reload: reloadPrep }
+        : appointmentQueryState
+    ) as never);
+
+    const { getByText } = render(<VisitPrepScreen />);
+
+    fireEvent.press(getByText('Bring insurance card'));
+    fireEvent.press(getByText('Save checklist'));
+
+    await waitFor(() => {
+      expect(mockUpdatePrep).toHaveBeenCalledWith('apt-1', {
+        checklist_items: expect.arrayContaining([
+          { id: '1-bring-insurance-card', label: 'Bring insurance card', checked: true },
+        ]),
+      });
+    });
+    expect(mockInvalidateApiQuery).toHaveBeenCalledWith(queryKeys.appointmentPrep('apt-1'));
+    expect(reloadPrep).toHaveBeenCalled();
   });
 });
