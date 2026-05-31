@@ -179,6 +179,7 @@ export function EmergencyTokenManager({
       )}
 
       <EmergencyMintDialog
+        key={mintOpen ? "mint-open" : "mint-closed"}
         open={mintOpen}
         onOpenChange={setMintOpen}
         completenessScore={completenessScore}
@@ -192,6 +193,7 @@ export function EmergencyTokenManager({
       />
 
       <EmergencyMintResultDialog
+        key={lastMint?.token ?? "no-result"}
         result={lastMint}
         onClose={() => setLastMint(null)}
       />

@@ -42,6 +42,7 @@ export default function PlansLayout({
       <script
         type="application/ld+json"
         suppressHydrationWarning
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from static plan metadata.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
       {children}

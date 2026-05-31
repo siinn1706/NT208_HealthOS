@@ -5,34 +5,35 @@ import { useTranslations } from "next-intl";
 import { BrandMarkIcon, brandMarkGlassBadgeSurfaceClassName } from "@/components/shared/auth/primitives";
 import { cn } from "@/lib/utils";
 
+const FOOTER_MENU_LINKS = [
+  { labelKey: "blog", href: "/articles" },
+  { labelKey: "menuServices", href: "/services" },
+  { labelKey: "menuPlans", href: "/plans" },
+] as const;
+
+const FOOTER_HELP_LINKS = [
+  { labelKey: "faq", href: "/about#faq" },
+  { labelKey: "privacy", href: "/legal/privacy" },
+] as const;
+
 export function Footer() {
   const t = useTranslations("footer");
 
-  const menuLinks = [
-    { labelKey: "blog", href: "/articles" },
-    { labelKey: "menuServices", href: "/services" },
-    { labelKey: "menuPlans", href: "/plans" },
-  ] as const;
-
-  const helpLinks = [
-    { labelKey: "faq", href: "/about#faq" },
-    { labelKey: "privacy", href: "/legal/privacy" },
-  ] as const;
   return (
     <footer className="relative overflow-hidden">
       {/* Decorative shapes */}
-      <div className="absolute -left-20 bottom-20 h-64 w-64 rotate-12 rounded-3xl bg-gradient-to-br from-night-600/20 to-night-400/10 blur-sm" />
-      <div className="absolute -right-20 bottom-20 h-64 w-64 -rotate-12 rounded-3xl bg-gradient-to-bl from-night-400/20 to-warm-peach/10 blur-sm" />
+      <div className="absolute -left-20 bottom-20 size-64 rotate-12 rounded-3xl bg-gradient-to-br from-night-600/20 to-night-400/10 blur-sm" />
+      <div className="absolute -right-20 bottom-20 size-64 -rotate-12 rounded-3xl bg-gradient-to-bl from-night-400/20 to-warm-peach/10 blur-sm" />
 
       {/* Logo mark */}
       <div className="flex justify-center pb-8 pt-16">
         <div
           className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-2xl",
+            "flex size-16 items-center justify-center rounded-2xl",
             brandMarkGlassBadgeSurfaceClassName,
           )}
         >
-          <BrandMarkIcon className="h-8 w-8" />
+          <BrandMarkIcon className="size-8" />
         </div>
       </div>
 
@@ -50,7 +51,7 @@ export function Footer() {
               {t("menuTitle")}
             </h4>
             <ul className="mt-4 space-y-3">
-              {menuLinks.map((link) => (
+              {FOOTER_MENU_LINKS.map((link) => (
                 <li key={link.labelKey}>
                   <Link
                     href={link.href}
@@ -69,7 +70,7 @@ export function Footer() {
               {t("helpTitle")}
             </h4>
             <ul className="mt-4 space-y-3">
-              {helpLinks.map((link) => (
+              {FOOTER_HELP_LINKS.map((link) => (
                 <li key={link.labelKey}>
                   <Link
                     href={link.href}

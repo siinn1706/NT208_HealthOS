@@ -24,6 +24,8 @@ interface UserSearchResult {
   last_seen?: string | null;
 }
 
+const EMPTY_EXCLUDED_IDS: string[] = [];
+
 function normalizeSearchResults(users: UserSearchResult[]): ChatParticipant[] {
   const seen = new Set<string>();
   const normalized: ChatParticipant[] = [];
@@ -45,7 +47,7 @@ function normalizeSearchResults(users: UserSearchResult[]): ChatParticipant[] {
   return normalized;
 }
 
-export function UserPickerMulti({ selected, onChange, max = 50, excludeIds = [] }: UserPickerMultiProps) {
+export function UserPickerMulti({ selected, onChange, max = 50, excludeIds = EMPTY_EXCLUDED_IDS }: UserPickerMultiProps) {
   const t = useTranslations("chat.group");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ChatParticipant[]>([]);
@@ -106,7 +108,7 @@ export function UserPickerMulti({ selected, onChange, max = 50, excludeIds = [] 
                 className="hover:text-destructive transition-colors"
                 aria-label={`Remove ${u.display_name}`}
               >
-                <X className="w-3 h-3" />
+                <X className="size-3" />
               </button>
             </span>
           ))}
@@ -115,7 +117,7 @@ export function UserPickerMulti({ selected, onChange, max = 50, excludeIds = [] 
 
       {/* Search input */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
         <Input
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
@@ -139,7 +141,7 @@ export function UserPickerMulti({ selected, onChange, max = 50, excludeIds = [] 
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
               onClick={() => pick(u)}
             >
-              <span className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs font-medium shrink-0">
+              <span className="size-6 rounded-full bg-secondary flex items-center justify-center text-xs font-medium shrink-0">
                 {u.display_name.charAt(0).toUpperCase()}
               </span>
               <div className="min-w-0">

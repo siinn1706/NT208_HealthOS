@@ -1,3 +1,4 @@
+// oxlint-disable react-doctor/nextjs-missing-metadata -- Services metadata is supplied by the route layout.
 "use client";
 
 import { useState, useEffect } from "react";
@@ -62,8 +63,8 @@ export default function ServicesPage() {
       {/* ── HERO ─────────────────────────────────────────────── */}
       <Section tone="dark" padding="lg" contained={false} aria-labelledby="services-hero-title">
         <AtmosphereGrid variant="dots" tone="dark" interactive />
-        <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-warm-peach/10 blur-[100px]" />
-        <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-night-400/15 blur-[80px]" />
+        <div className="absolute -top-20 -right-20 size-72 rounded-full bg-warm-peach/10 blur-[100px]" />
+        <div className="absolute -bottom-16 -left-16 size-64 rounded-full bg-night-400/15 blur-[80px]" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
@@ -106,11 +107,11 @@ export default function ServicesPage() {
                 <button
                   type="button"
                   onClick={() => selectTab(tile.id)}
-                  className="group flex h-full w-full flex-col rounded-2xl border border-border/60 bg-card p-5 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-night-400/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-night-400 focus-visible:ring-offset-2"
+                  className="group flex size-full flex-col rounded-2xl border border-border/60 bg-card p-5 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-night-400/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-night-400 focus-visible:ring-offset-2"
                   aria-controls={`services-tab-${tile.id}`}
                 >
-                  <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-night-700/15 to-night-400/15 text-night-700 dark:text-night-300">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  <span className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-night-700/15 to-night-400/15 text-night-700 dark:text-night-300">
+                    <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <h3 className="mb-1 text-base font-semibold text-foreground">{t(tile.labelKey)}</h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">{t(tile.descKey)}</p>
@@ -213,7 +214,7 @@ function TabContent({ id, promise, relatedHref, relatedLabel, children }: TabCon
           data-event-tab={id}
         >
           {relatedLabel}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
     </TabsContent>

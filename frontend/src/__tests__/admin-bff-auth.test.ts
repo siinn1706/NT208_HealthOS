@@ -30,7 +30,9 @@ vi.mock("@/lib/admin/bff-admin-guard", () => ({
  * Mock `coreProxy` so we can track whether it was called and control its
  * return value without making real upstream requests.
  */
-const mockCoreProxyFn = vi.fn<[NextRequest, string], Promise<NextResponse>>();
+type CoreProxyMock = (req: NextRequest, path: string) => Promise<NextResponse>;
+
+const mockCoreProxyFn = vi.fn<CoreProxyMock>();
 vi.mock("@/lib/core-api-proxy", () => ({
   coreProxy: (...args: [NextRequest, string]) => mockCoreProxyFn(...args),
 }));

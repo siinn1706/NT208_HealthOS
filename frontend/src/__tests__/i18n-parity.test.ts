@@ -6,10 +6,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 
 const MESSAGES_DIR = join(process.cwd(), "messages");
+const AUTH_COMPONENTS_DIR = join(process.cwd(), "src/components/shared/auth");
 
 function collectKeys(obj: unknown, prefix = ""): string[] {
   if (typeof obj !== "object" || obj === null) return [prefix];
@@ -23,6 +24,35 @@ function collectKeys(obj: unknown, prefix = ""): string[] {
     }
   }
   return result;
+}
+
+function readPath(obj: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((value, part) => {
+    if (typeof value !== "object" || value === null) return undefined;
+    return (value as Record<string, unknown>)[part];
+  }, obj);
+}
+
+function collectTsxFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) return collectTsxFiles(fullPath);
+    return entry.isFile() && entry.name.endsWith(".tsx") ? [fullPath] : [];
+  });
+}
+
+function collectAuthErrorTranslatorKeys(): string[] {
+  const keys = new Set<string>();
+  const keyPattern = /tErrors\("([^"]+)"\)/g;
+
+  for (const file of collectTsxFiles(AUTH_COMPONENTS_DIR)) {
+    const source = readFileSync(file, "utf-8");
+    for (const match of source.matchAll(keyPattern)) {
+      keys.add(`errors.${match[1]}`);
+    }
+  }
+
+  return [...keys].sort();
 }
 
 describe("i18n parity: vi.json matches en.json key tree", () => {
@@ -45,5 +75,14 @@ describe("i18n parity: vi.json matches en.json key tree", () => {
   it("both files are valid JSON (parse succeeds)", () => {
     expect(enKeys.size).toBeGreaterThan(0);
     expect(viKeys.size).toBeGreaterThan(0);
+  });
+
+  it("auth form error translator keys exist in both locales", () => {
+    const keys = collectAuthErrorTranslatorKeys();
+    const missing = keys.filter(
+      (key) => typeof readPath(en, key) !== "string" || typeof readPath(vi, key) !== "string",
+    );
+
+    expect(missing, `Missing auth error translation keys:\n${missing.join("\n")}`).toHaveLength(0);
   });
 });

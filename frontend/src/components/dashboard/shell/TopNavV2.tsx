@@ -117,7 +117,7 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
             size="icon-sm"
             onClick={onOpenMobileNav}
             aria-label={tShell("openDrawer")}
-            className="h-11 w-11 md:hidden"
+            className="size-11 md:hidden"
           >
             <Menu className="size-4" aria-hidden="true" />
           </Button>

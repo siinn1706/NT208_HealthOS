@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
   process.env.TRUST_PROXY = "1";
-  process.env.NODE_ENV = "test";
+  (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
   delete process.env.REDIS_URL;
 });
 

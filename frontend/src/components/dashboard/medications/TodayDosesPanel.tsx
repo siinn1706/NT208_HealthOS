@@ -122,7 +122,7 @@ export function TodayDosesPanel({ limit, variant = "card", fill = false }: Today
     <div className="divide-y divide-border">
       {Array.from({ length: fill ? 5 : 3 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-5 py-3">
-          <Skeleton className="w-8 h-8 rounded-full" />
+          <Skeleton className="size-8 rounded-full" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-3 w-2/3 rounded" />
             <Skeleton className="h-3 w-1/3 rounded" />
@@ -132,7 +132,7 @@ export function TodayDosesPanel({ limit, variant = "card", fill = false }: Today
     </div>
   ) : error ? (
     <div className="flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground">
-      <Bell className="w-4 h-4 opacity-40 flex-shrink-0" />
+      <Bell className="size-4 opacity-40 flex-shrink-0" />
       <p className="text-xs">{t("todayLoadError")}</p>
     </div>
   ) : visible.length === 0 ? (
@@ -140,7 +140,7 @@ export function TodayDosesPanel({ limit, variant = "card", fill = false }: Today
       "flex items-center gap-2.5 px-5 py-3.5 text-muted-foreground",
       fill && "flex-1",
     )}>
-      <Pill className="w-4 h-4 opacity-40 flex-shrink-0" />
+      <Pill className="size-4 opacity-40 flex-shrink-0" />
       <p className="text-xs">{t("todayEmpty")}</p>
     </div>
   ) : (
@@ -160,11 +160,11 @@ export function TodayDosesPanel({ limit, variant = "card", fill = false }: Today
             )}
           >
             <div
-              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+              className="flex-shrink-0 size-8 rounded-full flex items-center justify-center"
               style={{ background: "rgba(231, 222, 167, 0.18)" }}
               aria-hidden
             >
-              <Pill className="w-4 h-4" style={{ color: "#C9A95A" }} />
+              <Pill className="size-4" style={{ color: "#C9A95A" }} />
             </div>
             <div className="flex-1 min-w-0">
               <Link
@@ -184,7 +184,7 @@ export function TodayDosesPanel({ limit, variant = "card", fill = false }: Today
                 )}
               </Link>
               <p className="text-[11px] text-muted-foreground mt-0.5 inline-flex items-center gap-1">
-                <Clock className="w-3 h-3" aria-hidden />
+                <Clock className="size-3" aria-hidden />
                 {time}
               </p>
             </div>
@@ -194,13 +194,13 @@ export function TodayDosesPanel({ limit, variant = "card", fill = false }: Today
               disabled={isDone || busy === d.occurrence_id}
               aria-label={isDone ? t("todayMarkedAria") : t("todayMarkAria")}
               className={cn(
-                "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                "flex-shrink-0 size-8 rounded-lg flex items-center justify-center transition-colors",
                 isDone
                   ? "text-muted-foreground"
                   : "text-emerald-500 hover:bg-emerald-500/10 cursor-pointer",
               )}
             >
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="size-4" />
             </button>
           </li>
         );

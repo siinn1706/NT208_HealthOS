@@ -34,9 +34,8 @@ interface PageProps {
 }
 
 export default async function VisitPrepDetailPage({ params, searchParams }: PageProps) {
-  const { id } = await params;
-  const { attach } = await searchParams;
-  const brief = await fetchBrief(id);
+  const briefPromise = params.then(({ id }) => fetchBrief(id));
+  const [{ attach }, brief] = await Promise.all([searchParams, briefPromise]);
   if (!brief) {
     notFound();
   }

@@ -58,7 +58,7 @@ export function ProfileHeader({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card px-6 py-6">
+    <div className="rounded-xl border border-border bg-card p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Left: Avatar + Info */}
         <div className="flex items-center gap-4">
@@ -102,6 +102,7 @@ export function ProfileHeader({
             <input
               ref={fileInputRef}
               type="file"
+              aria-label={t("avatarChange")}
               accept="image/*"
               className="hidden"
               onChange={handleFileChange}

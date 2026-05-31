@@ -109,7 +109,7 @@ export function BmiScoreCard({ bmi }: BmiScoreCardProps) {
           <p className="text-xs text-muted-foreground">
             {t("targetLabel")}{" "}
             <span className="text-foreground font-medium">
-              BMI {bmi.targetBmi.toFixed(1)} — {targetWeight.toFixed(1)}kg
+              BMI {bmi.targetBmi.toFixed(1)}: {targetWeight.toFixed(1)}kg
             </span>
             {weightDiff > 0 && (
               <span className="text-warning">

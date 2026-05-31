@@ -46,6 +46,7 @@ export function ContactForm() {
         className="border-border bg-card"
       />
       <textarea
+        aria-label={t("message")}
         placeholder={t("message")}
         value={formData.message}
         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -56,7 +57,7 @@ export function ContactForm() {
         type="submit"
         className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 px-8 text-white shadow-md shadow-night-400/20 transition-[filter,box-shadow] duration-150 ease-out hover:brightness-110 hover:shadow-night-400/40"
       >
-        {t("submit")} <ChevronRight className="ml-1 h-4 w-4" />
+        {t("submit")} <ChevronRight className="ml-1 size-4" />
       </Button>
     </form>
   );

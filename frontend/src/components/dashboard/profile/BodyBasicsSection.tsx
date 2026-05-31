@@ -73,7 +73,7 @@ function ReadOnlyRow({ label, value }: { label: string; value: number | null }) 
         {value != null ? (
           value
         ) : (
-          <span className="italic text-muted-foreground/60">—</span>
+          <span className="italic text-muted-foreground/60">N/A</span>
         )}
       </p>
     </div>

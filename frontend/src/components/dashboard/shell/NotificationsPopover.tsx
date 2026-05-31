@@ -18,6 +18,10 @@ import { useRouter } from "@/navigation";
 
 const MAX_ITEMS = 20;
 const NOTIFICATIONS_REFRESH_EVENT = "healthos:notifications-refresh";
+const RELATIVE_TIME_FORMATTERS = {
+  en: new Intl.RelativeTimeFormat("en", { numeric: "auto" }),
+  vi: new Intl.RelativeTimeFormat("vi", { numeric: "auto" }),
+} as const;
 
 type NotificationItem = {
   id: string | number;
@@ -115,7 +119,7 @@ function relativeTime(iso: string | null | undefined, locale: string): string {
   if (Number.isNaN(date.getTime())) return "";
   const diffSec = Math.floor((date.getTime() - Date.now()) / 1000);
   const abs = Math.abs(diffSec);
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const rtf = locale.startsWith("vi") ? RELATIVE_TIME_FORMATTERS.vi : RELATIVE_TIME_FORMATTERS.en;
   if (abs < 60) return rtf.format(diffSec, "second");
   if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
   if (abs < 86_400) return rtf.format(Math.round(diffSec / 3600), "hour");
@@ -380,7 +384,7 @@ export function NotificationsPopover({ locale }: { locale: string }) {
               className="m-3 border-0 bg-transparent p-3"
             />
           ) : (
-            <ul role="list" className="divide-y divide-border">
+            <ul className="divide-y divide-border">
               {visibleItems.map((n) => {
                 const unread = !(n.is_read || n.read_at);
                 const titleText = n.title ?? tShell("notificationsDefaultTitle");
@@ -399,7 +403,7 @@ export function NotificationsPopover({ locale }: { locale: string }) {
                         {unread && (
                           <span
                             aria-hidden="true"
-                            className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-primary"
+                            className="mt-1.5 inline-block size-2 shrink-0 rounded-full bg-primary"
                           />
                         )}
                         <div className="min-w-0 flex-1">

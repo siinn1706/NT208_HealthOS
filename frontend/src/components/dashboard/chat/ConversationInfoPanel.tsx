@@ -85,11 +85,11 @@ export function ConversationInfoPanel({
                 {isAi ? (
                   <AiChatBadge size="lg" />
                 ) : isGroup ? (
-                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-accent" />
+                  <div className="size-16 rounded-full bg-accent/20 flex items-center justify-center">
+                    <Users className="size-8 text-accent" />
                   </div>
                 ) : (
-                  <Avatar className="w-16 h-16">
+                  <Avatar className="size-16">
                     <AvatarFallback className="text-lg font-semibold">
                       {getInitials(name)}
                     </AvatarFallback>
@@ -99,7 +99,7 @@ export function ConversationInfoPanel({
                   <p className={cn("font-semibold text-base", isAi && "text-primary")}>{name}</p>
                   {isAi && (
                     <div className="flex items-center gap-1.5 justify-center mt-1">
-                      <Bot className="w-3.5 h-3.5 text-primary" />
+                      <Bot className="size-3.5 text-primary" />
                       <span className="text-xs text-primary/80">{t("ai.subtitle")}</span>
                     </div>
                   )}
@@ -134,7 +134,7 @@ export function ConversationInfoPanel({
                     className="w-full justify-start text-destructive hover:text-destructive"
                     onClick={() => setShowLeaveConfirm(true)}
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
+                    <LogOut className="size-4 mr-2" />
                     {tg("leave")}
                   </Button>
                   <Separator />
@@ -160,7 +160,7 @@ export function ConversationInfoPanel({
               {/* Shared media */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                  <ImageIcon className="size-4 text-muted-foreground" />
                   <p className="text-sm font-semibold">{t("sharedMedia")}</p>
                   {sharedImages.length > 0 && (
                     <Badge variant="outline" className="text-xs ml-auto">{sharedImages.length}</Badge>
@@ -172,7 +172,7 @@ export function ConversationInfoPanel({
                   <div className="grid grid-cols-3 gap-1.5">
                     {sharedImages.slice(0, 9).map((m) => (
                       <div key={m.id} className="aspect-square rounded-md bg-secondary flex items-center justify-center overflow-hidden">
-                        <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                        <ImageIcon className="size-5 text-muted-foreground" />
                       </div>
                     ))}
                   </div>
@@ -184,14 +184,14 @@ export function ConversationInfoPanel({
                   <Separator />
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <FileText className="size-4 text-muted-foreground" />
                       <p className="text-sm font-semibold">Files</p>
                       <Badge variant="outline" className="text-xs ml-auto">{sharedFiles.length}</Badge>
                     </div>
                     <div className="space-y-2">
                       {sharedFiles.slice(0, 5).map((m) => (
                         <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/40">
-                          <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <FileText className="size-4 text-muted-foreground flex-shrink-0" />
                           <span className="text-sm truncate">{m.content}</span>
                         </div>
                       ))}

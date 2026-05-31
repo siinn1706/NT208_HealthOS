@@ -75,17 +75,22 @@ export async function downloadDashboardCharts(
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  for (let i = 0; i < charts.length; i++) {
-    const dataUrl = charts[i].getConnectedDataURL({ type: "png", pixelRatio: 2 });
-    if (!dataUrl) continue;
-    const img = new Image();
-    await new Promise<void>((resolve) => {
-      img.onload = () => {
-        ctx.drawImage(img, i * (chartWidth + gap), 0, chartWidth, chartHeight);
-        resolve();
-      };
-      img.src = dataUrl;
-    });
+  const images = await Promise.all(
+    charts.map((chart) => {
+      const dataUrl = chart.getConnectedDataURL({ type: "png", pixelRatio: 2 });
+      if (!dataUrl) return Promise.resolve<HTMLImageElement | null>(null);
+      const img = new Image();
+      return new Promise<HTMLImageElement>((resolve) => {
+        img.onload = () => resolve(img);
+        img.src = dataUrl;
+      });
+    }),
+  );
+
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    if (!img) continue;
+    ctx.drawImage(img, i * (chartWidth + gap), 0, chartWidth, chartHeight);
   }
 
   canvas.toBlob((blob) => {

@@ -44,13 +44,13 @@ export function TrustStrip({ items, tone = "card", className }: TrustStripProps)
             {Icon && (
               <span
                 className={cn(
-                  "mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg",
+                  "mb-2 inline-flex size-9 items-center justify-center rounded-lg",
                   tone === "dark"
                     ? "bg-white/10 text-night-300"
                     : "bg-gradient-to-br from-night-700/15 to-night-400/15 text-night-700 dark:text-night-300"
                 )}
               >
-                <Icon className="h-4 w-4" aria-hidden="true" />
+                <Icon className="size-4" aria-hidden="true" />
               </span>
             )}
             <span className="text-2xl font-extrabold sm:text-3xl">{item.value}</span>

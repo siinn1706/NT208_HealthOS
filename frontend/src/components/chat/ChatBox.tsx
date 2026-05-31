@@ -30,12 +30,12 @@ export default function ChatBox({ conversationId }: ChatBoxProps) {
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    ws.addEventListener("open", () => {
+    const handleOpen = () => {
       setIsConnected(true);
       setError(null);
-    });
+    };
 
-    ws.addEventListener("message", (event) => {
+    const handleMessage = (event: MessageEvent) => {
       try {
         const payload = JSON.parse(event.data);
         if (typeof payload?.message !== "string" || typeof payload?.sender !== "string") {
@@ -45,18 +45,27 @@ export default function ChatBox({ conversationId }: ChatBoxProps) {
       } catch {
         setMessages((prev) => [...prev, { sender: "system", message: "Received invalid message from server." }]);
       }
-    });
+    };
 
-    ws.addEventListener("close", () => {
+    const handleClose = () => {
       setIsConnected(false);
-    });
+    };
 
-    ws.addEventListener("error", () => {
+    const handleError = () => {
       setError("Unable to connect to the chat service.");
       setIsConnected(false);
-    });
+    };
+
+    ws.addEventListener("open", handleOpen);
+    ws.addEventListener("message", handleMessage);
+    ws.addEventListener("close", handleClose);
+    ws.addEventListener("error", handleError);
 
     return () => {
+      ws.removeEventListener("open", handleOpen);
+      ws.removeEventListener("message", handleMessage);
+      ws.removeEventListener("close", handleClose);
+      ws.removeEventListener("error", handleError);
       ws.close();
     };
   }, [wsUrl]);
@@ -129,6 +138,7 @@ export default function ChatBox({ conversationId }: ChatBoxProps) {
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <textarea
             rows={2}
+            aria-label="Message"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={handleInputKeyDown}
@@ -139,7 +149,7 @@ export default function ChatBox({ conversationId }: ChatBoxProps) {
             type="button"
             onClick={handleSend}
             disabled={!draft.trim() || !isConnected}
-            className="inline-flex items-center justify-center rounded-3xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+            className="inline-flex items-center justify-center rounded-3xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-sky-950"
           >
             Gửi
           </button>

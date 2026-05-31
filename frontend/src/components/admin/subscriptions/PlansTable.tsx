@@ -73,7 +73,7 @@ function ActivePill({ active }: { active: boolean }) {
  * - No payment / checkout / billing-provider controls are rendered (R9.7).
  */
 export function PlansTable({ plans, onEdit }: PlansTableProps) {
-  const sorted = [...plans].sort((a, b) => a.sort_order - b.sort_order);
+  const sorted = plans.toSorted((a, b) => a.sort_order - b.sort_order);
 
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)]">

@@ -85,7 +85,7 @@ export function UpcomingRemindersWidget({ reminders, fill = false }: UpcomingRem
     )}>
       <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border shrink-0">
         <p className="text-sm font-semibold text-foreground">{t("title")}</p>
-        <Clock className="w-4 h-4 text-muted-foreground" />
+        <Clock className="size-4 text-muted-foreground" />
       </div>
 
       <div className={cn(
@@ -138,11 +138,11 @@ export function UpcomingRemindersWidget({ reminders, fill = false }: UpcomingRem
                   >
                     <div
                       className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+                        "size-8 rounded-full flex items-center justify-center flex-shrink-0",
                         cfg.bg,
                       )}
                     >
-                      <Icon className={cn("w-4 h-4", cfg.color)} />
+                      <Icon className={cn("size-4", cfg.color)} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p
@@ -158,17 +158,17 @@ export function UpcomingRemindersWidget({ reminders, fill = false }: UpcomingRem
                       </p>
                     </div>
                     {!r.done && (
-                      <button
+                      <button type="button"
                         onClick={() => ack(r.id)}
                         aria-label={t("ack")}
                         className={cn(
-                          "flex-shrink-0 w-7 h-7 rounded-full border border-border",
+                          "flex-shrink-0 size-7 rounded-full border border-border",
                           "flex items-center justify-center",
                           "hover:bg-primary hover:border-primary hover:text-primary-foreground",
                           "transition-colors duration-200 cursor-pointer text-muted-foreground",
                         )}
                       >
-                        <Check className="w-3.5 h-3.5" />
+                        <Check className="size-3.5" />
                       </button>
                     )}
                   </li>

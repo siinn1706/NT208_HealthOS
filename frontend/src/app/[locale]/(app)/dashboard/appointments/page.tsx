@@ -1,27 +1,14 @@
-import { Stethoscope, Plus } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { AppointmentsPageClient } from "@/components/dashboard/appointments/AppointmentsPageClient";
+import { normalizeAppointment } from "@/components/dashboard/appointments/appointment-normalizer";
+import type { Appointment } from "@/types/api";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("dashboard.nav");
   return { title: t("appointments") };
 }
-import { AppointmentHistoryTable } from "@/components/dashboard/appointments/AppointmentHistoryTable";
-import { AppointmentsPageClient } from "@/components/dashboard/appointments/AppointmentsPageClient";
-import { headers } from "next/headers";
-import type { Appointment, AppointmentStatus } from "@/types/api";
-
-// B7 — full status set returned by Core BE; FE chips already cover all of these.
-const VALID_APPOINTMENT_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
-  "booked",
-  "scheduled",
-  "upcoming",
-  "in_progress",
-  "completed",
-  "cancelled",
-  "no_show",
-  "rescheduled",
-]);
 
 async function fetchAppointments(): Promise<Appointment[]> {
   const t = await getTranslations("dashboard.appointments");
@@ -37,63 +24,9 @@ async function fetchAppointments(): Promise<Appointment[]> {
       const json = await res.json();
       const data = json?.data;
       if (Array.isArray(data)) {
-        return data.map(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (item: any): Appointment => ({
-            id: typeof item?.id === "string" ? item.id : "",
-            date: typeof item?.appointment_date === "string" ? item.appointment_date : "",
-            doctorName:
-              typeof item?.doctor_name === "string" && item.doctor_name.trim()
-                ? item.doctor_name
-                : noInfo,
-            specialty:
-              typeof item?.specialty === "string" && item.specialty.trim()
-                ? item.specialty
-                : "N/A",
-            clinic:
-              typeof item?.clinic === "string" && item.clinic.trim()
-                ? item.clinic
-                : "N/A",
-            diagnosis:
-              typeof item?.diagnosis === "string" && item.diagnosis.trim()
-                ? item.diagnosis
-                : noInfo,
-            status: VALID_APPOINTMENT_STATUSES.has(item?.status as AppointmentStatus)
-              ? (item.status as AppointmentStatus)
-              : "upcoming",
-            hasPrescription: Boolean(item?.has_prescription),
-            prescription:
-              item?.prescription && typeof item.prescription === "object"
-                ? {
-                    id: typeof item.prescription.id === "string" ? item.prescription.id : "",
-                    issuedAt:
-                      typeof item.prescription.issued_at === "string"
-                        ? item.prescription.issued_at
-                        : "",
-                    doctor:
-                      typeof item.prescription.doctor === "string"
-                        ? item.prescription.doctor
-                        : noInfo,
-                    clinic:
-                      typeof item.prescription.clinic === "string"
-                        ? item.prescription.clinic
-                        : noInfo,
-                    diagnosis:
-                      typeof item.prescription.diagnosis === "string"
-                        ? item.prescription.diagnosis
-                        : noInfo,
-                    medicines: Array.isArray(item.prescription.medicines)
-                      ? item.prescription.medicines
-                      : [],
-                    notes:
-                      typeof item.prescription.notes === "string"
-                        ? item.prescription.notes
-                        : null,
-                  }
-                : null,
-            notes: typeof item?.notes === "string" ? item.notes : undefined,
-          })
-        );
+        return data
+          .map((item: unknown) => normalizeAppointment(item, noInfo))
+          .filter((item): item is Appointment => item !== null);
       }
     }
   } catch {}

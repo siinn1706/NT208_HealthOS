@@ -108,6 +108,7 @@ async function aggregateClientSide(
   const rawMetrics: Array<{ recorded_at: string; value: number }> = [];
   let page = 1;
   while (true) {
+    // oxlint-disable-next-line react-doctor/async-await-in-loop -- Pagination is sequential because each page decides whether another request is needed.
     const res = await fetch(
       `${CORE_API_URL}/v1/health-metrics?metric_type=${metricType}&date_from=${from}&date_to=${to}&per_page=500&page=${page}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
@@ -115,6 +116,7 @@ async function aggregateClientSide(
     if (!res.ok) {
       return { error: { code: "UPSTREAM_ERROR", message: "Failed to fetch raw metrics." } };
     }
+    // oxlint-disable-next-line react-doctor/async-await-in-loop -- Parse the current page before deciding if more pages remain.
     const json = await res.json();
     const raw: unknown[] = (json as { data?: unknown[] }).data ?? [];
     const data = raw.filter((r): r is { recorded_at: string; value: number } =>

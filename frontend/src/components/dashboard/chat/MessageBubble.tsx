@@ -197,14 +197,14 @@ export const MessageBubble = memo(function MessageBubble({
               isAi ? (
                 <AiChatBadge size="sm" />
               ) : (
-                <Avatar className="w-8 h-8">
+                <Avatar className="size-8">
                   <AvatarFallback className="bg-secondary text-foreground text-xs font-semibold">
                     {getInitials(senderName)}
                   </AvatarFallback>
                 </Avatar>
               )
             ) : (
-              <div className="w-8 h-8" />
+              <div className="size-8" />
             )}
           </div>
         )}
@@ -224,7 +224,7 @@ export const MessageBubble = memo(function MessageBubble({
                   "hidden md:flex absolute top-1/2 -translate-y-1/2 z-20 opacity-0 pointer-events-none",
                   "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
                   "transition-opacity duration-150",
-                  "bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-md px-1 py-1",
+                  "bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-md p-1",
                   isOwn ? "right-full mr-2 flex-row-reverse" : "left-full ml-2"
                 )}
               >
@@ -332,7 +332,7 @@ export const MessageBubble = memo(function MessageBubble({
             {message.is_pinned && (
               <Pin
                 className={cn(
-                  "absolute -top-2 w-3 h-3 text-primary",
+                  "absolute -top-2 size-3 text-primary",
                   isOwn ? "-left-1" : "-right-1"
                 )}
               />
@@ -461,14 +461,14 @@ function MessageStatus({
         aria-label={t("status.queued")}
         title={t("status.queued")}
       >
-        <CloudOff className="w-3 h-3" aria-hidden />
+        <CloudOff className="size-3" aria-hidden />
       </span>
     );
   }
   if (status === "sending") {
     return (
       <Clock
-        className="w-3 h-3 text-muted-foreground"
+        className="size-3 text-muted-foreground"
         aria-label={t("status.sending")}
       />
     );
@@ -476,7 +476,7 @@ function MessageStatus({
   if (status === "sent") {
     return (
       <Check
-        className="w-3 h-3 text-muted-foreground"
+        className="size-3 text-muted-foreground"
         aria-label={t("status.sent")}
       />
     );
@@ -484,14 +484,14 @@ function MessageStatus({
   if (status === "delivered") {
     return (
       <CheckCheck
-        className="w-3 h-3 text-muted-foreground"
+        className="size-3 text-muted-foreground"
         aria-label={t("status.delivered")}
       />
     );
   }
   if (status === "read") {
     return (
-      <CheckCheck className="w-3 h-3 text-primary" aria-label={t("status.read")} />
+      <CheckCheck className="size-3 text-primary" aria-label={t("status.read")} />
     );
   }
   if (status === "failed") {
@@ -501,7 +501,7 @@ function MessageStatus({
         aria-label={t("status.failed")}
         title={t("status.failed")}
       >
-        <AlertCircle className="w-3 h-3" aria-hidden />
+        <AlertCircle className="size-3" aria-hidden />
       </span>
     );
   }
@@ -539,7 +539,7 @@ function RetryRow({
           onClick={() => onRetry(messageId)}
           className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
         >
-          <RefreshCw className="w-3 h-3" aria-hidden />
+          <RefreshCw className="size-3" aria-hidden />
           {t("status.retry")}
         </button>
       )}
@@ -549,7 +549,7 @@ function RetryRow({
           onClick={() => onDiscard(messageId)}
           className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <X className="w-3 h-3" aria-hidden />
+          <X className="size-3" aria-hidden />
           {t("status.discard")}
         </button>
       )}

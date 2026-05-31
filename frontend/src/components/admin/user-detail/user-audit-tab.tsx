@@ -84,6 +84,7 @@ export function UserAuditTab({ userId }: UserAuditTabProps) {
         <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
           <p className="text-sm text-[var(--admin-fg-muted)]">{state.reason}</p>
           <button
+            type="button"
             onClick={() => void load()}
             className="text-xs text-[var(--admin-brand)] underline-offset-4 hover:underline motion-safe:transition-colors"
           >
@@ -99,13 +100,13 @@ export function UserAuditTab({ userId }: UserAuditTabProps) {
       )}
 
       {state.status === "success" && state.events.length > 0 && (
-        <ul className="divide-y divide-[var(--admin-divider)]" role="list">
+        <ul className="divide-y divide-[var(--admin-divider)]">
           {state.events.map((ev) => (
             <li key={ev.id} className="flex items-start gap-3 px-5 py-3 text-sm">
               <span className="min-w-0 flex-1 text-[var(--admin-fg)]">
                 <span className="font-medium">{ev.action}</span>
                 {ev.detail && (
-                  <span className="ml-1 text-[var(--admin-fg-muted)]">— {ev.detail}</span>
+                  <span className="ml-1 text-[var(--admin-fg-muted)]">: {ev.detail}</span>
                 )}
                 {ev.actor && (
                   <span className="ml-1 text-[var(--admin-fg-subtle)] text-xs">by {ev.actor}</span>

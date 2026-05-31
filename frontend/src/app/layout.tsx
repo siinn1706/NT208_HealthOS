@@ -38,7 +38,8 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
       <head>
-        {process.env.NODE_ENV === "development" && (
+        {process.env.NODE_ENV === "development" &&
+          process.env.NEXT_PUBLIC_ENABLE_REACT_GRAB === "1" && (
           <Script
             src="//unpkg.com/react-grab/dist/index.global.js"
             crossOrigin="anonymous"
@@ -46,7 +47,7 @@ export default async function RootLayout({
           />
         )}
         {/* Full 5-token early hydration lives in /accent-early.js (~2KB) — keeps layout HTML small. */}
-        <script src="/accent-early.js" />
+        <Script src="/accent-early.js" strategy="beforeInteractive" />
       </head>
       <body className="overflow-x-hidden font-[family-name:var(--font-be-vietnam-pro)]">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

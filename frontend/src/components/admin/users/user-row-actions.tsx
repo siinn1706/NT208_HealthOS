@@ -54,7 +54,7 @@ export function UserRowActions({
           variant="ghost"
           size="xs"
           aria-label={`Actions for ${label}`}
-          className="h-7 w-7 p-0 text-[var(--admin-fg-muted)] hover:text-[var(--admin-fg)]"
+          className="size-7 p-0 text-[var(--admin-fg-muted)] hover:text-[var(--admin-fg)]"
         >
           <MoreHorizontal className="size-4" aria-hidden="true" />
         </Button>

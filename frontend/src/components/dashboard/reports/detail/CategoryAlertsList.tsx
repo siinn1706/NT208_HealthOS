@@ -11,10 +11,10 @@ interface CategoryAlertsListProps {
 
 function SeverityIcon({ severity }: { severity: ReportAlert["severity"] }) {
   if (severity === "critical")
-    return <AlertCircle className="h-4 w-4 text-destructive shrink-0" aria-hidden />;
+    return <AlertCircle className="size-4 text-destructive shrink-0" aria-hidden />;
   if (severity === "warning")
-    return <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />;
-  return <Info className="h-4 w-4 text-[#41BCE6] shrink-0" aria-hidden />;
+    return <AlertTriangle className="size-4 text-amber-500 shrink-0" aria-hidden />;
+  return <Info className="size-4 text-[#41BCE6] shrink-0" aria-hidden />;
 }
 
 function severityVariant(severity: ReportAlert["severity"]): "destructive" | "secondary" | "outline" {
@@ -30,13 +30,15 @@ function severityBg(severity: ReportAlert["severity"]) {
 }
 
 export async function CategoryAlertsList({ alerts }: CategoryAlertsListProps) {
-  const t = await getTranslations("reports");
-  const locale = await getLocale();
+  const [t, locale] = await Promise.all([
+    getTranslations("reports"),
+    getLocale(),
+  ]);
 
   if (alerts.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 flex items-center gap-3">
-        <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" aria-hidden />
+        <CheckCircle2 className="size-5 text-emerald-500 shrink-0" aria-hidden />
         <p className="text-sm text-muted-foreground">{t("detail.noAlerts")}</p>
       </div>
     );

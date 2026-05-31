@@ -1,0 +1,39 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e7]:
+          - img [ref=e9]
+          - generic [ref=e10]: HealthOS
+        - generic [ref=e11]: Sign In
+        - generic [ref=e12]: Welcome back! Sign in to continue your health journey.
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - generic [ref=e16]: Username or Email
+            - textbox "Username or Email" [ref=e17]:
+              - /placeholder: Enter your username or email
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - generic [ref=e20]: Password
+              - link "Forgot password?" [ref=e21] [cursor=pointer]:
+                - /url: /en/forgot-password
+            - generic [ref=e22]:
+              - textbox "Password" [ref=e23]:
+                - /placeholder: ••••••••
+              - button "Show password" [ref=e24] [cursor=pointer]:
+                - img [ref=e25]
+          - button "Sign In" [ref=e28]
+        - generic [ref=e30]: Or continue with
+        - generic [ref=e31]:
+          - button "Continue with Google" [ref=e32]:
+            - img
+            - text: Google
+          - button "Continue with GitHub" [ref=e33]:
+            - img
+            - text: GitHub
+      - paragraph [ref=e35]:
+        - text: Don't have an account?
+        - link "Sign up" [ref=e36] [cursor=pointer]:
+          - /url: /en/register
+  - region "Notifications alt+T"

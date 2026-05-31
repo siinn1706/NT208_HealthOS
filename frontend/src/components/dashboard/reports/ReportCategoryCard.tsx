@@ -75,7 +75,7 @@ export async function ReportCategoryCard({
             className="rounded-lg p-2"
             style={{ backgroundColor: `${iconColor}20` }}
           >
-            <Icon className="h-4 w-4" style={{ color: iconColor }} aria-hidden />
+            <Icon className="size-4" style={{ color: iconColor }} aria-hidden />
           </div>
           <span className="text-sm font-semibold text-foreground">
             {t(`categories.${section.category}` as Parameters<typeof t>[0])}
@@ -105,7 +105,7 @@ export async function ReportCategoryCard({
       {/* Trend row */}
       <div className="flex items-center justify-between">
         <div className={`flex items-center gap-1 text-xs font-medium ${trendCls}`}>
-          <TrendIcon className="h-3.5 w-3.5" aria-hidden />
+          <TrendIcon className="size-3.5" aria-hidden />
           <span>
             {section.stats.change_percent > 0 ? "+" : ""}
             {section.stats.change_percent}%
@@ -114,7 +114,7 @@ export async function ReportCategoryCard({
             {t(`trend.${section.stats.trend}` as Parameters<typeof t>[0])}
           </span>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" aria-hidden />
+        <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" aria-hidden />
       </div>
 
       {/* Summary line */}
@@ -125,7 +125,7 @@ export async function ReportCategoryCard({
       {/* Alert badge */}
       {section.alerts.length > 0 && (
         <div className="flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+          <span className="inline-block size-1.5 rounded-full bg-amber-500" aria-hidden />
           {section.alerts.length} cảnh báo
         </div>
       )}

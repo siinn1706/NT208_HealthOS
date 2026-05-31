@@ -257,6 +257,7 @@
     "otpRequired": "OTP verification is required",
     "otpSendFailed": "Failed to send OTP. Please try again.",
     "accountCreateFailed": "Account creation failed. Please try again.",
+    "registrationFailed": "Failed to send OTP. Please try again.",
     "alerts": {
       "heartRateHigh": "Heart rate {value} {unit} exceeds the safe threshold of {threshold} {unit}",
       "bpSystolicHigh": "Systolic blood pressure {value} {unit} exceeds the safe threshold of {threshold} {unit}",
@@ -2842,6 +2843,9 @@
     "targetBmi": "Target BMI",
     "bmi": "BMI",
     "bmiAutoHint": "BMI is auto-calculated from target weight and height",
+    "targetWeightRequired": "Enter a target weight.",
+    "targetWeightRange": "Target weight must be between 30 and 200 kg.",
+    "deadlineMustBeTodayOrFuture": "Choose today or a future date for the goal.",
     "save": "Save",
     "cancel": "Cancel",
     "currentBmi": "Current BMI",

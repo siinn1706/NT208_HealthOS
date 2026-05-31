@@ -9,6 +9,7 @@
 "use client";
 
 import { Check, Clock, Copy, Download, FileText, X } from "lucide-react";
+import Image from "next/image";
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -47,7 +48,6 @@ export function EmergencyMintResultDialog({
   // H6 — countdown + auto-close. Resets on each open.
   React.useEffect(() => {
     if (!result) return;
-    setAutoCloseRemainingS(AUTO_CLOSE_MS / 1000);
     const interval = window.setInterval(() => {
       setAutoCloseRemainingS((s) => Math.max(0, s - 1));
     }, 1000);
@@ -133,10 +133,13 @@ export function EmergencyMintResultDialog({
 
           {/* QR + download */}
           <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4">
-            <img
+            <Image
               src={result.qr_png_data_url}
               alt={t("qrAlt", { label: result.token_meta.label })}
-              className="h-44 w-44 rounded-md border border-border bg-white"
+              width={176}
+              height={176}
+              unoptimized
+              className="size-44 rounded-md border border-border bg-white"
               draggable={false}
             />
             <div className="flex flex-wrap items-center justify-center gap-2">

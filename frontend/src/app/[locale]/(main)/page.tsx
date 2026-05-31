@@ -1,3 +1,4 @@
+// oxlint-disable react-doctor/nextjs-missing-metadata -- Root marketing metadata is supplied by the parent main layout.
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
@@ -44,11 +45,15 @@ export default function HomePage() {
     const container = testimonialScrollRef.current;
     if (!container) return;
     const items = testimonialItemRefs.current;
+    const itemIndexByElement = new Map<Element, number>();
+    items.forEach((el, idx) => {
+      if (el) itemIndexByElement.set(el, idx);
+    });
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            const idx = items.findIndex((r) => r === entry.target);
+            const idx = itemIndexByElement.get(entry.target) ?? -1;
             if (idx !== -1) setActiveTestimonialIdx(idx);
           }
         }
@@ -67,7 +72,7 @@ export default function HomePage() {
         <AtmosphereGrid variant="dots" tone="dark" interactive />
         <AtmosphereGlow variant="soft" />
         {/* Single warm nebula blob — cool bottom-left orb removed for calmer tone */}
-        <div className="absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full bg-warm-peach/12 blur-[90px]" />
+        <div className="absolute -top-32 -right-32 size-[500px] rounded-full bg-warm-peach/12 blur-[90px]" />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
@@ -78,7 +83,7 @@ export default function HomePage() {
               </Badge>
               <h1 className="mb-6 text-4xl font-extrabold leading-tight text-white sm:text-5xl md:text-6xl">
                 {t("hero.title")}{" "}
-                <span className="bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent">{t("hero.titleHighlight")}</span>
+                <span className="text-night-300">{t("hero.titleHighlight")}</span>
               </h1>
               <p className="mb-8 text-lg leading-relaxed text-night-100/70">
                 {t("hero.description")}
@@ -90,7 +95,7 @@ export default function HomePage() {
                     data-event="home-hero-cta-click"
                     className="rounded-full bg-gradient-to-r from-night-700 via-night-600 to-night-400 text-white shadow-lg shadow-night-400/20 transition-all hover:scale-105 hover:shadow-night-400/40 hover:brightness-110"
                   >
-                    {t("hero.cta")} <ChevronRight className="ml-2 h-5 w-5" />
+                    {t("hero.cta")} <ChevronRight className="ml-2 size-5" />
                   </Button>
                 </Link>
                 <Link href="/services">
@@ -116,10 +121,8 @@ export default function HomePage() {
               {/* floating badge — sample illustration only, NOT a real metric */}
               <div
                 className="absolute -bottom-4 -left-4 rounded-2xl border border-night-500/30 bg-night-900/90 p-4 shadow-xl shadow-night-400/10 backdrop-blur-md"
-                role="img"
-                aria-label={t("hero.floatingScoreAriaLabel")}
               >
-                <p className="text-xs font-semibold bg-gradient-to-r from-night-400 to-night-300 bg-clip-text text-transparent">{t("hero.floatingBrand")}</p>
+                <p className="text-xs font-semibold text-night-300">{t("hero.floatingBrand")}</p>
                 <p className="text-xs text-night-100/80">{t("hero.floatingStatus")}</p>
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-white" aria-hidden="true">92</span>
@@ -140,7 +143,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             {stats.map((stat) => (
               <div key={stat.id} className="text-center">
-                <p className="text-3xl font-extrabold bg-gradient-to-r from-night-700 to-night-400 bg-clip-text text-transparent">{stat.value}</p>
+                <p className="text-3xl font-extrabold text-night-700 dark:text-night-300">{stat.value}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{pickLocale(stat.label, locale)}</p>
               </div>
             ))}
@@ -176,7 +179,7 @@ export default function HomePage() {
               </p>
               <Link href="/about">
                 <Button className="rounded-full bg-gradient-to-r from-night-700 to-night-500 text-white shadow-md shadow-night-600/20 transition-all hover:brightness-110 hover:shadow-night-500/30">
-                  {t("exploreMore")} <ArrowRight className="ml-2 h-4 w-4" />
+                  {t("exploreMore")} <ArrowRight className="ml-2 size-4" />
                 </Button>
               </Link>
             </Reveal>
@@ -247,7 +250,7 @@ export default function HomePage() {
           <div className="mt-10 text-center">
             <Link href="/plans">
               <Button variant="outline" className="rounded-full border-night-600/50 text-night-700 dark:text-night-300 transition-all hover:bg-gradient-to-r hover:from-night-700 hover:to-night-500 hover:text-white hover:border-transparent">
-                {t("plans.viewPlans")} <ArrowRight className="ml-2 h-4 w-4" />
+                {t("plans.viewPlans")} <ArrowRight className="ml-2 size-4" />
               </Button>
             </Link>
           </div>
@@ -286,9 +289,8 @@ export default function HomePage() {
             />
           </div>
           {/* Scroll indicator dots */}
-          <div
+          <nav
             className="mt-4 flex justify-center gap-2"
-            role="group"
             aria-label={t("testimonials.scrollIndicator")}
           >
             {testimonials.map((testimonial, idx) => (
@@ -312,7 +314,7 @@ export default function HomePage() {
                 )}
               />
             ))}
-          </div>
+          </nav>
         </div>
       </section>
 
@@ -326,8 +328,8 @@ export default function HomePage() {
               </Badge>
               <h2 className="text-2xl font-extrabold text-foreground">{t("articles.title")}</h2>
             </div>
-            <Link href="/articles" className="hidden sm:flex items-center gap-1 text-sm font-medium bg-gradient-to-r from-night-700 to-night-400 bg-clip-text text-transparent hover:from-night-600 hover:to-night-300">
-              {t("articles.seeAll")} <ArrowRight className="h-4 w-4" />
+            <Link href="/articles" className="hidden sm:flex items-center gap-1 text-sm font-medium text-night-700 transition-colors hover:text-night-500 dark:text-night-300 dark:hover:text-night-200">
+              {t("articles.seeAll")} <ArrowRight className="size-4" />
             </Link>
           </div>
           <div className="flex flex-col gap-5">
@@ -354,8 +356,8 @@ export default function HomePage() {
 
       {/* ── CONTACT ──────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-night-900 via-night-800 to-night-900 py-20 text-white">
-        <div className="absolute -top-20 -left-20 h-72 w-72 rounded-full bg-night-400/15 blur-[100px]" />
-        <div className="absolute -bottom-16 -right-16 h-64 w-64 rounded-full bg-warm-rose/10 blur-[80px]" />
+        <div className="absolute -top-20 -left-20 size-72 rounded-full bg-night-400/15 blur-[100px]" />
+        <div className="absolute -bottom-16 -right-16 size-64 rounded-full bg-warm-rose/10 blur-[80px]" />
         <div className="mx-auto max-w-lg px-4 sm:px-6 lg:px-8 relative">
           <div className="mb-8 text-center">
             <h2 className="mb-3 text-3xl font-extrabold">{t("contact.title")}</h2>

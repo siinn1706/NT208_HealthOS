@@ -58,20 +58,20 @@ export function AlertBannerWidget({ alerts }: AlertBannerWidgetProps) {
               style.wrapper
             )}
           >
-            <Icon className={cn("w-4 h-4 flex-shrink-0", style.iconClass)} />
+            <Icon className={cn("size-4 flex-shrink-0", style.iconClass)} />
             <span className="flex-1">{alert.message}</span>
-            <button
+            <button type="button"
               className="ml-auto flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
               onClick={() => dismiss(alert.id)}
               aria-label={t("dismiss")}
             >
-              <X className="w-4 h-4" />
+              <X className="size-4" />
             </button>
           </div>
         );
       })}
       {visible.length > 1 && (
-        <button
+        <button type="button"
           onClick={dismissAll}
           className="text-xs text-muted-foreground hover:text-foreground underline cursor-pointer transition-colors duration-200"
         >

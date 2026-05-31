@@ -93,10 +93,9 @@ export function DataState<T>({
   };
 
   const renderShell = (content: React.ReactNode, extraClass?: string) => (
-    <div
+    <output
       data-slot="data-state"
       data-status={slice.status}
-      role="status"
       className={cn(
         "flex w-full items-center justify-center rounded-xl border border-border/50 bg-card/30 p-6 text-center",
         extraClass,
@@ -105,7 +104,7 @@ export function DataState<T>({
       style={wrapperStyle}
     >
       {content}
-    </div>
+    </output>
   );
 
   switch (slice.status) {

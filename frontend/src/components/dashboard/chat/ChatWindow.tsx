@@ -627,7 +627,7 @@ export function ChatWindow({
                 key={i}
                 className={`flex items-end gap-2 ${i % 3 === 0 ? "flex-row-reverse" : ""}`}
               >
-                <Skeleton className="w-7 h-7 rounded-full flex-shrink-0" />
+                <Skeleton className="size-7 rounded-full flex-shrink-0" />
                 <Skeleton
                   className="h-9 rounded-2xl"
                   style={{ width: `${40 + (i * 13) % 35}%` }}
@@ -668,7 +668,7 @@ export function ChatWindow({
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               aria-label={t("stopGeneration")}
             >
-              <span className="h-2 w-2 rounded-sm bg-foreground" aria-hidden="true" />
+              <span className="size-2 rounded-sm bg-foreground" aria-hidden="true" />
               {t("stopGeneration")}
             </button>
           </div>

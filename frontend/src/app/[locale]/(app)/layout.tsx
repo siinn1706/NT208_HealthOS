@@ -26,6 +26,7 @@ async function getSessionAndGuard(locale: string): Promise<{
   name: string | undefined;
   avatarUrl: string | null | undefined;
 }> {
+  let onboardingRedirect: string | null = null;
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const reqHeaders = await headers();
@@ -43,21 +44,25 @@ async function getSessionAndGuard(locale: string): Promise<{
 
     // Server-side guard: redirect to onboarding if not yet completed
     if (session.onboarding_status && session.onboarding_status !== "completed") {
-      redirect(`/${locale}/onboarding`);
+      onboardingRedirect = `/${locale}/onboarding`;
+    } else {
+      return {
+        name:
+          session.display_name?.trim() ||
+          session.username?.trim() ||
+          session.email?.split("@")[0]?.trim() ||
+          undefined,
+        avatarUrl: session.avatar_url ?? null,
+      };
     }
-
-    return {
-      name:
-        session.display_name?.trim() ||
-        session.username?.trim() ||
-        session.email?.split("@")[0]?.trim() ||
-        undefined,
-      avatarUrl: session.avatar_url ?? null,
-    };
   } catch (err) {
     unstable_rethrow(err);
     return { name: undefined, avatarUrl: undefined };
   }
+  if (onboardingRedirect) {
+    redirect(onboardingRedirect);
+  }
+  return { name: undefined, avatarUrl: undefined };
 }
 
 export default async function AppLayout({

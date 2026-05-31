@@ -125,12 +125,12 @@ export function RoutingOutcomeCard({
       <div className="flex items-start gap-4">
         <div
           className={cn(
-            "flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full",
+            "flex size-11 flex-shrink-0 items-center justify-center rounded-full",
             cfg.iconBg,
           )}
           aria-hidden
         >
-          <Icon className={cn("h-5 w-5", cfg.iconColor)} />
+          <Icon className={cn("size-5", cfg.iconColor)} />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold text-foreground">
@@ -148,7 +148,7 @@ export function RoutingOutcomeCard({
       {outcome.bucket === "emergency_now" && (
         <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-foreground">
           <div className="flex items-center gap-2 font-semibold text-warning">
-            <Phone className="h-4 w-4" aria-hidden />
+            <Phone className="size-4" aria-hidden />
             {t("emergency_now.next_action")}
           </div>
           <p className="mt-1 text-xs text-foreground/80">
@@ -162,7 +162,7 @@ export function RoutingOutcomeCard({
       {outcome.bucket === "urgent_same_day" && (
         <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground">
           <div className="flex items-center gap-2 font-semibold text-warning">
-            <Phone className="h-4 w-4" aria-hidden />
+            <Phone className="size-4" aria-hidden />
             {t("urgent_same_day.next_action")}
           </div>
           <p className="mt-1 text-xs text-foreground/80">
@@ -187,11 +187,11 @@ export function RoutingOutcomeCard({
                 {t("self_care_with_monitoring.watchTitle")}
               </p>
               <ul className="mt-2 space-y-1 text-xs text-foreground/80">
-                {items.map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
+                {items.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
                     <span
                       aria-hidden
-                      className="mt-1 inline-block h-1 w-1 rounded-full bg-foreground/60"
+                      className="mt-1 inline-block size-1 rounded-full bg-foreground/60"
                     />
                     <span>{item}</span>
                   </li>
@@ -214,7 +214,7 @@ export function RoutingOutcomeCard({
                 className="flex items-start gap-2"
               >
                 <CheckCircle2
-                  className={cn("mt-0.5 h-3.5 w-3.5 flex-shrink-0", cfg.iconColor)}
+                  className={cn("mt-0.5 size-3.5 flex-shrink-0", cfg.iconColor)}
                   aria-hidden
                 />
                 <span>{t(sig.copy_key.replace(/^visitPrep\.routing\./, "") as never)}</span>
@@ -237,7 +237,7 @@ export function RoutingOutcomeCard({
               onClick={onBookAppointment}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              <CalendarPlus className="h-4 w-4" aria-hidden />
+              <CalendarPlus className="size-4" aria-hidden />
               {t(nextActionKey)}
             </button>
           ) : (
@@ -245,7 +245,7 @@ export function RoutingOutcomeCard({
               href="/dashboard/appointments"
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              <CalendarPlus className="h-4 w-4" aria-hidden />
+              <CalendarPlus className="size-4" aria-hidden />
               {t(nextActionKey)}
             </Link>
           )
@@ -260,7 +260,7 @@ export function RoutingOutcomeCard({
             aria-label={`${t("insufficient_info.urgentSecondary")}. ${t("emergency_now.emergencyHint")}`}
             className="inline-flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning"
           >
-            <Phone className="h-3.5 w-3.5" aria-hidden />
+            <Phone className="size-3.5" aria-hidden />
             {t("insufficient_info.urgentSecondary")}
           </a>
         )}

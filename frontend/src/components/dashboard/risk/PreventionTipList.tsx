@@ -15,57 +15,57 @@ interface PreventionTipListProps {
   tips: PreventionTip[];
 }
 
+const CATEGORY_CONFIG: Record<
+  PreventionTip["category"],
+  { icon: React.ElementType; labelKey: string; color: string; bg: string }
+> = {
+  diet: {
+    icon: Salad,
+    labelKey: "category.diet",
+    color: "#4ADE80",
+    bg: "bg-green-400/10",
+  },
+  exercise: {
+    icon: Dumbbell,
+    labelKey: "category.exercise",
+    color: "#41BCE6",
+    bg: "bg-[#41BCE6]/10",
+  },
+  medication: {
+    icon: Pill,
+    labelKey: "category.medication",
+    color: "#E7DEA7",
+    bg: "bg-[#E7DEA7]/10",
+  },
+  monitoring: {
+    icon: Activity,
+    labelKey: "category.monitoring",
+    color: "#A78BFA",
+    bg: "bg-violet-400/10",
+  },
+  lifestyle: {
+    icon: Lightbulb,
+    labelKey: "category.lifestyle",
+    color: "#F97316",
+    bg: "bg-orange-500/10",
+  },
+};
+
+const PRIORITY_CONFIG = {
+  high: { labelKey: "priority.high", dot: "bg-red-400" },
+  medium: { labelKey: "priority.medium", dot: "bg-amber-400" },
+  low: { labelKey: "priority.low", dot: "bg-muted-foreground" },
+};
+
 export function PreventionTipList({ tips }: PreventionTipListProps) {
   const t = useTranslations("dashboard.risk");
-
-  const CATEGORY_CONFIG: Record<
-    PreventionTip["category"],
-    { icon: React.ElementType; labelKey: string; color: string; bg: string }
-  > = {
-    diet: {
-      icon: Salad,
-      labelKey: "category.diet",
-      color: "#4ADE80",
-      bg: "bg-green-400/10",
-    },
-    exercise: {
-      icon: Dumbbell,
-      labelKey: "category.exercise",
-      color: "#41BCE6",
-      bg: "bg-[#41BCE6]/10",
-    },
-    medication: {
-      icon: Pill,
-      labelKey: "category.medication",
-      color: "#E7DEA7",
-      bg: "bg-[#E7DEA7]/10",
-    },
-    monitoring: {
-      icon: Activity,
-      labelKey: "category.monitoring",
-      color: "#A78BFA",
-      bg: "bg-violet-400/10",
-    },
-    lifestyle: {
-      icon: Lightbulb,
-      labelKey: "category.lifestyle",
-      color: "#F97316",
-      bg: "bg-orange-500/10",
-    },
-  };
-
-  const PRIORITY_CONFIG = {
-    high: { labelKey: "priority.high", dot: "bg-red-400" },
-    medium: { labelKey: "priority.medium", dot: "bg-amber-400" },
-    low: { labelKey: "priority.low", dot: "bg-muted-foreground" },
-  };
 
   if (tips.length === 0) return null;
 
   return (
     <div>
       <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-2">
-        <Lightbulb className="w-3.5 h-3.5 text-muted-foreground" />
+        <Lightbulb className="size-3.5 text-muted-foreground" />
         {t("tips", { n: tips.length })}
       </p>
       <ul className="space-y-2.5">
@@ -82,11 +82,11 @@ export function PreventionTipList({ tips }: PreventionTipListProps) {
               {/* Category icon */}
               <div
                 className={cn(
-                  "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5",
+                  "flex-shrink-0 size-8 rounded-lg flex items-center justify-center mt-0.5",
                   cfg.bg
                 )}
               >
-                <Icon className="w-4 h-4" style={{ color: cfg.color }} aria-hidden />
+                <Icon className="size-4" style={{ color: cfg.color }} aria-hidden />
               </div>
 
               {/* Content */}
@@ -99,7 +99,7 @@ export function PreventionTipList({ tips }: PreventionTipListProps) {
                   </p>
                   {/* Priority badge */}
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground flex-shrink-0">
-                    <span className={cn("w-1.5 h-1.5 rounded-full", pri.dot)} />
+                    <span className={cn("size-1.5 rounded-full", pri.dot)} />
                     {t(pri.labelKey)}
                   </span>
                 </div>
@@ -116,7 +116,7 @@ export function PreventionTipList({ tips }: PreventionTipListProps) {
                   )}
                   style={{ color: cfg.color }}
                 >
-                  <Icon className="w-2.5 h-2.5" aria-hidden />
+                  <Icon className="size-2.5" aria-hidden />
                   {t(cfg.labelKey)}
                 </span>
               </div>

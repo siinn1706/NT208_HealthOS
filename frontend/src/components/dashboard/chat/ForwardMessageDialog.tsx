@@ -58,20 +58,20 @@ export function ForwardMessageDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <Share2 className="w-4 h-4 text-muted-foreground" />
+            <Share2 className="size-4 text-muted-foreground" />
             <DialogTitle>{t("forwardMessage")}</DialogTitle>
           </div>
           <DialogDescription className="sr-only">{t("forwardMessage")}</DialogDescription>
         </DialogHeader>
 
         {/* Preview of message being forwarded */}
-        <div className="px-3 py-2 rounded-lg bg-secondary/60 border-l-2 border-primary text-sm text-muted-foreground truncate">
+        <div className="rounded-lg bg-secondary/60 px-3 py-2 text-sm text-muted-foreground truncate ring-1 ring-primary/20">
           {message.content.length > 100 ? message.content.slice(0, 100) + "…" : message.content}
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
           <Input
             className="pl-8 h-9"
             placeholder={t("searchPlaceholder")}
@@ -89,7 +89,7 @@ export function ForwardMessageDialog({
               const isChecked = selected === conv.id;
 
               return (
-                <button
+                <button type="button"
                   key={conv.id}
                   onClick={() => setSelected(isChecked ? null : conv.id)}
                   className={cn(
@@ -100,7 +100,7 @@ export function ForwardMessageDialog({
                   {isAi ? (
                     <AiChatBadge size="sm" />
                   ) : (
-                    <Avatar className="w-8 h-8 flex-shrink-0">
+                    <Avatar className="size-8 flex-shrink-0">
                       <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
                     </Avatar>
                   )}
@@ -108,8 +108,8 @@ export function ForwardMessageDialog({
                     {name}
                   </span>
                   {isChecked && (
-                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                      <Check className="w-3 h-3 text-primary-foreground" />
+                    <div className="size-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <Check className="size-3 text-primary-foreground" />
                     </div>
                   )}
                 </button>

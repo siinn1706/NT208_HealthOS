@@ -24,17 +24,17 @@ export function OfflineIndicator({ className }: { className?: string }) {
 
   if (status === "reconnecting") {
     return (
-      <span role="status" aria-live="polite" className={pillClass}>
+      <output aria-live="polite" className={pillClass}>
         <Loader2 className="size-3 animate-spin" aria-hidden="true" />
         {t("reconnecting")}
-      </span>
+      </output>
     );
   }
 
   return (
-    <span role="status" aria-live="polite" className={pillClass}>
+    <output aria-live="polite" className={pillClass}>
       <WifiOff className="size-3" aria-hidden="true" />
       {t("offline")}
-    </span>
+    </output>
   );
 }

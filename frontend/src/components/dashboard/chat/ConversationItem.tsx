@@ -71,7 +71,7 @@ export const ConversationItem = memo(function ConversationItem({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <button
+        <button type="button"
           onClick={onClick}
           aria-label={`Open conversation with ${name}`}
           aria-current={isActive ? "page" : undefined}
@@ -87,11 +87,11 @@ export const ConversationItem = memo(function ConversationItem({
             {conversation.type === "ai" ? (
               <AiChatBadge size="md" />
             ) : conversation.type === "group" ? (
-              <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-accent" />
+              <div className="size-10 rounded-full bg-accent/20 flex items-center justify-center">
+                <Users className="size-5 text-accent" />
               </div>
             ) : (
-              <Avatar className="w-10 h-10">
+              <Avatar className="size-10">
                 <AvatarFallback className={cn(
                   "text-sm font-semibold",
                   isActive ? "bg-primary/20 text-primary" : "bg-secondary text-foreground"
@@ -138,10 +138,10 @@ export const ConversationItem = memo(function ConversationItem({
               </p>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {conversation.is_muted && (
-                  <BellOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  <BellOff className="size-3.5 text-muted-foreground" />
                 )}
                 {conversation.is_pinned && conversation.type !== "ai" && (
-                  <Pin className="w-3.5 h-3.5 text-muted-foreground rotate-45" />
+                  <Pin className="size-3.5 text-muted-foreground rotate-45" />
                 )}
                 {conversation.unread_count > 0 && (
                   <span className={cn(
@@ -163,11 +163,11 @@ export const ConversationItem = memo(function ConversationItem({
         {conversation.type !== "ai" && (
           <>
             <ContextMenuItem onClick={onPin} className="gap-2 cursor-pointer">
-              {conversation.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+              {conversation.is_pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
               {conversation.is_pinned ? t("unpinChat") : t("pinChat")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onMute} className="gap-2 cursor-pointer">
-              {conversation.is_muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+              {conversation.is_muted ? <Bell className="size-4" /> : <BellOff className="size-4" />}
               {conversation.is_muted ? t("unmuteChat") : t("muteChat")}
             </ContextMenuItem>
             <ContextMenuSeparator />
@@ -175,14 +175,14 @@ export const ConversationItem = memo(function ConversationItem({
               onClick={onDelete}
               className="gap-2 cursor-pointer text-destructive focus:text-destructive"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="size-4" />
               {t("deleteChat")}
             </ContextMenuItem>
           </>
         )}
         {conversation.type === "ai" && (
           <ContextMenuItem disabled className="gap-2 text-muted-foreground">
-            HealthOS AI — {t("pinned")}
+            HealthOS AI: {t("pinned")}
           </ContextMenuItem>
         )}
       </ContextMenuContent>

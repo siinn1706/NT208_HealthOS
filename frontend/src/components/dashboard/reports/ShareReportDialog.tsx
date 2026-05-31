@@ -62,15 +62,17 @@ export function ShareReportDialog({
   const router = useRouter();
 
   // Build initial recipients from emergency contacts
-  const initialRecipients: RecipientForm[] = emergencyContacts
-    .filter((c) => c.name)
-    .map((c, i) => ({
-      id: `ec-${i}`,
-      name: c.name ?? "",
-      email: "",
-      relationship: c.relationship ?? "",
-      selected: true,
-    }));
+  const initialRecipients: RecipientForm[] = emergencyContacts.flatMap((c, i) =>
+    c.name
+      ? [{
+          id: `ec-${i}`,
+          name: c.name,
+          email: "",
+          relationship: c.relationship ?? "",
+          selected: true,
+        }]
+      : []
+  );
 
   const [recipients, setRecipients] = useState<RecipientForm[]>(initialRecipients);
   const [channels, setChannels] = useState<ShareChannel[]>(["email"]);
@@ -103,9 +105,9 @@ export function ShareReportDialog({
   }
 
   async function handleSend() {
-    const selected: ShareRecipient[] = recipients
-      .filter((r) => r.selected && r.email.includes("@"))
-      .map(({ name, email, relationship }) => ({ name, email, relationship }));
+    const selected: ShareRecipient[] = recipients.flatMap(({ name, email, relationship, selected }) =>
+      selected && email.includes("@") ? [{ name, email, relationship }] : []
+    );
 
     if (selected.length === 0) {
       return;
@@ -122,7 +124,7 @@ export function ShareReportDialog({
       <SheetContent className="w-full sm:max-w-md flex flex-col">
         <SheetHeader className="shrink-0">
           <SheetTitle className="flex items-center gap-2">
-            <Share2 className="h-4 w-4" aria-hidden />
+            <Share2 className="size-4" aria-hidden />
             {t("title")}
           </SheetTitle>
           <SheetDescription>{t("subtitle")}</SheetDescription>
@@ -134,7 +136,7 @@ export function ShareReportDialog({
             <div className="rounded-lg border border-border bg-muted/40 p-3 flex items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Báo cáo sức khoẻ — {report.period === "7d" ? "7 ngày" : report.period === "30d" ? "30 ngày" : "90 ngày"}
+                  Báo cáo sức khoẻ: {report.period === "7d" ? "7 ngày" : report.period === "30d" ? "30 ngày" : "90 ngày"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   {report.alerts.length} {t("alertsWord")} • {formatDate(report.generated_at, locale)}
@@ -160,14 +162,14 @@ export function ShareReportDialog({
                   className="h-7 text-xs gap-1"
                   onClick={addRecipient}
                 >
-                  <Plus className="h-3 w-3" aria-hidden />
+                  <Plus className="size-3" aria-hidden />
                   {t("addRecipient")}
                 </Button>
               </div>
 
               {recipients.length === 0 && (
                 <div className="rounded-lg border border-dashed border-border p-4 text-center">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 mx-auto mb-2" aria-hidden />
+                  <AlertTriangle className="size-5 text-amber-500 mx-auto mb-2" aria-hidden />
                   <p className="text-xs text-muted-foreground">{t("noEmergencyContacts")}</p>
                   <Button
                     variant="link"
@@ -175,7 +177,7 @@ export function ShareReportDialog({
                     className="h-7 text-xs mt-1 gap-1"
                     onClick={() => router.push(`/${locale}/dashboard/profile`)}
                   >
-                    <ExternalLink className="h-3 w-3" aria-hidden />
+                    <ExternalLink className="size-3" aria-hidden />
                     {t("goToProfile")}
                   </Button>
                 </div>
@@ -204,17 +206,17 @@ export function ShareReportDialog({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        className="size-6 text-muted-foreground hover:text-destructive"
                         onClick={() => removeRecipient(r.id)}
                         aria-label="Xoá người nhận"
                       >
-                        <Trash2 className="h-3 w-3" aria-hidden />
+                        <Trash2 className="size-3" aria-hidden />
                       </Button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="relative">
-                        <User className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" aria-hidden />
+                        <User className="absolute left-2.5 top-2.5 size-3 text-muted-foreground" aria-hidden />
                         <Input
                           placeholder={t("name")}
                           value={r.name}
@@ -233,7 +235,7 @@ export function ShareReportDialog({
                     </div>
 
                     <div className="relative">
-                      <Mail className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" aria-hidden />
+                      <Mail className="absolute left-2.5 top-2.5 size-3 text-muted-foreground" aria-hidden />
                       <Input
                         type="email"
                         placeholder={t("email")}
@@ -300,9 +302,9 @@ export function ShareReportDialog({
             aria-label={`${t("send")} (${selectedCount} người nhận)`}
           >
             {sharing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
             ) : (
-              <Share2 className="h-3.5 w-3.5" aria-hidden />
+              <Share2 className="size-3.5" aria-hidden />
             )}
             {sharing ? t("sending") : `${t("send")} (${selectedCount})`}
           </Button>

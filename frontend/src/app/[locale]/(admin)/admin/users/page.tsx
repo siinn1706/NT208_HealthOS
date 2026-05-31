@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UsersTable, UserRow, ALL_COLUMNS, DEFAULT_VISIBLE } from "@/components/admin/users/UsersTable";
+import { UsersTable, type UserRow } from "@/components/admin/users/UsersTable";
+import { ALL_COLUMNS, DEFAULT_VISIBLE } from "@/components/admin/users/users-table-columns";
 import { UserStatusFilter, UserStatusValue } from "@/components/admin/users/UserStatusFilter";
 import { BanUserModal } from "@/components/admin/users/BanUserModal";
 import { AdminErrorState } from "@/components/admin/shared/AdminErrorState";
 import { AdminEmptyState } from "@/components/admin/shared/AdminEmptyState";
-import { DensityToggle, getDensity, saveDensity, type Density } from "@/components/admin/shared/density-toggle";
+import { DensityToggle } from "@/components/admin/shared/density-toggle";
+import { getDensity, saveDensity, type Density } from "@/lib/admin/ui-prefs";
 import { ColumnVisibilityMenu } from "@/components/admin/shared/column-visibility-menu";
 import { loadVisibleColumns, saveVisibleColumns } from "@/lib/admin/ui-prefs";
 import {
@@ -93,10 +95,12 @@ export default function AdminUsersPage() {
     if (q) params.set("q", q);
     if (status !== "all") params.set("status", status);
     if (p > 1) params.set("page", String(p));
+    // oxlint-disable-next-line react-doctor/nextjs-no-client-side-redirect -- Mirrors table filters in the URL without a server navigation.
     router.replace(`?${params.toString()}`, { scroll: false });
   }
 
   // ── Session fetch ──────────────────────────────────────────────────────────
+  // oxlint-disable-next-line react-doctor/nextjs-no-client-fetch-for-server-data, react-doctor/no-fetch-in-effect -- Session identity is client-only state for admin action guards.
   React.useEffect(() => {
     fetch("/api/v1/auth/session", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
@@ -145,6 +149,7 @@ export default function AdminUsersPage() {
     [],
   );
 
+  // oxlint-disable-next-line react-doctor/nextjs-no-client-fetch-for-server-data -- Admin table filters are loaded through the existing interactive client grid.
   React.useEffect(() => { void fetchUsers(activeSearch, statusFilter, page); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -302,7 +307,7 @@ export default function AdminUsersPage() {
         </>
       )}
 
-      <BanUserModal userId={banTargetId} isOpen={isBanModalOpen} onClose={handleBanModalClose} onSubmit={handleBanSubmit} isSubmitting={isBanning} error={banError} />
+      <BanUserModal key={`${banTargetId ?? "no-user"}:${isBanModalOpen ? "open" : "closed"}`} userId={banTargetId} isOpen={isBanModalOpen} onClose={handleBanModalClose} onSubmit={handleBanSubmit} isSubmitting={isBanning} error={banError} />
     </AdminPageContent>
   );
 }

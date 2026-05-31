@@ -61,6 +61,14 @@ const NOTIF_DEFAULTS = {
 type NotificationPrefs = typeof NOTIF_DEFAULTS;
 type NotificationKey = keyof NotificationPrefs;
 
+const LOCALE_LABELS: Record<string, string> = { vi: "Tiếng Việt", en: "English" };
+
+const THEME_OPTIONS: { value: ThemeOption; icon: React.ElementType; labelKey: string }[] = [
+  { value: "system", icon: Monitor, labelKey: "settingsPage.appearance.themeSystem" },
+  { value: "light", icon: Sun, labelKey: "settingsPage.appearance.themeLight" },
+  { value: "dark", icon: Moon, labelKey: "settingsPage.appearance.themeDark" },
+];
+
 function pushThemeModeToBackend(value: ThemeOption): void {
   void fetch("/api/v1/preferences/me", {
     method: "PATCH",
@@ -124,11 +132,11 @@ function SettingRow({ icon: Icon, label, description, children, onClick, danger 
     >
       <div
         className={cn(
-          "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
+          "flex-shrink-0 size-8 rounded-lg flex items-center justify-center",
           danger ? "bg-destructive/10" : "bg-muted"
         )}
       >
-        <Icon className={cn("w-4 h-4", danger ? "text-destructive" : "text-muted-foreground")} />
+        <Icon className={cn("size-4", danger ? "text-destructive" : "text-muted-foreground")} />
       </div>
       <div className="flex-1 min-w-0">
         <p className={cn("text-sm font-medium", danger ? "text-destructive" : "text-foreground")}>
@@ -138,7 +146,7 @@ function SettingRow({ icon: Icon, label, description, children, onClick, danger 
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
-      {children ?? (onClick && <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />)}
+      {children ?? (onClick && <ChevronRight className="size-4 text-muted-foreground flex-shrink-0" />)}
     </Wrapper>
   );
 }
@@ -154,11 +162,20 @@ function SettingGroup({ title, children }: { title: string; children: React.Reac
   );
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({
+  checked,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  ariaLabel: string;
+}) {
   return (
-    <button
+    <button type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer",
@@ -167,7 +184,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     >
       <span
         className={cn(
-          "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200",
+          "absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform duration-200",
           checked && "translate-x-5"
         )}
       />
@@ -268,11 +285,13 @@ export default function SettingsPage() {
   // Reads `?export=<request_id>` and immediately navigates to the signed URL.
   // Track handled ids in a ref + scrub the query param after the download
   // triggers, so a refresh doesn't re-spam the toast.
-  const handledExportsRef = React.useRef<Set<string>>(new Set());
+  const handledExportsRef = React.useRef<Set<string> | null>(null);
+  if (handledExportsRef.current === null) handledExportsRef.current = new Set();
+  // oxlint-disable-next-line react-doctor/nextjs-no-client-fetch-for-server-data, react-doctor/no-fetch-in-effect -- Download deep links require browser navigation to the signed URL.
   React.useEffect(() => {
     const exportId = searchParams.get("export");
-    if (!exportId || handledExportsRef.current.has(exportId)) return;
-    handledExportsRef.current.add(exportId);
+    if (!exportId || handledExportsRef.current?.has(exportId)) return;
+    handledExportsRef.current?.add(exportId);
     let cancelled = false;
     void (async () => {
       try {
@@ -295,6 +314,7 @@ export default function SettingsPage() {
         next.delete("export");
         const qs = next.toString();
         const target = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+        // oxlint-disable-next-line react-doctor/nextjs-no-client-side-redirect -- Scrubs a handled download deep-link without changing route state.
         router.replace(target);
       }
     })();
@@ -339,8 +359,6 @@ export default function SettingsPage() {
   const deleteConfirmed =
     deleteConfirm.trim().toUpperCase() === deleteConfirmPhrase.toUpperCase();
 
-  const LOCALE_LABELS: Record<string, string> = { vi: "Tiếng Việt", en: "English" };
-
   return (
     <>
       <PageHeader
@@ -375,7 +393,7 @@ export default function SettingsPage() {
         <SettingRow icon={Globe} label={t("settingsPage.appearance.language")} description={LOCALE_LABELS[locale] ?? locale}>
           <div className="flex items-center gap-1.5">
             {(["vi", "en"] as const).map((l) => (
-              <button
+              <button type="button"
                 key={l}
                 onClick={() => router.push(`/${l}/dashboard/settings`)}
                 className={cn(
@@ -395,15 +413,11 @@ export default function SettingsPage() {
           label={t("settingsPage.appearance.theme")}
         >
           <div className="flex items-center gap-1.5" suppressHydrationWarning>
-            {([
-              { value: "system", icon: Monitor, labelKey: "settingsPage.appearance.themeSystem" },
-              { value: "light", icon: Sun, labelKey: "settingsPage.appearance.themeLight" },
-              { value: "dark", icon: Moon, labelKey: "settingsPage.appearance.themeDark" },
-            ] as { value: ThemeOption; icon: React.ElementType; labelKey: string }[]).map((opt) => {
+            {THEME_OPTIONS.map((opt) => {
               const Ic = opt.icon;
               const isSelected = mounted && theme === opt.value;
               return (
-                <button
+                <button type="button"
                   key={opt.value}
                   onClick={() => {
                     setTheme(opt.value);
@@ -411,13 +425,13 @@ export default function SettingsPage() {
                   }}
                   title={t(opt.labelKey as Parameters<typeof t>[0])}
                   className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer",
+                    "size-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer",
                     isSelected
                       ? "bg-primary text-primary-foreground border-primary"
                       : "border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  <Ic className="w-3.5 h-3.5" />
+                  <Ic className="size-3.5" />
                 </button>
               );
             })}
@@ -426,8 +440,8 @@ export default function SettingsPage() {
         {/* Accent Color — full-width block so the two-column layout has room */}
         <div className="px-5 py-4">
           <div className="flex items-center gap-4 mb-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-muted">
-              <Palette className="w-4 h-4 text-muted-foreground" />
+            <div className="flex-shrink-0 size-8 rounded-lg flex items-center justify-center bg-muted">
+              <Palette className="size-4 text-muted-foreground" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">{t("settingsPage.appearance.accentColor")}</p>
@@ -483,6 +497,7 @@ export default function SettingsPage() {
             <Toggle
               checked={notifications[key]}
               onChange={(v) => void handleNotificationToggle(key, v)}
+              ariaLabel={label}
             />
           </SettingRow>
         ))}
@@ -549,7 +564,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <p className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <Shield className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               <span>{t("settingsPage.privacy.downloadDialog.secureNote")}</span>
             </p>
           </div>
@@ -561,7 +576,7 @@ export default function SettingsPage() {
                 disabled={downloadSubmitting}
                 className="gap-2"
               >
-                <Download className="h-3.5 w-3.5" aria-hidden />
+                <Download className="size-3.5" aria-hidden />
                 {t("settingsPage.privacy.downloadDialog.request")}
               </Button>
             </AlertDialogAction>
@@ -650,7 +665,7 @@ export default function SettingsPage() {
                 }
                 className="gap-2"
               >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                <Trash2 className="size-3.5" aria-hidden />
                 {deleteSubmitting
                   ? t("settingsPage.privacy.deleteDialog.deleting")
                   : t("settingsPage.privacy.deleteDialog.confirm")}

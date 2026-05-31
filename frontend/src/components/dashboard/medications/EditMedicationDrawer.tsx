@@ -99,26 +99,6 @@ export function EditMedicationDrawer({
   const [scheduleDirty, setScheduleDirty] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
-  // When the underlying plan changes (parent re-fetched), reset the form.
-  React.useEffect(() => {
-    if (!open) return;
-    setName(plan.name);
-    setStrength(plan.strength ?? "");
-    setForm((plan.form as MedicationForm) ?? "tablet");
-    setDoseTimes(
-      plan.doses.length
-        ? Array.from(new Set(plan.doses.map((d) => d.time))).sort()
-        : ["08:00"],
-    );
-    setRepeat((plan.doses[0]?.repeat as Repeat) ?? "daily");
-    setWeekdayMask(plan.doses[0]?.weekday_mask ?? 0);
-    setDayOfMonth(plan.doses[0]?.day_of_month ?? 1);
-    setEndDate(plan.end_date ?? "");
-    setInstructions(plan.instructions ?? "");
-    setReviewDueAt(plan.review_due_at ?? "");
-    setScheduleDirty(false);
-  }, [open, plan]);
-
   const updateDoseTime = (idx: number, value: string) => {
     setDoseTimes((prev) => prev.map((t, i) => (i === idx ? value : t)));
     setScheduleDirty(true);
@@ -274,7 +254,7 @@ export function EditMedicationDrawer({
                       aria-label={tForm("removeTime")}
                       className="text-muted-foreground hover:text-destructive cursor-pointer"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="size-3" />
                     </button>
                   )}
                 </div>
@@ -285,7 +265,7 @@ export function EditMedicationDrawer({
                   onClick={addDoseTime}
                   className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 h-9 text-xs text-muted-foreground hover:bg-muted cursor-pointer"
                 >
-                  <Plus className="w-3 h-3" />
+                  <Plus className="size-3" />
                   {tForm("addTime")}
                 </button>
               )}
@@ -404,7 +384,7 @@ export function EditMedicationDrawer({
               {tForm("cancel")}
             </Button>
             <Button type="submit" disabled={!name.trim() || !dosesValid || saving}>
-              {saving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {saving && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               {saving ? tForm("submitting") : tForm("submit")}
             </Button>
           </SheetFooter>

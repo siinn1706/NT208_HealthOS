@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { LazyMotion, domAnimation, m, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 interface RevealProps {
   children: ReactNode;
@@ -16,6 +16,10 @@ interface RevealProps {
   once?: boolean;
   className?: string;
 }
+
+const subscribeToMountedSnapshot = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
 
 /**
  * Lightweight scroll-reveal wrapper.
@@ -34,12 +38,12 @@ export function Reveal({
   once = true,
   className,
 }: RevealProps) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToMountedSnapshot,
+    getMountedSnapshot,
+    getServerMountedSnapshot,
+  );
   const prefersReduced = useReducedMotion();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   /** SSR + first client paint: static div so HTML matches (no motion inline styles). */
   if (!mounted || prefersReduced) {
@@ -47,14 +51,16 @@ export function Reveal({
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once, margin: "-10% 0px -10% 0px" }}
-      transition={{ duration, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
+    <LazyMotion features={domAnimation}>
+      <m.div
+        initial={{ opacity: 0, y }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once, margin: "-10% 0px -10% 0px" }}
+        transition={{ duration, delay, ease: [0.16, 1, 0.3, 1] }}
+        className={className}
+      >
+        {children}
+      </m.div>
+    </LazyMotion>
   );
 }

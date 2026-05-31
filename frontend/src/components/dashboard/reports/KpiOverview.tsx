@@ -65,11 +65,13 @@ function KpiCard({
       {hasValue ? (
         <KpiDonutChart value={value as number} target={target} color={color} size={80} />
       ) : (
-        <div
-          className="size-[80px] rounded-full border-[6px] border-muted/40"
-          role="img"
-          aria-label={emptyLabel}
-        />
+        <>
+          <div
+            className="size-[80px] rounded-full border-[6px] border-muted/40"
+            aria-hidden="true"
+          />
+          <span className="sr-only">{emptyLabel}</span>
+        </>
       )}
       <div className="text-center">
         <p className="text-sm font-semibold text-foreground">
@@ -118,9 +120,9 @@ export function KpiOverview({ initialPeriod = "7d" }: KpiOverviewProps) {
       // Returns `null` when the upstream window has no readings — this keeps
       // empty states honest instead of rendering a 0-filled donut.
       const avg = (arr: Array<{ avg_value?: number }>): number | null => {
-        const vals = arr
-          .filter((a) => typeof a.avg_value === "number")
-          .map((a) => a.avg_value!);
+        const vals = arr.flatMap((a) =>
+          typeof a.avg_value === "number" ? [a.avg_value] : []
+        );
         if (vals.length === 0) return null;
         return vals.reduce((a, b) => a + b, 0) / vals.length;
       };

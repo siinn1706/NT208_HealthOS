@@ -38,6 +38,10 @@ const ALL_METRICS = [
 
 type MetricKey = typeof ALL_METRICS[number]["key"];
 
+function findMetricMeta(key: string) {
+  return ALL_METRICS.find((m) => m.key === key);
+}
+
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 async function fetchAllAnomalies(): Promise<MetricAnomalyData[]> {
@@ -94,7 +98,7 @@ function DeviationPill({ dev, severity }: { dev: number; severity: "critical" | 
         ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
         : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
     )}>
-      {dev > 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+      {dev > 0 ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
       {dev > 0 ? "+" : ""}{dev.toFixed(0)}%
     </span>
   );
@@ -135,8 +139,6 @@ export function RealtimeAnomalyWidget() {
   const hasRt     = rtAlerts.length > 0;
   const hasHist   = allAnomalies.length > 0;
 
-  const meta = (key: string) => ALL_METRICS.find((m) => m.key === key);
-
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shrink-0">
 
@@ -144,12 +146,12 @@ export function RealtimeAnomalyWidget() {
       <div className="flex items-center justify-between px-4 pt-3.5 pb-3 border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
           <div className={cn(
-            "w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0",
+            "size-6 rounded-md flex items-center justify-center flex-shrink-0",
             critCount > 0 ? "bg-red-100 dark:bg-red-900/20" : hasHist ? "bg-amber-100 dark:bg-amber-900/20" : "bg-emerald-100 dark:bg-emerald-900/20",
           )}>
             {!hasHist && loaded
-              ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-              : <Bell className={cn("w-3.5 h-3.5", critCount > 0 ? "text-red-500 animate-pulse" : hasHist ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400")} aria-hidden />
+              ? <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              : <Bell className={cn("size-3.5", critCount > 0 ? "text-red-500 animate-pulse" : hasHist ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400")} aria-hidden />
             }
           </div>
           <div className="min-w-0">
@@ -162,7 +164,7 @@ export function RealtimeAnomalyWidget() {
           "flex items-center gap-1 text-[10px] flex-shrink-0 ml-2",
           status === "connected" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
         )}>
-          {status === "connected" ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+          {status === "connected" ? <Wifi className="size-3" /> : <WifiOff className="size-3" />}
           <span>{status === "connected" ? t("live") : t("offline")}</span>
         </span>
       </div>
@@ -189,8 +191,8 @@ export function RealtimeAnomalyWidget() {
               <div className="flex flex-col gap-3">
                 {/* All-clear status */}
                 <div className="flex items-center gap-2.5 py-1">
-                  <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="size-7 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <p className="text-xs text-muted-foreground">{t("allClear")}</p>
                 </div>
@@ -198,18 +200,18 @@ export function RealtimeAnomalyWidget() {
                 {/* Inline Pro CTA */}
                 <div className="rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-950/20 dark:to-indigo-950/20 p-3 space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                      <Crown className="w-3 h-3 text-white" aria-hidden />
+                    <div className="size-5 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                      <Crown className="size-3 text-white" aria-hidden />
                     </div>
                     <p className="text-[11px] font-bold text-foreground">Phân tích sức khoẻ nâng cao</p>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Brain className="w-3 h-3 text-violet-500 flex-shrink-0" aria-hidden />
+                      <Brain className="size-3 text-violet-500 flex-shrink-0" aria-hidden />
                       <p className="text-[10px] text-muted-foreground">Dự báo bất thường trước 7 ngày bằng AI</p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <BarChart2 className="w-3 h-3 text-indigo-500 flex-shrink-0" aria-hidden />
+                      <BarChart2 className="size-3 text-indigo-500 flex-shrink-0" aria-hidden />
                       <p className="text-[10px] text-muted-foreground">Biểu đồ xu hướng 90 ngày + so sánh dân số</p>
                     </div>
                   </div>
@@ -217,7 +219,7 @@ export function RealtimeAnomalyWidget() {
                     href={`/${locale}/pricing`}
                     className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
                   >
-                    Tìm hiểu Pro <ChevronRight className="w-3 h-3" />
+                    Tìm hiểu Pro <ChevronRight className="size-3" />
                   </Link>
                 </div>
               </div>
@@ -250,10 +252,10 @@ export function RealtimeAnomalyWidget() {
                           ? "bg-red-50 dark:bg-red-950/20 border-red-200/50 dark:border-red-900/40 text-red-700 dark:text-red-400"
                           : "bg-amber-50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/40 text-amber-700 dark:text-amber-400",
                       )}>
-                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                        <AlertTriangle className="size-3.5 mt-0.5 flex-shrink-0" />
                         <span className="flex-1 leading-relaxed">{a.message}</span>
-                        <button onClick={() => dismissAlert(a.id)} aria-label={t("dismiss")} className="opacity-60 hover:opacity-100 transition-opacity">
-                          <X className="w-3.5 h-3.5" />
+                        <button type="button" onClick={() => dismissAlert(a.id)} aria-label={t("dismiss")} className="opacity-60 hover:opacity-100 transition-opacity">
+                          <X className="size-3.5" />
                         </button>
                       </div>
                     ))}
@@ -268,7 +270,7 @@ export function RealtimeAnomalyWidget() {
                     const count = mData?.anomalies.length ?? 0;
                     return (
                       <div key={m.key} className="flex items-center gap-2">
-                        <m.Icon className="w-3 h-3 flex-shrink-0" style={{ color: m.color }} aria-hidden />
+                        <m.Icon className="size-3 flex-shrink-0" style={{ color: m.color }} aria-hidden />
                         <span className="text-[10px] text-muted-foreground w-[64px] flex-shrink-0 truncate">{m.label}</span>
                         <MetricCountBar count={count} max={maxCount} color={m.color} />
                         <span className={cn(
@@ -285,7 +287,7 @@ export function RealtimeAnomalyWidget() {
                   <div className="space-y-1.5">
                     <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">{t("recentSection")}</p>
                     {allAnomalies.map((a, i) => {
-                      const m       = meta(a.metric as MetricKey);
+                      const m       = findMetricMeta(a.metric as MetricKey);
                       const color   = m?.color ?? "#94a3b8";
                       const isCrit  = a.severity === "critical";
                       const threshHi = m && "high" in m ? (m as { high?: number }).high : undefined;
@@ -297,9 +299,9 @@ export function RealtimeAnomalyWidget() {
                           isCrit ? "border-l-red-500" : "border-l-amber-400",
                         )}>
                           {/* Icon bubble */}
-                          <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+                          <div className="flex-shrink-0 size-5 rounded-full flex items-center justify-center mt-0.5"
                             style={{ background: `${color}22` }}>
-                            {m && <m.Icon className="w-2.5 h-2.5" style={{ color }} aria-hidden />}
+                            {m && <m.Icon className="size-2.5" style={{ color }} aria-hidden />}
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -357,7 +359,7 @@ export function RealtimeAnomalyWidget() {
           className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline transition-colors pt-0.5"
         >
           {t("viewAll")}
-          <ChevronRight className="w-3 h-3" />
+          <ChevronRight className="size-3" />
         </Link>
       </div>
     </div>

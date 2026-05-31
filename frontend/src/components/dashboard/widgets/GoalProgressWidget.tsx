@@ -31,15 +31,17 @@ function summaryHasError(summary: DataSlice<DashboardSummary>): boolean {
 
 // Server Component
 export async function GoalProgressWidget({ summary }: GoalProgressWidgetProps) {
-  const t = await getTranslations("dashboard.goals");
-  const locale = await getLocale();
+  const [t, locale] = await Promise.all([
+    getTranslations("dashboard.goals"),
+    getLocale(),
+  ]);
   const goals = summary.status === "success" && summary.data ? summary.data.goals : [];
 
   return (
     <div className="rounded-xl border border-border bg-card h-full">
       <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
         <p className="text-sm font-semibold text-foreground">{t("title")}</p>
-        <Target className="w-4 h-4 text-muted-foreground" />
+        <Target className="size-4 text-muted-foreground" />
       </div>
 
       <div className="px-5 py-4 space-y-5">
@@ -66,14 +68,16 @@ export async function GoalProgressWidget({ summary }: GoalProgressWidgetProps) {
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <progress
+                  className="sr-only"
+                  value={pct}
+                  max={100}
+                  aria-label={t(goal.key as Parameters<typeof t>[0])}
+                />
                 <div
                   className="h-2 rounded-full transition-[width] duration-700 ease-out"
                   style={{ width: `${pct}%`, backgroundColor: color }}
-                  role="progressbar"
-                  aria-valuenow={pct}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={t(goal.key as Parameters<typeof t>[0])}
+                  aria-hidden="true"
                 />
               </div>
             </div>

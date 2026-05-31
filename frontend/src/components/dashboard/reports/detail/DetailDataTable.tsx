@@ -78,22 +78,22 @@ export function DetailDataTable({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="size-7"
               disabled={page === 0}
               onClick={() => setPage((p) => p - 1)}
               aria-label="Trang trước"
             >
-              <ChevronLeft className="h-4 w-4" aria-hidden />
+              <ChevronLeft className="size-4" aria-hidden />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="size-7"
               disabled={page === totalPages - 1}
               onClick={() => setPage((p) => p + 1)}
               aria-label="Trang tiếp"
             >
-              <ChevronRight className="h-4 w-4" aria-hidden />
+              <ChevronRight className="size-4" aria-hidden />
             </Button>
           </div>
         </div>

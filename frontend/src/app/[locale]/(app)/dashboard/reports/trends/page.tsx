@@ -46,14 +46,14 @@ export default async function TrendsPage(props: TrendsPageProps) {
         breadcrumbs={
           <nav aria-label={t("breadcrumb.ariaLabel")} className="flex items-center gap-1 text-xs text-muted-foreground">
             <Link href="/dashboard" className="rounded-sm hover:text-foreground transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              <Home className="h-3 w-3" aria-hidden />
+              <Home className="size-3" aria-hidden />
               {t("breadcrumb.root")}
             </Link>
-            <ChevronRight className="h-3 w-3" aria-hidden />
+            <ChevronRight className="size-3" aria-hidden />
             <Link href="/dashboard/reports" className="hover:text-foreground transition-colors">
               {t("breadcrumb.parent")}
             </Link>
-            <ChevronRight className="h-3 w-3" aria-hidden />
+            <ChevronRight className="size-3" aria-hidden />
             <span className="text-foreground font-medium">{t("title")}</span>
           </nav>
         }

@@ -13,8 +13,8 @@ export function ComingSoon({ title, description }: ComingSoonProps) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-      <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-6">
-        <Construction className="w-10 h-10 text-amber-500" />
+      <div className="size-20 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-6">
+        <Construction className="size-10 text-amber-500" />
       </div>
       <h2 className="text-2xl font-bold text-foreground mb-2">
         {title ?? t("title")}
@@ -23,7 +23,7 @@ export function ComingSoon({ title, description }: ComingSoonProps) {
         {description ?? t("description")}
       </p>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Clock className="w-4 h-4" />
+        <Clock className="size-4" />
         <span>{t("estimatedTime")}</span>
       </div>
     </div>

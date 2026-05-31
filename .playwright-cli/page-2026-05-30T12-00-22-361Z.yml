@@ -1,0 +1,361 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e47]:
+    - link "Skip to main content" [ref=e48] [cursor=pointer]:
+      - /url: "#main"
+    - generic [ref=e49]:
+      - banner [ref=e50]:
+        - button "Open menu" [ref=e51]:
+          - img
+        - button "Search the app" [ref=e52]:
+          - img [ref=e53]
+          - generic [ref=e56]: Search records, medicines...
+        - generic [ref=e57]:
+          - button "Notifications" [ref=e58]:
+            - img
+          - button "Switch theme" [ref=e59]:
+            - img
+          - button "Switch language" [ref=e60]:
+            - img
+            - generic [ref=e61]: en
+          - button "Nam Nguyễn" [ref=e62]:
+            - img "Nam Nguyễn" [ref=e64]
+            - img
+      - generic [ref=e65]:
+        - heading "Search the app" [level=2] [ref=e66]
+        - paragraph [ref=e67]: Jump to any page or quick action.
+      - main [ref=e68]:
+        - generic [ref=e72]:
+          - heading "Good evening, Nam Nguyễn" [level=1] [ref=e73]
+          - paragraph [ref=e74]: Overview
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e82]:
+              - paragraph [ref=e83]: "313.88"
+              - paragraph [ref=e84]: Calories Burned
+            - generic [ref=e90]:
+              - paragraph [ref=e91]: "92.7"
+              - paragraph [ref=e92]: Sleep Score
+            - generic [ref=e98]:
+              - paragraph [ref=e99]: "74.4"
+              - paragraph [ref=e100]: Heart Rate
+            - generic [ref=e106]:
+              - paragraph [ref=e107]: 7,847
+              - paragraph [ref=e108]: Steps
+          - generic [ref=e109]:
+            - paragraph [ref=e110]: Quick Actions
+            - generic [ref=e111]:
+              - button "Log Meal" [ref=e112] [cursor=pointer]:
+                - img [ref=e114]
+                - generic [ref=e119]:
+                  - paragraph [ref=e120]: Log Meal
+                  - paragraph [ref=e121]: Add calories & nutrition
+              - button "Scan Meal" [ref=e122] [cursor=pointer]:
+                - img [ref=e124]
+                - generic [ref=e127]:
+                  - paragraph [ref=e128]: Scan Meal
+                  - paragraph [ref=e129]: AI photo analysis
+              - button "Add Vital" [ref=e130] [cursor=pointer]:
+                - img [ref=e132]
+                - generic [ref=e133]:
+                  - paragraph [ref=e134]: Add Vital
+                  - paragraph [ref=e135]: Enter latest readings
+              - button "Log Medicine" [ref=e136] [cursor=pointer]:
+                - img [ref=e138]
+                - generic [ref=e141]:
+                  - paragraph [ref=e142]: Log Medicine
+                  - paragraph [ref=e143]: Record dose taken
+              - button "Prepare for Visit" [ref=e144] [cursor=pointer]:
+                - img [ref=e146]
+                - generic [ref=e150]:
+                  - paragraph [ref=e151]: Prepare for Visit
+                  - paragraph [ref=e152]: Symptoms + questions
+              - button "View Reports" [ref=e153] [cursor=pointer]:
+                - img [ref=e155]
+                - generic [ref=e158]:
+                  - paragraph [ref=e159]: View Reports
+                  - paragraph [ref=e160]: Health analysis
+          - generic [ref=e161]:
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - generic [ref=e164]:
+                  - generic:
+                    - paragraph: Vitals Trend
+                    - paragraph: Last 7 days
+                  - generic [ref=e165]:
+                    - button "7 days" [ref=e166]
+                    - button "30 days" [ref=e167]
+                    - button "90 days" [ref=e168]
+                    - button "Custom" [ref=e169]:
+                      - img
+                      - text: Custom
+                - generic [ref=e170]:
+                  - button "Vitals" [ref=e171]:
+                    - img [ref=e172]
+                    - text: Vitals
+                  - button "Steps" [ref=e174]:
+                    - img [ref=e175]
+                    - text: Steps
+                  - button "Sleep" [ref=e178]:
+                    - img [ref=e179]
+                    - text: Sleep
+                  - button "Weight" [ref=e181]:
+                    - img [ref=e182]
+                    - text: Weight
+                - generic [ref=e186]:
+                  - generic [ref=e187]:
+                    - generic [ref=e188]: TB
+                    - generic [ref=e189]:
+                      - generic [ref=e190]: —
+                      - generic [ref=e191]: bpm
+                      - img [ref=e192]
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: Min
+                    - generic [ref=e195]:
+                      - generic [ref=e196]: —
+                      - generic [ref=e197]: bpm
+                      - img [ref=e198]
+                  - generic [ref=e199]:
+                    - generic [ref=e200]: Max
+                    - generic [ref=e201]:
+                      - generic [ref=e202]: —
+                      - generic [ref=e203]: bpm
+                      - img [ref=e204]
+                  - generic [ref=e205]:
+                    - generic [ref=e206]: HA
+                    - generic [ref=e207]:
+                      - generic [ref=e208]: —
+                      - generic [ref=e209]: mmHg
+                      - img [ref=e210]
+                - generic [ref=e212]: Loading chart...
+              - generic [ref=e215]:
+                - generic [ref=e216]:
+                  - img [ref=e218]
+                  - generic [ref=e220]:
+                    - paragraph [ref=e221]:
+                      - img [ref=e222]
+                      - text: HealthOS Pro
+                    - paragraph [ref=e225]: Mở khoá đầy đủ tính năng
+                - generic [ref=e226]:
+                  - generic [ref=e227]:
+                    - img [ref=e229]
+                    - generic [ref=e237]:
+                      - paragraph [ref=e238]: Phân tích AI sâu
+                      - paragraph [ref=e239]: Dự báo xu hướng 60 ngày
+                  - generic [ref=e240]:
+                    - img [ref=e242]
+                    - generic [ref=e245]:
+                      - paragraph [ref=e246]: Xuất lịch sử
+                      - paragraph [ref=e247]: PDF, Excel, CSV
+                  - generic [ref=e248]:
+                    - img [ref=e250]
+                    - generic [ref=e251]:
+                      - paragraph [ref=e252]: Biểu đồ nâng cao
+                      - paragraph [ref=e253]: So sánh, overlay, heatmap
+                  - generic [ref=e254]:
+                    - img [ref=e256]
+                    - generic [ref=e260]:
+                      - paragraph [ref=e261]: Huấn luyện cá nhân
+                      - paragraph [ref=e262]: Lịch tập AI theo sức khoẻ
+                - generic [ref=e263]:
+                  - link "Nâng cấp ngay" [ref=e264] [cursor=pointer]:
+                    - /url: /en/plans
+                    - text: Nâng cấp ngay
+                    - img [ref=e265]
+                  - paragraph [ref=e267]: Từ 99.000đ / tháng
+              - generic [ref=e269]:
+                - generic [ref=e270]:
+                  - paragraph [ref=e271]: Today's Schedule
+                  - img [ref=e272]
+                - list [ref=e277]:
+                  - listitem [ref=e278]:
+                    - img [ref=e280]
+                    - generic [ref=e282]:
+                      - paragraph [ref=e283]: Demo prepare questions
+                      - paragraph [ref=e284]: Appointment · 09:00
+                    - button "Mark Done" [ref=e285] [cursor=pointer]:
+                      - img [ref=e286]
+                  - listitem [ref=e288]:
+                    - img [ref=e290]
+                    - generic [ref=e296]:
+                      - paragraph [ref=e297]: Demo evening walk
+                      - paragraph [ref=e298]: Exercise · 18:30
+                    - button "Mark Done" [ref=e299] [cursor=pointer]:
+                      - img [ref=e300]
+                  - listitem [ref=e302]:
+                    - img [ref=e304]
+                    - generic [ref=e307]:
+                      - paragraph [ref=e308]: Demo refill check
+                      - paragraph [ref=e309]: Medicine · 20:30
+                    - button "Mark Done" [ref=e310] [cursor=pointer]:
+                      - img [ref=e311]
+                  - listitem [ref=e313]:
+                    - img [ref=e315]
+                    - generic [ref=e318]:
+                      - paragraph [ref=e319]: Codex Reminder 1780136213429
+                      - paragraph [ref=e320]: Medicine · 23:55
+                    - button "Mark Done" [ref=e321] [cursor=pointer]:
+                      - img [ref=e322]
+            - generic [ref=e324]:
+              - generic [ref=e325]:
+                - generic [ref=e326]:
+                  - generic [ref=e327]:
+                    - img [ref=e329]
+                    - generic [ref=e332]:
+                      - paragraph [ref=e333]: Anomaly Alerts
+                      - paragraph [ref=e334]: Unusual readings detected
+                  - generic [ref=e335]:
+                    - img [ref=e336]
+                    - generic [ref=e343]: Offline
+                - generic [ref=e344]:
+                  - generic [ref=e345]:
+                    - generic [ref=e346]:
+                      - img [ref=e348]
+                      - paragraph [ref=e351]: No anomalies detected in the last 30 days
+                    - generic [ref=e352]:
+                      - generic [ref=e353]:
+                        - img [ref=e355]
+                        - paragraph [ref=e357]: Phân tích sức khoẻ nâng cao
+                      - generic [ref=e358]:
+                        - generic [ref=e359]:
+                          - img [ref=e360]
+                          - paragraph [ref=e368]: Dự báo bất thường trước 7 ngày bằng AI
+                        - generic [ref=e369]:
+                          - img [ref=e370]
+                          - paragraph [ref=e371]: Biểu đồ xu hướng 90 ngày + so sánh dân số
+                      - link "Tìm hiểu Pro" [ref=e372] [cursor=pointer]:
+                        - /url: /en/pricing
+                        - text: Tìm hiểu Pro
+                        - img [ref=e373]
+                  - link "View all trends" [ref=e375] [cursor=pointer]:
+                    - /url: /en/dashboard/reports/trends
+                    - text: View all trends
+                    - img [ref=e376]
+              - region "Today's doses" [ref=e379]:
+                - generic [ref=e381]:
+                  - paragraph [ref=e382]: Today's doses
+                  - paragraph [ref=e383]: 0 done · 0 pending
+                - generic [ref=e385]:
+                  - img [ref=e386]
+                  - paragraph [ref=e389]: Nothing scheduled for today.
+          - generic [ref=e391]:
+            - generic [ref=e392]:
+              - img [ref=e394]
+              - generic [ref=e396]:
+                - paragraph [ref=e397]: Health Trends
+                - paragraph [ref=e398]: Changes over time
+            - generic [ref=e400]:
+              - button "7 days" [ref=e401]
+              - button "30 days" [ref=e402]
+              - button "90 days" [ref=e403]
+              - button "Custom" [ref=e404]:
+                - img
+                - text: Custom
+          - generic [ref=e442]:
+            - generic [ref=e443]:
+              - generic [ref=e444]:
+                - heading "Calories per Day" [level=2] [ref=e445]
+                - paragraph [ref=e446]: Last 7 days
+              - generic [ref=e448]:
+                - button "7 days" [ref=e449]
+                - button "30 days" [ref=e450]
+                - button "90 days" [ref=e451]
+                - button "Custom" [ref=e452]:
+                  - img
+                  - text: Custom
+            - generic [ref=e453]: No information available
+          - generic [ref=e454]:
+            - generic [ref=e455]:
+              - generic [ref=e456]:
+                - paragraph [ref=e457]: Goal Progress
+                - img [ref=e458]
+              - generic [ref=e462]:
+                - generic [ref=e463]:
+                  - generic [ref=e464]:
+                    - generic [ref=e465]: Water Intake
+                    - generic [ref=e466]: "-- / 2,000 ml"
+                  - progressbar "Water Intake" [ref=e468]
+                - generic [ref=e469]:
+                  - generic [ref=e470]:
+                    - generic [ref=e471]: Daily Steps
+                    - generic [ref=e472]: 7,847 / 10,000 steps
+                  - progressbar "Daily Steps" [ref=e474]
+                - generic [ref=e476]:
+                  - generic [ref=e477]:
+                    - generic [ref=e478]: Calorie Goal
+                    - generic [ref=e479]: 1,630 / 2,000 kcal
+                  - progressbar "Calorie Goal" [ref=e481]
+                - link "View All Goals →" [ref=e483] [cursor=pointer]:
+                  - /url: /en/dashboard/progress
+            - generic [ref=e484]:
+              - generic [ref=e485]:
+                - img [ref=e487]
+                - generic [ref=e490]:
+                  - paragraph [ref=e491]: AI Insight
+                  - paragraph [ref=e492]: Based on your data today
+                - 'generic "Confidence: Unknown confidence" [ref=e493]':
+                  - img [ref=e494]
+                  - img [ref=e497]
+                  - generic [ref=e500]: Unknown confidence
+              - generic [ref=e501]:
+                - generic [ref=e502]:
+                  - img [ref=e503]
+                  - paragraph [ref=e506]: Energy intake today is close to your target.
+                - paragraph [ref=e507]:
+                  - img [ref=e508]
+                  - generic [ref=e510]: AI-generated insight, not medical advice. Talk to a clinician about anything that worries you.
+                - link "Ask AI Assistant" [ref=e511] [cursor=pointer]:
+                  - /url: /en/dashboard/chat
+                  - img [ref=e512]
+                  - text: Ask AI Assistant
+            - generic [ref=e515]:
+              - generic [ref=e517]:
+                - img [ref=e519]
+                - generic [ref=e525]:
+                  - paragraph [ref=e526]: Exercise Suggestions
+                  - paragraph [ref=e527]: Based on your health data
+              - generic [ref=e528]:
+                - button "Recommendations" [ref=e529]:
+                  - img [ref=e530]
+                  - text: Recommendations
+                - button "This Week" [ref=e532]:
+                  - img [ref=e533]
+                  - text: This Week
+              - paragraph [ref=e537]: Loading exercise suggestions...
+              - link "View progress" [ref=e569] [cursor=pointer]:
+                - /url: /en/dashboard/progress
+                - text: View progress
+                - img [ref=e570]
+    - navigation "Quick navigation" [ref=e572]:
+      - link "Overview" [ref=e573] [cursor=pointer]:
+        - /url: /en/dashboard
+        - img [ref=e575]
+        - generic [ref=e580]: Overview
+      - link "Nutrition" [ref=e581] [cursor=pointer]:
+        - /url: /en/dashboard/meals
+        - img [ref=e583]
+        - generic [ref=e588]: Nutrition
+      - link "Vitals & Devices" [ref=e589] [cursor=pointer]:
+        - /url: /en/dashboard/health
+        - img [ref=e591]
+        - generic [ref=e593]: Vitals & Devices
+      - link "Messages" [ref=e594] [cursor=pointer]:
+        - /url: /en/dashboard/chat
+        - img [ref=e596]
+        - generic [ref=e598]: Messages
+      - link "Profile" [ref=e599] [cursor=pointer]:
+        - /url: /en/dashboard/profile
+        - img [ref=e601]
+        - generic [ref=e604]: Profile
+      - button "Open menu" [ref=e605]:
+        - img
+        - generic [ref=e606]: More
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e607]:
+        - button "Close toast" [ref=e608] [cursor=pointer]:
+          - img [ref=e609]
+        - img [ref=e613]
+        - generic [ref=e617]: Login successful!
+  - button "Open Next.js Dev Tools" [ref=e42] [cursor=pointer]:
+    - img [ref=e43]
+  - alert [ref=e46]: Overview · HealthOS

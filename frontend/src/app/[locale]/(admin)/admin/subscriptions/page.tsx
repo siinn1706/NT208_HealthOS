@@ -61,7 +61,8 @@ export default function AdminSubscriptionsPage() {
   const [retryCount, setRetryCount] = useState(0);
 
   // ── Retry gate ─────────────────────────────────────────────────────────
-  const gateRef = useRef(retryGate(MAX_RETRIES));
+  const gateRef = useRef<ReturnType<typeof retryGate> | null>(null);
+  if (gateRef.current === null) gateRef.current = retryGate(MAX_RETRIES);
 
   // ── Edit modal state ───────────────────────────────────────────────────
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
@@ -84,13 +85,13 @@ export default function AdminSubscriptionsPage() {
         "/api/v1/admin/subscription-plans",
       );
       setPlans(response.data);
-      gateRef.current.reset();
+      gateRef.current?.reset();
       setRetryCount(0);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to load subscription plans.";
       setFetchError(message);
-      gateRef.current.recordAttempt();
+      gateRef.current?.recordAttempt();
       setRetryCount((c) => c + 1);
     } finally {
       setIsLoading(false);
@@ -182,6 +183,7 @@ export default function AdminSubscriptionsPage() {
 
       {/* Edit modal */}
       <EditPlanModal
+        key={selectedPlan ? selectedPlan.id : "no-plan"}
         plan={selectedPlan}
         isOpen={isModalOpen}
         onClose={closeEditModal}

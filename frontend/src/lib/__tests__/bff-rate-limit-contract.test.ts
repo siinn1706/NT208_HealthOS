@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
   process.env.TRUST_PROXY = "1";
   delete process.env.REDIS_URL;
-  process.env.NODE_ENV = "test";
+  (process.env as { NODE_ENV?: string }).NODE_ENV = "test";
 });
 
 afterEach(() => {
@@ -171,7 +171,7 @@ describe("enforceRateLimit — production misconfig (RT-4)", () => {
     // Simulate production + no Redis
     __setStoreForTests(null);
     const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "production";
 
     const req = makeReqWithIp("10.0.0.7");
     const result = await enforceRateLimit(req, OPTS);
@@ -181,7 +181,7 @@ describe("enforceRateLimit — production misconfig (RT-4)", () => {
     expect(body?.error?.code).toBe("RATE_LIMIT_UNAVAILABLE");
     expect(logs.some((l) => l.includes("bff_rate_limit_unconfigured"))).toBe(true);
 
-    process.env.NODE_ENV = originalEnv;
+    (process.env as { NODE_ENV?: string }).NODE_ENV = originalEnv;
     console.error = originalError;
   });
 });

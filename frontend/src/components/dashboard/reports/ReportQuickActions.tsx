@@ -27,7 +27,7 @@ export function ReportQuickActions({
         onClick={onExportPdf}
         aria-label={t("exportPdf")}
       >
-        <Download className="h-3.5 w-3.5" aria-hidden />
+        <Download className="size-3.5" aria-hidden />
         {t("exportPdf")}
       </Button>
 
@@ -38,13 +38,13 @@ export function ReportQuickActions({
         onClick={onShare}
         aria-label={t("shareReport")}
       >
-        <Share2 className="h-3.5 w-3.5" aria-hidden />
+        <Share2 className="size-3.5" aria-hidden />
         {t("shareReport")}
       </Button>
 
       <Button asChild variant="default" size="sm" className="gap-2 text-xs">
         <Link href={`/${locale}/dashboard/reports/trends`}>
-          <TrendingUp className="h-3.5 w-3.5" aria-hidden />
+          <TrendingUp className="size-3.5" aria-hidden />
           {t("analyzeTrends")}
         </Link>
       </Button>

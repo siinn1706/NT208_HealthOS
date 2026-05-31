@@ -95,20 +95,20 @@ export function ConversationList({
         <h1 className="text-lg font-bold flex-1">{t("title")}</h1>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
+            <button type="button"
               aria-label={tg("newChat")}
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
+              className="size-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-muted-foreground" />
+              <Plus className="size-4 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuItem onClick={() => setShowSearch(true)}>
-              <MessageCircle className="w-4 h-4 mr-2" />
+              <MessageCircle className="size-4 mr-2" />
               {tg("newChat")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setShowCreateGroup(true)}>
-              <Users className="w-4 h-4 mr-2" />
+              <Users className="size-4 mr-2" />
               {tg("newGroup")}
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -118,7 +118,7 @@ export function ConversationList({
       {/* Search bar */}
       <div className="px-4 pb-2">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -136,7 +136,7 @@ export function ConversationList({
             <TabsTrigger value="strangers" className="text-xs gap-1.5">
               {t("strangers")}
               {pendingCount > 0 && (
-                <span className="w-4 h-4 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                <span className="size-4 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                   {pendingCount}
                 </span>
               )}
@@ -149,8 +149,8 @@ export function ConversationList({
             <div className="px-2 pb-4 space-y-0.5">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 px-2 py-2.5 rounded-xl">
-                    <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+                  <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl">
+                    <Skeleton className="size-10 rounded-full flex-shrink-0" />
                     <div className="flex-1 space-y-1.5 min-w-0">
                       <Skeleton className="h-3.5 w-2/3 rounded" />
                       <Skeleton className="h-3 w-4/5 rounded" />

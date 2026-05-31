@@ -16,14 +16,14 @@ export function AddGoalButton() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span tabIndex={0}>
+            <span>
               <Button
                 size="sm"
                 className="bg-[#1965B3] hover:bg-[#1965B3]/90"
                 disabled
                 aria-disabled
               >
-                <Plus className="w-4 h-4 mr-1.5" />
+                <Plus className="size-4 mr-1.5" />
                 <span className="hidden sm:inline">{t("addGoal")}</span>
                 <span className="sm:hidden">{t("addGoal")}</span>
               </Button>

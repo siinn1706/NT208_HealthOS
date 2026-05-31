@@ -32,9 +32,11 @@ function resolveInsightText(
 
 // Server Component
 export async function AiInsightWidget({ summary }: AiInsightWidgetProps) {
-  const t = await getTranslations("dashboard.ai");
-  const tInsights = await getTranslations("dashboard.risk.insights");
-  const locale = await getLocale();
+  const [t, tInsights, locale] = await Promise.all([
+    getTranslations("dashboard.ai"),
+    getTranslations("dashboard.risk.insights"),
+    getLocale(),
+  ]);
   const insight = summary.status === "success" ? summary.data?.aiInsight : null;
   const hasError =
     summary.status === "recoverable_error" ||
@@ -44,8 +46,8 @@ export async function AiInsightWidget({ summary }: AiInsightWidgetProps) {
   return (
     <div className="rounded-xl border border-border bg-card h-full">
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-3 border-b border-border">
-        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-muted-foreground" aria-hidden />
+        <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Bot className="size-4 text-muted-foreground" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground leading-tight">
@@ -70,13 +72,13 @@ export async function AiInsightWidget({ summary }: AiInsightWidgetProps) {
         ) : insight ? (
           <>
             <div className="flex gap-3">
-              <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" aria-hidden />
+              <Sparkles className="size-4 text-primary flex-shrink-0 mt-0.5" aria-hidden />
               <p className="text-sm text-foreground leading-relaxed">
                 {resolveInsightText(insight.text, tInsights)}
               </p>
             </div>
             <p className="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground leading-snug">
-              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" aria-hidden />
+              <Info className="size-3 mt-0.5 flex-shrink-0" aria-hidden />
               <span>{t("notMedicalAdvice")}</span>
             </p>
           </>
@@ -88,7 +90,7 @@ export async function AiInsightWidget({ summary }: AiInsightWidgetProps) {
           href={`/${locale}/dashboard/chat`}
           className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/85 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <Bot className="w-3.5 h-3.5" aria-hidden />
+          <Bot className="size-3.5" aria-hidden />
           {t("askAI")}
         </Link>
       </div>

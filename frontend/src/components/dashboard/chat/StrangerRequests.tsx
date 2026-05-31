@@ -29,8 +29,8 @@ export function StrangerRequests({
   if (pending.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center">
-          <Shield className="w-8 h-8 text-muted-foreground" />
+        <div className="size-16 rounded-full bg-secondary flex items-center justify-center">
+          <Shield className="size-8 text-muted-foreground" />
         </div>
         <p className="text-sm text-muted-foreground">{t("noStrangers")}</p>
       </div>
@@ -42,7 +42,7 @@ export function StrangerRequests({
       {pending.map((req) => (
         <li key={req.id} className="p-4">
           <div className="flex items-start gap-3">
-            <Avatar className="w-10 h-10 flex-shrink-0">
+            <Avatar className="size-10 flex-shrink-0">
               <AvatarFallback className="bg-orange-100 text-orange-700 text-sm font-semibold">
                 {getInitials(req.from_user.display_name)}
               </AvatarFallback>
@@ -66,7 +66,7 @@ export function StrangerRequests({
                   onClick={() => onAccept(req.id)}
                   className="h-8 px-3 gap-1.5 text-xs"
                 >
-                  <UserCheck className="w-3.5 h-3.5" />
+                  <UserCheck className="size-3.5" />
                   {t("accept")}
                 </Button>
                 <Button
@@ -75,7 +75,7 @@ export function StrangerRequests({
                   onClick={() => onReject(req.id)}
                   className="h-8 px-3 gap-1.5 text-xs"
                 >
-                  <UserX className="w-3.5 h-3.5" />
+                  <UserX className="size-3.5" />
                   {t("reject")}
                 </Button>
                 <Button
@@ -84,7 +84,7 @@ export function StrangerRequests({
                   onClick={() => onBlock(req.id)}
                   className="h-8 px-3 gap-1.5 text-xs text-destructive hover:text-destructive"
                 >
-                  <Shield className="w-3.5 h-3.5" />
+                  <Shield className="size-3.5" />
                   {t("block")}
                 </Button>
               </div>

@@ -266,14 +266,17 @@ export function useOutboundQueue(
         for (const item of items) {
           let ok = false;
           try {
+            // oxlint-disable-next-line react-doctor/async-await-in-loop -- Outbound messages are flushed in persisted order to avoid duplicate sends.
             ok = await send(item);
           } catch {
             ok = false;
           }
           if (ok) {
+            // oxlint-disable-next-line react-doctor/async-await-in-loop -- Persisted queue mutation follows each send result.
             await dbDelete(item.client_message_id);
             sent++;
           } else {
+            // oxlint-disable-next-line react-doctor/async-await-in-loop -- Persisted queue mutation follows each send result.
             await dbPut({ ...item, attempts: item.attempts + 1 });
             failed++;
           }

@@ -45,7 +45,7 @@ export default function NewVisitPrepPage() {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" aria-hidden />
+            <Sparkles className="size-5 text-primary" aria-hidden />
             {tWiz("steps.visitType")}
           </span>
         }
@@ -62,7 +62,7 @@ export default function NewVisitPrepPage() {
           disabled={creating}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
         >
-          {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {creating && <Loader2 className="size-3.5 animate-spin" />}
           {creating ? tWiz("autoSaving") : tWiz("next")}
         </button>
       </div>

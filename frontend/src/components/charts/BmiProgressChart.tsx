@@ -12,7 +12,17 @@ interface BmiProgressChartProps {
   height?: number;
 }
 
-export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: BmiProgressChartProps) {
+const NORMAL_BMI_MARK_AREA_DATA: Array<[{ yAxis: number }, { yAxis: number }]> = [
+  [{ yAxis: 18.5 }, { yAxis: 24.9 }],
+];
+
+const EMPTY_BMI_HISTORY_DATA: Array<{ date: string; bmi: number }> = [];
+
+export function BmiProgressChart({
+  bmiData,
+  historyData = EMPTY_BMI_HISTORY_DATA,
+  height = 220,
+}: BmiProgressChartProps) {
   const t = useTranslations("dashboard.progress");
   const dates = historyData.map((d) => d.date);
   const bmiValues = historyData.map((d) => d.bmi);
@@ -97,6 +107,7 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
                 yAxis: bmiData.targetBmi,
                 label: {
                   formatter: `${t("chartTarget")} ${bmiData.targetBmi}`,
+                  position: "insideEndTop",
                   color: "var(--color-success)",
                   fontSize: 10,
                 },
@@ -104,11 +115,10 @@ export function BmiProgressChart({ bmiData, historyData = [], height = 220 }: Bm
             ],
           },
         } : {}),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         markArea: {
           silent: true,
           itemStyle: { color: cssRgba("--success", 0.08, "#059669") },
-          data: [[{ yAxis: 18.5 }, { yAxis: 24.9 }]] as any,
+          data: NORMAL_BMI_MARK_AREA_DATA,
         },
       },
     ] as SeriesOption[],

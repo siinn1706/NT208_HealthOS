@@ -27,8 +27,8 @@ export async function TrendAiSummary({ analysis, confidence }: TrendAiSummaryPro
     <div className="rounded-xl border border-primary/40 bg-gradient-to-br from-primary/8 to-transparent p-5">
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15">
-          <Sparkles className="h-5 w-5 text-primary" aria-hidden />
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15">
+          <Sparkles className="size-5 text-primary" aria-hidden />
         </div>
 
         {/* Content */}
@@ -43,7 +43,7 @@ export async function TrendAiSummary({ analysis, confidence }: TrendAiSummaryPro
               tier={confidence == null ? "unknown" : undefined}
             />
             <div className={`flex items-center gap-1 text-xs font-medium ${trendColor(analysis.trend)}`}>
-              <TrendIcon className="h-3.5 w-3.5" aria-hidden />
+              <TrendIcon className="size-3.5" aria-hidden />
               {changeSign}{analysis.change_percent.toFixed(1)}%
             </div>
           </div>
@@ -51,7 +51,7 @@ export async function TrendAiSummary({ analysis, confidence }: TrendAiSummaryPro
           <p className="text-sm text-muted-foreground leading-relaxed">{analysis.ai_summary}</p>
 
           <p className="mt-2 flex items-start gap-1.5 text-[11px] text-muted-foreground/80 leading-snug">
-            <Info className="w-3 h-3 mt-0.5 flex-shrink-0" aria-hidden />
+            <Info className="size-3 mt-0.5 flex-shrink-0" aria-hidden />
             <span>{t("aiDisclaimer")}</span>
           </p>
         </div>

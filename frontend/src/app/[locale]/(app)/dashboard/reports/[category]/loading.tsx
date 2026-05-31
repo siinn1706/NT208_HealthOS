@@ -8,7 +8,7 @@ export default function CategoryDetailLoading() {
 
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Skeleton className="h-12 w-12 rounded-xl shrink-0" />
+        <Skeleton className="size-12 rounded-xl shrink-0" />
         <div className="space-y-2">
           <Skeleton className="h-6 w-48 rounded" />
           <Skeleton className="h-4 w-72 rounded" />

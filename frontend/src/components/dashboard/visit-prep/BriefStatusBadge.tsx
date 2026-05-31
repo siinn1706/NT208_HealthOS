@@ -44,7 +44,7 @@ export function BriefStatusBadge({ status, className }: Props) {
         className,
       )}
     >
-      <Icon className="w-3 h-3" />
+      <Icon className="size-3" />
       {t(status)}
     </span>
   );

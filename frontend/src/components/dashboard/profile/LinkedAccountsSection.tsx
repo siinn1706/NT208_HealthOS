@@ -173,7 +173,7 @@ export function LinkedAccountsSection() {
           {t("none")}
         </p>
       ) : (
-        <ul role="list" className="divide-y divide-border rounded-md border border-border">
+        <ul className="divide-y divide-border rounded-md border border-border">
           {links.map((link) => {
             const meta = PROVIDER_META[link.provider as Provider];
             const Icon = meta?.icon ?? CheckCircle2;

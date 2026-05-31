@@ -15,7 +15,7 @@ export function TeamMemberCard({ member }: TeamMemberCardProps) {
 
   return (
     <div className="group text-center">
-      <div className="relative mx-auto mb-3 h-28 w-28 overflow-hidden rounded-2xl">
+      <div className="relative mx-auto mb-3 size-28 overflow-hidden rounded-2xl">
         <Image
           src={member.image}
           alt={member.name}

@@ -8,7 +8,10 @@ const inFlightTrendBatchRequests = new Map<string, Promise<TrendAnalysisBatch>>(
 
 function normalizeTrendMetrics(metrics: readonly string[]): string[] {
   return Array.from(
-    new Set(metrics.map((metric) => metric.trim().toLowerCase()).filter(Boolean)),
+    new Set(metrics.flatMap((metric) => {
+      const normalized = metric.trim().toLowerCase();
+      return normalized ? [normalized] : [];
+    })),
   ).sort();
 }
 

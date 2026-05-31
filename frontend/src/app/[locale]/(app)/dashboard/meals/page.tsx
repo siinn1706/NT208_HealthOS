@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { CirclePlus } from "lucide-react";
+import { Camera, CirclePlus } from "lucide-react";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,14 +14,15 @@ import { NutritionSuggestionsWidget } from "@/components/dashboard/widgets/Nutri
 import { PageHeader } from "@/components/shared/page";
 
 export default async function MealsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const t = await getTranslations("dashboard.meals");
-  const { locale } = await params;
-
-  // Parallel data fetch
-  const [meals, weeklyData, suggestions] = await Promise.all([
-    getMealsToday(),
-    getWeeklyCalorieChart(),
-    getNutritionSuggestions(),
+  const [t, cameraT, { locale }, [meals, weeklyData, suggestions]] = await Promise.all([
+    getTranslations("dashboard.meals"),
+    getTranslations("camera"),
+    params,
+    Promise.all([
+      getMealsToday(),
+      getWeeklyCalorieChart(),
+      getNutritionSuggestions(),
+    ]),
   ]);
 
   return (
@@ -29,6 +30,15 @@ export default async function MealsPage({ params }: { params: Promise<{ locale: 
       <PageHeader
         title={t("diary")}
         description={t("subtitle")}
+        secondaryActions={
+          <Link
+            href={`/${locale}/dashboard/meals/snap`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            <Camera className="size-4" />
+            {cameraT("title")}
+          </Link>
+        }
         primaryAction={
           <Link
             href={`/${locale}/dashboard/meals/add`}

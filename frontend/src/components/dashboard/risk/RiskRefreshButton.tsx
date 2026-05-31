@@ -25,6 +25,7 @@ export function RiskRefreshButton() {
 
   return (
     <button
+      type="button"
       onClick={handleRefresh}
       disabled={loading}
       className={cn(
@@ -34,7 +35,7 @@ export function RiskRefreshButton() {
       )}
       aria-label={t("updateAria")}
     >
-      <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+      <RefreshCw className={cn("size-4", loading && "animate-spin")} />
       {t("update")}
     </button>
   );

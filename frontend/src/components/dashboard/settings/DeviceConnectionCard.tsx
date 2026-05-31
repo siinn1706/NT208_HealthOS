@@ -142,7 +142,7 @@ export function DeviceConnectionCard({
         <SourceBadge
           provider={device.provider as ProviderId}
           variant="icon"
-          className="flex-shrink-0 w-10 h-10 rounded-xl justify-center [&>svg]:size-5"
+          className="flex-shrink-0 size-10 rounded-xl justify-center [&>svg]:size-5"
         />
 
         {/* Info */}
@@ -151,12 +151,12 @@ export function DeviceConnectionCard({
             <p className="text-sm font-semibold text-foreground truncate">{meta.label}</p>
             {device.connected ? (
               <span className="flex items-center gap-1 text-[11px] text-green-500">
-                <Wifi className="w-3 h-3" />
+                <Wifi className="size-3" />
                 {t("connected")}
               </span>
             ) : (
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <WifiOff className="w-3 h-3" />
+                <WifiOff className="size-3" />
                 {t("notConnected")}
               </span>
             )}
@@ -176,15 +176,15 @@ export function DeviceConnectionCard({
       {/* Last sync info */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {syncStatus === "syncing" && (
-          <RefreshCw className="w-3 h-3 animate-spin text-primary" />
+          <RefreshCw className="size-3 animate-spin text-primary" />
         )}
         {syncStatus === "success" && (
-          <CheckCircle2 className="w-3 h-3 text-green-500" />
+          <CheckCircle2 className="size-3 text-green-500" />
         )}
         {syncStatus === "error" && (
-          <AlertCircle className="w-3 h-3 text-red-400" />
+          <AlertCircle className="size-3 text-red-400" />
         )}
-        {syncStatus === "idle" && <Clock className="w-3 h-3" />}
+        {syncStatus === "idle" && <Clock className="size-3" />}
         <span>
           {syncStatus === "syncing"
             ? t("syncing")
@@ -249,7 +249,7 @@ export function DeviceConnectionCard({
                 aria-label={t("hcSyncFromMobile")}
                 className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-muted text-muted-foreground cursor-not-allowed"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="size-3.5" />
                 {t("hcSyncFromMobileShort")}
               </button>
             ) : (
@@ -264,7 +264,7 @@ export function DeviceConnectionCard({
                 )}
                 aria-label={`${t("syncNow")} ${meta.label}`}
               >
-                <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === "syncing" && "animate-spin")} />
+                <RefreshCw className={cn("size-3.5", syncStatus === "syncing" && "animate-spin")} />
                 {t("syncNow")}
               </button>
             )}

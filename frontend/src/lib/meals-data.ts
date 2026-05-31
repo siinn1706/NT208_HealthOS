@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import type { Meal, DailyNutritionSummary, NutritionSuggestion, WeeklyCaloriePoint } from "@/types/api";
+import { bffUrl } from "@/lib/server-bff-url";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const DEFAULT_CALORIE_TARGET = 2000;
+const MAX_CORE_MEALS_PAGE_SIZE = 100;
 
 function startOfDayISO(date: Date): string {
   const y = date.getFullYear();
@@ -64,24 +65,34 @@ function normalizeMeal(row: any): Meal {
 async function fetchMeals(
   dateFrom: string,
   dateTo: string,
-  perPage = 200
+  limit = 200
 ): Promise<Meal[]> {
   try {
     const reqHeaders = await headers();
-    const params = new URLSearchParams({
-      page: "1",
-      per_page: String(perPage),
-      date_from: dateFrom,
-      date_to: dateTo,
-    });
-    const res = await fetch(`${APP_URL}/api/v1/meals?${params.toString()}`, {
-      cache: "no-store",
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
-    });
-    if (!res.ok) return [];
-    const json = await res.json().catch(() => null);
-    if (!Array.isArray(json?.data)) return [];
-    return json.data.map(normalizeMeal);
+    const totalLimit = Math.max(1, limit);
+    const pageSize = Math.min(MAX_CORE_MEALS_PAGE_SIZE, totalLimit);
+    const maxPages = Math.ceil(totalLimit / pageSize);
+    const meals: Meal[] = [];
+
+    for (let page = 1; page <= maxPages; page += 1) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(pageSize),
+        date_from: dateFrom,
+        date_to: dateTo,
+      });
+      const res = await fetch(bffUrl(reqHeaders, `/api/v1/meals?${params.toString()}`), {
+        cache: "no-store",
+        headers: { cookie: reqHeaders.get("cookie") ?? "" },
+      });
+      if (!res.ok) return meals;
+      const json = await res.json().catch(() => null);
+      if (!Array.isArray(json?.data)) return meals;
+      meals.push(...json.data.map(normalizeMeal));
+      if (json.data.length < pageSize || meals.length >= totalLimit) break;
+    }
+
+    return meals.slice(0, totalLimit);
   } catch {
     return [];
   }
@@ -152,7 +163,7 @@ export async function getWeeklyCalorieChart(): Promise<WeeklyCaloriePoint[]> {
 export async function getNutritionSuggestions(): Promise<NutritionSuggestion[]> {
   try {
     const reqHeaders = await headers();
-    const res = await fetch(`${APP_URL}/api/v1/nutrition/suggestions`, {
+    const res = await fetch(bffUrl(reqHeaders, "/api/v1/nutrition/suggestions"), {
       cache: "no-store",
       headers: { cookie: reqHeaders.get("cookie") ?? "" },
     });

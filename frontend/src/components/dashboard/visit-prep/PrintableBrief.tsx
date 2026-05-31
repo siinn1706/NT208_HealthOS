@@ -49,6 +49,7 @@ export function PrintableBrief({ brief, locale, labels, categoryLabels }: Props)
           ink-friendly and self-contained. */}
       <style
         // eslint-disable-next-line react/no-danger
+        // oxlint-disable-next-line react-doctor/no-danger -- Print CSS is static and does not include user input.
         dangerouslySetInnerHTML={{
           __html: `
 @media print {
