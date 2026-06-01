@@ -201,6 +201,19 @@ async def update_meal(
     return meal
 
 
+async def delete_meal(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    meal_id: uuid.UUID,
+) -> Meal | None:
+    meal = await get_meal_by_id(db, user_id, meal_id)
+    if meal is None:
+        return None
+    await db.delete(meal)
+    await db.flush()
+    return meal
+
+
 async def get_meal_ingredients(
     db: AsyncSession,
     user_id: uuid.UUID,

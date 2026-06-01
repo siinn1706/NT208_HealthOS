@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
@@ -8,7 +8,7 @@ import { Card } from '../primitives/card';
 import { IconButton } from '../primitives/icon-button';
 import { ApiState } from '../api/api-state';
 import {
-  IconPlus, IconActivity, IconHeart, IconHeartPulse,
+  IconPlus, IconActivity, IconHeartPulse,
   ChevronLeft, ChevronRight,
 } from '../../icons';
 import { useTheme } from '../../theme/useTheme';
@@ -102,21 +102,13 @@ function DeviceRow({ name, sub, syncState, lastSync, iconColor, Icon, onPress, s
 
 export function DevicesHubScreen() {
   const t = useTheme();
-  const [missingOpen, setMissingOpen] = useState(false);
-  const [missingTitle, setMissingTitle] = useState('');
   const devicesQuery = useApiQuery(queryKeys.devices, () => deviceService.list());
   const devices = devicesQuery.data ?? [];
   const connectedCount = devices.length;
 
   const platformRows = useMemo(() => ([
-    { id: 'apple_health', name: 'Apple Health', sub: 'iOS health data', Icon: IconHeart, color: t.success },
     { id: 'health_connect', name: 'Health Connect', sub: 'Android health data', Icon: IconHeartPulse, color: t.brand },
-  ]), [t.brand, t.success]);
-
-  function openMissing(title: string) {
-    setMissingTitle(title);
-    setMissingOpen(true);
-  }
+  ]), [t.brand]);
 
   return (
     <Screen>
@@ -233,48 +225,6 @@ export function DevicesHubScreen() {
         )}
       </Card>
 
-      <SectionHeader title="Add more sources" />
-      {[
-        { id: 'google', name: 'Google Fit', sub: 'Android · Activity & vitals', color: t.info, action: () => router.push('/profile/devices/add' as never) },
-        { id: 'garmin', name: 'Garmin Connect', sub: 'GPS watches · Running data', color: t.success, action: () => router.push('/profile/devices/add' as never) },
-        { id: 'samsung', name: 'Samsung Health', sub: 'Not yet supported in mobile flow', color: t.brand, action: () => openMissing('Samsung Health integration is not yet available') },
-      ].map((source) => (
-        <TouchableOpacity
-          key={source.id}
-          style={[styles.addRow, { backgroundColor: t.card, borderColor: t.border }]}
-          onPress={source.action}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={`Connect ${source.name}`}
-        >
-          <View style={[styles.deviceIcon, { backgroundColor: `${source.color}18` }]}>
-            <IconActivity size={20} color={source.color} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '700' }]}>{source.name}</Text>
-            <Text style={[typography.micro, { color: t.ink3, marginTop: 1 }]}>{source.sub}</Text>
-          </View>
-          <View style={[styles.connectBtn, { borderColor: t.border }]}>
-            <Text style={[typography.micro, { color: t.ink, fontWeight: '700' }]}>Connect</Text>
-          </View>
-        </TouchableOpacity>
-      ))}
-
-      <Modal visible={missingOpen} transparent animationType="fade" onRequestClose={() => setMissingOpen(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setMissingOpen(false)}>
-          <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <ApiState title={missingTitle} message="This provider is not yet available in mobile." />
-            <Pressable
-              onPress={() => setMissingOpen(false)}
-              style={[styles.modalClose, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-            >
-              <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
     </Screen>
   );
 }
@@ -290,9 +240,4 @@ const styles = StyleSheet.create({
   syncBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   syncDot: { width: 7, height: 7, borderRadius: 4 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 59 },
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginHorizontal: 16, marginBottom: 8, borderRadius: 14, borderWidth: 1 },
-  connectBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalSheet: { width: '100%', padding: 20 },
-  modalClose: { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
 });

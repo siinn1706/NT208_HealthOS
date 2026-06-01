@@ -41,6 +41,39 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key,
+  }),
+}));
+
+jest.mock('../components/primitives/button', () => {
+  const ReactActual = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  return {
+    Button: ({
+      label,
+      onPress,
+      disabled,
+      accessibilityLabel,
+    }: {
+      label: string;
+      onPress?: () => void;
+      disabled?: boolean;
+      accessibilityLabel?: string;
+    }) => ReactActual.createElement(
+      Text,
+      {
+        accessibilityRole: 'button',
+        accessibilityLabel: accessibilityLabel ?? label,
+        accessibilityState: { disabled: Boolean(disabled) },
+        onPress,
+      },
+      label,
+    ),
+  };
+});
+
 const mockUseApiQuery = useApiQuery as jest.MockedFunction<typeof useApiQuery>;
 const mockUseLocalSearchParams = useLocalSearchParams as jest.MockedFunction<typeof useLocalSearchParams>;
 const mockDeviceService = deviceService as jest.Mocked<typeof deviceService>;
@@ -64,6 +97,14 @@ const healthDevice = {
   last_attempted_at: null,
 };
 
+const legacyDevice = {
+  ...healthDevice,
+  id: 'dev-fitbit-1',
+  provider: 'fitbit',
+  name: 'Fitbit',
+  device_label: 'Fitbit',
+};
+
 const syncRows = [
   {
     record_type: 'Steps',
@@ -84,11 +125,12 @@ const syncRows = [
 const devicesReload = jest.fn();
 const syncStateReload = jest.fn();
 
-function renderDetail() {
+function renderDetail(device = healthDevice) {
+  mockUseLocalSearchParams.mockReturnValue({ id: device.id });
   mockUseApiQuery.mockImplementation((key) => {
     if (key === 'devices.list') {
       return {
-        data: [healthDevice],
+        data: [device],
         error: null,
         isLoading: false,
         isRefreshing: false,
@@ -96,7 +138,7 @@ function renderDetail() {
         reload: devicesReload,
       } as never;
     }
-    if (key === 'devices.sync-state.dev-hc-1') {
+    if (key === `devices.sync-state.${device.id}`) {
       return {
         data: syncRows,
         error: null,
@@ -130,16 +172,17 @@ beforeEach(() => {
 });
 
 describe('DeviceDetailScreen Health Connect behavior', () => {
-  it('guards native-unavailable sync without ingesting or faking permission success', async () => {
-    const { getByText, getAllByText, queryByText } = renderDetail();
+  it('falls back cleanly when native Health Connect is not linked', async () => {
+    const { getByText, getAllByText, queryByText, queryByLabelText } = renderDetail();
 
-    expect(getByText('Health Connect native access unavailable')).toBeTruthy();
+    expect(getByText('devices.healthConnectNativeSyncTitle')).toBeTruthy();
     expect(queryByText('Save permissions')).toBeNull();
+    expect(queryByLabelText('common.more')).toBeNull();
 
-    fireEvent.press(getByText('Sync now'));
+    fireEvent.press(getByText('devices.syncNow'));
 
     await waitFor(() => {
-      expect(getByText('Action failed')).toBeTruthy();
+      expect(getByText('devices.actionFailed')).toBeTruthy();
       expect(getAllByText(/Core device identity is saved/).length).toBeGreaterThan(0);
     });
     expect(mockDeviceService.connect).not.toHaveBeenCalled();
@@ -151,7 +194,7 @@ describe('DeviceDetailScreen Health Connect behavior', () => {
   it('reloads sync-state after resetting Health Connect tokens', async () => {
     const { getByText } = renderDetail();
 
-    fireEvent.press(getByText('Reset sync tokens'));
+    fireEvent.press(getByText('devices.resetSyncTokens'));
 
     await waitFor(() => {
       expect(mockDeviceService.putSyncState).toHaveBeenCalledWith('dev-hc-1', {
@@ -162,10 +205,34 @@ describe('DeviceDetailScreen Health Connect behavior', () => {
     });
   });
 
+  it('renders legacy provider rows without enabling stub sync success even if the handler is reached', () => {
+    const { getByLabelText, getByText } = renderDetail(legacyDevice);
+
+    expect(getByText('devices.providerSyncUnsupportedTitle')).toBeTruthy();
+    expect(getByLabelText('devices.syncUnavailable').props.accessibilityState.disabled).toBe(true);
+
+    fireEvent.press(getByLabelText('devices.syncUnavailable'));
+
+    expect(mockDeviceService.sync).not.toHaveBeenCalled();
+    expect(mockDeviceService.putSyncState).not.toHaveBeenCalled();
+    expect(getByText('devices.actionFailed')).toBeTruthy();
+  });
+
+  it('keeps legacy provider sync-token reset side-effect free even if the handler is reached', () => {
+    const { getByLabelText } = renderDetail(legacyDevice);
+
+    expect(getByLabelText('devices.resetSyncTokens').props.accessibilityState.disabled).toBe(true);
+
+    fireEvent.press(getByLabelText('devices.resetSyncTokens'));
+
+    expect(mockDeviceService.putSyncState).not.toHaveBeenCalled();
+    expect(syncStateReload).not.toHaveBeenCalled();
+  });
+
   it('disconnects through Core and invalidates the devices list', async () => {
     const { getByText } = renderDetail();
 
-    fireEvent.press(getByText('Disconnect'));
+    fireEvent.press(getByText('devices.disconnect'));
 
     await waitFor(() => {
       expect(mockDeviceService.disconnect).toHaveBeenCalledWith('dev-hc-1');

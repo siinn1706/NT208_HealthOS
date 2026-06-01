@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +17,14 @@ import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { medicationService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { toMedicationDetailRows } from '../../api/viewModels';
+import { doseActionRoute, selectMedicationDoseActionTarget } from './medication-dose-action-target';
+
+function formatPauseUntil(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
 
 export function MedicationDetailScreen() {
   const t = useTheme();
@@ -31,9 +39,15 @@ export function MedicationDetailScreen() {
     return { detail, adherence };
   }, [medicationId]);
   const medication = useApiQuery(queryKeys.medication(medicationId), loadMedication, { enabled: Boolean(medicationId) });
+  const loadTodayDoses = useCallback(() => medicationService.today(), []);
+  const todayDoses = useApiQuery(queryKeys.medicationDosesToday, loadTodayDoses);
   const detail = medication.data?.detail;
   const adherence = medication.data?.adherence;
   const percent = adherence ? (adherence.percent > 1 ? adherence.percent / 100 : adherence.percent) : 0;
+  const nextTakeDose = useMemo(() => selectMedicationDoseActionTarget(todayDoses.data, {
+    medicationPlanId: medicationId,
+    intent: 'take',
+  }), [medicationId, todayDoses.data]);
 
   const [moreOpen, setMoreOpen] = useState(false);
   const [savingDoseId, setSavingDoseId] = useState<string | null>(null);
@@ -121,6 +135,18 @@ export function MedicationDetailScreen() {
                     variant={detail.status === 'active' ? 'success' : 'warning'}
                   />
                 </View>
+                {detail.status === 'paused' && (detail.pause_until || detail.pause_reason) && (
+                  <View style={s.pauseMeta}>
+                    {detail.pause_until && (
+                      <Text style={[typography.caption, { color: t.ink3 }]}>
+                        {i18n('meds.pauseUntil')}: {formatPauseUntil(detail.pause_until)}
+                      </Text>
+                    )}
+                    {detail.pause_reason && (
+                      <Text style={[typography.caption, { color: t.ink3 }]}>{detail.pause_reason}</Text>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
 
@@ -151,44 +177,53 @@ export function MedicationDetailScreen() {
               {detail.doses.length === 0 && (
                 <Text style={[typography.caption, { color: t.ink3 }]}>No active dose schedule.</Text>
               )}
-              {detail.doses.map((dose, i) => (
-                <View key={dose.reminder_id} style={[s.doseRow, i < detail.doses.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border }]}>
-                  <View style={[s.dot, { backgroundColor: dose.is_active ? t.success : t.border }]} />
-                  <View style={s.flex}>
-                    <Text style={[typography.bodyMed, { color: t.ink }]}>{dose.time}</Text>
-                    <Text style={[typography.caption, { color: t.ink3 }]}>{dose.repeat}</Text>
+              {detail.doses.map((dose, i) => {
+                const actionTarget = selectMedicationDoseActionTarget(todayDoses.data, {
+                  medicationPlanId: medicationId,
+                  reminderId: dose.reminder_id,
+                  intent: 'take',
+                });
+                const savingThisDose = savingDoseId === actionTarget?.occurrence_id;
+                return (
+                  <View key={dose.reminder_id} style={[s.doseRow, i < detail.doses.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border }]}>
+                    <View style={[s.dot, { backgroundColor: dose.is_active ? t.success : t.border }]} />
+                    <View style={s.flex}>
+                      <Text style={[typography.bodyMed, { color: t.ink }]}>{dose.time}</Text>
+                      <Text style={[typography.caption, { color: t.ink3 }]}>{dose.repeat}</Text>
+                    </View>
+                    {dose.is_active && actionTarget && (
+                      <Pressable
+                        disabled={savingThisDose}
+                        onPress={async () => {
+                          setSavingDoseId(actionTarget.occurrence_id);
+                          setDoseError(null);
+                          try {
+                            await medicationService.markDoseDone(actionTarget.reminder_id, actionTarget.occurrence_id);
+                            invalidateApiQuery(queryKeys.medications);
+                            invalidateApiQuery(queryKeys.medication(medicationId));
+                            invalidateApiQuery(queryKeys.medicationDosesToday);
+                            invalidateApiQuery(queryKeys.remindersAll);
+                            await medication.reload();
+                          } catch (err) {
+                            setDoseError(err instanceof Error ? err.message : 'Could not mark dose as taken.');
+                          } finally {
+                            setSavingDoseId(null);
+                          }
+                        }}
+                        style={[
+                          s.takeBtn,
+                          { backgroundColor: t.brandSoft, borderRadius: t.radius.pill },
+                          savingThisDose && { opacity: 0.5 },
+                        ]}
+                      >
+                        <Text style={[typography.micro, { color: t.brand }]}>
+                          {savingThisDose ? '...' : i18n('meds.take')}
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
-                  {dose.is_active && (
-                    <Pressable
-                      disabled={savingDoseId === dose.reminder_id}
-                      onPress={async () => {
-                        setSavingDoseId(dose.reminder_id);
-                        setDoseError(null);
-                        try {
-                          await medicationService.markDoseDone(dose.reminder_id);
-                          invalidateApiQuery(queryKeys.medications);
-                          invalidateApiQuery(queryKeys.medicationDosesToday);
-                          invalidateApiQuery(queryKeys.remindersAll);
-                          await medication.reload();
-                        } catch (err) {
-                          setDoseError(err instanceof Error ? err.message : 'Could not mark dose as taken.');
-                        } finally {
-                          setSavingDoseId(null);
-                        }
-                      }}
-                      style={[
-                        s.takeBtn,
-                        { backgroundColor: t.brandSoft, borderRadius: t.radius.pill },
-                        savingDoseId === dose.reminder_id && { opacity: 0.5 },
-                      ]}
-                    >
-                      <Text style={[typography.micro, { color: t.brand }]}>
-                        {savingDoseId === dose.reminder_id ? '...' : i18n('meds.take')}
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-              ))}
+                );
+              })}
             </Card>
 
             <Text style={[typography.h3, { color: t.ink, marginBottom: 8, marginTop: 12 }]}>Details</Text>
@@ -234,7 +269,7 @@ export function MedicationDetailScreen() {
                   }
                 }}
               />
-              <Button label={i18n('meds.take')} variant="solid" onPress={() => router.push(`/meds/${detail.id}/take` as never)} style={s.flex} />
+              <Button label={i18n('meds.take')} variant="solid" onPress={() => router.push(doseActionRoute(detail.id, nextTakeDose) as never)} style={s.flex} />
             </View>
             <Button label={i18n('meds.archive')} variant="soft" onPress={() => router.push(`/meds/archive?id=${detail.id}` as never)} style={{ marginTop: 8 }} />
           </>
@@ -251,6 +286,7 @@ const s = StyleSheet.create({
   content:       { paddingHorizontal: 16, paddingTop: 8 },
   iconHero:      { flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16, marginBottom: 12 },
   heroIcon:      { width: 72, height: 72, backgroundColor: '#E88B6E', alignItems: 'center', justifyContent: 'center' },
+  pauseMeta:     { marginTop: 8, gap: 2 },
   adherenceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   adherenceLeft: { flex: 1, gap: 6, marginRight: 12 },
   doseRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },

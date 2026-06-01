@@ -1,6 +1,29 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("accent color — localStorage hydration", () => {
+  test("serves accent bootstrap from body instead of a managed head script", async ({ page }) => {
+    await page.goto("/en/login");
+
+    const headAccentScripts = await page.locator("head script").evaluateAll((scripts) =>
+      scripts
+        .map((script) => ({
+          id: script.id,
+          src: script.getAttribute("src"),
+          text: script.textContent ?? "",
+        }))
+        .filter(
+          ({ id, src, text }) =>
+            id === "healthos-accent-early" ||
+            src === "/accent-early.js" ||
+            text.includes("/accent-early.js")
+        )
+    );
+    expect(headAccentScripts).toEqual([]);
+    const bodyAccentScript = page.locator("body > script#healthos-accent-early");
+    await expect(bodyAccentScript).toHaveCount(1);
+    await expect(bodyAccentScript).not.toHaveAttribute("src");
+  });
+
   test("accent-early.js derives CSS variables after reload", async ({ page }) => {
     await page.goto("/en/login");
     await page.evaluate(() => {
@@ -49,6 +72,13 @@ test.describe("accent persistence (Core BE)", () => {
 
     await page.reload();
 
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue("--primary").trim().toUpperCase()
+        ),
+      )
+      .toMatch(/^#[0-9A-F]{6}$/);
     const primaryAfter = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--primary").trim().toUpperCase()
     );

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Be_Vietnam_Pro } from "next/font/google";
@@ -13,6 +15,8 @@ const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam-pro",
   display: "swap",
 });
+
+const accentEarlyScript = readFileSync(join(process.cwd(), "public", "accent-early.js"), "utf8");
 
 export const metadata: Metadata = {
   title: {
@@ -37,19 +41,20 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
-      <head>
+      <body className="overflow-x-hidden font-[family-name:var(--font-be-vietnam-pro)]">
         {process.env.NODE_ENV === "development" &&
           process.env.NEXT_PUBLIC_ENABLE_REACT_GRAB === "1" && (
-          <Script
-            src="//unpkg.com/react-grab/dist/index.global.js"
-            crossOrigin="anonymous"
-            strategy="beforeInteractive"
-          />
-        )}
-        {/* Full 5-token early hydration lives in /accent-early.js (~2KB) — keeps layout HTML small. */}
-        <Script src="/accent-early.js" strategy="beforeInteractive" />
-      </head>
-      <body className="overflow-x-hidden font-[family-name:var(--font-be-vietnam-pro)]">
+            <Script
+              src="//unpkg.com/react-grab/dist/index.global.js"
+              crossOrigin="anonymous"
+              strategy="afterInteractive"
+            />
+          )}
+        {/* Keep this out of the hydrated head so extension-injected head scripts cannot displace it. */}
+        <script
+          id="healthos-accent-early"
+          dangerouslySetInnerHTML={{ __html: accentEarlyScript }}
+        />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <OfflineProvider>
             {children}

@@ -214,6 +214,7 @@ def build_user_export(self, user_id: str, request_id: str) -> dict:
                                 "id", "appointment_id", "name", "generic_name",
                                 "strength", "form", "instructions", "prescriber",
                                 "clinic", "start_date", "end_date", "status", "tzid",
+                                "pause_until", "pause_reason",
                                 "refill_supply_units", "refill_cadence_days",
                                 "last_refill_at", "next_refill_estimated_at",
                                 "review_due_at", "notes",

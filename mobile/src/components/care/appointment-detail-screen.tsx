@@ -13,7 +13,7 @@ import { PressableCard } from '../primitives/pressable-card';
 import { BottomSheet } from '../primitives/sheet/bottom-sheet';
 import { TopBar } from '../layout/top-bar';
 import { IconButton } from '../primitives/icon-button';
-import { ApiState, MissingApiState } from '../api/api-state';
+import { ApiState } from '../api/api-state';
 import {
   IconCalendar, IconClock, IconMapPin, IconVideo,
   IconPaperclip, IconCheck, ChevronRight, IconMore,
@@ -24,6 +24,7 @@ import { queryKeys } from '../../api/queryKeys';
 import { formatDate, formatTime } from '../../api/viewModels';
 import { AppointmentRescheduleSheet } from './appointment-reschedule-sheet';
 import { PrescriptionFilesCard } from './prescription-files-card';
+import { AppointmentAssetsCard } from './appointment-assets-card';
 
 export function AppointmentDetailScreen() {
   const t = useTheme();
@@ -57,17 +58,18 @@ export function AppointmentDetailScreen() {
       setCancelOpen(false);
       router.back();
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : 'Unable to cancel appointment.');
+      setCancelError(err instanceof Error ? err.message : i18n('care.cancelAppointmentFailed'));
     } finally {
       setCancelling(false);
     }
   }
 
-  // Determine if video join button should be shown
+  const isVideoAppointment = appointment?.visit_type === 'video';
   const isVideoEligible =
     appointment &&
-    appointment.visit_type === 'video' &&
+    isVideoAppointment &&
     (appointment.status === 'scheduled' || appointment.status === 'upcoming');
+  const canJoinVideo = isVideoEligible && Boolean(appointment.video_join_url);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -102,7 +104,7 @@ export function AppointmentDetailScreen() {
         {!appointmentQuery.isLoading && !appointmentQuery.error && !appointment && (
           <ApiState
             title={i18n('care.noAppointments')}
-            message="No appointment found for this id."
+            message={i18n('care.appointmentNotFoundMessage')}
           />
         )}
 
@@ -119,7 +121,7 @@ export function AppointmentDetailScreen() {
               <View style={s.glowCircle2} pointerEvents="none" />
               <Chip label={appointment.status} variant="brand" />
               <Text style={[typography.title, s.heroName]}>{appointment.doctor_name}</Text>
-              <Text style={[typography.caption, s.heroSub]}>{appointment.specialty ?? 'Appointment'}</Text>
+              <Text style={[typography.caption, s.heroSub]}>{appointment.specialty ?? i18n('care.appointmentFallback')}</Text>
               <View style={s.heroRow}>
                 <IconCalendar size={12} color="rgba(255,255,255,0.8)" />
                 <Text style={s.heroMeta}>{formatDate(appointment.appointment_date)}</Text>
@@ -127,9 +129,9 @@ export function AppointmentDetailScreen() {
                 <Text style={s.heroMeta}>{formatTime(appointment.appointment_date)}</Text>
               </View>
 
-              {isVideoEligible ? (
+              {canJoinVideo ? (
                 <Button
-                  label="Join video call"
+                  label={i18n('care.joinVideoCall')}
                   variant="solid"
                   icon={<IconVideo size={14} color="#FFF" />}
                   style={[s.joinBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
@@ -138,7 +140,9 @@ export function AppointmentDetailScreen() {
               ) : (
                 <View style={[s.joinBtn, s.videoUnavailable]}>
                   <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
-                    Video visit not available for this appointment.
+                    {isVideoEligible
+                      ? i18n('care.videoVisitLinkUnavailableForAppointment')
+                      : i18n('care.videoVisitUnavailableForAppointment')}
                   </Text>
                 </View>
               )}
@@ -160,29 +164,29 @@ export function AppointmentDetailScreen() {
 
             <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.general')}</Text>
             <View style={[s.card, { backgroundColor: t.card, borderRadius: t.radius.lg }]}>
-              <DetailRow icon={<IconVideo size={14} color={t.ink3} />} label="Status" value={appointment.status} t={t} />
+              <DetailRow icon={<IconVideo size={14} color={t.ink3} />} label={i18n('care.status')} value={appointment.status} t={t} />
               <View style={[s.divider, { backgroundColor: t.border }]} />
-              <DetailRow icon={<IconMapPin size={14} color={t.ink3} />} label="Location" value={appointment.clinic ?? 'Not specified'} t={t} />
+              <DetailRow icon={<IconMapPin size={14} color={t.ink3} />} label={i18n('care.location')} value={appointment.clinic ?? i18n('care.notSpecified')} t={t} />
             </View>
 
-            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>Reason for visit</Text>
+            <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.reasonForVisit')}</Text>
             <View style={[s.card, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}>
-              <Text style={[typography.body, { color: t.ink2 }]}>{appointment.notes ?? appointment.diagnosis ?? 'No notes on this appointment.'}</Text>
+              <Text style={[typography.body, { color: t.ink2 }]}>{appointment.notes ?? appointment.diagnosis ?? i18n('care.noAppointmentNotes')}</Text>
             </View>
 
             <Text style={[typography.h3, { color: t.ink, marginBottom: t.space[2] }]}>{i18n('care.attachments')}</Text>
-            {appointment.has_prescription ? (
+            {appointment.has_prescription && (
               <PrescriptionFilesCard
                 appointmentId={appointment.id}
-                showTitle={false}
-                helperText="Files are stored through the verified prescription asset contract for this appointment."
-              />
-            ) : (
-              <MissingApiState
-                title="Appointment attachments unavailable"
-                contract="Generic appointment upload/storage API is not implemented; only prescription files have a Core storage contract."
+                title={i18n('care.prescriptionFiles')}
+                helperText={i18n('care.prescriptionFilesVerifiedContract')}
               />
             )}
+            <AppointmentAssetsCard
+              appointmentId={appointment.id}
+              title={i18n('care.appointmentFiles')}
+              helperText={i18n('care.appointmentFilesVerifiedContract')}
+            />
 
             {appointment.has_prescription && (
               <PressableCard
@@ -191,8 +195,8 @@ export function AppointmentDetailScreen() {
               >
                 <IconPaperclip size={18} color={t.brand} />
                 <View style={s.prepText}>
-                  <Text style={[typography.bodyMed, { color: t.ink }]}>Prescription available</Text>
-                  <Text style={[typography.caption, { color: t.ink3 }]}>Open verified prescription payload</Text>
+                  <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n('care.prescriptionAvailable')}</Text>
+                  <Text style={[typography.caption, { color: t.ink3 }]}>{i18n('care.openVerifiedPrescriptionPayload')}</Text>
                 </View>
                 <ChevronRight size={16} color={t.brand} />
               </PressableCard>
@@ -204,15 +208,15 @@ export function AppointmentDetailScreen() {
             >
               <IconCheck size={18} color={t.brand} />
               <View style={s.prepText}>
-                <Text style={[typography.bodyMed, { color: t.ink }]}>Prepare for this visit</Text>
-                <Text style={[typography.caption, { color: t.ink3 }]}>Checklist and questions can be linked to this visit</Text>
+                <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n('care.prepareForThisVisit')}</Text>
+                <Text style={[typography.caption, { color: t.ink3 }]}>{i18n('care.prepareForThisVisitSub')}</Text>
               </View>
               <ChevronRight size={16} color={t.brand} />
             </PressableCard>
 
             <View style={s.actions}>
               <Button
-                label="Reschedule"
+                label={i18n('care.reschedule')}
                 variant="ghost"
                 style={s.actionBtn}
                 onPress={() => setRescheduleOpen(true)}
@@ -232,16 +236,33 @@ export function AppointmentDetailScreen() {
       {/* More options sheet */}
       <BottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
-          <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 12 }]}>Options</Text>
-          <Pressable style={[s.sheetRow, { borderColor: t.border }]} onPress={() => { setMoreOpen(false); setRescheduleOpen(true); }}>
-            <Text style={[typography.body, { color: t.ink }]}>Reschedule</Text>
+          <Text style={[typography.bodyMed, { color: t.ink, marginBottom: 12 }]}>{i18n('care.options')}</Text>
+          <Pressable
+            style={[s.sheetRow, { borderColor: t.border }]}
+            onPress={() => { setMoreOpen(false); setRescheduleOpen(true); }}
+            accessibilityRole="button"
+            accessibilityLabel={i18n('care.reschedule')}
+          >
+            <Text style={[typography.body, { color: t.ink }]}>{i18n('care.reschedule')}</Text>
           </Pressable>
-          <Pressable style={[s.sheetRow, { borderColor: t.border }]} onPress={() => { setMoreOpen(false); setCancelOpen(true); }}>
-            <Text style={[typography.body, { color: t.danger }]}>Cancel appointment</Text>
+          <Pressable
+            style={[s.sheetRow, { borderColor: t.border }]}
+            onPress={() => { setMoreOpen(false); setCancelOpen(true); }}
+            accessibilityRole="button"
+            accessibilityLabel={i18n('care.cancelAppointment')}
+          >
+            <Text style={[typography.body, { color: t.danger }]}>{i18n('care.cancelAppointment')}</Text>
           </Pressable>
-          <Pressable style={[s.sheetRow, { borderColor: t.border }]} onPress={() => { setMoreOpen(false); setAttachmentsOpen(true); }}>
-            <Text style={[typography.body, { color: t.ink }]}>Attachments</Text>
-          </Pressable>
+          {appointment && (
+            <Pressable
+              style={[s.sheetRow, { borderColor: t.border }]}
+              onPress={() => { setMoreOpen(false); setAttachmentsOpen(true); }}
+              accessibilityRole="button"
+              accessibilityLabel={i18n('care.attachments')}
+            >
+              <Text style={[typography.body, { color: t.ink }]}>{i18n('care.attachments')}</Text>
+            </Pressable>
+          )}
         </View>
       </BottomSheet>
 
@@ -255,18 +276,22 @@ export function AppointmentDetailScreen() {
       <BottomSheet visible={attachmentsOpen} onClose={() => setAttachmentsOpen(false)}>
         <View style={[s.sheetInner, { paddingBottom: insets.bottom + 16 }]}>
           {attachmentsOpen && (
-            appointment?.has_prescription ? (
-              <PrescriptionFilesCard
-                appointmentId={appointment.id}
-                showTitle={false}
-                helperText="Prescription files are backed by the appointment prescription asset API."
-              />
-            ) : (
-              <MissingApiState
-                title="Attachments unavailable"
-                contract="Generic appointment upload/storage API is not implemented; only prescription files have a Core storage contract."
-              />
-            )
+            <View style={s.sheetCards}>
+              {appointment?.has_prescription && (
+                <PrescriptionFilesCard
+                  appointmentId={appointment.id}
+                  showTitle={false}
+                  helperText={i18n('care.prescriptionFilesVerifiedContract')}
+                />
+              )}
+              {appointment && (
+                <AppointmentAssetsCard
+                  appointmentId={appointment.id}
+                  showTitle={!appointment.has_prescription}
+                  helperText={i18n('care.appointmentFilesVerifiedContract')}
+                />
+              )}
+            </View>
           )}
           <Button label={i18n('common.close')} variant="soft" onPress={() => setAttachmentsOpen(false)} style={{ marginTop: 8 }} />
         </View>
@@ -293,10 +318,10 @@ export function AppointmentDetailScreen() {
               </View>
             )}
             <Text style={[typography.h3, { color: t.ink, marginBottom: 8, textAlign: 'center' }]}>
-              Cancel appointment?
+              {i18n('care.cancelAppointmentQuestion')}
             </Text>
             <Text style={[typography.body, { color: t.ink3, marginBottom: 20, textAlign: 'center', lineHeight: 19 }]}>
-              This action cannot be undone. The appointment will be marked as cancelled.
+              {i18n('care.cancelAppointmentWarning')}
             </Text>
             {cancelError && (
               <Text style={[typography.caption, { color: t.danger, marginBottom: 12, textAlign: 'center' }]}>{cancelError}</Text>
@@ -305,7 +330,7 @@ export function AppointmentDetailScreen() {
             {/* Vertical actions — destructive first */}
             <View style={s.confirmActionsV}>
               <Button
-                label={cancelling ? 'Cancelling…' : i18n('common.confirm')}
+                label={cancelling ? i18n('care.cancellingAppointment') : i18n('common.confirm')}
                 variant="solid"
                 style={[s.confirmBtn, { backgroundColor: t.danger }]}
                 onPress={handleCancel}
@@ -359,6 +384,7 @@ const s = StyleSheet.create({
   actions:        { flexDirection: 'row', gap: 10, marginTop: 4 },
   actionBtn:      { flex: 1 },
   sheetInner:     { paddingHorizontal: 20, paddingTop: 8, gap: 0 },
+  sheetCards:     { gap: 12 },
   sheetRow:       { paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   confirmOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
   confirmBox:       { width: '100%', padding: 22 },

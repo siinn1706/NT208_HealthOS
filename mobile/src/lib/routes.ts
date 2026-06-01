@@ -29,6 +29,8 @@ export const ROUTES = {
   medsAdd:     '/meds/add',
   medsHistory: '/meds/history',
   medsImport:  '/meds/import',
+  medsTakeSample:   '/meds/test-id/take',
+  medsMissedSample: '/meds/test-id/missed',
   // Profile
   profileHealth:   '/profile/health',
   profileDevices:  '/profile/devices',

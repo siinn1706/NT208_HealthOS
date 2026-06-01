@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { usePressSpring } from '../../animations/usePressSpring';

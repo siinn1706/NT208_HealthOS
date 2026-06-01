@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconButton } from '../primitives/icon-button';
@@ -37,6 +38,7 @@ function AuthFlowBody({ kind, permissionKind }: AuthFlowScreenProps) {
 
 export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const isWelcome = kind === 'welcome';
   const showHeader = !isWelcome;
   const showSkip = kind === 'permissions';
@@ -57,7 +59,7 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
             variant="subtle"
             icon={<ChevronLeft size={18} color={t.ink} />}
             onPress={() => router.back()}
-            accessibilityLabel="Back"
+            accessibilityLabel={i18n('common.back')}
             size={40}
           />
           {showSkip && (
@@ -65,11 +67,11 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
               onPress={() => router.replace('/home')}
               hitSlop={12}
               accessibilityRole="button"
-              accessibilityLabel="Skip"
+              accessibilityLabel={i18n('auth.skipForNow')}
               style={styles.skipHit}
             >
               <Text style={[typography.caption, { color: t.brand, fontFamily: 'Inter_600SemiBold' }]}>
-                Skip
+                {i18n('auth.skipForNow')}
               </Text>
             </Pressable>
           )}

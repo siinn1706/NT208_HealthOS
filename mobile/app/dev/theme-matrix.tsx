@@ -7,8 +7,6 @@ import { useThemeContext } from '../../src/theme/theme-provider';
 import { typography } from '../../src/theme/typography';
 import type { ThemeName } from '../../src/theme/tokens';
 
-if (!__DEV__) { throw new Error('theme-matrix is dev-only'); }
-
 const THEMES: ThemeName[] = ['calm', 'night', 'warm'];
 
 const ROUTES: { label: string; route: string }[] = [
@@ -40,6 +38,23 @@ const ROUTES: { label: string; route: string }[] = [
 ];
 
 export default function ThemeMatrixScreen() {
+  if (!__DEV__) return <DevRouteUnavailable />;
+  return <ThemeMatrixDev />;
+}
+
+function DevRouteUnavailable() {
+  const t = useTheme();
+  React.useEffect(() => {
+    router.replace('/home' as never);
+  }, []);
+  return (
+    <SafeAreaView style={[s.safe, s.unavailable, { backgroundColor: t.bg }]}>
+      <Text style={[typography.bodyMed, { color: t.ink }]}>Development route unavailable.</Text>
+    </SafeAreaView>
+  );
+}
+
+function ThemeMatrixDev() {
   const t = useTheme();
   const { name, setTheme } = useThemeContext();
 
@@ -88,6 +103,7 @@ export default function ThemeMatrixScreen() {
 
 const s = StyleSheet.create({
   safe:       { flex: 1 },
+  unavailable:{ alignItems: 'center', justifyContent: 'center', padding: 20 },
   header:     { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
   themePills: { flexDirection: 'row', gap: 8 },
   themePill:  { paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1 },

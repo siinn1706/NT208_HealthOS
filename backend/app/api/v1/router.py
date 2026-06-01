@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.api.v1 import chat_rest, chat_ws
 from app.api.v1.endpoints import (
     admin,
+    appointment_assets,
     appointments,
     auth,
     conversations,
@@ -45,6 +46,7 @@ router.include_router(meals.router)
 router.include_router(health_metrics.router)
 router.include_router(conversations.router)
 router.include_router(appointments.router)
+router.include_router(appointment_assets.router)
 router.include_router(reminders.router)
 router.include_router(devices.router)
 router.include_router(wearables.router)

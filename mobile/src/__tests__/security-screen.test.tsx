@@ -5,6 +5,12 @@ import { SecurityScreen } from '../components/profile/security-screen';
 import { useApiQuery } from '../api/query';
 import { queryKeys } from '../api/queryKeys';
 import { authService } from '../api/services/auth-service';
+import {
+  authenticateAppLock,
+  getAppLockAvailability,
+  isAppLockEnabled,
+  setAppLockEnabled,
+} from '../auth/app-lock-service';
 
 const mockRouterPush = jest.fn();
 const mockRefreshUser = jest.fn();
@@ -24,6 +30,18 @@ jest.mock('../api/services/auth-service', () => ({
     verifyOtp: jest.fn(),
     resetPassword: jest.fn(),
   },
+}));
+
+jest.mock('../auth/app-lock-service', () => ({
+  appLockUnavailableMessage: (reason?: string) => (
+    reason === 'not_enrolled'
+      ? 'Set up fingerprint or face unlock in Android settings before enabling app lock.'
+      : 'Native local authentication is unavailable in this build.'
+  ),
+  authenticateAppLock: jest.fn(),
+  getAppLockAvailability: jest.fn(),
+  isAppLockEnabled: jest.fn(),
+  setAppLockEnabled: jest.fn(),
 }));
 
 jest.mock('expo-router', () => ({
@@ -46,6 +64,10 @@ jest.mock('react-native-safe-area-context', () => ({
 
 const mockUseApiQuery = useApiQuery as jest.MockedFunction<typeof useApiQuery>;
 const mockAuthService = authService as jest.Mocked<typeof authService>;
+const mockAuthenticateAppLock = authenticateAppLock as jest.MockedFunction<typeof authenticateAppLock>;
+const mockGetAppLockAvailability = getAppLockAvailability as jest.MockedFunction<typeof getAppLockAvailability>;
+const mockIsAppLockEnabled = isAppLockEnabled as jest.MockedFunction<typeof isAppLockEnabled>;
+const mockSetAppLockEnabled = setAppLockEnabled as jest.MockedFunction<typeof setAppLockEnabled>;
 
 function queryState(data: unknown) {
   return {
@@ -64,6 +86,14 @@ beforeEach(() => {
   mockAuthService.requestOtp.mockResolvedValue({ data: { email: 'test@example.com' } } as never);
   mockAuthService.verifyOtp.mockResolvedValue({ next_step: 'reset_password' } as never);
   mockAuthService.resetPassword.mockResolvedValue({ access_token: 'new-token', refresh_token: 'refresh-token', token_type: 'bearer' } as never);
+  mockIsAppLockEnabled.mockResolvedValue(false);
+  mockGetAppLockAvailability.mockResolvedValue({
+    available: true,
+    methods: ['Fingerprint'],
+    securityLevel: 'Strong biometric',
+  });
+  mockAuthenticateAppLock.mockResolvedValue(true);
+  mockSetAppLockEnabled.mockResolvedValue(undefined);
   mockUseApiQuery.mockImplementation((key: string) => {
     if (key === queryKeys.mfaStatus) return queryState({ enabled: true }) as never;
     if (key === queryKeys.securityLogs) {
@@ -74,29 +104,73 @@ beforeEach(() => {
 });
 
 describe('SecurityScreen', () => {
-  it('renders MFA state and security log entries', () => {
+  it('renders MFA state and security log entries', async () => {
     const { getByText } = render(<SecurityScreen />);
     expect(getByText('MFA is active')).toBeTruthy();
     expect(getByText(/mfa enabled/i)).toBeTruthy();
+    await waitFor(() => expect(getByText('App lock')).toBeTruthy());
   });
 
-  it('shows unavailable feedback instead of locally toggling Face ID', () => {
+  it('does not render security rows that only report unavailable native actions', async () => {
+    const { getByText, queryByText } = render(<SecurityScreen />);
+
+    await waitFor(() => expect(getByText('Recovery codes')).toBeTruthy());
+
+    expect(queryByText('Active sessions')).toBeNull();
+    expect(queryByText('Recovery email')).toBeNull();
+    expect(queryByText('Recovery phone')).toBeNull();
+    expect(queryByText(/not available in the native app yet/i)).toBeNull();
+  });
+
+  it('enables native app lock after local authentication', async () => {
     const { getByText } = render(<SecurityScreen />);
 
-    fireEvent.press(getByText('Face ID'));
+    await waitFor(() => expect(getByText('App lock')).toBeTruthy());
+    fireEvent.press(getByText('Enable app lock'));
 
-    expect(getByText(/Face ID is not available/i)).toBeTruthy();
+    await waitFor(() => expect(mockAuthenticateAppLock).toHaveBeenCalledWith('Enable HealthOS app lock'));
+    expect(mockSetAppLockEnabled).toHaveBeenCalledWith(true);
+    expect(getByText(/App lock enabled/i)).toBeTruthy();
   });
 
-  it('does not present unsupported app lock as enabled', () => {
-    const { getByText, getAllByText } = render(<SecurityScreen />);
+  it('does not enable app lock when local auth is unavailable', async () => {
+    mockGetAppLockAvailability.mockResolvedValue({
+      available: false,
+      reason: 'not_enrolled',
+      methods: ['Fingerprint'],
+      securityLevel: 'None',
+    });
+    const { getByText, queryByText } = render(<SecurityScreen />);
 
-    expect(getAllByText('Unavailable').length).toBeGreaterThanOrEqual(1);
-    expect(() => getByText('On')).toThrow();
+    await waitFor(() => expect(getByText('UNAVAILABLE')).toBeTruthy());
+    expect(queryByText('Enable app lock')).toBeTruthy();
 
-    fireEvent.press(getByText('App lock'));
+    expect(mockAuthenticateAppLock).not.toHaveBeenCalled();
+  });
 
-    expect(getByText(/Native app lock settings are not backed/i)).toBeTruthy();
+  it('disables app lock after local authentication', async () => {
+    mockIsAppLockEnabled.mockResolvedValue(true);
+    const { getByText } = render(<SecurityScreen />);
+
+    await waitFor(() => expect(getByText('Disable app lock')).toBeTruthy());
+    fireEvent.press(getByText('Disable app lock'));
+
+    await waitFor(() => expect(mockAuthenticateAppLock).toHaveBeenCalledWith('Disable HealthOS app lock'));
+    expect(mockSetAppLockEnabled).toHaveBeenCalledWith(false);
+    expect(getByText('App lock disabled.')).toBeTruthy();
+  });
+
+  it('keeps app lock enabled when disable authentication is cancelled', async () => {
+    mockIsAppLockEnabled.mockResolvedValue(true);
+    mockAuthenticateAppLock.mockResolvedValue(false);
+    const { getByText } = render(<SecurityScreen />);
+
+    await waitFor(() => expect(getByText('Disable app lock')).toBeTruthy());
+    fireEvent.press(getByText('Disable app lock'));
+
+    await waitFor(() => expect(mockAuthenticateAppLock).toHaveBeenCalledWith('Disable HealthOS app lock'));
+    expect(mockSetAppLockEnabled).not.toHaveBeenCalledWith(false);
+    expect(getByText(/App lock remains enabled/i)).toBeTruthy();
   });
 
   it('resets password with the native email OTP flow', async () => {

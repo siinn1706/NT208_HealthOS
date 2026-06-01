@@ -7,6 +7,7 @@ reminder/occurrence wiring.
 """
 from __future__ import annotations
 
+import datetime
 import uuid
 
 import pytest
@@ -141,6 +142,12 @@ async def test_list_unauthenticated_returns_401(anonymous_client):
 @pytest.mark.asyncio
 async def test_today_unauthenticated_returns_401(anonymous_client):
     res = await anonymous_client.get("/v1/medications/today")
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_history_unauthenticated_returns_401(anonymous_client):
+    res = await anonymous_client.get("/v1/medications/history")
     assert res.status_code == 401
 
 
@@ -283,6 +290,101 @@ async def test_pause_unknown_plan_returns_404(authed_client):
 
 
 @pytest.mark.asyncio
+async def test_pause_accepts_empty_body(persisted_user):
+    fake = _FakeRedis()
+    app.dependency_overrides[get_redis] = lambda: fake
+
+    async def override():
+        return persisted_user
+
+    app.dependency_overrides[get_current_user] = override
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            create_res = await client.post(
+                "/v1/medications",
+                json={"name": "Empty Pause", "dose_times": ["08:00"], "repeat": "daily"},
+            )
+            plan_id = create_res.json()["data"]["id"]
+            pause_res = await client.post(f"/v1/medications/{plan_id}/pause")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert create_res.status_code == 201
+    assert pause_res.status_code == 200
+    data = pause_res.json()["data"]
+    assert data["status"] == "paused"
+    assert data["pause_until"] is None
+    assert data["pause_reason"] is None
+
+
+@pytest.mark.asyncio
+async def test_pause_accepts_metadata_body(persisted_user):
+    fake = _FakeRedis()
+    app.dependency_overrides[get_redis] = lambda: fake
+
+    async def override():
+        return persisted_user
+
+    app.dependency_overrides[get_current_user] = override
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            create_res = await client.post(
+                "/v1/medications",
+                json={"name": "Metadata Pause", "dose_times": ["08:00"], "repeat": "daily"},
+            )
+            plan_id = create_res.json()["data"]["id"]
+            pause_res = await client.post(
+                f"/v1/medications/{plan_id}/pause",
+                json={
+                    "pause_until": "2099-01-02T00:00:00+00:00",
+                    "pause_reason": "  travel  ",
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert create_res.status_code == 201
+    assert pause_res.status_code == 200
+    data = pause_res.json()["data"]
+    assert data["status"] == "paused"
+    assert data["pause_until"].startswith("2099-01-02T00:00:00")
+    assert data["pause_reason"] == "travel"
+
+
+@pytest.mark.asyncio
+async def test_pause_rejects_past_pause_until(persisted_user):
+    fake = _FakeRedis()
+    app.dependency_overrides[get_redis] = lambda: fake
+
+    async def override():
+        return persisted_user
+
+    app.dependency_overrides[get_current_user] = override
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            create_res = await client.post(
+                "/v1/medications",
+                json={"name": "Past Pause", "dose_times": ["08:00"], "repeat": "daily"},
+            )
+            plan_id = create_res.json()["data"]["id"]
+            pause_res = await client.post(
+                f"/v1/medications/{plan_id}/pause",
+                json={"pause_until": "2000-01-01T00:00:00+00:00"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert create_res.status_code == 201
+    assert pause_res.status_code == 400
+    body = pause_res.json()
+    detail = body.get("detail") or body.get("error") or {}
+    assert detail.get("code") == "VALIDATION_ERROR"
+
+
+@pytest.mark.asyncio
 async def test_resume_unknown_plan_returns_404(authed_client):
     res = await authed_client.post(f"/v1/medications/{uuid.uuid4()}/resume")
     assert res.status_code == 404
@@ -349,6 +451,74 @@ async def test_today_returns_empty_envelope_when_no_plans(authed_client):
     assert res.status_code == 200
     body = res.json()
     assert body["data"] == []
+
+
+@pytest.mark.asyncio
+async def test_history_returns_empty_envelope_when_no_plans(authed_client):
+    res = await authed_client.get("/v1/medications/history")
+    assert res.status_code == 200
+    assert res.json()["data"] == []
+
+
+@pytest.mark.asyncio
+async def test_history_rejects_invalid_window(authed_client):
+    res = await authed_client.get(
+        "/v1/medications/history",
+        params={
+            "from": "2026-06-01T00:00:00+00:00",
+            "to": "2026-05-31T00:00:00+00:00",
+        },
+    )
+    assert res.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_history_returns_plan_owned_dose_rows(persisted_user):
+    fake = _FakeRedis()
+    app.dependency_overrides[get_redis] = lambda: fake
+
+    async def override():
+        return persisted_user
+
+    app.dependency_overrides[get_current_user] = override
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            create_res = await client.post(
+                "/v1/medications",
+                json={
+                    "name": "Metformin",
+                    "strength": "500 mg",
+                    "dose_times": ["08:00"],
+                    "repeat": "daily",
+                    "start_date": "2026-05-30",
+                    "tzid": "Asia/Ho_Chi_Minh",
+                },
+            )
+            history_res = await client.get(
+                "/v1/medications/history",
+                params={
+                    "from": "2026-05-29T00:00:00+00:00",
+                    "to": "2026-06-02T00:00:00+00:00",
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert create_res.status_code == 201
+    plan_id = create_res.json()["data"]["id"]
+    assert history_res.status_code == 200
+    rows = history_res.json()["data"]
+    assert rows
+    row = rows[0]
+    assert row["medication_plan_id"] == plan_id
+    assert row["plan_name"] == "Metformin"
+    assert row["strength"] == "500 mg"
+    scheduled_at = datetime.datetime.fromisoformat(
+        row["scheduled_at"].replace("Z", "+00:00")
+    )
+    assert datetime.datetime(2026, 5, 29, tzinfo=datetime.timezone.utc) <= scheduled_at
+    assert scheduled_at < datetime.datetime(2026, 6, 2, tzinfo=datetime.timezone.utc)
 
 
 @pytest.mark.asyncio

@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { User, Lock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -16,8 +15,12 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
 import { useSession } from '../../auth/session-provider';
+import { getPostAuthRoute } from '../../auth/auth-route-policy';
+import { toCoreReachabilityMessage } from '../../api/core-reachability';
+import type { MobileOAuthProvider } from '../../api/services/auth-service';
+import { HealthOSBrandMark } from '../brand/healthos-brand-mark';
 import { GoogleMark } from '../../icons/oauth/google-mark';
-import { AppleMark } from '../../icons/oauth/apple-mark';
+import { GitHubMark } from '../../icons/oauth/github-mark';
 
 export function AuthSignInScreen() {
   const t = useTheme();
@@ -27,6 +30,7 @@ export function AuthSignInScreen() {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<MobileOAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isValid = email.trim().length > 0 && password.length >= 1;
@@ -48,15 +52,25 @@ export function AuthSignInScreen() {
         } as never);
         return;
       }
+      router.replace(getPostAuthRoute(result.user?.onboarding_status) as never);
     } catch (err) {
-      setError(err instanceof Error ? err.message : i18n('auth.unableToSignIn'));
+      setError(toCoreReachabilityMessage(err) ?? (err instanceof Error ? err.message : i18n('auth.unableToSignIn')));
     } finally {
       setLoading(false);
     }
   }
 
-  function handleUnavailableOAuth(provider: 'Google' | 'Apple') {
-    setError(`${provider} sign-in is not configured in the native app yet. Use email and password.`);
+  async function handleOAuthSignIn(provider: MobileOAuthProvider) {
+    setOauthLoading(provider);
+    setError(null);
+    try {
+      const user = await session.signInWithOAuth(provider);
+      router.replace(getPostAuthRoute(user.onboarding_status) as never);
+    } catch (err) {
+      setError(toCoreReachabilityMessage(err) ?? (err instanceof Error ? err.message : i18n('auth.unableToSignIn')));
+    } finally {
+      setOauthLoading(null);
+    }
   }
 
   return (
@@ -64,9 +78,7 @@ export function AuthSignInScreen() {
     <View>
       {/* Logo */}
       <View style={styles.logoRow}>
-        <LinearGradient colors={[t.brand, t.brandDeep]} style={styles.logoBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>H</Text>
-        </LinearGradient>
+        <HealthOSBrandMark size={46} />
       </View>
 
       <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>{i18n('auth.welcomeBack')}</Text>
@@ -121,22 +133,28 @@ export function AuthSignInScreen() {
       {/* OAuth row */}
       <View style={styles.oauthRow}>
         <TouchableOpacity
-          style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]}
+          style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card, opacity: oauthLoading ? 0.62 : 1 }]}
           accessibilityRole="button"
           accessibilityLabel={i18n('auth.continueWithGoogle')}
-          onPress={() => handleUnavailableOAuth('Google')}
+          disabled={Boolean(oauthLoading) || loading}
+          onPress={() => handleOAuthSignIn('google')}
         >
           <GoogleMark size={20} />
-          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Google</Text>
+          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>
+            {oauthLoading === 'google' ? i18n('common.working') : 'Google'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card }]}
+          style={[styles.oauthBtn, { borderColor: t.borderStrong, backgroundColor: t.card, opacity: oauthLoading ? 0.62 : 1 }]}
           accessibilityRole="button"
-          accessibilityLabel={i18n('auth.continueWithApple')}
-          onPress={() => handleUnavailableOAuth('Apple')}
+          accessibilityLabel={i18n('auth.continueWithGitHub')}
+          disabled={Boolean(oauthLoading) || loading}
+          onPress={() => handleOAuthSignIn('github')}
         >
-          <AppleMark size={20} />
-          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>Apple</Text>
+          <GitHubMark size={20} color={t.ink} />
+          <Text style={[typography.bodyMed, { color: t.ink, marginLeft: 8 }]}>
+            {oauthLoading === 'github' ? i18n('common.working') : 'GitHub'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -151,7 +169,6 @@ export function AuthSignInScreen() {
 
 const styles = StyleSheet.create({
   logoRow:    { alignItems: 'flex-start', marginBottom: 24 },
-  logoBox:    { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   fieldGroup: { gap: 14, marginBottom: 4 },
   forgotRow:  { alignItems: 'flex-end', marginBottom: 12 },
   mainBtn:    { marginTop: 4 },

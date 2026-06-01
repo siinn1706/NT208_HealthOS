@@ -10,6 +10,7 @@ interface IconButtonProps {
   variant?: IconButtonVariant;
   dot?: boolean;
   accessibilityLabel: string;
+  accessibilityHint?: string;
   size?: number;
   disabled?: boolean;
 }
@@ -20,6 +21,7 @@ export function IconButton({
   variant = 'ghost',
   dot,
   accessibilityLabel,
+  accessibilityHint,
   size = 40,
   disabled = false,
 }: IconButtonProps) {
@@ -34,6 +36,7 @@ export function IconButton({
       onPress={disabled ? undefined : onPress}
       disabled={disabled}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityRole="button"
       hitSlop={8}
       style={({ pressed }) => [

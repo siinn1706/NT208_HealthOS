@@ -24,13 +24,15 @@ describe('medicationService', () => {
 
     await medicationService.list('all');
     await medicationService.today('Asia/Ho_Chi_Minh');
+    await medicationService.history({ from: '2026-05-01T00:00:00Z', to: '2026-06-01T00:00:00Z' });
     await medicationService.detail('med/1');
     await medicationService.adherence('med/1', '7d');
 
     expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/medications?status=all');
     expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/medications/today?tzid=Asia%2FHo_Chi_Minh');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/v1/medications/med%2F1');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/v1/medications/med%2F1/adherence?period=7d');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/v1/medications/history?from=2026-05-01T00%3A00%3A00Z&to=2026-06-01T00%3A00%3A00Z');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/v1/medications/med%2F1');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(5, '/v1/medications/med%2F1/adherence?period=7d');
   });
 
   it('sends medication create and update bodies directly to Core', async () => {
@@ -77,6 +79,23 @@ describe('medicationService', () => {
     expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/v1/medications/med%2F1/refill', {
       method: 'POST',
       json: { supply_units: 12 },
+    });
+  });
+
+  it('sends pause metadata when provided', async () => {
+    mockApiRequest.mockResolvedValue({ data: { id: 'med-1' } } as never);
+
+    await medicationService.pause('med/1', {
+      pause_until: '2026-06-04T00:00:00.000Z',
+      pause_reason: 'travel',
+    });
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/medications/med%2F1/pause', {
+      method: 'POST',
+      json: {
+        pause_until: '2026-06-04T00:00:00.000Z',
+        pause_reason: 'travel',
+      },
     });
   });
 

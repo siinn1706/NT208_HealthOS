@@ -41,25 +41,27 @@ function ToastBanner({ item, onDismiss }: { item: ToastItem; onDismiss: (id: str
   const translateY = useSharedValue(-80);
   const opacity = useSharedValue(0);
 
-  const ease = Easing.bezier(
-    t.motion.easeBezier[0],
-    t.motion.easeBezier[1],
-    t.motion.easeBezier[2],
-    t.motion.easeBezier[3],
-  );
+  const [easeX1, easeY1, easeX2, easeY2] = t.motion.easeBezier;
+  const ease = useMemo(() => Easing.bezier(easeX1, easeY1, easeX2, easeY2), [
+    easeX1,
+    easeY1,
+    easeX2,
+    easeY2,
+  ]);
+  const animationDuration = t.motion.durations.base;
 
   const dismiss = useCallback(() => onDismiss(item.id), [item.id, onDismiss]);
 
   React.useEffect(() => {
     // Slide in
-    translateY.value = withTiming(0, { duration: t.motion.durations.base, easing: ease });
-    opacity.value = withTiming(1, { duration: t.motion.durations.base, easing: ease });
+    translateY.value = withTiming(0, { duration: animationDuration, easing: ease });
+    opacity.value = withTiming(1, { duration: animationDuration, easing: ease });
     // Auto dismiss after 3s
-    translateY.value = withDelay(3000, withTiming(-80, { duration: t.motion.durations.base, easing: ease }));
-    opacity.value = withDelay(3000, withTiming(0, { duration: t.motion.durations.base, easing: ease }, (finished) => {
+    translateY.value = withDelay(3000, withTiming(-80, { duration: animationDuration, easing: ease }));
+    opacity.value = withDelay(3000, withTiming(0, { duration: animationDuration, easing: ease }, (finished) => {
       if (finished) runOnJS(dismiss)();
     }));
-  }, []);
+  }, [animationDuration, dismiss, ease, opacity, translateY]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

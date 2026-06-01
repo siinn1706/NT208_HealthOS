@@ -20,11 +20,12 @@ import {
   IconCalendar, IconPlus, IconSparkle,
   IconCoffee, IconUtensils, IconCookie,
 } from '../../icons';
+import { toLocalDateInput } from './meal-date';
 
 const DAILY_TARGET_KCAL = 2100;
 
 function isoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateInput(date);
 }
 
 const MEAL_TYPE_SLOTS = {
@@ -66,10 +67,12 @@ function fmtTime(value: string) {
 export function MealsHubScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
-  const [guardedMessage, setGuardedMessage] = useState<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const todayIso = isoDate(today);
+  const [selectedDateIso, setSelectedDateIso] = useState(todayIso);
+  const selectedDate = useMemo(() => new Date(`${selectedDateIso}T00:00:00`), [selectedDateIso]);
+  const selectedIsToday = selectedDateIso === todayIso;
   const weekStart = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 6);
@@ -77,8 +80,8 @@ export function MealsHubScreen() {
   }, []);
 
   const loadMeals = useCallback(
-    () => mealService.list({ page: 1, per_page: 100, date_from: todayIso, date_to: todayIso }),
-    [todayIso],
+    () => mealService.list({ page: 1, per_page: 100, date_from: selectedDateIso, date_to: selectedDateIso }),
+    [selectedDateIso],
   );
   const loadWeekCalories = useCallback(
     () => mealService.caloriesSummary(weekStart, todayIso),
@@ -86,7 +89,7 @@ export function MealsHubScreen() {
   );
   const loadSuggestions = useCallback(() => nutritionService.suggestions(), []);
 
-  const meals = useApiQuery(queryKeys.meals(todayIso), loadMeals);
+  const meals = useApiQuery(queryKeys.meals(selectedDateIso), loadMeals);
   const calories = useApiQuery(queryKeys.mealCaloriesSummary(`${weekStart}:${todayIso}`), loadWeekCalories);
   const suggestions = useApiQuery(queryKeys.nutritionSuggestions, loadSuggestions);
 
@@ -140,9 +143,10 @@ export function MealsHubScreen() {
         date: d.getDate(),
         kcal: Math.round(total),
         today: dayKey === todayIso,
+        selected: dayKey === selectedDateIso,
       };
     });
-  }, [calories.data, todayIso]);
+  }, [calories.data, selectedDateIso, todayIso]);
 
   const weekKcal = useMemo(() => weekSeries.map((row) => row.kcal), [weekSeries]);
   const avgWeek = useMemo(() => {
@@ -153,19 +157,21 @@ export function MealsHubScreen() {
 
   const coachCopy = suggestions.data?.[0]?.message ?? 'Log your meals to unlock personalized nutrition suggestions.';
   const kcalLeft = Math.max(0, Math.round(DAILY_TARGET_KCAL - todayTotals.kcal));
+  const caloriesLabel = selectedIsToday ? i18n('meals.caloriesToday') : i18n('meals.caloriesSelectedDay');
+  const mealSectionTitle = selectedIsToday ? i18n('meals.todaysMeals') : i18n('meals.selectedDayMeals');
 
   return (
     <Screen>
       <TopBar
         title={i18n('meals.title')}
-        subtitle={today.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric' })}
+        subtitle={selectedDate.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric' })}
         right={
           <View style={styles.topActions}>
             <IconButton
               icon={<IconCalendar size={20} color={t.ink3} />}
               variant="subtle"
               accessibilityLabel={i18n('common.calendar')}
-              onPress={() => setGuardedMessage('Date picker is guarded until native date selection is wired. Current data uses today from Core /v1/meals.')}
+              onPress={() => setSelectedDateIso(todayIso)}
             />
             {/* Filled circle plus button */}
             <Pressable
@@ -180,14 +186,6 @@ export function MealsHubScreen() {
       />
 
       {(meals.isLoading || calories.isLoading) && <ApiState title={i18n('meals.loadingMeals')} loading />}
-      {guardedMessage && (
-        <ApiState
-          title="Action unavailable"
-          message={guardedMessage}
-          actionLabel={i18n('common.close')}
-          onAction={() => setGuardedMessage(null)}
-        />
-      )}
       {(meals.error || calories.error) && (
         <ApiState
           title={i18n('meals.mealsUnavailable')}
@@ -206,11 +204,14 @@ export function MealsHubScreen() {
             {weekSeries.map((d) => (
               <Pressable
                 key={d.key}
-                style={[styles.dayPill, { backgroundColor: d.today ? t.brand : t.card, borderColor: t.border }]}
+                accessibilityRole="button"
+                accessibilityLabel={`Select meal date ${d.key}`}
+                onPress={() => setSelectedDateIso(d.key)}
+                style={[styles.dayPill, { backgroundColor: d.selected ? t.brand : d.today ? t.brandSoft : t.card, borderColor: d.selected ? t.brand : t.border }]}
               >
-                <Text style={[typography.micro, { color: d.today ? '#fff' : t.ink3 }]}>{d.day}</Text>
-                <Text style={[typography.h3, tabularNums, { color: d.today ? '#fff' : t.ink }]}>{d.date}</Text>
-                <Text style={[typography.micro, { color: d.today ? 'rgba(255,255,255,0.75)' : t.ink3 }]}>
+                <Text style={[typography.micro, { color: d.selected ? '#fff' : t.ink3 }]}>{d.day}</Text>
+                <Text style={[typography.h3, tabularNums, { color: d.selected ? '#fff' : t.ink }]}>{d.date}</Text>
+                <Text style={[typography.micro, { color: d.selected ? 'rgba(255,255,255,0.75)' : t.ink3 }]}>
                   {d.kcal > 0 ? d.kcal : '--'}
                 </Text>
               </Pressable>
@@ -231,7 +232,7 @@ export function MealsHubScreen() {
               </View>
             </ProgressRing>
             <View style={styles.heroText}>
-              <Text style={[typography.micro, { color: 'rgba(255,255,255,0.6)', letterSpacing: 1 }]}>{i18n('meals.caloriesToday')}</Text>
+              <Text style={[typography.micro, { color: 'rgba(255,255,255,0.6)', letterSpacing: 1 }]}>{caloriesLabel}</Text>
               <Text style={[typography.h3, tabularNums, { color: '#fff' }]}>{Math.round(todayTotals.kcal)} / {DAILY_TARGET_KCAL} kcal</Text>
               <Text style={[typography.caption, { color: 'rgba(255,255,255,0.75)' }]}>{i18n('meals.mealsLogged', { count: mealRows.length })}</Text>
             </View>
@@ -274,7 +275,7 @@ export function MealsHubScreen() {
             </View>
           </Card>
 
-          <SectionHeader title={i18n('meals.todaysMeals')} action={i18n('common.seeAll')} onActionPress={() => router.push('/meals/trends' as never)} />
+          <SectionHeader title={mealSectionTitle} action={i18n('common.seeAll')} onActionPress={() => router.push('/meals/trends' as never)} />
           {mealRows.length === 0 ? (
             <ApiState title={i18n('meals.noMealsLogged')} message={i18n('meals.addFirstMeal')} />
           ) : (

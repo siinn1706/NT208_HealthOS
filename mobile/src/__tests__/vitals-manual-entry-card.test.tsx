@@ -68,7 +68,7 @@ describe('VitalsManualEntryCard', () => {
     expect(mockInvalidate).toHaveBeenCalledWith(queryKeys.dashboard);
     expect(mockInvalidate).toHaveBeenCalledWith('reports');
     expect(mockInvalidate).toHaveBeenCalledWith('risk');
-    expect(getByText('Saved 3 readings.')).toBeTruthy();
+    await waitFor(() => expect(getByText('Saved 3 readings.')).toBeTruthy());
   });
 
   it('blocks incomplete blood pressure before calling Core', async () => {

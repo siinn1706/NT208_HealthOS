@@ -1,6 +1,9 @@
 param(
     [switch]$SkipInstall,
     [switch]$CheckOnly,
+    [Alias("Host")]
+    [string]$BindHost = "0.0.0.0",
+    [int]$Port = 8000,
     [string]$LogFile
 )
 
@@ -79,6 +82,9 @@ if ($LASTEXITCODE -ne 0) {
     throw "[BE] Database migrations failed. Fix the migration error before starting the backend."
 }
 
-Write-Host "[BE] Starting FastAPI on http://localhost:8000 ..." -ForegroundColor Green
-& $PythonExe -m uvicorn app.main:app --reload
+Write-Host "[BE] Starting FastAPI on http://$BindHost`:$Port ..." -ForegroundColor Green
+if ($BindHost -eq "0.0.0.0") {
+    Write-Host "[BE] LAN devices should use http://<this-computer-lan-ip>:$Port" -ForegroundColor DarkCyan
+}
+& $PythonExe -m uvicorn app.main:app --reload --host $BindHost --port $Port
 exit $LASTEXITCODE

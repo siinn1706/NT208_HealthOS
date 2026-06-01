@@ -25,7 +25,16 @@
         "foregroundImage": "./assets/icons/adaptive-icon.png",
         "backgroundColor": "#F4FCFE"
       },
-      "package": "com.nt208.healthos"
+      "package": "com.nt208.healthos",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_BLOOD_PRESSURE",
+        "android.permission.health.READ_EXERCISE"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -39,7 +48,32 @@
           "backgroundColor": "#F4FCFE"
         }
       ],
-      "expo-localization"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow NT208 HealthOS to scan meal photos.",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-localization",
+      "expo-web-browser",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow NT208 HealthOS to use Face ID to unlock your health data."
+        }
+      ],
+      "expo-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

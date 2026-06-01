@@ -57,6 +57,8 @@ beforeEach(() => {
     start_date: '2026-05-30',
     end_date: null,
     status: 'active',
+    pause_until: null,
+    pause_reason: null,
     tzid: 'Asia/Ho_Chi_Minh',
     refill_supply_units: null,
     refill_cadence_days: null,
@@ -73,6 +75,10 @@ beforeEach(() => {
 describe('AddMedicationScreen', () => {
   it('persists a medication and replaces back to the meds hub', async () => {
     const { getAllByText, getByPlaceholderText, queryByText } = render(<AddMedicationScreen />);
+
+    expect(queryByText('Scan barcode')).toBeNull();
+    expect(queryByText('Search database')).toBeNull();
+    expect(queryByText('Medication lookup unavailable')).toBeNull();
 
     fireEvent.changeText(getByPlaceholderText('e.g. Metformin'), 'Metformin');
     fireEvent.changeText(getByPlaceholderText('e.g. 500 mg'), '500 mg');

@@ -154,11 +154,11 @@ export function RiskOverviewScreen() {
       invalidateApiQuery(queryKeys.riskSummary);
       await reloadRisk();
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : 'Could not refresh risk predictions.');
+      setFeedback(err instanceof Error ? err.message : i18n('insights.riskRefreshFailedMessage'));
     } finally {
       setRefreshing(false);
     }
-  }, [refreshing, reloadRisk]);
+  }, [i18n, refreshing, reloadRisk]);
 
   const parsed = useMemo(() => {
     const payload = (risk.data && typeof risk.data === 'object') ? (risk.data as Record<string, unknown>) : {};
@@ -186,7 +186,7 @@ export function RiskOverviewScreen() {
             <IconButton
               icon={<IconMore size={20} color={t.ink3} />}
               accessibilityLabel={i18n('common.more')}
-              onPress={() => setFeedback('More risk actions are guarded until Core exposes saved prevention-plan actions.')}
+              onPress={() => router.push('/insights/risk/prevention' as never)}
             />
           </View>
         }
@@ -199,7 +199,7 @@ export function RiskOverviewScreen() {
 
       {feedback && (
         <ApiState
-          title="Risk action unavailable"
+          title={i18n('insights.riskRefreshFailed')}
           message={feedback}
           actionLabel={i18n('common.close')}
           onAction={() => setFeedback(null)}

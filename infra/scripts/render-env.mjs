@@ -82,6 +82,9 @@ const TARGETS = {
           "GITHUB_CLIENT_SECRET",
           "OAUTH_GITHUB_CALLBACK_URL",
           "OAUTH_GITHUB_LINK_CALLBACK_URL",
+          "MOBILE_OAUTH_REDIRECT_URIS",
+          "ANDROID_APP_LINK_PACKAGE_NAME",
+          "ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS",
           "BFF_SHARED_SECRET",
         ],
       ],
@@ -213,7 +216,7 @@ const TARGETS = {
   },
   mobile: {
     path: "mobile/.env",
-    sections: [["Expo public build-time env", ["EXPO_PUBLIC_CORE_API_URL", "EXPO_PUBLIC_CORE_WS_URL"]]],
+    sections: [["Expo public build-time env", ["EXPO_PUBLIC_CORE_API_URL", "EXPO_PUBLIC_CORE_WS_URL", "EXPO_PUBLIC_WEB_APP_URL", "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI"]]],
   },
 };
 
@@ -227,9 +230,22 @@ const TARGET_ALIASES = {
 const SECRET_KEY_PATTERN = /(SECRET|PASSWORD|TOKEN|PRIVATE|FERNET|API_KEY|CLIENT_SECRET|ACCESS_KEY)/i;
 const PLACEHOLDER_PATTERN = /(change-me|replace-with|your-domain|example\.com|dev-secret|dev-bff-secret|dev-nextauth|healthos_dev_pass|minioadmin)/i;
 const PROTECTED_ENV_VALUES = new Set(["production", "prod", "staging"]);
+const ANDROID_PACKAGE_RE = /^([A-Za-z][A-Za-z0-9_]*\.)+[A-Za-z][A-Za-z0-9_]*$/;
+const ANDROID_SHA256_FINGERPRINT_RE = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+const LOCAL_MOBILE_EMULATOR_DEFAULTS = new Map([
+  ["EXPO_PUBLIC_CORE_API_URL", "http://10.0.2.2:8000"],
+  ["EXPO_PUBLIC_CORE_WS_URL", "ws://10.0.2.2:8000"],
+  ["EXPO_PUBLIC_WEB_APP_URL", "http://10.0.2.2:3000"],
+]);
 const BACKWARD_COMPATIBLE_DEFAULTS = {
   DB_DISABLE_POOL: "false",
   DEV_BYPASS_ENABLED: "false",
+  EXPO_PUBLIC_CORE_API_URL: "",
+  EXPO_PUBLIC_CORE_WS_URL: "",
+  EXPO_PUBLIC_WEB_APP_URL: "",
+  EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: "",
+  ANDROID_APP_LINK_PACKAGE_NAME: "com.nt208.healthos",
+  ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS: "",
 };
 
 export function applyEnvDefaults(env) {
@@ -345,6 +361,10 @@ export function validateEnv(env, targetNames, options = {}) {
     "NEXT_PUBLIC_CORE_WS_URL",
     "EXPO_PUBLIC_CORE_API_URL",
     "EXPO_PUBLIC_CORE_WS_URL",
+    "EXPO_PUBLIC_WEB_APP_URL",
+    "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI",
+    "ANDROID_APP_LINK_PACKAGE_NAME",
+    "ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS",
   ];
   for (const key of prodRequired) {
     assertPresent(effectiveEnv, key);
@@ -358,12 +378,18 @@ export function validateEnv(env, targetNames, options = {}) {
   assertNoLocalhost(effectiveEnv, "DATABASE_URL");
   assertNoLocalhost(effectiveEnv, "REDIS_URL");
   assertNoLocalhost(effectiveEnv, "ALLOWED_ORIGINS");
+  assertNoLocalhost(effectiveEnv, "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI");
   assertNoWildcardOrigins(effectiveEnv.ALLOWED_ORIGINS);
   assertHttps(effectiveEnv, "NEXTAUTH_URL");
   assertHttps(effectiveEnv, "NEXT_PUBLIC_APP_URL");
   assertHttps(effectiveEnv, "EXPO_PUBLIC_CORE_API_URL");
+  assertHttps(effectiveEnv, "EXPO_PUBLIC_WEB_APP_URL");
+  assertHttps(effectiveEnv, "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI");
   assertWss(effectiveEnv, "NEXT_PUBLIC_CORE_WS_URL");
   assertWss(effectiveEnv, "EXPO_PUBLIC_CORE_WS_URL");
+  assertAndroidPackageName(effectiveEnv.ANDROID_APP_LINK_PACKAGE_NAME);
+  assertAndroidSha256Fingerprints(effectiveEnv.ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS);
+  assertMobileOAuthRedirectAllowlist(effectiveEnv);
   assertTrustedOrigins(effectiveEnv.BFF_TRUSTED_ORIGINS);
   assertCsrfGuardEnforcedInProtectedEnv(effectiveEnv);
   assertNoDevBypassInProtectedEnv(effectiveEnv);
@@ -466,6 +492,46 @@ function assertCookieTtlMatchesAccessToken(env) {
   }
 }
 
+function assertAndroidPackageName(value) {
+  if (!ANDROID_PACKAGE_RE.test(String(value ?? "").trim())) {
+    throw new Error("Production ANDROID_APP_LINK_PACKAGE_NAME must be a valid Android package name");
+  }
+}
+
+function assertAndroidSha256Fingerprints(value) {
+  const entries = String(value ?? "")
+    .split(/[\s,]+/)
+    .map((entry) => entry.trim().toUpperCase())
+    .filter(Boolean);
+  if (entries.length === 0) {
+    throw new Error("Production ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS requires at least one SHA-256 fingerprint");
+  }
+  for (const entry of entries) {
+    if (!ANDROID_SHA256_FINGERPRINT_RE.test(entry)) {
+      throw new Error("Production ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS contains an invalid SHA-256 fingerprint");
+    }
+  }
+}
+
+function normalizeRedirectUri(value) {
+  const parsed = new URL(String(value ?? "").trim());
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString();
+}
+
+function assertMobileOAuthRedirectAllowlist(env) {
+  const appLinkRedirect = normalizeRedirectUri(env.EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI);
+  const allowed = String(env.MOBILE_OAUTH_REDIRECT_URIS ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => normalizeRedirectUri(entry));
+  if (!allowed.includes(appLinkRedirect)) {
+    throw new Error("Production MOBILE_OAUTH_REDIRECT_URIS must include EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI");
+  }
+}
+
 function assertHttps(env, key) {
   const value = String(env[key] ?? "");
   if (!value.startsWith("https://")) {
@@ -488,11 +554,33 @@ export function renderTargetContent(env, targetName) {
   for (const [sectionName, keys] of target.sections) {
     lines.push(`# ${sectionName}`);
     for (const key of keys) {
-      lines.push(`${key}=${stringifyEnvValue(effectiveEnv[key] ?? "")}`);
+      lines.push(`${key}=${stringifyEnvValue(getRenderedEnvValue(effectiveEnv, targetName, key))}`);
     }
     lines.push("");
   }
   return lines.join("\n");
+}
+
+function getRenderedEnvValue(env, targetName, key) {
+  const value = env[key] ?? "";
+  if (
+    targetName === "mobile"
+    && !isProtectedEnv(env)
+    && normalizeUrlLikeValue(value) === LOCAL_MOBILE_EMULATOR_DEFAULTS.get(key)
+  ) {
+    return "";
+  }
+  return value;
+}
+
+function normalizeUrlLikeValue(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  try {
+    return new URL(text).toString().replace(/\/+$/, "");
+  } catch {
+    return text.replace(/\/+$/, "");
+  }
 }
 
 export function renderTargets(env, targetNames, rootDir = DEFAULT_ROOT) {

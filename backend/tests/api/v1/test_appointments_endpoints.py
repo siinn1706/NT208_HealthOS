@@ -194,6 +194,75 @@ async def test_patch_rejects_empty_doctor_name(authed_client: AsyncClient):
     assert response.status_code == 422
 
 
+@requires_database
+@pytest.mark.asyncio
+async def test_create_video_appointment_persists_join_url(prep_http_state):
+    owner_id, _other_id, _appointment_id = prep_http_state
+    future = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=5)
+
+    created = await _request_as_user(
+        owner_id,
+        "POST",
+        "/v1/appointments",
+        json={
+            "appointment_date": future.isoformat(),
+            "doctor_name": "Dr Video",
+            "specialty": "Telehealth",
+            "visit_type": "video",
+            "video_join_url": "https://meet.example/room-123",
+        },
+    )
+
+    assert created.status_code == 201
+    data = created.json()["data"]
+    assert data["visit_type"] == "video"
+    assert data["video_join_url"] == "https://meet.example/room-123"
+
+    detail = await _request_as_user(owner_id, "GET", f"/v1/appointments/{data['id']}")
+
+    assert detail.status_code == 200
+    assert detail.json()["data"]["video_join_url"] == "https://meet.example/room-123"
+
+
+@requires_database
+@pytest.mark.asyncio
+async def test_create_rejects_video_join_url_for_in_person(prep_http_state):
+    owner_id, _other_id, _appointment_id = prep_http_state
+    future = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=5)
+
+    response = await _request_as_user(
+        owner_id,
+        "POST",
+        "/v1/appointments",
+        json={
+            "appointment_date": future.isoformat(),
+            "doctor_name": "Dr In Person",
+            "visit_type": "in_person",
+            "video_join_url": "https://meet.example/not-allowed",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "video_join_url is only allowed" in str(response.json())
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_invalid_video_join_url(authed_client: AsyncClient):
+    future = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=5)
+
+    response = await authed_client.post(
+        "/v1/appointments",
+        json={
+            "appointment_date": future.isoformat(),
+            "doctor_name": "Dr Invalid Link",
+            "visit_type": "video",
+            "video_join_url": "not-a-url",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 @pytest.mark.asyncio
 async def test_get_prep_unauthenticated_returns_401(anonymous_client: AsyncClient):
     response = await anonymous_client.get(f"/v1/appointments/{uuid.uuid4()}/prep")

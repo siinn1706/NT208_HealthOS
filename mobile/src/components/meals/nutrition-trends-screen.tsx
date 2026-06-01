@@ -14,7 +14,7 @@ import { typography } from '../../theme/typography';
 import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { mealService, reportService } from '../../api/services';
-import { ChevronLeft, IconCalendar } from '../../icons';
+import { ChevronLeft } from '../../icons';
 import type { Meal } from '../../../../shared/api-contracts';
 
 type Period = '7d' | '30d' | '90d';
@@ -48,7 +48,6 @@ export function NutritionTrendsScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const [period, setPeriod] = useState<Period>('7d');
-  const [feedback, setFeedback] = useState<string | null>(null);
   const range = useMemo(() => rangeFor(period), [period]);
   const rangeKey = `${period}.${range.start}.${range.end}`;
 
@@ -99,7 +98,6 @@ export function NutritionTrendsScreen() {
         title={i18n('meals.nutritionTrends')}
         subtitle={`${range.start} - ${range.end}`}
         left={<IconButton icon={<ChevronLeft size={22} color={t.ink} />} onPress={() => router.back()} accessibilityLabel={i18n('common.back')} />}
-        right={<IconButton icon={<IconCalendar size={20} color={t.ink3} />} onPress={() => setFeedback('Custom date ranges need a Core-backed date picker flow. Use the period controls for now.')} accessibilityLabel="Change range" />}
       />
 
       <View style={styles.periods}>
@@ -114,7 +112,6 @@ export function NutritionTrendsScreen() {
         ))}
       </View>
 
-      {feedback && <ApiState title="Date range unavailable" message={feedback} actionLabel={i18n('common.close')} onAction={() => setFeedback(null)} />}
       {isLoading && <ApiState title={i18n('meals.loadingMeals')} loading />}
       {error && <ApiState title={i18n('meals.mealsUnavailable')} message={error.message} actionLabel={i18n('common.retry')} onAction={reload} />}
       {!isLoading && !error && calorieRows.length === 0 && (

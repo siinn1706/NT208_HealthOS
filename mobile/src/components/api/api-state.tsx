@@ -1,10 +1,12 @@
 import React from 'react';
 import { ActivityIndicator, Text, View, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Card } from '../primitives/card';
 import { Button } from '../primitives/button';
 import { EmptyState } from '../primitives/feedback/empty-state';
+import { isMobileFeatureEnabled } from '../../config/feature-flags';
 
 interface EmptyConfig {
   icon?: React.ReactNode;
@@ -72,10 +74,20 @@ export function ApiState({
 }
 
 export function MissingApiState({ title, contract }: { title: string; contract: string }) {
+  const { t: i18n } = useTranslation();
+  const showContract = isMobileFeatureEnabled('missingApiDiagnostics');
+
   return (
     <ApiState
       title={title}
-      message={`API status: ${contract}. This flow is guarded until the backend contract is confirmed.`}
+      message={showContract
+        ? i18n('api.missingApiDevMessage', {
+          contract,
+          defaultValue: `API status: ${contract}. This flow is guarded until the backend contract is confirmed.`,
+        })
+        : i18n('api.missingApiProductionMessage', {
+          defaultValue: 'This feature is not available in the current mobile release.',
+        })}
     />
   );
 }

@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import datetime
+import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy import func, select, update
@@ -13,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
-from app.adapters.storage import presign_storage_url, upload_file
+from app.adapters.storage import delete_object, presign_storage_url, storage_url_to_bucket_key, upload_file
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.core import Meal, MealStatusEnum, User
@@ -41,6 +42,7 @@ from app.services.upload_security import (
 from app.tasks.meal_analysis import analyze_meal_image
 
 router = APIRouter(prefix="/meals", tags=["Meals"])
+logger = logging.getLogger(__name__)
 
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -71,6 +73,17 @@ def _to_meal_response(meal: Meal) -> MealResponse:
     if response.image_url:
         response.image_url = presign_storage_url(response.image_url)
     return response
+
+
+def _delete_meal_image_object(image_url: str | None) -> None:
+    parsed = storage_url_to_bucket_key(image_url)
+    if parsed is None:
+        return
+    bucket, key = parsed
+    try:
+        delete_object(bucket, key)
+    except Exception:
+        logger.warning("Deleted meal row but failed to remove meal image object", exc_info=True)
 
 
 async def _read_validated_meal_image(image: UploadFile) -> tuple[bytes, str, str]:
@@ -356,6 +369,34 @@ async def update_meal(
         )
     await db.commit()
     return MealDataResponse(data=_to_meal_response(meal))
+
+
+@router.delete(
+    "/{meal_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Delete a meal log",
+)
+async def delete_meal(
+    meal_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    meal = await meal_svc.delete_meal(
+        db=db,
+        user_id=current_user.id,
+        meal_id=meal_id,
+    )
+    if meal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Meal not found."},
+        )
+    image_url = meal.image_url
+    await db.commit()
+    _delete_meal_image_object(image_url)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 @router.get(
     "/{meal_id}/ingredients",

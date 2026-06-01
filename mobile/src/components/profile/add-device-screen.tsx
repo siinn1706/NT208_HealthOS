@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '../layout/screen';
@@ -8,19 +8,20 @@ import { SectionHeader } from '../layout/section-header';
 import { IconButton } from '../primitives/icon-button';
 import { ApiState } from '../api/api-state';
 import {
-  ChevronRight, ChevronLeft, IconActivity, IconHeart,
-  IconHeartPulse,
+  ChevronRight, ChevronLeft, IconHeartPulse,
 } from '../../icons';
 import { useTheme } from '../../theme/useTheme';
 import { useThemeContext } from '../../theme/theme-provider';
 import { typography } from '../../theme/typography';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
-import { deviceService, type DeviceConnectBody, type DeviceProvider } from '../../api/services/device-service';
+import { deviceService, type ConnectedDevice, type DeviceConnectBody, type DeviceProvider } from '../../api/services/device-service';
 import {
   getHealthConnectExternalAccountId,
   saveHealthConnectDeviceId,
 } from '../../healthconnect/health-connect-external-account-id';
+import { createHealthConnectAdapter } from '../../healthconnect/native-health-connect-adapter';
+import { useHealthConnectSync } from '../../healthconnect/use-health-connect-sync';
 import { HEALTH_CONNECT_PROVIDER } from '../../healthconnect/types';
 
 const HERO_GRADIENTS: Record<string, readonly [string, string]> = {
@@ -35,16 +36,11 @@ type SourceItem = {
   sub: string;
   Icon: React.ComponentType<{ size: number; color: string }>;
   color: string;
-  provider?: DeviceProvider;
+  provider: DeviceProvider;
 };
 
 const ALL_SOURCES: SourceItem[] = [
   { id: 'health_connect', name: 'Health Connect', sub: 'Android aggregate health data', Icon: IconHeartPulse, color: '#1965B3', provider: 'health_connect' },
-  { id: 'google', name: 'Google Fit', sub: 'Steps · Sleep · Heart rate', Icon: IconActivity, color: '#0284C7', provider: 'google_fit' },
-  { id: 'apple', name: 'Apple Health', sub: 'iOS health metrics and vitals', Icon: IconHeart, color: '#EF4444', provider: 'apple_health' },
-  { id: 'garmin', name: 'Garmin Connect', sub: 'GPS run data · Heart rate · VO2max', Icon: IconActivity, color: '#059669', provider: 'garmin' },
-  { id: 'fitbit', name: 'Fitbit', sub: 'Activity and wearable insights', Icon: IconActivity, color: '#0F8F7E', provider: 'fitbit' },
-  { id: 'samsung', name: 'Samsung Health', sub: 'Not yet supported in current mobile flow', Icon: IconActivity, color: '#1428A0' },
 ];
 
 export function AddDeviceScreen() {
@@ -53,31 +49,48 @@ export function AddDeviceScreen() {
   const gradient = HERO_GRADIENTS[themeName] ?? HERO_GRADIENTS.calm;
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [missingOpen, setMissingOpen] = useState(false);
-  const [missingTitle, setMissingTitle] = useState('');
+  const healthConnectAdapter = useMemo(() => createHealthConnectAdapter(), []);
+  const {
+    sync: syncHealthConnectNow,
+    isSyncing: syncingHealthConnect,
+  } = useHealthConnectSync(healthConnectAdapter);
 
   const quickSource = useMemo(() => ALL_SOURCES.find((item) => item.id === 'health_connect') ?? ALL_SOURCES[0], []);
 
-  async function connectSource(source: SourceItem) {
-    if (!source.provider) {
-      setMissingTitle(`${source.name} is not yet available`);
-      setMissingOpen(true);
-      return;
+  async function connectHealthConnect(source: SourceItem): Promise<ConnectedDevice> {
+    const grantedScopes = await healthConnectAdapter.getGrantedPermissions();
+    if (grantedScopes.length === 0) {
+      throw new Error('Health Connect permissions were not granted.');
     }
+
+    const connected = await deviceService.connect({
+      provider: source.provider,
+      device_label: source.name,
+      external_account_id: await getHealthConnectExternalAccountId(),
+      scopes: grantedScopes,
+    });
+
+    try {
+      await syncHealthConnectNow({ deviceId: connected.id });
+    } catch (err) {
+      await deviceService.disconnect(connected.id).catch(() => undefined);
+      throw err;
+    }
+
+    await saveHealthConnectDeviceId(connected.id);
+    return connected;
+  }
+
+  async function connectSource(source: SourceItem) {
     setBusySourceId(source.id);
     setActionError(null);
     try {
-      const body: DeviceConnectBody = {
-        provider: source.provider,
-        device_label: source.name,
-      };
-      if (source.provider === HEALTH_CONNECT_PROVIDER) {
-        body.external_account_id = await getHealthConnectExternalAccountId();
-      }
-      const connected = await deviceService.connect(body);
-      if (source.provider === HEALTH_CONNECT_PROVIDER) {
-        await saveHealthConnectDeviceId(connected.id);
-      }
+      const connected = source.provider === HEALTH_CONNECT_PROVIDER
+        ? await connectHealthConnect(source)
+        : await deviceService.connect({
+          provider: source.provider,
+          device_label: source.name,
+        } satisfies DeviceConnectBody);
       invalidateApiQuery(queryKeys.devices);
       router.replace((`/profile/devices/${connected.id}`) as never);
     } catch (err) {
@@ -102,7 +115,7 @@ export function AddDeviceScreen() {
       />
 
       <Text style={[typography.body, { color: t.ink2, marginHorizontal: 16, marginBottom: 16, lineHeight: 22 }]}>
-        Connect HealthOS to your existing health apps and devices to sync data automatically.
+        Connect supported Android health sources. Legacy wearable rows stay visible when Core already has them.
       </Text>
 
       {actionError && (
@@ -133,7 +146,7 @@ export function AddDeviceScreen() {
           disabled={busySourceId === quickSource.id}
         >
           <Text style={[typography.bodyMed, { color: gradient[0], fontWeight: '700' }]}>
-            {busySourceId === quickSource.id ? 'Connecting…' : `Connect ${quickSource.name}`}
+            {busySourceId === quickSource.id || syncingHealthConnect ? 'Connecting…' : `Connect ${quickSource.name}`}
           </Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -162,22 +175,6 @@ export function AddDeviceScreen() {
           <ChevronRight size={15} color={t.ink4} />
         </TouchableOpacity>
       ))}
-
-      <Modal visible={missingOpen} transparent animationType="fade" onRequestClose={() => setMissingOpen(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setMissingOpen(false)}>
-          <View style={[styles.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <ApiState title={missingTitle} message="This source is not yet mapped to a mobile connect flow." />
-            <Pressable
-              onPress={() => setMissingOpen(false)}
-              style={[styles.modalClose, { backgroundColor: t.brand, borderRadius: t.radius.pill }]}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-            >
-              <Text style={[typography.bodyMed, { color: '#FFF' }]}>Close</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
     </Screen>
   );
 }
@@ -189,7 +186,4 @@ const styles = StyleSheet.create({
   heroBtn: { backgroundColor: '#FFF', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginHorizontal: 16, marginBottom: 8, borderRadius: 14, borderWidth: 1 },
   sourceIcon: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalSheet: { width: '100%', padding: 20 },
-  modalClose: { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
 });

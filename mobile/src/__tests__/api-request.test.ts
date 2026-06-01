@@ -9,10 +9,19 @@ import {
   setRefreshHandler,
   setUnauthorizedHandler,
 } from '../api/client';
+import Constants from 'expo-constants';
 import { clearStoredSession } from '../auth/session-store';
+import { Platform } from 'react-native';
 
 jest.mock('expo-constants', () => ({
-  default: { expoConfig: { extra: {} } },
+  __esModule: true,
+  default: {
+    expoConfig: { extra: {} },
+    expoGoConfig: {},
+    manifest: {},
+    manifest2: {},
+    linkingUri: undefined,
+  },
 }));
 
 jest.mock('../auth/session-store', () => ({
@@ -22,9 +31,21 @@ jest.mock('../auth/session-store', () => ({
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+const defaultPlatformOS = Platform.OS;
+const mockExpoConstants = Constants as unknown as {
+  expoConfig: { extra: Record<string, string | undefined>; hostUri?: string };
+  expoGoConfig: Record<string, string | undefined>;
+  manifest: Record<string, string | undefined>;
+  manifest2: Record<string, unknown>;
+  linkingUri?: string;
+};
 
 function setDevMode(value: boolean) {
   Object.defineProperty(global, '__DEV__', { value, configurable: true });
+}
+
+function setPlatformOS(value: typeof Platform.OS) {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value });
 }
 
 beforeEach(() => {
@@ -32,6 +53,12 @@ beforeEach(() => {
   setRefreshHandler(null);
   setUnauthorizedHandler(null);
   setDevMode(true);
+  setPlatformOS(defaultPlatformOS);
+  mockExpoConstants.expoConfig = { extra: {}, hostUri: undefined };
+  mockExpoConstants.expoGoConfig = {};
+  mockExpoConstants.manifest = {};
+  mockExpoConstants.manifest2 = {};
+  mockExpoConstants.linkingUri = undefined;
   delete process.env.EXPO_PUBLIC_CORE_API_URL;
   delete process.env.EXPO_PUBLIC_CORE_WS_URL;
 });
@@ -89,6 +116,28 @@ describe('getCoreApiBaseUrl', () => {
     expect(getCoreApiBaseUrl()).toBe('http://localhost:8000');
   });
 
+  it('keeps explicit dev API config ahead of Expo LAN host metadata', () => {
+    setPlatformOS('android');
+    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://10.0.2.2:8000/';
+    mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
+
+    expect(getCoreApiBaseUrl()).toBe('http://10.0.2.2:8000');
+  });
+
+  it('derives dev API fallback from the Expo LAN host for physical devices', () => {
+    setPlatformOS('android');
+    mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
+
+    expect(getCoreApiBaseUrl()).toBe('http://192.168.1.10:8000');
+  });
+
+  it('keeps the Android emulator API fallback when no LAN host metadata exists', () => {
+    setPlatformOS('android');
+    mockExpoConstants.expoConfig.hostUri = 'localhost:8081';
+
+    expect(getCoreApiBaseUrl()).toBe('http://10.0.2.2:8000');
+  });
+
   it('throws when production API URL is missing', () => {
     setDevMode(false);
     expect(() => getCoreApiBaseUrl()).toThrow('Missing EXPO_PUBLIC_CORE_API_URL');
@@ -99,12 +148,36 @@ describe('getCoreApiBaseUrl', () => {
     process.env.EXPO_PUBLIC_CORE_API_URL = 'http://core.internal';
     expect(() => getCoreApiBaseUrl()).toThrow('Production API URL must use HTTPS.');
   });
+
+  it('throws when production API URL is not absolute HTTPS', () => {
+    setDevMode(false);
+    process.env.EXPO_PUBLIC_CORE_API_URL = 'api.healthos.example.com';
+    expect(() => getCoreApiBaseUrl()).toThrow('Production API URL must be an absolute HTTPS URL.');
+
+    process.env.EXPO_PUBLIC_CORE_API_URL = 'ftp://api.healthos.example.com';
+    expect(() => getCoreApiBaseUrl()).toThrow('Production API URL must use HTTPS.');
+  });
 });
 
 describe('getCoreWsBaseUrl', () => {
   it('strips trailing slash in dev', () => {
     process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://localhost:8000/';
     expect(getCoreWsBaseUrl()).toBe('ws://localhost:8000');
+  });
+
+  it('derives dev WS fallback from Expo Go debugger host metadata', () => {
+    setPlatformOS('android');
+    mockExpoConstants.expoGoConfig.debuggerHost = '192.168.1.11:8081';
+
+    expect(getCoreWsBaseUrl()).toBe('ws://192.168.1.11:8000');
+  });
+
+  it('keeps explicit dev WS config ahead of Expo LAN host metadata', () => {
+    setPlatformOS('android');
+    process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://10.0.2.2:8000/';
+    mockExpoConstants.expoGoConfig.debuggerHost = '192.168.1.11:8081';
+
+    expect(getCoreWsBaseUrl()).toBe('ws://10.0.2.2:8000');
   });
 
   it('throws when production WS URL is missing', () => {
@@ -115,6 +188,15 @@ describe('getCoreWsBaseUrl', () => {
   it('throws when production WS URL uses ws://', () => {
     setDevMode(false);
     process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://core.internal/ws';
+    expect(() => getCoreWsBaseUrl()).toThrow('Production WebSocket URL must use WSS.');
+  });
+
+  it('throws when production WS URL is not absolute WSS', () => {
+    setDevMode(false);
+    process.env.EXPO_PUBLIC_CORE_WS_URL = 'api.healthos.example.com/ws';
+    expect(() => getCoreWsBaseUrl()).toThrow('Production WebSocket URL must be an absolute WSS URL.');
+
+    process.env.EXPO_PUBLIC_CORE_WS_URL = 'https://api.healthos.example.com/ws';
     expect(() => getCoreWsBaseUrl()).toThrow('Production WebSocket URL must use WSS.');
   });
 });
@@ -185,6 +267,39 @@ describe('apiRequest', () => {
     });
 
     expect(refreshHandler).toHaveBeenCalledTimes(1);
+    expect(clearStoredSession).toHaveBeenCalledTimes(1);
+    expect(unauthorizedHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not recurse when the refresh request itself returns 401', async () => {
+    const unauthorizedHandler = jest.fn();
+    const refreshHandler = jest.fn(async () => {
+      await apiRequest('/v1/auth/refresh', { method: 'POST', auth: false, json: { refresh_token: 'rt' } });
+      return true;
+    });
+    setRefreshHandler(refreshHandler);
+    setUnauthorizedHandler(unauthorizedHandler);
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ error: { message: 'Expired', code: 'AUTH_INVALID_TOKEN' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ error: { message: 'Refresh expired', code: 'AUTH_REFRESH_INVALID' } }),
+      });
+
+    await expect(apiRequest('/v1/private')).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_INVALID_TOKEN',
+    });
+
+    expect(refreshHandler).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(clearStoredSession).toHaveBeenCalledTimes(1);
     expect(unauthorizedHandler).toHaveBeenCalledTimes(1);
   });

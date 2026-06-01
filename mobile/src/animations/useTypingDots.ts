@@ -26,7 +26,7 @@ export function useTypingDots() {
     a.value = seq(0);
     b.value = seq(200);
     c.value = seq(400);
-  }, []);
+  }, [a, b, c]);
 
   const s1 = useAnimatedStyle(() => ({ opacity: a.value }));
   const s2 = useAnimatedStyle(() => ({ opacity: b.value }));

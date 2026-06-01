@@ -868,6 +868,13 @@ class Appointment(Base):
     specialty: Mapped[str | None] = mapped_column(String(128), nullable=True)
     clinic: Mapped[str | None] = mapped_column(String(255), nullable=True)
     diagnosis: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    visit_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default=text("'in_person'"),
+        default="in_person",
+    )
+    video_join_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     status: Mapped[AppointmentStatusEnum] = mapped_column(
         SAEnum(
             AppointmentStatusEnum,
@@ -896,6 +903,10 @@ class Appointment(Base):
 
     user: Mapped[User] = relationship(back_populates="appointments")
     prescription_assets: Mapped[list["PrescriptionAsset"]] = relationship(
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+    )
+    appointment_assets: Mapped[list["AppointmentAsset"]] = relationship(
         back_populates="appointment",
         cascade="all, delete-orphan",
     )
@@ -949,6 +960,47 @@ class PrescriptionAsset(Base):
     )
 
     appointment: Mapped[Appointment] = relationship(back_populates="prescription_assets")
+
+
+class AppointmentAsset(Base):
+    """Uploaded non-prescription document attached to an appointment."""
+
+    __tablename__ = "appointment_assets"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    appointment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("appointments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    bucket: Mapped[str] = mapped_column(String(255), nullable=False)
+    key: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    original_filename: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    uploaded_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    appointment: Mapped[Appointment] = relationship(back_populates="appointment_assets")
 
 
 class ReminderOccurrenceStatusEnum(str, Enum):
@@ -1196,6 +1248,12 @@ class MedicationPlan(Base):
         nullable=False,
         server_default=text("'active'"),
     )
+    pause_until: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    pause_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     tzid: Mapped[str] = mapped_column(
         String(64),
         nullable=False,

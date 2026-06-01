@@ -1,17 +1,15 @@
-export interface DataResponse<T> {
-  data: T;
-}
-
-export interface PaginationMeta {
-  page: number;
-  per_page: number;
-  total: number;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  meta: PaginationMeta;
-}
+export type {
+  AuthLoginResult,
+  AuthToken,
+  CurrentUser,
+  DataResponse,
+  InsuranceInfo,
+  MedicalInfo,
+  MfaLoginRequired,
+  PaginatedResponse,
+  PaginationMeta,
+  UserProfileUpdate,
+} from '../../../shared/api-contracts';
 
 export interface ErrorDetail {
   code: string;
@@ -23,26 +21,6 @@ export interface ErrorDetail {
 export interface ErrorResponse {
   error: ErrorDetail;
 }
-
-export interface MfaLoginRequired {
-  mfa_required: true;
-  challenge_id: string;
-  expires_in_seconds: number;
-}
-
-export interface AuthToken {
-  access_token: string;
-  token_type: string;
-  refresh_token?: string | null;
-  user_id: string;
-  email: string;
-  username: string | null;
-  display_name: string;
-  avatar_url: string | null;
-  onboarding_status: string;
-}
-
-export type AuthLoginResult = AuthToken | MfaLoginRequired;
 
 export type RequestOtpPurpose = 'signup' | 'reset_password' | 'login' | 'delete_account';
 export type VerifyOtpPurpose = 'signup' | 'reset_password' | 'login' | 'delete_account';
@@ -78,42 +56,6 @@ export interface ResetPasswordBody {
   new_password: string;
 }
 
-export interface CurrentUser {
-  id: string;
-  email: string;
-  username: string | null;
-  display_name: string;
-  avatar_url: string | null;
-  onboarding_status: string;
-  onboarding_completed_at: string | null;
-  created_at?: string | null;
-  full_name?: string | null;
-  date_of_birth?: string | null;
-  gender?: 'male' | 'female' | 'other' | null;
-  blood_type?: string | null;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  phone?: string | null;
-  address?: string | null;
-  emergency_contacts?: Record<string, unknown>[] | null;
-  medical_info?: MedicalInfo | null;
-}
-
-export interface UserProfileUpdate {
-  full_name?: string;
-  date_of_birth?: string | null;
-  gender?: 'male' | 'female' | 'other' | null;
-  blood_type?: string | null;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  phone?: string | null;
-  address?: string | null;
-  avatar_url?: string | null;
-  emergency_contacts?: Record<string, unknown>[] | null;
-  medical_info?: MedicalInfo | null;
-  onboarding_completed?: boolean;
-}
-
 export interface AccountDeletionRequestBody {
   confirmation_email: string;
   password?: string | null;
@@ -130,16 +72,106 @@ export interface AccountRestoreResult {
   status: 'active';
 }
 
-export interface InsuranceInfo {
-  provider: string;
-  policy_number: string;
-  group_number?: string | null;
+export type VisitType =
+  | 'gp_routine'
+  | 'specialist'
+  | 'follow_up'
+  | 'mental_health'
+  | 'urgent_walkin'
+  | 'pediatric_caregiver';
+
+export type VisitBriefStatus = 'draft' | 'finalized' | 'archived';
+export type ConcernCategory = 'pain' | 'fever' | 'gi' | 'resp' | 'mental' | 'skin' | 'neuro' | 'cardio' | 'other';
+export type DurationUnit = 'hours' | 'days' | 'weeks' | 'months';
+export type TriageBucket =
+  | 'emergency_now'
+  | 'urgent_same_day'
+  | 'routine_gp'
+  | 'self_care_with_monitoring'
+  | 'insufficient_info';
+
+export interface SymptomEntry {
+  id: string;
+  visit_brief_id: string;
+  concern_text: string;
+  concern_category: ConcernCategory;
+  onset_date: string | null;
+  duration_value: number | null;
+  duration_unit: DurationUnit | null;
+  severity_0_10: number | null;
+  triggers: string | null;
+  better_with: string | null;
+  worse_with: string | null;
+  meds_taken: string | null;
+  prior_care: string | null;
+  context: Record<string, unknown> | null;
+  order_index: number;
 }
 
-export interface MedicalInfo {
-  allergies?: string | null;
-  chronic_conditions?: string | null;
-  current_medications?: string | null;
-  notes?: string | null;
-  insurance?: InsuranceInfo | null;
+export interface TriageOutcome {
+  id: string;
+  visit_brief_id: string;
+  ruleset_version: string;
+  bucket: TriageBucket;
+  matched_signals: Record<string, unknown>[];
+  inputs_hash: string;
+  disclaimer_version: string;
+  next_action_copy_key: string | null;
+  computed_at: string;
+}
+
+export interface QuestionItem {
+  id: string;
+  source: 'template' | 'custom';
+  text_vi: string;
+  text_en: string;
+  order: number;
+  locked: boolean;
+}
+
+export interface QuestionSet {
+  id: string;
+  visit_brief_id: string;
+  questions: QuestionItem[];
+  updated_at: string;
+}
+
+export interface QuestionTemplate {
+  id: string;
+  slug: string;
+  visit_type: VisitType | null;
+  concern_category: ConcernCategory | null;
+  text_vi: string;
+  text_en: string;
+  default_order: number;
+  is_canonical: boolean;
+}
+
+export interface AppointmentBriefLink {
+  id: string;
+  visit_brief_id: string;
+  appointment_id: string;
+  is_active: boolean;
+  attached_at: string;
+  detached_at: string | null;
+}
+
+export interface VisitBrief {
+  id: string;
+  user_id: string;
+  visit_type: VisitType;
+  status: VisitBriefStatus;
+  revision: number;
+  title: string | null;
+  finalized_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VisitBriefDetail extends VisitBrief {
+  symptoms: SymptomEntry[];
+  latest_triage: TriageOutcome | null;
+  question_set: QuestionSet | null;
+  appointment_links: AppointmentBriefLink[];
 }

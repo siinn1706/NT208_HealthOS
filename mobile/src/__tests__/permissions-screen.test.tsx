@@ -16,6 +16,10 @@ jest.mock('../theme/useTheme', () => {
   return { useTheme: () => palettes.calm };
 });
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
 describe('PermissionsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -24,21 +28,21 @@ describe('PermissionsScreen', () => {
   it('does not pretend the notification setup screen grants OS permissions', () => {
     const { getByText, queryByText } = render(<PermissionsScreen kind="notifications" />);
 
-    expect(queryByText('Allow notifications')).toBeNull();
-    expect(getByText(/does not request OS push permissions/i)).toBeTruthy();
+    expect(queryByText('auth.allowNotifications')).toBeNull();
+    expect(getByText('auth.permissionsNotificationsDescription')).toBeTruthy();
 
-    fireEvent.press(getByText('Continue'));
+    fireEvent.press(getByText('auth.continueSetup'));
     expect(mockRouterReplace).toHaveBeenCalledWith('/home');
   });
 
   it('does not pretend camera or Health Connect permissions are granted from onboarding', () => {
     const camera = render(<PermissionsScreen kind="camera" />);
-    expect(camera.queryByText('Allow camera')).toBeNull();
-    expect(camera.getByText(/does not grant camera access/i)).toBeTruthy();
+    expect(camera.queryByText('auth.allowCamera')).toBeNull();
+    expect(camera.getByText('auth.permissionsCameraDescription')).toBeTruthy();
     camera.unmount();
 
     const health = render(<PermissionsScreen kind="health-data" />);
     expect(health.queryByText('Connect Health Connect')).toBeNull();
-    expect(health.getByText(/need an Android development build/i)).toBeTruthy();
+    expect(health.getByText('auth.permissionsHealthDescription')).toBeTruthy();
   });
 });

@@ -74,6 +74,8 @@ class MedicationPlanDTO(BaseModel):
     start_date: datetime.date
     end_date: Optional[datetime.date] = None
     status: str
+    pause_until: Optional[datetime.datetime] = None
+    pause_reason: Optional[str] = None
     tzid: str
     refill_supply_units: Optional[int] = None
     refill_cadence_days: Optional[int] = None
@@ -193,6 +195,19 @@ class MedicationRefillBody(BaseModel):
     refilled_at: Optional[datetime.datetime] = None
 
 
+class MedicationPauseBody(BaseModel):
+    pause_until: Optional[datetime.datetime] = None
+    pause_reason: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("pause_reason")
+    @classmethod
+    def _trim_reason(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        trimmed = v.strip()
+        return trimmed or None
+
+
 class AdherenceDTO(BaseModel):
     period_days: int
     scheduled: int
@@ -216,6 +231,14 @@ class MedicationDoseDTO(BaseModel):
     strength: Optional[str] = None
     scheduled_at: datetime.datetime
     status: str
+
+
+class MedicationDoseHistoryDTO(MedicationDoseDTO):
+    """Medication-specific occurrence history row."""
+
+    done_at: Optional[datetime.datetime] = None
+    skipped_at: Optional[datetime.datetime] = None
+    snoozed_until: Optional[datetime.datetime] = None
 
 
 class MedicationImportBody(BaseModel):
@@ -309,6 +332,10 @@ class MedicationDoseListResponse(DataResponse[list[MedicationDoseDTO]]):
     ...
 
 
+class MedicationDoseHistoryListResponse(DataResponse[list[MedicationDoseHistoryDTO]]):
+    ...
+
+
 class AdherenceResponse(DataResponse[AdherenceDTO]):
     ...
 
@@ -321,12 +348,15 @@ __all__ = [
     "AdherenceDTO",
     "AdherenceResponse",
     "MedicationDoseDTO",
+    "MedicationDoseHistoryDTO",
+    "MedicationDoseHistoryListResponse",
     "MedicationDoseListResponse",
     "MedicationDoseSummary",
     "MedicationImportBody",
     "MedicationImportResponse",
     "MedicationImportResult",
     "MedicationImportSkipped",
+    "MedicationPauseBody",
     "MedicationPlanCreateBody",
     "MedicationPlanDTO",
     "MedicationPlanDetailDTO",

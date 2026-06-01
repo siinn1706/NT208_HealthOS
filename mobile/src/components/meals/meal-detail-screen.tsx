@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,7 @@ import { mealService } from '../../api/services';
 import { useTheme } from '../../theme/useTheme';
 import { typography, tabularNums } from '../../theme/typography';
 import { IngredientRow } from './ingredient-row';
-import { ChevronLeft, IconRefresh, IconMore, IconHeartPulse } from '../../icons';
+import { ChevronLeft, IconRefresh, IconHeartPulse } from '../../icons';
 
 const DAILY_TARGET_KCAL = 2100;
 
@@ -61,7 +61,9 @@ export function MealDetailScreen() {
   const [draftName, setDraftName] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [guardedMessage, setGuardedMessage] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteBusyRef = useRef(false);
 
   const model = useMemo(() => {
     if (!meal.data) return null;
@@ -95,7 +97,7 @@ export function MealDetailScreen() {
   }, [model?.title]);
 
   async function handleSaveEdit() {
-    if (!mealId || savingEdit) return;
+    if (!mealId || savingEdit || isDeleting) return;
     const nextName = draftName.trim();
     if (!nextName) {
       setEditError('Meal name is required.');
@@ -113,6 +115,25 @@ export function MealDetailScreen() {
       setEditError(err instanceof Error ? err.message : 'Could not update meal.');
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  async function handleDeleteMeal() {
+    if (!mealId || deleteBusyRef.current) return;
+    deleteBusyRef.current = true;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await mealService.delete(mealId);
+      invalidateApiQuery('meals.');
+      invalidateApiQuery(queryKeys.meal(mealId));
+      invalidateApiQuery(queryKeys.mealIngredients(mealId));
+      router.replace('/meals' as never);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Could not delete meal.');
+    } finally {
+      deleteBusyRef.current = false;
+      setIsDeleting(false);
     }
   }
 
@@ -157,24 +178,24 @@ export function MealDetailScreen() {
         onBack={() => router.back()}
         right={
           <View style={styles.topActions}>
-            <Pressable hitSlop={8} onPress={meal.reload}><IconRefresh size={20} color={t.ink3} /></Pressable>
             <Pressable
               hitSlop={8}
-              style={{ marginLeft: 8 }}
-              onPress={() => setGuardedMessage('Meal delete is unavailable because Core does not expose DELETE /v1/meals/{meal_id}.')}
+              onPress={meal.reload}
+              accessibilityRole="button"
+              accessibilityLabel={i18n('common.retry')}
             >
-              <IconMore size={20} color={t.ink3} />
+              <IconRefresh size={20} color={t.ink3} />
             </Pressable>
           </View>
         }
       />
 
-      {guardedMessage && (
+      {deleteError && (
         <ApiState
-          title="Action unavailable"
-          message={guardedMessage}
+          title={i18n('api.unavailable')}
+          message={deleteError}
           actionLabel={i18n('common.close')}
-          onAction={() => setGuardedMessage(null)}
+          onAction={() => setDeleteError(null)}
         />
       )}
 
@@ -314,23 +335,19 @@ export function MealDetailScreen() {
 
       <View style={styles.btnRow}>
         {!isEditing && (
-          <Button label="Log another" variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} />
+          <Button label="Log another" variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} disabled={isDeleting} />
         )}
         {!isEditing && (
-          <Button
-            label="Delete unavailable"
-            variant="ghost"
-            style={{ flex: 1 }}
-            onPress={() => setGuardedMessage('Meal delete is unavailable because Core does not expose DELETE /v1/meals/{meal_id}.')}
-          />
+          <Button label="Delete meal" variant="ghost" style={{ flex: 1 }} onPress={handleDeleteMeal} loading={isDeleting} />
         )}
-        {isEditing && <Button label={i18n('common.cancel')} variant="ghost" style={{ flex: 1 }} onPress={() => setIsEditing(false)} />}
+        {isEditing && <Button label={i18n('common.cancel')} variant="ghost" style={{ flex: 1 }} onPress={() => setIsEditing(false)} disabled={isDeleting} />}
         <Button
           label={isEditing ? (savingEdit ? i18n('common.working') : i18n('common.save')) : i18n('meals.editMeal')}
           variant="solid"
           style={{ flex: isEditing ? 1 : 2 }}
           onPress={isEditing ? handleSaveEdit : () => setIsEditing(true)}
           loading={savingEdit}
+          disabled={isDeleting}
         />
       </View>
     </Screen>

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,27 +7,39 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { nightPalette as nt } from '../../theme/palettes';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
-import { ApiState, MissingApiState } from '../api/api-state';
+import { ApiState } from '../api/api-state';
 import { ChevronLeft, IconChat, IconVideo } from '../../icons';
 import { useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { formatDate, formatTime } from '../../api/viewModels';
-
-const VIDEO_CONTRACT_GAP =
-  'Core exposes appointment scheduling/status only; no video-session, meeting URL, room token, or media service contract exists';
+import { safeOpenUrl } from '../../utils/safe-url';
 
 export function JoinVideoVisitScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t: i18n } = useTranslation();
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
   const apptId = (Array.isArray(id) ? id[0] : id) ?? '';
   const loadAppointment = useCallback(() => appointmentService.detail(apptId), [apptId]);
   const appointmentQuery = useApiQuery(queryKeys.appointment(apptId), loadAppointment, { enabled: Boolean(apptId) });
   const appointment = appointmentQuery.data ?? null;
 
-  const unavailableTitle = appointment?.visit_type === 'video'
-    ? 'Video visit unavailable'
-    : 'No video visit for this appointment';
+  const canJoin = appointment?.visit_type === 'video' && Boolean(appointment.video_join_url);
+
+  async function handleJoin() {
+    if (!appointment?.video_join_url) return;
+    setOpening(true);
+    setOpenError(null);
+    try {
+      const opened = await safeOpenUrl(appointment.video_join_url);
+      if (!opened) setOpenError('Use an HTTPS meeting link that this device can open.');
+    } catch (err) {
+      setOpenError(err instanceof Error ? err.message : i18n('care.videoVisitOpenFailed'));
+    } finally {
+      setOpening(false);
+    }
+  }
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
@@ -64,11 +76,45 @@ export function JoinVideoVisitScreen() {
           />
         )}
 
-        {!appointmentQuery.isLoading && !appointmentQuery.error && (
-          <MissingApiState title={unavailableTitle} contract={VIDEO_CONTRACT_GAP} />
+        {!appointmentQuery.isLoading && !appointmentQuery.error && !appointment && (
+          <ApiState
+            title={i18n('care.noAppointments')}
+            message={i18n('care.appointmentNotFoundMessage')}
+          />
+        )}
+
+        {!appointmentQuery.isLoading && !appointmentQuery.error && appointment && !canJoin && (
+          <ApiState
+            title={
+              appointment.visit_type === 'video'
+                ? i18n('care.videoVisitLinkUnavailable')
+                : i18n('care.videoVisitUnavailableForAppointment')
+            }
+            message={
+              appointment.visit_type === 'video'
+                ? i18n('care.videoVisitLinkUnavailableMessage')
+                : i18n('care.videoVisitUnavailableMessage')
+            }
+          />
+        )}
+
+        {openError && (
+          <ApiState
+            title={i18n('care.videoVisitOpenFailed')}
+            message={openError}
+          />
         )}
 
         <View style={s.actions}>
+          {canJoin && (
+            <Button
+              label={i18n('care.openVideoVisitLink')}
+              variant="solid"
+              icon={<IconVideo size={16} color="#FFF" />}
+              loading={opening}
+              onPress={handleJoin}
+            />
+          )}
           {apptId && (
             <Button
               label="Open appointment"

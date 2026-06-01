@@ -31,7 +31,7 @@ import datetime
 import logging
 import uuid
 
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, func, select, update
 from sqlalchemy.types import Date
 
 from app.adapters.database import get_sync_db_context
@@ -41,6 +41,8 @@ from app.models.core import (
     Notification,
     NotificationKindEnum,
     Reminder,
+    ReminderOccurrence,
+    ReminderOccurrenceStatusEnum,
     ReminderRepeatEnum,
 )
 from app.services.notifications import _validate_link
@@ -163,6 +165,7 @@ def _enqueue_with_audit(
     body: str,
     audit_event: AuditEventTypeEnum,
     audit_details: dict,
+    audit_created_at: datetime.datetime,
 ) -> None:
     """Insert one Notification + matching AuditLog row.
 
@@ -184,6 +187,7 @@ def _enqueue_with_audit(
             user_id=user_id,
             event_type=audit_event,
             details=audit_details,
+            created_at=audit_created_at,
         )
     )
 
@@ -198,6 +202,14 @@ def compute_medication_signals() -> dict:
     fired_refill = 0
     fired_review = 0
     plans_seen = 0
+    audit_sequence = 0
+
+    def next_audit_created_at() -> datetime.datetime:
+        nonlocal audit_sequence
+        audit_sequence += 1
+        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+            microseconds=audit_sequence,
+        )
 
     with get_sync_db_context() as db:
         plans = db.execute(
@@ -245,6 +257,7 @@ def compute_medication_signals() -> dict:
                                 "threshold": fire_at,
                                 "days_remaining": days_remaining,
                             },
+                            audit_created_at=next_audit_created_at(),
                         )
                         plan.last_refill_alert_threshold = fire_at
                         fired_refill += 1
@@ -272,6 +285,7 @@ def compute_medication_signals() -> dict:
                                 "review_due_at": plan.review_due_at.isoformat(),
                                 "lead_days": lead,
                             },
+                            audit_created_at=next_audit_created_at(),
                         )
                         fired_review += 1
 
@@ -279,4 +293,74 @@ def compute_medication_signals() -> dict:
         "plans_seen": plans_seen,
         "refill_notifications": fired_refill,
         "review_notifications": fired_review,
+    }
+
+
+@celery_app.task(name="app.tasks.medications.resume_expired_medication_pauses")
+def resume_expired_medication_pauses() -> dict:
+    """Reactivate plans whose timed pause has expired.
+
+    Child reminders are re-enabled here. The reminder materializer then tops up
+    future occurrence rows on its normal 5-minute cadence.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    plans_resumed = 0
+    reminders_reactivated = 0
+    occurrences_restored = 0
+
+    with get_sync_db_context() as db:
+        plans = db.execute(
+            select(MedicationPlan).where(
+                MedicationPlan.status == "paused",
+                MedicationPlan.pause_until.is_not(None),
+                MedicationPlan.pause_until <= now,
+            ).with_for_update(skip_locked=True)
+        ).scalars().all()
+
+        for plan in plans:
+            if plan.status != "paused" or plan.pause_until is None or plan.pause_until > now:
+                continue
+            plan.status = "active"
+            plan.pause_until = None
+            plan.pause_reason = None
+            plans_resumed += 1
+
+            reminders = db.execute(
+                select(Reminder).where(Reminder.medication_plan_id == plan.id)
+                .with_for_update()
+            ).scalars().all()
+            rem_ids = [reminder.id for reminder in reminders]
+            for reminder in reminders:
+                if not reminder.is_active:
+                    reminders_reactivated += 1
+                reminder.is_active = True
+            if rem_ids:
+                restored = db.execute(
+                    update(ReminderOccurrence)
+                    .where(
+                        ReminderOccurrence.reminder_id.in_(rem_ids),
+                        ReminderOccurrence.status == ReminderOccurrenceStatusEnum.CANCELLED.value,
+                        ReminderOccurrence.scheduled_at >= now,
+                    )
+                    .values(
+                        status=ReminderOccurrenceStatusEnum.PENDING.value,
+                        skipped_at=None,
+                        snoozed_until=None,
+                    )
+                )
+                occurrences_restored += int(restored.rowcount or 0)
+                db.flush()
+                for reminder in reminders:
+                    reminder.next_occurrence_at = db.execute(
+                        select(func.min(ReminderOccurrence.scheduled_at)).where(
+                            ReminderOccurrence.reminder_id == reminder.id,
+                            ReminderOccurrence.scheduled_at >= now,
+                            ReminderOccurrence.status == ReminderOccurrenceStatusEnum.PENDING.value,
+                        )
+                    ).scalar_one()
+
+    return {
+        "plans_resumed": plans_resumed,
+        "reminders_reactivated": reminders_reactivated,
+        "occurrences_restored": occurrences_restored,
     }

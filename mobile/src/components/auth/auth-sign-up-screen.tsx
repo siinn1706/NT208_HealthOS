@@ -36,8 +36,6 @@ export function AuthSignUpScreen() {
     return null;
   }
 
-  const isValid = validate() === null;
-
   async function handleContinue() {
     const msg = validate();
     if (msg) { setError(msg); return; }

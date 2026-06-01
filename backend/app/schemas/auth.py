@@ -36,6 +36,46 @@ class OAuthProfile(BaseModel):
     )
 
 
+class MobileOAuthHandoff(BaseModel):
+    code: str
+    expires_in_seconds: int
+
+
+class MobileOAuthHandoffResponse(DataResponse[MobileOAuthHandoff]):
+    ...
+
+
+class MobileOAuthHandoffBody(OAuthProfile):
+    mobile_state: str = Field(
+        min_length=64,
+        max_length=64,
+        pattern=r"^[a-f0-9]+$",
+    )
+    mobile_code_challenge: str = Field(
+        min_length=64,
+        max_length=64,
+        pattern=r"^[a-f0-9]+$",
+    )
+
+
+class MobileOAuthRedeemBody(BaseModel):
+    code: str = Field(
+        min_length=32,
+        max_length=256,
+        pattern=r"^[A-Za-z0-9._~:-]+$",
+    )
+    state: str = Field(
+        min_length=64,
+        max_length=64,
+        pattern=r"^[a-f0-9]+$",
+    )
+    code_verifier: str = Field(
+        min_length=64,
+        max_length=64,
+        pattern=r"^[a-f0-9]+$",
+    )
+
+
 # ─── OAuth Linked Accounts (settings → linked accounts) ─────────────────────
 
 

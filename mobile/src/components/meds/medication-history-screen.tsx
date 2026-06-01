@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,17 +15,47 @@ import { medicationService } from '../../api/services';
 import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { formatDate } from '../../api/viewModels';
+import type { MedicationDoseHistory } from '../../../../shared/api-contracts';
+
+function historyWindow(now = new Date()) {
+  const to = now.toISOString();
+  const fromDate = new Date(now);
+  fromDate.setDate(fromDate.getDate() - 30);
+  return { from: fromDate.toISOString(), to };
+}
+
+function statusLabel(status: string) {
+  const normalized = status.trim().toLowerCase();
+  if (normalized === 'done') return 'Taken';
+  if (normalized === 'skipped') return 'Skipped';
+  if (normalized === 'missed' || normalized === 'fired') return 'Missed';
+  if (normalized === 'snoozed') return 'Snoozed';
+  if (normalized === 'pending') return 'Pending';
+  return status || 'Unknown';
+}
+
+function groupDosesByDay(rows: MedicationDoseHistory[]) {
+  const groups = new Map<string, MedicationDoseHistory[]>();
+  rows.forEach((row) => {
+    const key = row.scheduled_at.slice(0, 10);
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  });
+  return Array.from(groups.entries()).map(([date, items]) => ({ date, items }));
+}
 
 export function MedicationHistoryScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const loadHistory = useCallback(() => medicationService.list('all'), []);
+  const doseWindow = useMemo(() => historyWindow(), []);
+  const loadDoseHistory = useCallback(() => medicationService.history(doseWindow), [doseWindow]);
   const history = useApiQuery(`${queryKeys.medications}.history`, loadHistory);
+  const doseHistory = useApiQuery(queryKeys.medicationDoseHistory(`${doseWindow.from}:${doseWindow.to}`), loadDoseHistory);
   const archived = (history.data ?? []).filter((med) => med.status !== 'active');
   const all = history.data ?? [];
   const paused = all.filter((m) => m.status === 'paused').length;
   const completed = all.filter((m) => m.status === 'completed').length;
-  const cancelled = all.filter((m) => m.status === 'cancelled').length;
+  const doseGroups = useMemo(() => groupDosesByDay(doseHistory.data ?? []), [doseHistory.data]);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]} edges={['top']}>
@@ -41,7 +71,7 @@ export function MedicationHistoryScreen() {
           <ApiState title={i18n('api.loading')} loading skeleton={<TimelineSkeleton />} />
         )}
         {history.error && <ApiState title={i18n('api.unavailable')} message={history.error.message} actionLabel={i18n('common.retry')} onAction={history.reload} />}
-        {!history.isLoading && !history.error && archived.length === 0 && (
+        {!history.isLoading && !history.error && archived.length === 0 && doseGroups.length === 0 && !doseHistory.isLoading && !doseHistory.error && (
           <ApiState title={i18n('meds.archived')} message="Completed, cancelled, and paused medications will appear here." />
         )}
 
@@ -67,13 +97,48 @@ export function MedicationHistoryScreen() {
           </Card>
         )}
 
-        {/* NOTE: Per-day medication dose history is not available via the current API contract.
-            Showing archived medication list instead. */}
-        {!history.isLoading && !history.error && all.length > 0 && (
-          <ApiState
-            title="Dose history unavailable"
-            message={`Core exposes current plan status and aggregate adherence, not a per-day medication history feed. Cancelled plans: ${cancelled}.`}
-          />
+        {doseHistory.isLoading && <ApiState title={i18n('api.loading')} loading skeleton={<TimelineSkeleton />} />}
+        {doseHistory.error && (
+          <ApiState title={i18n('api.unavailable')} message={doseHistory.error.message} actionLabel={i18n('common.retry')} onAction={doseHistory.reload} />
+        )}
+        {!doseHistory.isLoading && !doseHistory.error && all.length > 0 && doseGroups.length === 0 && (
+          <ApiState title="No recent dose history" message="Dose events from the last 30 days will appear here after reminders fire or are marked." />
+        )}
+        {doseGroups.length > 0 && (
+          <>
+            <Text style={[typography.micro, { color: t.brand, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }]}>
+              Recent doses
+            </Text>
+            {doseGroups.map((group) => (
+              <Card key={group.date} style={s.groupCard}>
+                <Text style={[typography.caption, { color: t.ink3, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 }]}>
+                  {formatDate(group.date)}
+                </Text>
+                {group.items.map((dose, i) => (
+                  <View
+                    key={dose.occurrence_id}
+                    style={[
+                      s.medRow,
+                      i < group.items.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
+                    ]}
+                  >
+                    <View style={[s.iconWrap, { backgroundColor: `${t.brand}18`, borderRadius: t.radius.md }]}>
+                      <IconPill size={16} color={t.brand} />
+                    </View>
+                    <View style={s.flex}>
+                      <Text style={[typography.bodyMed, { color: t.ink }]}>{dose.plan_name}</Text>
+                      <Text style={[typography.caption, { color: t.ink3, marginTop: 1 }]}>
+                        {[new Date(dose.scheduled_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }), dose.strength].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                    <View style={[s.statusBadge, { backgroundColor: `${t.brand}18`, borderRadius: t.radius.pill }]}>
+                      <Text style={[typography.micro, { color: t.brand }]}>{statusLabel(dose.status)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            ))}
+          </>
         )}
         {archived.length > 0 && (
           <>

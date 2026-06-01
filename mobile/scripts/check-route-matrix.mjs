@@ -37,6 +37,34 @@ function collectSourceFiles(dir) {
   return results;
 }
 
+function collectSourceFilesIfPresent(dir) {
+  try {
+    return collectSourceFiles(dir);
+  } catch {
+    return [];
+  }
+}
+
+function assertDevRouteProductionGuards() {
+  const devDir = join(appDir, 'dev');
+  const devFiles = collectSourceFilesIfPresent(devDir);
+  const failures = [];
+  for (const file of devFiles) {
+    const src = readFileSync(file, 'utf8');
+    const rel = relative(appRoot, file).replace(/\\/g, '/');
+    if (!src.includes('!__DEV__')) {
+      failures.push(`${rel} does not guard production render with !__DEV__`);
+    }
+    if (src.includes('throw new Error') && src.toLowerCase().includes('dev-only')) {
+      failures.push(`${rel} throws for a production dev-route deep link`);
+    }
+    if (!src.includes('router.replace')) {
+      failures.push(`${rel} does not redirect away from production dev-route access`);
+    }
+  }
+  return failures;
+}
+
 function normalizeRouteLiteral(route) {
   const clean = route.split(/[?#]/)[0];
   if (!clean.startsWith('/') || clean.startsWith('//') || clean.startsWith('/v1/')) return null;
@@ -135,6 +163,10 @@ for (const file of [...collectSourceFiles(appDir), ...collectSourceFiles(srcDir)
 const appFiles = collectAppFiles(appDir).map(normalizeAppPath);
 
 let failures = 0;
+for (const failure of assertDevRouteProductionGuards()) {
+  console.log(`  ✗ DEV GUARD: ${failure}`);
+  failures++;
+}
 for (const route of [...routes.keys()].sort()) {
   if (routeMatchesFile(route, appFiles)) {
     console.log(`  ✓ ${route}`);

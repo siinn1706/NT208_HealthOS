@@ -84,6 +84,10 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.medications.compute_medication_signals",
         "schedule": crontab(hour=6, minute=0),  # daily at 06:00 UTC
     },
+    "resume_expired_medication_pauses": {
+        "task": "app.tasks.medications.resume_expired_medication_pauses",
+        "schedule": 5 * 60,  # every 5 minutes
+    },
     # Wearables (Luồng B) — poll Google Health for every active connection.
     # Interval is settings-driven so ops can dial back during quota crunches
     # without a code change. Per-device sweep is sequential within the task;

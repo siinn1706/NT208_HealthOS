@@ -54,13 +54,13 @@ export default function MeScreen() {
     setSignOutError(null);
     try {
       await session.signOut();
-      router.replace('/auth/welcome');
+      setSignOutOpen(false);
     } catch {
       setSignOutError(i18n('me.signOutError'));
     } finally {
       setSignOutLoading(false);
     }
-  }, [session, router, i18n]);
+  }, [session, i18n]);
 
   function handleMenuPress(id: string) {
     switch (id) {

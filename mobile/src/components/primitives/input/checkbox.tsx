@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { useTheme } from '../../../theme/useTheme';
 

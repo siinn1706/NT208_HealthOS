@@ -12,7 +12,7 @@ import { Input } from '../primitives/input/input';
 import { Button } from '../primitives/button';
 import {
   ChevronLeft, ChevronRight, IconShield, IconLock,
-  IconActivity, IconRefresh, IconAlert,
+  IconRefresh,
 } from '../../icons';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -21,6 +21,7 @@ import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { securityService, type MfaSetupPayload } from '../../api/services/security-service';
 import { PasswordResetPanel } from './password-reset-panel';
+import { AppLockSecurityCard } from './app-lock-security-card';
 
 interface SettingRowProps {
   label: string;
@@ -83,11 +84,6 @@ export function SecurityScreen() {
   const [busyAction, setBusyAction] = useState<'setup' | 'verify-setup' | 'verify' | 'disable' | 'regen' | null>(null);
 
   const mfaEnabled = Boolean(mfaQuery.data?.enabled);
-
-  function showUnavailable(message: string) {
-    setActionSuccess(null);
-    setActionError(message);
-  }
 
   function pointToMfaControls() {
     setActionError(null);
@@ -234,23 +230,9 @@ export function SecurityScreen() {
           badge={{ label: mfaEnabled ? 'ON' : 'OFF', color: mfaEnabled ? t.success : t.warning, bg: mfaEnabled ? t.successSoft : t.warningSoft }}
           onPress={mfaEnabled ? pointToMfaControls : startMfaSetup}
         />
-        <SettingRow
-          Icon={IconShield}
-          iconColor="#7B5BB6"
-          label="Face ID"
-          sub="Requires native biometric app-lock support"
-          value="Unavailable"
-          onPress={() => showUnavailable('Face ID is not available until native biometric app-lock support is implemented.')}
-        />
-        <SettingRow
-          Icon={IconLock}
-          label="App lock"
-          sub="Requires native secure app-lock support"
-          value="Unavailable"
-          last
-          onPress={() => showUnavailable('Native app lock settings are not backed by a confirmed secure-storage contract yet.')}
-        />
       </Card>
+
+      <AppLockSecurityCard />
 
       {passwordResetOpen && (
         <PasswordResetPanel
@@ -360,15 +342,8 @@ export function SecurityScreen() {
         </Card>
       )}
 
-      <SectionHeader title="Devices & sessions" />
+      <SectionHeader title="Recent activity" />
       <Card tight style={styles.sectionCard}>
-        <SettingRow
-          Icon={IconActivity}
-          iconColor="#1965B3"
-          label="Active sessions"
-          sub={user ? 'This device' : 'No active sessions'}
-          onPress={() => showUnavailable('Active session management is not available in the native app yet.')}
-        />
         <SettingRow
           Icon={IconRefresh}
           iconColor={t.ink3}
@@ -415,19 +390,6 @@ export function SecurityScreen() {
 
       <SectionHeader title="Recovery" />
       <Card tight style={styles.sectionCard}>
-        <SettingRow
-          Icon={IconAlert}
-          iconColor="#0F8F7E"
-          label="Recovery email"
-          value={user?.email ?? 'Not set'}
-          onPress={() => showUnavailable('Recovery email changes are not available in the native app yet.')}
-        />
-        <SettingRow
-          Icon={IconLock}
-          label="Recovery phone"
-          value="Not set"
-          onPress={() => showUnavailable('Recovery phone setup is not available in the native app yet.')}
-        />
         <SettingRow
           Icon={IconShield}
           iconColor={t.ink3}

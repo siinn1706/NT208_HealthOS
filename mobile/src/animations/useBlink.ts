@@ -15,7 +15,7 @@ export function useBlink(active = true) {
       -1,
       true,
     );
-  }, [active]);
+  }, [active, opacity]);
 
   return useAnimatedStyle(() => ({ opacity: opacity.value }));
 }

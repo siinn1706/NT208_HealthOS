@@ -43,7 +43,8 @@ const appointment: Appointment = {
   specialty: 'Primary care',
   clinic: 'Clinic A',
   diagnosis: null,
-  visit_type: 'in-person',
+  visit_type: 'in_person',
+  video_join_url: null,
   status: 'scheduled',
   notes: null,
   has_prescription: false,
@@ -72,7 +73,7 @@ describe('AppointmentRescheduleSheet', () => {
     });
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith(queryKeys.appointments);
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith(queryKeys.appointment('apt-1'));
-    expect(getByText('Appointment rescheduled.')).toBeTruthy();
+    await waitFor(() => expect(getByText('Appointment rescheduled.')).toBeTruthy());
   });
 
   it('shows validation errors without calling the API', async () => {

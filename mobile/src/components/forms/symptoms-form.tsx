@@ -1,22 +1,31 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { ApiState } from '../api/api-state';
-import { visitBriefService } from '../../api/services';
-
-const SYMPTOM_OPTIONS = [
-  'Headache', 'Fever', 'Cough', 'Fatigue', 'Nausea',
-  'Chest pain', 'Shortness of breath', 'Dizziness', 'Sore throat', 'Back pain',
-];
+import { appointmentService, visitBriefService } from '../../api/services';
+import { useApiQuery } from '../../api/query';
+import { queryKeys } from '../../api/queryKeys';
+import { SymptomsFormAppointmentPicker } from './symptoms-form-appointment-picker';
+import {
+  firstParam,
+  formatSymptomAppointmentLabel,
+  inferConcernCategory,
+  STANDALONE_SYMPTOM_TARGET,
+  SYMPTOM_OPTIONS,
+  upcomingSymptomAppointments,
+} from './symptoms-form-state';
 
 export function SymptomsForm() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
+  const params = useLocalSearchParams<{ appointmentId?: string | string[]; attach?: string | string[] }>();
+  const routeAppointmentId = firstParam(params.appointmentId) ?? firstParam(params.attach);
   const [selected, setSelected] = useState<string[]>([]);
+  const [attachTarget, setAttachTarget] = useState<string | null>(routeAppointmentId ?? null);
   const [severity, setSeverity] = useState(5);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -24,21 +33,40 @@ export function SymptomsForm() {
   const [triageBucket, setTriageBucket] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const loadAppointments = useCallback(() => appointmentService.list({ limit: 50 }), []);
+  const appointments = useApiQuery(queryKeys.appointments, loadAppointments);
+  const appointmentOptions = useMemo(
+    () => upcomingSymptomAppointments(appointments.data),
+    [appointments.data],
+  );
+  const selectedAppointmentId = attachTarget && attachTarget !== STANDALONE_SYMPTOM_TARGET ? attachTarget : null;
+  const selectedAppointment = useMemo(
+    () => appointmentOptions.find((appointment) => appointment.id === selectedAppointmentId) ?? null,
+    [appointmentOptions, selectedAppointmentId],
+  );
+
+  useEffect(() => {
+    setAttachTarget(routeAppointmentId ?? null);
+  }, [routeAppointmentId]);
+
   function toggleSymptom(s: string) {
     setSelected(prev => prev.includes(s) ? prev.filter(v => v !== s) : [...prev, s]);
   }
 
   async function handleSubmit() {
     if (selected.length === 0) { setError('Select at least one symptom.'); return; }
+    if (!attachTarget) { setError(i18n('forms.selectVisitTarget')); return; }
     setSaving(true);
     setError(null);
     try {
       const brief = await visitBriefService.create({
         visit_type: severity >= 7 ? 'urgent_walkin' : 'gp_routine',
-        title: 'Mobile symptom intake',
+        title: selectedAppointmentId
+          ? `Mobile symptom intake: ${formatSymptomAppointmentLabel(selectedAppointment)}`
+          : 'Mobile symptom intake',
+        attach_to_appointment_id: selectedAppointmentId,
       });
-      const topSymptoms = selected.slice(0, 5);
-      for (const symptom of topSymptoms) {
+      for (const symptom of selected) {
         await visitBriefService.addSymptom(brief.id, {
           concern_text: symptom,
           concern_category: inferConcernCategory(symptom),
@@ -76,6 +104,15 @@ export function SymptomsForm() {
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
       {error && <ApiState title={i18n('forms.validationError')} message={error} />}
+
+      <SymptomsFormAppointmentPicker
+        appointments={appointmentOptions}
+        selectedTarget={attachTarget}
+        loading={appointments.isLoading}
+        error={appointments.error}
+        onRetry={() => { void appointments.reload(); }}
+        onSelect={setAttachTarget}
+      />
 
       <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.symptomsLabel')}</Text>
       <View style={s.chipGrid}>
@@ -143,15 +180,6 @@ export function SymptomsForm() {
       <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
     </ScrollView>
   );
-}
-
-function inferConcernCategory(symptom: string): 'pain' | 'fever' | 'resp' | 'mental' | 'other' {
-  const value = symptom.toLowerCase();
-  if (value.includes('fever')) return 'fever';
-  if (value.includes('cough') || value.includes('shortness of breath') || value.includes('sore throat')) return 'resp';
-  if (value.includes('pain') || value.includes('headache') || value.includes('back')) return 'pain';
-  if (value.includes('fatigue') || value.includes('dizziness')) return 'mental';
-  return 'other';
 }
 
 const s = StyleSheet.create({

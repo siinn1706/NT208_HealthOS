@@ -13,6 +13,7 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
 import { useSession } from '../../auth/session-provider';
+import { getPostAuthRoute } from '../../auth/auth-route-policy';
 
 export function AuthMfaScreen() {
   const t = useTheme();
@@ -35,8 +36,8 @@ export function AuthMfaScreen() {
     setLoading(true);
     setError(null);
     try {
-      await session.completeMfaSignIn(challengeId, code.trim());
-      router.replace('/home');
+      const user = await session.completeMfaSignIn(challengeId, code.trim());
+      router.replace(getPostAuthRoute(user.onboarding_status) as never);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to verify MFA code.');
     } finally {

@@ -13,7 +13,6 @@ import { TopBar } from '../layout/top-bar';
 import { IconButton } from '../primitives/icon-button';
 import { ApiState } from '../api/api-state';
 import { ChevronLeft, IconClock, IconPill, IconUser } from '../../icons';
-import { BarcodePlaceholder } from './barcode-placeholder';
 import { useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
@@ -103,12 +102,6 @@ export function PrescriptionDetailScreen() {
               </Text>
             </Card>
 
-            {/* Barcode visual placeholder */}
-            <View style={[s.barcodeCard, { backgroundColor: '#FFFFFF', borderColor: t.border, borderRadius: t.radius.lg }]}>
-              <BarcodePlaceholder size={120} />
-              <Text style={[typography.micro, { color: t.ink3, marginTop: 8 }]}>Show this code at pharmacy</Text>
-            </View>
-
             <PrescriptionFilesCard appointmentId={appointmentId} />
 
             {/* CTAs */}
@@ -141,7 +134,6 @@ const s = StyleSheet.create({
   headerCard:  { gap: 10 },
   headerRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   rxIconBox:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  barcodeCard: { alignItems: 'center', paddingVertical: 20, borderWidth: StyleSheet.hairlineWidth },
   ctaRow:      { flexDirection: 'row', gap: 10, marginTop: 16 },
   ctaBtn:      { flex: 1 },
   chips:       { flexDirection: 'row', gap: 8 },

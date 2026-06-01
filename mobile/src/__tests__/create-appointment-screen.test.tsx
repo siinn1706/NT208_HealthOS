@@ -79,6 +79,8 @@ const appointmentHistory: Appointment[] = [
     specialty: 'Cardiology',
     clinic: 'Core Clinic',
     diagnosis: null,
+    visit_type: 'in_person',
+    video_join_url: null,
     status: 'completed',
     notes: null,
     has_prescription: false,
@@ -95,6 +97,8 @@ beforeEach(() => {
     specialty: 'Cardiology',
     clinic: 'Core Clinic',
     diagnosis: null,
+    visit_type: 'video',
+    video_join_url: null,
     status: 'scheduled',
     notes: null,
     has_prescription: false,
@@ -126,6 +130,8 @@ describe('CreateAppointmentScreen provider suggestions', () => {
         doctor_name: 'Dr History',
         specialty: 'Cardiology',
         clinic: 'Core Clinic',
+        visit_type: 'video',
+        video_join_url: null,
       }));
     });
     expect(mockUseApiQuery).toHaveBeenCalledWith(
@@ -135,6 +141,42 @@ describe('CreateAppointmentScreen provider suggestions', () => {
     );
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith(queryKeys.appointments);
     expect(mockRouterBack).toHaveBeenCalled();
+  });
+
+  it('submits the meeting link for video appointments', async () => {
+    const { getByPlaceholderText, getByText } = render(<CreateAppointmentScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Doctor name'), 'Dr Video');
+    fireEvent.changeText(getByPlaceholderText('e.g. Apr 28'), '2099-06-05');
+    fireEvent.changeText(getByPlaceholderText('e.g. 2:00 PM'), '10:30');
+    fireEvent.changeText(getByPlaceholderText('https://meet.example/room'), 'https://meet.example/room-123');
+    fireEvent.press(getByText('Book now'));
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+        doctor_name: 'Dr Video',
+        visit_type: 'video',
+        video_join_url: 'https://meet.example/room-123',
+      }));
+    });
+  });
+
+  it.each([
+    ['http://meet.example/room-123'],
+    ['ftp://meet.example/room-123'],
+    ['mailto:doctor@example.test'],
+    ['javascript:alert(1)'],
+    ['/relative-room'],
+  ])('rejects non-HTTPS video meeting link %s before saving', async (meetingUrl) => {
+    const { getByPlaceholderText, getByText } = render(<CreateAppointmentScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Doctor name'), 'Dr Video');
+    fireEvent.changeText(getByPlaceholderText('e.g. Apr 28'), '2099-06-05');
+    fireEvent.changeText(getByPlaceholderText('https://meet.example/room'), meetingUrl);
+    fireEvent.press(getByText('Book now'));
+
+    expect(getByText(meetingUrl.startsWith('/') ? 'Use an absolute meeting link.' : 'Use an https meeting link.')).toBeTruthy();
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('deduplicates provider history by provider fields and sorts newest first', () => {

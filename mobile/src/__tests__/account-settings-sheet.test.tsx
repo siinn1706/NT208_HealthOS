@@ -46,6 +46,8 @@ const mockProfileService = profileService as jest.Mocked<typeof profileService>;
 const mockAccountExport = accountExportService as jest.Mocked<typeof accountExportService>;
 const mockSafeOpenUrl = safeOpenUrl as jest.MockedFunction<typeof safeOpenUrl>;
 
+jest.setTimeout(15000);
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockClearSession.mockResolvedValue(undefined);

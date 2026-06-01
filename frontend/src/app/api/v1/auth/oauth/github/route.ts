@@ -9,6 +9,8 @@ import {
   buildOAuthCallbackUrl,
   createOAuthContext,
   getOAuthCookieOptions,
+  normalizeOAuthMobileCodeChallenge,
+  normalizeOAuthMobileState,
   setOAuthContextCookie,
 } from "@/lib/oauth/flow-context";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
@@ -42,9 +44,18 @@ export async function GET(request: NextRequest) {
       {
         locale: url.searchParams.get("locale") ?? request.cookies.get("NEXT_LOCALE")?.value,
         postLoginPath: url.searchParams.get("from"),
+        mobileRedirectUri: url.searchParams.get("mobile_redirect_uri"),
       },
       [process.env.OAUTH_GITHUB_CALLBACK_URL, process.env.NEXT_PUBLIC_APP_URL],
     );
+    const mobileState = normalizeOAuthMobileState(url.searchParams.get("mobile_state"));
+    const mobileCodeChallenge = normalizeOAuthMobileCodeChallenge(url.searchParams.get("mobile_code_challenge"));
+    if (context.mobileRedirectUri && (!mobileState || !mobileCodeChallenge)) {
+      return NextResponse.json(
+        { error: "Missing or invalid mobile OAuth verifier challenge" },
+        { status: 400 },
+      );
+    }
     // Generate state for CSRF protection
     const state = generateState();
 
@@ -61,6 +72,12 @@ export async function GET(request: NextRequest) {
 
     // Store state in httpOnly cookie
     response.cookies.set("oauth_state_github", state, cookieOptions);
+    if (context.mobileRedirectUri && mobileState) {
+      response.cookies.set("oauth_mobile_state_github", mobileState, cookieOptions);
+    }
+    if (context.mobileRedirectUri && mobileCodeChallenge) {
+      response.cookies.set("oauth_mobile_code_challenge_github", mobileCodeChallenge, cookieOptions);
+    }
     setOAuthContextCookie(response, request, "github", "signin", context, COOKIE_MAX_AGE);
 
     return response;

@@ -90,6 +90,7 @@ export function CareHubScreen() {
 
   const gradient = HERO_GRADIENTS[themeName] ?? HERO_GRADIENTS.calm;
   const heroFg = HERO_FG[themeName] ?? HERO_FG.calm;
+  const canJoinNextVideo = nextAppointment?.visit_type === 'video' && Boolean(nextAppointment.video_join_url);
 
   const gridTiles = [
     { id: 'appointments', icon: <IconCalendar size={20} color={t.brand} />,   iconBg: t.brand   + '18', title: i18n('care.appointments'),  subtitle: i18n('care.upcomingCount', { count: upcomingCount }), route: '/care/appointments' },
@@ -132,11 +133,20 @@ export function CareHubScreen() {
               <View style={styles.heroActions}>
                 {nextAppointment ? (
                   <>
-                    <Pressable style={styles.heroBtnPrimary} onPress={() => router.push('/care/appointments' as never)}>
-                      <IconVideo size={16} color={heroFg} />
-                      <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700', marginLeft: 6 }]}>{i18n('care.join')}</Text>
+                    <Pressable
+                      style={styles.heroBtnPrimary}
+                      onPress={() => router.push(
+                        canJoinNextVideo
+                          ? `/care/video/${nextAppointment.id}` as never
+                          : `/care/appointment/${nextAppointment.id}` as never,
+                      )}
+                    >
+                      {canJoinNextVideo && <IconVideo size={16} color={heroFg} />}
+                      <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700', marginLeft: canJoinNextVideo ? 6 : 0 }]}>
+                        {canJoinNextVideo ? i18n('care.join') : i18n('care.details')}
+                      </Text>
                     </Pressable>
-                    <Pressable style={styles.heroBtnGhost} onPress={() => router.push('/care/appointments' as never)}>
+                    <Pressable style={styles.heroBtnGhost} onPress={() => router.push(`/care/prep/${nextAppointment.id}` as never)}>
                       <Text style={[typography.bodyMed, { color: '#FFF', fontWeight: '600' }]}>{i18n('care.prep')}</Text>
                     </Pressable>
                   </>

@@ -1,5 +1,6 @@
 import React, { createContext, use, useCallback, useEffect, useMemo, useState } from 'react';
 import { setRefreshHandler, setUnauthorizedHandler } from '../api/client';
+import { BOOTSTRAP_PROFILE_TIMEOUT_MS, toCoreReachabilityMessage } from '../api/core-reachability';
 import { invalidateApiQuery, setApiSessionScope } from '../api/query';
 import { authService, profileService } from '../api/services';
 import {
@@ -16,6 +17,7 @@ interface SignInResult {
   mfaRequired: boolean;
   challengeId?: string;
   expiresInSeconds?: number;
+  user?: CurrentUser;
 }
 
 interface SessionContextValue {
@@ -24,11 +26,17 @@ interface SessionContextValue {
   authenticated: boolean;
   error: string | null;
   signIn: (identifier: string, password: string) => Promise<SignInResult>;
-  completeMfaSignIn: (challengeId: string, code: string) => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'github') => Promise<CurrentUser>;
+  completeMfaSignIn: (challengeId: string, code: string) => Promise<CurrentUser>;
   signOut: () => Promise<void>;
-  refreshUser: () => Promise<CurrentUser | null>;
+  refreshUser: (options?: RefreshUserOptions) => Promise<CurrentUser | null>;
   updateProfile: (body: UserProfileUpdate) => Promise<CurrentUser>;
   clearSession: () => Promise<void>;
+}
+
+interface RefreshUserOptions {
+  timeoutMs?: number;
+  throwOnFailure?: boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -50,17 +58,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setError(null);
   }, []);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (options: RefreshUserOptions = {}) => {
     try {
-      const next = await profileService.me();
+      const next = await profileService.me({ timeoutMs: options.timeoutMs });
       await saveCurrentUser(next);
       setApiSessionScope(next.id);
       setUser(next);
       setError(null);
       return next;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to refresh session.';
+      const message = toCoreReachabilityMessage(err) ?? (err instanceof Error ? err.message : 'Unable to refresh session.');
       setError(message);
+      if (options.throwOnFailure) throw new Error(message);
       return null;
     }
   }, []);
@@ -94,7 +103,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (active) setBooting(false);
         return;
       }
-      await refreshUser();
+      await refreshUser({ timeoutMs: BOOTSTRAP_PROFILE_TIMEOUT_MS });
       if (active) setBooting(false);
     }
 
@@ -119,21 +128,46 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     invalidateApiQuery();
     setApiSessionScope(tokenResult.user_id);
     await saveAuthToken(tokenResult);
-    await refreshUser();
-    return { mfaRequired: false };
-  }, [refreshUser]);
+    try {
+      const nextUser = await refreshUser({ throwOnFailure: true });
+      if (!nextUser) throw new Error('Unable to refresh session.');
+      return { mfaRequired: false, user: nextUser };
+    } catch (err) {
+      await clearSession();
+      throw err;
+    }
+  }, [clearSession, refreshUser]);
+
+  const signInWithOAuth = useCallback(async (provider: 'google' | 'github') => {
+    const tokenResult = await authService.signInWithOAuth(provider);
+    invalidateApiQuery();
+    setApiSessionScope(tokenResult.user_id);
+    try {
+      const nextUser = await refreshUser({ throwOnFailure: true });
+      if (!nextUser) throw new Error('Unable to refresh session.');
+      return nextUser;
+    } catch (err) {
+      await clearSession();
+      throw err;
+    }
+  }, [clearSession, refreshUser]);
 
   const completeMfaSignIn = useCallback(async (challengeId: string, code: string) => {
     const token = await authService.verifyLoginMfa(challengeId, code);
     invalidateApiQuery();
     setApiSessionScope(token.user_id);
-    await refreshUser();
-  }, [refreshUser]);
+    try {
+      const nextUser = await refreshUser({ throwOnFailure: true });
+      if (!nextUser) throw new Error('Unable to refresh session.');
+      return nextUser;
+    } catch (err) {
+      await clearSession();
+      throw err;
+    }
+  }, [clearSession, refreshUser]);
 
   const signOut = useCallback(async () => {
-    await authService.logout().catch((e: unknown) => {
-      if (__DEV__) console.warn('[SessionProvider] logout network error:', e);
-    });
+    await authService.logout();
     invalidateApiQuery();
     setApiSessionScope(null);
     setUser(null);
@@ -154,13 +188,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       authenticated: Boolean(user),
       error,
       signIn,
+      signInWithOAuth,
       completeMfaSignIn,
       signOut,
       refreshUser,
       updateProfile,
       clearSession,
     }),
-    [booting, clearSession, completeMfaSignIn, error, refreshUser, signIn, signOut, updateProfile, user],
+    [booting, clearSession, completeMfaSignIn, error, refreshUser, signIn, signInWithOAuth, signOut, updateProfile, user],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

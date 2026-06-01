@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import Animated, { useAnimatedProps } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useRingEntrance } from '../../animations/useRingEntrance';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);

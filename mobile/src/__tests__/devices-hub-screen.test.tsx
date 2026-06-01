@@ -69,14 +69,47 @@ describe('DevicesHubScreen', () => {
     expect(getAllByText(/connected device/i).length).toBeGreaterThan(0);
   });
 
-  it('renders empty state when no devices are connected', () => {
+  it('renders Android platform affordances when no devices are connected', () => {
     mockUseApiQuery.mockReturnValue({
       ...baseQueryState,
       isEmpty: true,
       data: [],
     } as never);
 
-    const { getByText } = render(<DevicesHubScreen />);
+    const { getByText, queryByText } = render(<DevicesHubScreen />);
     expect(getByText('No devices connected')).toBeTruthy();
+    expect(getByText('Health Connect')).toBeTruthy();
+    expect(queryByText('Samsung Health')).toBeNull();
+    expect(queryByText('Apple Health')).toBeNull();
+  });
+
+  it('preserves legacy Core apple_health connected rows without promoting it as a platform source', () => {
+    mockUseApiQuery.mockReturnValue({
+      ...baseQueryState,
+      data: [
+        {
+          id: 'dev-apple-1',
+          provider: 'apple_health',
+          name: 'Apple Health',
+          model: null,
+          connected: true,
+          last_sync: null,
+          battery_pct: null,
+          device_label: 'Legacy import',
+          external_account_id: null,
+          scopes: null,
+          last_sync_status: 'ok',
+          last_sync_error: null,
+          last_sync_count: 1,
+          last_attempted_at: null,
+        },
+      ],
+    } as never);
+
+    const { getAllByText, getByText } = render(<DevicesHubScreen />);
+
+    expect(getByText('Health Connect')).toBeTruthy();
+    expect(getAllByText('Apple Health')).toHaveLength(1);
+    expect(getByText('Legacy import')).toBeTruthy();
   });
 });

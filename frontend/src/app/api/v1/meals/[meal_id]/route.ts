@@ -16,3 +16,11 @@ export async function PATCH(
   const { meal_id } = await params;
   return coreProxy(req, `/v1/meals/${meal_id}`, { method: "PATCH" });
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ meal_id: string }> },
+) {
+  const { meal_id } = await params;
+  return coreProxy(req, `/v1/meals/${meal_id}`, { method: "DELETE" });
+}

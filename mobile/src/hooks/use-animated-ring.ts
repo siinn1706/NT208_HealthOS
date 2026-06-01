@@ -11,7 +11,7 @@ export function useAnimatedRing(target: number, circumference: number) {
     useCallback(() => {
       progress.value = 0;
       progress.value = withSpring(target, springConfig);
-    }, [target])
+    }, [progress, target])
   );
 
   const animatedProps = useAnimatedProps(() => ({

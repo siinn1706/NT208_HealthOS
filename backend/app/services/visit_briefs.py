@@ -139,6 +139,49 @@ async def _load_owned_brief(
     return row
 
 
+async def _load_owned_appointment(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    appointment_id: uuid.UUID,
+    for_update: bool = False,
+) -> Appointment:
+    stmt = select(Appointment).where(
+        Appointment.id == appointment_id,
+        Appointment.user_id == user_id,
+    )
+    if for_update:
+        stmt = stmt.with_for_update()
+    appt = (await db.execute(stmt)).scalar_one_or_none()
+    if appt is None:
+        raise AppointmentNotFound(str(appointment_id))
+    return appt
+
+
+async def _active_draft_brief_for_appointment(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    appointment_id: uuid.UUID,
+) -> Optional[VisitBrief]:
+    return (
+        await db.execute(
+            select(VisitBrief)
+            .join(
+                AppointmentBriefLink,
+                AppointmentBriefLink.visit_brief_id == VisitBrief.id,
+            )
+            .where(
+                VisitBrief.user_id == user_id,
+                VisitBrief.status == VisitBriefStatusEnum.DRAFT.value,
+                AppointmentBriefLink.appointment_id == appointment_id,
+                AppointmentBriefLink.is_active.is_(True),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
 def _ensure_editable(brief: VisitBrief) -> None:
     if brief.status != VisitBriefStatusEnum.DRAFT.value:
         raise BriefNotEditable(
@@ -296,6 +339,23 @@ async def create_brief(
             hydrate=True,
         )
 
+    attach_appointment: Optional[Appointment] = None
+    if body.attach_to_appointment_id is not None:
+        attach_appointment = await _load_owned_appointment(
+            db,
+            user_id=user_id,
+            appointment_id=body.attach_to_appointment_id,
+            for_update=True,
+        )
+        if source is None:
+            existing = await _active_draft_brief_for_appointment(
+                db,
+                user_id=user_id,
+                appointment_id=attach_appointment.id,
+            )
+            if existing is not None:
+                return existing
+
     brief = VisitBrief(
         user_id=user_id,
         visit_type=body.visit_type if source is None else source.visit_type,
@@ -343,12 +403,12 @@ async def create_brief(
     # cloned brief this captures the cloned symptoms in the audit trail
     # immediately rather than waiting for the user's first interaction.
     await _persist_triage(db, user_id=user_id, brief=brief, request=request)
-    if body.attach_to_appointment_id is not None:
+    if attach_appointment is not None:
         await attach_to_appointment(
             db=db,
             user_id=user_id,
             brief_id=brief.id,
-            appointment_id=body.attach_to_appointment_id,
+            appointment_id=attach_appointment.id,
         )
     await db.refresh(brief)
     return brief
@@ -643,16 +703,9 @@ async def attach_to_appointment(
     appointment_id: uuid.UUID,
 ) -> AppointmentBriefLink:
     brief = await _load_owned_brief(db, user_id=user_id, brief_id=brief_id)
-    appt = (
-        await db.execute(
-            select(Appointment).where(
-                Appointment.id == appointment_id,
-                Appointment.user_id == user_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if appt is None:
-        raise AppointmentNotFound(str(appointment_id))
+    appt = await _load_owned_appointment(
+        db, user_id=user_id, appointment_id=appointment_id
+    )
 
     # Idempotent: if an active link for this exact pair exists, return it.
     existing = (

@@ -8,7 +8,7 @@ import { typography } from '../../theme/typography';
 import { TopBar } from '../layout/top-bar';
 import { Button } from '../primitives/button';
 import { IconButton } from '../primitives/icon-button';
-import { ApiState, MissingApiState } from '../api/api-state';
+import { ApiState } from '../api/api-state';
 import { ChevronLeft, IconRefresh } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
@@ -27,7 +27,6 @@ export function RefillLogScreen() {
   const [error, setError] = useState<string | null>(null);
   const [supplyUnits, setSupplyUnits] = useState<string>('');
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [missingOpen, setMissingOpen] = useState(false);
 
   const hasSupply = medication.data?.refill_supply_units !== null && medication.data?.refill_supply_units !== undefined;
   const currentUnits = medication.data?.refill_supply_units ?? 0;
@@ -103,16 +102,6 @@ export function RefillLogScreen() {
         </Pressable>
       </Modal>
 
-      {/* Request refill coming-soon modal */}
-      <Modal visible={missingOpen} transparent animationType="fade" onRequestClose={() => setMissingOpen(false)}>
-        <Pressable style={s.modalBackdrop} onPress={() => setMissingOpen(false)}>
-          <View style={[s.modalSheet, { backgroundColor: t.card, borderRadius: t.radius.xl }]}>
-            <MissingApiState title={i18n('meds.requestRefill')} contract="Pharmacy refill request API not yet available." />
-            <Button label={i18n('common.close')} variant="ghost" onPress={() => setMissingOpen(false)} style={{ marginTop: 8 }} />
-          </View>
-        </Pressable>
-      </Modal>
-
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
         {medication.isLoading && <ApiState title={i18n('api.loading')} loading />}
         {medication.error && <ApiState title={i18n('api.unavailable')} message={medication.error.message} actionLabel={i18n('common.retry')} onAction={medication.reload} />}
@@ -130,10 +119,10 @@ export function RefillLogScreen() {
                   {i18n('meds.runningLow')}
                 </Text>
                 <Button
-                  label={i18n('meds.requestRefill')}
+                  label={i18n('meds.logRefill')}
                   variant="solid"
                   style={s.alertBtn}
-                  onPress={() => setMissingOpen(true)}
+                  onPress={openConfirm}
                 />
               </View>
             )}

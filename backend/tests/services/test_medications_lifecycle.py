@@ -115,6 +115,9 @@ async def test_full_plan_lifecycle(temp_user):
         resumed = await med_svc.resume_plan(db, user_id, plan.id)
         await db.commit()
         assert resumed is not None and resumed.status == "active"
+        async with AsyncSessionLocal() as fresh:
+            pending_after_resume = await _count_pending(fresh, plan.id)
+        assert pending_after_resume > 0, "resume must restore future dose occurrences"
 
         # Update schedule (rebuild reminders) — drop to 1 dose/day.
         updated = await med_svc.update_plan(
@@ -163,6 +166,59 @@ async def test_pause_is_idempotent(temp_user):
         await db.commit()
         assert first is not None and first.status == "paused"
         assert second is not None and second.status == "paused"
+
+
+async def test_pause_metadata_persists_and_resume_clears(temp_user):
+    user_id = temp_user
+    pause_until = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)
+    async with AsyncSessionLocal() as db:
+        plan = await med_svc.create_plan(
+            db, user_id,
+            MedicationPlanCreateBody(name="Procedure Hold", dose_times=["08:00"]),
+        )
+        await db.commit()
+
+        paused = await med_svc.pause_plan(
+            db,
+            user_id,
+            plan.id,
+            pause_until=pause_until,
+            pause_reason="  upcoming procedure  ",
+            update_pause_metadata=True,
+        )
+        await db.commit()
+        assert paused is not None
+        assert paused.status == "paused"
+        assert paused.pause_until is not None
+        assert paused.pause_reason == "upcoming procedure"
+
+        resumed = await med_svc.resume_plan(db, user_id, plan.id)
+        await db.commit()
+        assert resumed is not None
+        assert resumed.status == "active"
+        assert resumed.pause_until is None
+        assert resumed.pause_reason is None
+        async with AsyncSessionLocal() as fresh:
+            assert await _count_pending(fresh, plan.id) > 0
+
+
+async def test_pause_rejects_past_pause_until(temp_user):
+    user_id = temp_user
+    async with AsyncSessionLocal() as db:
+        plan = await med_svc.create_plan(
+            db, user_id,
+            MedicationPlanCreateBody(name="Past Hold", dose_times=["08:00"]),
+        )
+        await db.commit()
+
+        with pytest.raises(ValueError, match="future"):
+            await med_svc.pause_plan(
+                db,
+                user_id,
+                plan.id,
+                pause_until=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=1),
+                update_pause_metadata=True,
+            )
 
 
 async def test_cross_user_get_returns_none(temp_user):

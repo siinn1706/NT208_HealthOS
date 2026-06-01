@@ -17,6 +17,7 @@ import {
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const MASTER_EXAMPLE = path.join(SCRIPT_DIR, "../env/.env.master.example");
+const ANDROID_SHA256 = Array.from({ length: 32 }, (_, index) => index.toString(16).padStart(2, "0")).join(":").toUpperCase();
 
 function loadExampleEnv(overrides = {}) {
   return {
@@ -58,6 +59,11 @@ function loadProductionEnv(overrides = {}) {
     NEXT_PUBLIC_CORE_WS_URL: "wss://healthos.test/ws",
     EXPO_PUBLIC_CORE_API_URL: "https://api.healthos.test",
     EXPO_PUBLIC_CORE_WS_URL: "wss://api.healthos.test/ws",
+    EXPO_PUBLIC_WEB_APP_URL: "https://healthos.test",
+    EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: "https://healthos.test/auth/oauth/mobile-callback",
+    MOBILE_OAUTH_REDIRECT_URIS: "nt208://auth/oauth/callback,https://healthos.test/auth/oauth/mobile-callback",
+    ANDROID_APP_LINK_PACKAGE_NAME: "com.nt208.healthos",
+    ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS: ANDROID_SHA256,
     ...overrides,
   });
 }
@@ -123,6 +129,23 @@ test("backend rendering defaults missing DB_DISABLE_POOL for existing master env
 
   const [backend] = renderTargets(env, ["backend"], root);
   assert.match(backend.content, /DB_DISABLE_POOL=false/);
+});
+
+test("mobile rendering defaults missing public URLs to blank emulator local values", () => {
+  const root = makeTempRoot();
+  const env = loadExampleEnv();
+  delete env.EXPO_PUBLIC_CORE_API_URL;
+  delete env.EXPO_PUBLIC_CORE_WS_URL;
+  delete env.EXPO_PUBLIC_WEB_APP_URL;
+  delete env.EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI;
+
+  assert.doesNotThrow(() => validateEnv(env, ["mobile"]));
+
+  const [mobile] = renderTargets(env, ["mobile"], root);
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_API_URL=$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_WEB_APP_URL=$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=$/m);
 });
 
 test("validateEnv rejects production placeholder values", () => {
@@ -216,6 +239,28 @@ test("validateEnv rejects production cookie ttl beyond access token ttl", () => 
   );
 });
 
+test("validateEnv rejects production Android App Links without release fingerprint", () => {
+  const env = loadProductionEnv({
+    ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS: "",
+  });
+
+  assert.throws(
+    () => validateEnv(env, resolveTargetNames("prod"), { requireProdValidation: true }),
+    /ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS/,
+  );
+});
+
+test("validateEnv rejects production mobile App Link missing from BFF allowlist", () => {
+  const env = loadProductionEnv({
+    MOBILE_OAUTH_REDIRECT_URIS: "nt208://auth/oauth/callback",
+  });
+
+  assert.throws(
+    () => validateEnv(env, resolveTargetNames("prod"), { requireProdValidation: true }),
+    /MOBILE_OAUTH_REDIRECT_URIS/,
+  );
+});
+
 test("public env keys must not look like server-side secrets", () => {
   assert.throws(
     () => assertPublicKeyIsSafe("NEXT_PUBLIC_API_KEY"),
@@ -234,6 +279,8 @@ test("rendered files contain only target-relevant service keys", () => {
   const aiWorker = fs.readFileSync(path.join(root, "services/ai-worker/.env"), "utf8");
 
   assert.match(mobile, /EXPO_PUBLIC_CORE_API_URL=/);
+  assert.match(mobile, /EXPO_PUBLIC_WEB_APP_URL=/);
+  assert.match(mobile, /EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=/);
   assert.doesNotMatch(mobile, /AI_PROXY_BASE_URL=/);
   assert.match(notification, /FIREBASE_PROJECT_ID=firebase-project/);
   assert.doesNotMatch(notification, /AI_PROXY_BASE_URL=/);
@@ -242,6 +289,47 @@ test("rendered files contain only target-relevant service keys", () => {
   assert.match(aiWorker, /AI_PROXY_API_KEY=proxy-secret/);
   assert.match(aiWorker, /AI_PROXY_THINKING_MODE=disabled/);
   assert.match(aiWorker, /AI_EMBEDDING_DIMENSION=384/);
-  assert.match(aiWorker, /AI_CHAT_MAX_TOKENS=2048/);
+  assert.match(aiWorker, /AI_CHAT_MAX_TOKENS=32768/);
   assert.doesNotMatch(aiWorker, /GEMINI_API_KEY=/);
+});
+
+test("mobile local render blanks old emulator defaults for emulator workflows", () => {
+  const root = makeTempRoot();
+  const env = loadExampleEnv({
+    EXPO_PUBLIC_CORE_API_URL: "http://10.0.2.2:8000/",
+    EXPO_PUBLIC_CORE_WS_URL: "ws://10.0.2.2:8000/",
+    EXPO_PUBLIC_WEB_APP_URL: "http://10.0.2.2:3000/",
+  });
+  const [mobile] = renderTargets(env, ["mobile"], root);
+
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_API_URL=$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_WEB_APP_URL=$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=$/m);
+});
+
+test("mobile local render preserves explicit LAN overrides", () => {
+  const root = makeTempRoot();
+  const env = loadExampleEnv({
+    EXPO_PUBLIC_CORE_API_URL: "http://192.168.1.10:8000",
+    EXPO_PUBLIC_CORE_WS_URL: "ws://192.168.1.10:8000",
+    EXPO_PUBLIC_WEB_APP_URL: "http://192.168.1.10:3000",
+  });
+  const [mobile] = renderTargets(env, ["mobile"], root);
+
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_API_URL=http:\/\/192\.168\.1\.10:8000$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=ws:\/\/192\.168\.1\.10:8000$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_WEB_APP_URL=http:\/\/192\.168\.1\.10:3000$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=$/m);
+});
+
+test("mobile production render preserves HTTPS and WSS values", () => {
+  const root = makeTempRoot();
+  const env = loadProductionEnv();
+  const [mobile] = renderTargets(env, ["mobile"], root);
+
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_API_URL=https:\/\/api\.healthos\.test$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=wss:\/\/api\.healthos\.test\/ws$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_WEB_APP_URL=https:\/\/healthos\.test$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https:\/\/healthos\.test\/auth\/oauth\/mobile-callback$/m);
 });

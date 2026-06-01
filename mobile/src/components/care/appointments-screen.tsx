@@ -64,7 +64,9 @@ export function AppointmentsScreen() {
 
   const TABS = [i18n('care.upcoming'), i18n('care.past'), i18n('care.all')];
 
-  const hero = filteredAppointments[0] ? toHeroAppointment(filteredAppointments[0]) : null;
+  const heroAppointment = filteredAppointments[0] ?? null;
+  const hero = heroAppointment ? toHeroAppointment(heroAppointment) : null;
+  const canJoinHeroVideo = heroAppointment?.visit_type === 'video' && Boolean(heroAppointment.video_join_url);
   const weekDays = makeWeekDays(appointments.data ?? []);
   const upcomingCount = (appointments.data ?? []).filter((apt) => new Date(apt.appointment_date).getTime() >= Date.now()).length;
   const pastCount = (appointments.data ?? []).filter((apt) => new Date(apt.appointment_date).getTime() < Date.now()).length;
@@ -102,7 +104,13 @@ export function AppointmentsScreen() {
       <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
       {appointments.isLoading && <ApiState title={i18n('care.loadingAppointments')} loading skeleton={<ApptListSkeleton />} />}
       {appointments.error && <ApiState title={i18n('care.appointmentsUnavailable')} message={humanizeError(appointments.error)} actionLabel={i18n('common.retry')} onAction={appointments.reload} />}
-      {hero && <HeroAppointmentCard {...hero} onJoin={() => router.push(`/care/video/${hero.id}` as never)} />}
+      {hero && (
+        <HeroAppointmentCard
+          {...hero}
+          onJoin={canJoinHeroVideo ? () => router.push(`/care/video/${hero.id}` as never) : undefined}
+          onMore={() => router.push(`/care/appointment/${hero.id}` as never)}
+        />
+      )}
       <SectionHeader title={selectedDate !== null ? i18n('care.dayN', { day: selectedDate }) : i18n('care.thisWeek')} />
       {!appointments.isLoading && !appointments.error && filteredAppointments.length === 0 && (
         <ApiState
