@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { Button } from '../primitives/button';
 import { authService } from '../../api/services';
 import { useSession } from '../../auth/session-provider';
 import { consumePendingSignup } from '../../auth/pending-signup';
+import { getPostAuthRoute } from '../../auth/auth-route-policy';
 
 const OTP_LEN = 6;
 const COUNTDOWN_SEC = 60;
@@ -40,7 +41,7 @@ function useBlink() {
       -1,
       false,
     );
-  }, []);
+  }, [opacity]);
   return useAnimatedStyle(() => ({ opacity: opacity.value }));
 }
 
@@ -137,10 +138,15 @@ export function AuthOtpScreen() {
         router.replace('/auth/sign-in');
         return;
       }
-      await session.refreshUser();
+      let refreshedUser;
+      try {
+        refreshedUser = await session.refreshUser({ throwOnFailure: true });
+      } catch (refreshError) {
+        await session.clearSession();
+        throw refreshError;
+      }
       if (params.purpose === 'reset_password') router.replace('/auth/sign-in');
-      else if (params.purpose === 'login') router.replace('/home');
-      else router.replace('/onboarding/setup' as never);
+      else router.replace(getPostAuthRoute(refreshedUser?.onboarding_status) as never);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code.');
     } finally {

@@ -1,12 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { HeartPulse } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
+import { HealthOSBrandMark } from '../brand/healthos-brand-mark';
 
 export function AuthWelcomeScreen() {
   const t = useTheme();
@@ -20,14 +19,9 @@ export function AuthWelcomeScreen() {
         <View style={[styles.logoHalo, { backgroundColor: `${t.brand}20` }]}>
           {/* Inner glow ring */}
           <View style={[styles.logoRing, { backgroundColor: t.brandSoft }]}>
-            <LinearGradient
-              colors={[t.brand, t.accent ?? t.brandDeep]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.logoGlow, { shadowColor: t.brand }]}
-            >
-              <HeartPulse size={38} color="#FFFFFF" />
-            </LinearGradient>
+            <View style={[styles.logoGlow, { shadowColor: t.brand }]}>
+              <HealthOSBrandMark size={80} />
+            </View>
           </View>
         </View>
       </View>

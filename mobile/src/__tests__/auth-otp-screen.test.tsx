@@ -6,6 +6,7 @@ import { authService } from '../api/services';
 
 const mockRouterReplace = jest.fn();
 const mockRefreshUser = jest.fn();
+const mockClearSession = jest.fn();
 let mockParams: { email?: string; purpose?: string } = {};
 
 jest.mock('expo-router', () => ({
@@ -25,6 +26,7 @@ jest.mock('../api/services', () => ({
 jest.mock('../auth/session-provider', () => ({
   useSession: () => ({
     refreshUser: mockRefreshUser,
+    clearSession: mockClearSession,
   }),
 }));
 
@@ -41,6 +43,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockParams = { email: 'person@example.com', purpose: 'signup' };
   mockRefreshUser.mockResolvedValue({ id: 'user-1', email: 'person@example.com' });
+  mockClearSession.mockResolvedValue(undefined);
   mockAuthService.verifyOtp.mockResolvedValue({
     access_token: 'access',
     token_type: 'bearer',
@@ -71,8 +74,25 @@ describe('AuthOtpScreen', () => {
         purpose: 'signup',
         code: '123456',
       });
-      expect(mockRefreshUser).toHaveBeenCalledTimes(1);
+      expect(mockRefreshUser).toHaveBeenCalledWith({ throwOnFailure: true });
       expect(mockRouterReplace).toHaveBeenCalledWith('/onboarding/setup');
+    });
+  });
+
+  it('clears the stored OTP session when profile refresh fails', async () => {
+    mockRefreshUser.mockRejectedValueOnce(new Error('Profile API down'));
+    const { getByText, UNSAFE_getAllByType } = render(<AuthOtpScreen />);
+    const inputs = UNSAFE_getAllByType('TextInput' as never);
+
+    ['1', '2', '3', '4', '5', '6'].forEach((digit, index) => {
+      fireEvent.changeText(inputs[index], digit);
+    });
+    fireEvent.press(getByText('Verify'));
+
+    await waitFor(() => {
+      expect(mockClearSession).toHaveBeenCalledTimes(1);
+      expect(getByText('Profile API down')).toBeTruthy();
+      expect(mockRouterReplace).not.toHaveBeenCalled();
     });
   });
 });

@@ -38,15 +38,186 @@ npx expo start
 ```
 
 Open in Expo Go (iOS/Android) or press `i` / `a` for simulators.
+Use `npm run android` to start Expo and open Android. The command checks ADB
+first, closes stale offline emulator transports, starts the selected Android
+emulator when no device is online, waits until ADB and the emulator console are
+ready, and skips Expo's online dependency-validation fetch so local startup
+still works without access to the Expo versions endpoint. When online, run
+`npm run check:expo-deps` to review SDK-compatible package versions.
 
-Set backend URLs with environment variables so physical devices can reach Core BE:
+Health Connect native sync cannot be signed off from Expo Go. Use the native
+Android path before release or when validating `/profile/devices` sync:
+
+```powershell
+npm run android:native
+```
+
+This command first verifies Android native readiness, selects a JDK with
+`javac` (Android Studio JBR is used when `JAVA_HOME` is blank), runs the same
+ADB/emulator preflight, then builds and installs the native Android app with
+`expo run:android` so the Health Connect modules and Android permissions
+declared in `app.json` are present. Expo Go remains valid for general UI/API
+smoke only.
+
+Optional Android startup knobs:
+
+```powershell
+$env:ANDROID_AVD_NAME="Pixel_8"                 # override first installed AVD
+$env:ANDROID_EMULATOR_BOOT_WAIT_MS="240000"     # slow first boot, default 180000
+$env:ADB_PATH="C:\Users\<you>\AppData\Local\Android\Sdk\platform-tools\adb.exe"
+```
+
+For emulator-only local development, mobile backend and BFF URLs can stay blank;
+the Android emulator may still use `10.0.2.2` fallback URLs. For a physical
+Android phone, `npm run android` requires explicit public URLs before Metro
+starts because blank values can fall back to emulator-only `10.0.2.2` when Expo
+LAN metadata is unavailable.
+
+Set physical-device URLs to this computer's LAN IP:
 
 ```bash
 EXPO_PUBLIC_CORE_API_URL=http://192.168.1.10:8000
 EXPO_PUBLIC_CORE_WS_URL=ws://192.168.1.10:8000
+EXPO_PUBLIC_WEB_APP_URL=http://192.168.1.10:3000
 ```
 
-Use your LAN IP for phones on the same network. For Android emulator, prefer `10.0.2.2` instead of `localhost`. See [`mobile/.env.example`](./.env.example).
+Use your LAN IP for phones on the same network and start Core so it listens on
+the LAN interface. Start the Next.js frontend/BFF on the same host before using
+Google or GitHub sign-in from mobile.
+
+```powershell
+..\start_BE.bat -Host 0.0.0.0
+```
+
+For Android emulator, a blank local env still falls back to `10.0.2.2` when no
+LAN host is available. Do not keep `10.0.2.2` in `mobile/.env` when testing on a
+physical phone; it will override LAN auto-detection and the phone cannot reach
+your computer through that emulator-only address. See
+[`mobile/.env.example`](./.env.example). Production builds still require
+HTTPS/WSS configuration.
+
+If Android appears open but Expo cannot control it, verify `adb devices -l`.
+Any `offline` emulator means ADB cannot install/open Expo Go; rerun
+`npm run android` so the preflight can close the stale emulator and let Expo
+start a clean one. If `adb start-server` reports `socketpair` or `WinError
+10106`, repair the Windows network stack and reboot before retrying; that is a
+machine-level ADB failure, not an Expo app failure.
+
+### Codex Run actions
+
+Codex actions are wired inside this Expo app root:
+
+```bash
+./script/build_and_run.sh --help
+./script/build_and_run.sh
+./script/build_and_run.sh --android
+```
+
+On Windows/Codex actions, use the wrapper:
+
+```powershell
+.\script\build_and_run.cmd --help
+.\script\build_and_run.cmd --android
+.\script\build_and_run.cmd --android-native
+```
+
+- `Run` starts the Expo dev server in the foreground.
+- `Run Android` uses the existing `npm run android` path, including ADB preflight.
+- `Run Android Native` uses `npm run android:native`; use it for Health Connect smoke.
+- No web target or web cloud build is configured for this mobile-only app.
+
+### Android EAS build and submit
+
+`eas.json` contains Android-only release profiles:
+
+- `preview` builds an internal APK for tester devices.
+- `production` builds a Google Play-ready AAB and auto-increments the checked-in Android `versionCode`.
+- `submit.production.android.track` defaults to `internal`.
+
+Before the first cloud build, the Expo project owner must run EAS init so Expo
+creates the real project ID:
+
+```powershell
+npx eas-cli@latest init
+```
+
+This app also supports injecting the real project ID through
+`EAS_PROJECT_ID`; `app.config.js` writes it to `extra.eas.projectId` during
+Expo/EAS config resolution. This keeps the repo free of placeholder project IDs
+while still allowing local and cloud release checks:
+
+```powershell
+$env:EAS_PROJECT_ID="<expo-project-uuid>"
+npm run check:expo-config
+```
+
+Production builds also need public HTTPS/WSS runtime URLs configured through
+EAS environment variables or a release `.env` that is not committed:
+
+```text
+EXPO_PUBLIC_CORE_API_URL=https://api.example.com
+EXPO_PUBLIC_CORE_WS_URL=wss://api.example.com
+EXPO_PUBLIC_WEB_APP_URL=https://app.example.com
+EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://app.example.com/auth/oauth/mobile-callback
+```
+
+This repo uses EAS local app versioning, so `app.json` starts Android at
+`versionCode: 1`. Commit every EAS `versionCode` bump before the next Google
+Play build. If the project later switches to remote versioning, run the EAS
+version setup command with the Expo project owner and update `eas.json` in the
+same change.
+
+Build Android binaries from this `mobile/` directory:
+
+```powershell
+npx eas-cli@latest build --platform android --profile preview
+npx eas-cli@latest build --platform android --profile production
+```
+
+Submit the latest production Android build after the Google Play app, package
+name, first manual upload, and service account access are configured:
+
+```powershell
+npx eas-cli@latest submit --platform android --profile production --latest
+```
+
+Do not commit Google service account JSON, keystores, upload keys, or release
+environment files.
+
+### Android App Links for OAuth
+
+Local OAuth keeps using `nt208://auth/oauth/callback`. Production Android builds
+should set `EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI` to an HTTPS App Link on the
+web/BFF host. `app.config.js` then emits an Android `autoVerify` intent filter
+for that host and path.
+
+The frontend/BFF must allow the same URI and serve Digital Asset Links:
+
+```text
+MOBILE_OAUTH_REDIRECT_URIS=nt208://auth/oauth/callback,https://app.example.com/auth/oauth/mobile-callback
+ANDROID_APP_LINK_PACKAGE_NAME=com.nt208.healthos
+ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS=AA:BB:...:FF
+```
+
+Get the SHA-256 fingerprint from the Play/App signing certificate or upload
+certificate that signs the installed Android build. The value belongs in deploy
+env/EAS secrets, not git.
+
+### Product readiness checks
+
+```powershell
+npm run check:logo-parity
+npm run check:expo-config
+npm run check:routes
+npm run check:android-native-readiness
+```
+
+`check:logo-parity` keeps the in-app mobile brand mark aligned with
+`../frontend/public/logo.svg` and verifies the launcher/splash asset dimensions
+referenced by Expo config.
+`check:android-native-readiness` verifies a usable JDK, Android SDK tools,
+static Expo Android metadata, and Android EAS preview/production profiles
+without starting Metro, launching an emulator, or submitting a cloud build.
 
 ## Themes
 

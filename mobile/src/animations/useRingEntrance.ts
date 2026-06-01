@@ -18,7 +18,7 @@ export function useRingEntrance(target: number, circumference: number) {
     } else {
       progress.value = withSpring(target, SPRING);
     }
-  }, [target]);
+  }, [progress, target]);
 
   return useAnimatedProps(() => ({
     strokeDashoffset: circumference * (1 - progress.value),

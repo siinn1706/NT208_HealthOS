@@ -37,14 +37,16 @@ export function HeroAppointmentCard({ countdown, doctor, specialty, location, ty
       <Text style={[typography.caption, styles.sub]}>{specialty} · {type}</Text>
       <Text style={[typography.caption, styles.sub]}>{location}</Text>
       <View style={styles.actions}>
-        <Button
-          label={i18n('care.join')}
-          variant="solid"
-          icon={<IconVideo size={16} color={t.brand} />}
-          onPress={onJoin}
-          labelColor={t.brand}
-          style={StyleSheet.flatten([styles.joinBtn, { backgroundColor: '#FFFFFF' }])}
-        />
+        {onJoin && (
+          <Button
+            label={i18n('care.join')}
+            variant="solid"
+            icon={<IconVideo size={16} color={t.brand} />}
+            onPress={onJoin}
+            labelColor={t.brand}
+            style={StyleSheet.flatten([styles.joinBtn, { backgroundColor: '#FFFFFF' }])}
+          />
+        )}
         {onMore && (
           <Pressable
             onPress={onMore}

@@ -9,7 +9,7 @@ import { TopBar } from '../layout/top-bar';
 import { Button } from '../primitives/button';
 import { IconButton } from '../primitives/icon-button';
 import { SegmentedControl } from '../primitives/input/segmented-control';
-import { ChevronLeft, IconCamera, IconSearch } from '../../icons';
+import { ChevronLeft } from '../../icons';
 import { medicationService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
@@ -50,7 +50,6 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
   const [form, setForm] = useState<MedFormState>({ ...EMPTY, ...initialValues });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [quickAddMessage, setQuickAddMessage] = useState<string | null>(null);
 
   function set<K extends keyof MedFormState>(key: K, value: MedFormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -118,32 +117,6 @@ export function AddMedicationScreen({ initialValues, screenTitle, onSave }: AddM
 
       <ScrollView style={s.flex} contentContainerStyle={[s.content, { paddingBottom: 80 }]}>
         {error && <ApiState title="Medication not saved" message={error} />}
-
-        {/* Quick-add tiles — scan or search */}
-        <View style={s.tileRow}>
-          {[
-            {
-              Icon: IconCamera,
-              label: 'Scan barcode',
-              message: 'Medication barcode scan is unavailable until a verified drug lookup API exists. Enter details manually.',
-            },
-            {
-              Icon: IconSearch,
-              label: 'Search database',
-              message: 'Medication database search is unavailable until a verified drug lookup API exists. Enter details manually.',
-            },
-          ].map(({ Icon, label, message }) => (
-            <Pressable
-              key={label}
-              onPress={() => setQuickAddMessage(message)}
-              style={[s.tile, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.xl }]}
-            >
-              <Icon size={22} color={t.brand} />
-              <Text style={[typography.caption, { color: t.ink2, marginTop: 6 }]}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        {quickAddMessage && <ApiState title="Medication lookup unavailable" message={quickAddMessage} />}
 
         <Text style={[typography.micro, s.label, { color: t.brand }]}>MEDICATION NAME</Text>
         <TextInput
@@ -269,6 +242,4 @@ const s = StyleSheet.create({
   multiline:   { height: 80, textAlignVertical: 'top', paddingTop: 12 },
   pillRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill:        { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
-  tileRow:     { flexDirection: 'row', gap: 10, marginTop: 10, marginBottom: 4 },
-  tile:        { flex: 1, alignItems: 'center', paddingVertical: 16, borderWidth: StyleSheet.hairlineWidth },
 });

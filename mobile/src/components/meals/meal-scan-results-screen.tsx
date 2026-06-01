@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,6 @@ export function MealScanResultsScreen() {
   const loadIngredients = useCallback(() => mealService.ingredients(mealId ?? ''), [mealId]);
   const meal = useApiQuery(queryKeys.meal(mealId ?? 'missing'), loadMeal, { enabled: Boolean(mealId) });
   const ingredients = useApiQuery(queryKeys.mealIngredients(mealId ?? 'missing'), loadIngredients, { enabled: Boolean(mealId) });
-  const [feedback, setFeedback] = useState<string | null>(null);
 
   const nutrition = meal.data?.nutrition_result ?? null;
   const calories = Math.round(nutrition?.calories ?? 0);
@@ -105,15 +104,6 @@ export function MealScanResultsScreen() {
         }
       />
 
-      {feedback && (
-        <ApiState
-          title="Scan edit unavailable"
-          message={feedback}
-          actionLabel={i18n('common.close')}
-          onAction={() => setFeedback(null)}
-        />
-      )}
-
       {/* Warm food photo card — dark bg with plate */}
       <View style={[styles.photoCard, { borderRadius: t.radius.lg, borderColor: t.border }]}>
         {scanMeal.image_url ? (
@@ -144,12 +134,6 @@ export function MealScanResultsScreen() {
               {nutrition?.serving_type ?? scanMeal.status}
             </Text>
           </View>
-          <Pressable
-            onPress={() => setFeedback('Changing detected foods is guarded until Core exposes an ingredient correction contract.')}
-            style={[styles.changeBtn, { borderColor: t.border, borderRadius: t.radius.pill }]}
-          >
-            <Text style={[typography.chip, { color: t.ink2 }]}>Change</Text>
-          </Pressable>
         </View>
       </Card>
 
@@ -241,7 +225,6 @@ const styles = StyleSheet.create({
   matchCard:    { marginBottom: 10 },
   matchRow:     { flexDirection: 'row', alignItems: 'center' },
   matchLeft:    { flex: 1 },
-  changeBtn:    { paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1 },
   summaryCard:  { marginBottom: 4 },
   summaryRow:   { flexDirection: 'row', alignItems: 'center', gap: 16 },
   macroGrid:    { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },

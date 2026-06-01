@@ -47,6 +47,11 @@ def detect_prescription_mime(payload: bytes, declared: str | None) -> str:
     return "application/octet-stream"
 
 
+def detect_document_mime(payload: bytes, declared: str | None) -> str:
+    """Detect supported PHI document uploads without trusting client mime."""
+    return detect_prescription_mime(payload, declared)
+
+
 def extension_for_mime(mime_type: str, fallback: str = "bin") -> str:
     return {
         "application/pdf": "pdf",

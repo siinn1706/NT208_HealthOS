@@ -1,11 +1,13 @@
 /* eslint-env jest */
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import MeScreen from '../../app/(tabs)/me';
 
 const mockRouterPush = jest.fn();
 const mockRouterReplace = jest.fn();
 const mockI18n = { language: 'en' };
+const mockSessionSignOut = jest.fn();
+const mockSessionRefreshUser = jest.fn();
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -44,8 +46,8 @@ jest.mock('../auth/session-provider', () => ({
     booting: false,
     authenticated: true,
     error: null,
-    signOut: jest.fn(),
-    refreshUser: jest.fn(),
+    signOut: mockSessionSignOut,
+    refreshUser: mockSessionRefreshUser,
   }),
 }));
 
@@ -69,7 +71,22 @@ jest.mock('../components/profile/language-settings-sheet', () => ({
 jest.mock('../components/profile/me-screen-modals', () => ({
   AppearanceSheet: () => null,
   EmergencySheet: () => null,
-  SignOutModal: () => null,
+  SignOutModal: ({
+    visible,
+    onConfirm,
+  }: {
+    visible: boolean;
+    onConfirm: () => void;
+  }) => {
+    const { Pressable, Text } = jest.requireActual('react-native');
+    return visible
+      ? (
+        <Pressable onPress={onConfirm}>
+          <Text>Confirm sign out</Text>
+        </Pressable>
+      )
+      : null;
+  },
 }));
 
 jest.mock('../components/profile/account-settings-sheet', () => ({
@@ -80,6 +97,7 @@ describe('MeScreen language row', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockI18n.language = 'en';
+    mockSessionSignOut.mockResolvedValue(undefined);
   });
 
   it('opens the language sheet instead of the old unavailable modal', () => {
@@ -107,5 +125,17 @@ describe('MeScreen language row', () => {
 
     expect(mockRouterPush).toHaveBeenCalledWith('/reminders/preferences');
     expect(mockRouterPush).not.toHaveBeenCalledWith('/onboarding/permissions/notifications');
+  });
+
+  it('lets the root auth gate handle sign-out redirect', async () => {
+    const { getByText } = render(<MeScreen />);
+
+    fireEvent.press(getByText('Sign out'));
+    await act(async () => {
+      fireEvent.press(getByText('Confirm sign out'));
+    });
+
+    expect(mockSessionSignOut).toHaveBeenCalledTimes(1);
+    expect(mockRouterReplace).not.toHaveBeenCalledWith('/auth/welcome');
   });
 });

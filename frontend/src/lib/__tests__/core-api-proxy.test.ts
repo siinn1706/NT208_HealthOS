@@ -310,6 +310,244 @@ describe("meals BFF route", () => {
       "Idempotency-Key": "meal-photo-key",
     });
   });
+
+  it("forwards meal deletes to Core with bearer auth", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "meal-access" });
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    const { DELETE } = await import("@/app/api/v1/meals/[meal_id]/route");
+    const req = new NextRequest("http://localhost/api/v1/meals/meal-1", {
+      method: "DELETE",
+      headers: {
+        host: "localhost",
+        origin: "http://localhost",
+      },
+    });
+
+    const response = await DELETE(req, { params: Promise.resolve({ meal_id: "meal-1" }) });
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe("");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://core.example/v1/meals/meal-1",
+      expect.objectContaining({
+        method: "DELETE",
+        body: undefined,
+        cache: "no-store",
+        headers: expect.objectContaining({
+          Authorization: "Bearer meal-access",
+          "Content-Type": "application/json",
+          [REQUEST_ID_HEADER]: expect.any(String),
+        }),
+      }),
+    );
+  });
+});
+
+describe("medication history BFF route", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    cookiesMock.mockReset();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.CORE_API_URL = "http://core.example";
+  });
+
+  it("forwards medication history query params to Core", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "med-access" });
+    fetchMock.mockResolvedValue(jsonResponse({ data: [] }, 200));
+
+    const { GET } = await import("@/app/api/v1/medications/history/route");
+    const req = new NextRequest("http://localhost/api/v1/medications/history?from=2026-05-01T00%3A00%3A00Z&to=2026-06-01T00%3A00%3A00Z", {
+      method: "GET",
+      headers: {
+        host: "localhost",
+        origin: "http://localhost",
+      },
+    });
+
+    const response = await GET(req);
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://core.example/v1/medications/history?from=2026-05-01T00%3A00%3A00Z&to=2026-06-01T00%3A00%3A00Z",
+      expect.objectContaining({
+        method: "GET",
+        cache: "no-store",
+        headers: expect.objectContaining({
+          Authorization: "Bearer med-access",
+          [REQUEST_ID_HEADER]: expect.any(String),
+        }),
+      }),
+    );
+  });
+});
+
+describe("appointments BFF route", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    cookiesMock.mockReset();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.CORE_API_URL = "http://core.example";
+  });
+
+  it("forwards video join URL fields through appointment creates and updates", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "appointment-access" });
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ data: { id: "apt-video" } }, 201))
+      .mockResolvedValueOnce(jsonResponse({ data: { id: "apt-video" } }, 200));
+
+    const createPayload = {
+      appointment_date: "2026-06-05T08:00:00.000Z",
+      doctor_name: "Dr Video",
+      visit_type: "video",
+      video_join_url: "https://meet.example/room-123",
+    };
+    const updatePayload = { video_join_url: "https://meet.example/room-456" };
+
+    const createRoute = await import("@/app/api/v1/appointments/route");
+    const updateRoute = await import("@/app/api/v1/appointments/[id]/route");
+    const createReq = new NextRequest("http://localhost/api/v1/appointments", {
+      method: "POST",
+      headers: { "content-type": "application/json", host: "localhost", origin: "http://localhost" },
+      body: JSON.stringify(createPayload),
+    });
+    const updateReq = new NextRequest("http://localhost/api/v1/appointments/apt-video", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", host: "localhost", origin: "http://localhost" },
+      body: JSON.stringify(updatePayload),
+    });
+
+    const created = await createRoute.POST(createReq);
+    const updated = await updateRoute.PATCH(updateReq, { params: Promise.resolve({ id: "apt-video" }) });
+
+    expect(created.status).toBe(201);
+    expect(updated.status).toBe(200);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://core.example/v1/appointments",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(createPayload),
+        headers: expect.objectContaining({
+          Authorization: "Bearer appointment-access",
+          "Content-Type": "application/json",
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://core.example/v1/appointments/apt-video",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify(updatePayload),
+        headers: expect.objectContaining({
+          Authorization: "Bearer appointment-access",
+          "Content-Type": "application/json",
+        }),
+      }),
+    );
+  });
+});
+
+describe("appointment assets BFF routes", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    cookiesMock.mockReset();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.CORE_API_URL = "http://core.example";
+  });
+
+  it("forwards current-user appointment asset queries to Core", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "asset-access" });
+    fetchMock.mockResolvedValue(jsonResponse({ data: [] }, 200));
+
+    const { GET } = await import("@/app/api/v1/appointment-assets/route");
+    const req = new NextRequest("http://localhost/api/v1/appointment-assets?kind=lab_report&limit=50", {
+      method: "GET",
+      headers: { host: "localhost", origin: "http://localhost" },
+    });
+
+    const response = await GET(req);
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://core.example/v1/appointment-assets?kind=lab_report&limit=50",
+      expect.objectContaining({
+        method: "GET",
+        cache: "no-store",
+        headers: expect.objectContaining({
+          Authorization: "Bearer asset-access",
+          [REQUEST_ID_HEADER]: expect.any(String),
+        }),
+      }),
+    );
+  });
+
+  it("forwards appointment asset multipart uploads without forcing JSON content type", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "asset-access" });
+    fetchMock.mockResolvedValue(jsonResponse({ data: { id: "asset-1" } }, 201));
+
+    const { POST } = await import("@/app/api/v1/appointments/[id]/assets/route");
+    const req = new NextRequest("http://localhost/api/v1/appointments/apt-1/assets", {
+      method: "POST",
+      headers: {
+        "content-type": "multipart/form-data; boundary=asset",
+        host: "localhost",
+        origin: "http://localhost",
+      },
+      body: "--asset\r\ncontent\r\n--asset--",
+    });
+
+    const response = await POST(req, { params: Promise.resolve({ id: "apt-1" }) });
+    const forwarded = fetchMock.mock.calls[0]?.[1] as RequestInit;
+
+    expect(response.status).toBe(201);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://core.example/v1/appointments/apt-1/assets");
+    expect(forwarded.method).toBe("POST");
+    expect(forwarded.body).toBeInstanceOf(ArrayBuffer);
+    expect(forwarded.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer asset-access",
+        "Content-Type": "multipart/form-data; boundary=asset",
+        [REQUEST_ID_HEADER]: expect.any(String),
+      }),
+    );
+  });
+
+  it("forwards appointment asset signed-url and delete routes", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "asset-access" });
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ data: { url: "https://signed.example/file.pdf" } }, 200))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const urlRoute = await import("@/app/api/v1/appointments/[id]/assets/[assetId]/url/route");
+    const deleteRoute = await import("@/app/api/v1/appointments/[id]/assets/[assetId]/route");
+    const ctx = { params: Promise.resolve({ id: "apt-1", assetId: "asset-1" }) };
+
+    const signed = await urlRoute.GET(new NextRequest("http://localhost/api/v1/appointments/apt-1/assets/asset-1/url", {
+      method: "GET",
+      headers: { host: "localhost", origin: "http://localhost" },
+    }), ctx);
+    const removed = await deleteRoute.DELETE(new NextRequest("http://localhost/api/v1/appointments/apt-1/assets/asset-1", {
+      method: "DELETE",
+      headers: { host: "localhost", origin: "http://localhost" },
+    }), ctx);
+
+    expect(signed.status).toBe(200);
+    expect(removed.status).toBe(204);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://core.example/v1/appointments/apt-1/assets/asset-1/url");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("http://core.example/v1/appointments/apt-1/assets/asset-1");
+    expect((fetchMock.mock.calls[1]?.[1] as RequestInit).method).toBe("DELETE");
+  });
 });
 
 describe("legacy health-data meal route", () => {

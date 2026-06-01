@@ -13,16 +13,16 @@ import { ApiState } from '../api/api-state';
 import { appointmentService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
-import { IconStethoscope, IconCalendar, IconClock, IconMapPin } from '../../icons';
+import { IconStethoscope, IconCalendar, IconClock, IconMapPin, IconVideo } from '../../icons';
 import {
   AppointmentProviderSuggestionsSheet,
   type AppointmentProviderSuggestion,
 } from './appointment-provider-suggestions-sheet';
 import { toIsoAppointment } from './appointment-date-time';
 
-type VisitType = 'video' | 'in-person';
+type VisitType = 'video' | 'in_person';
 const VISIT_LABELS = ['Video', 'In-person'];
-const VISIT_VALUES: VisitType[] = ['video', 'in-person'];
+const VISIT_VALUES: VisitType[] = ['video', 'in_person'];
 
 export function CreateAppointmentScreen() {
   const t = useTheme();
@@ -34,16 +34,26 @@ export function CreateAppointmentScreen() {
   const [date, setDate]           = useState('');
   const [time, setTime]           = useState('');
   const [visitType, setVisitType] = useState<VisitType>('video');
+  const [videoJoinUrl, setVideoJoinUrl] = useState('');
   const [notes, setNotes]         = useState('');
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ doctor?: string; date?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ doctor?: string; date?: string; videoJoinUrl?: string }>({});
   const [doctorSheetOpen, setDoctorSheetOpen] = useState(false);
 
   function validate(): boolean {
-    const errs: { doctor?: string; date?: string } = {};
+    const errs: { doctor?: string; date?: string; videoJoinUrl?: string } = {};
     if (!doctor.trim()) errs.doctor = 'Doctor / Provider is required.';
     if (!date.trim()) errs.date = 'Date is required.';
+    const meetingUrl = videoJoinUrl.trim();
+    if (visitType === 'video' && meetingUrl) {
+      try {
+        const parsed = new URL(meetingUrl);
+        if (parsed.protocol !== 'https:') errs.videoJoinUrl = 'Use an https meeting link.';
+      } catch {
+        errs.videoJoinUrl = 'Use an absolute meeting link.';
+      }
+    }
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -53,12 +63,15 @@ export function CreateAppointmentScreen() {
     setSaving(true);
     setError(null);
     try {
+      const meetingUrl = visitType === 'video' ? videoJoinUrl.trim() : '';
       await appointmentService.create({
         appointment_date: toIsoAppointment(date, time),
         doctor_name: doctor.trim(),
         specialty: specialty.trim() || null,
         clinic: clinic.trim() || (visitType === 'video' ? 'Video visit' : null),
         reason: notes.trim() || null,
+        visit_type: visitType,
+        video_join_url: meetingUrl || null,
         notes: notes.trim()
           ? `${notes.trim()}\nVisit type: ${visitType}`
           : `Visit type: ${visitType}`,
@@ -172,9 +185,27 @@ export function CreateAppointmentScreen() {
           value={VISIT_LABELS[VISIT_VALUES.indexOf(visitType)]}
           onChange={(opt) => {
             const idx = VISIT_LABELS.indexOf(opt);
-            if (idx !== -1) setVisitType(VISIT_VALUES[idx]);
+            if (idx !== -1) {
+              setVisitType(VISIT_VALUES[idx]);
+              setFieldErrors((prev) => ({ ...prev, videoJoinUrl: undefined }));
+            }
           }}
         />
+
+        {visitType === 'video' && (
+          <Input
+            label="Meeting link"
+            leadingIcon={<IconVideo size={14} color={t.ink3} />}
+            placeholder="https://meet.example/room"
+            value={videoJoinUrl}
+            onChangeText={(v) => {
+              setVideoJoinUrl(v);
+              if (v.trim()) setFieldErrors((prev) => ({ ...prev, videoJoinUrl: undefined }));
+            }}
+            error={fieldErrors.videoJoinUrl}
+            editable={!saving}
+          />
+        )}
 
         {/* Notes — multiline, styled to match Input */}
         <Text style={[typography.caption, { color: t.ink3, marginBottom: 6 }]}>{i18n('forms.notes')} ({i18n('forms.optional')})</Text>

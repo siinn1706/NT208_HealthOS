@@ -13,7 +13,9 @@ export interface MealCreateInput {
   logged_at?: string | null;
   meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
   ingredients?: {
+    ingredient_id?: string | null;
     ingredient_name: string;
+    ingredient_name_en?: string | null;
     grams: number;
     manual_calories?: number | null;
     calories?: number | null;
@@ -21,6 +23,7 @@ export interface MealCreateInput {
     carbs_g?: number | null;
     protein_g?: number | null;
     fat_g?: number | null;
+    is_matched?: boolean | null;
   }[];
   image?: MobileUploadFile | null;
 }
@@ -108,6 +111,12 @@ export const mealService = {
       json: body,
     });
     return response.data;
+  },
+
+  async delete(id: string) {
+    await apiRequest<void>(`/v1/meals/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   },
 
   async analysisStatus(id: string) {

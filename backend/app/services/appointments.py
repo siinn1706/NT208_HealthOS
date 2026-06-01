@@ -12,6 +12,7 @@ from app.services._ownership import get_owned
 from app.schemas.appointments import (
     AppointmentCreateBody,
     AppointmentDTO,
+    AppointmentVisitType,
     AppointmentUpdateBody,
     PrescriptionPayload,
 )
@@ -106,11 +107,18 @@ def _to_dto(item: Appointment) -> AppointmentDTO:
         specialty=item.specialty,
         clinic=item.clinic,
         diagnosis=item.diagnosis,
+        visit_type=AppointmentVisitType(getattr(item, "visit_type", AppointmentVisitType.IN_PERSON.value)),
+        video_join_url=item.video_join_url,
         status=status,
         notes=item.notes,
         has_prescription=prescription is not None,
         prescription=prescription,
     )
+
+
+def _assert_video_join_url_allowed(visit_type: str, video_join_url: str | None) -> None:
+    if video_join_url and visit_type != AppointmentVisitType.VIDEO.value:
+        raise ValueError("video_join_url is only allowed for video appointments.")
 
 
 async def list_appointments(
@@ -155,9 +163,12 @@ async def create_appointment(
         specialty=body.specialty,
         clinic=body.clinic,
         diagnosis=body.reason,
+        visit_type=body.visit_type.value,
+        video_join_url=body.video_join_url,
         status=status,
         notes=body.notes,
     )
+    _assert_video_join_url_allowed(item.visit_type, item.video_join_url)
     db.add(item)
     await db.flush()
     await db.refresh(item)
@@ -217,6 +228,17 @@ async def update_appointment(
         appt.diagnosis = updates["reason"]
     if "notes" in updates:
         appt.notes = updates["notes"]
+    if "visit_type" in updates:
+        next_visit_type = updates["visit_type"]
+        if next_visit_type is None:
+            raise ValueError("visit_type cannot be null.")
+        appt.visit_type = next_visit_type.value
+        if appt.visit_type != AppointmentVisitType.VIDEO.value:
+            appt.video_join_url = None
+    if "video_join_url" in updates:
+        appt.video_join_url = updates["video_join_url"]
+
+    _assert_video_join_url_allowed(appt.visit_type, appt.video_join_url)
 
     await db.flush()
     await db.refresh(appt)

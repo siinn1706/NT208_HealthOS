@@ -9,6 +9,8 @@ import {
   buildOAuthCallbackUrl,
   createOAuthContext,
   getOAuthCookieOptions,
+  normalizeOAuthMobileCodeChallenge,
+  normalizeOAuthMobileState,
   setOAuthContextCookie,
 } from "@/lib/oauth/flow-context";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
@@ -42,9 +44,18 @@ export async function GET(request: NextRequest) {
       {
         locale: url.searchParams.get("locale") ?? request.cookies.get("NEXT_LOCALE")?.value,
         postLoginPath: url.searchParams.get("from"),
+        mobileRedirectUri: url.searchParams.get("mobile_redirect_uri"),
       },
       [process.env.OAUTH_GOOGLE_CALLBACK_URL, process.env.NEXT_PUBLIC_APP_URL],
     );
+    const mobileState = normalizeOAuthMobileState(url.searchParams.get("mobile_state"));
+    const mobileCodeChallenge = normalizeOAuthMobileCodeChallenge(url.searchParams.get("mobile_code_challenge"));
+    if (context.mobileRedirectUri && (!mobileState || !mobileCodeChallenge)) {
+      return NextResponse.json(
+        { error: "Missing or invalid mobile OAuth verifier challenge" },
+        { status: 400 },
+      );
+    }
     // Generate PKCE parameters
     const codeVerifier = await generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -70,6 +81,12 @@ export async function GET(request: NextRequest) {
     response.cookies.set("oauth_verifier_google", codeVerifier, cookieOptions);
 
     response.cookies.set("oauth_nonce_google", nonce, cookieOptions);
+    if (context.mobileRedirectUri && mobileState) {
+      response.cookies.set("oauth_mobile_state_google", mobileState, cookieOptions);
+    }
+    if (context.mobileRedirectUri && mobileCodeChallenge) {
+      response.cookies.set("oauth_mobile_code_challenge_google", mobileCodeChallenge, cookieOptions);
+    }
     setOAuthContextCookie(response, request, "google", "signin", context, COOKIE_MAX_AGE);
 
     return response;

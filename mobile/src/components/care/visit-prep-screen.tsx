@@ -22,6 +22,7 @@ import {
   buildVisitPrepChecklist,
   mergeSavedVisitPrepChecklist,
 } from './visit-prep-checklist';
+import { VisitBriefPrepCard } from './visit-brief-prep-card';
 
 export function VisitPrepScreen() {
   const t = useTheme();
@@ -106,7 +107,6 @@ export function VisitPrepScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.content, { paddingBottom: TAB_BAR_CONTENT_HEIGHT + insets.bottom + 16 }]}>
-        {/* Hero gradient card */}
         <LinearGradient
           colors={[t.brandSoft, t.accent + '30']}
           start={{ x: 0, y: 0 }}
@@ -115,7 +115,6 @@ export function VisitPrepScreen() {
         >
           <Text style={[typography.title, { color: t.ink }]}>Get ready</Text>
           <Text style={[typography.body, { color: t.ink3, marginTop: 4 }]}>Complete this checklist before your visit</Text>
-          {/* Progress bar */}
           <View style={[s.barTrack, { backgroundColor: t.border, marginTop: 12 }]}>
             <View style={[s.barFill, { width: `${Math.round(progress * 100)}%` as any, backgroundColor: t.brand }]} />
           </View>
@@ -124,7 +123,6 @@ export function VisitPrepScreen() {
           </Text>
         </LinearGradient>
 
-        {/* Appointment context */}
         {apptId && appointmentQuery.isLoading && <ApiState title={i18n('care.loadingAppointments')} loading />}
         {apptId && appointmentQuery.error && (
           <ApiState
@@ -143,7 +141,14 @@ export function VisitPrepScreen() {
           </View>
         )}
 
-        {/* Checklist */}
+        {apptId && (
+          <VisitBriefPrepCard
+            appointmentId={apptId}
+            appointmentLabel={appointment?.doctor_name ?? null}
+            appointmentVisitType={appointment?.visit_type ?? null}
+          />
+        )}
+
         <Text style={[typography.h3, { color: t.ink, marginBottom: 8 }]}>Before your visit</Text>
         <View style={[s.checklistCard, { backgroundColor: t.card, borderColor: t.border, borderRadius: t.radius.lg }]}>
           {VISIT_PREP_CHECKLIST_ITEMS.map((item, index) => (
@@ -188,12 +193,7 @@ export function VisitPrepScreen() {
         )}
         {saveError && <ApiState title="Checklist not saved" message={saveError} />}
         {saveMessage && <ApiState title="Checklist saved" message={saveMessage} />}
-        <Button
-          label={savingPrep ? i18n('common.working') : 'Save checklist'}
-          variant="solid"
-          onPress={saveChecklist}
-          disabled={!apptId || checklistDisabled}
-        />
+        <Button label={savingPrep ? i18n('common.working') : 'Save checklist'} variant="solid" onPress={saveChecklist} disabled={!apptId || checklistDisabled} />
       </ScrollView>
     </SafeAreaView>
   );

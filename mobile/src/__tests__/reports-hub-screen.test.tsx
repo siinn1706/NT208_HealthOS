@@ -61,7 +61,7 @@ describe('ReportsHubScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('removes unsupported search/filter controls and keeps the empty-state action real', () => {
+  it('removes unsupported search/filter controls and keeps the Core-empty action real', () => {
     mockUseApiQuery.mockReturnValue(baseQueryState as never);
 
     const { getByText, queryByLabelText, queryByText } = render(<ReportsHubScreen />);
@@ -69,24 +69,39 @@ describe('ReportsHubScreen', () => {
     expect(queryByLabelText('common.search')).toBeNull();
     expect(queryByLabelText('common.filter')).toBeNull();
     expect(queryByText('insights.learnHow')).toBeNull();
+    expect(queryByText('3 of 5 days logged')).toBeNull();
+    expect(getByText('Core returned no report sections for the selected periods yet. Log health data, then generate a report when enough signals are available.')).toBeTruthy();
 
     fireEvent.press(getByText('insights.logToday'));
 
     expect(mockRouterPush).toHaveBeenCalledWith('/home');
   });
 
-  it('routes reconnect from the error state to device connections', () => {
-    mockUseApiQuery.mockImplementation((key) => ({
-      ...baseQueryState,
-      data: String(key).endsWith('7d') ? null : emptyReport,
-      error: String(key).endsWith('7d') ? new Error('Activity sync failed') : null,
-    }) as never);
+  it('shows actual weekly and monthly Core report query statuses in the error state', () => {
+    const reload7d = jest.fn();
+    const reload30d = jest.fn();
+    mockUseApiQuery.mockImplementation((key) => {
+      const isWeekly = String(key).endsWith('7d');
+      return {
+        ...baseQueryState,
+        data: isWeekly ? null : emptyReport,
+        error: isWeekly ? new Error('Weekly report failed') : null,
+        reload: isWeekly ? reload7d : reload30d,
+      } as never;
+    });
 
-    const { getByText } = render(<ReportsHubScreen />);
+    const { getByText, queryByText } = render(<ReportsHubScreen />);
 
-    fireEvent.press(getByText('Reconnect'));
+    expect(getByText('Weekly report')).toBeTruthy();
+    expect(getByText('Weekly report failed')).toBeTruthy();
+    expect(getByText('Monthly report')).toBeTruthy();
+    expect(getByText('Core returned no report sections yet.')).toBeTruthy();
+    expect(queryByText('Activity sync')).toBeNull();
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/profile/devices');
+    fireEvent.press(getByText('Try again'));
+
+    expect(reload7d).toHaveBeenCalledTimes(1);
+    expect(reload30d).toHaveBeenCalledTimes(1);
   });
 
   it('calls the Core report generator and reloads the monthly report', async () => {
@@ -104,6 +119,9 @@ describe('ReportsHubScreen', () => {
     }) as never);
 
     const { getByText } = render(<ReportsHubScreen />);
+
+    expect(getByText('30-day report ready')).toBeTruthy();
+    expect(getByText('Generated 2026-05-31 | 1 sections from Core')).toBeTruthy();
 
     fireEvent.press(getByText('insights.generateReport'));
 

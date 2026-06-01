@@ -1,247 +1,199 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { typography } from '../../theme/typography';
-import { IconX, IconFlash, IconBarcode, IconFlip } from '../../icons';
+import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import { mealService } from '../../api/services';
 import { invalidateApiQuery } from '../../api/query';
+import { validateImageFile } from '../../utils/file-validation';
+import { MealScanBottomControls, MealScanTopBar } from './meal-scan-camera-controls';
+import { imageFileFromCameraPicture, imageFileFromPickerAsset, type MealScanImageFile } from './meal-scan-camera-file';
+import { MealScanCameraViewfinder } from './meal-scan-camera-viewfinder';
 
 const BG = '#0B0F14';
-const WHITE = '#FFFFFF';
-
-function CornerBracket({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
-  const top    = pos === 'tl' || pos === 'tr';
-  const left   = pos === 'tl' || pos === 'bl';
-  return (
-    <View style={[
-      styles.bracket,
-      top  ? { top: 0 }    : { bottom: 0 },
-      left ? { left: 0 }   : { right: 0 },
-      top  ? { borderTopWidth: 3, borderTopColor: WHITE }    : { borderBottomWidth: 3, borderBottomColor: WHITE },
-      left ? { borderLeftWidth: 3, borderLeftColor: WHITE }  : { borderRightWidth: 3, borderRightColor: WHITE },
-      top && left   ? { borderTopLeftRadius: 6 }    : null,
-      top && !left  ? { borderTopRightRadius: 6 }   : null,
-      !top && left  ? { borderBottomLeftRadius: 6 } : null,
-      !top && !left ? { borderBottomRightRadius: 6 }: null,
-    ]} />
-  );
-}
-
-function inferImageName(asset: ImagePicker.ImagePickerAsset) {
-  if (asset.fileName) return asset.fileName;
-  const ext = asset.mimeType?.split('/')[1] || 'jpg';
-  return `meal-scan.${ext === 'jpeg' ? 'jpg' : ext}`;
-}
-
-function inferImageType(asset: ImagePicker.ImagePickerAsset) {
-  return asset.mimeType || 'image/jpeg';
-}
 
 export function MealScanCameraScreen() {
   const router = useRouter();
   const { t: i18n } = useTranslation();
+  const cameraRef = useRef<CameraView | null>(null);
+  const pendingCaptureAfterPermissionRef = useRef(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [permissionGrantedAfterPrompt, setPermissionGrantedAfterPrompt] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<CameraType>('back');
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const hasCameraPermission = Boolean(cameraPermission?.granted || permissionGrantedAfterPrompt);
 
-  const MODES = [i18n('meals.photo'), i18n('meals.multiPhoto'), i18n('meals.manual')];
+  function clearPreviewForRetry() {
+    setPreviewUri(null);
+    setCameraReady(Boolean(cameraRef.current));
+  }
 
-  async function uploadAsset(asset: ImagePicker.ImagePickerAsset) {
-    setPreviewUri(asset.uri);
-    setUploading(true);
+  async function uploadImageFile(file: MealScanImageFile) {
     setError(null);
+    const validation = validateImageFile(file);
+    if (!validation.ok) {
+      setError(i18n(validation.messageKey ?? 'validation.image.bad_mime', validation.messageParams));
+      return;
+    }
+
+    setPreviewUri(file.uri);
+    setCameraReady(false);
+    setUploading(true);
     try {
       const analysis = await mealService.analyzePhoto({
-        name: 'Scanned meal',
+        name: i18n('meals.scannedMealName'),
         image: {
-          uri: asset.uri,
-          name: inferImageName(asset),
-          type: inferImageType(asset),
+          uri: file.uri,
+          name: file.fileName,
+          type: file.mimeType,
         },
       });
       invalidateApiQuery('meals.');
       const mealId = analysis.meal_id;
       if (!mealId) {
-        setError('Photo analysis started, but Core did not return a meal id.');
+        clearPreviewForRetry();
+        setError(i18n('meals.photoAnalysisNoMealId'));
         return;
       }
       const params = new URLSearchParams({ mealId });
       if (analysis.job_id) params.set('jobId', analysis.job_id);
       router.push(`/meals/scan-analyzing?${params.toString()}` as never);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not upload meal photo.');
+      clearPreviewForRetry();
+      setError(err instanceof Error ? err.message : i18n('meals.uploadFailed'));
     } finally {
       setUploading(false);
     }
   }
 
-  async function launchCamera() {
-    if (uploading) return;
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
+  async function ensureCameraPermission() {
+    if (hasCameraPermission) return true;
+    const permission = await requestCameraPermission();
     if (!permission.granted) {
-      setError('Camera permission is required to scan a meal.');
+      setError(i18n('meals.cameraPermissionRequired'));
+      return false;
+    }
+    setPermissionGrantedAfterPrompt(true);
+    return true;
+  }
+
+  async function captureMountedCameraPhoto() {
+    if (!cameraRef.current) {
+      setError(i18n('meals.cameraNotReady'));
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-      allowsEditing: false,
-    });
-    if (!result.canceled && result.assets[0]) {
-      await uploadAsset(result.assets[0]);
+    const picture = await cameraRef.current.takePictureAsync({ quality: 0.85 });
+    if (!picture?.uri) {
+      setError(i18n('meals.cameraCaptureFailed'));
+      return;
     }
+    await uploadImageFile(imageFileFromCameraPicture(picture));
+  }
+
+  async function capturePhoto() {
+    if (uploading) return;
+    setError(null);
+    try {
+      const hadCameraPermission = hasCameraPermission;
+      if (!await ensureCameraPermission()) return;
+      if (!hadCameraPermission) {
+        pendingCaptureAfterPermissionRef.current = true;
+        setCameraReady(false);
+        return;
+      }
+      if (!cameraReady || !cameraRef.current) {
+        setError(i18n('meals.cameraNotReady'));
+        return;
+      }
+      await captureMountedCameraPhoto();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : i18n('meals.cameraCaptureFailed'));
+    }
+  }
+
+  function handleCameraReady() {
+    setCameraReady(true);
+    if (!pendingCaptureAfterPermissionRef.current || uploading) return;
+    pendingCaptureAfterPermissionRef.current = false;
+    void captureMountedCameraPhoto().catch((err) => {
+      setError(err instanceof Error ? err.message : i18n('meals.cameraCaptureFailed'));
+    });
   }
 
   async function launchLibrary() {
     if (uploading) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError('Photo library permission is required to upload a meal photo.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-      allowsEditing: false,
-    });
-    if (!result.canceled && result.assets[0]) {
-      await uploadAsset(result.assets[0]);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setError(i18n('meals.libraryPermissionRequired'));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.85,
+        allowsEditing: false,
+      });
+      if (!result.canceled && result.assets[0]) {
+        await uploadImageFile(imageFileFromPickerAsset(result.assets[0]));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : i18n('meals.uploadFailed'));
     }
   }
 
-  function showCameraControlUnavailable(label: string) {
-    setError(`${label} is unavailable in this native demo until a real camera control contract is added.`);
+  function toggleTorch() {
+    setTorchEnabled((current) => !current);
+    setError(null);
+  }
+
+  function toggleCameraFacing() {
+    setCameraFacing((current) => (current === 'back' ? 'front' : 'back'));
+    setTorchEnabled(false);
+    setCameraReady(false);
+    setError(null);
   }
 
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
       <StatusBar style="light" />
 
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.ghostBtn}>
-          <IconX size={20} color={WHITE} />
-        </Pressable>
-        <View style={styles.topRight}>
-          <Pressable onPress={() => showCameraControlUnavailable('Flash')} hitSlop={8} style={styles.ghostBtn}>
-            <IconFlash size={18} color={WHITE} />
-          </Pressable>
-          <Pressable onPress={() => showCameraControlUnavailable('Barcode scan')} hitSlop={8} style={styles.ghostBtn}>
-            <IconBarcode size={18} color={WHITE} />
-          </Pressable>
-        </View>
-      </View>
+      <MealScanTopBar
+        torchEnabled={torchEnabled}
+        onBack={() => router.back()}
+        onToggleTorch={toggleTorch}
+      />
 
-      {/* Viewfinder */}
-      <View style={styles.viewfinder}>
-        {/* Hint chip — above the plate */}
-        <View style={styles.hintChip}>
-          <Text style={[typography.caption, { color: WHITE }]}>✦ {i18n('meals.centerPlate')}</Text>
-        </View>
+      <MealScanCameraViewfinder
+        cameraFacing={cameraFacing}
+        cameraRef={cameraRef}
+        centerPlateLabel={i18n('meals.centerPlate')}
+        hasCameraPermission={hasCameraPermission}
+        loadingLabel={i18n('common.loading')}
+        previewUri={previewUri}
+        torchEnabled={torchEnabled}
+        uploading={uploading}
+        onCameraReady={handleCameraReady}
+        onMountError={(message) => setError(message || i18n('meals.cameraNotReady'))}
+      />
 
-        {/* Realistic food plate composition */}
-        <View style={styles.plateBg}>
-          {previewUri ? (
-            <Image source={{ uri: previewUri }} style={styles.previewImage} resizeMode="cover" />
-          ) : (
-            <View style={styles.plate}>
-              <View style={[styles.blob, { backgroundColor: '#8B4513', width: 100, height: 70, top: 55, left: 40 }]} />
-              <View style={[styles.blob, { backgroundColor: '#D4C5A0', width: 90, height: 40, top: 90, left: 35 }]} />
-              <View style={[styles.blob, { backgroundColor: '#4A7C59', width: 60, height: 50, top: 70, right: 30 }]} />
-            </View>
-          )}
-          {uploading && (
-            <View style={styles.uploadOverlay}>
-              <ActivityIndicator color={WHITE} />
-              <Text style={[typography.caption, { color: WHITE, marginTop: 8 }]}>Uploading...</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Corner brackets */}
-        <View style={styles.bracketFrame}>
-          <CornerBracket pos="tl" />
-          <CornerBracket pos="tr" />
-          <CornerBracket pos="bl" />
-          <CornerBracket pos="br" />
-        </View>
-      </View>
-
-      {/* Bottom controls */}
-      <View style={styles.bottom}>
-        {error && (
-          <View style={styles.errorChip}>
-            <Text style={[typography.caption, { color: WHITE, textAlign: 'center' }]}>{error}</Text>
-          </View>
-        )}
-        {/* Mode tabs — active "Photo" as white pill */}
-        <View style={styles.modeTabs}>
-          {MODES.map((m, i) => (
-            i === 0 ? (
-              <View key={m} style={styles.activeTab}>
-                <Text style={[typography.caption, { color: '#111' }]}>{m}</Text>
-              </View>
-            ) : (
-              <Text key={m} style={[typography.caption, { color: 'rgba(255,255,255,0.45)' }]}>{m}</Text>
-            )
-          ))}
-        </View>
-
-        {/* Shutter row with thumbnail on left */}
-        <View style={styles.shutterRow}>
-          {/* Thumbnail preview placeholder */}
-          <View style={styles.shutterSide}>
-            <Pressable onPress={launchLibrary} disabled={uploading} style={styles.thumbnail}>
-              {previewUri ? <Image source={{ uri: previewUri }} style={styles.thumbnailImage} /> : <View style={styles.thumbnailInner} />}
-            </Pressable>
-          </View>
-          <Pressable
-            onPress={launchCamera}
-            disabled={uploading}
-            style={styles.shutter}
-          >
-            {uploading ? <ActivityIndicator color={BG} /> : <View style={styles.shutterInner} />}
-          </Pressable>
-          <View style={styles.shutterSide}>
-            <Pressable onPress={() => showCameraControlUnavailable('Camera switch')} hitSlop={8}>
-              <IconFlip size={24} color={WHITE} />
-            </Pressable>
-          </View>
-        </View>
-      </View>
+      <MealScanBottomControls
+        error={error}
+        previewUri={previewUri}
+        uploading={uploading}
+        onCapturePhoto={capturePhoto}
+        onLaunchLibrary={launchLibrary}
+        onToggleCameraFacing={toggleCameraFacing}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root:         { flex: 1 },
-  topBar:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 52, paddingHorizontal: 20, paddingBottom: 12 },
-  topRight:     { flexDirection: 'row', gap: 12 },
-  ghostBtn:     { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
-  viewfinder:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  // Hint chip — above plate, top: 24 from viewfinder
-  hintChip:     { position: 'absolute', top: 24, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  plateBg:      { width: 260, height: 260, borderRadius: 130, backgroundColor: '#2C1A0E', alignItems: 'center', justifyContent: 'center' },
-  plate:        { width: 260, height: 260, borderRadius: 130, backgroundColor: '#F0E6D0', overflow: 'hidden' },
-  previewImage: { width: 260, height: 260, borderRadius: 130 },
-  blob:         { position: 'absolute', borderRadius: 40 },
-  uploadOverlay:{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', borderRadius: 130 },
-  bracketFrame: { position: 'absolute', width: 220, height: 220 },
-  bracket:      { position: 'absolute', width: 28, height: 28 },
-  bottom:       { paddingBottom: 48, paddingHorizontal: 24 },
-  errorChip:    { backgroundColor: 'rgba(220,38,38,0.9)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 14 },
-  modeTabs:     { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginBottom: 28 },
-  // White pill for active mode tab
-  activeTab:    { backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 5 },
-  shutterRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  shutterSide:  { width: 56, alignItems: 'center' },
-  // Thumbnail preview
-  thumbnail:    { width: 44, height: 44, borderRadius: 10, backgroundColor: '#5C3D20', overflow: 'hidden' },
-  thumbnailInner: { flex: 1, backgroundColor: '#3B2A1A' },
-  thumbnailImage: { width: '100%', height: '100%' },
-  shutter:      { width: 72, height: 72, borderRadius: 36, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: 'rgba(255,255,255,0.5)' },
-  shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: WHITE },
 });

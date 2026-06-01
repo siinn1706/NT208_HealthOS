@@ -129,6 +129,12 @@ async def test_meal_patch_requires_auth(anonymous_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_meal_delete_requires_auth(anonymous_client: AsyncClient):
+    res = await anonymous_client.delete(f"/v1/meals/{uuid.uuid4()}")
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_meal_ingredients_requires_auth(anonymous_client: AsyncClient):
     res = await anonymous_client.get(f"/v1/meals/{uuid.uuid4()}/ingredients")
     assert res.status_code == 401
@@ -141,6 +147,8 @@ async def test_unknown_meal_returns_404(authed_client: AsyncClient):
     assert res_detail.status_code == 404
     res_patch = await authed_client.patch(f"/v1/meals/{meal_id}", json={"name": "Updated"})
     assert res_patch.status_code == 404
+    res_delete = await authed_client.delete(f"/v1/meals/{meal_id}")
+    assert res_delete.status_code == 404
     res_ing = await authed_client.get(f"/v1/meals/{meal_id}/ingredients")
     assert res_ing.status_code == 404
 
@@ -230,6 +238,29 @@ async def test_calories_summary_static_route_returns_daily_totals(
 
     assert summary.status_code == 200
     assert summary.json()["data"] == [{"date": "2026-05-28", "total_calories": 363.0}]
+
+
+@pytest.mark.asyncio
+async def test_delete_owned_meal_removes_detail_and_list_entry(
+    authed_client: AsyncClient,
+):
+    res = await authed_client.post("/v1/meals", json=_manual_meal_payload())
+    assert res.status_code == 201
+    meal_id = uuid.UUID(res.json()["data"]["id"])
+
+    delete_res = await authed_client.delete(f"/v1/meals/{meal_id}")
+
+    assert delete_res.status_code == 204
+    assert delete_res.content == b""
+    assert await _load_meal(meal_id) is None
+
+    detail_res = await authed_client.get(f"/v1/meals/{meal_id}")
+    assert detail_res.status_code == 404
+
+    list_res = await authed_client.get("/v1/meals", params={"page": 1, "per_page": 100})
+    assert list_res.status_code == 200
+    listed_ids = {item["id"] for item in list_res.json()["data"]}
+    assert str(meal_id) not in listed_ids
 
 
 @pytest.mark.asyncio

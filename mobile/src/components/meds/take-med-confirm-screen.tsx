@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,15 +13,30 @@ import { medicationService } from '../../api/services';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { formatTime } from '../../api/viewModels';
+import { doseActionRoute, firstRouteParam, selectMedicationDoseActionTarget } from './medication-dose-action-target';
 
 export function TakeMedConfirmScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    occurrenceId?: string | string[];
+    reminderId?: string | string[];
+    scheduledAt?: string | string[];
+  }>();
+  const medicationId = firstRouteParam(params.id) ?? '';
+  const occurrenceId = firstRouteParam(params.occurrenceId);
+  const reminderId = firstRouteParam(params.reminderId);
+  const scheduledAt = firstRouteParam(params.scheduledAt);
   const loadDoses = useCallback(() => medicationService.today(), []);
   const doses = useApiQuery(queryKeys.medicationDosesToday, loadDoses);
-  const dose = doses.data?.find((item) => item.medication_plan_id === medicationId) ?? null;
+  const dose = useMemo(() => selectMedicationDoseActionTarget(doses.data, {
+    medicationPlanId: medicationId,
+    occurrenceId,
+    reminderId,
+    scheduledAt,
+    intent: 'take',
+  }), [doses.data, medicationId, occurrenceId, reminderId, scheduledAt]);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [loggedAt, setLoggedAt] = useState<string | null>(null);
@@ -44,6 +59,11 @@ export function TakeMedConfirmScreen() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function routeToMissedDose() {
+    if (!dose || saving) return;
+    router.push(doseActionRoute(medicationId, dose, 'missed') as never);
   }
 
   return (
@@ -103,7 +123,7 @@ export function TakeMedConfirmScreen() {
                 </>
               ) : (
                 <>
-                  <Button label={i18n('meds.missed')} variant="ghost" onPress={() => router.back()} style={[s.flex, saving && { opacity: 0.4 }]} />
+                  <Button label={i18n('meds.missed')} variant="ghost" onPress={routeToMissedDose} style={[s.flex, saving && { opacity: 0.4 }]} />
                   <Button label={saving ? '…' : i18n('common.confirm')} variant="solid" onPress={saving ? undefined : confirm} style={[s.flex, saving && { opacity: 0.4 }]} />
                 </>
               )}

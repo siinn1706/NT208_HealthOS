@@ -31,6 +31,9 @@ from app.models.core import (
     MedicationPlan,
     Notification,
     NotificationKindEnum,
+    Reminder,
+    ReminderOccurrence,
+    ReminderOccurrenceStatusEnum,
     User,
 )
 from app.schemas.medications import (
@@ -38,7 +41,10 @@ from app.schemas.medications import (
     MedicationRefillBody,
 )
 from app.services import medications as med_svc
-from app.tasks.medications import compute_medication_signals
+from app.tasks.medications import (
+    compute_medication_signals,
+    resume_expired_medication_pauses,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -258,6 +264,86 @@ async def test_refill_paused_plan_skipped(temp_user):
     res = compute_medication_signals()
     assert res["refill_notifications"] == 0
     assert await _refill_notif_count(user_id, plan.id) == 0
+
+
+async def test_expired_timed_pause_reactivates_plan_and_reminders(temp_user):
+    user_id = temp_user
+    async with AsyncSessionLocal() as db:
+        plan = await med_svc.create_plan(
+            db, user_id,
+            MedicationPlanCreateBody(
+                name="Timed Pause", dose_times=["08:00"], repeat="daily",
+            ),
+        )
+        await med_svc.pause_plan(
+            db,
+            user_id,
+            plan.id,
+            pause_until=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1),
+            pause_reason="travel",
+            update_pause_metadata=True,
+        )
+        row = await db.get(MedicationPlan, plan.id)
+        assert row is not None
+        row.pause_until = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=1)
+        await db.commit()
+
+    res = resume_expired_medication_pauses()
+    assert res["plans_resumed"] == 1
+    assert res["reminders_reactivated"] == 1
+    assert res["occurrences_restored"] > 0
+
+    async with AsyncSessionLocal() as db:
+        row = await db.get(MedicationPlan, plan.id)
+        assert row is not None
+        assert row.status == "active"
+        assert row.pause_until is None
+        assert row.pause_reason is None
+        reminders = (
+            await db.execute(select(Reminder).where(Reminder.medication_plan_id == plan.id))
+        ).scalars().all()
+        assert reminders
+        assert all(reminder.is_active for reminder in reminders)
+        assert all(reminder.next_occurrence_at is not None for reminder in reminders)
+        pending_future = (
+            await db.execute(
+                select(ReminderOccurrence).where(
+                    ReminderOccurrence.reminder_id.in_([reminder.id for reminder in reminders]),
+                    ReminderOccurrence.status == ReminderOccurrenceStatusEnum.PENDING.value,
+                    ReminderOccurrence.scheduled_at >= datetime.datetime.now(datetime.timezone.utc),
+                )
+            )
+        ).scalars().all()
+        assert pending_future
+
+
+async def test_future_timed_pause_is_not_resumed(temp_user):
+    user_id = temp_user
+    async with AsyncSessionLocal() as db:
+        plan = await med_svc.create_plan(
+            db, user_id,
+            MedicationPlanCreateBody(
+                name="Future Timed Pause", dose_times=["08:00"], repeat="daily",
+            ),
+        )
+        pause_until = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+        await med_svc.pause_plan(
+            db,
+            user_id,
+            plan.id,
+            pause_until=pause_until,
+            update_pause_metadata=True,
+        )
+        await db.commit()
+
+    res = resume_expired_medication_pauses()
+    assert res["plans_resumed"] == 0
+
+    async with AsyncSessionLocal() as db:
+        row = await db.get(MedicationPlan, plan.id)
+        assert row is not None
+        assert row.status == "paused"
+        assert row.pause_until is not None
 
 
 async def test_review_within_lead_window_fires(temp_user):

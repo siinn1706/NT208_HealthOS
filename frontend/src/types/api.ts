@@ -286,6 +286,8 @@ export type AppointmentStatus =
   | "no_show"
   | "rescheduled";
 
+export type AppointmentVisitType = "in_person" | "video";
+
 export interface PrescriptionMedicine {
   name: string;
   dosage: string;
@@ -311,6 +313,8 @@ export interface Appointment {
   specialty: string;
   clinic: string;
   diagnosis: string;
+  visitType: AppointmentVisitType;
+  videoJoinUrl: string | null;
   status: AppointmentStatus;
   hasPrescription: boolean;
   prescription?: Prescription | null;
@@ -355,6 +359,8 @@ export interface MedicationPlan {
   start_date: string;
   end_date: string | null;
   status: MedicationStatus;
+  pause_until: string | null;
+  pause_reason: string | null;
   tzid: string;
   refill_supply_units: number | null;
   refill_cadence_days: number | null;

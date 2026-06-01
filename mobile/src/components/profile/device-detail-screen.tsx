@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
 import { SectionHeader } from '../layout/section-header';
@@ -9,7 +10,7 @@ import { IconButton } from '../primitives/icon-button';
 import { Button } from '../primitives/button';
 import { ApiState } from '../api/api-state';
 import {
-  ChevronLeft, IconMore, IconActivity, IconAlert,
+  ChevronLeft, IconActivity, IconAlert,
 } from '../../icons';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -17,10 +18,8 @@ import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { deviceService, type ConnectedDevice } from '../../api/services/device-service';
 import { useHealthConnectSync } from '../../healthconnect/use-health-connect-sync';
-import {
-  createUnavailableHealthConnectAdapter,
-  getHealthConnectNativeUnavailableMessage,
-} from '../../healthconnect/native-health-connect-adapter';
+import { createHealthConnectAdapter } from '../../healthconnect/native-health-connect-adapter';
+import { isMobileFeatureEnabled } from '../../config/feature-flags';
 
 type SyncState = 'ok' | 'failed' | 'stale' | 'syncing' | 'inactive';
 
@@ -50,12 +49,13 @@ function formatIso(value?: string | null) {
 
 function SyncStatusRow({ state }: { state: SyncState }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const cfg: Record<SyncState, { color: string; label: string; bg: string }> = {
-    ok: { color: t.success, label: 'Synced', bg: t.successSoft },
-    syncing: { color: t.brand, label: 'Syncing…', bg: t.brandSoft },
-    failed: { color: t.danger, label: 'Sync failed', bg: t.dangerSoft },
-    stale: { color: t.warning, label: 'Data stale', bg: t.warningSoft },
-    inactive: { color: t.ink4, label: 'Permission needed', bg: t.chip },
+    ok: { color: t.success, label: i18n('devices.synced'), bg: t.successSoft },
+    syncing: { color: t.brand, label: i18n('devices.syncing'), bg: t.brandSoft },
+    failed: { color: t.danger, label: i18n('devices.syncFailedStatus'), bg: t.dangerSoft },
+    stale: { color: t.warning, label: i18n('devices.dataStale'), bg: t.warningSoft },
+    inactive: { color: t.ink4, label: i18n('devices.permissionNeeded'), bg: t.chip },
   };
   const c = cfg[state];
   return (
@@ -68,6 +68,7 @@ function SyncStatusRow({ state }: { state: SyncState }) {
 
 export function DeviceDetailScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const devicesQuery = useApiQuery(queryKeys.devices, () => deviceService.list(), { enabled: Boolean(id) });
   const device = useMemo(() => devicesQuery.data?.find((item) => item.id === id) ?? null, [devicesQuery.data, id]);
@@ -81,8 +82,8 @@ export function DeviceDetailScreen() {
   const [syncingLegacy, setSyncingLegacy] = useState(false);
   const [resettingSyncState, setResettingSyncState] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const healthConnectAdapter = useMemo(() => createUnavailableHealthConnectAdapter(), []);
-  const healthConnectNativeMessage = useMemo(() => getHealthConnectNativeUnavailableMessage(), []);
+  const healthConnectAdapter = useMemo(() => createHealthConnectAdapter(), []);
+  const healthConnectNativeSyncEnabled = isMobileFeatureEnabled('healthConnectNativeSync');
   const {
     sync: syncHealthConnectNow,
     reset: resetHealthConnectNow,
@@ -93,17 +94,17 @@ export function DeviceDetailScreen() {
     return (
       <Screen>
         <TopBar
-          title="Device detail"
+          title={i18n('devices.detailTitle')}
           left={(
             <IconButton
               variant="subtle"
               icon={<ChevronLeft size={20} color={t.ink3} />}
-              accessibilityLabel="Back"
+              accessibilityLabel={i18n('common.back')}
               onPress={() => router.back()}
             />
           )}
         />
-        <ApiState title="Loading device" loading />
+        <ApiState title={i18n('devices.loadingDevice')} loading />
       </Screen>
     );
   }
@@ -112,20 +113,20 @@ export function DeviceDetailScreen() {
     return (
       <Screen>
         <TopBar
-          title="Device detail"
+          title={i18n('devices.detailTitle')}
           left={(
             <IconButton
               variant="subtle"
               icon={<ChevronLeft size={20} color={t.ink3} />}
-              accessibilityLabel="Back"
+              accessibilityLabel={i18n('common.back')}
               onPress={() => router.back()}
             />
           )}
         />
         <ApiState
-          title="Could not load device"
+          title={i18n('devices.loadDeviceFailed')}
           message={devicesQuery.error.message}
-          actionLabel="Retry"
+          actionLabel={i18n('common.retry')}
           onAction={devicesQuery.reload}
         />
       </Screen>
@@ -136,26 +137,31 @@ export function DeviceDetailScreen() {
     return (
       <Screen>
         <TopBar
-          title="Device detail"
+          title={i18n('devices.detailTitle')}
           left={(
             <IconButton
               variant="subtle"
               icon={<ChevronLeft size={20} color={t.ink3} />}
-              accessibilityLabel="Back"
+              accessibilityLabel={i18n('common.back')}
               onPress={() => router.back()}
             />
           )}
         />
-        <ApiState title="Device not found" message="This connected device no longer exists." />
+        <ApiState title={i18n('devices.notFound')} message={i18n('devices.notFoundMessage')} />
       </Screen>
     );
   }
 
   const syncState = toSyncState(device);
   const isHealthConnect = device.provider === 'health_connect';
+  const isLegacyStubProvider = !isHealthConnect;
   const syncingNow = isHealthConnect ? syncingHealthConnect : syncingLegacy;
 
   async function handleSync() {
+    if (isLegacyStubProvider) {
+      setActionError(i18n('devices.providerSyncUnsupportedMessage'));
+      return;
+    }
     if (!isHealthConnect) setSyncingLegacy(true);
     setActionError(null);
     try {
@@ -169,7 +175,7 @@ export function DeviceDetailScreen() {
       await devicesQuery.reload();
       await syncStateQuery.reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not sync device.');
+      setActionError(err instanceof Error ? err.message : i18n('devices.syncFailed'));
     } finally {
       if (!isHealthConnect) setSyncingLegacy(false);
     }
@@ -183,13 +189,17 @@ export function DeviceDetailScreen() {
       invalidateApiQuery(queryKeys.devices);
       router.back();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not disconnect device.');
+      setActionError(err instanceof Error ? err.message : i18n('devices.disconnectFailed'));
       setDeleting(false);
     }
   }
 
   async function handleResetSyncState() {
     if (!id) return;
+    if (isLegacyStubProvider) {
+      setActionError(i18n('devices.providerSyncUnsupportedMessage'));
+      return;
+    }
     const entries = syncStateQuery.data ?? [];
     if (entries.length === 0) return;
     setResettingSyncState(true);
@@ -210,7 +220,7 @@ export function DeviceDetailScreen() {
       await syncStateQuery.reload();
       setActionError(null);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not reset sync state.');
+      setActionError(err instanceof Error ? err.message : i18n('devices.resetSyncStateFailed'));
     } finally {
       setResettingSyncState(false);
     }
@@ -224,16 +234,8 @@ export function DeviceDetailScreen() {
           <IconButton
             variant="subtle"
             icon={<ChevronLeft size={20} color={t.ink3} />}
-            accessibilityLabel="Back"
+            accessibilityLabel={i18n('common.back')}
             onPress={() => router.back()}
-          />
-        )}
-        right={(
-          <IconButton
-            variant="subtle"
-            icon={<IconMore size={20} color={t.ink3} />}
-            accessibilityLabel="More options"
-            onPress={() => setActionError('More device options are not available in the native app yet.')}
           />
         )}
       />
@@ -254,34 +256,45 @@ export function DeviceDetailScreen() {
 
         <View style={[styles.syncNote, { backgroundColor: t.bgElev, borderColor: t.border }]}>
           <Text style={[typography.micro, { color: t.ink2, lineHeight: 18 }]}>
-            Last synced: <Text style={{ fontWeight: '700' }}>{formatIso(device.last_sync)}</Text>
+            {i18n('devices.lastSynced')}: <Text style={{ fontWeight: '700' }}>{formatIso(device.last_sync)}</Text>
           </Text>
           <Text style={[typography.micro, { color: t.ink3, lineHeight: 18 }]}>
-            Last attempted: {formatIso(device.last_attempted_at)}
+            {i18n('devices.lastAttempted')}: {formatIso(device.last_attempted_at)}
           </Text>
         </View>
 
         <View style={styles.heroActions}>
-          <Button label={syncingNow ? 'Syncing…' : 'Sync now'} variant="soft" onPress={handleSync} disabled={syncingNow || deleting} />
-          <Button label={deleting ? 'Disconnecting…' : 'Disconnect'} variant="ghost" onPress={handleDisconnect} disabled={deleting || syncingNow} />
+          <Button
+            label={isLegacyStubProvider ? i18n('devices.syncUnavailable') : syncingNow ? i18n('devices.syncing') : i18n('devices.syncNow')}
+            variant="soft"
+            onPress={handleSync}
+            disabled={syncingNow || deleting || isLegacyStubProvider || (isHealthConnect && !healthConnectNativeSyncEnabled)}
+            accessibilityHint={isLegacyStubProvider ? i18n('devices.providerSyncUnsupportedHint') : isHealthConnect ? i18n('devices.healthConnectSyncHint') : undefined}
+          />
+          <Button label={deleting ? i18n('devices.disconnecting') : i18n('devices.disconnect')} variant="ghost" onPress={handleDisconnect} disabled={deleting || syncingNow} />
         </View>
+        {isLegacyStubProvider && (
+          <View style={{ marginTop: 12 }}>
+            <ApiState title={i18n('devices.providerSyncUnsupportedTitle')} message={i18n('devices.providerSyncUnsupportedMessage')} />
+          </View>
+        )}
       </Card>
 
-      {actionError && <ApiState title="Action failed" message={actionError} />}
+      {actionError && <ApiState title={i18n('devices.actionFailed')} message={actionError} />}
 
-      <SectionHeader title="Sync state by record type" />
+      <SectionHeader title={i18n('devices.syncStateByRecordType')} />
       <Card style={styles.sectionCard}>
-        {syncStateQuery.isLoading && <ApiState title="Loading sync state" loading />}
+        {syncStateQuery.isLoading && <ApiState title={i18n('devices.loadingSyncState')} loading />}
         {syncStateQuery.error && (
           <ApiState
-            title="Sync state unavailable"
+            title={i18n('devices.syncStateUnavailable')}
             message={syncStateQuery.error.message}
-            actionLabel="Retry"
+            actionLabel={i18n('common.retry')}
             onAction={syncStateQuery.reload}
           />
         )}
         {!syncStateQuery.isLoading && !syncStateQuery.error && (syncStateQuery.data?.length ?? 0) === 0 && (
-          <ApiState title="No sync-state tokens yet" message="Tokens will appear after the first successful Health Connect pull." />
+          <ApiState title={i18n('devices.noSyncStateTokens')} message={i18n('devices.noSyncStateTokensMessage')} />
         )}
         {!syncStateQuery.isLoading && !syncStateQuery.error && (syncStateQuery.data?.length ?? 0) > 0 && (
           <View style={{ padding: 4, gap: 10 }}>
@@ -290,35 +303,39 @@ export function DeviceDetailScreen() {
                 <View key={entry.record_type} style={[styles.stateRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border }]}>
                   <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600' }]}>{entry.record_type}</Text>
                   <Text style={[typography.micro, { color: t.ink3 }]}>
-                    failures: {entry.consecutive_failures} · last: {formatIso(entry.last_synced_at)}
+                    {i18n('devices.syncStateMeta', { failures: entry.consecutive_failures, last: formatIso(entry.last_synced_at) })}
                   </Text>
                 </View>
               ))}
             </View>
             <Button
-              label={resettingSyncState ? 'Resetting…' : 'Reset sync tokens'}
+              label={resettingSyncState ? i18n('devices.resettingSyncState') : i18n('devices.resetSyncTokens')}
               variant="ghost"
               onPress={handleResetSyncState}
-              disabled={resettingSyncState || syncingNow || deleting}
+              disabled={resettingSyncState || syncingNow || deleting || isLegacyStubProvider || (isHealthConnect && !healthConnectNativeSyncEnabled)}
+              accessibilityHint={isLegacyStubProvider ? i18n('devices.providerSyncUnsupportedHint') : isHealthConnect ? i18n('devices.healthConnectSyncHint') : undefined}
             />
           </View>
         )}
       </Card>
 
-      <SectionHeader title="Device settings" />
+      <SectionHeader title={i18n('devices.deviceSettings')} />
       <Card tight style={styles.settingsCard}>
         {!isHealthConnect && (
           <ApiState
-            title="No permission controls for this provider"
-            message="Permission sync is currently available for Health Connect devices."
+            title={i18n('devices.noPermissionControls')}
+            message={i18n('devices.permissionControlsHealthConnectOnly')}
           />
         )}
 
         {isHealthConnect && (
           <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-            <ApiState title="Health Connect native access unavailable" message={healthConnectNativeMessage} />
+            <ApiState
+              title={healthConnectNativeSyncEnabled ? i18n('devices.healthConnectNativeSyncTitle') : i18n('devices.healthConnectNativeUnavailable')}
+              message={healthConnectNativeSyncEnabled ? i18n('devices.healthConnectNativeSyncMessage') : i18n('devices.healthConnectProductionMessage')}
+            />
             <View style={[styles.scopeSummary, { borderColor: t.border, backgroundColor: t.bgElev }]}>
-              <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '700' }]}>Granted permissions from Core</Text>
+              <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '700' }]}>{i18n('devices.grantedPermissionsFromCore')}</Text>
               {(device.scopes?.length ?? 0) > 0 ? (
                 <View style={styles.scopeList}>
                   {device.scopes?.map((scope) => (
@@ -329,7 +346,7 @@ export function DeviceDetailScreen() {
                 </View>
               ) : (
                 <Text style={[typography.micro, { color: t.ink3, marginTop: 6 }]}>
-                  No granted permissions reported by native Health Connect yet.
+                  {i18n('devices.noGrantedHealthConnectPermissions')}
                 </Text>
               )}
             </View>
@@ -341,7 +358,7 @@ export function DeviceDetailScreen() {
         <View style={[styles.alertRow, { backgroundColor: t.dangerSoft, borderColor: `${t.danger}30` }]}>
           <IconAlert size={15} color={t.danger} />
           <Text style={[typography.micro, { color: t.danger, marginLeft: 8, flex: 1 }]}>
-            Last sync failed. Retry sync and confirm device permissions are still granted.
+            {i18n('devices.lastSyncFailed')}
           </Text>
         </View>
       )}

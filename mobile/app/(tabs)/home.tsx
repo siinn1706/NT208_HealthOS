@@ -73,7 +73,7 @@ export default function HomeScreen() {
         right={
           <View style={styles.actions}>
             <IconButton variant="subtle" icon={<IconSearch size={20} color={t.ink3} />} accessibilityLabel={i18n('home.searchAccessibility')} onPress={() => router.push('/home/today')} />
-            <IconButton variant="subtle" icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel={i18n('home.notificationsAccessibility')} dot onPress={() => router.push('/home/today')} />
+            <IconButton variant="subtle" icon={<IconBell size={20} color={t.ink3} />} accessibilityLabel={i18n('home.notificationsAccessibility')} dot onPress={() => router.push('/reminders/notifications')} />
           </View>
         }
       />

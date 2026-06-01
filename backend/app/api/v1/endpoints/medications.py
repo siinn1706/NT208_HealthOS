@@ -9,6 +9,7 @@ medication detail UI calls `/api/v1/reminders/{rem_id}/done|skip|snooze`.
 """
 from __future__ import annotations
 
+import datetime
 import uuid
 from typing import Annotated, Optional
 
@@ -24,9 +25,11 @@ from app.models.core import User
 from app.schemas.common import ErrorResponse
 from app.schemas.medications import (
     AdherenceResponse,
+    MedicationDoseHistoryListResponse,
     MedicationDoseListResponse,
     MedicationImportBody,
     MedicationImportResponse,
+    MedicationPauseBody,
     MedicationPlanCreateBody,
     MedicationPlanDetailResponse,
     MedicationPlanListResponse,
@@ -40,6 +43,8 @@ from app.services.reminder_recurrence import DEFAULT_TZID
 from app.services.security_logging import log_resource_access_denied
 
 router = APIRouter(prefix="/medications", tags=["Medications"])
+_HISTORY_DEFAULT_DAYS = 30
+_HISTORY_MAX_DAYS = 366
 
 
 # Review M16 — per-user Redis token-bucket rate limits. Matches the pattern
@@ -118,6 +123,46 @@ async def list_today_doses(
 ) -> MedicationDoseListResponse:
     doses = await med_svc.today_doses(db=db, user_id=current_user.id, tzid=tzid)
     return MedicationDoseListResponse(data=doses)
+
+
+@router.get(
+    "/history",
+    response_model=MedicationDoseHistoryListResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+    summary="List medication dose history in a date range",
+)
+async def list_dose_history(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    range_from: Optional[datetime.datetime] = Query(default=None, alias="from"),
+    range_to: Optional[datetime.datetime] = Query(default=None, alias="to"),
+) -> MedicationDoseHistoryListResponse:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    effective_to = range_to or now
+    if effective_to.tzinfo is None:
+        effective_to = effective_to.replace(tzinfo=datetime.timezone.utc)
+    effective_from = range_from or (effective_to - datetime.timedelta(days=_HISTORY_DEFAULT_DAYS))
+    if effective_from.tzinfo is None:
+        effective_from = effective_from.replace(tzinfo=datetime.timezone.utc)
+
+    if effective_from >= effective_to:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "VALIDATION_ERROR", "message": "Provide a valid `from` < `to` window."},
+        )
+    if effective_to - effective_from > datetime.timedelta(days=_HISTORY_MAX_DAYS):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "VALIDATION_ERROR", "message": f"History window cannot exceed {_HISTORY_MAX_DAYS} days."},
+        )
+
+    rows = await med_svc.dose_history(
+        db=db,
+        user_id=current_user.id,
+        range_from=effective_from,
+        range_to=effective_to,
+    )
+    return MedicationDoseHistoryListResponse(data=rows)
 
 
 @router.post(
@@ -251,8 +296,22 @@ async def pause_medication(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    body: MedicationPauseBody | None = None,
 ) -> MedicationPlanResponse:
-    plan = await med_svc.pause_plan(db, current_user.id, plan_id)
+    try:
+        plan = await med_svc.pause_plan(
+            db,
+            current_user.id,
+            plan_id,
+            pause_until=body.pause_until if body else None,
+            pause_reason=body.pause_reason if body else None,
+            update_pause_metadata=bool(body and body.model_fields_set),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+        ) from exc
     if plan is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -263,7 +322,11 @@ async def pause_medication(
         event_type=AuditEventTypeEnum.MEDICATION_PLAN_PAUSED,
         user_id=current_user.id,
         request=request,
-        details={"plan_id": str(plan.id)},
+        details={
+            "plan_id": str(plan.id),
+            "pause_until": plan.pause_until.isoformat() if plan.pause_until else None,
+            "has_reason": bool(plan.pause_reason),
+        },
     )
     await db.commit()
     return MedicationPlanResponse(data=plan)

@@ -43,6 +43,7 @@ from app.models.core import (
 )
 from app.schemas.medications import (
     AdherenceDTO,
+    MedicationDoseHistoryDTO,
     MedicationDoseDTO,
     MedicationDoseSummary,
     MedicationImportBody,
@@ -66,6 +67,7 @@ logger = logging.getLogger(__name__)
 # day per plan. The recurrence horizon already caps each *reminder* — this is
 # a defensive ceiling on plan-level dose count.
 MAX_DOSES_PER_PLAN = 8
+UTC = datetime.timezone.utc
 
 # Frequency-text → dose count, for `import_from_appointment`. Free-text from
 # the prescription JSONB is messy; we intentionally keep the lookup tiny
@@ -108,6 +110,17 @@ def _infer_doses_per_day(frequency_text: Optional[str]) -> int:
 def _make_dedupe_key(appointment_id: uuid.UUID, idx: int, name: str) -> str:
     raw = f"{appointment_id}:{idx}:{name.strip().lower()}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _normalize_pause_until(value: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
+    if value is None:
+        return None
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("pause_until must include a timezone")
+    normalized = value.astimezone(UTC)
+    if normalized <= datetime.datetime.now(UTC):
+        raise ValueError("pause_until must be in the future")
+    return normalized
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +182,8 @@ def _to_dto(plan: MedicationPlan, reminders: list[Reminder] | None = None) -> Me
         start_date=plan.start_date,
         end_date=plan.end_date,
         status=plan.status,
+        pause_until=plan.pause_until,
+        pause_reason=plan.pause_reason,
         tzid=plan.tzid,
         refill_supply_units=plan.refill_supply_units,
         refill_cadence_days=plan.refill_cadence_days,
@@ -310,6 +325,31 @@ async def _cancel_pending_occurrences_for_reminders(
             # Reuse `skipped_at` as the "stopped at" timestamp — keeps the
             # schema additive. The status is the source of truth for intent.
             skipped_at=now,
+        )
+    )
+    return int(res.rowcount or 0)
+
+
+async def _restore_future_cancelled_occurrences_for_reminders(
+    db: AsyncSession,
+    reminder_ids: list[uuid.UUID],
+    *,
+    now: Optional[datetime.datetime] = None,
+) -> int:
+    if not reminder_ids:
+        return 0
+    cutoff = now or datetime.datetime.now(datetime.timezone.utc)
+    res = await db.execute(
+        update(ReminderOccurrence)
+        .where(
+            ReminderOccurrence.reminder_id.in_(reminder_ids),
+            ReminderOccurrence.status == ReminderOccurrenceStatusEnum.CANCELLED.value,
+            ReminderOccurrence.scheduled_at >= cutoff,
+        )
+        .values(
+            status=ReminderOccurrenceStatusEnum.PENDING.value,
+            skipped_at=None,
+            snoozed_until=None,
         )
     )
     return int(res.rowcount or 0)
@@ -544,16 +584,28 @@ async def pause_plan(
     db: AsyncSession,
     user_id: uuid.UUID,
     plan_id: uuid.UUID,
+    *,
+    pause_until: Optional[datetime.datetime] = None,
+    pause_reason: Optional[str] = None,
+    update_pause_metadata: bool = False,
 ) -> Optional[MedicationPlanDTO]:
     plan = await _load_plan(db, user_id, plan_id)
     if plan is None:
         return None
+    normalized_pause_until = _normalize_pause_until(pause_until)
+    normalized_pause_reason = pause_reason.strip() if pause_reason else None
     if plan.status != "active":
         # Idempotent — pausing an already-paused plan is a no-op.
+        if plan.status == "paused" and update_pause_metadata:
+            plan.pause_until = normalized_pause_until
+            plan.pause_reason = normalized_pause_reason
+            await db.flush()
         rems = await _load_plan_reminders(db, plan_id)
         return _to_dto(plan, rems)
 
     plan.status = "paused"
+    plan.pause_until = normalized_pause_until
+    plan.pause_reason = normalized_pause_reason
     rems = await _load_plan_reminders(db, plan_id)
     rem_ids = [r.id for r in rems]
     if rem_ids:
@@ -581,10 +633,14 @@ async def resume_plan(
         return _to_dto(plan, rems)
 
     plan.status = "active"
+    plan.pause_until = None
+    plan.pause_reason = None
     rems = await _load_plan_reminders(db, plan_id)
     for r in rems:
         r.is_active = True
     await db.flush()
+    rem_ids = [r.id for r in rems]
+    await _restore_future_cancelled_occurrences_for_reminders(db, rem_ids)
     # Re-materialize occurrence rows for the next horizon.
     for r in rems:
         await reminder_svc.materialize_for_reminder(db, r)
@@ -678,6 +734,44 @@ async def today_doses(
             strength=plan.strength,
             scheduled_at=occ.scheduled_at,
             status=occ.status,
+        )
+        for (occ, _rem, plan) in rows
+    ]
+
+
+async def dose_history(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    range_from: datetime.datetime,
+    range_to: datetime.datetime,
+) -> list[MedicationDoseHistoryDTO]:
+    rows = (
+        await db.execute(
+            select(ReminderOccurrence, Reminder, MedicationPlan)
+            .join(Reminder, Reminder.id == ReminderOccurrence.reminder_id)
+            .join(MedicationPlan, MedicationPlan.id == Reminder.medication_plan_id)
+            .where(
+                MedicationPlan.user_id == user_id,
+                ReminderOccurrence.scheduled_at >= range_from,
+                ReminderOccurrence.scheduled_at < range_to,
+                ReminderOccurrence.status != ReminderOccurrenceStatusEnum.CANCELLED.value,
+            )
+            .order_by(ReminderOccurrence.scheduled_at.desc())
+        )
+    ).all()
+    return [
+        MedicationDoseHistoryDTO(
+            occurrence_id=occ.id,
+            reminder_id=occ.reminder_id,
+            medication_plan_id=plan.id,
+            plan_name=plan.name,
+            strength=plan.strength,
+            scheduled_at=occ.scheduled_at,
+            status=occ.status,
+            done_at=occ.done_at,
+            skipped_at=occ.skipped_at,
+            snoozed_until=occ.snoozed_until,
         )
         for (occ, _rem, plan) in rows
     ]

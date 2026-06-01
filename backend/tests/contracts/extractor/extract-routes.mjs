@@ -46,6 +46,10 @@ const MOBILE_PATH_PATTERNS = {
   apiRequest: 0,
 };
 
+function isContractPath(path) {
+  return path === "/health" || path.startsWith("/health/") || path.startsWith("/v1");
+}
+
 /**
  * Resolve a TemplateExpression node to an OpenAPI path string.
  * Handles: `${CORE_API_URL}/v1/...${id}...` and `/v1/...${id}...`
@@ -130,7 +134,7 @@ function extractCorePath(argNode, callee, sourceFile) {
     let text = argNode.getLiteralText();
     const qIdx = text.indexOf("?");
     if (qIdx !== -1) text = text.slice(0, qIdx);
-    if (text.startsWith("/v1")) return text;
+    if (isContractPath(text)) return text;
     return null;
   }
 
@@ -139,7 +143,7 @@ function extractCorePath(argNode, callee, sourceFile) {
     let text = argNode.getLiteralText();
     const qIdx = text.indexOf("?");
     if (qIdx !== -1) text = text.slice(0, qIdx);
-    if (text.startsWith("/v1")) return text;
+    if (isContractPath(text)) return text;
     return null;
   }
 
@@ -173,7 +177,7 @@ function extractCorePath(argNode, callee, sourceFile) {
       }
     }
 
-    if (path && path.startsWith("/v1")) return path;
+    if (path && isContractPath(path)) return path;
     return null;
   }
 
@@ -184,7 +188,7 @@ function extractCorePath(argNode, callee, sourceFile) {
     // Try to resolve the const declaration.
     if (sourceFile) {
       const resolved = resolveIdentifierToString(argNode, sourceFile);
-      if (resolved && resolved.startsWith("/v1")) return resolved;
+      if (resolved && isContractPath(resolved)) return resolved;
     }
     return null;
   }
@@ -265,11 +269,11 @@ function resolveFunctionCallToPath(callNode, sourceFile) {
       const kind = retExpr.getKind();
       if (kind === SyntaxKind.StringLiteral) {
         const t = retExpr.getLiteralText();
-        return t.startsWith("/v1") ? t : null;
+        return isContractPath(t) ? t : null;
       }
       if (kind === SyntaxKind.TemplateExpression) {
         const p = resolveTemplateExpression(retExpr);
-        return p && p.startsWith("/v1") ? p : null;
+        return p && isContractPath(p) ? p : null;
       }
     }
   }

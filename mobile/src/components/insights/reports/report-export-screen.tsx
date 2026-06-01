@@ -1,47 +1,76 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { ApiState } from '../../api/api-state';
 import { Toggle } from '../../primitives/toggle';
+import { useApiQuery } from '../../../api/query';
+import { queryKeys } from '../../../api/queryKeys';
 import { reportService } from '../../../api/services';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
-import { IconHeartPulse, IconPaperclip, IconUser, IconShield } from '../../../icons';
+import { IconPaperclip, IconShield } from '../../../icons';
 import { safeOpenUrl } from '../../../utils/safe-url';
+import {
+  isSensitiveReportSection,
+  normalizeReportExportSections,
+  type ReportExportSectionKey,
+} from './report-export-sections';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Dest = 'doctor' | 'pdf' | 'link' | 'family';
+type ReportPeriod = '7d' | '30d' | '90d';
 
-interface IncludeToggles {
-  vitals: boolean;
-  medication: boolean;
-  nutrition: boolean;
-  activity: boolean;
-  sleep: boolean;
-  bmi: boolean;
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
-const SECTION_BY_TOGGLE: Record<keyof IncludeToggles, string> = {
-  vitals: 'vitals',
-  medication: 'medication',
-  nutrition: 'nutrition',
-  activity: 'activity',
-  sleep: 'sleep',
-  bmi: 'bmi',
-};
+function normalizePeriod(value: string | undefined): ReportPeriod {
+  return value === '30d' || value === '90d' || value === '7d' ? value : '7d';
+}
 
-function selectedSections(includes: IncludeToggles) {
-  return (Object.keys(SECTION_BY_TOGGLE) as (keyof IncludeToggles)[])
-    .filter((key) => includes[key])
-    .map((key) => SECTION_BY_TOGGLE[key]);
+function normalizeLocale(value: string | undefined): 'en' | 'vi' {
+  return value?.toLowerCase().startsWith('vi') ? 'vi' : 'en';
+}
+
+function periodDays(period: ReportPeriod) {
+  if (period === '90d') return 90;
+  if (period === '30d') return 30;
+  return 7;
+}
+
+function periodCopyLabel(period: ReportPeriod, locale: 'en' | 'vi') {
+  if (locale === 'vi') {
+    if (period === '90d') return '90 ngày qua';
+    if (period === '30d') return '30 ngày qua';
+    return '7 ngày qua';
+  }
+  if (period === '90d') return 'last 90 days';
+  if (period === '30d') return 'last 30 days';
+  return 'last 7 days';
+}
+
+function periodRangeLabel(period: ReportPeriod, locale: 'en' | 'vi') {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(end.getDate() - periodDays(period) + 1);
+  const format = (date: Date) => date.toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+  return `${format(start)} - ${format(end)}`;
 }
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export function ReportExportScreen() {
   const t = useTheme();
-  const { t: i18n } = useTranslation();
+  const { t: i18n, i18n: i18next } = useTranslation();
+  const params = useLocalSearchParams<{ period?: string | string[] }>();
+  const period = normalizePeriod(firstParam(params.period));
+  const locale = normalizeLocale(i18next.language);
+  const rangeLabel = periodRangeLabel(period, locale);
+  const periodCopy = periodCopyLabel(period, locale);
 
   const [exporting, setExporting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
@@ -49,18 +78,43 @@ export function ReportExportScreen() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
 
-  // Destination tile selection
-  const [dest, setDest] = useState<Dest>('pdf');
+  const loadReport = useCallback(() => reportService.get(period), [period]);
+  const report = useApiQuery(queryKeys.reports(period), loadReport);
 
-  // Include toggles
-  const [includes, setIncludes] = useState<IncludeToggles>({
-    vitals: true,
-    medication: true,
-    nutrition: true,
-    activity: true,
-    sleep: true,
-    bmi: true,
-  });
+  const sectionLabels = useMemo<Partial<Record<ReportExportSectionKey, string>>>(() => ({
+    vitals: i18n('insights.exportSectionVitals'),
+    medication: i18n('insights.exportSectionMedication'),
+    nutrition: i18n('insights.exportSectionNutrition'),
+    activity: i18n('insights.exportSectionActivity'),
+    sleep: i18n('insights.exportSectionSleep'),
+    bmi: i18n('insights.exportSectionBmi'),
+  }), [i18n]);
+
+  const includeRows = useMemo(
+    () => normalizeReportExportSections(report.data, periodCopy, sectionLabels),
+    [periodCopy, report.data, sectionLabels],
+  );
+  const sectionKeySignature = includeRows.map((row) => row.key).join('|');
+
+  const [selectedSectionKeys, setSelectedSectionKeys] = useState<ReportExportSectionKey[]>([]);
+  const [includeSensitive, setIncludeSensitive] = useState(false);
+
+  useEffect(() => {
+    const nextKeys = sectionKeySignature
+      ? sectionKeySignature.split('|') as ReportExportSectionKey[]
+      : [];
+    setSelectedSectionKeys(nextKeys);
+    setIncludeSensitive(false);
+  }, [sectionKeySignature]);
+
+  const selectedSensitiveSections = selectedSectionKeys.filter(isSensitiveReportSection);
+
+  function toggleSection(key: ReportExportSectionKey, enabled: boolean) {
+    setSelectedSectionKeys((prev) => {
+      if (enabled) return prev.includes(key) ? prev : [...prev, key];
+      return prev.filter((existing) => existing !== key);
+    });
+  }
 
   // ─── Async handlers (all original logic preserved) ────────────────────────
 
@@ -78,9 +132,25 @@ export function ReportExportScreen() {
   }
 
   async function handleExport() {
-    const sections = selectedSections(includes);
+    if (report.isLoading) {
+      setError(i18n('insights.reportSectionsLoading'));
+      return;
+    }
+    if (report.error) {
+      setError(report.error.message);
+      return;
+    }
+    if (includeRows.length === 0) {
+      setError(i18n('insights.exportSectionsUnavailable'));
+      return;
+    }
+    const sections = selectedSectionKeys;
     if (sections.length === 0) {
-      setError('Choose at least one report section.');
+      setError(i18n('insights.selectAtLeastOneReportSection'));
+      return;
+    }
+    if (selectedSensitiveSections.length > 0 && !includeSensitive) {
+      setError(i18n('insights.sensitiveSectionsBlocked'));
       return;
     }
     setExporting(true);
@@ -89,10 +159,10 @@ export function ReportExportScreen() {
     setDownloadUrl(null);
     try {
       const req = await reportService.requestPdf({
-        period: '7d',
+        period,
         sections,
-        locale: 'en',
-        include_sensitive: false,
+        locale,
+        include_sensitive: includeSensitive,
       });
       setRequestId(req.id);
       setStatusText(`Status: ${req.status}`);
@@ -131,26 +201,6 @@ export function ReportExportScreen() {
     }
   }
 
-  // ─── Destination tile config ───────────────────────────────────────────────
-
-  const destinations: { key: Dest; label: string; Icon: React.ComponentType<{ size: number; color: string }>; supported: boolean }[] = [
-    { key: 'doctor', label: 'Doctor',  Icon: IconHeartPulse, supported: false },
-    { key: 'pdf',    label: 'PDF',     Icon: IconPaperclip,  supported: true  },
-    { key: 'link',   label: 'Link',    Icon: IconShield,     supported: false },
-    { key: 'family', label: 'Family',  Icon: IconUser,       supported: false },
-  ];
-
-  // ─── Include rows config ──────────────────────────────────────────────────
-
-  const includeRows: { key: keyof IncludeToggles; label: string; sub: string }[] = [
-    { key: 'vitals',     label: 'Vitals trends',         sub: 'HR, BP, glucose · last 7 days'  },
-    { key: 'medication', label: 'Medication adherence',  sub: '14 of 14 doses'                 },
-    { key: 'nutrition',  label: 'Meals & nutrition',     sub: 'Meal totals and nutrition notes' },
-    { key: 'activity',   label: 'Activity',              sub: 'Steps and movement trend'        },
-    { key: 'sleep',      label: 'Sleep',                 sub: '7 nights, avg 7h 12m'           },
-    { key: 'bmi',        label: 'BMI',                   sub: 'Body-mass trend'                },
-  ];
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -169,71 +219,85 @@ export function ReportExportScreen() {
 
         {/* Title */}
         <Text style={[typography.h3, { color: '#111' }]}>{i18n('insights.shareReport')}</Text>
-        <Text style={[typography.caption, { color: '#888', marginTop: 4, marginBottom: 20 }]}>Apr 18 – Apr 24</Text>
+        <Text style={[typography.caption, { color: '#888', marginTop: 4, marginBottom: 20 }]}>{rangeLabel}</Text>
 
-        {/* Destination tiles */}
-        <View style={styles.destRow}>
-          {destinations.map(({ key, label, Icon, supported }) => {
-            const active = dest === key;
-            return (
-              <Pressable
-                key={key}
-                onPress={supported ? () => setDest(key) : undefined}
-                disabled={!supported}
-                accessibilityRole="button"
-                accessibilityLabel={label}
-                accessibilityState={{ disabled: !supported, selected: active }}
-                style={[
-                  styles.destTile,
-                  {
-                    backgroundColor: active ? t.brand : '#F5F5F5',
-                    borderColor: active ? t.brand : '#E0E0E0',
-                    opacity: supported ? 1 : 0.45,
-                  },
-                ]}
-              >
-                <Icon size={20} color={active ? '#fff' : '#666'} />
-                <Text style={[typography.caption, { color: active ? '#fff' : '#666', marginTop: 6, fontWeight: '600' }]}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
+        {/* PDF destination */}
+        <View style={[styles.pdfDestination, { borderColor: '#E0E0E0', backgroundColor: '#F8F8F8' }]}>
+          <View style={[styles.pdfIcon, { backgroundColor: t.brand + '18' }]}>
+            <IconPaperclip size={20} color={t.brand} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.bodyMed, { color: '#111' }]}>{i18n('insights.exportPdf')}</Text>
+            <Text style={[typography.caption, { color: '#888', marginTop: 2 }]}>
+              {i18n('insights.pdfOnlyDestination')}
+            </Text>
+          </View>
         </View>
 
         {/* Include toggles */}
         <Text style={[typography.micro, { color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }]}>
           {i18n('insights.whatToInclude')}
         </Text>
-        <View style={styles.includeList}>
-          {includeRows.map(({ key, label, sub }, idx) => (
-            <View
-              key={key}
-              style={[
-                styles.includeRow,
-                {
-                  borderBottomWidth: idx < includeRows.length - 1 ? StyleSheet.hairlineWidth : 0,
-                  borderBottomColor: '#E0E0E0',
-                },
-              ]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[typography.bodyMed, { color: '#111' }]}>{label}</Text>
-                <Text style={[typography.caption, { color: '#888', marginTop: 2 }]}>{sub}</Text>
+        {report.isLoading && <ApiState title={i18n('api.loading')} loading />}
+        {report.error && (
+          <ApiState
+            title={i18n('api.unavailable')}
+            message={report.error.message}
+            actionLabel={i18n('common.retry')}
+            onAction={() => { void report.reload(); }}
+          />
+        )}
+        {!report.isLoading && !report.error && includeRows.length === 0 && (
+          <ApiState
+            title={i18n('insights.exportSectionsUnavailable')}
+            message={i18n('insights.exportSectionsUnavailableMessage')}
+          />
+        )}
+        {includeRows.length > 0 && (
+          <View style={styles.includeList}>
+            {includeRows.map(({ key, label, sub, sensitive }, idx) => (
+              <View
+                key={key}
+                style={[
+                  styles.includeRow,
+                  {
+                    borderBottomWidth: idx < includeRows.length - 1 ? StyleSheet.hairlineWidth : 0,
+                    borderBottomColor: '#E0E0E0',
+                  },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[typography.bodyMed, { color: '#111' }]}>{label}</Text>
+                  <Text style={[typography.caption, { color: '#888', marginTop: 2 }]}>
+                    {sub}{sensitive ? ` · ${i18n('insights.sensitiveSection')}` : ''}
+                  </Text>
+                </View>
+                <Toggle
+                  value={selectedSectionKeys.includes(key)}
+                  onChange={(v) => toggleSection(key, v)}
+                />
               </View>
-              <Toggle
-                value={includes[key]}
-                onChange={(v) => setIncludes((prev) => ({ ...prev, [key]: v }))}
-              />
+            ))}
+          </View>
+        )}
+
+        {includeRows.length > 0 && (
+          <View style={styles.sensitiveRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.bodyMed, { color: '#111' }]}>{i18n('insights.includeSensitiveSections')}</Text>
+              <Text style={[typography.caption, { color: '#888', marginTop: 2 }]}>
+                {i18n('insights.includeSensitiveSectionsHint')}
+              </Text>
             </View>
-          ))}
-        </View>
+            <Toggle value={includeSensitive} onChange={setIncludeSensitive} />
+          </View>
+        )}
 
         {/* Info note */}
         <View style={styles.infoNote}>
           <IconShield size={16} color={t.brand} />
           <Text style={[typography.caption, { color: '#444', flex: 1, lineHeight: 18 }]}>
-            PDF export is the supported destination. Sensitive identifiers stay excluded from this request.
+            {i18n('insights.exportPrivacyNote')}
           </Text>
         </View>
 
@@ -317,17 +381,21 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 20,
   },
-  destRow: {
+  pdfDestination: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 24,
-  },
-  destTile: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
+    gap: 12,
+    padding: 12,
     borderRadius: 14,
     borderWidth: 1,
+    marginBottom: 24,
+  },
+  pdfIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   includeList: {
     backgroundColor: '#F8F8F8',
@@ -340,6 +408,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 13,
+  },
+  sensitiveRow: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   infoNote: {
     backgroundColor: '#EEF4FF',

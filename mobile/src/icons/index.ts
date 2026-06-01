@@ -48,7 +48,6 @@ export {
   HeartPulse as IconHeartPulse,
   MoreHorizontal as IconMore,
   Utensils as IconUtensils,
-  Apple as IconApple,
   Leaf as IconLeaf,
   ScanLine as IconScan,
   Barcode as IconBarcode,

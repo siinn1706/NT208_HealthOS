@@ -10,7 +10,12 @@ from fastapi import HTTPException
 
 from app.api.v1.endpoints import auth as auth_endpoints
 from app.core.config import Settings
-from app.schemas.auth import AuthToken, OAuthProfile
+from app.schemas.auth import AuthToken, MobileOAuthHandoffBody, OAuthProfile
+
+
+MOBILE_STATE = "a" * 64
+MOBILE_CODE_VERIFIER = "b" * 64
+MOBILE_CODE_CHALLENGE = hashlib.sha256(MOBILE_CODE_VERIFIER.encode("utf-8")).hexdigest()
 
 
 class _FakeDb:
@@ -24,6 +29,23 @@ class _FakeDb:
         return None
 
 
+class _ScalarResult:
+    def __init__(self, value):
+        self.value = value
+
+    def scalar_one_or_none(self):
+        return self.value
+
+
+class _FakeRedeemDb(_FakeDb):
+    def __init__(self, user):
+        super().__init__()
+        self.user = user
+
+    async def execute(self, _stmt):
+        return _ScalarResult(self.user)
+
+
 class _FakeRedis:
     def __init__(self):
         self.values: dict[str, str] = {}
@@ -33,6 +55,9 @@ class _FakeRedis:
             return None
         self.values[key] = value
         return True
+
+    async def getdel(self, key: str):
+        return self.values.pop(key, None)
 
 
 def _fake_request(headers: dict[str, str] | None = None):
@@ -50,6 +75,8 @@ def _fake_user():
         display_name="OAuth User",
         onboarding_status="pending",
         profile=SimpleNamespace(avatar_url=None),
+        deleted_at=None,
+        purge_at=None,
     )
 
 
@@ -174,6 +201,232 @@ async def test_correct_bff_secret_allows_token_exchange(monkeypatch):
     assert response.data.access_token == "access-token"
     assert response.data.refresh_token == "refresh-token"
     assert fake_db.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_mobile_oauth_handoff_creates_one_time_code(monkeypatch):
+    fake_user = _fake_user()
+    fake_db = _FakeDb()
+    fake_redis = _FakeRedis()
+
+    async def _get_or_create_user_from_oauth(_body, _db):
+        return fake_user
+
+    monkeypatch.setattr(auth_endpoints, "settings", SimpleNamespace(bff_shared_secret="expected-secret"))
+    monkeypatch.setattr(auth_endpoints, "get_or_create_user_from_oauth", _get_or_create_user_from_oauth)
+
+    response = await auth_endpoints.create_mobile_oauth_handoff(
+        body=MobileOAuthHandoffBody(
+            provider="github",
+            provider_account_id="github-id",
+            email="oauth-user@example.com",
+            name="OAuth User",
+            avatar_url=None,
+            mobile_state=MOBILE_STATE,
+            mobile_code_challenge=MOBILE_CODE_CHALLENGE,
+        ),
+        db=fake_db,
+        redis=fake_redis,
+        _bff=None,
+    )
+
+    stored_value = next(iter(fake_redis.values.values()))
+    assert response.data.expires_in_seconds == auth_endpoints.MOBILE_OAUTH_HANDOFF_TTL_SECONDS
+    assert len(response.data.code) >= 32
+    assert response.data.code not in stored_value
+    assert stored_value == json.dumps(
+        {
+            "user_id": str(fake_user.id),
+            "provider": "github",
+            "mobile_state": MOBILE_STATE,
+            "mobile_code_challenge": MOBILE_CODE_CHALLENGE,
+        },
+        separators=(",", ":"),
+    )
+    assert fake_db.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_mobile_oauth_handoff_redeems_once(monkeypatch):
+    fake_user = _fake_user()
+    fake_db = _FakeRedeemDb(fake_user)
+    fake_redis = _FakeRedis()
+    code = "mobile-oauth-code-0123456789abcdef"
+    await fake_redis.set(
+        auth_endpoints._mobile_oauth_handoff_key(code),
+        json.dumps({
+            "user_id": str(fake_user.id),
+            "provider": "google",
+            "mobile_state": MOBILE_STATE,
+            "mobile_code_challenge": MOBILE_CODE_CHALLENGE,
+        }),
+        ex=auth_endpoints.MOBILE_OAUTH_HANDOFF_TTL_SECONDS,
+    )
+
+    async def _issue_auth_token(**_kwargs):
+        return AuthToken(
+            access_token="mobile-access-token",
+            refresh_token="mobile-refresh-token",
+            user_id=str(fake_user.id),
+            email=fake_user.email,
+            username=fake_user.username,
+            display_name=fake_user.display_name,
+            avatar_url=None,
+            onboarding_status=fake_user.onboarding_status,
+        )
+
+    monkeypatch.setattr(auth_endpoints, "_issue_auth_token", _issue_auth_token)
+
+    response = await auth_endpoints.redeem_mobile_oauth_handoff(
+        body=auth_endpoints.MobileOAuthRedeemBody(
+            code=code,
+            state=MOBILE_STATE,
+            code_verifier=MOBILE_CODE_VERIFIER,
+        ),
+        request=_fake_request(),
+        db=fake_db,
+        redis=fake_redis,
+    )
+
+    assert response.data.access_token == "mobile-access-token"
+    assert response.data.refresh_token == "mobile-refresh-token"
+    assert fake_db.commits == 1
+    assert await fake_redis.getdel(auth_endpoints._mobile_oauth_handoff_key(code)) is None
+
+
+@pytest.mark.asyncio
+async def test_mobile_oauth_handoff_rejects_replay():
+    fake_user = _fake_user()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_endpoints.redeem_mobile_oauth_handoff(
+            body=auth_endpoints.MobileOAuthRedeemBody(
+                code="already-used-code-0123456789abcdef",
+                state=MOBILE_STATE,
+                code_verifier=MOBILE_CODE_VERIFIER,
+            ),
+            request=_fake_request(),
+            db=_FakeRedeemDb(fake_user),
+            redis=_FakeRedis(),
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "MOBILE_OAUTH_HANDOFF_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_mobile_oauth_handoff_rejects_state_mismatch(monkeypatch):
+    fake_user = _fake_user()
+    fake_redis = _FakeRedis()
+    code = "mobile-oauth-code-0123456789abcdef"
+    await fake_redis.set(
+        auth_endpoints._mobile_oauth_handoff_key(code),
+        json.dumps({
+            "user_id": str(fake_user.id),
+            "provider": "google",
+            "mobile_state": MOBILE_STATE,
+            "mobile_code_challenge": MOBILE_CODE_CHALLENGE,
+        }),
+        ex=auth_endpoints.MOBILE_OAUTH_HANDOFF_TTL_SECONDS,
+    )
+
+    async def _issue_auth_token(**_kwargs):
+        raise AssertionError("state mismatch must not issue Core tokens")
+
+    monkeypatch.setattr(auth_endpoints, "_issue_auth_token", _issue_auth_token)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_endpoints.redeem_mobile_oauth_handoff(
+            body=auth_endpoints.MobileOAuthRedeemBody(
+                code=code,
+                state="c" * 64,
+                code_verifier=MOBILE_CODE_VERIFIER,
+            ),
+            request=_fake_request(),
+            db=_FakeRedeemDb(fake_user),
+            redis=fake_redis,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "MOBILE_OAUTH_HANDOFF_INVALID"
+    assert await fake_redis.getdel(auth_endpoints._mobile_oauth_handoff_key(code)) is None
+
+
+@pytest.mark.asyncio
+async def test_mobile_oauth_handoff_rejects_code_verifier_mismatch(monkeypatch):
+    fake_user = _fake_user()
+    fake_redis = _FakeRedis()
+    code = "mobile-oauth-code-0123456789abcdef"
+    await fake_redis.set(
+        auth_endpoints._mobile_oauth_handoff_key(code),
+        json.dumps({
+            "user_id": str(fake_user.id),
+            "provider": "google",
+            "mobile_state": MOBILE_STATE,
+            "mobile_code_challenge": MOBILE_CODE_CHALLENGE,
+        }),
+        ex=auth_endpoints.MOBILE_OAUTH_HANDOFF_TTL_SECONDS,
+    )
+
+    async def _issue_auth_token(**_kwargs):
+        raise AssertionError("verifier mismatch must not issue Core tokens")
+
+    monkeypatch.setattr(auth_endpoints, "_issue_auth_token", _issue_auth_token)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_endpoints.redeem_mobile_oauth_handoff(
+            body=auth_endpoints.MobileOAuthRedeemBody(
+                code=code,
+                state=MOBILE_STATE,
+                code_verifier="d" * 64,
+            ),
+            request=_fake_request(),
+            db=_FakeRedeemDb(fake_user),
+            redis=fake_redis,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "MOBILE_OAUTH_HANDOFF_INVALID"
+    assert await fake_redis.getdel(auth_endpoints._mobile_oauth_handoff_key(code)) is None
+
+
+@pytest.mark.asyncio
+async def test_mobile_oauth_handoff_rejects_pending_deletion_before_token_issue(monkeypatch):
+    fake_user = _fake_user()
+    fake_user.deleted_at = datetime.now(timezone.utc)
+    fake_user.purge_at = fake_user.deleted_at + timedelta(days=30)
+    fake_redis = _FakeRedis()
+    code = "mobile-oauth-code-0123456789abcdef"
+    await fake_redis.set(
+        auth_endpoints._mobile_oauth_handoff_key(code),
+        json.dumps({
+            "user_id": str(fake_user.id),
+            "provider": "google",
+            "mobile_state": MOBILE_STATE,
+            "mobile_code_challenge": MOBILE_CODE_CHALLENGE,
+        }),
+        ex=auth_endpoints.MOBILE_OAUTH_HANDOFF_TTL_SECONDS,
+    )
+
+    async def _issue_auth_token(**_kwargs):
+        raise AssertionError("pending deletion must not issue Core tokens")
+
+    monkeypatch.setattr(auth_endpoints, "_issue_auth_token", _issue_auth_token)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth_endpoints.redeem_mobile_oauth_handoff(
+            body=auth_endpoints.MobileOAuthRedeemBody(
+                code=code,
+                state=MOBILE_STATE,
+                code_verifier=MOBILE_CODE_VERIFIER,
+            ),
+            request=_fake_request(),
+            db=_FakeRedeemDb(fake_user),
+            redis=fake_redis,
+        )
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "ACCOUNT_PENDING_DELETION"
 
 
 @pytest.mark.parametrize("app_env", ["production", "staging"])

@@ -1,12 +1,339 @@
 # HealthOS — Project Changelog
 
-> **Version**: 1.3.6-admin-redesign | **Last Updated**: 2026-05-31
+> **Version**: 1.3.6-admin-redesign | **Last Updated**: 2026-06-01
 
 ---
 
 ## [Unreleased]
 
 ### Added
+
+#### Mobile Android App Links OAuth Hardening (2026-06-01)
+- **Verified HTTPS callback path**: Mobile OAuth can now use `EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://.../auth/oauth/mobile-callback` for production Android App Links while preserving the local `nt208://auth/oauth/callback` fallback.
+- **Expo/App Links config**: `app.config.js` emits Android `autoVerify` intent filters for HTTPS mobile OAuth redirect URIs, and the BFF allowlist accepts HTTPS App Link callbacks only when listed in `MOBILE_OAUTH_REDIRECT_URIS`.
+- **Digital Asset Links endpoint**: Frontend serves `/.well-known/assetlinks.json` from server-side package/fingerprint env vars and fails closed when signing fingerprints are absent or malformed.
+- **Release docs/env**: Master env, mobile README, and production checklist now document App Links URI and signing fingerprint requirements.
+- **Verification**: Mobile auth-service Jest passed: 1 suite / 43 tests. Frontend OAuth and assetlinks Vitest passed: 2 files / 24 tests. Full mobile Jest passed: 121 suites / 494 tests. Mobile typecheck/lint, route matrix, logo parity, Expo config/deps, frontend `tsc --noEmit`, targeted frontend ESLint, frontend production build, render/env plus Android helper tests, and direct exact App Link intent-filter probe passed.
+
+#### Mobile Android Native Readiness (2026-06-01)
+- **Native preflight**: Added Android native readiness check for JDK, Android SDK tools, Expo Android metadata, and Android EAS profiles.
+- **Native runner**: `npm run android:native` now runs through a wrapper that injects Android Studio JBR when `JAVA_HOME` is blank before `expo run:android`.
+- **Release docs**: Mobile README and production checklist now include `npm run check:android-native-readiness`.
+- **Verification**: Native readiness tests passed: 30 Node tests across readiness, ADB, and physical-device URL guards. `npm run check:android-native-readiness`, `npm run check:expo-config`, runner syntax check, ADB device listing, AVD listing, and scoped diff check passed.
+
+#### Mobile Prevention Filter No-Op Cleanup (2026-06-01)
+- **No-op filter removed**: Prevention screen no longer renders a header filter icon that only opened instructional feedback.
+- **Real filter preserved**: Category chips remain the supported filter control for Core-derived prevention actions.
+- **Verification**: Focused Prevention/locale Jest passed: 2 suites / 5 tests. Mobile typecheck, lint, route matrix, logo parity, Expo config, and scoped diff check passed.
+
+#### Mobile Env Template Physical LAN Guidance (2026-06-01)
+- **Master env guidance aligned**: `infra/env/.env.master.example` now says blank Expo public URLs are for simulator/emulator local workflows only; physical Android requires explicit LAN URLs before `npm run android`.
+- **Renderer intent clarified**: Render-env test names now describe blank mobile URL output as emulator local behavior while preserving explicit LAN overrides and production HTTPS/WSS validation.
+- **Verification**: Render-env Node tests passed: 20 tests. Android env/ADB Node tests passed: 24 tests. Mobile route matrix, Expo config, and scoped diff check passed.
+
+#### Mobile Risk Refresh Copy Cleanup (2026-06-01)
+- **Dead-action copy removed**: Risk Overview refresh failures now show a localized refresh-failed state instead of the stale `Risk action unavailable` wording.
+- **Risk routes preserved**: Existing prevention and risk-detail navigation remain unchanged while refresh errors still surface the Core failure message.
+- **Verification**: Focused Risk Overview/locale Jest passed: 2 suites / 3 tests. Mobile typecheck, lint, route matrix, logo parity, Expo config, and scoped diff check passed.
+
+#### Mobile Meal Scan Barcode Dead Affordance Removal (2026-06-01)
+- **Unsupported barcode control removed**: Meal Scan no longer renders the barcode toggle that could only report missing Core nutrition lookup support.
+- **Camera path preserved**: Live capture, first-time camera permission, upload retry, no-meal-id retry, gallery upload, torch, and camera flip remain covered while `CameraView` receives no barcode scanner props.
+- **Verification**: Focused Meal Scan/locale Jest passed: 2 suites / 9 tests. Mobile typecheck, lint, route matrix, logo parity, Expo config, scoped diff check, and scoped code review passed after follow-up.
+
+#### Mobile Physical Android Explicit LAN Env Guard (2026-06-01)
+- **Physical launch fails fast**: Android physical-device preflight now rejects blank, missing, malformed, wrong-scheme, emulator-only, loopback, and wildcard Expo public URLs before Metro starts.
+- **Emulator path preserved**: Android emulator runs still allow `10.0.2.2`; physical phones must use explicit LAN or other reachable public URLs for Core API, Core WS, and web OAuth.
+- **Verification**: Android env/ADB Node tests passed: 24 tests. API/auth/reachability Jest passed: 3 suites / 67 tests. Mobile typecheck, lint, route matrix, logo parity, Expo config, scoped diff check, and scoped code review follow-up passed.
+
+#### Mobile Logout SecureStore Clear Failure Handling (2026-06-01)
+- **Local clear is authoritative**: Logout now captures the refresh token, clears SecureStore first, and only then best-effort revokes the remote session; local clear failures reject instead of being suppressed.
+- **Authenticated UI preserved on failure**: SessionProvider clears UI state only after local logout succeeds, and App Lock now catches sign-out failures and shows the error while keeping protected content hidden.
+- **Verification**: Focused auth/app-lock Jest passed: 3 suites / 46 tests. Mobile typecheck, lint, route matrix, logo parity, Expo config, scoped diff check, and scoped code review follow-up passed.
+
+#### Mobile Goals Hub Progress Refresh (2026-06-01)
+- **Fresh check-in progress**: Goals Hub now reads Core `weight_kg` goal progress and uses the latest logged weight before falling back to profile weight, matching Goal Detail behavior after manual weight check-ins.
+- **Disabled-query guard**: Targetless goals ignore stale disabled progress loading/error state, preserving the existing no-target/profile fallback path.
+- **Verification**: Focused Goals hub/detail/log/service Jest passed: 4 suites / 7 tests. Mobile typecheck, lint, route matrix, and scoped code review passed.
+
+#### Mobile Home Bell Notifications Route (2026-06-01)
+- **Correct notification target**: Home tab bell now opens the existing `/reminders/notifications` inbox instead of the Today overview.
+- **Search behavior preserved**: Home search still opens `/home/today`; regression coverage asserts route call order for both top actions.
+- **Verification**: Focused Home top-action Jest passed: 1 suite / 1 test. Mobile typecheck, lint, route matrix, and scoped code review passed.
+
+#### Mobile Video Visit Safe URL Policy (2026-06-01)
+- **HTTPS-only meeting links**: Create Appointment now rejects non-HTTPS video meeting links before saving, including HTTP, FTP, mailto, JavaScript, and relative URL inputs.
+- **Safe external open**: Join Video Visit now opens stored meeting links through `safeOpenUrl` and shows a clear failure state when the URL is rejected or unsupported.
+- **Verification**: Focused create/join video visit Jest passed: 2 suites / 12 tests. Mobile typecheck, lint, route matrix, and scoped code review passed after test-strength follow-up.
+
+#### Mobile Physical Device Env Guard (2026-06-01)
+- **Physical-phone launch guard**: Android Expo preflight now fails before Metro starts when a connected physical device would launch with emulator-only or loopback public URLs such as `10.0.2.2` or `localhost`.
+- **Expo env parity**: The guard uses Expo env file resolution and expansion, including `.env.development.local`, while preserving process-env LAN overrides. Later explicit-LAN guard behavior rejects blank values for physical Android devices.
+- **Verification**: Focused Android script tests passed: 19 tests. Mobile route matrix, typecheck, lint, emulator preflight, direct env repro, and scoped code review passed.
+
+#### Mobile Meals Hub Dead Guarded State Cleanup (2026-06-01)
+- **Dead guarded state removed**: Meals Hub no longer keeps an unreachable guarded-message branch that could render an `Action unavailable` card.
+- **Date behavior preserved**: Calendar reset still returns to today, week-strip selection still reloads Core meals for the selected day, and date input formatting now uses local calendar days instead of UTC slicing.
+- **Verification**: Focused Meals Hub Jest passed, including a UTC process run and timezone helper regression. Mobile route matrix, typecheck, lint, diff check, and scoped code review passed.
+
+#### Mobile Nutrition Trends Range Action Cleanup (2026-06-01)
+- **Dead range action removed**: Nutrition Trends no longer shows a calendar action that only opened a `Date range unavailable` card.
+- **Implemented controls preserved**: The existing 7d/30d/90d chips remain the supported range controls, matching the period-only Core report trend contract while meal summary/list queries still use real date bounds.
+- **Verification**: Focused Nutrition Trends Jest passed: 1 suite / 2 tests. Mobile route matrix, typecheck, lint, diff check, and scoped code review passed.
+
+#### Mobile Risk Prevention Action Routing (2026-06-01)
+- **Dead action removed**: Risk Overview's header more action now opens the existing `/insights/risk/prevention` route instead of showing an unavailable feedback card.
+- **Contract-backed target**: The destination screen already uses Core risk predictions and the generic `risk_prevention` wellness-plan contract.
+- **Verification**: Focused Risk Overview Jest passed: 1 suite / 1 test. Mobile route matrix, typecheck, lint, and scoped code review passed.
+
+#### Mobile Logo Parity Guard (2026-06-01)
+- **Web logo source lock**: Added a mobile `check:logo-parity` guard that compares the native `HealthOSBrandMark` viewBox, path/fill/opacity records, and gradient geometry/units/stops against `frontend/public/logo.svg`.
+- **Release asset guard**: The same check verifies Expo icon/splash references and launcher/splash PNG dimensions.
+- **Verification**: Logo parity, Expo config, route matrix, mobile typecheck, and mobile lint passed.
+
+#### Mobile Physical-Device LAN Env Defaults (2026-06-01)
+- **Expo Go local default**: Local mobile env examples now leave Core, WS, and BFF URLs blank for emulator/simulator Expo workflows; later physical-device guard behavior requires explicit LAN values before `npm run android` on physical phones.
+- **Renderer compatibility**: `render-env` now blanks the old local `10.0.2.2` mobile defaults when rendering `mobile/.env`, while preserving explicit LAN overrides and production HTTPS/WSS values.
+- **Verification**: Renderer unit tests passed: 20 tests. Mobile env render check passed. Focused mobile URL/reachability Jest passed: 3 suites / 67 tests.
+
+#### Mobile Onboarding-Aware OAuth/Auth Routing (2026-06-01)
+- **Web-parity post-auth routing**: Mobile now routes completed users to `/home` and pending/in-progress users to `/onboarding/setup` after password, Google/GitHub OAuth, MFA, and OTP login.
+- **Auth gate enforcement**: The root auth gate now keeps incomplete authenticated users out of protected app tabs and redirects completed users away from onboarding, including legacy `/auth/setup`.
+- **OAuth polish**: Added mobile OAuth routing tests for Google/GitHub outcomes, OAuth profile-refresh cleanup coverage, and refreshed stale OAuth fallback copy.
+- **Verification**: Focused auth Jest passed: 5 suites / 45 tests. Mobile typecheck, lint, route matrix, and scoped diff check passed.
+
+#### Mobile Add Meal Barcode Dead CTA Cleanup (2026-06-01)
+- **Supported meal entry only**: Add Meal no longer shows a Barcode/Packaged foods card that only reported a missing packaged-food lookup API.
+- **Product-ready paths preserved**: Android mobile still exposes AI photo scan, manual entry, ingredient catalog search, and meal history reuse, matching implemented Core/web meal flows.
+- **Verification**: Focused Add Meal Jest passed: 1 suite / 8 tests. Mobile typecheck, lint, and scoped diff check passed; async query test warning was cleaned up in the follow-up Add Meal test synchronization pass.
+
+#### Mobile Medication Pause Duration + Reason (2026-06-01)
+- **Core pause metadata**: Medication pause now stores optional `pause_until` and `pause_reason` while preserving empty-body `POST /v1/medications/{id}/pause` behavior.
+- **Timed auto-resume**: Added a 5-minute medication task that reactivates expired timed pauses and child reminders; resume clears pause metadata.
+- **Mobile pause sheet**: Android/mobile pause flow now offers until-resume, 24h, 3d, 7d, custom date, and optional reason controls with EN/VI copy.
+- **Audit reliability**: Medication signal task now assigns unique audit timestamps per system event to avoid same-transaction audit uniqueness collisions.
+- **Verification**: Focused mobile pause/service Jest passed: 3 suites / 11 tests. Backend medication lifecycle/refill suites passed: 18 tests; medication API endpoints passed: 27 tests; OpenAPI drift passed: 6 tests. Mobile typecheck, lint, route matrix, and full Jest passed: 117 suites / 454 tests. Frontend `tsc --noEmit` and backend py-compile passed.
+
+#### Mobile Report Export PDF-Only Copy (2026-06-01)
+- **Truthful destination UI**: Report export no longer renders disabled Doctor/Link/Family destinations; mobile presents the supported PDF export path only.
+- **Copy clarity**: Added PDF-only destination copy so users do not expect unsupported share channels in this release.
+- **Verification**: Focused report export/locale Jest passed: 2 suites / 5 tests. Mobile typecheck, lint, route matrix, and full Jest passed: 115 suites / 448 tests.
+
+#### Mobile Symptom Intake Appointment Attach (2026-06-01)
+- **Explicit visit target**: Symptom Checker now requires choosing an upcoming appointment or an explicit standalone report before creating the Core visit brief.
+- **Appointment attach parity**: Appointment targets create the visit brief with `attach_to_appointment_id`, matching the existing Core/mobile service contract and web attach behavior.
+- **No symptom truncation**: Mobile now submits every selected symptom instead of silently keeping only the first five.
+- **Verification**: Focused symptom form Jest passed: 1 suite / 3 tests. Related visit brief/visit prep/locale tests passed: 3 suites / 14 tests. Mobile typecheck, lint, route matrix, and full Jest passed: 115 suites / 448 tests.
+
+#### Mobile Health Connect Verified Connect Gate (2026-06-01)
+- **Permission-first connect**: Add Device now requests native Health Connect read permissions before creating the Core device row.
+- **First-sync gate**: Mobile runs the first native Health Connect sync before saving the local device id or navigating to the connected detail screen.
+- **Cleanup on failure**: If the first native sync fails after Core row creation, mobile disconnects that just-created row and shows the sync error instead of presenting a false connected state.
+- **Verification**: Focused Add Device Jest passed: 1 suite / 4 tests. Related Health Connect/detail Jest passed: 3 suites / 16 tests. Mobile typecheck, lint, route matrix, and full Jest passed: 114 suites / 445 tests.
+
+#### Mobile Report Export Live Sections (2026-06-01)
+- **Live section source**: Report export now loads the selected Core report period and renders PDF-exportable sections from `report.sections` instead of fixed mobile-only toggles.
+- **Sensitive export consent**: Medication sections now require explicit sensitive-section opt-in; the export flow no longer sends medication while forcing `include_sensitive: false`.
+- **Truthful empty/loading states**: Export sheet shows Core loading/error/empty states and no longer shows static sleep/BMI/activity rows when Core did not return them.
+- **Verification**: Focused report export Jest passed: 1 suite / 4 tests. Locale parity, mobile typecheck, lint, route matrix, and full Jest passed: 114 suites / 443 tests.
+
+#### Mobile Care Hub Appointment CTA Routing (2026-06-01)
+- **Concrete hero actions**: Care tab hero no longer sends both `Join` and `Prep` to the appointment list. Video appointments with a join URL now open `/care/video/{id}`, non-video appointments open `/care/appointment/{id}`, and `Prep` opens `/care/prep/{id}`.
+- **Regression coverage**: Added Care hub routing tests for video and in-person appointment hero actions.
+- **Verification**: Focused Care hub/appointments Jest passed: 2 suites / 5 tests. Locale parity, mobile typecheck, lint, route matrix, and full Jest passed: 114 suites / 442 tests.
+
+#### Mobile EAS Project ID Env Config (2026-06-01)
+- **Dynamic project ID**: Added `mobile/app.config.js` so release builds can inject the real `EAS_PROJECT_ID` into `extra.eas.projectId` without committing a placeholder Expo project ID.
+- **Config guard**: Added `npm run check:expo-config` to verify Android package, Health Connect native config, and EAS project ID env injection.
+- **Release docs**: Mobile README and `.env.example` now document the `EAS_PROJECT_ID` path alongside Android EAS build prerequisites.
+- **Verification**: Expo config resolved with and without `EAS_PROJECT_ID`; config guard, mobile typecheck, lint, route matrix, Expo dependency check, full Jest, and focused auth/device OAuth tests passed.
+
+#### Mobile Health Connect Native Run Gate (2026-06-01)
+- **Native Android smoke path**: Added `npm run android:native`, which runs the existing ADB/emulator preflight and then `expo run:android` for native-module validation.
+- **Wrapper support**: `script/build_and_run` now exposes `--android-native` for the same native Android path.
+- **Health Connect signoff clarity**: Mobile README now states Expo Go is valid for general UI/API smoke only; Health Connect native sync requires a native Android build.
+- **Verification**: Package script, wrapper help, and README guidance verified. Full mobile Jest passed: 113 suites / 440 tests. Mobile typecheck, lint, route matrix, and Expo dependency check passed. Live native-device Health Connect smoke remains device-dependent.
+
+#### Mobile Report Export Period/Locale Parity (2026-06-01)
+- **Selected period preserved**: Report Detail and Reports Hub now pass `period` into `/insights/reports/export`, so PDF export no longer silently falls back to weekly data from every entry point.
+- **Locale-aware export**: Export requests now use the active app language normalized to `en` or `vi` instead of hard-coded English.
+- **Fresh date copy**: Removed the stale fixed April date label from the export sheet and replaced it with a computed range for the selected period.
+- **Verification**: Focused report export/hub tests passed: 2 suites / 6 tests. Full mobile Jest passed: 113 suites / 440 tests. Mobile typecheck, lint, route matrix, and Expo dependency check passed.
+
+#### Mobile Medication Dose Occurrence Safety (2026-06-01)
+- **Occurrence-safe take/missed actions**: Medication take and missed-dose routes now select by exact `occurrence_id`/`reminder_id` when route context supplies them, instead of picking the first same-plan dose.
+- **Detail schedule safety**: Medication Detail row-level `Take` actions now resolve the matching `/v1/medications/today` occurrence and call reminder done with `{ occurrence_id }`; it no longer marks a reminder done without an occurrence id.
+- **Route matrix coverage**: Added explicit route samples for `/meds/test-id/take` and `/meds/test-id/missed` so dynamic dose routes remain checked.
+- **Verification**: Focused and related medication tests passed: 3 suites / 10 tests. Full mobile Jest passed: 113 suites / 439 tests. Mobile typecheck, lint, route matrix, and Expo dependency check passed.
+
+#### Mobile Meal Scan Result Product Cleanup (2026-06-01)
+- **Dead scan edit CTA removed**: Meal Scan Results no longer shows a `Change` button that only opened `Scan edit unavailable`.
+- **Implemented actions preserved**: Users still have `Retake` and `Add to log`; accepted scan results continue into the existing meal detail/edit flow backed by Core meal data.
+- **No fake correction API**: Mobile does not imply ingredient correction support until Core exposes a verified contract.
+- **Verification**: Focused and related meal scan/detail Jest passed: 3 suites / 8 tests. Full mobile Jest passed: 112 suites / 436 tests. Mobile typecheck, lint, route matrix, and Expo dependency check passed.
+
+#### Mobile Prescription Detail Product Cleanup (2026-06-01)
+- **Fake pharmacy barcode removed**: Prescription Detail no longer shows a deterministic barcode or "Show this code at pharmacy" copy that has no Core/web contract.
+- **Verified prescription surface preserved**: Mobile still renders appointment-backed prescription medicines, doctor/date metadata, notes, medication import, and prescription file assets.
+- **Web parity**: Mobile now matches the web prescription viewer boundary: real prescription payload, import action, and attachments only.
+- **Verification**: Focused prescription detail Jest passed: 1 suite / 1 test. Related prescription asset/import Jest passed: 4 suites / 13 tests. Full mobile Jest passed: 111 suites / 435 tests. Mobile typecheck and lint passed.
+
+#### Mobile Medication Import/Refill Product Cleanup (2026-06-01)
+- **Medication entry cleanup**: Removed scanner, barcode, and drug-database affordances that only opened missing-contract messages; mobile now keeps appointment prescription import and manual add, matching implemented web/Core flows.
+- **Refill action parity**: Low-supply refill CTA now opens the real log-refill flow backed by `POST /v1/medications/{id}/refill` instead of a pharmacy request placeholder.
+- **Truthful pharmacy guidance**: Reworded refill guidance to tell users to contact pharmacy externally and log received refill in-app.
+- **Verification**: Focused mobile meds Jest passed: 3 suites / 12 tests. Full mobile Jest passed: 110 suites / 435 tests. Mobile typecheck, lint, route matrix, and Expo dependency check passed.
+
+#### Mobile Device Source Product Cleanup (2026-06-01)
+- **Health Connect-only connect flow**: Add Device now offers Health Connect as the only source that the Android mobile app can create and sync.
+- **Legacy row honesty**: Existing Google Fit/Garmin/Fitbit/Apple rows still render when Core returns them, but mobile no longer presents dead connect CTAs for unsupported standalone providers.
+- **Samsung Health cleanup**: Removed the standalone Samsung Health unavailable modal; Samsung-origin data should come through Health Connect source-app metadata instead of a fake top-level provider.
+- **Verification**: Focused device Jest passed: 2 suites / 5 tests. Full mobile Jest passed: 110 suites / 434 tests. Mobile typecheck, lint, route matrix, Expo dependency check, and diff whitespace check passed.
+
+#### Mobile Video Visit Join URL Parity (2026-06-01)
+- **Core appointment metadata**: Added `visit_type` and nullable `video_join_url` to appointments, with absolute HTTP(S) URL validation and compatibility mapping from old mobile `in-person` values to `in_person`.
+- **BFF and contract parity**: Regenerated OpenAPI/shared contracts and added BFF proxy coverage so create/update appointment payloads forward video join URL fields.
+- **Mobile join flow**: Appointment creation can send a meeting link for video visits, appointment detail/list join CTAs only become actionable when a URL exists, and `/care/video/[id]` opens the stored Core URL through native Linking.
+- **Truthful no-link state**: Video appointments without a URL show a no-link state instead of a fake meeting room or MissingApiState.
+- **Verification**: Backend appointment pytest passed: 12 tests. Backend route/OpenAPI contract subset passed: 21 tests. Frontend BFF Vitest passed: 25 tests. Frontend direct `tsc` passed. Mobile focused appointment/video Jest passed: 6 suites / 18 tests plus join-video rerun 3 tests. Full mobile Jest passed: 110 suites / 434 tests. Mobile typecheck, lint, route matrix, Expo dependency check, Android ADB readiness, and scoped diff check passed. Physical Android phone/LAN Expo smoke not run.
+
+#### Mobile Appointment Assets Contract Parity (2026-06-01)
+- **Core asset contract**: Added generic `AppointmentAsset` storage with `attachment` and `lab_report` kinds, owner-scoped upload/list/signed-url/delete endpoints, audit events, purge cleanup, and OpenAPI contract entries.
+- **BFF parity**: Added appointment asset proxy routes for list/upload/signed-url/delete plus `GET /api/v1/appointment-assets` for user-scoped lab report lists.
+- **Mobile wiring**: Appointment Detail, Attachments, and Lab Reports now use real Core asset data instead of generic/lab MissingApiState placeholders.
+- **Document safety**: Mobile validates local PDF/image files before upload; Core re-detects supported document mime types, exposes `kind` as an OpenAPI enum, rejects bad kind/mime/oversize payloads before persistence, cleans object storage after post-upload failures, and fails closed when object deletion fails.
+- **Verification**: Backend appointment asset pytest passed: 6 tests. Backend route/OpenAPI contract tests passed: 15 tests. Frontend BFF Vitest passed: 24 tests. Mobile focused asset tests passed: 6 suites / 15 tests. Full mobile Jest passed: 110 suites / 432 tests. Mobile typecheck, lint, route matrix, backend compileall, frontend direct `tsc`, and focused frontend lint passed.
+
+#### Mobile Medication Dose History Parity (2026-06-01)
+- **Core history feed**: Added `GET /v1/medications/history` backed by reminder occurrences, returning medication plan id/name, strength, scheduled time, status, and action timestamps.
+- **BFF parity**: Added `GET /api/v1/medications/history` proxy with query forwarding for browser/BFF consistency.
+- **Mobile wiring**: Medication History now renders recent Core dose events instead of the previous `Dose history unavailable` state.
+- **Contract typing**: Added shared/mobile `MedicationDoseHistory` typing, query key, and service coverage.
+- **Verification**: Backend medication endpoint pytest passed: 24 tests. Frontend BFF proxy Vitest passed: 21 tests. Mobile focused medication tests passed: 2 suites / 7 tests. Full mobile Jest passed: 107 suites / 422 tests. Mobile typecheck, mobile lint, frontend direct `tsc`, focused frontend lint, and mobile route matrix passed.
+
+#### Mobile Meal Delete Contract Parity (2026-06-01)
+- **Core delete contract**: Added authenticated `DELETE /v1/meals/{meal_id}` with owner scoping, 204 success, and 404 for missing/non-owned meals.
+- **BFF parity**: Added `DELETE /api/v1/meals/{meal_id}` proxy so browser routes share the same Core contract.
+- **Mobile wiring**: Meal Detail now calls the real delete contract, invalidates meal caches, and returns to the Meals hub instead of showing a missing-contract guard.
+- **Image cleanup**: Core attempts best-effort meal image object deletion after the DB row is removed, without blocking the user action on storage cleanup failure.
+- **Verification**: Backend meal endpoint pytest passed: 18 tests. Frontend BFF proxy Vitest passed: 20 tests. Mobile focused meal tests passed: 2 suites / 8 tests. Full mobile Jest passed: 107 suites / 421 tests. Mobile typecheck, mobile lint, frontend direct `tsc`, focused frontend lint, mobile route matrix, and scoped diff check passed.
+
+#### Mobile Visit Brief Parity (2026-06-01)
+- **Core-backed prep brief**: Appointment prep now finds an active Core visit brief linked to the appointment and can create a draft through `POST /v1/visit-briefs` with `attach_to_appointment_id`.
+- **Prep workflow actions**: Mobile prep can add a concern, save suggested questions, recompute routing, and finalize the brief through existing Core visit-brief endpoints.
+- **Attached draft idempotency**: Core `create_brief` now reuses the active draft already linked to an appointment, with an appointment row lock around check/create to prevent duplicate mobile draft rows.
+- **Contract coverage**: Added mobile visit-brief DTOs and service coverage for list/detail/create/attach/find/questions/finalize paths; no fake mobile-only endpoint was introduced.
+- **Android readiness cleanup**: Ignored and removed generated `mobile/.tmp` export artifacts, and expanded Android ADB/Expo preflight tests for ADB start failure, unauthorized devices, missing AVDs, boot timeout, emulator spawn, and Expo Go args.
+- **Verification**: Focused visit-brief Jest passed: 2 suites / 13 tests. Backend visit-brief review-fix pytest passed: 8 tests. Android ADB preflight Node tests passed: 11 tests. Full mobile Jest passed: 106 suites / 419 tests. Mobile typecheck, lint, route matrix, Expo dependency check, Expo Doctor, high-severity npm audit gate, and Android export passed. EAS project/env and native preview smoke remain external blockers.
+
+#### Mobile Prevention Generic Plan Tracking (2026-06-01)
+- **Core generic plan reuse**: Prevention tips now save through existing Core `GET/POST/PATCH /v1/plans` as small JSON items in an active `risk_prevention` wellness plan.
+- **Stable item identity**: Mobile prefers Core `tip.id` for saved prevention items and falls back to the generated risk-index id only when Core omits a tip id.
+- **Started state**: Existing active prevention plan items render as `Started`, and new `Start` actions create or patch the generic wellness plan before reloading state.
+- **Scope honesty**: The UI and docs no longer claim dedicated saved risk-action lifecycle tracking; generic JSON item storage is the current contract boundary.
+- **Verification**: Focused prevention Jest passed: 4 suites / 11 tests. Full mobile Jest passed: 105 suites / 408 tests. Mobile typecheck, lint, route matrix, Expo dependency check, high-severity npm audit gate, Android export, scoped diff check, and code-review recheck passed.
+
+#### Mobile Native App Lock (2026-06-01)
+- **Native local auth**: Added `expo-local-authentication` and app config plugin text so Android/iOS native builds can use device biometrics/local auth for an app-local lock gate.
+- **Local-only setting**: App lock preference is stored in SecureStore and never changes Core tokens, MFA, or server session policy.
+- **Lock gate**: Authenticated sessions show a local unlock screen on app boot and foreground resume when app lock is enabled, with protected UI hidden until unlock succeeds and sign out still available.
+- **No lockout fallback**: If native local auth becomes unavailable, the app clears the stale app-lock setting instead of trapping the user behind an impossible unlock.
+- **Security screen**: Profile Security now shows real app-lock availability, enable, and disable controls; unsupported hardware/enrollment remains truthful.
+- **Verification**: Focused app-lock Jest passed: 3 suites / 18 tests. Full mobile Jest passed: 102 suites / 398 tests. Mobile typecheck, lint, route matrix, Expo dependency check, prebuild config export, Android export, high-severity npm audit gates, scoped diff check, and code-review recheck passed. Live device biometric smoke remains pending.
+
+#### Mobile Health Connect Native Sync (2026-06-01)
+- **Native adapter**: Device Detail now uses a real Android Health Connect adapter for native-capable builds instead of the previous throw-only adapter.
+- **Android config**: Added `react-native-health-connect`, `expo-health-connect`, SDK-compatible `expo-build-properties`, and Android build properties with `minSdkVersion: 26`.
+- **Manifest permissions**: Android prebuild config now declares Health Connect read permissions for steps, heart rate, sleep, weight, blood pressure, and exercise records.
+- **Real sync flow**: Adapter requests read permissions, performs 30-day first-sync backfill, consumes Health Connect changes tokens, and feeds the existing Core ingest/permissions/sync-state orchestrator.
+- **Contract mapping**: Steps, heart rate, sleep duration, weight, blood pressure systolic/diastolic, and exercise session duration map to Core metric payloads with range filtering and DB-safe external ID budgeting to avoid bad ingest batches.
+- **Safe fallback**: Expo Go, non-Android, missing SDK, and unlinked native-module paths still return a controlled unavailable error and do not call Core ingest or permission patching.
+- **Verification**: Focused Health Connect Jest passed: 7 suites / 32 tests; post-review blocker fix Jest passed: 5 suites / 30 tests. Full mobile Jest passed: 100 suites / 384 tests. Mobile typecheck, lint, route matrix, Expo dependency check, prebuild config export, Android export, Android ADB preflight tests, high-severity npm audit gates, and scoped diff check passed. Live Health Connect device smoke remains pending.
+
+#### Mobile Meal Scan Native Camera Controls (2026-06-01)
+- **Native preview**: Meal scan now uses SDK-compatible `expo-camera` `CameraView` instead of opening the system camera through ImagePicker.
+- **Real controls**: Torch, front/back camera switch, and barcode scanning are enabled in the production code path.
+- **Truthful barcode handling**: Barcode detection surfaces the scanned value but does not fake nutrition lookup while Core has no barcode-to-food contract.
+- **Regression coverage**: Added camera screen tests for capture upload, torch/facing toggles, capture after camera switch, and barcode detection.
+- **Native config**: Added the `expo-camera` config plugin with Android camera-only permission; no record-audio permission is requested.
+- **Verification**: Focused camera/locale Jest passed: 2 suites / 5 tests. Full mobile Jest passed: 98 suites / 376 tests. Mobile typecheck, lint, route matrix, Expo dependency check, public Expo config export, Android ADB preflight tests, high-severity npm audit gate, and Android export passed.
+
+#### Mobile Android EAS Deploy Readiness (2026-06-01)
+- **Cloud build config**: Added `mobile/eas.json` with Android preview APK, production AAB, local `versionCode` auto-increment, and internal-track submit profiles.
+- **Release runbook**: Mobile README now documents `eas init`, required HTTPS/WSS runtime env, local `versionCode` bump commits, Android build commands, submit command, and credential files that must stay out of git.
+- **Boundary kept**: EAS `projectId`, Google Play service account, first manual upload, and store listing metadata remain external release prerequisites; no fake project ID or secret path was committed.
+- **Verification**: EAS JSON parse, Expo config export, route matrix, Expo dependency check, mobile typecheck, lint, full Jest, Android export, and scoped diff check passed.
+
+#### Mobile Product Readiness Review Fixes (2026-06-01)
+- **Provider truthfulness**: Add Device now only creates Health Connect rows; Google Fit, Garmin, Fitbit, and Samsung are display-only until real mobile/provider sync contracts exist.
+- **No fake legacy sync**: Legacy provider detail rows render existing Core data but cannot call the Core sync stub as a fake success path.
+- **Production route guard**: Dev-only `/dev/**` routes redirect safely outside `__DEV__`, and the route checker asserts production guards for dev route files.
+- **OAuth callback hardening**: Mobile OAuth handoff parsing now rejects callbacks unless the raw callback base exactly matches `nt208://auth/oauth/callback`, including port, userinfo, and trailing-slash variants.
+- **Intake profile truthfulness**: The intake form no longer asks for email because Core `/v1/users/me` PATCH cannot persist account email.
+- **Verification**: Focused review-fix Jest passed: 4 suites / 41 tests. Full mobile Jest passed: 97 suites / 372 tests. Mobile typecheck, lint, route matrix, Expo dependency check, Android ADB preflight unit tests, and scoped diff check passed.
+
+#### Mobile Expo LAN Host Fallback (2026-06-01)
+- **Physical-device dev fallback**: Mobile now derives Core API, Core WS, and web BFF OAuth fallback URLs from Expo's private LAN dev-server host when `EXPO_PUBLIC_*` URLs are absent, avoiding the Android-emulator-only `10.0.2.2` default on physical Expo Go devices.
+- **Override preserved**: Explicit `.env` / app config URLs still take precedence, and production builds still require HTTPS/WSS configuration.
+- **Regression coverage**: Added focused client/auth tests for env precedence, LAN fallback, emulator fallback, and production URL guards.
+- **Verification**: Focused URL/reachability Jest passed: 3 suites / 58 tests. Full mobile Jest passed: 96 suites / 360 tests. Mobile typecheck, lint, route matrix, Expo dependency check, Android ADB preflight unit tests, scoped diff check, and code-review recheck passed.
+
+#### Mobile Expo Codex Run Actions (2026-06-01)
+- **Codex app actions**: Added mobile-local Codex Run actions for the Expo app under `mobile/.codex/environments/environment.toml`.
+- **Stable run entrypoint**: Added `mobile/script/build_and_run.sh` plus Windows `.cmd`/PowerShell wrappers so Codex can start Expo from the app root and route Android through the existing ADB-preflight-backed `npm run android` path.
+- **Scope guard**: No web target or web cloud build is configured for the mobile-only app.
+- **Verification**: Git Bash syntax/help checks and Windows CMD/PowerShell help checks passed. Expo dependency check and Android ADB preflight unit tests passed.
+
+#### Mobile Android Device Source Parity (2026-06-01)
+- **Android source cleanup**: Device Hub and Add Device no longer promote Apple Health as an Android mobile platform/source; Health Connect remains the recommended Android source.
+- **Compatibility preserved**: The mobile device provider type still accepts existing Core `apple_health` rows, but the Android UI no longer promotes iOS-only connection affordances.
+- **OAuth cleanup**: Removed the unused Apple OAuth mark/export after Google/GitHub mobile OAuth parity replaced Apple sign-in.
+- **Verification**: Focused Add Device/Devices Hub Jest passed: 2 suites / 5 tests. Full mobile Jest passed: 96 suites / 351 tests. Mobile typecheck, lint, route matrix, Expo dependency check, Android ADB preflight unit tests, and emulator availability check passed.
+
+#### Mobile Reports Hub Core Truthfulness (2026-06-01)
+- **Core-derived status**: Reports Hub empty, error, and monthly status copy now derives from Core weekly/monthly report query data, `generated_at`, and report sections instead of logged-day demo progress, a static Activity sync failure, or a hardcoded monthly queue date.
+- **Generation preserved**: The monthly action still calls Core `POST /v1/reports?period=30d` and reloads the 30-day report after success.
+- **Regression coverage**: Updated Reports Hub tests for Core-empty copy, real weekly/monthly query statuses, and generated monthly state.
+- **Verification**: Focused ReportsHub Jest passed: 1 suite / 3 tests. Full mobile Jest passed: 96 suites / 349 tests. Mobile typecheck, lint, route matrix, Expo dependency check, Android ADB preflight unit tests, and emulator availability check passed.
+
+#### Mobile Medication Import Source Discovery (2026-06-01)
+- **Core-backed sources**: `/meds/import` now loads Core appointments through `appointmentService.list()` and shows prescription-bearing appointments instead of claiming a missing prescription source API.
+- **Existing import reuse**: Selecting a source opens the existing `PrescriptionImportPanel`, preserving the verified `POST /v1/medications/import/{appointment_id}` flow.
+- **Truthful remaining guards**: Barcode scan and drug database search remain guarded because no verified drug lookup API exists.
+- **Verification**: Focused Import Medication Jest passed: 1 suite / 5 tests. Full mobile Jest passed: 96 suites / 349 tests. Mobile typecheck, lint, route matrix, Expo dependency check, and Android ADB preflight unit tests passed.
+
+#### Mobile Meals Hub Date Selection Parity (2026-06-01)
+- **Real selected-day loading**: Meals Hub week-strip taps now reload Core `GET /v1/meals` with matching `date_from` and `date_to` instead of keeping the calendar flow guarded.
+- **Today reset action**: The calendar button now resets the selected meal date to today, preserving existing navigation without a fake unavailable action.
+- **Selected-day labels**: Calories and meal list labels no longer imply "today" when the user selects another day.
+- **Verification**: Focused MealsHub Jest passed: 2 suites / 4 tests. Full mobile Jest passed: 96 suites / 346 tests. Mobile typecheck, lint, route matrix, Expo dependency check, Android ADB preflight unit tests, and scoped diff check passed.
+
+#### Mobile Meal History Reuse Parity (2026-06-01)
+- **Real history reuse**: Add Meal now loads recent meal history from Core `GET /v1/meals` through `mealService.list()` instead of showing `Meal history reuse unavailable`.
+- **No static examples**: Removed hardcoded recent/frequent Add Meal rows and derive those sections from authenticated meal history.
+- **Manual confirmation**: Selecting a history row pre-fills manual entry and reuses prior nutrition as a whole-meal item, but the user still confirms with Save.
+- **Verification**: Focused Add Meal Jest passed: 1 suite / 7 tests. Mobile typecheck and lint passed. Full mobile Jest passed: 95 suites / 344 tests. Route matrix, Expo dependency check, Android ADB preflight unit tests, and scoped diff check passed.
+
+#### Mobile Meal Ingredient Search Parity (2026-05-31)
+- **Real catalog search**: Add Meal food search now calls the existing Core `/v1/nutrition/ingredients` catalog through `nutritionService` instead of showing unavailable feedback.
+- **Matched meal save**: Selecting a catalog result seeds manual meal entry and persists matched ingredient nutrition fields through the existing `mealService.create` contract.
+- **Contract typing**: Added shared `IngredientCatalogItem` typing and focused nutrition-service coverage for query forwarding.
+- **Verification**: Focused Add Meal/nutrition Jest passed: 2 suites / 6 tests. Mobile typecheck passed. Full mobile Jest passed: 95 suites / 342 tests.
+
+#### Mobile Google/GitHub OAuth Handoff (2026-05-31)
+- **Core handoff**: Added BFF-internal `POST /v1/auth/mobile-oauth/handoff` and public one-time `POST /v1/auth/mobile-oauth/redeem` so mobile can receive Core tokens after web-brokered provider verification.
+- **BFF broker**: Google/GitHub OAuth start routes now preserve an allowlisted `nt208://auth/oauth/callback` redirect, and callbacks return a short-lived handoff code for mobile while preserving existing web cookie sessions.
+- **Native client**: Mobile sign-in now launches Google/GitHub through `expo-web-browser`, redeems the handoff code through Core, stores tokens through the existing SecureStore path, and removes the previous Apple/unavailable native OAuth row.
+- **Env and branding**: Added `EXPO_PUBLIC_WEB_APP_URL` and `MOBILE_OAUTH_REDIRECT_URIS` env wiring, documented emulator/LAN BFF URLs, aligned auth welcome/sign-in marks with the web HealthOS logo, and regenerated mobile icon/splash PNG assets from the web logo source.
+- **Verification**: Backend handoff pytest, frontend OAuth Vitest, frontend `tsc --noEmit`, mobile typecheck, full mobile Jest, route matrix, Expo dependency check, Expo config smoke, env renderer tests, and Android ADB preflight tests passed. Physical device OAuth smoke remains pending.
+
+#### Mobile Production Readiness Hardening (2026-05-31)
+- **Env setup**: Expanded `mobile/.env.example` with emulator, LAN, HTTPS/WSS production, and non-secret runtime environment guidance.
+- **Auth routing**: Mobile auth gate now uses an explicit public-route policy; authenticated onboarding routes stay protected.
+- **Production feature guards**: Lab reports, generic appointment attachments, unfinished camera controls, Health Connect native sync, and missing-API diagnostics now use mobile runtime feature flags instead of fake success paths.
+- **Upload safety**: Meal scan image upload and prescription document upload now validate local URI shape, MIME/extension, and size before calling Core-backed services.
+- **I18n/accessibility/types**: Moved more auth/care/device/meal copy into English/Vietnamese locale files, added button/icon hints, and reduced duplicated mobile API DTOs by re-exporting shared contracts where available.
+- **Verification**: Mobile route matrix, typecheck, lint, full Jest, and `git diff --check` passed; lint still reports 25 existing warnings / 0 errors.
 
 #### Mobile Runtime Follow-Up Hardening (2026-05-30)
 - **Query invalidation**: Mobile cache invalidation now blocks stale in-flight writes and loading cleanup races, preventing older requests from repopulating fresh state.
@@ -30,6 +357,55 @@
 - **Env/docs/tests**: Worker env templates expose the new DeepSeek and embedding knobs; tests cover payloads, JSON fallback, streaming reasoning suppression, embedding service, and endpoint validation.
 
 ### Fixed
+
+#### Mobile Vitals Test Sync Cleanup (2026-06-01)
+- **Async success assertion settled**: Vitals manual-entry regression now waits for the post-save success copy after Core create and cache invalidation complete.
+- **Runtime untouched**: Cleanup is limited to `mobile/src/__tests__/vitals-manual-entry-card.test.tsx`.
+- **Verification**: Focused Vitals manual-entry Jest passed: 1 suite / 2 tests. Full mobile Jest passed: 121 suites / 489 tests.
+
+#### Mobile Device Detail Dead More Cleanup (2026-06-01)
+- **Dead More action removed**: Device Detail no longer renders the top-bar More button that only showed unavailable native-device options.
+- **Verified actions preserved**: Back, Health Connect sync fallback, sync-token reset, disconnect, and device settings behavior remain unchanged.
+- **Verification**: Focused Device Detail/locale Jest passed: 2 suites / 6 tests. Mobile typecheck, lint, and full Jest passed: 121 suites / 488 tests.
+
+#### Mobile OAuth Handoff State Binding (2026-06-01)
+- **Mobile verifier bound to handoff**: Google/GitHub mobile OAuth now generates app state plus a private verifier, sends only the verifier challenge through BFF/Core, and requires the verifier during Core redeem.
+- **Core redeem hardened**: Core stores mobile state and verifier challenge beside the one-time handoff code, rejects state/verifier mismatches, and rechecks pending-deletion status before issuing tokens.
+- **Contract synced**: `contracts/openapi/core-api.yaml` now documents `MobileOAuthHandoffBody.mobile_state`, `mobile_code_challenge`, `MobileOAuthRedeemBody.state`/`code_verifier`, and redeem `403` pending-deletion responses.
+- **Regression coverage**: Added mobile missing/mismatched callback-state tests, Expo Crypto verifier generation without ambient Web Crypto, BFF challenge propagation tests, Core state/verifier mismatch rejection, pending-deletion redeem rejection, and OpenAPI assertions.
+- **Verification**: Mobile auth-service Jest passed: 1 suite / 39 tests. Frontend OAuth route Vitest passed: 1 file / 16 tests. Backend BFF token exchange plus mobile OpenAPI pytest passed: 20 tests. OpenAPI drift passed: 6 tests. Mobile typecheck/lint, frontend `tsc --noEmit`, targeted frontend ESLint, backend py-compile, full mobile Jest, route matrix, Expo config/logo/deps, and Android/env helper tests passed in this checkpoint.
+
+#### Mobile Add Meal Test Warning Cleanup (2026-06-01)
+- **Async query settled in test**: Add Meal support-action regression now waits for the meal history query triggered on mount before the test exits.
+- **Runtime untouched**: Cleanup is limited to `mobile/src/__tests__/add-meal-screen.test.tsx`; AddMealScreen behavior and Core query contract stay unchanged.
+- **Verification**: Focused Add Meal Jest passed: 1 suite / 8 tests. Full mobile Jest passed: 121 suites / 485 tests without the previous React `act(...)` warning.
+
+#### Mobile Security Dead CTA Cleanup (2026-06-01)
+- **Dead security rows removed**: Security no longer shows Active sessions, Recovery email, or Recovery phone rows that only opened unavailable native-action messages without confirmed Core/web contracts.
+- **Verified security actions preserved**: Password reset, MFA setup/verify/disable/recovery codes, app lock, and recent security logs remain available.
+- **Verification**: Focused Security screen Jest passed: 1 suite / 7 tests. Mobile typecheck, lint, route matrix, and scoped diff check passed.
+
+#### Mobile Missed Dose CTA Routing (2026-06-01)
+- **Real missed-dose action**: Take confirmation's `meds.missed` action now opens the existing `/meds/{id}/missed` flow instead of backing out.
+- **Exact occurrence context**: The route preserves `occurrenceId`, `reminderId`, and `scheduledAt`, so the missed-dose screen acts on the selected dose instead of the first same-plan occurrence.
+- **Verification**: Focused medication occurrence Jest passed: 1 suite / 4 tests. Mobile typecheck, lint, route matrix, and scoped diff check passed.
+
+#### Frontend Accent Hydration Stability (2026-05-31)
+- **Root layout bootstrap**: Web accent bootstrap no longer uses a Next-managed `beforeInteractive` head script, preventing extension-injected head scripts from displacing it during hydration.
+- **Regression coverage**: Added Playwright coverage for the body-hosted accent bootstrap and stabilized the persisted-accent reload assertion.
+- **Verification**: Targeted ESLint, accent Playwright spec, frontend production build, and browser console smoke passed.
+
+#### Mobile Auth Network Route Remediation (2026-05-31)
+- **Core reachability**: Local backend startup now binds through `start_BE.bat -Host 0.0.0.0`, and mobile sign-in checks Core `/health/ready` with LAN-device and DB/Redis readiness guidance before submitting credentials.
+- **Auth timeout UX**: Mobile auth/profile bootstrap and public auth submissions use short auth timeouts, prevent refresh-token 401 recursion, and clear unverified newly saved auth sessions when profile refresh fails.
+- **Auth navigation**: Root auth gate now owns unauthenticated redirects; tab layout and Me sign-out no longer dispatch nested `/auth/welcome` replacements.
+- **Contract coverage**: Mobile route contract extraction now includes Core `/health/ready` paths used by reachability checks.
+- **Verification**: Full mobile Jest passed at 94 suites / 335 tests; route matrix, typecheck, lint, backend mobile route mapping, `start_be.ps1` syntax, and `git diff --check` passed. Physical Expo Go LAN smoke remains pending.
+
+#### Mobile Android ADB Preflight (2026-05-31)
+- **Android launch recovery**: `npm run android` now runs a mobile-local ADB preflight before Expo starts, detecting stale `offline` emulator transports, disconnecting stale TCP entries, closing stale emulator instances, and starting the selected AVD when no Android device is online.
+- **Expo handoff stability**: The preflight waits for ADB `device`, `sys.boot_completed=1`, and `adb emu avd name` success before starting Expo, avoiding the `emulator-5554` TCP race. Local Expo is launched through `node_modules/expo/bin/cli` to avoid duplicate Windows `.cmd` starts.
+- **Run docs/tests**: Mobile README documents `ANDROID_AVD_NAME`, boot wait, `ADB_PATH`, offline ADB recovery, and Windows socket-stack guidance. Node tests cover device parsing, AVD selection, TCP stale transport detection, and SDK tool resolution.
 
 #### Mobile Home, Meals, Reports, Risk, and Insights Completion (2026-05-31)
 - **Meal contract alignment**: Meal scan now uses Core `POST /v1/meals/analyze-photo`; meal delete and scan correction controls are guarded because no Core delete/correction contract exists.

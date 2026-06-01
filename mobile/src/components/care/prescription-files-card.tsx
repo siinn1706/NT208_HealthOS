@@ -13,6 +13,7 @@ import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { prescriptionAssetService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
 import { safeOpenUrl } from '../../utils/safe-url';
+import { validateDocumentFile } from '../../utils/file-validation';
 
 interface PrescriptionFilesCardProps {
   appointmentId: string;
@@ -31,14 +32,16 @@ function formatBytes(bytes: number) {
 
 export function PrescriptionFilesCard({
   appointmentId,
-  title = 'Prescription files',
+  title,
   helperText,
-  emptyMessage = 'Uploaded PDFs and images will appear here.',
+  emptyMessage,
   showTitle = true,
   allowUpload = true,
 }: PrescriptionFilesCardProps) {
   const t = useTheme();
   const { t: i18n } = useTranslation();
+  const resolvedTitle = title ?? i18n('care.prescriptionFiles');
+  const resolvedEmptyMessage = emptyMessage ?? i18n('care.prescriptionFilesEmpty');
   const [assetBusyId, setAssetBusyId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [assetError, setAssetError] = useState<string | null>(null);
@@ -57,15 +60,25 @@ export function PrescriptionFilesCard({
       });
       if (result.canceled || !result.assets[0]) return;
       const asset = result.assets[0];
+      const validation = validateDocumentFile({
+        uri: asset.uri,
+        fileName: asset.name,
+        mimeType: asset.mimeType,
+        fileSize: asset.size,
+      });
+      if (!validation.ok) {
+        setAssetError(i18n(validation.messageKey ?? 'validation.document.bad_mime', validation.messageParams));
+        return;
+      }
       await prescriptionAssetService.upload(appointmentId, {
         uri: asset.uri,
-        name: asset.name || 'prescription-asset',
-        type: asset.mimeType || 'application/octet-stream',
+        name: asset.name ?? 'prescription-asset',
+        type: asset.mimeType ?? 'application/pdf',
       });
       invalidateApiQuery(queryKeys.prescriptionAssets(appointmentId));
       await assetsQuery.reload();
     } catch (err) {
-      setAssetError(err instanceof Error ? err.message : 'Could not upload prescription file.');
+      setAssetError(err instanceof Error ? err.message : i18n('care.prescriptionFileUploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -77,9 +90,9 @@ export function PrescriptionFilesCard({
     try {
       const signed = await prescriptionAssetService.signedUrl(appointmentId, assetId);
       const opened = await safeOpenUrl(signed.url);
-      if (!opened) setAssetError('Could not open signed download URL.');
+      if (!opened) setAssetError(i18n('care.prescriptionFileOpenSignedUrlFailed'));
     } catch (err) {
-      setAssetError(err instanceof Error ? err.message : 'Could not open prescription file.');
+      setAssetError(err instanceof Error ? err.message : i18n('care.prescriptionFileOpenFailed'));
     } finally {
       setAssetBusyId(null);
     }
@@ -93,7 +106,7 @@ export function PrescriptionFilesCard({
       invalidateApiQuery(queryKeys.prescriptionAssets(appointmentId));
       await assetsQuery.reload();
     } catch (err) {
-      setAssetError(err instanceof Error ? err.message : 'Could not delete prescription file.');
+      setAssetError(err instanceof Error ? err.message : i18n('care.prescriptionFileDeleteFailed'));
     } finally {
       setAssetBusyId(null);
     }
@@ -101,30 +114,31 @@ export function PrescriptionFilesCard({
 
   return (
     <View style={styles.wrap}>
-      {showTitle && <Text style={[typography.h3, { color: t.ink }]}>{title}</Text>}
+      {showTitle && <Text style={[typography.h3, { color: t.ink }]}>{resolvedTitle}</Text>}
       <Card style={styles.card}>
         {helperText && <Text style={[typography.caption, { color: t.ink3 }]}>{helperText}</Text>}
         {allowUpload && (
           <Button
-            label={uploading ? 'Uploading...' : 'Upload prescription file'}
+            label={uploading ? i18n('care.uploadingPrescriptionFile') : i18n('care.uploadPrescriptionFile')}
             variant="ghost"
             icon={<IconPaperclip size={16} color={t.ink2} />}
             onPress={handleUploadAsset}
             loading={uploading}
+            accessibilityHint={i18n('care.uploadPrescriptionFileHint')}
           />
         )}
         {assetError && <Text style={[typography.caption, { color: t.danger }]}>{assetError}</Text>}
-        {assetsQuery.isLoading && <ApiState title="Loading prescription files" loading />}
+        {assetsQuery.isLoading && <ApiState title={i18n('care.loadingPrescriptionFiles')} loading />}
         {assetsQuery.error && (
           <ApiState
-            title="Prescription files unavailable"
+            title={i18n('care.prescriptionFilesUnavailable')}
             message={assetsQuery.error.message}
             actionLabel={i18n('common.retry')}
             onAction={assetsQuery.reload}
           />
         )}
         {!assetsQuery.isLoading && !assetsQuery.error && (assetsQuery.data ?? []).length === 0 && (
-          <ApiState title="No prescription files" message={emptyMessage} />
+          <ApiState title={i18n('care.noPrescriptionFiles')} message={resolvedEmptyMessage} />
         )}
         {!assetsQuery.isLoading && !assetsQuery.error && (assetsQuery.data ?? []).map((asset) => (
           <View key={asset.id} style={[styles.assetRow, { borderColor: t.border, borderRadius: t.radius.md }]}>
@@ -133,7 +147,7 @@ export function PrescriptionFilesCard({
             </View>
             <View style={styles.assetText}>
               <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>
-                {asset.original_filename ?? 'Prescription asset'}
+                {asset.original_filename ?? i18n('care.prescriptionAssetFallback')}
               </Text>
               <Text style={[typography.micro, { color: t.ink3 }]}>
                 {asset.mime_type} | {formatBytes(asset.size_bytes)}
@@ -144,7 +158,8 @@ export function PrescriptionFilesCard({
               variant="subtle"
               disabled={assetBusyId === asset.id}
               icon={<IconDownload size={16} color={t.ink2} />}
-              accessibilityLabel="Open prescription file"
+              accessibilityLabel={i18n('care.openPrescriptionFile')}
+              accessibilityHint={i18n('care.openPrescriptionFileHint')}
               onPress={() => handleOpenAsset(asset.id)}
             />
             <IconButton
@@ -152,7 +167,8 @@ export function PrescriptionFilesCard({
               variant="subtle"
               disabled={assetBusyId === asset.id}
               icon={<IconTrash size={16} color={t.danger} />}
-              accessibilityLabel="Delete prescription file"
+              accessibilityLabel={i18n('care.deletePrescriptionFile')}
+              accessibilityHint={i18n('care.deletePrescriptionFileHint')}
               onPress={() => handleDeleteAsset(asset.id)}
             />
           </View>

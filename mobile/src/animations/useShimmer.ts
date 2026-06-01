@@ -11,7 +11,7 @@ export function useShimmer() {
       -1,
       false,
     );
-  }, []);
+  }, [position]);
 
   // Returns a translateX percentage — multiply by element width to get pixels
   return useAnimatedStyle(() => ({

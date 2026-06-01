@@ -125,7 +125,13 @@ describe('mealService photo analysis', () => {
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/analyze-photo/job%2F1');
   });
 
-  it('does not expose a delete method without a Core delete endpoint', () => {
-    expect('delete' in mealService).toBe(false);
+  it('deletes a meal through the Core delete contract', async () => {
+    mockApiRequest.mockResolvedValueOnce(undefined);
+
+    await expect(mealService.delete('meal/1')).resolves.toBeUndefined();
+
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/meal%2F1', {
+      method: 'DELETE',
+    });
   });
 });

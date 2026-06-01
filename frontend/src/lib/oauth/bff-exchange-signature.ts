@@ -1,6 +1,6 @@
 import { createHmac, randomBytes } from "crypto";
 
-type BffOAuthProfile = {
+export type BffOAuthProfile = {
   provider: string;
   provider_account_id: string;
   email: string;
@@ -8,7 +8,7 @@ type BffOAuthProfile = {
   avatar_url: string | null;
 };
 
-type SignedBffOAuthProfile = BffOAuthProfile & {
+export type SignedBffOAuthProfile = BffOAuthProfile & {
   exchange_issuer: string;
   exchange_audience: string;
   exchange_expires_at: string;

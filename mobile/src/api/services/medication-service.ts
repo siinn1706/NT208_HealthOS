@@ -3,8 +3,10 @@ import type {
   Adherence,
   DataResponse,
   MedicationDose,
+  MedicationDoseHistory,
   MedicationImportBody,
   MedicationImportResult,
+  MedicationPauseBody,
   MedicationPlan,
   MedicationPlanCreateBody,
   MedicationPlanDetail,
@@ -18,6 +20,14 @@ export const medicationService = {
 
   async today(tzid?: string) {
     const response = await apiRequest<DataResponse<MedicationDose[]>>(`/v1/medications/today${buildQuery({ tzid })}`);
+    return response.data;
+  },
+
+  async history(params: { from?: string; to?: string } = {}) {
+    const response = await apiRequest<DataResponse<MedicationDoseHistory[]>>(`/v1/medications/history${buildQuery({
+      from: params.from,
+      to: params.to,
+    })}`);
     return response.data;
   },
 
@@ -47,8 +57,9 @@ export const medicationService = {
     return response.data;
   },
 
-  async pause(id: string) {
-    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${encodeURIComponent(id)}/pause`, { method: 'POST' });
+  async pause(id: string, body?: MedicationPauseBody) {
+    const init = body === undefined ? { method: 'POST' as const } : { method: 'POST' as const, json: body };
+    const response = await apiRequest<DataResponse<MedicationPlan>>(`/v1/medications/${encodeURIComponent(id)}/pause`, init);
     return response.data;
   },
 

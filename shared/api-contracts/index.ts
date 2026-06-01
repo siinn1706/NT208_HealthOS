@@ -178,6 +178,8 @@ export type AppointmentStatus =
   | 'no_show'
   | 'rescheduled';
 
+export type AppointmentVisitType = 'in_person' | 'video';
+
 export interface PrescriptionMedicine {
   name: string;
   dosage: string;
@@ -203,11 +205,32 @@ export interface Appointment {
   specialty: string | null;
   clinic: string | null;
   diagnosis: string | null;
-  visit_type?: string | null;
+  visit_type: AppointmentVisitType;
+  video_join_url: string | null;
   status: AppointmentStatus;
   notes: string | null;
   has_prescription: boolean;
   prescription: Prescription | null;
+}
+
+export type AppointmentAssetKind = 'attachment' | 'lab_report';
+
+export interface AppointmentAsset {
+  id: string;
+  appointment_id: string;
+  kind: AppointmentAssetKind;
+  mime_type: string;
+  size_bytes: number;
+  sha256: string;
+  original_filename: string | null;
+  uploaded_at: string;
+}
+
+export interface AppointmentAssetSignedUrl {
+  url: string;
+  expires_in_s: number;
+  mime_type: string;
+  original_filename: string | null;
 }
 
 export interface AppointmentCreateBody {
@@ -217,6 +240,8 @@ export interface AppointmentCreateBody {
   clinic?: string | null;
   reason?: string | null;
   notes?: string | null;
+  visit_type?: AppointmentVisitType;
+  video_join_url?: string | null;
 }
 
 export interface AppointmentUpdateBody {
@@ -226,6 +251,8 @@ export interface AppointmentUpdateBody {
   clinic?: string | null;
   reason?: string | null;
   notes?: string | null;
+  visit_type?: AppointmentVisitType;
+  video_join_url?: string | null;
 }
 
 export interface AppointmentPrepChecklistItem {
@@ -271,6 +298,8 @@ export interface MedicationPlan {
   start_date: string;
   end_date: string | null;
   status: MedicationStatus;
+  pause_until: string | null;
+  pause_reason: string | null;
   tzid: string;
   refill_supply_units: number | null;
   refill_cadence_days: number | null;
@@ -309,6 +338,11 @@ export interface MedicationPlanCreateBody {
   appointment_id?: string | null;
 }
 
+export interface MedicationPauseBody {
+  pause_until?: string | null;
+  pause_reason?: string | null;
+}
+
 export interface MedicationImportBody {
   default_dose_times?: string[] | null;
   default_repeat?: 'once' | 'daily' | 'weekly' | 'monthly';
@@ -335,6 +369,12 @@ export interface MedicationDose {
   strength: string | null;
   scheduled_at: string;
   status: string;
+}
+
+export interface MedicationDoseHistory extends MedicationDose {
+  done_at: string | null;
+  skipped_at: string | null;
+  snoozed_until: string | null;
 }
 
 export interface Adherence {
@@ -520,6 +560,20 @@ export interface MealIngredient {
   carbs_g: number;
   protein_g: number;
   fat_g: number;
+}
+
+export interface IngredientCatalogItem {
+  id: string;
+  slug: string;
+  name_vi: string;
+  name_en: string;
+  category: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  unit_hint: string;
+  name_en_verified: boolean;
 }
 
 export interface NutritionSuggestion {

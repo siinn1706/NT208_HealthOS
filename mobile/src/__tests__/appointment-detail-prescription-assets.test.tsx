@@ -69,7 +69,8 @@ const appointmentWithPrescription = {
   specialty: 'Primary care',
   clinic: 'Clinic A',
   diagnosis: null,
-  visit_type: 'in-person',
+  visit_type: 'in_person',
+  video_join_url: null,
   status: 'completed' as const,
   notes: null,
   has_prescription: true,
@@ -110,6 +111,21 @@ describe('AppointmentDetailScreen prescription assets', () => {
           }],
         } as never;
       }
+      if (key === queryKeys.appointmentAssets('apt-1', 'attachment')) {
+        return {
+          ...baseQueryState,
+          data: [{
+            id: 'attachment-1',
+            appointment_id: 'apt-1',
+            kind: 'attachment',
+            mime_type: 'application/pdf',
+            size_bytes: 2048,
+            sha256: 'def',
+            original_filename: 'visit-note.pdf',
+            uploaded_at: '2099-06-02T10:00:00.000Z',
+          }],
+        } as never;
+      }
       return { ...baseQueryState, data: null } as never;
     });
 
@@ -121,14 +137,22 @@ describe('AppointmentDetailScreen prescription assets', () => {
       { enabled: true },
     );
     expect(mockUseApiQuery.mock.calls.filter(([key]) => key === queryKeys.prescriptionAssets('apt-1'))).toHaveLength(1);
+    expect(mockUseApiQuery).toHaveBeenCalledWith(
+      queryKeys.appointmentAssets('apt-1', 'attachment'),
+      expect.any(Function),
+      { enabled: true },
+    );
     expect(queryByText('General appointment attachments unavailable')).toBeNull();
-    expect(queryByText('Appointment attachments unavailable')).toBeNull();
+    expect(queryByText('care.appointmentAttachmentsUnavailable')).toBeNull();
     expect(getByText('rx.pdf')).toBeTruthy();
     expect(getByText('application/pdf | 1 KB')).toBeTruthy();
-    expect(getByText('Upload prescription file')).toBeTruthy();
+    expect(getByText('visit-note.pdf')).toBeTruthy();
+    expect(getByText('application/pdf | 2 KB')).toBeTruthy();
+    expect(getByText('care.uploadPrescriptionFile')).toBeTruthy();
+    expect(getByText('care.uploadAppointmentFile')).toBeTruthy();
   });
 
-  it('keeps generic appointment attachments guarded when there is no backend contract', () => {
+  it('renders generic appointment attachments through the Core asset contract', () => {
     mockUseApiQuery.mockImplementation((key) => {
       if (key === queryKeys.appointment('apt-1')) {
         return {
@@ -140,18 +164,40 @@ describe('AppointmentDetailScreen prescription assets', () => {
           },
         } as never;
       }
+      if (key === queryKeys.appointmentAssets('apt-1', 'attachment')) {
+        return {
+          ...baseQueryState,
+          data: [{
+            id: 'attachment-1',
+            appointment_id: 'apt-1',
+            kind: 'attachment',
+            mime_type: 'application/pdf',
+            size_bytes: 2048,
+            sha256: 'def',
+            original_filename: 'visit-note.pdf',
+            uploaded_at: '2099-06-02T10:00:00.000Z',
+          }],
+        } as never;
+      }
       return { ...baseQueryState, data: null } as never;
     });
 
     const { getByText, queryByText } = render(<AppointmentDetailScreen />);
 
-    expect(getByText('Appointment attachments unavailable')).toBeTruthy();
-    expect(getByText(/Generic appointment upload\/storage API is not implemented/i)).toBeTruthy();
-    expect(queryByText('Upload prescription file')).toBeNull();
+    expect(getByText('visit-note.pdf')).toBeTruthy();
+    expect(getByText('care.uploadAppointmentFile')).toBeTruthy();
+    expect(queryByText('care.appointmentAttachmentsUnavailable')).toBeNull();
+    expect(queryByText('api.missingApiDevMessage')).toBeNull();
+    expect(queryByText('care.uploadPrescriptionFile')).toBeNull();
     expect(mockUseApiQuery).not.toHaveBeenCalledWith(
       queryKeys.prescriptionAssets('apt-1'),
       expect.any(Function),
       expect.anything(),
+    );
+    expect(mockUseApiQuery).toHaveBeenCalledWith(
+      queryKeys.appointmentAssets('apt-1', 'attachment'),
+      expect.any(Function),
+      { enabled: true },
     );
   });
 });

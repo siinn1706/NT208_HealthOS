@@ -43,6 +43,10 @@ class AuditEventTypeEnum(str, Enum):
     PRESCRIPTION_ASSET_UPLOADED = "prescription_asset_uploaded"
     PRESCRIPTION_ASSET_DOWNLOADED = "prescription_asset_downloaded"
     PRESCRIPTION_ASSET_DELETED = "prescription_asset_deleted"
+    # Generic appointment documents; prescription files keep their separate events.
+    APPOINTMENT_ASSET_UPLOADED = "appointment_asset_uploaded"
+    APPOINTMENT_ASSET_DOWNLOADED = "appointment_asset_downloaded"
+    APPOINTMENT_ASSET_DELETED = "appointment_asset_deleted"
     # B7 — Data export (GDPR-style data download)
     DATA_EXPORT_REQUESTED = "data_export_requested"
     DATA_EXPORT_DOWNLOADED = "data_export_downloaded"

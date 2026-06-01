@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   Bell, Camera, Activity,
   Pill, CalendarCheck, Sparkles,
@@ -16,43 +17,39 @@ type PermissionKind = 'notifications' | 'camera' | 'health-data';
 
 const CONFIG: Record<PermissionKind, {
   Icon: React.ElementType;
-  title: string;
-  description: string;
-  features: { label: string; Icon: React.ElementType }[];
-  ctaLabel: string;
+  titleKey: string;
+  descriptionKey: string;
+  features: { labelKey: string; Icon: React.ElementType }[];
 }> = {
   notifications: {
     Icon: Bell,
-    title: 'Review reminder settings',
-    description: 'Notification delivery is controlled from reminder preferences. This Expo build does not request OS push permissions here.',
+    titleKey: 'auth.permissionsNotificationsTitle',
+    descriptionKey: 'auth.permissionsNotificationsDescription',
     features: [
-      { label: 'Medication reminders can be configured later', Icon: Pill },
-      { label: 'Appointment alerts use Core preferences',       Icon: CalendarCheck },
-      { label: 'Weekly digest controls stay account-backed',    Icon: Sparkles },
+      { labelKey: 'auth.permissionsNotificationsFeatureMeds', Icon: Pill },
+      { labelKey: 'auth.permissionsNotificationsFeatureAppointments', Icon: CalendarCheck },
+      { labelKey: 'auth.permissionsNotificationsFeatureDigest', Icon: Sparkles },
     ],
-    ctaLabel: 'Continue',
   },
   camera: {
     Icon: Camera,
-    title: 'Camera access when needed',
-    description: 'Camera permission is requested inside the specific scan flow. This setup screen does not grant camera access.',
+    titleKey: 'auth.permissionsCameraTitle',
+    descriptionKey: 'auth.permissionsCameraDescription',
     features: [
-      { label: 'Meal photo scan asks at capture time', Icon: Coffee },
-      { label: 'Prescription scan remains guarded',    Icon: Pill },
-      { label: 'Lab report capture is not shipped yet', Icon: Activity },
+      { labelKey: 'auth.permissionsCameraFeatureMeal', Icon: Coffee },
+      { labelKey: 'auth.permissionsCameraFeaturePrescription', Icon: Pill },
+      { labelKey: 'auth.permissionsCameraFeatureLab', Icon: Activity },
     ],
-    ctaLabel: 'Continue',
   },
   'health-data': {
     Icon: Activity,
-    title: 'Health Connect status',
-    description: 'Core device identity is supported. Real Health Connect permission reads need an Android development build with native support.',
+    titleKey: 'auth.permissionsHealthTitle',
+    descriptionKey: 'auth.permissionsHealthDescription',
     features: [
-      { label: 'Heart rate sync requires native module', Icon: Heart },
-      { label: 'Steps sync requires native module',      Icon: Footprints },
-      { label: 'Sleep sync requires native module',      Icon: Moon },
+      { labelKey: 'auth.permissionsHealthFeatureHeart', Icon: Heart },
+      { labelKey: 'auth.permissionsHealthFeatureSteps', Icon: Footprints },
+      { labelKey: 'auth.permissionsHealthFeatureSleep', Icon: Moon },
     ],
-    ctaLabel: 'Continue',
   },
 };
 
@@ -66,6 +63,7 @@ function continueToHome() {
 
 export function PermissionsScreen({ kind }: PermissionsScreenProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const config = CONFIG[kind];
   const { Icon } = config;
 
@@ -83,20 +81,20 @@ export function PermissionsScreen({ kind }: PermissionsScreenProps) {
 
       {/* Title + description — left aligned */}
       <Text style={[typography.title, { color: t.ink, marginTop: 20, marginBottom: 8 }]}>
-        {config.title}
+        {i18n(config.titleKey)}
       </Text>
       <Text style={[typography.body, { color: t.ink3, lineHeight: 22, marginBottom: 28 }]}>
-        {config.description}
+        {i18n(config.descriptionKey)}
       </Text>
 
       {/* Feature rows */}
       <View style={styles.features}>
-        {config.features.map(({ label, Icon: FeatureIcon }) => (
-          <View key={label} style={[styles.featureRow, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
+        {config.features.map(({ labelKey, Icon: FeatureIcon }) => (
+          <View key={labelKey} style={[styles.featureRow, { backgroundColor: t.bgElev, borderRadius: t.radius.md }]}>
             <View style={[styles.checkCircle, { backgroundColor: t.brandSoft }]}>
               <FeatureIcon size={13} color={t.brand} />
             </View>
-            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{label}</Text>
+            <Text style={[typography.bodyMed, { color: t.ink, flex: 1 }]}>{i18n(labelKey)}</Text>
             <Check size={14} color={t.success} />
           </View>
         ))}
@@ -106,14 +104,14 @@ export function PermissionsScreen({ kind }: PermissionsScreenProps) {
       <View style={[styles.footerMicro, { marginBottom: 12 }]}>
         <Lock size={11} color={t.ink3} />
         <Text style={[typography.caption, { color: t.ink3, fontSize: 12, marginLeft: 4 }]}>
-          Private by default · enable only from supported feature screens
+          {i18n('auth.permissionsPrivacyNote')}
         </Text>
       </View>
 
       {/* CTAs */}
       <View style={styles.ctas}>
-        <Button label={config.ctaLabel} size="lg" onPress={continueToHome} />
-        <Button label="Not now" variant="text" size="md" onPress={continueToHome} />
+        <Button label={i18n('auth.continueSetup')} size="lg" onPress={continueToHome} />
+        <Button label={i18n('auth.notNow')} variant="text" size="md" onPress={continueToHome} />
       </View>
     </View>
   );

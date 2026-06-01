@@ -39,6 +39,10 @@ from app.schemas.auth import (
     CurrentUserResponse,
     LoginBody,
     LogoutBody,
+    MobileOAuthHandoffBody,
+    MobileOAuthHandoff,
+    MobileOAuthHandoffResponse,
+    MobileOAuthRedeemBody,
     MfaLoginRequired,
     MfaLoginVerifyBody,
     OAuthLinkAttachBody,
@@ -107,6 +111,8 @@ MFA_LOGIN_CHALLENGE_TTL_SECONDS = 5 * 60
 MFA_LOGIN_MAX_ATTEMPTS = 5
 BFF_EXCHANGE_NONCE_PREFIX = "auth:bff_exchange_nonce:"
 BFF_EXCHANGE_REQUIRED_ENVS = {"production", "staging"}
+MOBILE_OAUTH_HANDOFF_PREFIX = "auth:mobile_oauth_handoff:"
+MOBILE_OAUTH_HANDOFF_TTL_SECONDS = 5 * 60
 
 
 def _can_use_debug_otp_delivery_fallback() -> bool:
@@ -613,34 +619,9 @@ async def verify_bff_exchange_payload(body: OAuthProfile, redis: Redis) -> None:
         )
 
 
-@router.post(
-    "/token",
-    response_model=AuthTokenResponse,
-    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
-)
-async def exchange_oauth_profile_for_token(
-    body: OAuthProfile,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
-    _bff: None = Depends(verify_bff_secret),
-) -> AuthTokenResponse:
-    """
-    Exchange an OAuth profile (from BFF) for a Core BE JWT.
-
-    Flow:
-      1. BFF calls this endpoint after OAuth login succeeds.
-      2. Core BE finds or creates a User.
-      3. Core BE returns a JWT access token bound to the user.id.
-
-    Production/staging require the BFF to sign a short-lived exchange envelope.
-    Core validates issuer, audience, expiry, nonce replay, and the profile
-    fields before minting Core tokens. Provider JWKS verification can replace
-    this interim trust boundary later without changing the user-facing flow.
-    """
-    await verify_bff_exchange_payload(body, redis)
+async def _resolve_oauth_user_for_token_exchange(body: OAuthProfile, db: AsyncSession) -> User:
     try:
-        user = await get_or_create_user_from_oauth(body, db)
+        return await get_or_create_user_from_oauth(body, db)
     except UserPendingDeletion as exc:
         await db.rollback()
         log_event("auth.oauth", "token_exchange", "account_pending_deletion", provider=body.provider)
@@ -669,10 +650,151 @@ async def exchange_oauth_profile_for_token(
                 },
             },
         ) from exc
+
+
+def _mobile_oauth_handoff_key(code: str) -> str:
+    digest = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    return f"{MOBILE_OAUTH_HANDOFF_PREFIX}{digest}"
+
+
+def _invalid_mobile_oauth_handoff() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "code": "MOBILE_OAUTH_HANDOFF_INVALID",
+            "message": "The mobile OAuth session expired or was already used.",
+        },
+    )
+
+
+def _mobile_oauth_code_challenge(verifier: str) -> str:
+    return hashlib.sha256(verifier.encode("utf-8")).hexdigest()
+
+
+@router.post(
+    "/token",
+    response_model=AuthTokenResponse,
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
+async def exchange_oauth_profile_for_token(
+    body: OAuthProfile,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    _bff: None = Depends(verify_bff_secret),
+) -> AuthTokenResponse:
+    """
+    Exchange an OAuth profile (from BFF) for a Core BE JWT.
+
+    Flow:
+      1. BFF calls this endpoint after OAuth login succeeds.
+      2. Core BE finds or creates a User.
+      3. Core BE returns a JWT access token bound to the user.id.
+
+    Production/staging require the BFF to sign a short-lived exchange envelope.
+    Core validates issuer, audience, expiry, nonce replay, and the profile
+    fields before minting Core tokens. Provider JWKS verification can replace
+    this interim trust boundary later without changing the user-facing flow.
+    """
+    await verify_bff_exchange_payload(body, redis)
+    user = await _resolve_oauth_user_for_token_exchange(body, db)
     log_event("auth.oauth", "token_exchange", "ok",
               user_id=str(user.id), provider=body.provider)
     token = await _issue_auth_token(db=db, user=user, request=request)
     await db.commit()
+    return AuthTokenResponse(data=token)
+
+
+@router.post(
+    "/mobile-oauth/handoff",
+    response_model=MobileOAuthHandoffResponse,
+    responses={403: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    summary="Create a one-time mobile OAuth handoff code (BFF-internal)",
+)
+async def create_mobile_oauth_handoff(
+    body: MobileOAuthHandoffBody,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    _bff: None = Depends(verify_bff_secret),
+) -> MobileOAuthHandoffResponse:
+    await verify_bff_exchange_payload(body, redis)
+    user = await _resolve_oauth_user_for_token_exchange(body, db)
+    await db.commit()
+
+    code = secrets.token_urlsafe(32)
+    payload = json.dumps(
+        {
+            "user_id": str(user.id),
+            "provider": body.provider,
+            "mobile_state": body.mobile_state,
+            "mobile_code_challenge": body.mobile_code_challenge,
+        },
+        separators=(",", ":"),
+    )
+    await redis.set(
+        _mobile_oauth_handoff_key(code),
+        payload,
+        ex=MOBILE_OAUTH_HANDOFF_TTL_SECONDS,
+    )
+    log_event("auth.oauth", "mobile_handoff_created", "ok", provider=body.provider)
+    return MobileOAuthHandoffResponse(
+        data=MobileOAuthHandoff(
+            code=code,
+            expires_in_seconds=MOBILE_OAUTH_HANDOFF_TTL_SECONDS,
+        ),
+    )
+
+
+@router.post(
+    "/mobile-oauth/redeem",
+    response_model=AuthTokenResponse,
+    responses={401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    summary="Redeem a one-time mobile OAuth handoff code",
+)
+async def redeem_mobile_oauth_handoff(
+    body: MobileOAuthRedeemBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> AuthTokenResponse:
+    raw = await redis_getdel_compat(redis, _mobile_oauth_handoff_key(body.code))
+    if not raw:
+        raise _invalid_mobile_oauth_handoff()
+
+    try:
+        payload = json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
+        user_id = uuid.UUID(str(payload.get("user_id")))
+        mobile_state = str(payload.get("mobile_state") or "")
+        mobile_code_challenge = str(payload.get("mobile_code_challenge") or "")
+    except (AttributeError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise _invalid_mobile_oauth_handoff() from exc
+    if not hmac.compare_digest(mobile_state, body.state):
+        raise _invalid_mobile_oauth_handoff()
+    if not hmac.compare_digest(mobile_code_challenge, _mobile_oauth_code_challenge(body.code_verifier)):
+        raise _invalid_mobile_oauth_handoff()
+
+    result = await db.execute(
+        select(User).options(selectinload(User.profile)).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise _invalid_mobile_oauth_handoff()
+    if user.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "ACCOUNT_PENDING_DELETION",
+                "message": "Your account is pending deletion. Restore it to continue.",
+                "details": {
+                    "user_id": str(user.id),
+                    "purge_at": user.purge_at.isoformat() if user.purge_at else None,
+                },
+            },
+        )
+
+    token = await _issue_auth_token(db=db, user=user, request=request)
+    await db.commit()
+    log_event("auth.oauth", "mobile_handoff_redeemed", "ok", user_id=str(user.id))
     return AuthTokenResponse(data=token)
 
 

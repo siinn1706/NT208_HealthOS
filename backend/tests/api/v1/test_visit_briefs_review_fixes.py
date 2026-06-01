@@ -20,8 +20,11 @@ import uuid
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete, select
 
+from app.adapters.database import AsyncSessionLocal, engine
 from app.adapters.redis_client import get_redis
+from app.core.config import settings
 from app.core.security import get_current_user
 from app.main import app
 from app.models.core import (
@@ -29,11 +32,17 @@ from app.models.core import (
     AppointmentStatusEnum,
     ReminderRepeatEnum,
     ReminderTypeEnum,
+    User,
 )
-from app.models.visit_briefs import VisitBrief, VisitBriefStatusEnum
+from app.models.visit_briefs import AppointmentBriefLink, VisitBrief, VisitBriefStatusEnum
 from app.schemas.visit_briefs import VisitBriefCreateBody
 from app.services import visit_briefs as svc
 from app.services.triage_rules import URGENT_RULES, all_rule_ids
+
+requires_database = pytest.mark.skipif(
+    not settings.database_url,
+    reason="needs real Postgres",
+)
 
 
 class _FakeRedis:
@@ -90,6 +99,36 @@ async def authed_client():
         yield client, fake_user, fake
     app.dependency_overrides.pop(get_redis, None)
     app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest_asyncio.fixture
+async def appointment_brief_state():
+    user_ids: list[uuid.UUID] = []
+    async with AsyncSessionLocal() as db:
+        owner = User(
+            email=f"visit-brief-owner-{uuid.uuid4().hex[:8]}@test.local",
+            username=f"visit_brief_owner_{uuid.uuid4().hex[:8]}",
+            display_name="Visit Brief Owner",
+            hashed_password="x",
+        )
+        db.add(owner)
+        await db.flush()
+        appointment = Appointment(
+            user_id=owner.id,
+            appointment_date=datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(days=3),
+            doctor_name="Dr Visit Brief",
+            status=AppointmentStatusEnum.UPCOMING,
+        )
+        db.add(appointment)
+        await db.commit()
+        user_ids.append(owner.id)
+        yield owner.id, appointment.id
+
+    async with AsyncSessionLocal() as cleanup:
+        await cleanup.execute(delete(User).where(User.id.in_(user_ids)))
+        await cleanup.commit()
+    await engine.dispose()
 
 
 # ─── F14 — rate limit returns 429 after the cap ──────────────────────────────
@@ -149,6 +188,48 @@ def test_visit_brief_create_body_accepts_clone_from_brief_id():
 def test_visit_brief_create_body_defaults_clone_field_to_none():
     body = VisitBriefCreateBody(visit_type="gp_routine")
     assert body.clone_from_brief_id is None
+
+
+@requires_database
+@pytest.mark.asyncio
+async def test_create_attached_brief_reuses_existing_active_draft(
+    appointment_brief_state,
+):
+    user_id, appointment_id = appointment_brief_state
+    body = VisitBriefCreateBody(
+        visit_type="gp_routine",
+        attach_to_appointment_id=appointment_id,
+    )
+
+    async with AsyncSessionLocal() as db:
+        first = await svc.create_brief(db, user_id=user_id, body=body)
+        first_id = first.id
+        await db.commit()
+
+    async with AsyncSessionLocal() as db:
+        second = await svc.create_brief(db, user_id=user_id, body=body)
+        second_id = second.id
+        await db.commit()
+
+    async with AsyncSessionLocal() as db:
+        brief_count = (
+            await db.execute(
+                select(VisitBrief).where(VisitBrief.user_id == user_id)
+            )
+        ).scalars().all()
+        active_links = (
+            await db.execute(
+                select(AppointmentBriefLink).where(
+                    AppointmentBriefLink.appointment_id == appointment_id,
+                    AppointmentBriefLink.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+
+    assert second_id == first_id
+    assert [brief.id for brief in brief_count] == [first_id]
+    assert len(active_links) == 1
+    assert active_links[0].visit_brief_id == first_id
 
 
 # ─── F1 + F8 — new urgent rules are registered ───────────────────────────────

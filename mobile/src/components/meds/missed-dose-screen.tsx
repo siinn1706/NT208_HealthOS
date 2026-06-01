@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { medicationService } from '../../api/services';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { formatTime } from '../../api/viewModels';
+import { firstRouteParam, selectMedicationDoseActionTarget } from './medication-dose-action-target';
 
 const OPTIONS = [
   { id: 'taken',   Icon: IconCheck, color: '#059669', title: 'I took it late',      sub: 'Log the dose as taken' },
@@ -24,11 +25,25 @@ const OPTIONS = [
 export function MissedDoseScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const medicationId = (Array.isArray(id) ? id[0] : id) ?? '';
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    occurrenceId?: string | string[];
+    reminderId?: string | string[];
+    scheduledAt?: string | string[];
+  }>();
+  const medicationId = firstRouteParam(params.id) ?? '';
+  const occurrenceId = firstRouteParam(params.occurrenceId);
+  const reminderId = firstRouteParam(params.reminderId);
+  const scheduledAt = firstRouteParam(params.scheduledAt);
   const loadDoses = useCallback(() => medicationService.today(), []);
   const doses = useApiQuery(queryKeys.medicationDosesToday, loadDoses);
-  const dose = doses.data?.find((item) => item.medication_plan_id === medicationId) ?? null;
+  const dose = useMemo(() => selectMedicationDoseActionTarget(doses.data, {
+    medicationPlanId: medicationId,
+    occurrenceId,
+    reminderId,
+    scheduledAt,
+    intent: 'missed',
+  }), [doses.data, medicationId, occurrenceId, reminderId, scheduledAt]);
   const [savingChoice, setSavingChoice] = useState(false);
   const [choiceError, setChoiceError] = useState<string | null>(null);
 

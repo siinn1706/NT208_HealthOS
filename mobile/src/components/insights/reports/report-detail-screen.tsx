@@ -197,7 +197,7 @@ export function ReportDetailScreen() {
         title={periodLabel(period)}
         right={
           <View style={styles.topActions}>
-            <Pressable onPress={() => router.push('/insights/reports/export' as never)} hitSlop={8} style={styles.iconBtn}>
+            <Pressable onPress={() => router.push(`/insights/reports/export?period=${period}` as never)} hitSlop={8} style={styles.iconBtn}>
               <IconPaperclip size={20} color={t.ink3} />
             </Pressable>
             <Pressable onPress={report.reload} hitSlop={8} style={styles.iconBtn}>

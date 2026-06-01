@@ -10,22 +10,25 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Calendar } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
 import { ProgressBar } from '../primitives/progress-bar';
 import { useSession } from '../../auth/session-provider';
+import { getPostAuthRoute } from '../../auth/auth-route-policy';
 
 type Sex = 'male' | 'female' | 'other';
-const SEX_OPTIONS: { value: Sex; label: string }[] = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
+const SEX_OPTIONS: { value: Sex; labelKey: string }[] = [
+  { value: 'male', labelKey: 'auth.sexMale' },
+  { value: 'female', labelKey: 'auth.sexFemale' },
+  { value: 'other', labelKey: 'auth.sexOther' },
 ];
 
 export function AuthSetupScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const session = useSession();
   const [dob, setDob] = useState('');
   const [sex, setSex] = useState<Sex | null>(null);
@@ -37,15 +40,15 @@ export function AuthSetupScreen() {
   function validate() {
     if (dob.trim()) {
       const parsed = normalizeDate(dob);
-      if (!parsed || !/^\d{4}-\d{2}-\d{2}$/.test(parsed)) return 'Date must be DD/MM/YYYY.';
+      if (!parsed || !/^\d{4}-\d{2}-\d{2}$/.test(parsed)) return i18n('auth.setupDateFormatError');
       const year = parseInt(parsed.slice(0, 4), 10);
       const currentYear = new Date().getFullYear();
-      if (year < currentYear - 120 || year > currentYear - 13) return 'Please enter a valid birth year.';
+      if (year < currentYear - 120 || year > currentYear - 13) return i18n('auth.setupBirthYearError');
     }
     const h = Number(height);
-    if (height && (isNaN(h) || h <= 50 || h >= 300)) return 'Height must be 51–299 cm.';
+    if (height && (isNaN(h) || h <= 50 || h >= 300)) return i18n('auth.setupHeightError');
     const w = Number(weight);
-    if (weight && (isNaN(w) || w <= 10 || w >= 500)) return 'Weight must be 11–499 kg.';
+    if (weight && (isNaN(w) || w <= 10 || w >= 500)) return i18n('auth.setupWeightError');
     return null;
   }
 
@@ -55,16 +58,16 @@ export function AuthSetupScreen() {
     setLoading(true);
     setError(null);
     try {
-      await session.updateProfile({
+      const updatedUser = await session.updateProfile({
         date_of_birth: normalizeDate(dob),
         gender: sex,
         height_cm: height ? Number(height) : null,
         weight_kg: weight ? Number(weight) : null,
         onboarding_completed: true,
       });
-      router.replace('/home');
+      router.replace(getPostAuthRoute(updatedUser.onboarding_status) as never);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to save profile.');
+      setError(err instanceof Error ? err.message : i18n('auth.setupSaveFailed'));
     } finally {
       setLoading(false);
     }
@@ -80,20 +83,20 @@ export function AuthSetupScreen() {
 
       {/* Eyebrow */}
       <Text style={[typography.caption, { color: t.ink3, fontFamily: 'Inter_700Bold', letterSpacing: 1.4, fontSize: 11, lineHeight: 14, marginBottom: 6 }]}>
-        STEP 2 · BODY BASICS
+        {i18n('auth.setupStepBodyBasics')}
       </Text>
 
-      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Tell us a bit about your body</Text>
+      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>{i18n('auth.setupBodyTitle')}</Text>
 
       <Text style={[typography.caption, { color: t.ink3, marginBottom: 20 }]}>
-        Only used to personalize insights. You can change this later.
+        {i18n('auth.setupBodySubtitle')}
       </Text>
 
       {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
 
       <View style={{ marginBottom: 16 }}>
         <Input
-          label="Date of birth"
+          label={i18n('auth.dateOfBirth')}
           value={dob}
           onChangeText={setDob}
           placeholder="DD/MM/YYYY"
@@ -103,7 +106,7 @@ export function AuthSetupScreen() {
       </View>
 
       {/* Sex toggle */}
-      <Text style={[typography.caption, { color: t.ink3, marginBottom: 8 }]}>Biological sex</Text>
+      <Text style={[typography.caption, { color: t.ink3, marginBottom: 8 }]}>{i18n('auth.biologicalSex')}</Text>
       <View style={styles.sexRow}>
         {SEX_OPTIONS.map((opt) => {
           const active = sex === opt.value;
@@ -122,10 +125,10 @@ export function AuthSetupScreen() {
               activeOpacity={0.7}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={opt.label}
+              accessibilityLabel={i18n(opt.labelKey)}
             >
               <Text style={{ fontSize: 14, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular', color: active ? t.brand : t.ink2 }}>
-                {opt.label}
+                {i18n(opt.labelKey)}
               </Text>
             </TouchableOpacity>
           );
@@ -136,7 +139,7 @@ export function AuthSetupScreen() {
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <View style={styles.measureField}>
           <Input
-            label="Height"
+            label={i18n('auth.height')}
             value={height}
             onChangeText={setHeight}
             keyboardType="numeric"
@@ -146,7 +149,7 @@ export function AuthSetupScreen() {
         </View>
         <View style={styles.measureField}>
           <Input
-            label="Weight"
+            label={i18n('auth.weight')}
             value={weight}
             onChangeText={setWeight}
             keyboardType="numeric"
@@ -156,7 +159,7 @@ export function AuthSetupScreen() {
         </View>
       </View>
 
-      <Button label="Continue" size="lg" loading={loading} onPress={handleFinish} style={{ marginTop: 8 }} />
+      <Button label={i18n('auth.continueSetup')} size="lg" loading={loading} onPress={handleFinish} style={{ marginTop: 8 }} />
     </ScrollView>
     </KeyboardAvoidingView>
   );

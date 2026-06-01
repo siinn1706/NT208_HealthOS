@@ -12,11 +12,13 @@ interface ButtonProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: React.ReactNode;
-  onPress?: () => void;
+  onPress?: () => void | Promise<void>;
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
   loading?: boolean;
   labelColor?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 /** Touch targets aligned to 8pt-ish grid; horizontal padding tracks theme `space`. */
@@ -37,6 +39,8 @@ export function Button({
   disabled,
   loading,
   labelColor,
+  accessibilityLabel,
+  accessibilityHint,
 }: ButtonProps) {
   const t = useTheme();
 
@@ -55,6 +59,8 @@ export function Button({
       onPress={isDisabled ? undefined : onPress}
       disabled={isDisabled}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: isDisabled }}
       style={({ pressed }) => [
         styles.btn,

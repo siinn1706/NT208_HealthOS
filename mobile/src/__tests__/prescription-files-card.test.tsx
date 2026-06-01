@@ -82,7 +82,7 @@ describe('PrescriptionFilesCard', () => {
 
     const { getByText } = render(<PrescriptionFilesCard appointmentId="apt-1" />);
 
-    fireEvent.press(getByText('Upload prescription file'));
+    fireEvent.press(getByText('care.uploadPrescriptionFile'));
 
     await waitFor(() => {
       expect(mockUpload).toHaveBeenCalledWith('apt-1', {
@@ -93,6 +93,20 @@ describe('PrescriptionFilesCard', () => {
     });
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith(queryKeys.prescriptionAssets('apt-1'));
     expect(reloadAssets).toHaveBeenCalled();
+  });
+
+  it('rejects invalid document files before calling the Core upload contract', async () => {
+    mockDocumentPicker.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'https://example.com/rx.exe', name: 'rx.exe', mimeType: 'application/octet-stream' }],
+    } as never);
+
+    const { getByText } = render(<PrescriptionFilesCard appointmentId="apt-1" />);
+
+    fireEvent.press(getByText('care.uploadPrescriptionFile'));
+
+    await waitFor(() => expect(getByText('validation.document.bad_uri')).toBeTruthy());
+    expect(mockUpload).not.toHaveBeenCalled();
   });
 
   it('opens signed downloads through the Core asset contract', async () => {
@@ -106,7 +120,7 @@ describe('PrescriptionFilesCard', () => {
 
     const { getByLabelText } = render(<PrescriptionFilesCard appointmentId="apt-1" />);
 
-    fireEvent.press(getByLabelText('Open prescription file'));
+    fireEvent.press(getByLabelText('care.openPrescriptionFile'));
     await waitFor(() => expect(mockSignedUrl).toHaveBeenCalledWith('apt-1', 'asset-1'));
     expect(mockSafeOpenUrl).toHaveBeenCalledWith('https://signed.example/rx.pdf');
   });
@@ -116,7 +130,7 @@ describe('PrescriptionFilesCard', () => {
 
     const { getByLabelText } = render(<PrescriptionFilesCard appointmentId="apt-1" />);
 
-    fireEvent.press(getByLabelText('Delete prescription file'));
+    fireEvent.press(getByLabelText('care.deletePrescriptionFile'));
     await waitFor(() => expect(mockRemove).toHaveBeenCalledWith('apt-1', 'asset-1'));
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith(queryKeys.prescriptionAssets('apt-1'));
     expect(reloadAssets).toHaveBeenCalled();

@@ -62,6 +62,8 @@ const medicationDetail: MedicationPlanDetail = {
   start_date: '2026-05-30',
   end_date: null,
   status: 'active',
+  pause_until: null,
+  pause_reason: null,
   tzid: 'Asia/Ho_Chi_Minh',
   refill_supply_units: 42,
   refill_cadence_days: 30,
@@ -106,10 +108,14 @@ describe('RefillLogScreen', () => {
   it('treats zero supply as tracked and running low', () => {
     mockMedication({ ...medicationDetail, refill_supply_units: 0 });
 
-    const { getByText } = render(<RefillLogScreen />);
+    const { getAllByText, getByText, queryByText } = render(<RefillLogScreen />);
 
     expect(getByText('0 units')).toBeTruthy();
     expect(getByText('meds.runningLow')).toBeTruthy();
+    expect(queryByText('meds.requestRefill')).toBeNull();
+
+    fireEvent.press(getAllByText('meds.logRefill')[0]);
+    expect(getByText('meds.logRefillConfirm')).toBeTruthy();
   });
 
   it('renders null supply as not tracked without a low-supply alert', () => {

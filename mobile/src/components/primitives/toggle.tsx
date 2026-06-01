@@ -22,7 +22,7 @@ export function Toggle({ value, onChange, disabled }: ToggleProps) {
   // Sync thumb position when external `value` prop changes
   useEffect(() => {
     thumbX.value = withTiming(value ? ON_X : OFF_X, { duration: 200 });
-  }, [value]);
+  }, [thumbX, value]);
 
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: thumbX.value }],

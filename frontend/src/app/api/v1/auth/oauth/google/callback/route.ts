@@ -16,17 +16,37 @@ import {
   buildLocalizedAppUrl,
   buildOAuthCallbackUrlFromContext,
   clearOAuthCookies,
+  normalizeOAuthMobileCodeChallenge,
+  normalizeOAuthMobileState,
   readOAuthContext,
 } from "@/lib/oauth/flow-context";
+import {
+  buildMobileOAuthRedirectUrl,
+  createMobileOAuthHandoffCode,
+  isMobileOAuthFlow,
+  MobileOAuthHandoffError,
+  mobileOAuthErrorRedirect,
+} from "@/lib/oauth/mobile-handoff";
 
 function withGoogleCookieCleanup(response: NextResponse): NextResponse {
   clearOAuthCookies(response, [
     "oauth_state_google",
     "oauth_verifier_google",
     "oauth_nonce_google",
+    "oauth_mobile_state_google",
+    "oauth_mobile_code_challenge_google",
     "oauth_context_google",
   ]);
   return response;
+}
+
+function googleFailureRedirect(
+  context: ReturnType<typeof readOAuthContext>,
+  error: string,
+  webParams: Record<string, string>,
+  mobileState?: string | null,
+): string {
+  return mobileOAuthErrorRedirect(context, "google", error, mobileState) ?? buildLocalizedAppUrl(context, "/login", webParams);
 }
 
 function decodeUnverifiedGoogleIdTokenPayloadForNonce(idToken: string): { nonce?: unknown } {
@@ -48,15 +68,17 @@ export async function GET(request: NextRequest) {
     process.env.OAUTH_GOOGLE_CALLBACK_URL,
     process.env.NEXT_PUBLIC_APP_URL,
   ]);
+  const mobileState = normalizeOAuthMobileState(request.cookies.get("oauth_mobile_state_google")?.value);
+  const mobileCodeChallenge = normalizeOAuthMobileCodeChallenge(request.cookies.get("oauth_mobile_code_challenge_google")?.value);
 
   // ─── Handle OAuth Errors ────────────────────────────────────────────────────
   if (error) {
     console.error("Google OAuth error:", error, errorDescription);
     return withGoogleCookieCleanup(
       NextResponse.redirect(
-        buildLocalizedAppUrl(context, "/login", {
+        googleFailureRedirect(context, error, {
           oauth_error: errorDescription || error,
-        }),
+        }, mobileState),
       ),
     );
   }
@@ -65,7 +87,7 @@ export async function GET(request: NextRequest) {
   if (!code) {
     return withGoogleCookieCleanup(
       NextResponse.redirect(
-        buildLocalizedAppUrl(context, "/login", { oauth_error: "missing_code" }),
+        googleFailureRedirect(context, "missing_code", { oauth_error: "missing_code" }, mobileState),
       ),
     );
   }
@@ -76,7 +98,19 @@ export async function GET(request: NextRequest) {
     console.error("Invalid OAuth state");
     return withGoogleCookieCleanup(
       NextResponse.redirect(
-        buildLocalizedAppUrl(context, "/login", { oauth_error: "invalid_state" }),
+        googleFailureRedirect(context, "invalid_state", { oauth_error: "invalid_state" }, mobileState),
+      ),
+    );
+  }
+
+  if (isMobileOAuthFlow(context) && (!mobileState || !mobileCodeChallenge)) {
+    return withGoogleCookieCleanup(
+      NextResponse.redirect(
+        buildMobileOAuthRedirectUrl(context, {
+          provider: "google",
+          error: "mobile_verifier_missing",
+          ...(mobileState ? { state: mobileState } : {}),
+        }),
       ),
     );
   }
@@ -86,7 +120,7 @@ export async function GET(request: NextRequest) {
   if (!codeVerifier) {
     return withGoogleCookieCleanup(
       NextResponse.redirect(
-        buildLocalizedAppUrl(context, "/login", { oauth_error: "missing_verifier" }),
+        googleFailureRedirect(context, "missing_verifier", { oauth_error: "missing_verifier" }, mobileState),
       ),
     );
   }
@@ -116,9 +150,9 @@ export async function GET(request: NextRequest) {
           console.error("Google OAuth nonce mismatch");
           return withGoogleCookieCleanup(
             NextResponse.redirect(
-              buildLocalizedAppUrl(context, "/login", {
+              googleFailureRedirect(context, "nonce_mismatch", {
                 oauth_error: "nonce_mismatch",
-              }),
+              }, mobileState),
             ),
           );
         }
@@ -135,11 +169,62 @@ export async function GET(request: NextRequest) {
     if (googleUser.verified_email === false || googleUser.email_verified === false) {
       return withGoogleCookieCleanup(
         NextResponse.redirect(
-          buildLocalizedAppUrl(context, "/login", {
+          googleFailureRedirect(context, "unverified_email", {
             oauth_error: "unverified_email",
-          }),
+          }, mobileState),
         ),
       );
+    }
+
+    const signedProfile = buildSignedBffOAuthProfile({
+      provider: "google",
+      provider_account_id: googleUser.id,
+      email: googleUser.email,
+      name: googleUser.name,
+      avatar_url: googleUser.picture ?? null,
+    });
+
+    if (isMobileOAuthFlow(context)) {
+      const callbackState = mobileState;
+      const callbackCodeChallenge = mobileCodeChallenge;
+      if (!callbackState || !callbackCodeChallenge) {
+        return withGoogleCookieCleanup(
+          NextResponse.redirect(
+            buildMobileOAuthRedirectUrl(context, {
+              provider: "google",
+              error: "mobile_verifier_missing",
+            }),
+          ),
+        );
+      }
+      try {
+        const handoffCode = await createMobileOAuthHandoffCode(signedProfile, callbackState, callbackCodeChallenge);
+        return withGoogleCookieCleanup(
+          NextResponse.redirect(
+            buildMobileOAuthRedirectUrl(context, {
+              provider: "google",
+              code: handoffCode,
+              state: callbackState,
+            }),
+          ),
+        );
+      } catch (handoffError) {
+        if (
+          handoffError instanceof MobileOAuthHandoffError &&
+          handoffError.code === "ACCOUNT_PENDING_DELETION"
+        ) {
+          return withGoogleCookieCleanup(
+            NextResponse.redirect(
+              buildMobileOAuthRedirectUrl(context, {
+                provider: "google",
+                error: "account_pending_deletion",
+                state: callbackState,
+              }),
+            ),
+          );
+        }
+        throw handoffError;
+      }
     }
 
     // ─── Call Core BE to Create/Retrieve User ────────────────────────────────
@@ -150,19 +235,11 @@ export async function GET(request: NextRequest) {
         "Content-Type": "application/json",
         "X-BFF-Secret": process.env.BFF_SHARED_SECRET ?? "",
       },
-      body: JSON.stringify(buildSignedBffOAuthProfile({
-        provider: "google",
-        provider_account_id: googleUser.id,
-        email: googleUser.email,
-        name: googleUser.name,
-        avatar_url: googleUser.picture ?? null,
-      })),
+      body: JSON.stringify(signedProfile),
     });
 
     if (!coreRes.ok) {
       const coreError = await coreRes.json().catch(() => ({}));
-      // B7 review P0-3 — surface the pending-deletion case as a dedicated
-      // restore prompt instead of a generic OAuth failure.
       if (
         coreRes.status === 403 &&
         (coreError?.detail?.code === "ACCOUNT_PENDING_DELETION" ||
@@ -210,17 +287,24 @@ export async function GET(request: NextRequest) {
       );
       return withGoogleCookieCleanup(
         NextResponse.redirect(
-          buildLocalizedAppUrl(context, "/login", {
-            oauth_error: "core_unreachable",
-          }),
+          mobileOAuthErrorRedirect(context, "google", "core_unreachable", mobileState)
+          ?? buildLocalizedAppUrl(context, "/login", {
+              oauth_error: "core_unreachable",
+            }),
         ),
       );
     }
     return withGoogleCookieCleanup(
       NextResponse.redirect(
-        buildLocalizedAppUrl(context, "/login", {
-          oauth_error: "server_error",
-        }),
+        mobileOAuthErrorRedirect(
+          context,
+          "google",
+          err instanceof MobileOAuthHandoffError ? err.code.toLowerCase() : "server_error",
+          mobileState,
+        )
+        ?? buildLocalizedAppUrl(context, "/login", {
+            oauth_error: "server_error",
+          }),
       ),
     );
   }

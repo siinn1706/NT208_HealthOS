@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { clearStoredSession, getAccessToken } from '../auth/session-store';
+import { buildExpoDevLanBaseUrl } from './expo-dev-host';
 
 export interface UploadFilePart {
   fieldName: string;
@@ -68,14 +69,26 @@ function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined):
       kind === 'api' ? 'CORE_API_URL_MISSING' : 'CORE_WS_URL_MISSING',
     );
   }
-  if (kind === 'api' && normalized.startsWith('http://')) {
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new ApiError(
+      kind === 'api'
+        ? 'Production API URL must be an absolute HTTPS URL.'
+        : 'Production WebSocket URL must be an absolute WSS URL.',
+      0,
+      kind === 'api' ? 'INVALID_API_URL' : 'INVALID_WS_URL',
+    );
+  }
+  if (kind === 'api' && parsed.protocol !== 'https:') {
     throw new ApiError(
       'Production API URL must use HTTPS.',
       0,
       'INSECURE_API_URL',
     );
   }
-  if (kind === 'ws' && normalized.startsWith('ws://')) {
+  if (kind === 'ws' && parsed.protocol !== 'wss:') {
     throw new ApiError(
       'Production WebSocket URL must use WSS.',
       0,
@@ -88,10 +101,11 @@ function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined):
 export function getCoreApiBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as { coreApiUrl?: string } | undefined;
   const configured = process.env.EXPO_PUBLIC_CORE_API_URL ?? extra?.coreApiUrl;
-  const fallback = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
   if (!__DEV__) {
     return assertProductionSecureUrl('api', configured);
   }
+  const fallback = buildExpoDevLanBaseUrl('http', 8000)
+    ?? (Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000');
   const url = (configured || fallback).replace(/\/+$/, '');
   return url;
 }
@@ -99,10 +113,11 @@ export function getCoreApiBaseUrl(): string {
 export function getCoreWsBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as { coreWsUrl?: string } | undefined;
   const configured = process.env.EXPO_PUBLIC_CORE_WS_URL ?? extra?.coreWsUrl;
-  const fallback = Platform.OS === 'android' ? 'ws://10.0.2.2:8000' : 'ws://localhost:8000';
   if (!__DEV__) {
     return assertProductionSecureUrl('ws', configured);
   }
+  const fallback = buildExpoDevLanBaseUrl('ws', 8000)
+    ?? (Platform.OS === 'android' ? 'ws://10.0.2.2:8000' : 'ws://localhost:8000');
   return (configured || fallback).replace(/\/+$/, '');
 }
 
@@ -215,12 +230,17 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     if (!response.ok) {
       const err = normalizeError(payload, response.status);
-      if (response.status === 401 && !options._retried && refreshHandler) {
+      const activeRefreshHandler = response.status === 401
+        && options.auth !== false
+        && !options._retried
+        ? refreshHandler
+        : null;
+      if (activeRefreshHandler) {
         if (Date.now() < refreshGraceUntil) {
           return apiRequest<T>(path, { ...options, _retried: true });
         }
         if (!refreshPromise) {
-          refreshPromise = refreshHandler().catch(() => false).finally(() => {
+          refreshPromise = activeRefreshHandler().catch(() => false).finally(() => {
             refreshGraceUntil = Date.now() + 2000;
             refreshPromise = null;
           });
@@ -233,7 +253,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
         await unauthorizedHandler?.();
         throw err;
       }
-      if (response.status === 401) {
+      if (response.status === 401 && options.auth !== false) {
         await clearStoredSession();
         await unauthorizedHandler?.();
       }

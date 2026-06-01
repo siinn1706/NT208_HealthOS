@@ -13,6 +13,7 @@ export interface OAuthContext {
   initiatedOrigin: string;
   locale: string;
   postLoginPath: string | null;
+  mobileRedirectUri: string | null;
 }
 
 const OAUTH_CONTEXT_COOKIE_NAMES: Record<
@@ -44,6 +45,32 @@ function normalizeAbsoluteUrl(raw: string | null | undefined): URL | null {
   }
 }
 
+function normalizedMobileRedirectList(): string[] {
+  const configured = process.env.MOBILE_OAUTH_REDIRECT_URIS ?? "nt208://auth/oauth/callback";
+  return configured
+    .split(",")
+    .map((value) => normalizeMobileRedirectUrl(value))
+    .filter((value): value is string => Boolean(value));
+}
+
+function normalizeMobileRedirectUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.username || parsed.password) return null;
+    parsed.search = "";
+    parsed.hash = "";
+    if (parsed.protocol === "nt208:") {
+      if (parsed.host !== "auth" || parsed.pathname !== "/oauth/callback") return null;
+      return parsed.toString();
+    }
+    if (parsed.protocol !== "https:" || !parsed.hostname || parsed.port) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 function isKnownLocale(raw: string | null | undefined): raw is string {
   return (
     typeof raw === "string" &&
@@ -67,6 +94,24 @@ export function normalizeOAuthPostLoginPath(
 ): string | null {
   const safe = getSafePostLoginRedirectPath(raw ?? null);
   return safe ? stripLocalePrefix(safe) : null;
+}
+
+export function normalizeOAuthMobileRedirectUri(
+  raw: string | null | undefined,
+): string | null {
+  const normalized = normalizeMobileRedirectUrl(raw);
+  if (!normalized) return null;
+  return normalizedMobileRedirectList().includes(normalized) ? normalized : null;
+}
+
+export function normalizeOAuthMobileState(raw: string | null | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  return /^[a-f0-9]{64}$/.test(value) ? value : null;
+}
+
+export function normalizeOAuthMobileCodeChallenge(raw: string | null | undefined): string | null {
+  return normalizeOAuthMobileState(raw);
 }
 
 export function resolvePublicOrigin(
@@ -142,6 +187,7 @@ export function decodeOAuthContext(
         normalizeAbsoluteUrl(parsed.initiatedOrigin)?.origin ?? DEFAULT_APP_ORIGIN,
       locale: resolveOAuthLocale(parsed.locale),
       postLoginPath: normalizeOAuthPostLoginPath(parsed.postLoginPath),
+      mobileRedirectUri: normalizeOAuthMobileRedirectUri(parsed.mobileRedirectUri),
     };
   } catch {
     return null;
@@ -153,6 +199,7 @@ export function createOAuthContext(
   params: {
     locale?: string | null;
     postLoginPath?: string | null;
+    mobileRedirectUri?: string | null;
   },
   fallbackUrls: Array<string | null | undefined> = [],
 ): OAuthContext {
@@ -160,6 +207,7 @@ export function createOAuthContext(
     initiatedOrigin: resolvePublicOrigin(request, fallbackUrls),
     locale: resolveOAuthLocale(params.locale),
     postLoginPath: normalizeOAuthPostLoginPath(params.postLoginPath),
+    mobileRedirectUri: normalizeOAuthMobileRedirectUri(params.mobileRedirectUri),
   };
 }
 

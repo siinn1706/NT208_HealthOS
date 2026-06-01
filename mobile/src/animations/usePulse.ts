@@ -25,7 +25,7 @@ export function usePulse({
     const cfg = { duration: halfDuration, easing: Easing.inOut(Easing.ease) };
     opacity.value = withRepeat(withTiming(minOpacity, cfg), -1, true);
     scale.value = withRepeat(withTiming(maxScale, cfg), -1, true);
-  }, []);
+  }, [halfDuration, maxScale, minOpacity, opacity, scale]);
 
   return useAnimatedStyle(() => ({
     opacity: opacity.value,

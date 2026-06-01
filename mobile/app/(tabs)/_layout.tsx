@@ -1,12 +1,11 @@
 import { Tabs } from 'expo-router';
-import { Redirect } from 'expo-router';
 import { BottomTabBar } from '../../src/components/nav/bottom-tab-bar';
 import { useSession } from '../../src/auth/session-provider';
 
 export default function TabLayout() {
   const { authenticated, booting } = useSession();
   if (booting) return null;
-  if (!authenticated) return <Redirect href="/auth/welcome" />;
+  if (!authenticated) return null;
 
   return (
     <Tabs

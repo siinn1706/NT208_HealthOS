@@ -31,7 +31,7 @@ export function OfflineBanner() {
 
   useEffect(() => {
     translateY.value = withTiming(offline ? 0 : -80, { duration: 300 });
-  }, [offline]);
+  }, [offline, translateY]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

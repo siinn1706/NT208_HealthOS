@@ -45,29 +45,41 @@ export function GoalsHubScreen() {
   const goal      = useApiQuery(queryKeys.healthGoal, loadGoal);
   const profile   = useApiQuery(queryKeys.profile, loadProfile);
   const reminders = useApiQuery(queryKeys.remindersAll, loadReminders);
+  const targetWeight = goal.data?.target_weight_kg ?? null;
+  const hasTarget = typeof targetWeight === 'number' && targetWeight > 0;
+  const progress = useApiQuery(
+    queryKeys.healthGoalProgress('weight_kg', '7d'),
+    () => healthGoalService.progress({
+      metric: 'weight_kg',
+      target: targetWeight ?? 1,
+      period: '7d',
+    }),
+    { enabled: hasTarget },
+  );
 
   const goalCard = useMemo(() => {
     if (!goal.data) return null;
     const target  = goal.data.target_weight_kg ?? 0;
-    const current = profile.data?.weight_kg ?? null;
-    const progress = current && target > 0 ? Math.max(0, Math.min(1, target / current)) : 0;
+    const latestLoggedWeight = hasTarget ? progress.data?.at(-1)?.value ?? null : null;
+    const current = latestLoggedWeight ?? profile.data?.weight_kg ?? null;
+    const progressRatio = current && target > 0 ? Math.max(0, Math.min(1, target / current)) : 0;
     const deadline = goal.data.deadline ? new Date(goal.data.deadline).toLocaleDateString() : 'No deadline';
     return {
       id: goal.data.id,
       title: i18n('insights.targetWeight'),
       sub: current ? `${Math.round(current)} kg → ${Math.round(target)} kg` : `Target ${Math.round(target)} kg`,
-      progress,
+      progress: progressRatio,
       streak: (reminders.data ?? []).filter((r) => r.done).length,
       done: current ? current <= target : false,
       deadline,
     };
-  }, [goal.data, profile.data, reminders.data]);
+  }, [goal.data, hasTarget, i18n, profile.data, progress.data, reminders.data]);
 
   const totalChecks = reminders.data?.length ?? 0;
   const doneChecks  = (reminders.data ?? []).filter((r) => r.done).length;
   const checkRatio  = totalChecks > 0 ? doneChecks / totalChecks : 0;
-  const loading = goal.isLoading || profile.isLoading || reminders.isLoading;
-  const error   = goal.error ?? profile.error ?? reminders.error;
+  const loading = goal.isLoading || profile.isLoading || reminders.isLoading || (hasTarget && progress.isLoading);
+  const error   = goal.error ?? profile.error ?? reminders.error ?? (hasTarget ? progress.error : null);
 
   const [gradStart, gradEnd] = heroGradient(themeName);
 
@@ -100,7 +112,12 @@ export function GoalsHubScreen() {
           title={i18n('insights.goalsUnavailable')}
           message={error.message}
           actionLabel={i18n('common.retry')}
-          onAction={() => { goal.reload(); profile.reload(); reminders.reload(); }}
+          onAction={() => {
+            goal.reload();
+            profile.reload();
+            reminders.reload();
+            if (hasTarget) progress.reload();
+          }}
         />
       )}
 

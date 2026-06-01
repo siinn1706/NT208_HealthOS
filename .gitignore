@@ -45,6 +45,7 @@ coverage/
 # Env files
 .env
 .env.*
+!mobile/.env.example
 !infra/docker/.env.dev.example
 !infra/docker/.env.prod.example
 !infra/env/.env.master.example

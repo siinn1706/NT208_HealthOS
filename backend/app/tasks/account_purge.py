@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.metrics import record_account_purge, record_export_blob_bytes
 from app.models.audit import AuditEventTypeEnum, AuditLog
 from app.models.core import (
+    AppointmentAsset,
     DataExportRequest,
     Meal,
     PrescriptionAsset,
@@ -73,7 +74,7 @@ def _purge_user_blobs(db, user_id) -> int:
 
     The FK cascade removes rows but not the underlying bytes — leaving PHI
     in object storage indefinitely. We delete in this order:
-      1. prescription assets (joined via appointments → user)
+      1. prescription and generic appointment assets
       2. meal photos (parsed from `Meal.image_url`)
       3. data export tarballs (`data_export_requests.bucket/key`)
       4. PDF report blobs (`report_export_requests.bucket/key`)
@@ -89,6 +90,15 @@ def _purge_user_blobs(db, user_id) -> int:
         .where(Appointment.user_id == user_id)
     ).all()
     for bucket, key in asset_rows:
+        if _safe_delete(bucket, key):
+            deleted += 1
+
+    generic_asset_rows = db.execute(
+        select(AppointmentAsset.bucket, AppointmentAsset.key)
+        .join(Appointment, Appointment.id == AppointmentAsset.appointment_id)
+        .where(Appointment.user_id == user_id)
+    ).all()
+    for bucket, key in generic_asset_rows:
         if _safe_delete(bucket, key):
             deleted += 1
 

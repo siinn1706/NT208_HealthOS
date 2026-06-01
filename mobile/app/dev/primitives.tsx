@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useTheme } from '../../src/theme/useTheme';
 import { typography } from '../../src/theme/typography';
 import { Button } from '../../src/components/primitives/button';
@@ -20,6 +21,18 @@ import { EmptyState } from '../../src/components/primitives/feedback/empty-state
 import { useToast } from '../../src/components/primitives/feedback/toast';
 import { Heart } from 'lucide-react-native';
 
+function DevRouteUnavailable() {
+  const t = useTheme();
+  React.useEffect(() => {
+    router.replace('/home' as never);
+  }, []);
+  return (
+    <SafeAreaView style={[styles.unavailable, { backgroundColor: t.bg }]}>
+      <Text style={[typography.bodyMed, { color: t.ink }]}>Development route unavailable.</Text>
+    </SafeAreaView>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const t = useTheme();
   return (
@@ -31,6 +44,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function PrimitivesPlayground() {
+  if (!__DEV__) return <DevRouteUnavailable />;
+  return <PrimitivesPlaygroundDev />;
+}
+
+function PrimitivesPlaygroundDev() {
   const t = useTheme();
   const toast = useToast();
   const [checked, setChecked] = useState(false);
@@ -162,4 +180,5 @@ const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 60 },
   section:   { marginBottom: 28 },
   row:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 },
+  unavailable: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
 });

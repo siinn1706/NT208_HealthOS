@@ -105,12 +105,10 @@ describe('NutritionTrendsScreen', () => {
     expect(mockRouterPush).toHaveBeenCalledWith('/meals/meal-1');
   });
 
-  it('shows truthful guarded feedback for unsupported custom date ranges', () => {
-    const { getByLabelText, getByText } = render(<NutritionTrendsScreen />);
+  it('does not expose unsupported custom date range affordances', () => {
+    const { queryByLabelText, queryByText } = render(<NutritionTrendsScreen />);
 
-    fireEvent.press(getByLabelText('Change range'));
-
-    expect(getByText('Date range unavailable')).toBeTruthy();
-    expect(getByText('Custom date ranges need a Core-backed date picker flow. Use the period controls for now.')).toBeTruthy();
+    expect(queryByLabelText('Change range')).toBeNull();
+    expect(queryByText('Date range unavailable')).toBeNull();
   });
 });
