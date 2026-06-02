@@ -1,6 +1,7 @@
 /* eslint-env jest */
 import {
   buildHealthIngestBatches,
+  estimateJsonBytes,
   resetHealthConnectSyncState,
   syncHealthConnect,
   type HealthConnectSyncAdapter,
@@ -269,5 +270,79 @@ describe('healthconnect orchestrator', () => {
       scopes: ['Steps'],
     });
     expect(mockedDeviceService.getSyncState).toHaveBeenCalledWith('dev-local');
+  });
+
+  it('skips connect when stored device is already connected', async () => {
+    mockGetStoredHealthConnectDeviceId.mockResolvedValueOnce('dev-hc-1');
+    mockedDeviceService.list.mockResolvedValueOnce([{ ...baseDevice, id: 'dev-hc-1', connected: true }]);
+
+    await syncHealthConnect(baseAdapter);
+
+    expect(mockedDeviceService.connect).not.toHaveBeenCalled();
+    expect(mockedDeviceService.getSyncState).toHaveBeenCalledWith('dev-hc-1');
+  });
+
+  it('throws when explicit deviceId is not in the device list', async () => {
+    mockedDeviceService.list.mockResolvedValueOnce([{ ...baseDevice, id: 'other-dev' }]);
+
+    await expect(syncHealthConnect(baseAdapter, { deviceId: 'missing-dev' }))
+      .rejects.toThrow('Selected Health Connect device is no longer available.');
+  });
+
+  it('throws when explicit deviceId belongs to a non-health-connect provider', async () => {
+    mockedDeviceService.list.mockResolvedValueOnce([{ ...baseDevice, id: 'fitbit-1', provider: 'fitbit' }]);
+
+    await expect(syncHealthConnect(baseAdapter, { deviceId: 'fitbit-1' }))
+      .rejects.toThrow('Selected device is not a Health Connect device.');
+  });
+
+  it('returns empty resetTypes when sync state has no record types to reset', async () => {
+    mockedDeviceService.getSyncState.mockResolvedValueOnce([]);
+
+    const result = await resetHealthConnectSyncState({ deviceId: 'dev-hc-1' });
+
+    expect(result).toEqual({ deviceId: 'dev-hc-1', resetTypes: [] });
+    expect(mockedDeviceService.putSyncState).not.toHaveBeenCalled();
+  });
+
+  it('chunks 501 deletions into multiple ingest calls', async () => {
+    const deletions = Array.from({ length: 501 }, (_, index) => ({ external_id: `d-${index}` }));
+    const adapter: HealthConnectSyncAdapter = {
+      ...baseAdapter,
+      readChanges: async () => ({ deletions }),
+    };
+
+    await syncHealthConnect(adapter);
+
+    expect(mockedDeviceService.ingest).toHaveBeenCalledTimes(2);
+    expect(mockedDeviceService.ingest.mock.calls[0][1].deletions?.length).toBe(500);
+    expect(mockedDeviceService.ingest.mock.calls[1][1].deletions?.length).toBe(1);
+  });
+
+  it('creates a standalone token batch when there are no records or deletions', () => {
+    const batches = buildHealthIngestBatches({
+      nextChangesTokens: { Steps: 'tok-new' },
+    });
+
+    expect(batches).toHaveLength(1);
+    expect(batches[0].next_changes_tokens).toEqual({ Steps: 'tok-new' });
+    expect(batches[0].records).toBeUndefined();
+  });
+
+  it('falls back to manual utf-8 byte count when TextEncoder is unavailable', () => {
+    const origTextEncoder = (global as Record<string, unknown>).TextEncoder;
+    try {
+      (global as Record<string, unknown>).TextEncoder = undefined;
+      // ASCII path: 'abc' = 3 bytes
+      expect(estimateJsonBytes('abc')).toBeGreaterThan(0);
+      // 2-byte sequence: ñ (U+00F1 = 0xC3 0xB1)
+      expect(estimateJsonBytes('ñ')).toBeGreaterThan(0);
+      // 3-byte sequence: ₹ (U+20B9)
+      expect(estimateJsonBytes('₹')).toBeGreaterThan(0);
+      // 4-byte sequence (surrogate pair in JS): 𝄞 (U+1D11E)
+      expect(estimateJsonBytes('𝄞')).toBeGreaterThan(0);
+    } finally {
+      (global as Record<string, unknown>).TextEncoder = origTextEncoder;
+    }
   });
 });

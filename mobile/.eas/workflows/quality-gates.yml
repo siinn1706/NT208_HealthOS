@@ -1,0 +1,37 @@
+name: Quality gates
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: quality-${{ github.event.pull_request.number }}
+  cancel_in_progress: true
+
+jobs:
+  typecheck:
+    type: custom
+    steps:
+      - run: cd mobile && npm ci
+      - run: cd mobile && npm run typecheck
+
+  lint:
+    type: custom
+    steps:
+      - run: cd mobile && npm ci
+      - run: cd mobile && npm run lint
+
+  test:
+    type: custom
+    steps:
+      - run: cd mobile && npm ci
+      - run: cd mobile && npm run test:coverage
+
+  checks:
+    type: custom
+    steps:
+      - run: cd mobile && npm ci
+      - run: cd mobile && npm run check:routes
+      - run: cd mobile && npm run check:expo-config
+      - run: cd mobile && npm run check:logo-parity
+      - run: cd mobile && npm run check:android-native-readiness

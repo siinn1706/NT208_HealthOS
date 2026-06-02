@@ -1,0 +1,21 @@
+name: Build preview APK
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    type: custom
+    steps:
+      - run: cd mobile && npm ci
+      - run: cd mobile && npm run typecheck
+      - run: cd mobile && npm run lint
+      - run: cd mobile && npm run test:coverage
+
+  build:
+    type: build
+    needs: [quality]
+    params:
+      platform: android
+      profile: preview

@@ -1,5 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, createIdempotencyKey } from '../client';
+import {
+  decryptItem,
+  encryptItem,
+  isEncryptedEnvelope,
+} from '../../lib/queue-encryption';
 
 export interface ChatImageQueueItem {
   id: string;
@@ -66,12 +71,36 @@ function isValidQueueItem(value: unknown): value is ChatImageQueueItem {
   );
 }
 
+/**
+ * Reads the raw AsyncStorage value and decrypts it.
+ *
+ * Migration path: items written before encryption was introduced are stored as
+ * a plain JSON array (no `iv`/`ct` envelope). We detect those by checking for
+ * the envelope shape; if absent, we parse the value as plaintext so existing
+ * queued items are not lost on upgrade. The next `writeQueue` call will
+ * re-persist them encrypted.
+ */
 async function readQueue(): Promise<ChatImageQueueItem[]> {
   const raw = await AsyncStorage.getItem(QUEUE_STORAGE_KEY);
   if (!raw) return [];
 
   try {
-    const parsed = JSON.parse(raw);
+    const outer = JSON.parse(raw);
+
+    let arrayJson: string;
+    if (isEncryptedEnvelope(outer)) {
+      // Normal path: decrypt the ciphertext to get the JSON array string.
+      arrayJson = await decryptItem(outer);
+    } else {
+      // Migration path: plaintext legacy data — accept as-is this one time.
+      // Count is telemetry-only; no PHI is logged.
+      if (__DEV__) {
+        console.warn('[chat-offline-queue] plaintext legacy data detected; will re-encrypt on next write');
+      }
+      arrayJson = raw;
+    }
+
+    const parsed = JSON.parse(arrayJson);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(isValidQueueItem);
   } catch {
@@ -80,8 +109,12 @@ async function readQueue(): Promise<ChatImageQueueItem[]> {
   }
 }
 
+/**
+ * Encrypts the queue array and writes the `EncryptedEnvelope` to AsyncStorage.
+ */
 async function writeQueue(items: ChatImageQueueItem[]) {
-  await AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(items));
+  const envelope = await encryptItem(JSON.stringify(items));
+  await AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(envelope));
 }
 
 export async function queueChatImageUpload(input: ChatImageQueueInput): Promise<ChatImageQueueItem> {

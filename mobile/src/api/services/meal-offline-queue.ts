@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from '../client';
 import { createIdempotencyKey } from '../client';
+import {
+  decryptItem,
+  encryptItem,
+  isEncryptedEnvelope,
+} from '../../lib/queue-encryption';
 
 export interface MealScanQueuedPhoto {
   id: string;
@@ -10,6 +15,15 @@ export interface MealScanQueuedPhoto {
   name: string;
   queuedAt: number;
   attemptCount: number;
+  /**
+   * Stable idempotency key generated at enqueue time.
+   * Preserved across reconnect-replay so the server can deduplicate requests
+   * that are retried after a network interruption.
+   * Legacy items (persisted before this field was added) will have this as
+   * undefined — the replay path generates a fresh key for those via nullish
+   * coalescing so they still get a key, just not the original one.
+   */
+  idempotencyKey: string;
 }
 
 export interface MealScanQueuedPhotoInput {
@@ -36,15 +50,42 @@ function isValidQueueItem(value: unknown): value is MealScanQueuedPhoto {
     && typeof value.name === 'string'
     && typeof value.queuedAt === 'number'
     && typeof value.attemptCount === 'number'
+    // idempotencyKey is optional for backward compat with legacy persisted items;
+    // replay callers must use `item.idempotencyKey ?? newIdempotencyKey()` pattern
+    && (value.idempotencyKey === undefined || typeof value.idempotencyKey === 'string')
   );
 }
 
+/**
+ * Reads the raw AsyncStorage value and decrypts it.
+ *
+ * Migration path: items written before encryption was introduced are stored as
+ * a plain JSON array (no `iv`/`ct` envelope). We detect those by checking for
+ * the envelope shape; if absent, we parse the value as plaintext so existing
+ * queued items are not lost on upgrade. The next `writeQueue` call will
+ * re-persist them encrypted.
+ */
 async function readQueue(): Promise<MealScanQueuedPhoto[]> {
   const raw = await AsyncStorage.getItem(QUEUE_STORAGE_KEY);
   if (!raw) return [];
 
   try {
-    const parsed = JSON.parse(raw);
+    const outer = JSON.parse(raw);
+
+    let arrayJson: string;
+    if (isEncryptedEnvelope(outer)) {
+      // Normal path: decrypt the ciphertext to get the JSON array string.
+      arrayJson = await decryptItem(outer);
+    } else {
+      // Migration path: plaintext legacy data — accept as-is this one time.
+      // Count is telemetry-only; no PHI is logged.
+      if (__DEV__) {
+        console.warn('[meal-offline-queue] plaintext legacy data detected; will re-encrypt on next write');
+      }
+      arrayJson = raw;
+    }
+
+    const parsed = JSON.parse(arrayJson);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(isValidQueueItem);
   } catch {
@@ -53,8 +94,12 @@ async function readQueue(): Promise<MealScanQueuedPhoto[]> {
   }
 }
 
+/**
+ * Encrypts the queue array and writes the `EncryptedEnvelope` to AsyncStorage.
+ */
 async function writeQueue(items: MealScanQueuedPhoto[]) {
-  await AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(items));
+  const envelope = await encryptItem(JSON.stringify(items));
+  await AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(envelope));
 }
 
 export function isTransientMealScanUploadError(error: unknown): boolean {
@@ -79,6 +124,10 @@ export async function queueMealScanPhoto(input: MealScanQueuedPhotoInput): Promi
     name: input.name,
     queuedAt: Date.now(),
     attemptCount: 0,
+    // Generate idempotencyKey at enqueue time so reconnect-replay reuses the
+    // same key rather than generating a new one — prevents duplicate meals on
+    // the server when a retry arrives after the original request succeeded.
+    idempotencyKey: createIdempotencyKey(),
   };
   const next = [...queue, item];
   if (next.length > MAX_QUEUE_SIZE) {

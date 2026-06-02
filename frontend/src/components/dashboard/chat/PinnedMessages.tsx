@@ -36,7 +36,7 @@ export function PinnedMessages({
             const senderName =
               msg.sender_id === currentUserId
                 ? t("you")
-                : msg.sender_id === "ai"
+                : msg.sender_kind === "ai"
                   ? t("aiAssistant")
                   : msg.sender_display_name ?? participantNameById[msg.sender_id] ?? t("unknownUser");
 

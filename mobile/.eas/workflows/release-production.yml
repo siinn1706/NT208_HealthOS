@@ -1,0 +1,33 @@
+name: Release production
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  validate:
+    type: custom
+    steps:
+      - run: cd mobile && npm ci
+      - run: cd mobile && npm run check:release-all
+
+  build:
+    type: build
+    needs: [validate]
+    params:
+      platform: android
+      profile: production
+
+  # Submit to Play Store internal track.
+  # For v0.1.0, v0.2.0, v0.3.0 this job requires manual workflow_dispatch
+  # approval from the EAS dashboard before it runs. After 3 successful
+  # manually-approved submissions with Play Store config confirmed stable,
+  # remove the manual_approval field to enable auto-submit.
+  submit:
+    type: submit
+    needs: [build]
+    params:
+      platform: android
+      profile: production
+    manual_approval: true

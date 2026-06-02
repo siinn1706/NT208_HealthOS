@@ -152,20 +152,48 @@ export const chatService = {
     return sendChatMessage(conversationId, content, options);
   },
 
-  async sendAiMessage(conversationId: string, content: string, options: SendMessageOptions = {}) {
-    const streamText = await apiRequest<string>(`/v1/conversations/${encodeURIComponent(conversationId)}/messages/stream`, {
-      method: 'POST',
-      headers: { Accept: 'text/event-stream' },
-      timeoutMs: 120000,
-      json: {
-        content,
-        content_type: options.contentType ?? 'text',
-        client_message_id: nextClientMessageId(),
-        attachments: options.attachments,
+  /**
+   * Send a message to an AI conversation via the Core streaming endpoint.
+   *
+   * The mobile client cannot consume SSE incrementally (React Native's Fetch
+   * buffers the entire body before resolving). The full SSE text is parsed for
+   * error events; incremental display is driven by WebSocket `ai:chunk` events.
+   *
+   * Returns the `client_message_id` that was embedded in the POST body so
+   * callers can correlate the subsequent `ai:started`/`ai:completed` WS events
+   * — those events echo back `client_message_id` which lets the UI deduplicate
+   * against its optimistic row even when the WS event arrives before the POST
+   * resolves and the optimistic row is committed.
+   */
+  async sendAiMessage(
+    conversationId: string,
+    content: string,
+    options: SendMessageOptions = {},
+  ): Promise<{ client_message_id: string }> {
+    const clientMsgId = nextClientMessageId();
+    const streamText = await apiRequest<string>(
+      `/v1/conversations/${encodeURIComponent(conversationId)}/messages/stream`,
+      {
+        method: 'POST',
+        // NOTE: The mobile Fetch implementation buffers the entire SSE body
+        // before resolving. This is a known limitation of the React Native
+        // runtime — true incremental SSE requires a native module or a third-
+        // party streaming library. WS `ai:chunk` events cover real-time display.
+        // If/when a streaming library is adopted, replace apiRequest<string>
+        // with an incremental reader and remove parseSseEvents post-processing.
+        headers: { Accept: 'text/event-stream' },
+        timeoutMs: 120_000,
+        json: {
+          content,
+          content_type: options.contentType ?? 'text',
+          client_message_id: clientMsgId,
+          attachments: options.attachments,
+        },
       },
-    });
+    );
     const failure = aiStreamFailureMessage(streamText);
     if (failure) throw new Error(failure);
+    return { client_message_id: clientMsgId };
   },
 
   async sendAttachmentMessage(conversationId: string, attachment: ChatAttachmentInput, caption?: string | null) {

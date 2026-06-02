@@ -15,6 +15,7 @@ import { getInitials, formatChatTime, truncateChatPreview } from "@/lib/chat-uti
 import type { Message } from "@/types/api";
 import type { GroupPosition } from "@/lib/chat-utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { sanitizeAttachmentForRender } from "@/lib/attachment-trust";
 
 interface MessageBubbleProps {
   message: Message;
@@ -90,7 +91,7 @@ export const MessageBubble = memo(function MessageBubble({
     const name =
       reply.sender_id === currentUserId
         ? t("you")
-        : reply.sender_id === "ai"
+        : reply.sender_kind === "ai"
           ? t("aiAssistant")
           : reply.sender_display_name ?? participantNameById[reply.sender_id] ?? unknown;
     if (!reply.content) {
@@ -467,11 +468,38 @@ function AttachmentPreview({
   attachment: NonNullable<Message["attachments"]>[number];
   isOwn: boolean;
 }) {
-  const isImage = attachment.mime_type.toLowerCase().startsWith("image/");
-  if (isImage) {
+  // Validate URL scheme, host allowlist, and MIME before rendering.
+  // Returns null for non-HTTPS URLs or non-allowlisted CDN hosts.
+  const safe = sanitizeAttachmentForRender({
+    url: attachment.url,
+    name: attachment.name,
+    mime: attachment.mime_type,
+  });
+
+  if (!safe) {
+    // Attachment failed trust checks — show a non-interactive chip so the
+    // message still renders but no untrusted URL or filename is exposed.
+    return (
+      <span
+        className={cn(
+          "flex max-w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-[12px] opacity-60 cursor-not-allowed select-none",
+          isOwn
+            ? "border-white/25 bg-white/10 text-white/85"
+            : "border-border bg-background/60 text-muted-foreground"
+        )}
+        title="Attachment unavailable"
+        aria-label="Unsupported attachment"
+      >
+        <Paperclip className="size-3.5 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">Unsupported attachment</span>
+      </span>
+    );
+  }
+
+  if (safe.previewable) {
     return (
       <a
-        href={attachment.url}
+        href={safe.url}
         target="_blank"
         rel="noopener noreferrer"
         className={cn(
@@ -479,9 +507,10 @@ function AttachmentPreview({
           isOwn ? "border-white/25 bg-white/10" : "border-border bg-background/60"
         )}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- safe.url is HTTPS-validated by sanitizeAttachmentForRender */}
         <img
-          src={attachment.url}
-          alt={attachment.name}
+          src={safe.url}
+          alt={safe.name}
           className="max-h-72 w-56 max-w-full object-cover transition-transform duration-200 group-hover/image:scale-[1.015]"
           loading="lazy"
         />
@@ -492,7 +521,7 @@ function AttachmentPreview({
           )}
         >
           <ImageIcon className="size-3" aria-hidden />
-          <span className="truncate">{attachment.name}</span>
+          <span className="truncate">{safe.name}</span>
           <span className="shrink-0">{formatBytes(attachment.size)}</span>
         </span>
       </a>
@@ -501,7 +530,7 @@ function AttachmentPreview({
 
   return (
     <a
-      href={attachment.url}
+      href={safe.url}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
@@ -510,7 +539,7 @@ function AttachmentPreview({
       )}
     >
       <Paperclip className="size-3.5 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
+      <span className="min-w-0 flex-1 truncate">{safe.name}</span>
       <span className={cn("shrink-0", isOwn ? "text-white/65" : "text-muted-foreground")}>
         {formatBytes(attachment.size)}
       </span>

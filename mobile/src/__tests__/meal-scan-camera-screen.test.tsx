@@ -156,6 +156,7 @@ describe('MealScanCameraScreen', () => {
       mediaTypes: ['images'],
       quality: 0.85,
       allowsEditing: false,
+      exif: false,
     });
     await waitFor(() => {
       expect(mockAnalyzePhoto).toHaveBeenCalledWith(expect.objectContaining({

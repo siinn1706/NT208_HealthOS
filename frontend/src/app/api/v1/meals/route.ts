@@ -60,6 +60,16 @@ export async function POST(req: NextRequest) {
     if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
 
     if (contentType.includes("multipart/form-data")) {
+      // Body-size cap: reject requests over 20MB to prevent BFF OOM on large multipart uploads.
+      // coreProxy does not yet support multipart streaming, so we buffer here with a hard limit.
+      const MAX_BODY_BYTES = 20 * 1024 * 1024;
+      const contentLength = req.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+        return NextResponse.json(
+          { error: { code: "PAYLOAD_TOO_LARGE", message: "Request body exceeds 20MB limit." } },
+          { status: 413 }
+        );
+      }
       body = await req.formData();
     } else {
       body = await req.text();

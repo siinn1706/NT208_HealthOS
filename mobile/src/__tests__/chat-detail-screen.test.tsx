@@ -201,7 +201,8 @@ describe('ChatDetailScreen send routing', () => {
     latestMessageListProps = null;
     netInfoListener = null;
     mockChatService.sendMessage.mockResolvedValue(message());
-    mockChatService.sendAiMessage.mockResolvedValue(undefined);
+    // sendAiMessage returns { client_message_id } for WS dedup; screen ignores the value.
+    mockChatService.sendAiMessage.mockResolvedValue({ client_message_id: 'mobile-mock-id' } as never);
     mockChatService.uploadImageAttachment.mockResolvedValue({
       url: 'https://cdn.example.com/image.jpg',
       name: 'queued.jpg',

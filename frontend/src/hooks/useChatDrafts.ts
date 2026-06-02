@@ -101,7 +101,16 @@ export function useChatDrafts(conversationId: string | null): UseChatDraftsResul
   const userIdRef = useRef<string | null>(null);
   const [userIdReady, setUserIdReady] = useState(false);
 
+  // Generation token: incremented each time a draft hydration begins. The
+  // hydration effect checks this before calling setDraftState so that a stale
+  // React batch cannot overwrite the draft for the conversation that's currently
+  // active with the draft from a conversation the user has since navigated away from.
+  const hydrateGenRef = useRef(0);
+
   // One-time per session: resolve the BFF session user id.
+  // The gen check here only guards the setDraftState write, NOT setUserIdReady —
+  // we must always mark the session as ready so the hydration effect can run
+  // for whatever conversation is current at resolution time.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let cancelled = false;
@@ -116,10 +125,18 @@ export function useChatDrafts(conversationId: string | null): UseChatDraftsResul
   }, []);
 
   // Hydrate draft when conversation OR user id becomes available.
+  // The gen token prevents a slow async re-render from writing the draft of a
+  // previously-active conversation over the one the user has since switched to.
+  // readDraft is synchronous, so in practice the race can only occur if two
+  // React batches fire out of order — but the guard costs nothing and is
+  // future-proof for async storage backends.
   useEffect(() => {
     conversationIdRef.current = conversationId;
     if (!userIdReady) return;
-    setDraftState(readDraft(userIdRef.current, conversationId));
+    const gen = ++hydrateGenRef.current;
+    const loaded = readDraft(userIdRef.current, conversationId);
+    if (gen !== hydrateGenRef.current) return; // stale: user switched conversation
+    setDraftState(loaded);
   }, [conversationId, userIdReady]);
   /* eslint-enable react-hooks/set-state-in-effect */
 

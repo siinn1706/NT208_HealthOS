@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { bffFetch } from "@/lib/api-client";
+import { bffFetchStream } from "@/lib/bff-fetch-stream";
 import type {
   Conversation,
   Message,
@@ -116,18 +117,20 @@ function adaptMessage(m: any): Message {
   // sender_id is the authoritative source — never infer identity from display_name
   // to prevent AI message spoofing by a user setting their name to contain "ai".
   const senderId = m.sender_id != null ? String(m.sender_id) : "";
-  // Authoritative origin: prefer explicit `sender_kind` from BE (or `sender_role`),
-  // fall back to legacy `"ai"` literal sender_id, then default to "user". Never
-  // derive this from display name.
+  // Authoritative origin: require explicit `sender_kind` (or `sender_role`) from
+  // the BE payload. The legacy `sender_id === "ai"` sentinel is intentionally
+  // dropped here — it was spoofable by any user whose account id happened to be
+  // the string "ai". If the BE does not send sender_kind we default to "user".
   const rawKind = (m.sender_kind ?? m.sender_role ?? null) as string | null;
   const senderKind: Message["sender_kind"] =
     rawKind === "ai" || rawKind === "system" || rawKind === "user"
       ? rawKind
-      : senderId === "ai"
-        ? "ai"
-        : senderId === "system"
-          ? "system"
-          : "user";
+      : "user";
+  if (process.env.NODE_ENV !== "production" && rawKind === null) {
+    // Dev-mode invariant: every message from the BE should carry sender_kind.
+    // Remove this warning once all backend endpoints are updated.
+    console.warn("[invariant] message missing sender_kind — defaulting to 'user'", m.id);
+  }
   const aiMetadata =
     m.ai_metadata && typeof m.ai_metadata === "object" && !Array.isArray(m.ai_metadata)
       ? (m.ai_metadata as Message["ai_metadata"])
@@ -151,6 +154,14 @@ function adaptMessage(m: any): Message {
             typeof m.reply_to.sender_display_name === "string"
               ? m.reply_to.sender_display_name
               : undefined,
+          // Carry sender_kind through so reply previews can identify AI authors
+          // without falling back to the spoofable sender_id === "ai" sentinel.
+          sender_kind:
+            (m.reply_to.sender_kind ?? m.reply_to.sender_role ?? null) === "ai"
+              ? ("ai" as const)
+              : (m.reply_to.sender_kind ?? m.reply_to.sender_role ?? null) === "system"
+                ? ("system" as const)
+                : ("user" as const),
           type: (m.reply_to.content_type ?? m.reply_to.type ?? "text") as Message["type"],
         }
       : undefined,
@@ -1040,18 +1051,25 @@ export function useMessages(
       };
 
       try {
-        const res = await fetch(`/api/v1/conversations/${convId}/messages/stream`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-          body: JSON.stringify({
-            content,
-            content_type: "text",
-            client_message_id: optimisticUserId,
-            locale,
-          }),
-          signal: controller.signal,
-        });
-        if (!res.ok || !res.body) {
+        // bffFetchStream handles 401→login redirect and headers-phase timeout
+        // identically to bffFetch. The body stream is left unbounded so the
+        // AI completion can run as long as needed without being killed by the
+        // 30 s fetch timeout that applies to the headers phase only.
+        const res = await bffFetchStream(
+          `/api/v1/conversations/${convId}/messages/stream`,
+          {
+            method: "POST",
+            headers: { Accept: "text/event-stream" },
+            body: JSON.stringify({
+              content,
+              content_type: "text",
+              client_message_id: optimisticUserId,
+              locale,
+            }),
+            signal: controller.signal,
+          },
+        );
+        if (!res.body) {
           replaceAssistant((m) => ({ ...m, status: "failed" as const }));
           setIsTyping(false);
           setStreamingAssistantId(null);

@@ -441,14 +441,13 @@ function MessageListContent(
       const msg = messages[dataIndex];
       if (!msg) return null;
       const isOwn = !!currentUserId && msg.sender_id === currentUserId;
-      // Authoritative AI detection — prefer the explicit `sender_kind` field
-      // sent by the BE (single source of truth, no spoofing). Fall back to a
-      // UUID match against the bot participant when the BE hasn't been
-      // updated yet, and to the legacy `"ai"` sentinel only for the dev
-      // FALLBACK_AI_CONVERSATION (no real participants list).
+      // Authoritative AI detection — use sender_kind from the server payload.
+      // aiBotUserId (from participants list) is kept as a secondary signal for
+      // messages that pre-date server-side sender_kind support; the legacy
+      // sender_id === "ai" sentinel is intentionally removed (spoofable).
       const isAi =
         msg.sender_kind === "ai" ||
-        (aiBotUserId ? msg.sender_id === aiBotUserId : msg.sender_id === "ai");
+        (aiBotUserId != null && msg.sender_id === aiBotUserId);
       const prev = messages[dataIndex - 1];
       const next = messages[dataIndex + 1];
 

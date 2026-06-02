@@ -15,6 +15,8 @@ import {
   removeQueuedChatImageUpload,
   type ChatImageQueueItem,
 } from '../api/services/chat-offline-queue';
+import { sanitizePhotoUri } from '../lib/photo-sanitizer';
+import { sanitizeFilenameForAiContext } from '../lib/attachment-trust';
 import { validateImageFile } from '../utils/file-validation';
 import type { Message } from '../../../shared/api-contracts';
 
@@ -216,16 +218,26 @@ export function useChatThreadActions({
         mediaTypes: ['images'],
         quality: 0.85,
         allowsEditing: false,
+        // Instruct the picker not to include EXIF in the returned asset.
+        // sanitizePhotoUri() performs a second-pass re-encode for defence-in-depth.
+        exif: false,
       });
       if (result.canceled || !result.assets[0]) return;
 
       const asset = result.assets[0];
+      // Re-encode through ImageManipulator to strip residual EXIF / PHI
+      // (GPS coordinates, device serial, capture timestamp).
+      const clean = await sanitizePhotoUri(asset.uri);
       const ext = asset.mimeType?.split('/')[1] || 'jpg';
+      const rawFileName = asset.fileName || `chat-image.${ext === 'jpeg' ? 'jpg' : ext}`;
       attachmentFile = {
-        uri: asset.uri,
-        fileName: asset.fileName || `chat-image.${ext === 'jpeg' ? 'jpg' : ext}`,
+        uri: clean.uri,
+        fileName: rawFileName,
         mimeType: asset.mimeType || 'image/jpeg',
-        name: asset.fileName || `chat-image.${ext === 'jpeg' ? 'jpg' : ext}`,
+        // Wrap name in <<UNTRUSTED>> marker so that when sendAttachmentMessage
+        // uses it as fallback message content the AI model sees it as user data,
+        // not as an instruction (prompt-injection mitigation).
+        name: sanitizeFilenameForAiContext(rawFileName),
         caption: '',
         fileSize: asset.fileSize,
       };

@@ -1,5 +1,8 @@
 import { apiRequest, getCoreWsBaseUrl } from '../client';
 import type { DataResponse, Message } from '../../../../shared/api-contracts';
+import { buildAuthFrame, isAuthRejected } from '../../lib/ws-auth-protocol';
+
+export { buildAuthFrame, isAuthRejected };
 
 export interface WsTicket {
   ws_ticket: string;
@@ -13,8 +16,26 @@ export interface ChatWsEvent {
   metadata?: Record<string, unknown>;
 }
 
-export function buildChatWsUrl(ticket: string, baseUrl = getCoreWsBaseUrl()) {
-  return `${baseUrl.replace(/\/+$/, '')}/ws?token=${encodeURIComponent(ticket)}`;
+/**
+ * AI lifecycle event — carries the `client_message_id` that was sent in the
+ * original POST so the consumer can correlate against its optimistic map
+ * even when the event arrives before the optimistic row is committed.
+ */
+export interface AiLifecycleEvent {
+  event: 'ai:started' | 'ai:completed' | 'chat.message.ai_started' | 'chat.message.ai_completed';
+  conversation_id: string;
+  message_id: string | null;
+  /** Echoed from the POST body — used for client-side dedup. */
+  client_message_id: string | null;
+}
+
+/**
+ * Builds the WS URL without the auth ticket in the query string.
+ * The ticket is sent as the first post-connect frame via buildAuthFrame()
+ * to prevent it from appearing in proxy logs and browser history.
+ */
+export function buildChatWsUrl(baseUrl = getCoreWsBaseUrl()) {
+  return `${baseUrl.replace(/\/+$/, '')}/ws`;
 }
 
 export function getMessageFromChatEvent(event: ChatWsEvent): Message | null {
@@ -60,6 +81,32 @@ export function getRemovedConversationIdFromChatEvent(event: ChatWsEvent): strin
   return typeof payload.conversation_id === 'string' ? payload.conversation_id : null;
 }
 
+/** AI lifecycle events that carry client_message_id for deduplification. */
+const AI_LIFECYCLE_EVENTS = new Set([
+  'ai:started',
+  'ai:completed',
+  'chat.message.ai_started',
+  'chat.message.ai_completed',
+]);
+
+/**
+ * Extract AI lifecycle event data including client_message_id.
+ * Returns null for non-AI-lifecycle frames.
+ */
+export function getAiLifecycleEventFromChatEvent(event: ChatWsEvent): AiLifecycleEvent | null {
+  if (!AI_LIFECYCLE_EVENTS.has(event.event)) return null;
+  const payload = event.payload;
+  if (!payload || typeof payload !== 'object') return null;
+  const conversationId = typeof payload.conversation_id === 'string' ? payload.conversation_id : null;
+  if (!conversationId) return null;
+  return {
+    event: event.event as AiLifecycleEvent['event'],
+    conversation_id: conversationId,
+    message_id: typeof payload.message_id === 'string' ? payload.message_id : null,
+    client_message_id: typeof payload.client_message_id === 'string' ? payload.client_message_id : null,
+  };
+}
+
 export const chatRealtimeService = {
   async wsTicket() {
     const response = await apiRequest<DataResponse<WsTicket>>('/v1/auth/ws-ticket');
@@ -68,6 +115,9 @@ export const chatRealtimeService = {
 
   async openSocket() {
     const ticket = await this.wsTicket();
-    return new WebSocket(buildChatWsUrl(ticket.ws_ticket));
+    const ws = new WebSocket(buildChatWsUrl());
+    // Auth ticket sent as first post-connect frame — never in URL
+    ws.addEventListener('open', () => ws.send(buildAuthFrame(ticket.ws_ticket)));
+    return ws;
   },
 };

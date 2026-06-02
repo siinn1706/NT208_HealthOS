@@ -244,7 +244,10 @@ describe('chatService.sendAiMessage', () => {
   it('uses the Core SSE stream endpoint for AI follow-up messages', async () => {
     mockApiRequest.mockResolvedValueOnce('event: done\ndata: {"status":"completed"}\n\n' as never);
 
-    await expect(chatService.sendAiMessage('conv/ai', 'Explain my trend')).resolves.toBeUndefined();
+    // sendAiMessage now returns { client_message_id } for WS event correlation.
+    await expect(chatService.sendAiMessage('conv/ai', 'Explain my trend')).resolves.toMatchObject({
+      client_message_id: expect.stringMatching(/^mobile-\d+-\d+$/),
+    });
 
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/conv%2Fai/messages/stream', {
       method: 'POST',

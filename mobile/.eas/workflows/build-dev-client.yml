@@ -1,0 +1,12 @@
+name: Build dev-client (development profile)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    type: build
+    params:
+      platform: android
+      profile: development

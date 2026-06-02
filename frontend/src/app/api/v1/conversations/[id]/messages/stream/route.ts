@@ -9,13 +9,32 @@
  * cap us at 25 s and it has subtler streaming behaviors). Cache /
  * buffering hints prevent CDNs and reverse proxies from breaking the
  * incremental delivery.
+ *
+ * Rate limiting: token bucket (10 req / 60 s burst of 5) per session.
+ * Concurrency cap: at most 1 concurrent stream per session to prevent a
+ * single user from stacking multiple long-lived GPU allocations.
  */
-import { NextRequest } from "next/server";
+import { createHash } from "node:crypto";
+import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 import { coreFetchStream } from "@/lib/core-api-proxy";
+import { takeToken } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
+
+// ── Concurrency cap ──────────────────────────────────────────────────────────
+// Module-level set tracking sessions that currently hold an active stream.
+// In-process only; acceptable for per-worker approximation.
+const activeStreams = new Set<string>();
+
+// ── Rate-limit config ────────────────────────────────────────────────────────
+const STREAM_RATE_LIMIT = { burst: 5, refillIntervalMs: 6_000 } as const;
+// burst 5, refill 1 token per 6 s → 10 req / 60 s steady-state
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -35,30 +54,102 @@ function copySetCookieHeaders(source: Headers, target: Headers): void {
   }
 }
 
+function sessionKeyFromToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+// ── Route handler ────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest, ctx: RouteContext) {
   const { id } = await ctx.params;
+
+  // Resolve session key for rate-limiting and concurrency tracking.
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const sessionKey = sessionToken ? sessionKeyFromToken(sessionToken) : null;
+
+  if (sessionKey) {
+    // 1. Rate-limit check.
+    const rl = takeToken(`chat-stream:${sessionKey}`, STREAM_RATE_LIMIT);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: { code: "RATE_LIMIT_EXCEEDED", message: "Too many requests. Please try again later." } },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
+        },
+      );
+    }
+
+    // 2. Concurrency cap: reject if this session already has an active stream.
+    if (activeStreams.has(sessionKey)) {
+      return NextResponse.json(
+        { error: { code: "STREAM_ALREADY_ACTIVE", message: "A stream is already in progress for this session." } },
+        { status: 429 },
+      );
+    }
+
+    activeStreams.add(sessionKey);
+  }
+
   const safe = encodeURIComponent(id);
-  const upstream = await coreFetchStream(req, `/v1/conversations/${safe}/messages/stream`, {
-    method: "POST",
-  });
+
+  let upstream: Response;
+  try {
+    upstream = await coreFetchStream(req, `/v1/conversations/${safe}/messages/stream`, {
+      method: "POST",
+    });
+  } catch (err) {
+    // Ensure concurrency slot is released on fetch failure.
+    if (sessionKey) activeStreams.delete(sessionKey);
+    throw err;
+  }
 
   // Guard rejection returns JSON 403 — short-circuit before applying SSE headers.
   if (!upstream.ok && upstream.headers.get("content-type")?.startsWith("application/json")) {
+    if (sessionKey) activeStreams.delete(sessionKey);
     return upstream;
   }
 
-  const headers = new Headers({
+  const responseHeaders = new Headers({
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
     "X-Accel-Buffering": "no",
     Connection: "keep-alive",
   });
   const requestId = upstream.headers.get("X-Request-ID");
-  if (requestId) headers.set("X-Request-ID", requestId);
-  copySetCookieHeaders(upstream.headers, headers);
+  if (requestId) responseHeaders.set("X-Request-ID", requestId);
+  copySetCookieHeaders(upstream.headers, responseHeaders);
 
-  return new Response(upstream.body, {
+  // Wrap the upstream body in a TransformStream so we can release the
+  // concurrency slot when the stream closes (either normally or on error).
+  let body: ReadableStream<Uint8Array> | null = upstream.body;
+  if (sessionKey && body) {
+    const transform = new TransformStream<Uint8Array, Uint8Array>();
+    const writer = transform.writable.getWriter();
+
+    // Pipe upstream → transform, then release the concurrency slot.
+    (async () => {
+      const reader = (body as ReadableStream<Uint8Array>).getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await writer.write(value);
+        }
+        await writer.close();
+      } catch {
+        await writer.abort(new Error("upstream_stream_error")).catch(() => {});
+      } finally {
+        activeStreams.delete(sessionKey);
+      }
+    })();
+
+    body = transform.readable;
+  }
+
+  return new Response(body, {
     status: upstream.status,
-    headers,
+    headers: responseHeaders,
   });
 }
