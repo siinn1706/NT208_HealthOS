@@ -86,7 +86,7 @@ export function AddMealScreen() {
   async function handleManualSave() {
     const name = manualName.trim();
     if (!name) {
-      setFeedback({ title: 'Meal not saved', message: 'Enter a meal name before saving.' });
+      setFeedback({ title: i18n('meals.mealNotSaved'), message: i18n('meals.mealNameRequired') });
       return;
     }
 
@@ -106,8 +106,8 @@ export function AddMealScreen() {
       router.replace('/meals' as never);
     } catch (err) {
       setFeedback({
-        title: 'Meal not saved',
-        message: err instanceof Error ? err.message : 'Unable to save meal.',
+        title: i18n('meals.mealNotSaved'),
+        message: err instanceof Error ? err.message : i18n('meals.confirmMealSaveFailed'),
       });
     } finally {
       setSaving(false);
@@ -128,15 +128,15 @@ export function AddMealScreen() {
       setSearchResults(items);
       if (items.length === 0) {
         setFeedback({
-          title: 'No foods found',
-          message: 'Try another name or save the meal manually.',
+          title: i18n('meals.noFoodsFound'),
+          message: i18n('meals.noFoodsFoundMessage'),
         });
       }
     } catch (err) {
       if (requestId !== searchRequestId.current) return;
       setFeedback({
-        title: 'Food search failed',
-        message: err instanceof Error ? err.message : 'Unable to search foods.',
+        title: i18n('meals.foodSearchFailed'),
+        message: err instanceof Error ? err.message : i18n('meals.foodSearchFailedMessage'),
       });
     } finally {
       if (requestId === searchRequestId.current) {
@@ -153,8 +153,8 @@ export function AddMealScreen() {
     setManualNotes(ingredientServingLabel(item));
     setManualVisible(true);
     setFeedback({
-      title: 'Ingredient selected',
-      message: `${name} is ready to save as a ${SLOT_LABELS[slot].toLowerCase()} meal.`,
+      title: i18n('meals.ingredientSelectedTitle'),
+      message: i18n('meals.readyToSaveAs', { name, slot: SLOT_LABELS[slot].toLowerCase() }),
     });
   }
 
@@ -162,23 +162,23 @@ export function AddMealScreen() {
     if (history.error) {
       void history.reload();
       setFeedback({
-        title: 'Reloading meal history',
-        message: 'Retrying Core meal history now.',
+        title: i18n('meals.reloadingHistory'),
+        message: i18n('meals.reloadingHistoryMessage'),
       });
       return;
     }
     if (history.isLoading) {
       setFeedback({
-        title: 'Loading meal history',
-        message: 'Recent meals are loading from Core.',
+        title: i18n('meals.loadingHistory'),
+        message: i18n('meals.loadingHistoryMessage'),
       });
       return;
     }
     setFeedback({
-      title: recentRows.length ? 'Meal history ready' : 'No meal history yet',
+      title: recentRows.length ? i18n('meals.historyReady') : i18n('meals.historyEmpty'),
       message: recentRows.length
-        ? 'Pick a recent or frequent meal below to prefill manual entry.'
-        : 'Log a meal first, then it will appear here for reuse.',
+        ? i18n('meals.historyReadyMessage')
+        : i18n('meals.historyEmptyMessage'),
     });
   }
 
@@ -189,8 +189,8 @@ export function AddMealScreen() {
     setManualNotes(historySelectionNote(row));
     setManualVisible(true);
     setFeedback({
-      title: 'History meal selected',
-      message: `${row.name} is ready to save as a ${SLOT_LABELS[slot].toLowerCase()} meal.`,
+      title: i18n('meals.historyMealSelected'),
+      message: i18n('meals.readyToSaveAs', { name: row.name, slot: SLOT_LABELS[slot].toLowerCase() }),
     });
   }
 
@@ -245,11 +245,11 @@ export function AddMealScreen() {
         />
       </View>
 
-      {searching && <ApiState title="Searching foods" loading />}
+      {searching && <ApiState title={i18n('meals.searchingFoods')} loading />}
 
       {!searching && searchResults.length > 0 && (
         <>
-          <SectionHeader title="Search results" />
+          <SectionHeader title={i18n('meals.searchResults')} />
           <Card style={{ padding: 0, paddingHorizontal: 12, marginBottom: 4 }}>
             {searchResults.map((item) => (
               <FoodRow
@@ -342,7 +342,7 @@ export function AddMealScreen() {
             style={[typography.body, styles.manualInput, styles.manualNotes, { color: t.ink, borderColor: t.border, borderRadius: t.radius.md }]}
           />
           <Button
-            label={saving ? 'Saving meal...' : 'Save meal'}
+            label={saving ? i18n('meals.savingMeal') : i18n('meals.saveMeal')}
             onPress={handleManualSave}
             loading={saving}
             disabled={saving || !manualName.trim()}
@@ -353,12 +353,12 @@ export function AddMealScreen() {
       {/* Frequent */}
       <SectionHeader title={i18n('meals.frequentForSlot', { slot: SLOT_LABELS[slot] })} />
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
-        {history.isLoading && <ApiState title="Loading meal history" loading />}
+        {history.isLoading && <ApiState title={i18n('meals.loadingHistory')} loading />}
         {history.error && (
-          <ApiState title="Meal history unavailable" message={history.error.message} actionLabel={i18n('common.retry')} onAction={history.reload} />
+          <ApiState title={i18n('meals.historyUnavailable')} message={history.error.message} actionLabel={i18n('common.retry')} onAction={history.reload} />
         )}
         {!history.isLoading && !history.error && frequentRows.length === 0 && (
-          <Text style={[typography.caption, styles.emptyText, { color: t.ink3 }]}>No repeated {SLOT_LABELS[slot].toLowerCase()} meals yet.</Text>
+          <Text style={[typography.caption, styles.emptyText, { color: t.ink3 }]}>{i18n('meals.noRepeatedMeals', { slot: SLOT_LABELS[slot].toLowerCase() })}</Text>
         )}
         {!history.isLoading && !history.error && frequentRows.map((row) => (
           <FoodRow
@@ -377,12 +377,12 @@ export function AddMealScreen() {
       {/* Recent */}
       <SectionHeader title={i18n('meals.recentlyLogged')} />
       <Card style={{ padding: 0, paddingHorizontal: 12 }}>
-        {history.isLoading && <ApiState title="Loading recent meals" loading />}
+        {history.isLoading && <ApiState title={i18n('meals.loadingRecentMeals')} loading />}
         {history.error && (
-          <ApiState title="Recent meals unavailable" message={history.error.message} actionLabel={i18n('common.retry')} onAction={history.reload} />
+          <ApiState title={i18n('meals.recentMealsUnavailable')} message={history.error.message} actionLabel={i18n('common.retry')} onAction={history.reload} />
         )}
         {!history.isLoading && !history.error && recentRows.length === 0 && (
-          <Text style={[typography.caption, styles.emptyText, { color: t.ink3 }]}>No recent meals found.</Text>
+          <Text style={[typography.caption, styles.emptyText, { color: t.ink3 }]}>{i18n('meals.noRecentMeals')}</Text>
         )}
         {!history.isLoading && !history.error && recentRows.map((row) => (
           <FoodRow

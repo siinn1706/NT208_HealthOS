@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 from sqlalchemy import select
@@ -9,6 +10,8 @@ from sqlalchemy.exc import IntegrityError
 from app.exceptions import ApiException
 from app.models.health_goal import HealthGoal
 from app.schemas.health_goal import HealthGoalCreate, HealthGoalUpdate
+
+logger = logging.getLogger(__name__)
 
 
 class HealthGoalService:
@@ -21,6 +24,7 @@ class HealthGoalService:
             )
             return result.scalar_one_or_none()
         except Exception:
+            logger.exception("Failed to retrieve health goal for user_id=%s", user_id)
             raise ApiException(
                 status_code=500,
                 code="INTERNAL_ERROR",
@@ -53,6 +57,7 @@ class HealthGoalService:
             )
         except Exception:
             await db.rollback()
+            logger.exception("Failed to create health goal for user_id=%s", user_id)
             raise ApiException(
                 status_code=500,
                 code="INTERNAL_ERROR",
@@ -87,6 +92,7 @@ class HealthGoalService:
             )
         except Exception:
             await db.rollback()
+            logger.exception("Failed to update health goal for user_id=%s", current_user_id)
             raise ApiException(
                 status_code=500,
                 code="INTERNAL_ERROR",
@@ -104,6 +110,7 @@ class HealthGoalService:
             await db.flush()
         except Exception:
             await db.rollback()
+            logger.exception("Failed to delete health goal for user_id=%s", current_user_id)
             raise ApiException(
                 status_code=500,
                 code="INTERNAL_ERROR",

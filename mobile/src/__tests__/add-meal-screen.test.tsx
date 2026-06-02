@@ -128,7 +128,7 @@ describe('AddMealScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('e.g. Grilled chicken rice'), 'Bun bo');
     fireEvent.changeText(getByPlaceholderText('Notes, portion, ingredients'), 'Less oil');
-    fireEvent.press(getByText('Save meal'));
+    fireEvent.press(getByText('meals.saveMeal'));
 
     await waitFor(() => {
       expect(mockMealCreate).toHaveBeenCalledWith(expect.objectContaining({
@@ -146,7 +146,7 @@ describe('AddMealScreen', () => {
     const { getByPlaceholderText, getByText } = render(<AddMealScreen />);
 
     fireEvent.changeText(getByPlaceholderText('e.g. Grilled chicken rice'), 'Bun bo');
-    fireEvent.press(getByText('Save meal'));
+    fireEvent.press(getByText('meals.saveMeal'));
 
     await waitFor(() => expect(getByText('API down')).toBeTruthy());
     expect(mockInvalidateApiQuery).not.toHaveBeenCalled();
@@ -161,7 +161,7 @@ describe('AddMealScreen', () => {
     const { getAllByRole, getByPlaceholderText, getByText } = render(<AddMealScreen />);
 
     fireEvent.changeText(getByPlaceholderText('e.g. Grilled chicken rice'), 'Bun bo');
-    fireEvent.press(getByText('Save meal'));
+    fireEvent.press(getByText('meals.saveMeal'));
     const disabledSave = getAllByRole('button').find((item) => item.props.accessibilityState?.disabled === true);
     expect(disabledSave).toBeTruthy();
     fireEvent.press(disabledSave!);
@@ -191,9 +191,9 @@ describe('AddMealScreen', () => {
 
     await waitFor(() => expect(mockNutritionIngredients).toHaveBeenCalledWith({ q: 'chicken', per_page: 8 }));
     fireEvent.press(getByText('Ức gà'));
-    expect(getByText('Ingredient selected')).toBeTruthy();
+    expect(getByText('meals.ingredientSelectedTitle')).toBeTruthy();
 
-    fireEvent.press(getByText('Save meal'));
+    fireEvent.press(getByText('meals.saveMeal'));
 
     await waitFor(() => {
       expect(mockMealCreate).toHaveBeenCalledWith(expect.objectContaining({
@@ -218,8 +218,8 @@ describe('AddMealScreen', () => {
     expect(queryByText('Meal history reuse unavailable')).toBeNull();
 
     fireEvent.press(getByText('Chicken rice'));
-    expect(getByText('History meal selected')).toBeTruthy();
-    fireEvent.press(getByText('Save meal'));
+    expect(getByText('meals.historyMealSelected')).toBeTruthy();
+    fireEvent.press(getByText('meals.saveMeal'));
 
     await waitFor(() => {
       expect(mockMealCreate).toHaveBeenCalledWith(expect.objectContaining({
@@ -243,8 +243,8 @@ describe('AddMealScreen', () => {
     const { getAllByText, getByText } = render(<AddMealScreen />);
 
     await waitFor(() => expect(getAllByText('History down')).toHaveLength(2));
-    expect(getByText('Meal history unavailable')).toBeTruthy();
-    expect(getByText('Recent meals unavailable')).toBeTruthy();
+    expect(getByText('meals.historyUnavailable')).toBeTruthy();
+    expect(getByText('meals.recentMealsUnavailable')).toBeTruthy();
   });
 
   it('shows API feedback when ingredient search fails', async () => {

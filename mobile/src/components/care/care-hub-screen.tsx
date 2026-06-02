@@ -46,7 +46,7 @@ const QUICK_ROW_DEFS = [
   { id: 'book',          IconComponent: IconCalendar, colorKey: 'accent',  titleKey: 'care.bookAppointment',  subtitleKey: 'care.scheduleConsultation',    route: '/care/appointments/new' },
 ] as const;
 
-function fmtDate(value?: string | null, noDateLabel = 'No date') {
+function fmtDate(value?: string | null, noDateLabel = '') {
   if (!value) return noDateLabel;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
