@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { AuthSignInScreen } from '../components/auth/auth-sign-in-screen';
 import { useSession } from '../auth/session-provider';
 import type { CurrentUser } from '../types/api';
+import { ApiError } from '../api/client';
 
 jest.mock('expo-router', () => ({
   router: {
@@ -77,7 +78,7 @@ describe('AuthSignInScreen', () => {
     fireEvent.press(getByLabelText('auth.continueWithGitHub'));
 
     await waitFor(() => expect(signInWithOAuth).toHaveBeenCalledWith('github'));
-    expect(mockRouterReplace).toHaveBeenCalledWith('/onboarding/setup');
+    expect(mockRouterReplace).toHaveBeenCalledWith('/onboarding/setup' as never);
   });
 
   it('routes completed OAuth users to home', async () => {
@@ -88,6 +89,32 @@ describe('AuthSignInScreen', () => {
     fireEvent.press(getByLabelText('auth.continueWithGoogle'));
 
     await waitFor(() => expect(signInWithOAuth).toHaveBeenCalledWith('google'));
-    expect(mockRouterReplace).toHaveBeenCalledWith('/home');
+    expect(mockRouterReplace).toHaveBeenCalledWith('/home' as never);
+  });
+
+  it('maps INVALID_CREDENTIALS to a localized error', async () => {
+    const signIn = jest.fn().mockRejectedValue(new ApiError('Tên đăng nhập hoặc mật khẩu không đúng', 401, 'INVALID_CREDENTIALS'));
+    mockSession({ signIn });
+
+    const { getByLabelText, getByText } = render(<AuthSignInScreen />);
+    fireEvent.changeText(getByLabelText('auth.email'), 'bad@example.com');
+    fireEvent.changeText(getByLabelText('auth.password'), 'wrong');
+    fireEvent.press(getByText('auth.signIn'));
+
+    await waitFor(() => expect(signIn).toHaveBeenCalledWith('bad@example.com', 'wrong'));
+    expect(getByText('auth.invalidCredentials')).toBeTruthy();
+  });
+
+  it('maps ACCOUNT_BANNED to a localized error', async () => {
+    const signIn = jest.fn().mockRejectedValue(new ApiError('Your account has been banned.', 403, 'ACCOUNT_BANNED'));
+    mockSession({ signIn });
+
+    const { getByLabelText, getByText } = render(<AuthSignInScreen />);
+    fireEvent.changeText(getByLabelText('auth.email'), 'banned@example.com');
+    fireEvent.changeText(getByLabelText('auth.password'), 'wrong');
+    fireEvent.press(getByText('auth.signIn'));
+
+    await waitFor(() => expect(signIn).toHaveBeenCalledWith('banned@example.com', 'wrong'));
+    expect(getByText('auth.accountBanned')).toBeTruthy();
   });
 });

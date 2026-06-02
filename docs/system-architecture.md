@@ -53,6 +53,26 @@ Response (JSON)
 Mobile App (AsyncStorage cache)
 ```
 
+### Meal Photo AI Pipeline
+```
+Web BFF / Mobile
+    ↓ upload meal photo
+Core API (/v1/meals/analyze-photo)
+    ↓ stores image in MinIO, queues Celery job
+Queue Worker
+    ↓ presigned image URL
+AI Worker (/analyze)
+    ├─ Ateeqq/food-analysis primary dish + portion parse
+    ├─ jc-builds/CalorieCLIP calorie cross-check
+    └─ legacy YOLO fallback when local model path/runtime fails
+        ↓
+Core Meal.nutrition_result JSONB
+    ↓
+Web/Mobile result screens show calorie range, warnings, confidence, and local portion scaling
+```
+
+AI model weights stay under `services/ai-worker/models/**`, are gitignored, and are not exposed to frontend or mobile clients. Core backend only persists/sanitizes the returned nutrition JSON.
+
 ### Real-time Chat (WebSocket) + Offline Messaging + Group Chat
 ```
 Browser/Mobile (WSS)

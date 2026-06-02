@@ -8,6 +8,12 @@
 
 ### Added
 
+#### AI Meal Calorie Pipeline Upgrade (2026-06-01)
+- **Worker-owned inference**: AI Worker now routes meal photo analysis through local `Ateeqq/food-analysis`, `jc-builds/CalorieCLIP`, then legacy YOLO fallback without moving model code into Core backend.
+- **Expanded nutrition contract**: `/analyze` and Core meal JSON preserve calorie ranges, portion options, ingredients, confidence, warnings, and source metadata.
+- **Web/mobile confirmation UX**: Scan result screens show calorie range, `Ít / Vừa / Nhiều` portion selector, confidence/warnings, and confirmation before continuing to the saved meal/edit flow.
+- **Model setup**: Added Hugging Face snapshot download and detector benchmark scripts; model directories remain gitignored and excluded from worker Docker context.
+
 #### Mobile Android App Links OAuth Hardening (2026-06-01)
 - **Verified HTTPS callback path**: Mobile OAuth can now use `EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://.../auth/oauth/mobile-callback` for production Android App Links while preserving the local `nt208://auth/oauth/callback` fallback.
 - **Expo/App Links config**: `app.config.js` emits Android `autoVerify` intent filters for HTTPS mobile OAuth redirect URIs, and the BFF allowlist accepts HTTPS App Link callbacks only when listed in `MOBILE_OAUTH_REDIRECT_URIS`.

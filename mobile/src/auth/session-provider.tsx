@@ -1,8 +1,10 @@
-import React, { createContext, use, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { setRefreshHandler, setUnauthorizedHandler } from '../api/client';
 import { BOOTSTRAP_PROFILE_TIMEOUT_MS, toCoreReachabilityMessage } from '../api/core-reachability';
 import { invalidateApiQuery, setApiSessionScope } from '../api/query';
 import { authService, profileService } from '../api/services';
+import { clearQueuedChatImageUploadsForUser } from '../api/services/chat-offline-queue';
+import { clearQueuedMealScanPhotos } from '../api/services/meal-offline-queue';
 import {
   clearStoredSession,
   getAccessToken,
@@ -39,6 +41,10 @@ interface RefreshUserOptions {
   throwOnFailure?: boolean;
 }
 
+function describeBootstrapError(error: unknown) {
+  return toCoreReachabilityMessage(error) ?? (error instanceof Error ? error.message : 'Unable to initialize session.');
+}
+
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 function isMfaChallenge(result: AuthLoginResult): result is MfaLoginRequired {
@@ -49,14 +55,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    userIdRef.current = user?.id ?? null;
+  }, [user?.id]);
+
+  const clearOfflineQueues = useCallback(async () => {
+    const cached = userIdRef.current ? null : await getCachedUser().catch(() => null);
+    const queueUserId = userIdRef.current ?? cached?.id ?? null;
+    await Promise.allSettled([
+      queueUserId ? clearQueuedChatImageUploadsForUser(queueUserId) : Promise.resolve(),
+      clearQueuedMealScanPhotos(),
+    ]);
+  }, []);
 
   const clearSession = useCallback(async () => {
+    await clearOfflineQueues();
     invalidateApiQuery();
     setApiSessionScope(null);
     await clearStoredSession();
     setUser(null);
     setError(null);
-  }, []);
+  }, [clearOfflineQueues]);
 
   const refreshUser = useCallback(async (options: RefreshUserOptions = {}) => {
     try {
@@ -90,21 +111,37 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     let active = true;
 
     async function bootstrap() {
-      const cached = await getCachedUser();
-      if (cached) {
-        setApiSessionScope(cached.id);
-      } else {
-        setApiSessionScope(null);
+      try {
+        const cached = await getCachedUser();
+        if (cached) {
+          setApiSessionScope(cached.id);
+        } else {
+          setApiSessionScope(null);
+        }
+        if (active && cached) setUser(cached);
+        const token = await getAccessToken();
+        if (!token) {
+          if (cached) await clearSession();
+          return;
+        }
+        await refreshUser({ timeoutMs: BOOTSTRAP_PROFILE_TIMEOUT_MS });
+      } catch (error) {
+        if (active) {
+          setUser(null);
+          setApiSessionScope(null);
+          invalidateApiQuery();
+          try {
+            await clearStoredSession();
+          } catch {
+            // Keep the original bootstrap error if secure storage cleanup fails.
+          }
+          setError(describeBootstrapError(error));
+        }
+      } finally {
+        if (active) {
+          setBooting(false);
+        }
       }
-      if (active && cached) setUser(cached);
-      const token = await getAccessToken();
-      if (!token) {
-        if (cached) await clearSession();
-        if (active) setBooting(false);
-        return;
-      }
-      await refreshUser({ timeoutMs: BOOTSTRAP_PROFILE_TIMEOUT_MS });
-      if (active) setBooting(false);
     }
 
     bootstrap();
@@ -168,11 +205,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await authService.logout();
-    invalidateApiQuery();
-    setApiSessionScope(null);
-    setUser(null);
-    setError(null);
-  }, []);
+    await clearSession();
+  }, [clearSession]);
 
   const updateProfile = useCallback(async (body: UserProfileUpdate) => {
     const next = await profileService.updateMe(body);

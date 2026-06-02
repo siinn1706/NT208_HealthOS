@@ -15,12 +15,26 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
 import { useSession } from '../../auth/session-provider';
+import { ApiError } from '../../api/client';
 import { getPostAuthRoute } from '../../auth/auth-route-policy';
 import { toCoreReachabilityMessage } from '../../api/core-reachability';
 import type { MobileOAuthProvider } from '../../api/services/auth-service';
 import { HealthOSBrandMark } from '../brand/healthos-brand-mark';
 import { GoogleMark } from '../../icons/oauth/google-mark';
 import { GitHubMark } from '../../icons/oauth/github-mark';
+
+function getLocalizedAuthErrorMessage(error: unknown, i18n: (key: string) => string) {
+  if (!(error instanceof ApiError)) return null;
+
+  const authErrorMap: Record<string, string> = {
+    INVALID_CREDENTIALS: 'auth.invalidCredentials',
+    ACCOUNT_LOCKED: 'auth.accountLocked',
+    ACCOUNT_BANNED: 'auth.accountBanned',
+    ACCOUNT_PENDING_DELETION: 'auth.accountPendingDeletion',
+  };
+
+  return authErrorMap[error.code] ? i18n(authErrorMap[error.code]) : null;
+}
 
 export function AuthSignInScreen() {
   const t = useTheme();
@@ -54,7 +68,11 @@ export function AuthSignInScreen() {
       }
       router.replace(getPostAuthRoute(result.user?.onboarding_status) as never);
     } catch (err) {
-      setError(toCoreReachabilityMessage(err) ?? (err instanceof Error ? err.message : i18n('auth.unableToSignIn')));
+      setError(
+        toCoreReachabilityMessage(err) ??
+        getLocalizedAuthErrorMessage(err, i18n) ??
+        (err instanceof Error ? err.message : i18n('auth.unableToSignIn')),
+      );
     } finally {
       setLoading(false);
     }
@@ -67,7 +85,11 @@ export function AuthSignInScreen() {
       const user = await session.signInWithOAuth(provider);
       router.replace(getPostAuthRoute(user.onboarding_status) as never);
     } catch (err) {
-      setError(toCoreReachabilityMessage(err) ?? (err instanceof Error ? err.message : i18n('auth.unableToSignIn')));
+      setError(
+        toCoreReachabilityMessage(err) ??
+        getLocalizedAuthErrorMessage(err, i18n) ??
+        (err instanceof Error ? err.message : i18n('auth.unableToSignIn')),
+      );
     } finally {
       setOauthLoading(null);
     }

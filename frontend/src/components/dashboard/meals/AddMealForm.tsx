@@ -55,6 +55,13 @@ function nowLocalDatetime(): string {
 
 const SNAP_PREFILL_KEY = "meal_snap_prefill";
 
+interface AiReviewDetails {
+  calorieRange?: string;
+  portionLabel?: string;
+  confidence?: number | null;
+  warnings: string[];
+}
+
 /**
  * Consume the optional camera-snap prefill written to sessionStorage by
  * `<CameraCapture>`. The payload is single-shot: once we read it, we wipe it
@@ -131,6 +138,7 @@ export function AddMealForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsAiReview, setNeedsAiReview] = useState(false);
+  const [aiReviewDetails, setAiReviewDetails] = useState<AiReviewDetails | null>(null);
   const t = useTranslations("dashboard.meals");
   const ta = useTranslations("addMeal");
   const tc = useTranslations("camera");
@@ -228,6 +236,23 @@ export function AddMealForm() {
     if (prefill.needs_review === true) {
       setNeedsAiReview(true);
     }
+    const selectedPortion = prefill.nutrition?.selected_portion;
+    const portionLabel = prefill.nutrition?.portion_options?.find(
+      (item) => item.value === selectedPortion,
+    )?.label;
+    const min = readNonNegativeNumber(prefill.nutrition?.calorie_min);
+    const max = readNonNegativeNumber(prefill.nutrition?.calorie_max);
+    const warnings = Array.isArray(prefill.nutrition?.warnings)
+      ? prefill.nutrition.warnings.filter((item) => typeof item === "string" && item.trim())
+      : [];
+    setAiReviewDetails({
+      calorieRange: min !== undefined && max !== undefined
+        ? `${Math.round(min)}-${Math.round(max)} kcal`
+        : undefined,
+      portionLabel,
+      confidence: prefill.confidence,
+      warnings,
+    });
   }, [resetForm]);
 
   async function onSubmit(data: AddMealFormValues) {
@@ -320,6 +345,39 @@ export function AddMealForm() {
                 {tc("lowConfidenceBody")}
               </p>
             </div>
+          </output>
+        )}
+
+        {aiReviewDetails && (
+          <output className="mb-6 rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-0.5 size-5 text-primary" aria-hidden />
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  AI estimate ready for confirmation
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {[
+                    aiReviewDetails.calorieRange,
+                    aiReviewDetails.portionLabel ? `Portion: ${aiReviewDetails.portionLabel}` : undefined,
+                    typeof aiReviewDetails.confidence === "number"
+                      ? `Confidence: ${Math.round(
+                          aiReviewDetails.confidence <= 1
+                            ? aiReviewDetails.confidence * 100
+                            : aiReviewDetails.confidence,
+                        )}%`
+                      : undefined,
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            </div>
+            {aiReviewDetails.warnings.length > 0 && (
+              <ul className="space-y-1 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200">
+                {aiReviewDetails.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            )}
           </output>
         )}
 

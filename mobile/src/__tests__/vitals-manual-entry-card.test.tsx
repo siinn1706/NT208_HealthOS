@@ -38,6 +38,14 @@ beforeEach(() => {
 });
 
 describe('VitalsManualEntryCard', () => {
+  it('keeps save disabled until the user enters a real reading', () => {
+    const { getByText } = render(<VitalsManualEntryCard />);
+
+    fireEvent.press(getByText('Save readings'));
+
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it('saves manual heart rate and blood pressure readings to Core', async () => {
     const { getByLabelText, getByText } = render(<VitalsManualEntryCard />);
 

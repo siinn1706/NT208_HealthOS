@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Linking,
+  Platform,
+  PermissionsAndroid,
+} from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
@@ -33,6 +42,27 @@ import {
 
 export { DEFAULT_NOTIFICATION_PREFERENCES } from './reminder-preferences-contract';
 
+type NotificationPermissionState = 'loading' | 'granted' | 'denied' | 'undetermined' | 'unsupported';
+
+function normalizeAndroidVersion() {
+  const version = Number(Platform.Version);
+  return Number.isNaN(version) ? 0 : version;
+}
+
+function buildNotificationPermissionStateLabel(
+  status: Exclude<NotificationPermissionState, 'loading'>,
+  i18n: (key: string) => string,
+) {
+  const statusKey = ({
+    granted: 'reminders.notificationsPermissionGranted',
+    denied: 'reminders.notificationsPermissionDenied',
+    undetermined: 'reminders.notificationsPermissionUndetermined',
+    unsupported: 'reminders.notificationsPermissionUnsupported',
+  })[status];
+
+  return `${i18n('reminders.notificationsPermissionState')}: ${i18n(statusKey)}`;
+}
+
 export function ReminderPreferencesScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
@@ -53,6 +83,80 @@ export function ReminderPreferencesScreen() {
   const [saving,         setSaving]         = useState(false);
   const [saveError,      setSaveError]      = useState<string | null>(null);
   const [saveSuccess,    setSaveSuccess]    = useState<string | null>(null);
+  const [notificationPermissionState, setNotificationPermissionState] =
+    useState<NotificationPermissionState>('loading');
+  const [permissionBusy, setPermissionBusy] = useState(false);
+
+  const supportsNotificationRuntimePermission =
+    Platform.OS === 'android' &&
+    normalizeAndroidVersion() >= 33 &&
+    Boolean(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+
+  const notificationPermissionLabel =
+    notificationPermissionState === 'loading'
+      ? i18n('reminders.notificationsPermissionChecking')
+      : buildNotificationPermissionStateLabel(notificationPermissionState, i18n);
+
+  const permissionActionLabel =
+    notificationPermissionState === 'granted'
+      ? i18n('reminders.notificationsPermissionOpenSettings')
+      : i18n('reminders.notificationsPermissionRequest');
+
+  const canOpenSettingsAction = supportsNotificationRuntimePermission && notificationPermissionState === 'granted';
+
+  const refreshNotificationPermissionState = useCallback(async () => {
+    if (!supportsNotificationRuntimePermission) {
+      setNotificationPermissionState('unsupported');
+      return;
+    }
+
+    try {
+      const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      setNotificationPermissionState(hasPermission ? 'granted' : 'undetermined');
+    } catch {
+      setNotificationPermissionState('undetermined');
+    }
+  }, [supportsNotificationRuntimePermission]);
+
+  async function openNotificationSettings() {
+    await Linking.openSettings();
+  }
+
+  async function requestNotificationPermission() {
+    if (!supportsNotificationRuntimePermission) {
+      await openNotificationSettings();
+      return;
+    }
+
+    setPermissionBusy(true);
+    try {
+      const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      if (result === PermissionsAndroid.RESULTS.GRANTED) {
+        setNotificationPermissionState('granted');
+      } else if (result === PermissionsAndroid.RESULTS.DENIED) {
+        setNotificationPermissionState('denied');
+      } else if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+        setNotificationPermissionState('denied');
+        await openNotificationSettings();
+      } else {
+        setNotificationPermissionState('undetermined');
+      }
+    } catch {
+      setNotificationPermissionState('undetermined');
+    } finally {
+      setPermissionBusy(false);
+    }
+  }
+
+  async function handlePermissionAction() {
+    if (canOpenSettingsAction) {
+      await openNotificationSettings();
+      return;
+    }
+
+    await requestNotificationPermission();
+    await refreshNotificationPermissionState();
+  }
 
   function applyPreferenceState(data: NotificationPreferences | null | undefined) {
     const next = normalizeNotificationPreferences(data);
@@ -67,6 +171,10 @@ export function ReminderPreferencesScreen() {
   useEffect(() => {
     if (preferences.data) applyPreferenceState(preferences.data);
   }, [preferences.data]);
+
+  useEffect(() => {
+    void refreshNotificationPermissionState();
+  }, [refreshNotificationPermissionState]);
 
   function toggleCat(key: NotificationCategoryKey) { setCats((p) => ({ ...p, [key]: !p[key] })); }
   function toggleChannel(key: NotificationChannelKey) { setChannels((p) => ({ ...p, [key]: !p[key] })); }
@@ -134,7 +242,25 @@ export function ReminderPreferencesScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        <MasterPermissionCard value={master} onChange={setMaster} />
+        <MasterPermissionCard
+          value={master}
+          onChange={setMaster}
+          subtitle={i18n('reminders.notificationsCorePreferenceHint')}
+        />
+        {supportsNotificationRuntimePermission ? (
+          <View style={[s.permissionCard, { borderColor: t.border, backgroundColor: t.card }]}>
+            <Text style={[s.permissionTitle, { color: t.ink }]}>{i18n('reminders.notificationsPermissionStateLabel')}</Text>
+            <Text style={[s.permissionValue, { color: t.ink3 }]}>{notificationPermissionLabel}</Text>
+            <Button
+              label={permissionActionLabel}
+              onPress={handlePermissionAction}
+              disabled={permissionBusy || notificationPermissionState === 'loading'}
+              style={s.permissionAction}
+              variant="text"
+              labelColor={t.brand}
+            />
+          </View>
+        ) : null}
         {!master && <NotificationsOffHero onEnable={() => setMaster(true)} />}
 
         <GroupLabel text={i18n('reminders.preferences')} />
@@ -196,4 +322,15 @@ const s = StyleSheet.create({
   backBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
   backTitle: { fontSize: 17, fontWeight: '700' },
   resetBtn: { marginHorizontal: 20, marginTop: 6 },
+  permissionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 14,
+    gap: 8,
+  },
+  permissionTitle: { fontSize: 13, fontWeight: '700' },
+  permissionValue: { fontSize: 12, lineHeight: 18 },
+  permissionAction: { alignSelf: 'flex-start' },
 });

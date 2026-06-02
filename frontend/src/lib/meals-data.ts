@@ -35,8 +35,16 @@ function normalizeMeal(row: any): Meal {
           saturates_g: typeof nutrition.saturates_g === "number" ? nutrition.saturates_g : undefined,
           sugar_g: typeof nutrition.sugar_g === "number" ? nutrition.sugar_g : undefined,
           salt_g: typeof nutrition.salt_g === "number" ? nutrition.salt_g : undefined,
+          calorie_min: typeof nutrition.calorie_min === "number" ? nutrition.calorie_min : undefined,
+          calorie_max: typeof nutrition.calorie_max === "number" ? nutrition.calorie_max : undefined,
           confidence: typeof nutrition.confidence === "number" ? nutrition.confidence : 0,
           source: typeof nutrition.source === "string" ? nutrition.source : undefined,
+          ingredients: Array.isArray(nutrition.ingredients) ? nutrition.ingredients : undefined,
+          portion_estimate: typeof nutrition.portion_estimate === "string" ? nutrition.portion_estimate : undefined,
+          portion_options: Array.isArray(nutrition.portion_options) ? nutrition.portion_options : undefined,
+          warnings: Array.isArray(nutrition.warnings)
+            ? nutrition.warnings.filter((item: unknown): item is string => typeof item === "string")
+            : undefined,
         }
       : undefined;
 

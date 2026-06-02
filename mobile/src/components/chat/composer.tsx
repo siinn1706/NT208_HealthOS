@@ -25,7 +25,7 @@ export function Composer({ onSend, onAttach, disabled = false }: ComposerProps) 
     <View style={[styles.bar, { backgroundColor: t.card, borderTopColor: t.border }]}>
       <Pressable
         style={styles.icon}
-        accessibilityLabel={i18n('chat.attachFile')}
+        accessibilityLabel={i18n('chat.attachImage')}
         onPress={onAttach}
         disabled={disabled}
       >

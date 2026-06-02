@@ -18,6 +18,8 @@ AGENTS.md
 scripts/
 !mobile/scripts/
 !mobile/scripts/check-route-matrix.mjs
+!services/ai-worker/scripts/
+!services/ai-worker/scripts/*.py
 .kiro/
 
 
@@ -72,7 +74,7 @@ TEST-MANIFEST.md
 # Generated OpenAPI dumps (regenerate via backend/scripts/dump_openapi.py)
 contracts/openapi/_generated/*.yaml
 
-# AI local model cache (model is distributed via Google Drive)
+# AI local model cache (downloaded model weights stay outside git)
 services/ai-worker/models/
 services/ai-worker/model/
 services/ai-worker/class_names.py
@@ -104,3 +106,4 @@ infra/data/
 release-manifest.json
 /.playwright-mcp
 /nt208
+/.codex-artifacts

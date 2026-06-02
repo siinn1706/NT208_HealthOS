@@ -1,10 +1,12 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Chat attachment URLs come from Core storage and deployment-specific object stores. */
+
 import { memo, useCallback, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
-import { Pin, CheckCheck, Check, Clock, AlertCircle, CloudOff, RefreshCw, X } from "lucide-react";
+import { Pin, CheckCheck, Check, Clock, AlertCircle, CloudOff, RefreshCw, X, Image as ImageIcon, Paperclip } from "lucide-react";
 import { MessageActions } from "./MessageActions";
 import { MessageReactions } from "./MessageReactions";
 import { AiChatBadge } from "./AiChatBadge";
@@ -327,6 +329,17 @@ export const MessageBubble = memo(function MessageBubble({
                   {message.content}
                 </span>
               )}
+              {!message.is_recalled && message.attachments?.length ? (
+                <div className={cn("grid gap-2", message.content ? "mt-2" : "mt-0")}>
+                  {message.attachments.map((attachment) => (
+                    <AttachmentPreview
+                      key={`${attachment.url}-${attachment.name}`}
+                      attachment={attachment}
+                      isOwn={isOwn}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {message.is_pinned && (
@@ -446,6 +459,71 @@ export const MessageBubble = memo(function MessageBubble({
     </>
   );
 });
+
+function AttachmentPreview({
+  attachment,
+  isOwn,
+}: {
+  attachment: NonNullable<Message["attachments"]>[number];
+  isOwn: boolean;
+}) {
+  const isImage = attachment.mime_type.toLowerCase().startsWith("image/");
+  if (isImage) {
+    return (
+      <a
+        href={attachment.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          "group/image block overflow-hidden rounded-lg border",
+          isOwn ? "border-white/25 bg-white/10" : "border-border bg-background/60"
+        )}
+      >
+        <img
+          src={attachment.url}
+          alt={attachment.name}
+          className="max-h-72 w-56 max-w-full object-cover transition-transform duration-200 group-hover/image:scale-[1.015]"
+          loading="lazy"
+        />
+        <span
+          className={cn(
+            "flex items-center gap-1.5 px-2 py-1 text-[11px]",
+            isOwn ? "text-white/75" : "text-muted-foreground"
+          )}
+        >
+          <ImageIcon className="size-3" aria-hidden />
+          <span className="truncate">{attachment.name}</span>
+          <span className="shrink-0">{formatBytes(attachment.size)}</span>
+        </span>
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={attachment.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "flex max-w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-[12px]",
+        isOwn ? "border-white/25 bg-white/10 text-white/85" : "border-border bg-background/60 text-foreground"
+      )}
+    >
+      <Paperclip className="size-3.5 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
+      <span className={cn("shrink-0", isOwn ? "text-white/65" : "text-muted-foreground")}>
+        {formatBytes(attachment.size)}
+      </span>
+    </a>
+  );
+}
+
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function MessageStatus({
   status,

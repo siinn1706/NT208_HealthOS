@@ -96,6 +96,8 @@ export default function AiConversationScreen() {
     reloadThread,
     appendMessage,
   });
+  const deliveryState = chatActions.sendError ? 'error' : chatActions.attachState;
+  const deliveryMessage = chatActions.sendError ?? chatActions.attachError;
 
   useEffect(() => {
     const page = messageQuery.data;
@@ -141,25 +143,33 @@ export default function AiConversationScreen() {
         onMore={() => setMoreOpen(true)}
       />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoider}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         <ChatMessageList
           messages={messages}
           currentUserId={user?.id}
           loading={messageQuery.isLoading}
           error={messageQuery.error}
-          sending={chatActions.sending}
-          sendError={chatActions.sendError}
+          sending={chatActions.sending || chatActions.attaching}
+          sendError={deliveryMessage}
+          sendState={deliveryState}
           hasMore={hasMore}
           loadingOlder={loadingOlder}
           olderError={olderError}
           onRetry={() => { void messageQuery.reload(); }}
-          onDismissSendError={chatActions.dismissSendError}
+          onDismissSendError={() => {
+            chatActions.dismissSendError();
+            chatActions.dismissAttachError();
+          }}
           onLoadOlder={() => { void handleLoadOlder(); }}
         />
         <Composer
           onSend={chatActions.handleSend}
-          onAttach={chatActions.openAttachmentModal}
-          disabled={!chatActions.canSend}
+          onAttach={chatActions.handlePickImageAttachment}
+          disabled={!chatActions.canSend || chatActions.attaching}
         />
       </KeyboardAvoidingView>
 
@@ -182,4 +192,5 @@ export default function AiConversationScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  keyboardAvoider: { flex: 1 },
 });

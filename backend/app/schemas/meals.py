@@ -20,8 +20,13 @@ class NutritionResult(BaseModel):
     saturates_g: float | None = None
     sugar_g: float | None = None
     salt_g: float | None = None
+    calorie_min: float | None = None
+    calorie_max: float | None = None
     confidence: float | None = None
     source: str | None = None
+    portion_estimate: str | None = None
+    portion_options: list[dict[str, Any]] | None = None
+    warnings: list[str] | None = None
     notes: str | None = None
     ingredients: list[dict[str, Any]] | None = None
 
@@ -64,6 +69,7 @@ class MealResponse(BaseModel):
 class MealUpdateBody(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     logged_at: datetime.datetime | None = None
+    nutrition_result: NutritionResult | None = None
 
 
 class MealIngredientItem(BaseModel):

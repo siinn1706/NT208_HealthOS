@@ -60,6 +60,7 @@ export function VitalsManualEntryCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const hasDraftInput = heartRate.trim().length > 0 || systolic.trim().length > 0 || diastolic.trim().length > 0;
 
   async function handleSave() {
     const result = buildDrafts(heartRate, systolic, diastolic);
@@ -101,7 +102,7 @@ export function VitalsManualEntryCard() {
         value={heartRate}
         onChangeText={setHeartRate}
         keyboardType="numeric"
-        placeholder="72"
+        placeholder="Enter value"
         trailingText="bpm"
         disabled={saving}
       />
@@ -111,7 +112,7 @@ export function VitalsManualEntryCard() {
           value={systolic}
           onChangeText={setSystolic}
           keyboardType="numeric"
-          placeholder="120"
+          placeholder="Enter systolic"
           trailingText="mmHg"
           disabled={saving}
           style={styles.bpInput}
@@ -121,7 +122,7 @@ export function VitalsManualEntryCard() {
           value={diastolic}
           onChangeText={setDiastolic}
           keyboardType="numeric"
-          placeholder="80"
+          placeholder="Enter diastolic"
           trailingText="mmHg"
           disabled={saving}
           style={styles.bpInput}
@@ -129,7 +130,7 @@ export function VitalsManualEntryCard() {
       </View>
       {error && <ApiState title="Vitals save unavailable" message={error} />}
       {success && <Text style={[typography.caption, { color: t.success }]}>{success}</Text>}
-      <Button label={saving ? 'Saving…' : 'Save readings'} onPress={handleSave} disabled={saving} />
+      <Button label={saving ? 'Saving…' : 'Save readings'} onPress={handleSave} disabled={saving || !hasDraftInput} />
     </Card>
   );
 }

@@ -19,7 +19,6 @@ import { Button } from '../primitives/button';
 import { authService } from '../../api/services';
 import { useSession } from '../../auth/session-provider';
 import { consumePendingSignup } from '../../auth/pending-signup';
-import { getPostAuthRoute } from '../../auth/auth-route-policy';
 
 const OTP_LEN = 6;
 const COUNTDOWN_SEC = 60;
@@ -138,15 +137,16 @@ export function AuthOtpScreen() {
         router.replace('/auth/sign-in');
         return;
       }
-      let refreshedUser;
       try {
-        refreshedUser = await session.refreshUser({ throwOnFailure: true });
+        await session.refreshUser({ throwOnFailure: true });
       } catch (refreshError) {
         await session.clearSession();
         throw refreshError;
       }
-      if (params.purpose === 'reset_password') router.replace('/auth/sign-in');
-      else router.replace(getPostAuthRoute(refreshedUser?.onboarding_status) as never);
+      if (params.purpose === 'reset_password') {
+        router.replace('/auth/sign-in');
+      }
+      // AuthGate owns signup/login post-auth navigation after refreshUser sets the session user.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code.');
     } finally {

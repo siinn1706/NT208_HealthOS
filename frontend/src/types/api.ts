@@ -102,8 +102,14 @@ export interface NutritionResult {
   saturates_g?: number;
   sugar_g?: number;
   salt_g?: number;
+  calorie_min?: number;
+  calorie_max?: number;
   confidence: number;
   source?: string;
+  ingredients?: Array<Record<string, unknown>>;
+  portion_estimate?: string;
+  portion_options?: Array<Record<string, unknown>>;
+  warnings?: string[];
 }
 
 /** A single ingredient entry within a meal */

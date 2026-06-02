@@ -12,7 +12,7 @@ import {
 } from '../api/services/auth-service';
 import { ApiError, apiRequest } from '../api/client';
 import { AUTH_REQUEST_TIMEOUT_MS, ensureCoreReachable, toCoreReachabilityMessage } from '../api/core-reachability';
-import { clearStoredSession, getRefreshToken, saveAuthToken } from '../auth/session-store';
+import { clearStoredSession, getAccessToken, getRefreshToken, saveAuthToken } from '../auth/session-store';
 import { Platform } from 'react-native';
 import type { AuthLoginResult, AuthToken, DataResponse } from '../types/api';
 
@@ -40,6 +40,7 @@ jest.mock('../api/core-reachability', () => ({
 jest.mock('../auth/session-store', () => ({
   saveAuthToken: jest.fn(),
   clearStoredSession: jest.fn(),
+  getAccessToken: jest.fn(),
   getRefreshToken: jest.fn(),
 }));
 jest.mock('expo-constants', () => ({
@@ -74,6 +75,7 @@ const mockEnsureCoreReachable = ensureCoreReachable as jest.MockedFunction<typeo
 const mockToCoreReachabilityMessage = toCoreReachabilityMessage as jest.MockedFunction<typeof toCoreReachabilityMessage>;
 const mockSaveAuthToken = saveAuthToken as jest.MockedFunction<typeof saveAuthToken>;
 const mockClearStoredSession = clearStoredSession as jest.MockedFunction<typeof clearStoredSession>;
+const mockGetAccessToken = getAccessToken as jest.MockedFunction<typeof getAccessToken>;
 const mockGetRefreshToken = getRefreshToken as jest.MockedFunction<typeof getRefreshToken>;
 const mockOpenAuthSessionAsync = WebBrowser.openAuthSessionAsync as jest.MockedFunction<typeof WebBrowser.openAuthSessionAsync>;
 const mockDigestStringAsync = jest.requireMock('expo-crypto').digestStringAsync as jest.MockedFunction<(algorithm: string, data: string) => Promise<string>>;
@@ -525,6 +527,7 @@ describe('authService.signInWithOAuth', () => {
 describe('authService.logout', () => {
   it('clears session even when API call fails', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockGetAccessToken.mockResolvedValueOnce('access-tok');
     mockGetRefreshToken.mockResolvedValueOnce('rt-tok');
     mockApiRequest.mockRejectedValueOnce(new Error('network'));
     mockClearStoredSession.mockResolvedValueOnce();
@@ -533,9 +536,12 @@ describe('authService.logout', () => {
       expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/logout', {
         method: 'POST',
         json: { refresh_token: 'rt-tok' },
+        auth: false,
+        headers: { Authorization: 'Bearer access-tok' },
         timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
       });
       expect(mockClearStoredSession).toHaveBeenCalled();
+      expect(mockClearStoredSession.mock.invocationCallOrder[0]).toBeLessThan(mockApiRequest.mock.invocationCallOrder[0]);
       expect(warnSpy).toHaveBeenCalledWith(
         '[authService] remote logout failed after local session clear:',
         expect.any(Error),
@@ -546,7 +552,9 @@ describe('authService.logout', () => {
   });
 
   it('rejects when local session clear fails', async () => {
+    mockGetAccessToken.mockResolvedValueOnce('access-tok');
     mockGetRefreshToken.mockResolvedValueOnce('rt-tok');
+    mockApiRequest.mockResolvedValueOnce(undefined);
     mockClearStoredSession.mockRejectedValueOnce(new Error('secure delete failed'));
 
     await expect(authService.logout()).rejects.toThrow('secure delete failed');
@@ -555,6 +563,7 @@ describe('authService.logout', () => {
   });
 
   it('clears session on success when no refresh token is stored', async () => {
+    mockGetAccessToken.mockResolvedValueOnce(null);
     mockGetRefreshToken.mockResolvedValueOnce(null);
     mockApiRequest.mockResolvedValueOnce(undefined);
     mockClearStoredSession.mockResolvedValueOnce();
@@ -562,8 +571,11 @@ describe('authService.logout', () => {
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/logout', {
       method: 'POST',
       json: {},
+      auth: false,
+      headers: undefined,
       timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     });
     expect(mockClearStoredSession).toHaveBeenCalled();
+    expect(mockClearStoredSession.mock.invocationCallOrder[0]).toBeLessThan(mockApiRequest.mock.invocationCallOrder[0]);
   });
 });

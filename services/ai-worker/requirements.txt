@@ -10,3 +10,8 @@ dill==0.4.1
 opencv-python-headless==4.10.0.84
 numpy==1.26.4
 sentence-transformers==5.5.0
+transformers==4.57.3
+huggingface-hub==0.36.0
+accelerate==1.13.0
+open-clip-torch==3.2.0
+peft==0.18.0

@@ -189,6 +189,7 @@ async def update_meal(
     *,
     name: str | None = None,
     logged_at: datetime.datetime | None = None,
+    nutrition_result: dict | None = None,
 ) -> Meal | None:
     meal = await get_meal_by_id(db, user_id, meal_id)
     if meal is None:
@@ -197,6 +198,8 @@ async def update_meal(
         meal.name = name.strip()
     if logged_at is not None:
         meal.logged_at = logged_at
+    if nutrition_result is not None:
+        meal.nutrition_result = nutrition_result
     await db.flush()
     return meal
 
@@ -278,7 +281,16 @@ async def update_meal_result(
     if meal is None:
         return None
     meal.status = MealStatusEnum.ANALYZED
-    meal.nutrition_result = nutrition_result
+    existing_nutrition = meal.nutrition_result if isinstance(meal.nutrition_result, dict) else {}
+    merged_result = dict(nutrition_result)
+    if (
+        "notes" not in nutrition_result
+        and isinstance(existing_nutrition, dict)
+        and "notes" in existing_nutrition
+    ):
+        merged_result["notes"] = existing_nutrition["notes"]
+
+    meal.nutrition_result = merged_result
     await db.flush()
     # Pass a sentinel user_id=None bypass: fetch directly by meal id only
     result = await db.execute(select(Meal).where(Meal.id == meal_id))

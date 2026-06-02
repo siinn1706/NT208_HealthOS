@@ -269,7 +269,7 @@ async def test_stream_message_maps_non_member_to_forbidden(monkeypatch):
             SimpleNamespace(),
             SimpleNamespace(id=user_id, profile=None),
             db,
-        )
+    )
 
     assert exc_info.value.status_code == 403
-    assert exc_info.value.detail["error"]["code"] == "CHAT_FORBIDDEN"
+    assert exc_info.value.detail["code"] == "CHAT_FORBIDDEN"

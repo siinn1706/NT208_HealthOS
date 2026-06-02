@@ -185,6 +185,7 @@ async def create_meal(
     image_url: str | None = None
     job_id: str | None = None
     nutrition_result: dict | None = None
+    multipart_notes: dict | None = None
     committed = False
 
     try:
@@ -205,7 +206,13 @@ async def create_meal(
         else:
             name = name_form
             logged_at = logged_at_form
-            _ = notes_form
+            if image:
+                multipart_notes = meal_svc.build_manual_nutrition_result(
+                    name=name or "",
+                    notes=notes_form,
+                    meal_type=None,
+                    ingredients=[],
+                )
 
         if not name:
             raise _bad_request("name is required")
@@ -239,14 +246,23 @@ async def create_meal(
             except Exception as exc:
                 raise _analysis_enqueue_error() from exc
 
+            update_values = {
+                "job_id": job.id,
+                "status": MealStatusEnum.PROCESSING,
+            }
+            if multipart_notes is not None:
+                update_values["nutrition_result"] = multipart_notes
+
             stmt = (
                 update(Meal)
                 .where(Meal.id == meal.id)
-                .values(job_id=job.id, status=MealStatusEnum.PROCESSING)
+                .values(**update_values)
             )
             await db.execute(stmt)
             meal.job_id = job.id
             meal.status = MealStatusEnum.PROCESSING
+            if multipart_notes is not None:
+                meal.nutrition_result = multipart_notes
 
         await db.commit()
         committed = True
@@ -355,12 +371,18 @@ async def update_meal(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MealDataResponse:
+    nutrition_result = (
+        body.nutrition_result.model_dump(mode="json", exclude_none=True)
+        if body.nutrition_result is not None
+        else None
+    )
     meal = await meal_svc.update_meal(
         db=db,
         user_id=current_user.id,
         meal_id=meal_id,
         name=body.name,
         logged_at=body.logged_at,
+        nutrition_result=nutrition_result,
     )
     if meal is None:
         raise HTTPException(

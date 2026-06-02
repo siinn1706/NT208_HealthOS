@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -7,6 +7,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import NetInfo from '@react-native-community/netinfo';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -14,10 +15,45 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconSparkle, IconCheck } from '../../icons';
 import { mealService } from '../../api/services';
+import type { MealAnalysisStatus } from '../../api/services/meal-service';
+import {
+  getQueuedMealScanPhoto,
+  incrementQueuedMealScanPhotoAttempts,
+  isTransientMealScanUploadError,
+  removeQueuedMealScanPhoto,
+  type MealScanQueuedPhoto,
+} from '../../api/services/meal-offline-queue';
+
+type NetState = { isConnected?: boolean | null; isInternetReachable?: boolean | null };
 
 const BG = '#0B0F14';
+export const MEAL_SCAN_POLL_INTERVAL_MS = 2500;
+export const MEAL_SCAN_MAX_POLL_ATTEMPTS = 24;
+const DONE_STATUSES = ['analyzed', 'ready', 'completed', 'done'];
+const FAILED_STATUSES = ['failed', 'error'];
+const DEFAULT_FAILED_MESSAGE = 'Meal photo analysis failed. Please retake the photo.';
+const TIMED_OUT_MESSAGE = 'Meal photo analysis is taking longer than expected. Please check your meal log or retake the photo.';
+
+export function getMealScanPollingError(result: MealAnalysisStatus, attempt: number) {
+  const nextStatus = result.status.toLowerCase();
+  if (FAILED_STATUSES.includes(nextStatus)) {
+    return result.error?.message ?? DEFAULT_FAILED_MESSAGE;
+  }
+  if (!DONE_STATUSES.includes(nextStatus) && attempt >= MEAL_SCAN_MAX_POLL_ATTEMPTS - 1) {
+    return TIMED_OUT_MESSAGE;
+  }
+  return null;
+}
+
+export function getMealScanCancelRoute(canGoBack: boolean) {
+  return canGoBack ? null : '/meals/scan';
+}
 
 type StageStatus = 'done' | 'active' | 'pending';
+
+function firstParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 function StageRow({ label, status }: { label: string; status: StageStatus }) {
   const t = useTheme();
@@ -39,51 +75,34 @@ function StageRow({ label, status }: { label: string; status: StageStatus }) {
   );
 }
 
-// Detection box with floating label above
-function DetectionBox({
-  label,
-  top,
-  left,
-  right,
-  bottom,
-  width,
-  height,
-  borderColor,
-}: {
-  label: string;
-  top?: number;
-  left?: number;
-  right?: number;
-  bottom?: number;
-  width: number;
-  height: number;
-  borderColor: string;
-}) {
-  return (
-    <View style={{ position: 'absolute', top, left, right, bottom }}>
-      {/* Floating label pill */}
-      <View style={styles.detectionLabel}>
-        <Text style={[typography.micro, { color: '#fff' }]}>{label}</Text>
-      </View>
-      {/* Border box */}
-      <View style={[styles.detectionBox, { width, height, borderColor }]} />
-    </View>
-  );
-}
-
 export function MealScanAnalyzingScreen() {
   const router = useRouter();
   const t = useTheme();
   const { t: i18n } = useTranslation();
-  const params = useLocalSearchParams<{ mealId?: string | string[]; jobId?: string | string[] }>();
-  const mealId = Array.isArray(params.mealId) ? params.mealId[0] : params.mealId;
-  const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
+  const params = useLocalSearchParams<{
+    mealId?: string | string[];
+    jobId?: string | string[];
+    imageUri?: string | string[];
+    queuedMealPhotoId?: string | string[];
+  }>();
+  const mealId = firstParam(params.mealId);
+  const jobId = firstParam(params.jobId);
+  const imageUri = firstParam(params.imageUri);
+  const queuedMealPhotoId = firstParam(params.queuedMealPhotoId);
   const scanLine = useSharedValue(0);
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState<string | null>(null);
+  const [queuedMealPhoto, setQueuedMealPhoto] = useState<MealScanQueuedPhoto | null>(null);
+  const isSubmittingRef = useRef(false);
 
-  const done = ['analyzed', 'ready', 'completed', 'done'].includes(status);
-  const failed = ['failed', 'error'].includes(status);
+  const done = DONE_STATUSES.includes(status);
+  const failed = FAILED_STATUSES.includes(status);
+  const statusLabel = error
+    ?? (status === 'submitting'
+      ? i18n('meals.photoAnalysisSubmitting')
+      : status === 'queued'
+      ? i18n('meals.photoAnalysisQueued')
+      : `Backend status: ${status}`);
 
   const STAGES: { label: string; status: StageStatus }[] = useMemo(() => {
     if (done) {
@@ -92,6 +111,14 @@ export function MealScanAnalyzingScreen() {
         { label: i18n('meals.estimatePortions'), status: 'done' },
         { label: i18n('meals.lookUpNutrition'),  status: 'done' },
         { label: i18n('meals.matchGoals'),       status: 'done' },
+      ];
+    }
+    if (status === 'queued' || status === 'submitting') {
+      return [
+        { label: i18n('meals.detectFood'),       status: 'active' },
+        { label: i18n('meals.estimatePortions'), status: 'pending' },
+        { label: i18n('meals.lookUpNutrition'),  status: 'pending' },
+        { label: i18n('meals.matchGoals'),       status: 'pending' },
       ];
     }
     if (status === 'pending') {
@@ -117,36 +144,153 @@ export function MealScanAnalyzingScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    async function poll() {
+    async function loadQueuedPhoto() {
+      if (!queuedMealPhotoId) return;
+      try {
+        const queued = await getQueuedMealScanPhoto(queuedMealPhotoId);
+        if (cancelled) return;
+        if (!queued) {
+          setStatus('error');
+          setError(i18n('meals.photoAnalysisQueuedNotFound'));
+          return;
+        }
+        setQueuedMealPhoto(queued);
+        setStatus('queued');
+        setError(i18n('meals.photoAnalysisQueued'));
+      } catch (err) {
+        if (!cancelled) {
+          setStatus('error');
+          setError(err instanceof Error ? err.message : 'Could not load queued photo.');
+        }
+      }
+    }
+
+    void loadQueuedPhoto();
+    return () => {
+      cancelled = true;
+    };
+  }, [i18n, queuedMealPhotoId]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    function hasConnectivity(state: NetState | null | undefined) {
+      return state?.isConnected === true && state?.isInternetReachable !== false;
+    }
+
+    async function submitQueuedPhoto(onlineState?: NetState | null) {
+      if (!queuedMealPhoto || isSubmittingRef.current || cancelled) return;
+      isSubmittingRef.current = true;
+      try {
+        const network = onlineState ?? (await NetInfo.fetch());
+        if (!hasConnectivity(network)) {
+          setStatus('queued');
+          setError(i18n('meals.photoAnalysisQueued'));
+          return;
+        }
+
+        setStatus('submitting');
+        const analysis = await mealService.analyzePhoto({
+          name: queuedMealPhoto.name,
+          image: {
+            uri: queuedMealPhoto.uri,
+            name: queuedMealPhoto.fileName,
+            type: queuedMealPhoto.mimeType,
+          },
+        });
+        await removeQueuedMealScanPhoto(queuedMealPhoto.id);
+        const resolvedMealId = analysis.meal_id;
+        if (!resolvedMealId) {
+          setStatus('error');
+          setError('Analysis finished, but the backend did not return a meal id.');
+          return;
+        }
+        const nextParams = new URLSearchParams({ mealId: resolvedMealId });
+        if (analysis.job_id) {
+          nextParams.set('jobId', analysis.job_id);
+        }
+        if (imageUri) nextParams.set('imageUri', imageUri);
+        setQueuedMealPhoto(null);
+        router.replace(`/meals/scan-results?${nextParams.toString()}` as never);
+      } catch (err) {
+        await incrementQueuedMealScanPhotoAttempts(queuedMealPhoto.id).catch(() => undefined);
+        if (isTransientMealScanUploadError(err)) {
+          setStatus('queued');
+          setError(i18n('meals.photoAnalysisQueued'));
+        } else {
+          await removeQueuedMealScanPhoto(queuedMealPhoto.id).catch(() => undefined);
+          setStatus('error');
+          setError(err instanceof Error ? err.message : i18n('meals.uploadFailed'));
+        }
+      } finally {
+        isSubmittingRef.current = false;
+      }
+    }
+
+    async function poll(attempt = 0) {
       if (!mealId && !jobId) {
+        setStatus('error');
         setError('Missing meal analysis job.');
         return;
       }
       try {
-        const result = mealId
-          ? await mealService.analysisStatus(mealId)
-          : await mealService.analysisStatusByJob(jobId ?? '');
+        const result = jobId
+          ? await mealService.analysisStatusByJob(jobId)
+          : await mealService.analysisStatus(mealId ?? '');
         if (cancelled) return;
         const nextStatus = result.status.toLowerCase();
-        setStatus(nextStatus);
-        if (['analyzed', 'ready', 'completed', 'done'].includes(nextStatus)) {
-          if (mealId) {
-            router.replace(`/meals/scan-results?mealId=${encodeURIComponent(mealId)}` as never);
+        if (DONE_STATUSES.includes(nextStatus)) {
+          const resolvedMealId = result.meal_id ?? mealId;
+          if (resolvedMealId) {
+            const nextParams = new URLSearchParams({ mealId: resolvedMealId });
+            if (imageUri) nextParams.set('imageUri', imageUri);
+            router.replace(`/meals/scan-results?${nextParams.toString()}` as never);
           } else {
+            setStatus('error');
             setError('Analysis finished, but the backend did not return a meal id.');
           }
           return;
         }
-        if (['failed', 'error'].includes(nextStatus)) {
-          setError('Meal photo analysis failed. Please retake the photo.');
+        setStatus(nextStatus);
+        const terminalError = getMealScanPollingError(result, attempt);
+        if (terminalError) {
+          if (!FAILED_STATUSES.includes(nextStatus)) setStatus('error');
+          setError(terminalError);
           return;
         }
-        timer = setTimeout(poll, 2500);
+        timer = setTimeout(() => { void poll(attempt + 1); }, MEAL_SCAN_POLL_INTERVAL_MS);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not check analysis status.');
+        if (cancelled) return;
+        if (isTransientMealScanUploadError(err)) {
+          setStatus('error');
+          setError(err instanceof Error ? err.message : i18n('meals.uploadFailed'));
+          return;
+        }
+        setStatus('error');
+        setError(err instanceof Error ? err.message : 'Could not check analysis status.');
       }
+    }
+
+    if (queuedMealPhotoId) {
+      if (!queuedMealPhoto) {
+        return () => {
+          cancelled = true;
+          if (timer) clearTimeout(timer);
+        };
+      }
+      void submitQueuedPhoto();
+      const unsubscribe = NetInfo.addEventListener((state) => {
+        if (!state?.isConnected || state.isInternetReachable === false) return;
+        void submitQueuedPhoto(state as NetState);
+      });
+
+      return () => {
+        cancelled = true;
+        unsubscribe();
+        if (timer) clearTimeout(timer);
+      };
     }
 
     poll();
@@ -154,52 +298,60 @@ export function MealScanAnalyzingScreen() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [jobId, mealId, router]);
+  }, [imageUri, jobId, mealId, queuedMealPhoto, queuedMealPhotoId, i18n, router]);
 
   const scanLineStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: scanLine.value * 160 }],
+    transform: [{ translateY: scanLine.value * 220 }],
   }));
 
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
       <StatusBar style="light" />
 
-      {/* Faux captured photo with scan animation */}
       <View style={styles.photoArea}>
-        {/* Dimmed plate */}
-        <View style={styles.plate}>
-          <View style={[styles.blob, { backgroundColor: '#5C3D20', top: 30, left: 40, width: 90, height: 70 }]} />
-          <View style={[styles.blob, { backgroundColor: '#3B5E3A', top: 60, right: 30, width: 70, height: 55 }]} />
-          <View style={[styles.blob, { backgroundColor: '#7A4A1E', bottom: 40, left: 60, width: 80, height: 60 }]} />
+        <View style={styles.photoFrame}>
+          {imageUri ? (
+            <Image
+              testID="meal-scan-analyzing-photo"
+              source={{ uri: imageUri }}
+              style={styles.photoImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View testID="meal-scan-analyzing-photo-fallback" style={styles.photoFallback}>
+              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.72)', textAlign: 'center' }]}>
+                {i18n('meals.photoPreviewUnavailable')}
+              </Text>
+            </View>
+          )}
+          <View style={styles.photoScrim} />
         </View>
-        {/* Detection boxes with floating labels */}
-        <DetectionBox label="Grilled pork · 92%" top={48} left={52} width={88} height={68} borderColor="#4ADE80" />
-        <DetectionBox label="Greens · 84%"       top={78} right={42} width={68} height={52} borderColor="#60A5FA" />
-        <DetectionBox label="Rice noodles · 88%" bottom={52} left={70} width={78} height={58} borderColor="#FACC15" />
-        {/* Scanning line — cyan glow */}
         <Animated.View style={[styles.scanLine, scanLineStyle]} />
       </View>
 
-      {/* Bottom sheet — white/light bg */}
       <View style={[styles.sheet, { backgroundColor: '#fff', borderColor: 'rgba(0,0,0,0.08)' }]}>
-        {/* Handle */}
-        <View style={[styles.sheetHandle, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />
-        {/* Header with blue icon square */}
-        <View style={styles.sheetHeader}>
+          <View style={[styles.sheetHandle, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />
+          <View style={styles.sheetHeader}>
           <View style={styles.headerIconSq}>
             <IconSparkle size={20} color="#fff" />
           </View>
           <Text style={[typography.h3, { color: '#111', marginLeft: 10 }]}>{i18n('meals.analyzingPlate')}</Text>
         </View>
         <Text style={[typography.caption, { color: failed ? t.danger : t.ink3, marginBottom: 10 }]}>
-          {error ?? `Backend status: ${status}`}
+          {statusLabel}
         </Text>
         <View style={styles.stages}>
           {STAGES.map((s) => <StageRow key={s.label} {...s} />)}
         </View>
-        {/* Full-width outline cancel button */}
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            const fallbackRoute = getMealScanCancelRoute(router.canGoBack());
+            if (fallbackRoute) {
+              router.replace(fallbackRoute as never);
+            } else {
+              router.back();
+            }
+          }}
           style={[styles.cancelBtn, { borderColor: 'rgba(0,0,0,0.15)' }]}
         >
           <Text style={[typography.button, { color: '#111' }]}>{i18n('common.cancel')}</Text>
@@ -212,12 +364,10 @@ export function MealScanAnalyzingScreen() {
 const styles = StyleSheet.create({
   root:           { flex: 1 },
   photoArea:      { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  plate:          { width: 280, height: 200, borderRadius: 16, backgroundColor: '#1A1208', overflow: 'hidden' },
-  blob:           { position: 'absolute', borderRadius: 40, opacity: 0.7 },
-  // Detection label pill
-  detectionLabel: { backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 2, alignSelf: 'flex-start' },
-  detectionBox:   { borderWidth: 2, borderRadius: 4, backgroundColor: 'transparent' },
-  // Cyan scan line
+  photoFrame:     { width: 288, height: 220, borderRadius: 20, overflow: 'hidden', backgroundColor: '#111827' },
+  photoImage:     { width: '100%', height: '100%' },
+  photoFallback:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  photoScrim:     { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(11,15,20,0.24)' },
   scanLine:       { position: 'absolute', left: 0, right: 0, height: 2, backgroundColor: 'rgba(34,211,238,0.8)' },
   sheet:          { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: StyleSheet.hairlineWidth, padding: 24, paddingBottom: 40 },
   sheetHandle:    { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },

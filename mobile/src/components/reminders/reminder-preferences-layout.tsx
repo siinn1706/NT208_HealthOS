@@ -61,7 +61,15 @@ export function PreferenceRow({
   );
 }
 
-export function MasterPermissionCard({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
+export function MasterPermissionCard({
+  value,
+  onChange,
+  subtitle,
+}: {
+  value: boolean;
+  onChange: (next: boolean) => void;
+  subtitle?: string;
+}) {
   const t = useTheme();
   return (
     <View style={[s.masterCard, { backgroundColor: t.brandSoft, borderColor: withOpacity(t.brand, 0.25), marginHorizontal: 20 }]}>
@@ -70,7 +78,7 @@ export function MasterPermissionCard({ value, onChange }: { value: boolean; onCh
       </View>
       <View style={s.masterText}>
         <Text style={[s.masterLabel, { color: t.ink }]}>Allow notifications</Text>
-        <Text style={[s.masterSub, { color: t.ink3 }]}>Core preference · OS permission not managed in this build</Text>
+        {subtitle ? <Text style={[s.masterSub, { color: t.ink3 }]}>{subtitle}</Text> : null}
       </View>
       <Toggle value={value} onChange={onChange} />
     </View>

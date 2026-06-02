@@ -19,10 +19,14 @@ import { toast } from "sonner";
 
 import { ConfidenceChip } from "@/components/ui/confidence-chip";
 import {
+  DEFAULT_PORTION_OPTIONS,
   buildAnalysisResultFromMeal,
   buildSnapPrefillPayload,
+  getAnalysisCalorieRange,
   getAnalysisTotalCalories,
+  scaleAnalysisResultPortion,
   type AnalysisResult,
+  type PortionValue,
 } from "./camera-analysis-normalizer";
 
 type AnalysisStep =
@@ -76,6 +80,7 @@ export function CameraCapture() {
   const [processingMsg, setProcessingMsg] = useState(() => t("analyzing"));
   const [showSlowWarning, setShowSlowWarning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [selectedPortion, setSelectedPortion] = useState<PortionValue>("medium");
 
   const stopCameraStream = useCallback(() => {
     const stream = streamRef.current ?? (videoRef.current?.srcObject as MediaStream | null);
@@ -302,6 +307,7 @@ export function CameraCapture() {
       }
 
       setAnalysisResult(analyzed);
+      setSelectedPortion("medium");
       const confidence = analyzed.confidence;
       if (typeof confidence === "number" && confidence < LOW_CONFIDENCE_THRESHOLD) {
         setStep("lowConfidence");
@@ -330,6 +336,7 @@ export function CameraCapture() {
     setStreamActive(false);
     setShowSlowWarning(false);
     setAnalysisResult(null);
+    setSelectedPortion("medium");
     setProcessingMsg(t("analyzing"));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -341,7 +348,8 @@ export function CameraCapture() {
    */
   const proceedToForm = (opts: { needsReview?: boolean } = {}) => {
     if (analysisResult) {
-      const payload = buildSnapPrefillPayload(analysisResult, {
+      const selectedResult = scaleAnalysisResultPortion(analysisResult, selectedPortion);
+      const payload = buildSnapPrefillPayload(selectedResult, {
         needsReview: opts.needsReview,
       });
       try {
@@ -354,7 +362,12 @@ export function CameraCapture() {
     router.push("/dashboard/meals/add");
   };
 
-  const totalCalories = getAnalysisTotalCalories(analysisResult);
+  const displayedResult = analysisResult
+    ? scaleAnalysisResultPortion(analysisResult, selectedPortion)
+    : null;
+  const totalCalories = getAnalysisTotalCalories(displayedResult);
+  const calorieRange = getAnalysisCalorieRange(displayedResult);
+  const portionOptions = analysisResult?.nutrition?.portion_options ?? DEFAULT_PORTION_OPTIONS;
 
   const confidenceValue = analysisResult?.confidence ?? null;
 
@@ -516,7 +529,7 @@ export function CameraCapture() {
       )}
 
       {/* ── Step: Result / LowConfidence ── */}
-      {(step === "result" || step === "lowConfidence") && analysisResult && (
+      {(step === "result" || step === "lowConfidence") && analysisResult && displayedResult && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -553,15 +566,37 @@ export function CameraCapture() {
                 className="size-14 rounded-lg object-cover flex-shrink-0"
               />
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">{analysisResult.name}</p>
+                <p className="text-sm font-semibold text-foreground">{displayedResult.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{t("aiIdentified")}</p>
               </div>
               <div className="ml-auto text-right flex-shrink-0">
-                <p className="text-base font-bold text-foreground">{totalCalories}</p>
-                <p className="text-[10px] text-muted-foreground">kcal</p>
+                <p className="text-base font-bold text-foreground">{calorieRange}</p>
+                <p className="text-[10px] text-muted-foreground">kcal · ~{totalCalories}</p>
               </div>
             </div>
           )}
+
+          <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Khẩu phần
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {portionOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSelectedPortion(option.value)}
+                  className={`h-9 rounded-lg border text-xs font-semibold transition-colors ${
+                    selectedPortion === option.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border bg-muted/30">
@@ -573,7 +608,7 @@ export function CameraCapture() {
               <p className="p-4 text-sm text-muted-foreground">{t("noInfo")}</p>
             ) : (
               <ul className="divide-y divide-border">
-                {analysisResult.ingredients.map((ing) => (
+                {displayedResult.ingredients.map((ing) => (
                   <li
                     key={`${ing.ingredient_name}-${ing.grams}-${ing.calories}`}
                     className="flex items-center justify-between px-4 py-3 gap-3"
@@ -595,7 +630,7 @@ export function CameraCapture() {
             )}
           </div>
 
-          {analysisResult.nutrition && (
+          {displayedResult.nutrition && (
             <div className="rounded-xl border border-border bg-card p-3 space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                 {t("nutritionDetails")}
@@ -604,37 +639,44 @@ export function CameraCapture() {
                 <div className="rounded-md bg-rose-500/10 px-2 py-1.5 text-center">
                   <p className="text-[10px] text-muted-foreground">{t("saturates")}</p>
                   <p className="text-xs font-bold text-rose-500 tabular-nums">
-                    {(analysisResult.nutrition.saturates_g ?? 0).toFixed(1)}g
+                    {(displayedResult.nutrition.saturates_g ?? 0).toFixed(1)}g
                   </p>
                 </div>
                 <div className="rounded-md bg-fuchsia-500/10 px-2 py-1.5 text-center">
                   <p className="text-[10px] text-muted-foreground">{t("sugar")}</p>
                   <p className="text-xs font-bold text-fuchsia-500 tabular-nums">
-                    {(analysisResult.nutrition.sugar_g ?? 0).toFixed(1)}g
+                    {(displayedResult.nutrition.sugar_g ?? 0).toFixed(1)}g
                   </p>
                 </div>
                 <div className="rounded-md bg-sky-500/10 px-2 py-1.5 text-center">
                   <p className="text-[10px] text-muted-foreground">{t("salt")}</p>
                   <p className="text-xs font-bold text-sky-500 tabular-nums">
-                    {(analysisResult.nutrition.salt_g ?? 0).toFixed(1)}g
+                    {(displayedResult.nutrition.salt_g ?? 0).toFixed(1)}g
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                {analysisResult.nutrition.dish_name && (
+                {displayedResult.nutrition.dish_name && (
                   <span className="rounded border border-border px-2 py-0.5">
-                    {analysisResult.nutrition.dish_name}
+                    {displayedResult.nutrition.dish_name}
                   </span>
                 )}
-                {analysisResult.nutrition.source && (
+                {displayedResult.nutrition.source && (
                   <span className="rounded bg-muted px-2 py-0.5 uppercase">
-                    {analysisResult.nutrition.source}
+                    {displayedResult.nutrition.source}
                   </span>
                 )}
-                {analysisResult.nutrition.serving_type && (
-                  <span>{t("serving")}: {analysisResult.nutrition.serving_type}</span>
+                {displayedResult.nutrition.serving_type && (
+                  <span>{t("serving")}: {displayedResult.nutrition.serving_type}</span>
                 )}
               </div>
+              {(displayedResult.nutrition.warnings ?? []).length > 0 && (
+                <ul className="space-y-1 rounded-lg bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-amber-200">
+                  {displayedResult.nutrition.warnings?.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 

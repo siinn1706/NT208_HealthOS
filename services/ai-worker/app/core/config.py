@@ -14,6 +14,8 @@ _DEFAULT_MODEL_PATH = (
     / "yolov10"
     / "YOLOv10b_VietFood67_SGD_new_bigger.pt"
 )
+_DEFAULT_FOOD_ANALYSIS_MODEL_PATH = _SERVICE_ROOT / "models" / "food-analysis"
+_DEFAULT_CALORIECLIP_MODEL_PATH = _SERVICE_ROOT / "models" / "calorieclip"
 _DEFAULT_CLASS_NAMES_PATH = _SERVICE_ROOT / "data" / "class_names.py"
 
 
@@ -32,6 +34,11 @@ class Settings(BaseSettings):
     ai_request_timeout_seconds: float = 30.0
     ai_confidence_threshold: float = 0.45
     ai_yolo_timeout_seconds: float = 15.0
+    ai_food_analysis_enabled: bool = True
+    ai_food_analysis_timeout_seconds: float = 30.0
+    ai_calorieclip_enabled: bool = True
+    ai_calorieclip_timeout_seconds: float = 15.0
+    ai_calorie_range_ratio: float = 0.18
     ai_max_image_size_px: int = 640
 
     # Image download security
@@ -43,6 +50,10 @@ class Settings(BaseSettings):
     storage_endpoint: str = "http://localhost:9000"
 
     ai_yolo_model_path: str = str(_DEFAULT_MODEL_PATH)
+    ai_food_analysis_model_path: str = str(_DEFAULT_FOOD_ANALYSIS_MODEL_PATH)
+    ai_calorieclip_model_path: str = str(_DEFAULT_CALORIECLIP_MODEL_PATH)
+    ai_food_analysis_repo_id: str = "Ateeqq/food-analysis"
+    ai_calorieclip_repo_id: str = "jc-builds/CalorieCLIP"
     ai_class_names_path: str = str(_DEFAULT_CLASS_NAMES_PATH)
     ai_proxy_base_url: str = "http://localhost:20128/v1"
     ai_proxy_model: str = "oc/deepseek-v4-flash-free"
@@ -81,6 +92,14 @@ class Settings(BaseSettings):
     @property
     def yolo_model_path(self) -> Path:
         return Path(self.ai_yolo_model_path).expanduser()
+
+    @property
+    def food_analysis_model_path(self) -> Path:
+        return Path(self.ai_food_analysis_model_path).expanduser()
+
+    @property
+    def calorieclip_model_path(self) -> Path:
+        return Path(self.ai_calorieclip_model_path).expanduser()
 
     @property
     def class_names_path(self) -> Path:

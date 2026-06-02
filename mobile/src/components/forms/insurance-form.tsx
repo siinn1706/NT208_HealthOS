@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -9,14 +9,29 @@ import { Button } from '../primitives/button';
 import { ApiState } from '../api/api-state';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
-import { profileService } from '../../api/services';
+import { useSession } from '../../auth/session-provider';
+import type { InsuranceInfo, MedicalInfo } from '../../types/api';
+
+type MedicalInsuranceField = keyof InsuranceInfo;
 
 const PROVIDERS = ['Bảo Hiểm Y Tế (BHYT)', 'AIA', 'Manulife', 'Prudential', 'Other'];
 const INSURANCE_FIELD_LIMIT = 128;
 
+function getInsuranceText(medicalInfo: MedicalInfo | null | undefined, key: MedicalInsuranceField) {
+  const source = (medicalInfo?.insurance ?? medicalInfo) as Record<string, unknown> | null | undefined;
+  if (!source) return '';
+  const value = source[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function getMaxLengthError(i18n: (key: string, params?: Record<string, unknown>) => string, field: string, value: string) {
+  return value.trim().length > INSURANCE_FIELD_LIMIT ? i18n('profile.validationMaxLength', { field, max: INSURANCE_FIELD_LIMIT }) : null;
+}
+
 export function InsuranceForm() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
+  const session = useSession();
   const [provider, setProvider] = useState('');
   const [policyNum, setPolicyNum] = useState('');
   const [groupNum, setGroupNum] = useState('');
@@ -24,31 +39,63 @@ export function InsuranceForm() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const currentInsurance = session.user?.medical_info;
+    setProvider(getInsuranceText(currentInsurance, 'provider'));
+    setPolicyNum(getInsuranceText(currentInsurance, 'policy_number'));
+    setGroupNum(getInsuranceText(currentInsurance, 'group_number'));
+  }, [session.user?.medical_info]);
+
   async function handleSubmit() {
-    if (!provider) { setError('Select an insurance provider.'); return; }
-    if (!policyNum.trim()) { setError('Policy number is required.'); return; }
-    if (provider.trim().length > INSURANCE_FIELD_LIMIT) { setError('Provider must be 128 characters or fewer.'); return; }
-    if (policyNum.trim().length > INSURANCE_FIELD_LIMIT) { setError('Policy number must be 128 characters or fewer.'); return; }
-    if (groupNum.trim().length > INSURANCE_FIELD_LIMIT) { setError('Group number must be 128 characters or fewer.'); return; }
+    const providerValue = provider.trim();
+    const policyValue = policyNum.trim();
+    const groupValue = groupNum.trim();
+    const hasInsuranceValue = providerValue || policyValue || groupValue;
+    const labelProvider = i18n('profile.fieldInsuranceProvider');
+    const labelPolicyNumber = i18n('profile.fieldInsurancePolicyNumber');
+    const labelGroupNumber = i18n('profile.fieldInsuranceGroupNumber');
+
+    if (hasInsuranceValue) {
+      if (!providerValue || !policyValue) {
+        setError(i18n('profile.validationInsuranceProviderPolicyRequired'));
+        return;
+      }
+      const providerLengthError = getMaxLengthError(i18n, labelProvider, providerValue);
+      if (providerLengthError) {
+        setError(providerLengthError);
+        return;
+      }
+      const policyLengthError = getMaxLengthError(i18n, labelPolicyNumber, policyValue);
+      if (policyLengthError) {
+        setError(policyLengthError);
+        return;
+      }
+      const groupLengthError = getMaxLengthError(i18n, labelGroupNumber, groupValue);
+      if (groupLengthError) {
+        setError(groupLengthError);
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
     try {
-      const current = await profileService.me();
-      const existingMedical = (current.medical_info ?? {}) as Record<string, unknown>;
-      await profileService.updateMe({
-        medical_info: {
-          ...existingMedical,
-          insurance: {
-            provider: provider.trim(),
-            policy_number: policyNum.trim(),
-            group_number: groupNum.trim() || null,
-          },
-        },
-      });
+      const existingMedicalInfo: MedicalInfo = session.user?.medical_info ?? {};
+      const nextMedicalInfo: MedicalInfo = {
+        ...existingMedicalInfo,
+        insurance: hasInsuranceValue
+          ? {
+              provider: providerValue,
+              policy_number: policyValue,
+              group_number: groupValue || null,
+            }
+          : null,
+      };
+      await session.updateProfile({ medical_info: nextMedicalInfo });
       invalidateApiQuery(queryKeys.profile);
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save insurance details.');
+      setError(err instanceof Error ? err.message : i18n('profile.saveError'));
     } finally {
       setSaving(false);
     }
@@ -72,7 +119,7 @@ export function InsuranceForm() {
 
       <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.provider')}</Text>
       <View style={s.providerGrid}>
-        {PROVIDERS.map(p => {
+        {PROVIDERS.map((p) => {
           const active = provider === p;
           return (
             <Pressable
@@ -93,8 +140,29 @@ export function InsuranceForm() {
         })}
       </View>
 
-      <Input label={i18n('forms.policyNumber')} value={policyNum} onChangeText={setPolicyNum} placeholder={i18n('forms.policyNumberPlaceholder')} maxLength={INSURANCE_FIELD_LIMIT} style={s.field} />
-      <Input label={i18n('forms.groupNumber')} value={groupNum} onChangeText={setGroupNum} placeholder={i18n('forms.groupNumberPlaceholder')} maxLength={INSURANCE_FIELD_LIMIT} style={s.field} />
+      <Input
+        label={i18n('profile.fieldInsuranceProvider')}
+        value={provider}
+        onChangeText={setProvider}
+        maxLength={INSURANCE_FIELD_LIMIT}
+        style={s.field}
+      />
+      <Input
+        label={i18n('forms.policyNumber')}
+        value={policyNum}
+        onChangeText={setPolicyNum}
+        placeholder={i18n('forms.policyNumberPlaceholder')}
+        maxLength={INSURANCE_FIELD_LIMIT}
+        style={s.field}
+      />
+      <Input
+        label={i18n('forms.groupNumber')}
+        value={groupNum}
+        onChangeText={setGroupNum}
+        placeholder={i18n('forms.groupNumberPlaceholder')}
+        maxLength={INSURANCE_FIELD_LIMIT}
+        style={s.field}
+      />
 
       <Text style={[typography.micro, s.sectionLabel, { color: t.ink3 }]}>{i18n('forms.uploadCard')}</Text>
       <View style={[s.infoCard, { borderRadius: t.radius.lg, borderColor: t.border, backgroundColor: t.card }]}>
@@ -104,18 +172,23 @@ export function InsuranceForm() {
         </Text>
       </View>
 
-      <Button label={saving ? i18n('common.working') : i18n('forms.saveInsurance')} variant="solid" onPress={saving ? undefined : handleSubmit} style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]} />
+      <Button
+        label={saving ? i18n('common.working') : i18n('forms.saveInsurance')}
+        variant="solid"
+        onPress={saving ? undefined : handleSubmit}
+        style={[{ marginTop: 20 }, saving && { opacity: 0.4 }]}
+      />
       <Button label={i18n('common.cancel')} variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  content:      { paddingHorizontal: 20, paddingTop: 8 },
+  content: { paddingHorizontal: 20, paddingTop: 8 },
   sectionLabel: { textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 16, marginBottom: 8 },
-  field:        { marginBottom: 12 },
+  field: { marginBottom: 12 },
   providerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   providerChip: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
-  infoCard:     { borderWidth: StyleSheet.hairlineWidth, padding: 14 },
-  center:       { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  infoCard: { borderWidth: StyleSheet.hairlineWidth, padding: 14 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
 });

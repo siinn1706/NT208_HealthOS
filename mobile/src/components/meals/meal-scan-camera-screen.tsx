@@ -6,6 +6,10 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import { mealService } from '../../api/services';
+import {
+  isTransientMealScanUploadError,
+  queueMealScanPhoto,
+} from '../../api/services/meal-offline-queue';
 import { invalidateApiQuery } from '../../api/query';
 import { validateImageFile } from '../../utils/file-validation';
 import { MealScanBottomControls, MealScanTopBar } from './meal-scan-camera-controls';
@@ -63,8 +67,29 @@ export function MealScanCameraScreen() {
       }
       const params = new URLSearchParams({ mealId });
       if (analysis.job_id) params.set('jobId', analysis.job_id);
+      params.set('imageUri', file.uri);
       router.push(`/meals/scan-analyzing?${params.toString()}` as never);
     } catch (err) {
+      if (isTransientMealScanUploadError(err)) {
+        try {
+          const queued = await queueMealScanPhoto({
+            uri: file.uri,
+            fileName: file.fileName,
+            mimeType: file.mimeType,
+            name: i18n('meals.scannedMealName'),
+          });
+          const params = new URLSearchParams({
+            queuedMealPhotoId: queued.id,
+            imageUri: file.uri,
+          });
+          setError(i18n('meals.photoAnalysisQueued'));
+          router.push(`/meals/scan-analyzing?${params.toString()}` as never);
+        } catch (queueErr) {
+          clearPreviewForRetry();
+          setError(queueErr instanceof Error ? queueErr.message : i18n('meals.uploadFailed'));
+        }
+        return;
+      }
       clearPreviewForRetry();
       setError(err instanceof Error ? err.message : i18n('meals.uploadFailed'));
     } finally {
@@ -81,6 +106,10 @@ export function MealScanCameraScreen() {
     }
     setPermissionGrantedAfterPrompt(true);
     return true;
+  }
+
+  function requestCameraPermissionFromPrompt() {
+    void ensureCameraPermission();
   }
 
   async function captureMountedCameraPhoto() {
@@ -172,6 +201,9 @@ export function MealScanCameraScreen() {
       <MealScanCameraViewfinder
         cameraFacing={cameraFacing}
         cameraRef={cameraRef}
+        cameraPermissionActionLabel={i18n('meals.cameraPermissionAction')}
+        cameraPermissionBody={i18n('meals.cameraPermissionBody')}
+        cameraPermissionTitle={i18n('meals.cameraPermissionTitle')}
         centerPlateLabel={i18n('meals.centerPlate')}
         hasCameraPermission={hasCameraPermission}
         loadingLabel={i18n('common.loading')}
@@ -180,6 +212,7 @@ export function MealScanCameraScreen() {
         uploading={uploading}
         onCameraReady={handleCameraReady}
         onMountError={(message) => setError(message || i18n('meals.cameraNotReady'))}
+        onRequestCameraPermission={requestCameraPermissionFromPrompt}
       />
 
       <MealScanBottomControls

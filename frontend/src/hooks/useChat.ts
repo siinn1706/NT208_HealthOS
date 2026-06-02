@@ -14,6 +14,7 @@ import { bffFetch } from "@/lib/api-client";
 import type {
   Conversation,
   Message,
+  MessageAttachment,
   MessageReaction,
   StrangerRequest,
   ChatParticipant,
@@ -93,6 +94,24 @@ function adaptReactions(reactions: any[]): MessageReaction[] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function adaptAttachments(attachments: any[] | null | undefined): MessageAttachment[] | null {
+  if (!Array.isArray(attachments) || attachments.length === 0) return null;
+  return attachments
+    .map((attachment) => ({
+      url: typeof attachment?.url === "string" ? attachment.url : "",
+      name: typeof attachment?.name === "string" ? attachment.name : "attachment",
+      size: typeof attachment?.size === "number" ? attachment.size : 0,
+      mime_type: typeof attachment?.mime_type === "string" ? attachment.mime_type : "application/octet-stream",
+    }))
+    .filter((attachment) => attachment.url.length > 0);
+}
+
+interface SendMessagePayloadOptions {
+  contentType?: Message["type"];
+  attachments?: MessageAttachment[] | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function adaptMessage(m: any): Message {
   // sender_id is the authoritative source — never infer identity from display_name
   // to prevent AI message spoofing by a user setting their name to contain "ai".
@@ -136,6 +155,7 @@ function adaptMessage(m: any): Message {
         }
       : undefined,
     reactions: adaptReactions(m.reactions ?? []),
+    attachments: adaptAttachments(m.attachments),
     ai_metadata: aiMetadata,
     is_edited: Boolean(m.edited_at || m.is_edited),
     is_recalled: Boolean(m.is_recalled),
@@ -1130,6 +1150,7 @@ export function useMessages(
        * would leave the bubble stuck at `failed` and require manual retry.
        */
       onNetworkFailure?: (msg: Message) => void | Promise<void>,
+      sendOptions: SendMessagePayloadOptions = {},
     ): Promise<Message> => {
       // Require a valid currentUserId before sending — the session must be
       // loaded.  Without it the optimistic message would carry a sentinel ID
@@ -1150,10 +1171,11 @@ export function useMessages(
         sender_display_name: undefined,
         sender_kind: "user",
         content,
-        type: "text",
+        type: sendOptions.contentType ?? "text",
         status: "sending",
         reply_to: undefined,
         reactions: [],
+        attachments: sendOptions.attachments ?? null,
         is_edited: false,
         is_recalled: false,
         is_pinned: false,
@@ -1173,9 +1195,10 @@ export function useMessages(
             method: "POST",
             body: {
               content,
-              content_type: "text",
+              content_type: sendOptions.contentType ?? "text",
               client_message_id: optimisticId,
               reply_to_id: replyToId ?? null,
+              attachments: sendOptions.attachments ?? undefined,
             },
           }
         );

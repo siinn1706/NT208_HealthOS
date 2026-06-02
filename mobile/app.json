@@ -28,6 +28,10 @@
       "package": "com.nt208.healthos",
       "versionCode": 1,
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_HEART_RATE",
         "android.permission.health.READ_SLEEP",
@@ -55,6 +59,12 @@
           "recordAudioAndroid": false
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow NT208 HealthOS to choose photos for chat messages and nutrition analysis."
+        }
+      ],
       "expo-localization",
       "expo-web-browser",
       [
@@ -72,6 +82,15 @@
             "targetSdkVersion": 35,
             "minSdkVersion": 26
           }
+        }
+      ],
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent",
+          "defaultLaunchURL": "exp://10.0.2.2:8081",
+          "skipOnboarding": true,
+          "showMenuAtLaunch": false
         }
       ]
     ],

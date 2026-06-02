@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { Pressable, View, Text, StyleSheet } from 'react-native';
+import { Image, Pressable, View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
@@ -72,7 +72,9 @@ export const Bubble = memo(function Bubble({ side, text, time, attachments = [],
             )}
             {attachments.length > 0 && (
               <View style={styles.attachments}>
-                {attachments.map((attachment) => (
+                {attachments.map((attachment) => {
+                  const isImage = isImageAttachment(attachment);
+                  return (
                   <Pressable
                     key={`${attachment.url}-${attachment.name}`}
                     onPress={() => { void safeOpenUrl(attachment.url); }}
@@ -80,6 +82,7 @@ export const Bubble = memo(function Bubble({ side, text, time, attachments = [],
                     accessibilityLabel={`Open ${attachment.name}`}
                     style={[
                       styles.attachment,
+                      isImage && styles.imageAttachment,
                       {
                         borderColor: isMe ? 'rgba(255,255,255,0.35)' : t.border,
                         backgroundColor: isMe ? 'rgba(255,255,255,0.12)' : t.bgElev,
@@ -87,8 +90,12 @@ export const Bubble = memo(function Bubble({ side, text, time, attachments = [],
                       },
                     ]}
                   >
-                    <IconPaperclip size={16} color={isMe ? '#FFF' : t.brand} />
-                    <View style={styles.attachmentText}>
+                    {isImage ? (
+                      <Image source={{ uri: attachment.url }} style={styles.attachmentImage} resizeMode="cover" />
+                    ) : (
+                      <IconPaperclip size={16} color={isMe ? '#FFF' : t.brand} />
+                    )}
+                    <View style={isImage ? styles.imageAttachmentMeta : styles.attachmentText}>
                       <Text numberOfLines={1} style={[typography.caption, { color: textColor, fontWeight: '700' }]}>
                         {attachment.name}
                       </Text>
@@ -97,7 +104,8 @@ export const Bubble = memo(function Bubble({ side, text, time, attachments = [],
                       </Text>
                     </View>
                   </Pressable>
-                ))}
+                  );
+                })}
               </View>
             )}
           </>
@@ -119,6 +127,10 @@ function formatBytes(value: number) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isImageAttachment(attachment: BubbleAttachment) {
+  return attachment.mimeType.toLowerCase().startsWith('image/');
+}
+
 const styles = StyleSheet.create({
   wrap:           { marginVertical: 4, maxWidth: '82%', alignSelf: 'flex-start' },
   wrapMe:         { alignSelf: 'flex-end' },
@@ -126,5 +138,8 @@ const styles = StyleSheet.create({
   sparkWrap:      { marginTop: 8 },
   attachments:    { marginTop: 10, gap: 8 },
   attachment:     { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, padding: 9 },
+  imageAttachment: { flexDirection: 'column', alignItems: 'stretch', padding: 0, overflow: 'hidden', gap: 0 },
+  attachmentImage: { width: 220, maxWidth: '100%', aspectRatio: 4 / 3 },
+  imageAttachmentMeta: { paddingHorizontal: 9, paddingVertical: 7 },
   attachmentText: { flex: 1, minWidth: 0 },
 });

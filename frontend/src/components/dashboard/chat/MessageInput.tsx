@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslations, useLocale } from "next-intl";
-import { Send, Smile, Paperclip, X, Image as ImageIcon, FileText, Pencil } from "lucide-react";
+import { Send, Smile, Paperclip, X, Image as ImageIcon, FileText, Pencil, Loader2 } from "lucide-react";
 import { MessageReplyPreview } from "./MessageReplyPreview";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import type { Message } from "@/types/api";
 import { useChatDrafts } from "@/hooks/useChatDrafts";
+
+const CHAT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const CHAT_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
 
 // Lazy load emoji picker to reduce initial bundle
 const EmojiPicker = dynamic(
@@ -31,6 +34,7 @@ interface MessageInputProps {
   currentUserId: string | null;
   editingMessage?: Message | null;
   onSend: (content: string) => void;
+  onSendImage?: (file: File, caption: string) => Promise<void>;
   onCancelReply: () => void;
   onCancelEdit: () => void;
   onKeyPress?: () => void;
@@ -43,6 +47,7 @@ export function MessageInput({
   currentUserId,
   editingMessage,
   onSend,
+  onSendImage,
   onCancelReply,
   onCancelEdit,
   onKeyPress,
@@ -54,8 +59,10 @@ export function MessageInput({
   const [value, setValue] = useState<string>(() => editingMessage?.content ?? draft);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [emojiData, setEmojiData] = useState<Record<string, unknown> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lazy-load emoji data when picker is first opened
   useEffect(() => {
@@ -86,7 +93,7 @@ export function MessageInput({
 
   function handleSend() {
     const trimmed = value.trim();
-    if (!trimmed) return;
+    if (!trimmed || imageUploading) return;
     onSend(trimmed);
     setValue("");
     // Edits don't have a draft (they're a separate, transient text path), so
@@ -102,6 +109,38 @@ export function MessageInput({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  }
+
+  async function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (!file) return;
+    if (!onSendImage) {
+      toast.info(t("uploadComingSoon"));
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("imageUploadBadType"));
+      return;
+    }
+    if (file.size > CHAT_IMAGE_MAX_BYTES) {
+      toast.error(t("imageUploadTooLarge", { maxMb: 5 }));
+      return;
+    }
+    setImageUploading(true);
+    try {
+      await onSendImage(file, value.trim());
+      setValue("");
+      if (!editingMessage) clearDraft();
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.focus();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("imageUploadFailed"));
+    } finally {
+      setImageUploading(false);
     }
   }
 
@@ -182,12 +221,21 @@ export function MessageInput({
 
       {/* Input row */}
       <div className="flex items-end gap-2 px-4 py-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={CHAT_IMAGE_ACCEPT}
+          className="hidden"
+          onChange={handleImageSelected}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
         {/* Attachment popover */}
         <Popover open={attachOpen} onOpenChange={setAttachOpen}>
           <PopoverTrigger asChild>
             <button type="button"
               aria-label={t("attachFile")}
-              disabled={disabled}
+              disabled={disabled || imageUploading || Boolean(editingMessage)}
               className="flex-shrink-0 size-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-40"
             >
               <Paperclip className="size-4" />
@@ -195,10 +243,18 @@ export function MessageInput({
           </PopoverTrigger>
           <PopoverContent side="top" align="start" className="w-44 p-1" sideOffset={8}>
             <button type="button"
-              onClick={() => { toast.info(t("uploadComingSoon")); setAttachOpen(false); }}
+              onClick={() => {
+                setAttachOpen(false);
+                fileInputRef.current?.click();
+              }}
+              disabled={imageUploading}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md hover:bg-secondary transition-colors cursor-pointer"
             >
-              <ImageIcon className="size-4 text-muted-foreground" />
+              {imageUploading ? (
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              ) : (
+                <ImageIcon className="size-4 text-muted-foreground" />
+              )}
               {t("attachImage")}
             </button>
             <Separator className="my-1" />
@@ -263,14 +319,14 @@ export function MessageInput({
         <m.button
           type="button"
           onClick={handleSend}
-          disabled={!value.trim() || disabled}
+          disabled={!value.trim() || disabled || imageUploading}
           aria-label={t("send")}
           whileTap={!disabled ? { scale: 0.85 } : {}}
           transition={{ duration: 0.1 }}
           className={cn(
             "flex-shrink-0 size-9 rounded-full flex items-center justify-center",
             "transition-all duration-150 ease-out cursor-pointer",
-            value.trim()
+            value.trim() && !imageUploading
               ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
               : "bg-secondary text-muted-foreground/40 pointer-events-none",
             editingMessage && "bg-amber-500 hover:bg-amber-600 text-white"

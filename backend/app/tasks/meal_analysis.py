@@ -25,8 +25,10 @@ _NUMERIC_NUTRITION_KEYS = {
     "salt_g",
     "fiber_g",
     "confidence",
+    "calorie_min",
+    "calorie_max",
 }
-_STRING_NUTRITION_KEYS = {"dish_name", "serving_type", "source"}
+_STRING_NUTRITION_KEYS = {"dish_name", "serving_type", "source", "portion_estimate"}
 _NUMERIC_INGREDIENT_KEYS = {
     "grams",
     "kcal",
@@ -37,6 +39,17 @@ _NUMERIC_INGREDIENT_KEYS = {
     "confidence",
 }
 _STRING_INGREDIENT_KEYS = {"name", "ingredient_name", "ingredient_name_en"}
+_NUMERIC_PORTION_KEYS = {
+    "scale",
+    "multiplier",
+    "calories",
+    "calorie_min",
+    "calorie_max",
+    "protein_g",
+    "carbs_g",
+    "fat_g",
+}
+_STRING_PORTION_KEYS = {"value", "label", "serving_type"}
 
 
 def _is_number(value: Any) -> bool:
@@ -53,6 +66,24 @@ def _validate_ingredient(data: Any) -> dict[str, float | str] | None:
         elif key in _STRING_INGREDIENT_KEYS and isinstance(value, str) and value.strip():
             normalized[key] = value.strip()
     return normalized or None
+
+
+def _validate_portion_option(data: Any) -> dict[str, float | str] | None:
+    if not isinstance(data, dict):
+        return None
+    normalized: dict[str, float | str] = {}
+    for key, value in data.items():
+        if key in _NUMERIC_PORTION_KEYS and _is_number(value):
+            normalized[key] = float(value)
+        elif key in _STRING_PORTION_KEYS and isinstance(value, str) and value.strip():
+            normalized[key] = value.strip()
+    return normalized or None
+
+
+def _validate_warnings(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item.strip() for item in value[:20] if isinstance(item, str) and item.strip()]
 
 
 def _validate_nutrition(data: dict) -> dict:
@@ -73,6 +104,18 @@ def _validate_nutrition(data: dict) -> dict:
             ]
             if ingredients:
                 normalized["ingredients"] = ingredients
+        elif key == "portion_options" and isinstance(value, list):
+            options = [
+                option
+                for option in (_validate_portion_option(item) for item in value)
+                if option is not None
+            ]
+            if options:
+                normalized["portion_options"] = options
+        elif key == "warnings":
+            warnings = _validate_warnings(value)
+            if warnings:
+                normalized["warnings"] = warnings
     return normalized
 
 

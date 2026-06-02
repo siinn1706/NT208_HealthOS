@@ -27,6 +27,9 @@ def test_mapper_keeps_calories_and_fat() -> None:
     assert result.serving_type == "1 serving"
     assert result.source == "yolo"
     assert 0 <= result.confidence <= 1
+    assert result.calorie_min is not None
+    assert result.calorie_max is not None
+    assert [option["label"] for option in result.portion_options] == ["Ít", "Vừa", "Nhiều"]
 
 
 def test_mapper_clamps_confidence_to_one() -> None:
@@ -44,3 +47,32 @@ def test_mapper_clamps_confidence_to_one() -> None:
 
     result = map_to_healthos_nutrition(raw)
     assert result.confidence == 1.0
+
+
+def test_mapper_preserves_primary_macros_range_and_warnings() -> None:
+    raw = RawFoodNutrition(
+        dish_name="Rice bowl",
+        serving_type="1 bowl",
+        calories=420,
+        protein_g=25,
+        carbs_g=60,
+        fat_g=10,
+        saturates_g=2,
+        sugar_g=4,
+        salt_g=0.8,
+        confidence=0.82,
+        source="food-analysis+calorieclip",
+        calorie_min=380,
+        calorie_max=500,
+        ingredients=[{"name": "Rice", "calories": 220, "carbs_g": 45}],
+        warnings=["Confirm portion"],
+    )
+
+    result = map_to_healthos_nutrition(raw)
+
+    assert result.protein_g == 25
+    assert result.carbs_g == 60
+    assert result.calorie_min == 380
+    assert result.calorie_max == 500
+    assert result.ingredients == [{"name": "Rice", "calories": 220.0, "carbs_g": 45.0}]
+    assert result.warnings == ["Confirm portion"]
