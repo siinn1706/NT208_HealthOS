@@ -1,7 +1,7 @@
 import { ApiError, apiRequest } from '../client';
 import { AUTH_REQUEST_TIMEOUT_MS, ensureCoreReachable, toCoreReachabilityMessage } from '../core-reachability';
 import { buildExpoDevLanBaseUrl } from '../expo-dev-host';
-import { clearStoredSession, getRefreshToken, saveAuthToken } from '../../auth/session-store';
+import { clearStoredSession, getAccessToken, getRefreshToken, saveAuthToken } from '../../auth/session-store';
 import Constants from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
@@ -276,22 +276,23 @@ export const authService = {
   },
 
   async logout() {
+    const accessToken = await getAccessToken();
     const refresh_token = await getRefreshToken();
+
     await clearStoredSession();
 
-    let remoteLogoutError: unknown = null;
     try {
       await apiRequest('/v1/auth/logout', {
         method: 'POST',
         json: refresh_token ? { refresh_token } : {},
+        auth: false,
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
         timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
       });
     } catch (error) {
-      remoteLogoutError = error;
-    }
-
-    if (remoteLogoutError && __DEV__) {
-      console.warn('[authService] remote logout failed after local session clear:', remoteLogoutError);
+      if (__DEV__) {
+        console.warn('[authService] remote logout failed after local session clear:', error);
+      }
     }
   },
 

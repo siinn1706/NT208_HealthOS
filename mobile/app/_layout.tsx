@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { Redirect, Stack, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ActivityIndicator, Text, View } from 'react-native';
 import {
   useFonts,
   Inter_400Regular,
@@ -21,13 +22,32 @@ import { ThemedStatusBar } from '../src/components/primitives/themed-status-bar'
 import { LanguagePreferenceHydrator } from '../src/i18n/language-preference-hydrator';
 import { AppearancePreferenceHydrator } from '../src/theme/appearance-preference-hydrator';
 import { getAuthGateRedirect } from '../src/auth/auth-route-policy';
+import { useTheme } from '../src/theme/useTheme';
 
 SplashScreen.preventAutoHideAsync();
 
-export function AuthGateStack() {
+function AuthBootstrapLoader() {
+  const t = useTheme();
+  return (
+    <View style={{ backgroundColor: t.bg, flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 }}>
+      <ActivityIndicator color={t.brand} />
+      <Text style={{ color: t.ink, fontSize: 13 }}>Starting HealthOS...</Text>
+    </View>
+  );
+}
+
+export function AuthGateStack({ fontsLoaded }: { fontsLoaded: boolean }) {
   const segments = useSegments();
   const { authenticated, booting, user } = useSession();
-  if (booting) return null;
+
+  useEffect(() => {
+    if (fontsLoaded && !booting) {
+      SplashScreen.hideAsync();
+    }
+  }, [booting, fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+  if (booting) return <AuthBootstrapLoader />;
 
   const redirectHref = getAuthGateRedirect({
     authenticated,
@@ -47,10 +67,6 @@ export default function RootLayout() {
     Inter_800ExtraBold,
   });
 
-  useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
-
   if (!fontsLoaded) return null;
 
   return (
@@ -63,7 +79,7 @@ export default function RootLayout() {
               <AppearancePreferenceHydrator />
               <ThemedStatusBar />
               <AppLockProvider>
-                <AuthGateStack />
+                <AuthGateStack fontsLoaded={fontsLoaded} />
                 <OfflineBanner />
               </AppLockProvider>
             </ToastProvider>

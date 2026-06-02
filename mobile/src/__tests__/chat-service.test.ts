@@ -1,5 +1,5 @@
 /* eslint-env jest */
-import { apiRequest, buildQuery } from '../api/client';
+import { apiRequest, buildQuery, createUploadFormData } from '../api/client';
 import { chatService } from '../api/services/chat-service';
 
 jest.mock('../api/client', () => ({
@@ -12,10 +12,12 @@ jest.mock('../api/client', () => ({
     const text = search.toString();
     return text ? `?${text}` : '';
   }),
+  createUploadFormData: jest.fn(() => ({ form: true })),
 }));
 
 const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 const mockBuildQuery = buildQuery as jest.MockedFunction<typeof buildQuery>;
+const mockCreateUploadFormData = createUploadFormData as jest.MockedFunction<typeof createUploadFormData>;
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -199,6 +201,42 @@ describe('chatService.sendAttachmentMessage', () => {
       size: 1234,
       mime_type: 'application/pdf',
     })).rejects.toThrow('Core rejected attachment');
+  });
+});
+
+describe('chatService.uploadImageAttachment', () => {
+  it('uploads a local image through the Core chat image upload endpoint', async () => {
+    mockApiRequest.mockResolvedValueOnce({
+      data: {
+        url: 'http://storage.local/chat/photo.jpg',
+        name: 'photo.jpg',
+        size: 4096,
+        mime_type: 'image/jpeg',
+      },
+    } as never);
+
+    await expect(chatService.uploadImageAttachment({
+      uri: 'file:///photo.jpg',
+      name: 'photo.jpg',
+      type: 'image/jpeg',
+    })).resolves.toEqual({
+      url: 'http://storage.local/chat/photo.jpg',
+      name: 'photo.jpg',
+      size: 4096,
+      mime_type: 'image/jpeg',
+    });
+
+    expect(mockCreateUploadFormData).toHaveBeenCalledWith({}, {
+      fieldName: 'image',
+      uri: 'file:///photo.jpg',
+      name: 'photo.jpg',
+      type: 'image/jpeg',
+    });
+    expect(mockApiRequest).toHaveBeenCalledWith('/v1/conversations/uploads/image', {
+      method: 'POST',
+      body: { form: true },
+      timeoutMs: 60000,
+    });
   });
 });
 

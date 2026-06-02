@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildAnalysisResultFromMeal,
   buildSnapPrefillPayload,
+  getAnalysisCalorieRange,
   getAnalysisTotalCalories,
+  scaleAnalysisResultPortion,
 } from "../camera-analysis-normalizer";
 
 describe("camera analysis normalizer", () => {
@@ -14,9 +16,17 @@ describe("camera analysis normalizer", () => {
         nutrition_result: {
           dish_name: "Chicken rice",
           calories: 512,
+          calorie_min: 460,
+          calorie_max: 590,
           protein_g: 34,
           carbs_g: 62,
           fat_g: 14,
+          portion_options: [
+            { value: "small", label: "Ít", scale: 0.75, calories: 384 },
+            { value: "medium", label: "Vừa", scale: 1, calories: 512 },
+            { value: "large", label: "Nhiều", scale: 1.25, calories: 640 },
+          ],
+          warnings: ["Confirm portion"],
           confidence: 0.91,
           source: "yolo",
         },
@@ -27,6 +37,8 @@ describe("camera analysis normalizer", () => {
     expect(result.name).toBe("Chicken rice");
     expect(result.estimatedCalories).toBe(512);
     expect(getAnalysisTotalCalories(result)).toBe(512);
+    expect(getAnalysisCalorieRange(result)).toBe("460-590");
+    expect(result.nutrition?.warnings).toEqual(["Confirm portion"]);
     expect(result.ingredients).toEqual([
       {
         ingredient_name: "Chicken rice",
@@ -37,6 +49,10 @@ describe("camera analysis normalizer", () => {
         fat_g: 14,
       },
     ]);
+
+    const scaled = scaleAnalysisResultPortion(result, "large");
+    expect(getAnalysisTotalCalories(scaled)).toBe(640);
+    expect(scaled.nutrition?.selected_portion).toBe("large");
   });
 
   it("preserves AI ingredient breakdown when available", () => {
@@ -69,17 +85,22 @@ describe("camera analysis normalizer", () => {
       {
         name: "Photo meal",
         nutrition_result: {
-          dish_name: "Bun bo",
-          calories: 640,
-          protein_g: 30,
-          carbs_g: 84,
-          fat_g: 20,
+        dish_name: "Bun bo",
+        calories: 640,
+        calorie_min: 580,
+        calorie_max: 730,
+        protein_g: 30,
+        carbs_g: 84,
+        fat_g: 20,
           saturates_g: 6,
           sugar_g: 8,
           salt_g: 2.1,
-          confidence: 0.7,
-          source: "yolo",
-        },
+        confidence: 0.7,
+        portion_estimate: "medium",
+        portion_options: [{ value: "medium", label: "Vừa", scale: 1 }],
+        warnings: ["Check serving"],
+        source: "yolo",
+      },
       },
       "data:image/jpeg;base64," + "x".repeat(1024),
     );
@@ -105,9 +126,29 @@ describe("camera analysis normalizer", () => {
     expect(payload.nutrition).toEqual({
       dish_name: "Bun bo",
       serving_type: undefined,
+      calories: 640,
+      calorie_min: 580,
+      calorie_max: 730,
+      protein_g: 30,
+      carbs_g: 84,
+      fat_g: 20,
       saturates_g: 6,
       sugar_g: 8,
       salt_g: 2.1,
+      ingredients: [
+        {
+          ingredient_name: "Bun bo",
+          grams: 100,
+          calories: 640,
+          protein_g: 30,
+          carbs_g: 84,
+          fat_g: 20,
+        },
+      ],
+      portion_estimate: "medium",
+      portion_options: [{ value: "medium", label: "Vừa", scale: 1 }],
+      selected_portion: "medium",
+      warnings: ["Check serving"],
       source: "yolo",
     });
   });

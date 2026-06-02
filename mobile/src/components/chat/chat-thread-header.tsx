@@ -35,6 +35,8 @@ export function ChatThreadHeader({
         icon={<ChevronLeft size={22} color={t.ink} />}
         onPress={onBack}
         accessibilityLabel="Back"
+        variant="subtle"
+        size={44}
       />
       <View style={[styles.avatarWrap, { backgroundColor: t.brandSoft, borderRadius: t.radius.md }]}>
         <AvatarIcon size={20} color={t.brand} />
@@ -68,7 +70,7 @@ export function ChatThreadHeader({
 }
 
 const styles = StyleSheet.create({
-  header:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
+  header:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
   avatarWrap: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   headerInfo: { flex: 1, minWidth: 0 },
   titleRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -1,5 +1,5 @@
 /* eslint-env jest */
-import { reminderService } from '../api/services/reminder-service';
+import { reminderService, resolveReminderActionError } from '../api/services/reminder-service';
 import { apiRequest } from '../api/client';
 
 jest.mock('../api/client', () => ({
@@ -19,6 +19,40 @@ const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 beforeEach(() => jest.clearAllMocks());
 
 describe('reminderService', () => {
+  it('maps 404/no matching occurrence as occurrence-missing', () => {
+    expect(
+      resolveReminderActionError(
+        { status: 404, code: 'NOT_FOUND', message: 'No matching occurrence found.' },
+        'markDone',
+      ),
+    ).toBe('occurrenceMissing');
+    expect(
+      resolveReminderActionError(
+        { status: 404, code: 'NOT_FOUND', message: 'No matching occurrence found.' },
+        'snooze',
+      ),
+    ).toBe('occurrenceMissing');
+  });
+
+  it('maps 422/snooze validation payload issues to invalid payload', () => {
+    expect(
+      resolveReminderActionError(
+        { status: 422, code: 'VALIDATION_ERROR', message: 'Validation failed' },
+        'snooze',
+      ),
+    ).toBe('invalidSnoozePayload');
+    expect(
+      resolveReminderActionError(
+        { message: 'Provide either until or minutes.' },
+        'snooze',
+      ),
+    ).toBe('invalidSnoozePayload');
+  });
+
+  it('maps unknown errors to generic', () => {
+    expect(resolveReminderActionError({ message: 'Boom' }, 'markDone')).toBe('generic');
+  });
+
   it('lists reminders with Core reminder types', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: [] } as never);
 

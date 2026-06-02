@@ -27,6 +27,7 @@
     "expo-camera": "~16.1.11",
     "expo-constants": "~17.1.8",
     "expo-crypto": "~14.1.5",
+    "expo-dev-client": "~5.2.4",
     "expo-document-picker": "~13.1.6",
     "expo-font": "~13.3.2",
     "expo-haptics": "~14.1.4",
@@ -70,6 +71,9 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg)"
     ],

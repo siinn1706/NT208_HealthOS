@@ -64,7 +64,11 @@ function mockQueries({
   reminders?: unknown[];
   occurrences?: unknown[];
 } = {}) {
-  mockUseApiQuery.mockImplementation((key) => {
+  mockUseApiQuery.mockImplementation((key, loadFn) => {
+    if (typeof loadFn === 'function') {
+      void loadFn();
+    }
+
     const text = String(key);
     if (text.startsWith('notifications.')) {
       return { ...baseQueryState, data: 0 } as never;
@@ -97,6 +101,72 @@ describe('RemindersCenterScreen', () => {
       'reminders.list.filterMedication',
       expect.any(Function),
     );
+  });
+
+  it('maps missing occurrence errors for mark-done into a localizable message', async () => {
+    mockQueries({
+      reminders: [{
+        id: 'rem-1',
+        title: 'Morning dose',
+        type: 'medicine',
+        repeat: 'daily',
+        note: 'Take with food',
+        done: false,
+      }],
+      occurrences: [{
+        id: 'occ-1',
+        reminder_id: 'rem-1',
+        title: 'Morning dose',
+        type: 'medicine',
+        scheduled_at: new Date(Date.now() + 60_000).toISOString(),
+        status: 'fired',
+        snoozed_until: null,
+      }],
+    });
+    mockReminderService.markDone.mockRejectedValueOnce({
+      status: 404,
+      code: 'NOT_FOUND',
+      message: 'No matching occurrence',
+    } as never);
+
+    const { getByText, findByText } = render(<RemindersCenterScreen />);
+
+    fireEvent.press(getByText('reminders.done'));
+
+    expect(await findByText('reminders.reminderOccurrenceUnavailable')).toBeTruthy();
+  });
+
+  it('maps invalid snooze payload errors into a localizable message', async () => {
+    mockQueries({
+      reminders: [{
+        id: 'rem-1',
+        title: 'Morning dose',
+        type: 'medicine',
+        repeat: 'daily',
+        note: 'Take with food',
+        done: false,
+      }],
+      occurrences: [{
+        id: 'occ-1',
+        reminder_id: 'rem-1',
+        title: 'Morning dose',
+        type: 'medicine',
+        scheduled_at: new Date(Date.now() + 60_000).toISOString(),
+        status: 'fired',
+        snoozed_until: null,
+      }],
+    });
+    mockReminderService.snooze.mockRejectedValueOnce({
+      status: 422,
+      code: 'VALIDATION_ERROR',
+      message: 'Provide either minutes or until is required',
+    } as never);
+
+    const { getByText, findByText } = render(<RemindersCenterScreen />);
+
+    fireEvent.press(getByText('Snooze'));
+
+    expect(await findByText('reminders.reminderSnoozePayloadInvalid')).toBeTruthy();
   });
 
   it('marks today medicine occurrences done and invalidates medication-derived caches', async () => {
@@ -149,5 +219,25 @@ describe('RemindersCenterScreen', () => {
     expect(getByText('Resolved today')).toBeTruthy();
     expect(getByText('Skipped')).toBeTruthy();
     expect(queryByText('reminders.doneToday')).toBeNull();
+  });
+
+  it('loads reminders occurrences with the device timezone', () => {
+    const timezoneSpy = jest
+      .spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions')
+      .mockReturnValue({ timeZone: 'America/Chicago' } as Intl.ResolvedDateTimeFormatOptions);
+
+    try {
+      render(<RemindersCenterScreen />);
+
+      expect(mockReminderService.occurrences).toHaveBeenCalledWith(
+        expect.objectContaining({
+          today: true,
+          tzid: 'America/Chicago',
+          status: 'pending,fired,snoozed,done,skipped,missed',
+        }),
+      );
+    } finally {
+      timezoneSpy.mockRestore();
+    }
   });
 });

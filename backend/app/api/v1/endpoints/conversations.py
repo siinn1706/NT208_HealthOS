@@ -15,12 +15,14 @@ import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import AsyncSessionLocal, get_db
+from app.adapters.storage import upload_file
+from app.core.config import settings
 from app.core.metrics import record_ws_fanout_failure
 from app.core.security import get_current_user
 from app.models.core import (
@@ -33,6 +35,8 @@ from app.models.core import (
 from app.services.ai_chat_stream import stream_assistant_response
 from app.schemas.chat import (
     AddMembersBody,
+    AttachmentDTO,
+    ChatAttachmentUploadResponse,
     ConversationDTO,
     ConversationListResponse,
     ConversationSettingsBody,
@@ -55,10 +59,19 @@ from app.schemas.chat import (
 )
 from app.schemas.common import ErrorResponse
 from app.services import ai_bot, chat as chat_svc
+from app.services.upload_security import (
+    UploadTooLargeError,
+    detect_image_mime,
+    extension_for_mime,
+    read_upload_bounded,
+    sanitize_response_filename,
+)
 from app.ws.handlers import manager as ws_manager
 
 router = APIRouter(tags=["Chat"])
 _LOGGER = logging.getLogger("healthos.chat.api")
+CHAT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+CHAT_IMAGE_ALLOWED_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,8 +79,21 @@ _LOGGER = logging.getLogger("healthos.chat.api")
 def _http_error(status_code: int, code: str, message: str) -> HTTPException:
     return HTTPException(
         status_code=status_code,
-        detail={"error": {"code": code, "message": message}},
+        detail={"code": code, "message": message},
     )
+
+
+def _chat_image_object_key(user_id: uuid.UUID, mime_type: str) -> str:
+    ext = extension_for_mime(mime_type, fallback="bin")
+    return f"chat-images/{user_id}/{uuid.uuid4()}.{ext}"
+
+
+def _chat_image_display_name(filename: str | None, mime_type: str) -> str:
+    fallback = f"chat-image.{extension_for_mime(mime_type, fallback='jpg')}"
+    safe = sanitize_response_filename(filename, fallback=fallback)
+    if "." not in safe:
+        safe = f"{safe}.{extension_for_mime(mime_type, fallback='jpg')}"
+    return safe
 
 
 def _normalize_chat_locale(value: object) -> str | None:
@@ -177,6 +203,53 @@ async def _notify_conversation_members(
 
 
 # ─── Conversation endpoints ────────────────────────────────────────────────────
+
+@router.post(
+    "/conversations/uploads/image",
+    response_model=ChatAttachmentUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+        415: {"model": ErrorResponse},
+    },
+    summary="Upload a chat image attachment",
+)
+async def upload_chat_image(
+    current_user: Annotated[User, Depends(get_current_user)],
+    image: UploadFile = File(...),
+) -> ChatAttachmentUploadResponse:
+    try:
+        image_bytes = await read_upload_bounded(image, CHAT_IMAGE_MAX_BYTES)
+    except UploadTooLargeError as exc:
+        raise _http_error(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "PAYLOAD_TOO_LARGE", str(exc)) from exc
+    if not image_bytes:
+        raise _http_error(status.HTTP_400_BAD_REQUEST, "EMPTY_FILE", "Uploaded image is empty.")
+
+    mime_type = detect_image_mime(image_bytes[:32])
+    if mime_type not in CHAT_IMAGE_ALLOWED_MIME_TYPES:
+        raise _http_error(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "UNSUPPORTED_MEDIA_TYPE",
+            "Only JPEG, PNG, and WEBP images are accepted.",
+        )
+
+    key = _chat_image_object_key(current_user.id, mime_type)
+    url = upload_file(
+        bucket=settings.storage_bucket_docs,
+        key=key,
+        file_bytes=image_bytes,
+        content_type=mime_type,
+    )
+    attachment = AttachmentDTO(
+        url=url,
+        name=_chat_image_display_name(image.filename, mime_type),
+        size=len(image_bytes),
+        mime_type=mime_type,
+    )
+    return ChatAttachmentUploadResponse(data=attachment)
+
 
 @router.get(
     "/conversations",

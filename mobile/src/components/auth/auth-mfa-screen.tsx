@@ -13,7 +13,6 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
 import { useSession } from '../../auth/session-provider';
-import { getPostAuthRoute } from '../../auth/auth-route-policy';
 
 export function AuthMfaScreen() {
   const t = useTheme();
@@ -36,8 +35,8 @@ export function AuthMfaScreen() {
     setLoading(true);
     setError(null);
     try {
-      const user = await session.completeMfaSignIn(challengeId, code.trim());
-      router.replace(getPostAuthRoute(user.onboarding_status) as never);
+      await session.completeMfaSignIn(challengeId, code.trim());
+      // AuthGate owns post-auth navigation after the session user is refreshed.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to verify MFA code.');
     } finally {

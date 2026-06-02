@@ -27,15 +27,13 @@ export default function MedsScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const loadMeds = useCallback(async () => {
-    const [plansResult, dosesResult] = await Promise.allSettled([
-      medicationService.list('active'),
-      medicationService.today(),
+    const plans = await medicationService.list('active');
+    const [doses, adherenceResults] = await Promise.all([
+      medicationService.today().catch(() => [] as MedicationDose[]),
+      Promise.allSettled(
+        plans.map((p) => medicationService.adherence(p.id, '30d')),
+      ),
     ]);
-    const plans = plansResult.status === 'fulfilled' ? plansResult.value : [];
-    const doses = dosesResult.status === 'fulfilled' ? dosesResult.value : [];
-    const adherenceResults = await Promise.allSettled(
-      plans.map((p) => medicationService.adherence(p.id, '30d')),
-    );
     const adherenceRecord: Record<string, Adherence> = {};
     plans.forEach((p, i) => {
       const r = adherenceResults[i];

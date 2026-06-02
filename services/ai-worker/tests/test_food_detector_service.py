@@ -33,6 +33,7 @@ def test_yolo_timeout_returns_without_waiting_for_hung_inference(monkeypatch: An
 
 
 def test_valid_yolo_class_returns_dataset_nutrition(monkeypatch: Any) -> None:
+    monkeypatch.setattr(service, "detect_with_food_analysis", lambda _image: None)
     monkeypatch.setattr(
         service,
         "_load_class_db",
@@ -62,6 +63,7 @@ def test_valid_yolo_class_returns_dataset_nutrition(monkeypatch: Any) -> None:
 
 
 def test_invalid_yolo_class_id_raises_controlled_error(monkeypatch: Any) -> None:
+    monkeypatch.setattr(service, "detect_with_food_analysis", lambda _image: None)
     monkeypatch.setattr(service, "_load_class_db", lambda _path: [{"name": "Pho bo", "nutrition": {}}])
     monkeypatch.setattr(service, "_best_yolo_prediction", lambda _image: (99, 0.9))
 

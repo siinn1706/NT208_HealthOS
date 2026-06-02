@@ -7,9 +7,10 @@ import { mealService } from '../api/services';
 
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
+let mockParams: { id?: string; imageUri?: string } = { id: 'meal-1' };
 
 jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({ id: 'meal-1' }),
+  useLocalSearchParams: () => mockParams,
   useRouter: () => ({
     back: mockBack,
     replace: mockReplace,
@@ -107,6 +108,7 @@ function mockQueries() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = { id: 'meal-1' };
   mockQueries();
   mockDeleteMeal.mockResolvedValue(undefined);
 });
@@ -144,5 +146,14 @@ describe('MealDetailScreen delete', () => {
     fireEvent.press(deleteAction);
 
     expect(mockDeleteMeal).toHaveBeenCalledTimes(1);
+  });
+
+  it('prefers the captured scan image passed from the results route', () => {
+    (mealQuery.data as { image_url: string | null }).image_url = 'https://cdn.example.com/meal-1.jpg';
+    mockParams = { id: 'meal-1', imageUri: 'file:///captured-meal.jpg' };
+
+    const { getByTestId } = render(<MealDetailScreen />);
+
+    expect(getByTestId('meal-detail-hero-image').props.source).toEqual({ uri: 'file:///captured-meal.jpg' });
   });
 });

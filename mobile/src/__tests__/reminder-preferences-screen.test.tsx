@@ -2,6 +2,7 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
+import { Linking, PermissionsAndroid, Platform } from 'react-native';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   ReminderPreferencesScreen,
@@ -50,6 +51,15 @@ jest.mock('react-i18next', () => ({
         'common.retry': 'Retry',
         'common.save': 'Save',
         'reminders.notifications': 'Notifications',
+        'reminders.notificationsCorePreferenceHint': 'Core preference controls in-app reminder behavior.',
+        'reminders.notificationsPermissionStateLabel': 'System permission',
+        'reminders.notificationsPermissionChecking': 'Checking system permission...',
+        'reminders.notificationsPermissionState': 'System permission',
+        'reminders.notificationsPermissionGranted': 'granted',
+        'reminders.notificationsPermissionDenied': 'denied',
+        'reminders.notificationsPermissionUndetermined': 'not requested yet',
+        'reminders.notificationsPermissionRequest': 'Enable permission',
+        'reminders.notificationsPermissionOpenSettings': 'Open settings',
         'reminders.preferences': 'Preferences',
         'reminders.quietHours': 'Quiet hours',
         'reminders.saving': 'Saving...',
@@ -68,6 +78,11 @@ const mockUseApiQuery = useApiQuery as jest.MockedFunction<typeof useApiQuery>;
 const mockInvalidateApiQuery = invalidateApiQuery as jest.MockedFunction<typeof invalidateApiQuery>;
 const mockNotificationService = notificationService as jest.Mocked<typeof notificationService>;
 const mockRouterBack = router.back as jest.MockedFunction<typeof router.back>;
+const originalPlatformOS = Platform.OS;
+const originalPlatformVersion = Platform.Version;
+const mockOpenSettings = jest.spyOn(Linking, 'openSettings');
+const mockCheckPermission = jest.spyOn(PermissionsAndroid, 'check');
+const mockRequestPermission = jest.spyOn(PermissionsAndroid, 'request');
 
 const reloadPreferences = jest.fn();
 
@@ -102,22 +117,69 @@ function renderPreferences(data = preferences()) {
   return render(<ReminderPreferencesScreen />);
 }
 
+function setAndroidPlatform(version = 33) {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
+  Object.defineProperty(Platform, 'Version', { configurable: true, value: version });
+}
+
 describe('ReminderPreferencesScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     reloadPreferences.mockResolvedValue(undefined);
     mockNotificationService.updatePreferences.mockResolvedValue(DEFAULT_NOTIFICATION_PREFERENCES);
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatformOS });
+    Object.defineProperty(Platform, 'Version', { configurable: true, value: originalPlatformVersion });
+    mockCheckPermission.mockReset().mockResolvedValue(false);
+    mockRequestPermission.mockReset().mockResolvedValue(PermissionsAndroid.RESULTS.DENIED);
+    mockOpenSettings.mockReset().mockResolvedValue(undefined);
   });
 
-  it('renders only Core-backed preference controls', () => {
+  it('renders core preference controls and removes old static OS-permission text', () => {
     const { getByText, queryByText, queryByLabelText } = renderPreferences();
 
     expect(getByText('Critical alert bypass')).toBeTruthy();
-    expect(getByText('Core preference · OS permission not managed in this build')).toBeTruthy();
-    expect(queryByText('System permission · granted')).toBeNull();
+    expect(getByText('Core preference controls in-app reminder behavior.')).toBeTruthy();
+    expect(queryByText('Core preference · OS permission not managed in this build')).toBeNull();
+    expect(queryByText('System permission')).toBeNull();
     expect(queryByText('Care team messages')).toBeNull();
     expect(queryByLabelText('Mon')).toBeNull();
     expect(queryByLabelText('Tue')).toBeNull();
+  });
+
+  it('shows OS notification permission state on supported Android and requests it', async () => {
+    setAndroidPlatform(34);
+    let permissionGranted = false;
+    mockCheckPermission.mockImplementation(async () => permissionGranted);
+    mockRequestPermission.mockImplementation(async () => {
+      permissionGranted = true;
+      return PermissionsAndroid.RESULTS.GRANTED;
+    });
+
+    const { getByText } = renderPreferences();
+
+    expect(getByText('System permission')).toBeTruthy();
+    await waitFor(() => expect(getByText('System permission: not requested yet')).toBeTruthy());
+    expect(getByText('Enable permission')).toBeTruthy();
+
+    fireEvent.press(getByText('Enable permission'));
+
+    await waitFor(() => expect(mockRequestPermission).toHaveBeenCalledWith(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS));
+    await waitFor(() => expect(getByText('System permission: granted')).toBeTruthy());
+    expect(mockOpenSettings).not.toHaveBeenCalled();
+  });
+
+  it('opens system notification settings when permission is already granted', async () => {
+    setAndroidPlatform(34);
+    mockCheckPermission.mockResolvedValueOnce(true);
+
+    const { getByText } = renderPreferences();
+
+    await waitFor(() => expect(getByText('System permission: granted')).toBeTruthy());
+    await waitFor(() => expect(getByText('Open settings')).toBeTruthy());
+
+    fireEvent.press(getByText('Open settings'));
+
+    await waitFor(() => expect(mockOpenSettings).toHaveBeenCalled());
   });
 
   it('saves critical bypass through the notification preferences contract', async () => {

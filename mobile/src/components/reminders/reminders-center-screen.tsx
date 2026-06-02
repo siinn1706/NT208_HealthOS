@@ -15,6 +15,7 @@ import { IconBell, IconPlus } from '../../icons';
 import { ReminderRow, type ReminderRowData } from './reminder-row';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { notificationService, reminderService } from '../../api/services';
+import { resolveReminderActionError } from '../../api/services/reminder-service';
 import { queryKeys } from '../../api/queryKeys';
 import type { Reminder, ReminderOccurrence } from '../../../../shared/api-contracts';
 
@@ -66,6 +67,18 @@ function isActionableStatus(status: string) {
   return status === 'pending' || status === 'fired';
 }
 
+function actionErrorMessage(error: unknown, action: 'markDone' | 'snooze', i18n: (key: string) => string) {
+  const kind = resolveReminderActionError(error, action);
+  if (kind === 'occurrenceMissing') return i18n('reminders.reminderOccurrenceUnavailable');
+  if (kind === 'invalidSnoozePayload') return i18n('reminders.reminderSnoozePayloadInvalid');
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return i18n('reminders.reminderActionFailedMessage');
+}
+
+function actionUnavailableText(i18n: (key: string) => string) {
+  return i18n('reminders.reminderOccurrenceUnavailable');
+}
+
 function statusColor(t: ReturnType<typeof useTheme>, status: string) {
   if (status === 'done') return t.success;
   if (status === 'skipped' || status === 'missed') return t.warning;
@@ -73,6 +86,11 @@ function statusColor(t: ReturnType<typeof useTheme>, status: string) {
   if (status === 'fired') return t.danger;
   if (status === 'snoozed') return t.brand;
   return t.brand;
+}
+
+function getDeviceTimeZone(): string | undefined {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return zone && zone.trim() ? zone : undefined;
 }
 
 // 8-segment status rail — maps rows to colored segments
@@ -133,7 +151,7 @@ export function RemindersCenterScreen() {
   }, [activeFilter]);
   const loadOccurrences = useCallback(() => reminderService.occurrences({
     today: true,
-    tzid: 'Asia/Ho_Chi_Minh',
+    tzid: getDeviceTimeZone(),
     status: 'pending,fired,snoozed,done,skipped,missed',
   }), []);
   const loadUnread = useCallback(() => notificationService.unreadCount(), []);
@@ -187,7 +205,7 @@ export function RemindersCenterScreen() {
   async function markDone(row: ReminderCenterRow) {
     setActionError(null);
     if (!isActionableStatus(row.status)) {
-      setActionError('No pending occurrence is available for this reminder.');
+      setActionError(actionUnavailableText(i18n));
       return;
     }
     try {
@@ -196,14 +214,14 @@ export function RemindersCenterScreen() {
       if (row.reminderType === 'medicine') invalidateApiQuery('medications.');
       await Promise.all([reminders.reload(), occurrences.reload()]);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Could not mark reminder done.');
+      setActionError(actionErrorMessage(error, 'markDone', i18n));
     }
   }
 
   async function snooze(row: ReminderCenterRow) {
     setActionError(null);
     if (!isActionableStatus(row.status)) {
-      setActionError('No pending occurrence is available for this reminder.');
+      setActionError(actionUnavailableText(i18n));
       return;
     }
     try {
@@ -212,7 +230,7 @@ export function RemindersCenterScreen() {
       if (row.reminderType === 'medicine') invalidateApiQuery('medications.');
       await Promise.all([reminders.reload(), occurrences.reload()]);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Could not snooze reminder.');
+      setActionError(actionErrorMessage(error, 'snooze', i18n));
     }
   }
 
@@ -278,7 +296,7 @@ export function RemindersCenterScreen() {
       {reminders.error && <ApiState title={i18n('api.unavailable')} message={reminders.error.message} actionLabel={i18n('common.retry')} onAction={reminders.reload} />}
       {occurrences.isLoading && <ApiState title={i18n('api.loading')} loading />}
       {occurrences.error && <ApiState title={i18n('api.unavailable')} message={occurrences.error.message} actionLabel={i18n('common.retry')} onAction={occurrences.reload} />}
-      {actionError && <ApiState title="Reminder action failed" message={actionError} />}
+      {actionError && <ApiState title={i18n('reminders.actionFailed')} message={actionError} />}
       {!reminders.isLoading && !reminders.error && !occurrences.isLoading && !occurrences.error && rows.length === 0 && (
         <ApiState title={i18n('reminders.noReminders')} message={i18n('reminders.noRemindersMessage')} />
       )}

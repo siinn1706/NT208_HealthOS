@@ -105,10 +105,10 @@ export const mealService = {
     return response.data;
   },
 
-  async update(id: string, body: { name?: string; logged_at?: string }) {
+  async update(id: string, body: { name?: string; logged_at?: string; nutrition_result?: MealNutritionResult | null }) {
     const response = await apiRequest<DataResponse<Meal>>(`/v1/meals/${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      json: body,
+      json: compactBody(body),
     });
     return response.data;
   },

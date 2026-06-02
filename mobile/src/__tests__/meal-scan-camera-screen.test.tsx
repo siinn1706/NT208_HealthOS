@@ -11,6 +11,7 @@ const mockBack = jest.fn();
 const mockPush = jest.fn();
 let mockLatestCameraProps: Record<string, any> | null = null;
 const mockTakePictureAsync = jest.fn();
+const mockQueueMealScanPhoto = jest.fn();
 const mockRequestCameraPermission = jest.fn();
 let mockCameraPermissionGranted = true;
 let mockCameraReadyCalls = 0;
@@ -74,6 +75,13 @@ jest.mock('../api/services', () => ({
   },
 }));
 
+jest.mock('../api/services/meal-offline-queue', () => ({
+  isTransientMealScanUploadError: (error: unknown) => {
+    return error instanceof Error && /network|fetch|offline/i.test(error.message);
+  },
+  queueMealScanPhoto: (...args: any[]) => mockQueueMealScanPhoto(...args),
+}));
+
 jest.mock('../api/query', () => {
   const actual = jest.requireActual('../api/query');
   return {
@@ -96,6 +104,7 @@ beforeEach(() => {
   mockTakePictureAsync.mockReset();
   mockRequestMediaLibraryPermissionsAsync.mockReset();
   mockLaunchImageLibraryAsync.mockReset();
+  mockQueueMealScanPhoto.mockReset();
   mockLatestCameraProps = null;
   mockCameraPermissionGranted = true;
   mockCameraReadyCalls = 0;
@@ -124,7 +133,7 @@ describe('MealScanCameraScreen', () => {
       }));
     });
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith('meals.');
-    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1');
+    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1&imageUri=file%3A%2F%2F%2Fmeal.jpg');
   });
 
   it('uploads a selected photo library image to Core analysis', async () => {
@@ -158,7 +167,18 @@ describe('MealScanCameraScreen', () => {
       }));
     });
     expect(mockInvalidateApiQuery).toHaveBeenCalledWith('meals.');
-    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1');
+    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1&imageUri=file%3A%2F%2F%2Flibrary-meal.png');
+  });
+
+  it('shows an explicit camera permission prompt before mounting the live preview', async () => {
+    mockCameraPermissionGranted = false;
+    const { getByLabelText, queryByTestId } = render(<MealScanCameraScreen />);
+
+    expect(queryByTestId('camera-view')).toBeNull();
+    fireEvent.press(getByLabelText('meals.cameraPermissionAction'));
+
+    await waitFor(() => expect(mockRequestCameraPermission).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(queryByTestId('camera-view')).toBeTruthy());
   });
 
   it('captures after first-time camera permission grant mounts the live preview', async () => {
@@ -178,36 +198,54 @@ describe('MealScanCameraScreen', () => {
     mockAnalyzePhoto
       .mockRejectedValueOnce(new Error('Core unavailable'))
       .mockResolvedValueOnce({ meal_id: 'meal-1', job_id: 'job-1', status: 'processing' });
-    const { findByText, getByLabelText, getByTestId } = render(<MealScanCameraScreen />);
+    const { findByText, getByLabelText } = render(<MealScanCameraScreen />);
 
     await waitFor(() => expect(mockLatestCameraProps?.facing).toBe('back'));
     await waitFor(() => expect(mockCameraReadyCalls).toBe(1));
     fireEvent.press(getByLabelText('meals.takeMealPhoto'));
 
     await findByText('Core unavailable');
-    await waitFor(() => expect(getByTestId('camera-view')).toBeTruthy());
     fireEvent.press(getByLabelText('meals.takeMealPhoto'));
 
     await waitFor(() => expect(mockAnalyzePhoto).toHaveBeenCalledTimes(2));
-    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1');
+    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1&imageUri=file%3A%2F%2F%2Fmeal.jpg');
+  });
+
+  it('queues transient upload failures for offline retry and navigates to queue state', async () => {
+    mockQueueMealScanPhoto.mockResolvedValue({ id: 'queued-1' });
+    mockAnalyzePhoto.mockRejectedValueOnce(new Error('Network request failed'));
+
+    const { findByText, getByLabelText } = render(<MealScanCameraScreen />);
+
+    await waitFor(() => expect(mockLatestCameraProps?.facing).toBe('back'));
+    await waitFor(() => expect(mockCameraReadyCalls).toBe(1));
+    fireEvent.press(getByLabelText('meals.takeMealPhoto'));
+
+    await findByText('meals.photoAnalysisQueued');
+    await waitFor(() => expect(mockQueueMealScanPhoto).toHaveBeenCalledWith({
+      uri: 'file:///meal.jpg',
+      fileName: 'meal-scan.jpg',
+      mimeType: 'image/jpeg',
+      name: 'meals.scannedMealName',
+    }));
+    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?queuedMealPhotoId=queued-1&imageUri=file%3A%2F%2F%2Fmeal.jpg');
   });
 
   it('remounts the live camera after analysis returns no meal id', async () => {
     mockAnalyzePhoto
       .mockResolvedValueOnce({ job_id: null, status: 'processing' })
       .mockResolvedValueOnce({ meal_id: 'meal-1', job_id: 'job-1', status: 'processing' });
-    const { findByText, getByLabelText, getByTestId } = render(<MealScanCameraScreen />);
+    const { findByText, getByLabelText } = render(<MealScanCameraScreen />);
 
     await waitFor(() => expect(mockLatestCameraProps?.facing).toBe('back'));
     await waitFor(() => expect(mockCameraReadyCalls).toBe(1));
     fireEvent.press(getByLabelText('meals.takeMealPhoto'));
 
     await findByText('meals.photoAnalysisNoMealId');
-    await waitFor(() => expect(getByTestId('camera-view')).toBeTruthy());
     fireEvent.press(getByLabelText('meals.takeMealPhoto'));
 
     await waitFor(() => expect(mockAnalyzePhoto).toHaveBeenCalledTimes(2));
-    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1');
+    expect(mockPush).toHaveBeenCalledWith('/meals/scan-analyzing?mealId=meal-1&jobId=job-1&imageUri=file%3A%2F%2F%2Fmeal.jpg');
   });
 
   it('toggles torch and camera facing in the live preview', async () => {

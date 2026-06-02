@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, type CameraType } from 'expo-camera';
 import { typography } from '../../theme/typography';
 
@@ -23,12 +23,29 @@ function CornerBracket({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
   );
 }
 
-function PlatePlaceholder() {
+function CameraPermissionPrompt({
+  title,
+  body,
+  actionLabel,
+  onRequestPermission,
+}: {
+  title: string;
+  body: string;
+  actionLabel: string;
+  onRequestPermission: () => void;
+}) {
   return (
-    <View style={styles.plate}>
-      <View style={[styles.blob, { backgroundColor: '#8B4513', width: 100, height: 70, top: 55, left: 40 }]} />
-      <View style={[styles.blob, { backgroundColor: '#D4C5A0', width: 90, height: 40, top: 90, left: 35 }]} />
-      <View style={[styles.blob, { backgroundColor: '#4A7C59', width: 60, height: 50, top: 70, right: 30 }]} />
+    <View style={styles.permissionPanel}>
+      <Text style={[typography.bodyMed, styles.permissionTitle]}>{title}</Text>
+      <Text style={[typography.caption, styles.permissionBody]}>{body}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={actionLabel}
+        onPress={onRequestPermission}
+        style={({ pressed }) => [styles.permissionButton, pressed && styles.pressed]}
+      >
+        <Text style={[typography.button, styles.permissionButtonText]}>{actionLabel}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -36,6 +53,9 @@ function PlatePlaceholder() {
 interface MealScanCameraViewfinderProps {
   cameraFacing: CameraType;
   cameraRef: React.RefObject<CameraView | null>;
+  cameraPermissionActionLabel: string;
+  cameraPermissionBody: string;
+  cameraPermissionTitle: string;
   centerPlateLabel: string;
   hasCameraPermission: boolean;
   loadingLabel: string;
@@ -44,11 +64,15 @@ interface MealScanCameraViewfinderProps {
   uploading: boolean;
   onCameraReady: () => void;
   onMountError: (message: string) => void;
+  onRequestCameraPermission: () => void;
 }
 
 export function MealScanCameraViewfinder({
   cameraFacing,
   cameraRef,
+  cameraPermissionActionLabel,
+  cameraPermissionBody,
+  cameraPermissionTitle,
   centerPlateLabel,
   hasCameraPermission,
   loadingLabel,
@@ -57,6 +81,7 @@ export function MealScanCameraViewfinder({
   uploading,
   onCameraReady,
   onMountError,
+  onRequestCameraPermission,
 }: MealScanCameraViewfinderProps) {
   return (
     <View style={styles.viewfinder}>
@@ -80,7 +105,12 @@ export function MealScanCameraViewfinder({
             onMountError={(event) => onMountError(event.message)}
           />
         ) : (
-          <PlatePlaceholder />
+          <CameraPermissionPrompt
+            title={cameraPermissionTitle}
+            body={cameraPermissionBody}
+            actionLabel={cameraPermissionActionLabel}
+            onRequestPermission={onRequestCameraPermission}
+          />
         )}
         {uploading && (
           <View style={styles.uploadOverlay}>
@@ -90,7 +120,7 @@ export function MealScanCameraViewfinder({
         )}
       </View>
 
-      <View style={styles.bracketFrame}>
+      <View pointerEvents="none" style={styles.bracketFrame}>
         <CornerBracket pos="tl" />
         <CornerBracket pos="tr" />
         <CornerBracket pos="bl" />
@@ -104,11 +134,15 @@ const styles = StyleSheet.create({
   viewfinder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   hintChip: { position: 'absolute', top: 24, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   plateBg: { width: 260, height: 260, borderRadius: 130, backgroundColor: '#2C1A0E', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  plate: { width: 260, height: 260, borderRadius: 130, backgroundColor: '#F0E6D0', overflow: 'hidden' },
   cameraPreview: { width: 260, height: 260 },
   previewImage: { width: 260, height: 260, borderRadius: 130 },
-  blob: { position: 'absolute', borderRadius: 40 },
   uploadOverlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', borderRadius: 130 },
   bracketFrame: { position: 'absolute', width: 220, height: 220 },
   bracket: { position: 'absolute', width: 28, height: 28 },
+  permissionPanel: { width: 220, minHeight: 220, alignItems: 'center', justifyContent: 'center', padding: 22 },
+  permissionTitle: { color: WHITE, textAlign: 'center', marginBottom: 8 },
+  permissionBody: { color: 'rgba(255,255,255,0.72)', textAlign: 'center', marginBottom: 16 },
+  permissionButton: { minHeight: 44, borderRadius: 22, backgroundColor: WHITE, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+  permissionButtonText: { color: '#0B0F14' },
+  pressed: { opacity: 0.72 },
 });

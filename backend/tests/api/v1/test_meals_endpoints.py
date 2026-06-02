@@ -17,6 +17,7 @@ from app.api.v1.endpoints import meals as meals_endpoint
 from app.core.security import get_current_user
 from app.main import app
 from app.models.core import Meal, MealStatusEnum, User
+from app.services import meals as meal_service
 from app.tasks.meal_analysis import _build_ai_worker_payload, _validate_nutrition
 
 
@@ -225,6 +226,61 @@ async def test_manual_payload_persists_nutrition_and_ingredients(
 
 
 @pytest.mark.asyncio
+async def test_patch_persists_confirmed_portion_nutrition(
+    authed_client: AsyncClient,
+):
+    create_res = await authed_client.post("/v1/meals", json=_manual_meal_payload())
+    assert create_res.status_code == 201
+    meal_id = create_res.json()["data"]["id"]
+
+    patch_res = await authed_client.patch(
+        f"/v1/meals/{meal_id}",
+        json={
+            "nutrition_result": {
+                "dish_name": "Brown rice chicken bowl",
+                "serving_type": "lunch",
+                "source": "ai",
+                "calories": 702,
+                "calorie_min": 636,
+                "calorie_max": 814,
+                "protein_g": 41,
+                "carbs_g": 74,
+                "fat_g": 18,
+                "portion_estimate": "large",
+                "portion_options": [
+                    {"value": "small", "label": "Ít", "scale": 0.75},
+                    {"value": "medium", "label": "Vừa", "scale": 1},
+                    {"value": "large", "label": "Nhiều", "scale": 1.25, "calories": 702},
+                ],
+                "warnings": ["Confirm portion"],
+            }
+        },
+    )
+
+    assert patch_res.status_code == 200
+    row = await _load_meal(uuid.UUID(meal_id))
+    assert row is not None
+    assert row.nutrition_result == {
+        "dish_name": "Brown rice chicken bowl",
+        "serving_type": "lunch",
+        "source": "ai",
+        "calories": 702.0,
+        "calorie_min": 636.0,
+        "calorie_max": 814.0,
+        "protein_g": 41.0,
+        "carbs_g": 74.0,
+        "fat_g": 18.0,
+        "portion_estimate": "large",
+        "portion_options": [
+            {"value": "small", "label": "Ít", "scale": 0.75},
+            {"value": "medium", "label": "Vừa", "scale": 1.0},
+            {"value": "large", "label": "Nhiều", "scale": 1.25, "calories": 702.0},
+        ],
+        "warnings": ["Confirm portion"],
+    }
+
+
+@pytest.mark.asyncio
 async def test_calories_summary_static_route_returns_daily_totals(
     authed_client: AsyncClient,
 ):
@@ -303,7 +359,7 @@ async def test_photo_create_still_persists_job_id(
     png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
     res = await authed_client.post(
         "/v1/meals",
-        data={"name": "Photo meal"},
+        data={"name": "Photo meal", "notes": "Photo note"},
         files={"image": ("meal.png", png_bytes, "image/png")},
     )
 
@@ -315,6 +371,34 @@ async def test_photo_create_still_persists_job_id(
     assert row.image_url == "meals/test-photo.png"
     assert row.job_id == "job-photo-1"
     assert row.status == MealStatusEnum.PROCESSING
+    assert row.nutrition_result is not None
+    assert row.nutrition_result["notes"] == "Photo note"
+
+
+@pytest.mark.asyncio
+async def test_update_meal_result_preserves_existing_notes_when_ai_payload_drops_them(
+    meal_api_state,
+):
+    async with AsyncSessionLocal() as db:
+        meal = await meal_service.create_meal(
+            db=db,
+            user_id=meal_api_state.user.id,
+            name="Seeded photo meal",
+            logged_at=None,
+            nutrition_result={"dish_name": "Seeded photo meal", "notes": "Keep this note", "source": "manual"},
+        )
+        await db.commit()
+        updated = await meal_service.update_meal_result(
+            db=db,
+            meal_id=meal.id,
+            nutrition_result={"dish_name": "Analyzed meal", "calories": 900},
+        )
+        await db.commit()
+
+    assert updated is not None
+    assert updated.nutrition_result is not None
+    assert updated.nutrition_result["dish_name"] == "Analyzed meal"
+    assert updated.nutrition_result["notes"] == "Keep this note"
 
 
 @pytest.mark.asyncio
@@ -411,6 +495,23 @@ def test_ai_nutrition_validation_preserves_valid_ingredients():
         {
             "dish_name": "Chicken bowl",
             "calories": 512,
+            "calorie_min": 460,
+            "calorie_max": 590,
+            "portion_estimate": "medium",
+            "portion_options": [
+                {
+                    "value": "small",
+                    "label": "Ít",
+                    "scale": 0.75,
+                    "calories": 384,
+                    "calorie_min": 345,
+                    "calorie_max": 442.5,
+                    "protein_g": 28,
+                    "unexpected": "drop",
+                },
+                {"value": "", "scale": "large"},
+            ],
+            "warnings": ["CalorieCLIP unavailable", "", {"bad": True}],
             "ingredients": [
                 {
                     "name": "Chicken breast",
@@ -430,6 +531,21 @@ def test_ai_nutrition_validation_preserves_valid_ingredients():
 
     assert nutrition["dish_name"] == "Chicken bowl"
     assert nutrition["calories"] == 512.0
+    assert nutrition["calorie_min"] == 460.0
+    assert nutrition["calorie_max"] == 590.0
+    assert nutrition["portion_estimate"] == "medium"
+    assert nutrition["warnings"] == ["CalorieCLIP unavailable"]
+    assert nutrition["portion_options"] == [
+        {
+            "value": "small",
+            "label": "Ít",
+            "scale": 0.75,
+            "calories": 384.0,
+            "calorie_min": 345.0,
+            "calorie_max": 442.5,
+            "protein_g": 28.0,
+        }
+    ]
     assert nutrition["ingredients"] == [
         {
             "name": "Chicken breast",

@@ -11,6 +11,20 @@ export type {
   UserProfileUpdate,
 } from '../../../shared/api-contracts';
 
+export interface OnboardingDraftPayload {
+  data: Record<string, unknown>;
+}
+
+export interface OnboardingDraftData {
+  data: Record<string, unknown>;
+  updated_at: string;
+  expires_at: string;
+}
+
+export interface OnboardingDraftResponse {
+  data: OnboardingDraftData;
+}
+
 export interface ErrorDetail {
   code: string;
   message: string;

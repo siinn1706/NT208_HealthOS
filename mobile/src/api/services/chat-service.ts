@@ -1,4 +1,4 @@
-import { apiRequest, buildQuery } from '../client';
+import { apiRequest, buildQuery, createUploadFormData } from '../client';
 import type {
   ChatUserLookupResult,
   Conversation,
@@ -20,6 +20,12 @@ export interface ChatAttachmentInput {
   name: string;
   size: number;
   mime_type: string;
+}
+
+export interface ChatImageUploadInput {
+  uri: string;
+  name: string;
+  type: string;
 }
 
 interface SendMessageOptions {
@@ -168,6 +174,20 @@ export const chatService = {
       attachments: [attachment],
       contentType: contentTypeForAttachment(attachment),
     });
+  },
+
+  async uploadImageAttachment(image: ChatImageUploadInput) {
+    const response = await apiRequest<DataResponse<ChatAttachmentInput>>('/v1/conversations/uploads/image', {
+      method: 'POST',
+      body: createUploadFormData({}, {
+        fieldName: 'image',
+        uri: image.uri,
+        name: image.name,
+        type: image.type,
+      }),
+      timeoutMs: 60000,
+    });
+    return response.data;
   },
 
   async markRead(conversationId: string, lastReadMessageId: string) {

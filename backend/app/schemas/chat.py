@@ -41,6 +41,10 @@ class AttachmentDTO(BaseModel):
     mime_type: str = Field(..., max_length=128)
 
 
+class ChatAttachmentUploadResponse(BaseModel):
+    data: AttachmentDTO
+
+
 class ReactionDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

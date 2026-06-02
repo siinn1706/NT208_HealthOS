@@ -58,7 +58,7 @@ beforeEach(() => {
 });
 
 describe('AuthOtpScreen', () => {
-  it('routes signup verification to authenticated onboarding setup', async () => {
+  it('lets AuthGate route signup verification after session refresh', async () => {
     const { getByText, UNSAFE_getAllByType } = render(<AuthOtpScreen />);
     const inputs = UNSAFE_getAllByType('TextInput' as never);
 
@@ -75,7 +75,7 @@ describe('AuthOtpScreen', () => {
         code: '123456',
       });
       expect(mockRefreshUser).toHaveBeenCalledWith({ throwOnFailure: true });
-      expect(mockRouterReplace).toHaveBeenCalledWith('/onboarding/setup');
+      expect(mockRouterReplace).not.toHaveBeenCalled();
     });
   });
 

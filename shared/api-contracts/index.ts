@@ -402,6 +402,13 @@ export type ConversationType = 'direct' | 'group' | 'ai';
 export type MessageContentType = 'text' | 'image' | 'file' | 'audio' | 'system';
 export type MessageSenderKind = 'user' | 'ai' | 'system';
 
+export interface MessageAttachment {
+  url: string;
+  name: string;
+  size: number;
+  mime_type: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -412,7 +419,7 @@ export interface Message {
   client_message_id: string | null;
   content: string;
   content_type: MessageContentType;
-  attachments: Array<Record<string, unknown>> | null;
+  attachments: MessageAttachment[] | null;
   reply_to_id: string | null;
   is_recalled: boolean;
   reactions: Array<Record<string, unknown>>;
@@ -538,8 +545,14 @@ export interface MealNutritionResult {
   saturates_g: number | null;
   sugar_g: number | null;
   salt_g: number | null;
+  calorie_min?: number | null;
+  calorie_max?: number | null;
   confidence: number | null;
   source: string | null;
+  ingredients?: Array<Record<string, unknown>> | null;
+  portion_estimate?: string | null;
+  portion_options?: Array<Record<string, unknown>> | null;
+  warnings?: string[] | null;
 }
 
 export interface Meal {

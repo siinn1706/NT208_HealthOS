@@ -17,13 +17,33 @@ import { ChatBackground } from "./ChatBackground";
 import { ConnectionStatusBanner } from "./ConnectionStatusBanner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOutboundQueue, type OutboundItem } from "@/hooks/useOutboundQueue";
-import type { Conversation, Message } from "@/types/api";
+import type { Conversation, Message, MessageAttachment } from "@/types/api";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
 import { track } from "@/lib/analytics";
 
 const EMPTY_CONVERSATIONS: Conversation[] = [];
 const CONVERSATION_UPDATE_EVENTS = new Set(["conversation.updated", "chat.conversation.updated"]);
+
+async function uploadChatImage(file: File): Promise<MessageAttachment> {
+  const form = new FormData();
+  form.append("image", file);
+  const response = await fetch("/api/v1/conversations/uploads/image", {
+    method: "POST",
+    body: form,
+    credentials: "include",
+  });
+  const payload = await response.json().catch(() => null) as
+    | { data?: MessageAttachment; error?: { message?: string } }
+    | null;
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? response.statusText ?? "Image upload failed.");
+  }
+  if (!payload?.data?.url) {
+    throw new Error("Image upload failed.");
+  }
+  return payload.data;
+}
 
 function createOptimisticMessageId(): string {
   return `optimistic-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
@@ -411,6 +431,40 @@ export function ChatWindow({
     ]
   );
 
+  const handleSendImage = useCallback(
+    async (file: File, caption: string) => {
+      if (!currentUserId) {
+        throw new Error(t("loadingSession"));
+      }
+      if (!isOnline) {
+        throw new Error(t("imageUploadOffline"));
+      }
+      if (conversation.type === "ai") {
+        throw new Error(t("imageUploadAiUnavailable"));
+      }
+
+      const attachment = await uploadChatImage(file);
+      const result = await sendMessage(
+        convId,
+        caption || attachment.name,
+        replyTo?.id,
+        onMessageSent,
+        undefined,
+        {
+          contentType: "image",
+          attachments: [attachment],
+        },
+      );
+      if (result.status === "failed") {
+        throw new Error(t("imageUploadFailed"));
+      }
+      track("chat.message.sent", { conversation_id: convId, attachment_type: "image" });
+      setReplyTo(null);
+      messageListRef.current?.scrollToBottom();
+    },
+    [conversation.type, convId, currentUserId, isOnline, onMessageSent, replyTo?.id, sendMessage, t],
+  );
+
   const handleRetry = useCallback((msgId: string) => {
     // Manual retry always wins over the automatic queue drain — drop the
     // queue entry so we don't try to send the same payload twice and
@@ -685,6 +739,7 @@ export function ChatWindow({
           currentUserId={currentUserId}
           editingMessage={editingMessage}
           onSend={handleSend}
+          onSendImage={handleSendImage}
           onCancelReply={handleCancelReply}
           onCancelEdit={handleCancelEdit}
           onKeyPress={onKeyPress}

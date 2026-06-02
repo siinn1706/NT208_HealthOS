@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { typography } from '../../theme/typography';
 import { useTheme } from '../../theme/useTheme';
 import { toBubble } from '../../api/viewModels';
@@ -15,6 +16,7 @@ interface ChatMessageListProps {
   error: Error | null;
   sending: boolean;
   sendError: string | null;
+  sendState?: 'error' | 'queued' | 'retrying' | null;
   hasMore: boolean;
   loadingOlder: boolean;
   olderError: string | null;
@@ -30,6 +32,7 @@ export function ChatMessageList({
   error,
   sending,
   sendError,
+  sendState,
   hasMore,
   loadingOlder,
   olderError,
@@ -38,7 +41,14 @@ export function ChatMessageList({
   onLoadOlder,
 }: ChatMessageListProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const reversed = useMemo(() => [...messages].reverse(), [messages]);
+  const sendNoticeTitle = sendState === 'queued'
+    ? i18n('chat.deliveryQueuedTitle')
+    : sendState === 'retrying'
+      ? i18n('chat.deliveryRetryingTitle')
+      : i18n('chat.deliveryFailedTitle');
+  const sendNoticeActionLabel = sendState === 'retrying' ? undefined : i18n('common.close');
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => (
       <Bubble {...toBubble(item, currentUserId)} index={messages.length - 1 - index} />
@@ -62,13 +72,14 @@ export function ChatMessageList({
       )}
       {sendError && (
         <ApiState
-          title="Send failed"
+          title={sendNoticeTitle}
           message={sendError}
-          actionLabel="Dismiss"
-          onAction={onDismissSendError}
+          actionLabel={sendNoticeActionLabel}
+          onAction={sendNoticeActionLabel ? onDismissSendError : undefined}
         />
       )}
       <FlatList
+        style={styles.list}
         data={reversed}
         inverted
         keyExtractor={(message) => message.id}
@@ -106,6 +117,7 @@ export function ChatMessageList({
 }
 
 const styles = StyleSheet.create({
+  list:          { flex: 1 },
   messages:      { paddingHorizontal: 16, paddingBottom: 16 },
   historyFooter: { alignItems: 'center', marginTop: 8, gap: 6 },
   loadOlderBtn:  { paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999 },

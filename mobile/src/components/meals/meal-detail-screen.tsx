@@ -50,8 +50,9 @@ export function MealDetailScreen() {
   const router = useRouter();
   const t = useTheme();
   const { t: i18n } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; imageUri?: string | string[] }>();
   const mealId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const capturedImageUri = Array.isArray(params.imageUri) ? params.imageUri[0] : params.imageUri;
 
   const loadDetail = useCallback(() => mealService.detail(mealId ?? ''), [mealId]);
   const meal = useApiQuery(queryKeys.meal(mealId ?? 'missing'), loadDetail, { enabled: Boolean(mealId) });
@@ -171,6 +172,7 @@ export function MealDetailScreen() {
 
   const consumedPct = Math.min(model.calories / DAILY_TARGET_KCAL, 1);
   const loggedLabel = model.loggedAt.toLocaleString();
+  const displayImageUri = capturedImageUri ?? model.imageUrl;
 
   return (
     <Screen>
@@ -201,8 +203,8 @@ export function MealDetailScreen() {
 
       {/* Hero photo — consistent borderRadius via style, no double-application */}
       <View style={[styles.heroPhoto, { backgroundColor: t.card, borderRadius: t.radius.lg, borderColor: t.border }]}>
-        {model.imageUrl ? (
-          <Image source={{ uri: model.imageUrl }} style={styles.heroImage} resizeMode="cover" />
+        {displayImageUri ? (
+          <Image testID="meal-detail-hero-image" source={{ uri: displayImageUri }} style={styles.heroImage} resizeMode="cover" />
         ) : (
           <>
             <View style={[styles.blob, { backgroundColor: '#5C3D20', top: 24, left: 36, width: 120, height: 90 }]} />
@@ -211,7 +213,7 @@ export function MealDetailScreen() {
           </>
         )}
         <View style={[styles.aiChip, { backgroundColor: t.brand }]}>
-          <Text style={[typography.micro, { color: '#fff' }]}>{model.imageUrl ? 'AI scan' : 'No photo'}</Text>
+          <Text style={[typography.micro, { color: '#fff' }]}>{displayImageUri ? 'AI scan' : 'No photo'}</Text>
         </View>
       </View>
 

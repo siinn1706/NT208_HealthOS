@@ -69,4 +69,25 @@ describe("MessageBubble AI metadata", () => {
     expect(screen.getByText("(Đã chỉnh sửa)")).toBeInTheDocument();
     expect(screen.queryByText("Do AI tạo. Không phải tư vấn y khoa.")).not.toBeInTheDocument();
   });
+
+  it("renders image attachments as previews", () => {
+    renderBubble(
+      {
+        ...baseMessage,
+        sender_kind: "user",
+        content: "Ảnh bữa trưa",
+        type: "image",
+        attachments: [{
+          url: "http://storage.local/chat/lunch.png",
+          name: "lunch.png",
+          size: 2048,
+          mime_type: "image/png",
+        }],
+      },
+      false,
+    );
+
+    expect(screen.getByAltText("lunch.png")).toHaveAttribute("src", "http://storage.local/chat/lunch.png");
+    expect(screen.getByText("lunch.png")).toBeInTheDocument();
+  });
 });
