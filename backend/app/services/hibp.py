@@ -6,8 +6,11 @@ Sends SHA-1(prefix) and receives all hashes starting with that prefix.
 from __future__ import annotations
 
 import hashlib
+import logging
 import httpx
 from typing import Tuple
+
+logger = logging.getLogger(__name__)
 
 HIBP_API_URL = "https://api.pwnedpasswords.com/range"
 
@@ -47,7 +50,7 @@ async def check_password_breach(password: str) -> Tuple[bool, int]:
             return False, 0
 
     except Exception:
-        # Network error — fail open
+        logger.warning("HIBP check failed (network/parse error); failing open", exc_info=True)
         return False, 0
 
 
@@ -74,4 +77,5 @@ def is_password_breached_sync(password: str) -> Tuple[bool, int]:
 
         return False, 0
     except Exception:
+        logger.warning("HIBP sync check failed (network/parse error); failing open", exc_info=True)
         return False, 0
