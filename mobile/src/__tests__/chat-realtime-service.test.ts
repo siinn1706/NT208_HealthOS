@@ -26,10 +26,10 @@ describe('chatRealtimeService', () => {
     expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/ws-ticket');
   });
 
-  it('builds the canonical /ws URL with encoded ticket', () => {
-    expect(buildChatWsUrl('a ticket/with symbols', 'wss://api.example.test/')).toBe(
-      'wss://api.example.test/ws?token=a%20ticket%2Fwith%20symbols',
-    );
+  it('builds /ws URL without token in query string', () => {
+    // Token is now sent as a post-connect frame, never in the URL
+    expect(buildChatWsUrl('wss://api.example.test/')).toBe('wss://api.example.test/ws');
+    expect(buildChatWsUrl()).toMatch(/\/ws$/);
   });
 
   it('normalizes legacy and canonical message events', () => {

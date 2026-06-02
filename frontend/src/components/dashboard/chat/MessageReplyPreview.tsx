@@ -6,7 +6,7 @@ import type { Message } from "@/types/api";
 import { truncateChatPreview } from "@/lib/chat-utils";
 
 interface MessageReplyPreviewProps {
-  replyTo: Pick<Message, "id" | "content" | "sender_id" | "sender_display_name" | "type">;
+  replyTo: Pick<Message, "id" | "content" | "sender_id" | "sender_kind" | "sender_display_name" | "type">;
   currentUserId: string | null;
   onCancel: () => void;
   /** shown in input bar */
@@ -16,10 +16,12 @@ interface MessageReplyPreviewProps {
 export function MessageReplyPreview({ replyTo, currentUserId, onCancel }: MessageReplyPreviewProps) {
   const t = useTranslations("chat");
 
+  // Use sender_kind for AI detection — sender_id is an opaque UUID, not a
+  // sentinel. reply_to now carries sender_kind so no aiBotUserId lookup needed.
   const senderName =
     replyTo.sender_id === currentUserId
       ? t("you")
-      : replyTo.sender_id === "ai"
+      : replyTo.sender_kind === "ai"
         ? t("aiAssistant")
         : replyTo.sender_display_name ?? t("unknownUser");
 

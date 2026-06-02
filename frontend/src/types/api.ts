@@ -580,7 +580,7 @@ export interface Message {
   status: MessageStatus;
   /** Local-only error tag used by the chat UI to render retry affordances. */
   error_code?: "network" | "rate_limited" | "validation" | "unknown";
-  reply_to?: Pick<Message, "id" | "content" | "sender_id" | "type" | "sender_display_name">;
+  reply_to?: Pick<Message, "id" | "content" | "sender_id" | "sender_kind" | "type" | "sender_display_name">;
   reactions: MessageReaction[];
   attachments?: MessageAttachment[] | null;
   ai_metadata?: AiMessageMetadata | null;

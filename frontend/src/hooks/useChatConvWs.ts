@@ -4,21 +4,55 @@
  * useChatConvWs — manages a per-conversation WebSocket connection to Core BE.
  *
  * Mirrors useChatWs but targets the per-conversation endpoint at
- * `${CORE_WS_URL}/v1/chat/ws/{conversation_id}?token=<ws_ticket>` instead of the
- * global `/ws`. The backend auto-joins the `conv:{id}` room on connect, so the
+ * `${CORE_WS_URL}/v1/chat/ws/{conversation_id}` (NO token in URL — sent as
+ * first post-connect auth frame instead to prevent proxy/log leakage).
+ * The backend auto-joins the `conv:{id}` room on connect, so the
  * client does NOT need to send a `conv:join` event.
  *
- * The token is a short-lived ws_ticket vended by /api/v1/auth/ws-token.
+ * Auth: a short-lived ws_ticket is vended by /api/v1/auth/ws-token and sent as
+ * the first WebSocket frame: { "type": "auth", "ticket": "<token>" }
+ *
+ * Reconnect budget: attempt counters are stored in a module-level map keyed by
+ * conversationId so that switching conversations and remounting the hook does
+ * not reset the budget and trigger a thundering-herd of reconnects. The counter
+ * is cleared only on a successful connection or an explicit reconnectNow() call.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { WsFrame, WsStatus } from "@/hooks/useChatWs";
+import { buildAuthFrame, isAuthRejected } from "@/lib/ws-auth-protocol";
 import { resolveCoreWebSocketBase } from "@/lib/core-websocket-url";
 
-const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
+
+// ── Session-scoped reconnect budget ──────────────────────────────────────────
+// Keyed by conversationId. Survives component unmount/remount so per-
+// conversation-switch resets cannot reset the budget and cause reconnect storms.
+// Entries are pruned when a connection succeeds or reconnectNow() is called.
+const sessionReconnectAttempts = new Map<string, number>();
+
+function getAttempts(conversationId: string): number {
+  return sessionReconnectAttempts.get(conversationId) ?? 0;
+}
+
+function setAttempts(conversationId: string, n: number): void {
+  sessionReconnectAttempts.set(conversationId, n);
+}
+
+function resetAttempts(conversationId: string): void {
+  sessionReconnectAttempts.delete(conversationId);
+}
+
+// Jittered exponential backoff matching the mobile ws-backoff helper.
+// attempt 0 → ~1 s, attempt 9 → ~30 s (capped), ±25 % jitter.
+function reconnectDelay(attempt: number): number {
+  const base = Math.min(1_000 * Math.pow(2, attempt), RECONNECT_MAX_MS);
+  return Math.round(base * (0.75 + Math.random() * 0.5));
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type UseChatConvWsOptions = {
   /** Conversation to open the socket for. Null/empty → hook does nothing. */
@@ -41,6 +75,8 @@ type UseChatConvWsResult = {
   reconnectNow: () => void;
 };
 
+// ── Hook ──────────────────────────────────────────────────────────────────────
+
 export function useChatConvWs({
   conversationId,
   onEvent,
@@ -52,7 +88,6 @@ export function useChatConvWs({
   const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const tokenRef = useRef<string | null>(null);
-  const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectGenerationRef = useRef(0);
   const intentionalCloseRef = useRef(false);
@@ -104,9 +139,8 @@ export function useChatConvWs({
     }
 
     const wsBase = resolveCoreWebSocketBase(process.env.NEXT_PUBLIC_CORE_WS_URL);
-    const wsUrl =
-      `${wsBase}/v1/chat/ws/${encodeURIComponent(conversationId)}` +
-      `?token=${encodeURIComponent(tokenRef.current)}`;
+    // Token sent as first post-connect frame — never in URL (prevents log leakage)
+    const wsUrl = `${wsBase}/v1/chat/ws/${encodeURIComponent(conversationId)}`;
 
     setStatus("connecting");
 
@@ -122,12 +156,16 @@ export function useChatConvWs({
 
     ws.onopen = () => {
       if (generation !== connectGenerationRef.current) return;
-      const wasReconnect = reconnectAttemptsRef.current > 0;
+      const wasReconnect = getAttempts(conversationId) > 0;
+
+      // Send auth frame first — token must not appear in the URL
+      ws.send(buildAuthFrame(tokenRef.current ?? ""));
 
       setStatus("connected");
       setSessionExpired(false);
       setIsReconnecting(false);
-      reconnectAttemptsRef.current = 0;
+      // Successful connection — clear the budget for this conversation.
+      resetAttempts(conversationId);
 
       if (wasReconnect) {
         try {
@@ -166,19 +204,19 @@ export function useChatConvWs({
 
       if (intentionalCloseRef.current) return;
 
-      if (evt.code === 4001) {
+      // 4001 — REST token expired; 4401 — post-connect auth ticket rejected.
+      // Both cases: surface session-expired and stop reconnecting.
+      if (evt.code === 4001 || isAuthRejected(evt.code)) {
         tokenRef.current = null;
         setSessionExpired(true);
         setIsReconnecting(false);
         return;
       }
 
-      if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-        const delay = Math.min(
-          RECONNECT_BASE_MS * 2 ** reconnectAttemptsRef.current,
-          RECONNECT_MAX_MS,
-        );
-        reconnectAttemptsRef.current += 1;
+      const currentAttempts = getAttempts(conversationId);
+      if (currentAttempts < MAX_RECONNECT_ATTEMPTS) {
+        const delay = reconnectDelay(currentAttempts);
+        setAttempts(conversationId, currentAttempts + 1);
         setIsReconnecting(true);
         reconnectTimerRef.current = setTimeout(
           () => connectRef.current?.(),
@@ -215,12 +253,14 @@ export function useChatConvWs({
 
   const reconnectNow = useCallback(() => {
     clearReconnectTimer();
-    reconnectAttemptsRef.current = 0;
+    // Explicit user-triggered reconnect — reset the session budget for this
+    // conversation so it gets a full fresh MAX_RECONNECT_ATTEMPTS quota.
+    if (conversationId) resetAttempts(conversationId);
     setSessionExpired(false);
     setIsReconnecting(true);
     tokenRef.current = null;
     void connectRef.current?.();
-  }, [clearReconnectTimer]);
+  }, [clearReconnectTimer, conversationId]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -235,6 +275,8 @@ export function useChatConvWs({
       wsRef.current = null;
       setStatus("disconnected");
       setIsReconnecting(false);
+      // Note: intentionally NOT resetting sessionReconnectAttempts here —
+      // the whole point is to preserve the budget across remounts.
     };
   }, [enabled, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */

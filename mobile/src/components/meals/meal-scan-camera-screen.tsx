@@ -12,6 +12,7 @@ import {
 } from '../../api/services/meal-offline-queue';
 import { invalidateApiQuery } from '../../api/query';
 import { validateImageFile } from '../../utils/file-validation';
+import { sanitizePhotoUri } from '../../lib/photo-sanitizer';
 import { MealScanBottomControls, MealScanTopBar } from './meal-scan-camera-controls';
 import { imageFileFromCameraPicture, imageFileFromPickerAsset, type MealScanImageFile } from './meal-scan-camera-file';
 import { MealScanCameraViewfinder } from './meal-scan-camera-viewfinder';
@@ -167,9 +168,15 @@ export function MealScanCameraScreen() {
         mediaTypes: ['images'],
         quality: 0.85,
         allowsEditing: false,
+        // Instruct the picker not to include EXIF in the returned asset.
+        // sanitizePhotoUri() performs a second-pass re-encode for defence-in-depth.
+        exif: false,
       });
       if (!result.canceled && result.assets[0]) {
-        await uploadImageFile(imageFileFromPickerAsset(result.assets[0]));
+        const asset = result.assets[0];
+        // Re-encode through ImageManipulator to strip any residual EXIF / PHI.
+        const clean = await sanitizePhotoUri(asset.uri);
+        await uploadImageFile(imageFileFromPickerAsset({ ...asset, uri: clean.uri }));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : i18n('meals.uploadFailed'));

@@ -30,7 +30,7 @@ interface MessageInputProps {
    * draft across navigation, page reloads, and accidental tab closes.
    */
   conversationId: string | null;
-  replyTo?: Pick<Message, "id" | "content" | "sender_id" | "sender_display_name" | "type"> | null;
+  replyTo?: Pick<Message, "id" | "content" | "sender_id" | "sender_kind" | "sender_display_name" | "type"> | null;
   currentUserId: string | null;
   editingMessage?: Message | null;
   onSend: (content: string) => void;

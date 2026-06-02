@@ -103,7 +103,7 @@ export function ProfileHeader({
               ref={fileInputRef}
               type="file"
               aria-label={t("avatarChange")}
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/heic"
               className="hidden"
               onChange={handleFileChange}
             />

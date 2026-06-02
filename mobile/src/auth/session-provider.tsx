@@ -5,6 +5,7 @@ import { invalidateApiQuery, setApiSessionScope } from '../api/query';
 import { authService, profileService } from '../api/services';
 import { clearQueuedChatImageUploadsForUser } from '../api/services/chat-offline-queue';
 import { clearQueuedMealScanPhotos } from '../api/services/meal-offline-queue';
+import { deleteQueueKey } from '../lib/queue-encryption';
 import {
   clearStoredSession,
   getAccessToken,
@@ -64,10 +65,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const clearOfflineQueues = useCallback(async () => {
     const cached = userIdRef.current ? null : await getCachedUser().catch(() => null);
     const queueUserId = userIdRef.current ?? cached?.id ?? null;
+    // Clear queue contents first (decrypt still works), then evict the key so
+    // any remaining AsyncStorage ciphertext is permanently unreadable.
     await Promise.allSettled([
       queueUserId ? clearQueuedChatImageUploadsForUser(queueUserId) : Promise.resolve(),
       clearQueuedMealScanPhotos(),
     ]);
+    await deleteQueueKey();
   }, []);
 
   const clearSession = useCallback(async () => {

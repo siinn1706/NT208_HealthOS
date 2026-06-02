@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { buildAuthFrame, isAuthRejected } from "@/lib/ws-auth-protocol";
 import { resolveCoreWebSocketBase } from "@/lib/core-websocket-url";
 
 const RECONNECT_BASE_MS = 1000;
@@ -128,7 +129,8 @@ export function useChatWs({
     }
 
     const wsBase = resolveCoreWebSocketBase(process.env.NEXT_PUBLIC_CORE_WS_URL);
-    const wsUrl = `${wsBase}/ws?token=${encodeURIComponent(tokenRef.current)}`;
+    // Token sent as first post-connect frame — never in URL (prevents log leakage)
+    const wsUrl = `${wsBase}/ws`;
 
     setStatus("connecting");
 
@@ -152,6 +154,9 @@ export function useChatWs({
       setSessionExpired(false);
       setIsReconnecting(false);
       reconnectAttemptsRef.current = 0;
+
+      // Send auth frame first — token must not appear in the URL
+      ws.send(buildAuthFrame(tokenRef.current ?? ""));
 
       // Send handshake
       ws.send(JSON.stringify({ event: "client:hello", payload: {} }));
@@ -203,7 +208,8 @@ export function useChatWs({
       // `sessionExpired` and STOP retrying; the user must explicitly sign in
       // again. Auto-reconnecting here would either spam the server or silently
       // hide the auth issue.
-      if (evt.code === 4001) {
+      // 4401 — post-connect auth ticket rejected (new transport protocol).
+      if (evt.code === 4001 || isAuthRejected(evt.code)) {
         tokenRef.current = null;
         setSessionExpired(true);
         setIsReconnecting(false);

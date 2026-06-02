@@ -53,6 +53,40 @@ describe('reminderService', () => {
     expect(resolveReminderActionError({ message: 'Boom' }, 'markDone')).toBe('generic');
   });
 
+  it('maps occurrence message text to occurrenceMissing even without status code', () => {
+    expect(
+      resolveReminderActionError({ message: 'No matching occurrence for this reminder.' }, 'markDone'),
+    ).toBe('occurrenceMissing');
+  });
+
+  it('maps snooze-specific message text to invalidSnoozePayload', () => {
+    expect(
+      resolveReminderActionError({ message: 'Provide either until or minutes.' }, 'snooze'),
+    ).toBe('invalidSnoozePayload');
+    expect(
+      resolveReminderActionError({ message: 'Snooze requires a time or duration.' }, 'snooze'),
+    ).toBe('invalidSnoozePayload');
+  });
+
+  it('handles string status codes by parsing them as numbers', () => {
+    expect(
+      resolveReminderActionError({ status: '404', code: 'NOT_FOUND', message: '' }, 'markDone'),
+    ).toBe('occurrenceMissing');
+    expect(
+      resolveReminderActionError({ status: '422', code: 'VALIDATION_ERROR', message: '' }, 'snooze'),
+    ).toBe('invalidSnoozePayload');
+  });
+
+  it('handles Error objects via errorText', () => {
+    expect(
+      resolveReminderActionError(new Error('No matching occurrence found'), 'markDone'),
+    ).toBe('occurrenceMissing');
+  });
+
+  it('returns empty string from errorText for null error', () => {
+    expect(resolveReminderActionError(null, 'markDone')).toBe('generic');
+  });
+
   it('lists reminders with Core reminder types', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: [] } as never);
 

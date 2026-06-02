@@ -117,6 +117,7 @@ describe('MealScanAnalyzingScreen', () => {
       name: 'meals.scannedMealName',
       queuedAt: Date.now(),
       attemptCount: 0,
+      idempotencyKey: 'ikey-queued-1',
     };
     mockParams = { queuedMealPhotoId: 'queued-1', imageUri: 'file:///queued-meal.jpg' };
     mockGetQueuedMealPhoto.mockResolvedValue(queuedPhoto);
@@ -141,6 +142,7 @@ describe('MealScanAnalyzingScreen', () => {
       name: 'meals.scannedMealName',
       queuedAt: Date.now(),
       attemptCount: 1,
+      idempotencyKey: 'ikey-queued-retry',
     };
     mockParams = { queuedMealPhotoId: 'queued-1', imageUri: 'file:///queued-meal.jpg' };
     mockGetQueuedMealPhoto.mockResolvedValue(queuedPhoto);

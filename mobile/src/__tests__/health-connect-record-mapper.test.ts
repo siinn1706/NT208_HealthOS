@@ -113,6 +113,77 @@ describe('Health Connect record mapper', () => {
     ]);
   });
 
+  it('returns empty array for unknown record type', () => {
+    expect(mapHealthConnectRecordToIngestRecords({
+      recordType: 'UnknownType',
+      time: '2026-05-20T10:00:00.000Z',
+      metadata: { id: 'x' },
+    })).toEqual([]);
+  });
+
+  it('maps single-record deletion to one entry', () => {
+    expect(mapHealthConnectDeletionToIngestDeletions('steps-1', 'Steps')).toEqual([
+      { external_id: 'steps-1' },
+    ]);
+  });
+
+  it('falls back to record type + timestamps when metadata id is absent', () => {
+    const records = mapHealthConnectRecordToIngestRecords({
+      recordType: 'Steps',
+      count: 500,
+      startTime: '2026-05-20T10:00:00.000Z',
+      endTime: '2026-05-20T11:00:00.000Z',
+    });
+    expect(records).toHaveLength(1);
+    expect(records[0].external_id).toContain('Steps:');
+  });
+
+  it('converts weight in pounds and ounces to kg', () => {
+    const poundsRecord = mapHealthConnectRecordToIngestRecords({
+      recordType: 'Weight',
+      time: '2026-05-20T09:00:00.000Z',
+      weight: { value: 154, unit: 'pounds' },
+      metadata: { id: 'w-lbs' },
+    });
+    expect(poundsRecord[0].value).toBeCloseTo(69.85, 0);
+
+    const ouncesRecord = mapHealthConnectRecordToIngestRecords({
+      recordType: 'Weight',
+      time: '2026-05-20T09:00:00.000Z',
+      weight: { value: 3200, unit: 'ounces' },
+      metadata: { id: 'w-oz' },
+    });
+    expect(ouncesRecord[0].value).toBeCloseTo(90.7, 0);
+  });
+
+  it('converts weight in grams and milligrams to kg', () => {
+    const gramsRecord = mapHealthConnectRecordToIngestRecords({
+      recordType: 'Weight',
+      time: '2026-05-20T09:00:00.000Z',
+      weight: { value: 70000, unit: 'grams' },
+      metadata: { id: 'w-g' },
+    });
+    expect(gramsRecord[0].value).toBeCloseTo(70, 1);
+
+    const mgRecord = mapHealthConnectRecordToIngestRecords({
+      recordType: 'Weight',
+      time: '2026-05-20T09:00:00.000Z',
+      weight: { value: 70000000, unit: 'milligrams' },
+      metadata: { id: 'w-mg' },
+    });
+    expect(mgRecord[0].value).toBeCloseTo(70, 1);
+  });
+
+  it('returns raw value for unknown weight unit', () => {
+    const record = mapHealthConnectRecordToIngestRecords({
+      recordType: 'Weight',
+      time: '2026-05-20T09:00:00.000Z',
+      weight: { value: 70, unit: 'kilograms' },
+      metadata: { id: 'w-kg-unit' },
+    });
+    expect(record[0].value).toBe(70);
+  });
+
   it('keeps derived ids within the Core post-prefix database budget', () => {
     const longId = 'x'.repeat(200);
     const records = mapHealthConnectRecordToIngestRecords({

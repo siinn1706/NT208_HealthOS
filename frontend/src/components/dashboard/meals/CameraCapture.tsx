@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { sanitizePhotoForUpload } from "@/lib/photo-sanitizer";
 import { ConfidenceChip } from "@/components/ui/confidence-chip";
 import {
   DEFAULT_PORTION_OPTIONS,
@@ -71,6 +72,10 @@ export function CameraCapture() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cancelledRef = useRef(false);
+  // AbortController for the active poll fetch. Replaced at the start of every
+  // analysis run and aborted on cancel/reset so that a cancel during a poll
+  // interval never applies its result after the component has moved on.
+  const pollAbortRef = useRef<AbortController | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const [step, setStep] = useState<AnalysisStep>("idle");
@@ -91,10 +96,12 @@ export function CameraCapture() {
     }
   }, []);
 
-  // Stop the live camera stream on unmount to avoid leaking the device handle.
+  // Stop the live camera stream and abort any in-flight poll on unmount.
   useEffect(() => {
     return () => {
       cancelledRef.current = true;
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
       stopCameraStream();
     };
   }, [stopCameraStream]);
@@ -110,12 +117,27 @@ export function CameraCapture() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImageDataUrl(ev.target?.result as string);
-      setStep("preview");
-    };
-    reader.readAsDataURL(file);
+    // Strip EXIF / PHI metadata before storing the preview data URL.
+    // Canvas re-encode discards GPS, device serial, and capture timestamp.
+    sanitizePhotoForUpload(file)
+      .then((cleanBlob) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setImageDataUrl(ev.target?.result as string);
+          setStep("preview");
+        };
+        reader.readAsDataURL(cleanBlob);
+      })
+      .catch(() => {
+        // Sanitizer failed (e.g. unsupported format) — fall back to raw file.
+        // The unsupported-image terminal state will surface on analysis anyway.
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setImageDataUrl(ev.target?.result as string);
+          setStep("preview");
+        };
+        reader.readAsDataURL(file);
+      });
   };
 
   // ── Camera flow ──────────────────────────────────────────────────
@@ -186,6 +208,9 @@ export function CameraCapture() {
   const startAnalysis = async () => {
     if (!imageDataUrl) return;
     cancelledRef.current = false;
+    // Abort any previous poll and create a fresh controller for this run.
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = new AbortController();
     setShowSlowWarning(false);
     setStep("analyzing");
 
@@ -267,6 +292,10 @@ export function CameraCapture() {
       }
 
       let attempts = 0;
+      // Capture the controller so closure captures the per-run instance.
+      // If the user cancels mid-poll, pollAbortRef is nulled in reset(); the
+      // AbortError thrown by the fetch is caught below and treated as a cancel.
+      const pollController = pollAbortRef.current;
       // Server-side statuses are: pending → processing → analyzed | failed.
       // We must keep polling for both pending and processing, and bail out
       // immediately on failed so we don't burn 40s of polling on a known-bad job.
@@ -277,7 +306,11 @@ export function CameraCapture() {
       ) {
         // oxlint-disable-next-line react-doctor/async-await-in-loop -- Polling depends on the previous delayed status response.
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-        const pollRes = await fetch(`/api/v1/meals/analyze-photo/${jobId}`);
+        if (cancelledRef.current || pollController?.signal.aborted) break;
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- Polling depends on the previous delayed status response.
+        const pollRes = await fetch(`/api/v1/meals/analyze-photo/${jobId}`, {
+          signal: pollController?.signal,
+        });
         if (pollRes.ok) {
           const pollData = await pollRes.json().catch(() => null);
           if (typeof pollData?.status === "string") {
@@ -287,7 +320,9 @@ export function CameraCapture() {
         attempts++;
       }
 
-      if (cancelledRef.current) return;
+      // Treat an aborted poll the same as an explicit cancel — leave without
+      // applying any result so the UI stays in whatever state reset() set it to.
+      if (cancelledRef.current || pollController?.signal.aborted) return;
 
       if (jobStatus === "failed") {
         setStep("failedHard");
@@ -314,8 +349,11 @@ export function CameraCapture() {
       } else {
         setStep("result");
       }
-    } catch {
-      if (!cancelledRef.current) {
+    } catch (err) {
+      // AbortError from pollAbortRef.abort() is equivalent to a user cancel —
+      // do not surface an error toast; the UI is already in a stable state.
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      if (!cancelledRef.current && !isAbort) {
         setStep("failedHard");
         toast.error(t("uploadFailedTitle"), {
           description: t("uploadFailedBody"),
@@ -329,6 +367,8 @@ export function CameraCapture() {
 
   const reset = () => {
     cancelledRef.current = true;
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = null;
     stopCameraStream();
     setStep("idle");
     setCaptureMode(null);
@@ -376,7 +416,7 @@ export function CameraCapture() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic"
         capture="environment"
         className="sr-only"
         onChange={handleFileChange}
@@ -517,6 +557,8 @@ export function CameraCapture() {
               <button type="button"
                 onClick={() => {
                   cancelledRef.current = true;
+                  pollAbortRef.current?.abort();
+                  pollAbortRef.current = null;
                   router.push("/dashboard/meals/add");
                 }}
                 className="text-xs font-medium text-amber-700 dark:text-amber-300 underline cursor-pointer"
