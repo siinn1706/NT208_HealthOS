@@ -96,6 +96,11 @@ export function ChatLayout({ initialCurrentUserId = null }: ChatLayoutProps) {
     () => conversations.find((c) => c.id === activeId),
     [conversations, activeId]
   );
+  useEffect(() => {
+    if (!activeId || isLoading || activeConversation || conversations.length === 0) return;
+    const recoveryConversation = conversations.find((conversation) => conversation.type === "ai") ?? conversations[0];
+    router.replace(`${basePath}/${recoveryConversation.id}`);
+  }, [activeId, activeConversation, basePath, conversations, isLoading, router]);
   const activeLastMessageId = activeConversation?.last_message?.id;
   const lastMarkedReadRef = useRef<string | null>(null);
 

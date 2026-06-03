@@ -263,6 +263,10 @@ async def list_conversations(
     # Get online presence from WS manager
     presence_map = ws_manager.get_presence_map()
     convs = await chat_svc.get_conversations(db, current_user.id, presence_map)
+    # get_conversations ensures each user has a durable AI conversation.
+    # Commit that side effect so the returned AI id remains valid for message
+    # history and streaming requests after this GET request finishes.
+    await db.commit()
     return ConversationListResponse(data=convs, total=len(convs))
 
 

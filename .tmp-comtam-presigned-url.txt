@@ -1,0 +1,1 @@
+http://minio:9000/meals/smoke/comtam.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio-user-I6jTGsZxb659vRdJ%2F20260603%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260603T034157Z&X-Amz-Expires=300&X-Amz-SignedHeaders=host&X-Amz-Signature=54a0ede9020aa167fc16f1d678126e290d5659a17764cd09c4c3aef1f9044d04

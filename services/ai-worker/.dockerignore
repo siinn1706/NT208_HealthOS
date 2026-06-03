@@ -9,5 +9,3 @@ __pycache__
 .hypothesis
 .env
 .env.*
-model/
-models/

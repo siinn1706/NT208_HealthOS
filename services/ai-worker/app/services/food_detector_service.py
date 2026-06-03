@@ -71,7 +71,7 @@ def _detect_with_yolo(image: Image.Image) -> RawFoodNutrition:
                     result.dish_name,
                     result.confidence,
                 )
-                return result
+                return _with_calorieclip_range(image, result)
             yolo_error = ValueError(
                 f"YOLO returned invalid class_id={class_id} for class_db size={len(class_db)}"
             )
@@ -90,7 +90,7 @@ def _with_calorieclip_range(image: Image.Image, primary: RawFoodNutrition) -> Ra
         estimate = estimate_with_calorieclip(image, primary.dish_name)
     except Exception as exc:  # pragma: no cover - model runtime path
         estimate = None
-        warnings.append("CalorieCLIP unavailable; range derived from primary model.")
+        warnings.append("CalorieCLIP unavailable; range derived from detector model.")
         _LOGGER.warning("food_detection_crosscheck_failed source=calorieclip reason=%s", exc)
 
     if estimate is None:
@@ -116,7 +116,7 @@ def _with_calorieclip_range(image: Image.Image, primary: RawFoodNutrition) -> Ra
         calorie_min=calorie_min,
         calorie_max=calorie_max,
         confidence=confidence,
-        source="food-analysis+calorieclip",
+        source=f"{primary.source}+calorieclip",
         warnings=warnings,
     )
 

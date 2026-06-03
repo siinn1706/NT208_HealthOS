@@ -26,7 +26,7 @@
         "backgroundColor": "#F4FCFE"
       },
       "package": "com.nt208.healthos",
-      "versionCode": 1,
+      "versionCode": 3,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS",
@@ -97,6 +97,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "25c2bc4b-da99-49fa-9aad-d10ac16c211e"
+      }
     }
   }
 }

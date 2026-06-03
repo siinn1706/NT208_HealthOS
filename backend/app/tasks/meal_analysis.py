@@ -150,7 +150,7 @@ def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
 
     try:
         # Call AI Worker
-        with httpx.Client(timeout=90.0) as client:
+        with httpx.Client(timeout=settings.ai_worker_timeout_seconds) as client:
             response = client.post(
                 f"{settings.ai_worker_url}/analyze",
                 json=_build_ai_worker_payload(meal_id, image_url),

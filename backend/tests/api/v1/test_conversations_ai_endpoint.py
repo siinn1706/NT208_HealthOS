@@ -76,6 +76,29 @@ async def authed_client():
 
 
 @pytest.mark.asyncio
+async def test_list_conversations_commits_auto_created_ai_conversation(monkeypatch):
+    user = SimpleNamespace(id=uuid.uuid4())
+    db = _FakeDb()
+    called: dict[str, object] = {}
+
+    async def fake_get_conversations(db, user_id, presence_map=None):
+        called["db"] = db
+        called["user_id"] = user_id
+        called["presence_map"] = presence_map
+        return []
+
+    monkeypatch.setattr(conv_ep.chat_svc, "get_conversations", fake_get_conversations)
+
+    response = await conv_ep.list_conversations(user, db)
+
+    assert response.total == 0
+    assert called["db"] is db
+    assert called["user_id"] == user.id
+    assert isinstance(called["presence_map"], dict)
+    assert db.commit_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_create_ai_conversation_allows_empty_body(authed_client, monkeypatch):
     client, fake_user = authed_client
 
