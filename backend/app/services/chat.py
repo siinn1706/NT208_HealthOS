@@ -233,25 +233,33 @@ async def _ensure_ai_conversation(
     db: AsyncSession,
     user_id: uuid.UUID,
 ) -> Conversation:
-    existing_result = await db.execute(
-        select(Conversation)
-        .join(
-            ConversationMember,
-            and_(
-                ConversationMember.conversation_id == Conversation.id,
-                ConversationMember.user_id == user_id,
-                ConversationMember.is_accepted.is_(True),
-            ),
+    async def load_existing() -> Conversation | None:
+        existing_result = await db.execute(
+            select(Conversation)
+            .join(
+                ConversationMember,
+                and_(
+                    ConversationMember.conversation_id == Conversation.id,
+                    ConversationMember.user_id == user_id,
+                    ConversationMember.is_accepted.is_(True),
+                ),
+            )
+            .where(Conversation.type == ConversationTypeEnum.AI)
+            .options(
+                selectinload(Conversation.members)
+                .selectinload(ConversationMember.user)
+                .selectinload(User.profile),
+            )
+            .limit(1)
         )
-        .where(Conversation.type == ConversationTypeEnum.AI)
-        .options(
-            selectinload(Conversation.members)
-            .selectinload(ConversationMember.user)
-            .selectinload(User.profile),
-        )
-        .limit(1)
-    )
-    existing = existing_result.scalar_one_or_none()
+        return existing_result.scalar_one_or_none()
+
+    existing = await load_existing()
+    if existing:
+        return existing
+
+    await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(str(user_id), 0))))
+    existing = await load_existing()
     if existing:
         return existing
 

@@ -64,7 +64,7 @@
       APP_ENV: production
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+      STORAGE_ENDPOINT: http://minio:9000
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       DEBUG: "false"
@@ -94,7 +94,7 @@
       APP_ENV: production
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+      STORAGE_ENDPOINT: http://minio:9000
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       AI_WORKER_URL: http://ai-worker:8001
@@ -131,7 +131,8 @@
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/2
       AI_WORKER_URL: http://ai-worker:8001
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+      AI_WORKER_TIMEOUT_SECONDS: "240"
+      STORAGE_ENDPOINT: http://minio:9000
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       DEBUG: "false"
@@ -157,13 +158,15 @@
     environment:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       CORE_API_URL: http://core-be:8000
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+      STORAGE_ENDPOINT: http://minio:9000
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       AI_YOLO_MODEL_PATH: /app/models/yolov10/YOLOv10b_VietFood67_SGD_new_bigger.pt
       AI_CLASS_NAMES_PATH: /app/data/class_names.py
       AI_FOOD_ANALYSIS_MODEL_PATH: /app/models/food-analysis
       AI_CALORIECLIP_MODEL_PATH: /app/models/calorieclip
+      AI_FOOD_ANALYSIS_TIMEOUT_SECONDS: "120"
+      AI_CALORIECLIP_TIMEOUT_SECONDS: "45"
       DEBUG: "false"
     depends_on:
       redis:
@@ -201,6 +204,13 @@
       context: ../../frontend
       dockerfile: Dockerfile
       target: prod
+      args:
+        APP_ENV: ${APP_ENV:-production}
+        NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-prod}
+        BFF_TRUSTED_ORIGINS: ${BFF_TRUSTED_ORIGINS}
+        BFF_CSRF_GUARD_MODE: ${BFF_CSRF_GUARD_MODE:-enforce}
+        DEV_BYPASS_ENABLED: ${DEV_BYPASS_ENABLED:-false}
+        DEV_BYPASS_CREDENTIALS: ${DEV_BYPASS_CREDENTIALS}
     restart: unless-stopped
     ports:
       - "3000:3000"
