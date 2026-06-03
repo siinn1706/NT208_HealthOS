@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     ai_request_timeout_seconds: float = 30.0
     ai_confidence_threshold: float = 0.45
     ai_yolo_timeout_seconds: float = 15.0
-    ai_food_analysis_enabled: bool = True
+    ai_food_analysis_enabled: bool = False
     ai_food_analysis_timeout_seconds: float = 30.0
     ai_calorieclip_enabled: bool = True
     ai_calorieclip_timeout_seconds: float = 15.0

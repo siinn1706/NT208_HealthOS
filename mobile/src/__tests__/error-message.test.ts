@@ -44,8 +44,24 @@ describe('localizeError', () => {
     expect(localizeError(err)).toBe('An unexpected server error occurred.');
   });
 
+  it('does not expose Cloudflare origin text from 5xx ApiError messages', () => {
+    const err = new ApiError(
+      'The origin web server returned an invalid or incomplete response to Cloudflare.',
+      520,
+      'REQUEST_FAILED',
+    );
+
+    expect(localizeError(err)).toBe('An unexpected server error occurred.');
+  });
+
   it('returns error.message for plain Error', () => {
     expect(localizeError(new Error('Plain error text'))).toBe('Plain error text');
+  });
+
+  it('does not expose Cloudflare origin text from plain Error messages', () => {
+    expect(localizeError(new Error('The origin web server returned an invalid or incomplete response to Cloudflare.'))).toBe(
+      'An unexpected server error occurred.',
+    );
   });
 });
 

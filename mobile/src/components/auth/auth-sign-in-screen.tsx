@@ -18,6 +18,7 @@ import { useSession } from '../../auth/session-provider';
 import { ApiError } from '../../api/client';
 import { getPostAuthRoute } from '../../auth/auth-route-policy';
 import { toCoreReachabilityMessage } from '../../api/core-reachability';
+import { isInfrastructureErrorMessage } from '../../api/error-message';
 import type { MobileOAuthProvider } from '../../api/services/auth-service';
 import { HealthOSBrandMark } from '../brand/healthos-brand-mark';
 import { GoogleMark } from '../../icons/oauth/google-mark';
@@ -33,7 +34,30 @@ function getLocalizedAuthErrorMessage(error: unknown, i18n: (key: string) => str
     ACCOUNT_PENDING_DELETION: 'auth.accountPendingDeletion',
   };
 
-  return authErrorMap[error.code] ? i18n(authErrorMap[error.code]) : null;
+  if (authErrorMap[error.code]) return i18n(authErrorMap[error.code]);
+
+  if (error.status >= 500 || isInfrastructureErrorMessage(error.message)) {
+    return i18n('api.error.internal_server_error');
+  }
+
+  if (error.code && error.code !== 'REQUEST_FAILED') {
+    const apiKey = `api.error.${error.code.toLowerCase()}`;
+    const localized = i18n(apiKey);
+    if (localized !== apiKey) return localized;
+  }
+
+  return null;
+}
+
+function getAuthErrorMessage(error: unknown, i18n: (key: string) => string) {
+  const localized = toCoreReachabilityMessage(error) ?? getLocalizedAuthErrorMessage(error, i18n);
+  if (localized) return localized;
+  if (error instanceof Error) {
+    return isInfrastructureErrorMessage(error.message)
+      ? i18n('api.error.internal_server_error')
+      : error.message;
+  }
+  return i18n('auth.unableToSignIn');
 }
 
 export function AuthSignInScreen() {
@@ -68,11 +92,7 @@ export function AuthSignInScreen() {
       }
       router.replace(getPostAuthRoute(result.user?.onboarding_status) as never);
     } catch (err) {
-      setError(
-        toCoreReachabilityMessage(err) ??
-        getLocalizedAuthErrorMessage(err, i18n) ??
-        (err instanceof Error ? err.message : i18n('auth.unableToSignIn')),
-      );
+      setError(getAuthErrorMessage(err, i18n));
     } finally {
       setLoading(false);
     }
@@ -85,11 +105,7 @@ export function AuthSignInScreen() {
       const user = await session.signInWithOAuth(provider);
       router.replace(getPostAuthRoute(user.onboarding_status) as never);
     } catch (err) {
-      setError(
-        toCoreReachabilityMessage(err) ??
-        getLocalizedAuthErrorMessage(err, i18n) ??
-        (err instanceof Error ? err.message : i18n('auth.unableToSignIn')),
-      );
+      setError(getAuthErrorMessage(err, i18n));
     } finally {
       setOauthLoading(null);
     }
