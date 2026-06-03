@@ -43,7 +43,7 @@ type AnalysisStep =
 const SNAP_PREFILL_KEY = "meal_snap_prefill";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MiB — matches BFF + Core caps
 const POLL_INTERVAL_MS = 2_000;
-const POLL_MAX_ATTEMPTS = 20;            // ~40 s cap
+const POLL_MAX_ATTEMPTS = 50;            // ~100 s cap — AI inference can take 60-90 s on CPU
 const SLOW_WARNING_AFTER_MS = 12_000;
 const LOW_CONFIDENCE_THRESHOLD = 0.6;
 

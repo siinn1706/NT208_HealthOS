@@ -1,5 +1,5 @@
 import { getTranslations, getLocale } from "next-intl/server";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { Bot, Sparkles, Info } from "lucide-react";
 import { ConfidenceChip } from "@/components/ui/confidence-chip";
 import type { DashboardSummary } from "@/lib/dashboard-data";
@@ -87,7 +87,7 @@ export async function AiInsightWidget({ summary }: AiInsightWidgetProps) {
         )}
 
         <Link
-          href={`/${locale}/dashboard/chat`}
+          href={`/dashboard/chat`}
           className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/85 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Bot className="size-3.5" aria-hidden />

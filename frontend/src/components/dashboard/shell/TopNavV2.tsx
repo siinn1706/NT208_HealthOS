@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
+import { Link } from "@/navigation";
 import {
   ChevronDown,
   Globe,
@@ -127,7 +128,7 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
           type="button"
           onClick={() => setPaletteOpen(true)}
           className={cn(
-            "group flex h-9 max-w-md flex-1 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted",
+            "group flex h-9 max-w-md flex-1 min-w-0 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted",
           )}
           aria-label={tShell("commandPaletteTitle")}
         >
@@ -148,6 +149,7 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
 
           <NotificationsPopover locale={locale} />
 
+          <div className="hidden sm:block">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -191,6 +193,7 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -198,7 +201,7 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 px-2"
+                className="hidden h-8 px-2 sm:inline-flex"
                 aria-label="Switch language"
               >
                 <Globe className="size-3.5" aria-hidden="true" />
@@ -241,10 +244,10 @@ export function TopNavV2({ userName, userAvatar, onOpenMobileNav }: TopNavV2Prop
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem asChild>
-                <a href={`/${locale}/dashboard/profile`} className="flex items-center gap-2">
+                <Link href="/dashboard/profile" className="flex items-center gap-2">
                   <User className="size-4" aria-hidden="true" />
                   {t("profile")}
-                </a>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onLogout} className="text-destructive">

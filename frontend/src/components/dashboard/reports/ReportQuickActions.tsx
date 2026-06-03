@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { Download, Share2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -43,7 +43,7 @@ export function ReportQuickActions({
       </Button>
 
       <Button asChild variant="default" size="sm" className="gap-2 text-xs">
-        <Link href={`/${locale}/dashboard/reports/trends`}>
+        <Link href={`/dashboard/reports/trends`}>
           <TrendingUp className="size-3.5" aria-hidden />
           {t("analyzeTrends")}
         </Link>

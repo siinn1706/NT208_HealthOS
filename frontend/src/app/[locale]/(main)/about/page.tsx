@@ -1,11 +1,6 @@
 // oxlint-disable react-doctor/nextjs-missing-metadata -- About metadata is supplied by the route layout.
-"use client";
-
-import { useState, useMemo } from "react";
-import { useTranslations, useLocale } from "next-intl";
-import { Badge } from "@/components/ui/badge";
+import { getTranslations, getLocale } from "next-intl/server";
 import { AnimatedIllustration } from "@/components/shared/AnimatedIllustration";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { TeamMemberCard } from "@/components/shared/TeamMemberCard";
 import { ContactForm } from "@/components/shared/ContactForm";
 import { Section } from "@/components/shared/Section";
@@ -14,33 +9,38 @@ import { TrustStrip, type TrustItem } from "@/components/shared/TrustStrip";
 import { ComplianceStrip } from "@/components/shared/ComplianceStrip";
 import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
 import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
+import { MarketingAboutFaqIsland } from "@/components/shared/marketing-about-faq-island";
 import { teamMembers } from "@/data/team";
 import { faqs, faqCategories } from "@/data/faqs";
 import { pickLocale } from "@/types";
 import type { Locale } from "@/types";
 import { Users, Stethoscope, FileLock, Activity } from "lucide-react";
 
-export default function AboutPage() {
-  const t = useTranslations("about");
-  const locale = useLocale() as Locale;
-  const [activeCategory, setActiveCategory] = useState("all");
+export default async function AboutPage() {
+  const t = await getTranslations("about");
+  const locale = (await getLocale()) as Locale;
 
-  const filteredFaqs = activeCategory === "all"
-    ? faqs
-    : faqs.filter((f) => f.categoryId === activeCategory);
+  const trustItems: TrustItem[] = [
+    { id: "project", value: "NT208", label: t("atGlance.project"), icon: Users },
+    { id: "team", value: "Group 3", label: t("atGlance.team"), icon: Stethoscope },
+    { id: "year", value: "2026", label: t("atGlance.year"), icon: FileLock },
+    { id: "university", value: "UIT", label: t("atGlance.university"), icon: Activity },
+  ];
 
-  const trustItems: TrustItem[] = useMemo(
-    () => [
-      { id: "users", value: "50k+", label: t("atGlance.users"), icon: Users },
-      { id: "doctors", value: "1.2k+", label: t("atGlance.doctors"), icon: Stethoscope },
-      { id: "records", value: "2M+", label: t("atGlance.records"), icon: FileLock },
-      { id: "uptime", value: "99.9%", label: t("atGlance.uptime"), icon: Activity },
-    ],
-    [t]
-  );
+  const coreMembers = teamMembers.filter((m) => (m.group ?? "core") === "core");
+  const advisorMembers = teamMembers.filter((m) => m.group === "advisor");
 
-  const coreMembers = useMemo(() => teamMembers.filter((m) => (m.group ?? "core") === "core"), []);
-  const advisorMembers = useMemo(() => teamMembers.filter((m) => m.group === "advisor"), []);
+  const resolvedFaqs = faqs.map((f) => ({
+    id: f.id,
+    categoryId: f.categoryId,
+    question: pickLocale(f.question, locale),
+    answer: pickLocale(f.answer, locale),
+  }));
+
+  const resolvedFaqCategories = faqCategories.map((cat) => ({
+    id: cat.id,
+    label: pickLocale(cat.label, locale),
+  }));
 
   return (
     <div className="pt-16 md:pt-20">
@@ -101,7 +101,7 @@ export default function AboutPage() {
         </div>
       </Section>
 
-      {/* ── WHY HEALTHOS (merged Vision + Mission) ──────────── */}
+      {/* ── WHY HEALTHOS ─────────────────────────────────────── */}
       <Section tone="muted" padding="md" aria-labelledby="about-why-title">
         <SectionHeader
           id="about-why-title"
@@ -110,7 +110,6 @@ export default function AboutPage() {
           subtitle={t("why.subtitle")}
         />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          {/* Vision column */}
           <article className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-8 items-center rounded-full bg-gradient-to-r from-night-700/15 to-night-400/15 px-3 text-xs font-semibold uppercase tracking-wider text-night-700 dark:text-night-300">
@@ -121,7 +120,6 @@ export default function AboutPage() {
             <p className="leading-relaxed text-muted-foreground">{t("vision.description1")}</p>
             <p className="leading-relaxed text-muted-foreground">{t("vision.description2")}</p>
           </article>
-          {/* Mission column */}
           <article className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-8 items-center rounded-full bg-gradient-to-r from-warm-rose/20 to-warm-peach/20 px-3 text-xs font-semibold uppercase tracking-wider text-warm-rose dark:text-warm-peach">
@@ -135,7 +133,7 @@ export default function AboutPage() {
         </div>
       </Section>
 
-      {/* ── TEAM (regrouped Core / Advisors) ─────────────────── */}
+      {/* ── TEAM ─────────────────────────────────────────────── */}
       <Section padding="md" aria-labelledby="about-team-title">
         <SectionHeader
           id="about-team-title"
@@ -168,52 +166,15 @@ export default function AboutPage() {
         )}
       </Section>
 
-      {/* ── FAQ (compact treatment) ──────────────────────────── */}
+      {/* ── FAQ ──────────────────────────────────────────────── */}
       <Section id="faq" tone="muted" padding="sm" aria-labelledby="about-faq-title">
-        <div className="mx-auto max-w-3xl">
-          {/* Compact heading: smaller scale, no big SectionHeader */}
-          <div className="mb-6">
-            <Badge className="mb-2 border-0 bg-gradient-to-r from-night-700/15 to-night-400/15 text-night-700 dark:text-night-300">
-              {t("faq.badge")}
-            </Badge>
-            <h2 id="about-faq-title" className="text-xl font-bold text-foreground sm:text-2xl">
-              {t("faq.title")}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("faq.subtitle")}</p>
-          </div>
-
-          {/* Category filter */}
-          <div className="mb-5 flex flex-wrap gap-2">
-            {faqCategories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setActiveCategory(cat.id)}
-                aria-pressed={activeCategory === cat.id}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-night-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                  activeCategory === cat.id
-                    ? "bg-primary text-white"
-                    : "border border-border bg-transparent text-muted-foreground hover:border-night-400 hover:text-foreground"
-                }`}
-              >
-                {pickLocale(cat.label, locale)}
-              </button>
-            ))}
-          </div>
-
-          <Accordion type="single" collapsible className="w-full">
-            {filteredFaqs.map((faq, i) => (
-              <AccordionItem key={faq.id} value={`faq-${i}`}>
-                <AccordionTrigger className="text-left text-sm font-semibold">
-                  {pickLocale(faq.question, locale)}
-                </AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground">
-                  {pickLocale(faq.answer, locale)}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
+        <MarketingAboutFaqIsland
+          faqs={resolvedFaqs}
+          faqCategories={resolvedFaqCategories}
+          badge={t("faq.badge")}
+          title={t("faq.title")}
+          subtitle={t("faq.subtitle")}
+        />
       </Section>
 
       {/* ── CONTACT ──────────────────────────────────────────── */}
@@ -227,7 +188,7 @@ export default function AboutPage() {
         </div>
       </Section>
 
-      {/* ── COMPLIANCE STRIP (replaces inline disclaimer) ────── */}
+      {/* ── COMPLIANCE ───────────────────────────────────────── */}
       <Section padding="sm">
         <div className="mx-auto max-w-3xl">
           <ComplianceStrip />

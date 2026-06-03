@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useTranslations, useLocale } from "next-intl";
+import { Link } from "@/navigation";
+import { useTranslations } from "next-intl";
 import {
   Dumbbell, Clock, Flame, Footprints, Heart, Moon,
   CheckCircle2, AlertTriangle, Lightbulb, Target, Info,
@@ -331,7 +331,6 @@ type FetchState =
 
 export function ExerciseSuggestionsWidget() {
   const t      = useTranslations("dashboard.exercise");
-  const locale = useLocale();
   const [tab, setTab] = useState<Tab>("rec");
   const [fetchState, setFetchState] = useState<FetchState>({
     status: "loading",
@@ -422,7 +421,7 @@ export function ExerciseSuggestionsWidget() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 px-3 pt-2.5 pb-1.5">
+      <div className="flex gap-1 px-3 pt-2.5 pb-1.5 overflow-x-auto scrollbar-none">
         {([
           ["rec",  t("tabRecommendations"), <BarChart3 key="b" className="size-3.5" />],
           ["week", t("tabWeekly"),          <Calendar  key="c" className="size-3.5" />],
@@ -431,7 +430,7 @@ export function ExerciseSuggestionsWidget() {
             key={key}
             onClick={() => setTab(key)}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap flex-shrink-0",
               tab === key
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -530,7 +529,7 @@ export function ExerciseSuggestionsWidget() {
       {/* ── Footer ── */}
       <div className="px-4 py-3 border-t border-border">
         <Link
-          href={`/${locale}/dashboard/progress`}
+          href={`/dashboard/progress`}
           className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-colors"
         >
           {t("viewAll")} <ArrowRight className="size-3" />

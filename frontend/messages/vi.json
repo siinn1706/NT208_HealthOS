@@ -402,12 +402,12 @@
     "appStore": "App Store",
     "forDoctors": "Bạn là bác sĩ?",
     "joinAsDoctor": "Tham gia HealthOS",
-    "copyright": "Bản quyền © 2026 HealthOS. Đã đăng ký bảo hộ."
+    "copyright": "© 2026 HealthOS. Đồ án môn học NT208 — phục vụ mục đích học tập."
   },
   "home": {
     "meta": {
-      "title": "HealthOS — Bác sĩ cá nhân ảo của bạn",
-      "description": "Quản lý hồ sơ y tế, theo dõi dinh dưỡng, quét bữa ăn bằng AI, kết nối thiết bị đeo và nhận cảnh báo sức khỏe theo thời gian thực — tất cả trong một ứng dụng Việt cho cá nhân, gia đình và bác sĩ."
+      "title": "HealthOS — Ứng dụng quản lý sức khỏe bằng AI | Đồ án NT208",
+      "description": "HealthOS là đồ án môn NT208: theo dõi BMI, calo và bữa ăn bằng AI nhận dạng thực phẩm, quản lý thuốc, nhắc nhở và hồ sơ sức khỏe cá nhân — tất cả trong một ứng dụng."
     },
     "hero": {
       "badge": "#1 Bác sĩ cá nhân ảo tại NT208.Q22.ANTT",
@@ -472,12 +472,12 @@
   },
   "about": {
     "meta": {
-      "title": "Về chúng tôi",
-      "description": "HealthOS được xây dựng bởi đội ngũ bác sĩ và kỹ sư với mục tiêu mang AI y tế đến mọi gia đình Việt Nam."
+      "title": "Giới thiệu — Đồ án NT208 HealthOS",
+      "description": "HealthOS là ứng dụng quản lý sức khỏe do sinh viên xây dựng trong khuôn khổ đồ án môn NT208 tại UIT. Ứng dụng minh họa nhận dạng thực phẩm bằng AI, theo dõi BMI, tư vấn dinh dưỡng và thể dục."
     },
     "hero": {
       "title": "Chúng tôi đặt sức khỏe của bạn lên hàng đầu",
-      "description": "HealthOS được xây dựng bởi đội ngũ bác sĩ và kỹ sư với mục tiêu duy nhất: mang công nghệ AI y tế đến từng gia đình Việt Nam, giúp mọi người chủ động bảo vệ sức khỏe.",
+      "description": "HealthOS được xây dựng bởi nhóm sinh viên trong khuôn khổ đồ án môn NT208 tại UIT. Ứng dụng minh họa phân tích bữa ăn bằng AI, theo dõi BMI, tư vấn dinh dưỡng và quản lý sức khỏe cá nhân — nhằm mục đích học tập và minh hoạ.",
       "imageAlt": "Đội ngũ HealthOS"
     },
     "story": {
@@ -522,7 +522,11 @@
       "users": "Người dùng đang hoạt động",
       "doctors": "Cố vấn y khoa",
       "records": "Hồ sơ được bảo mật",
-      "uptime": "Uptime nền tảng"
+      "uptime": "Uptime nền tảng",
+      "project": "Đồ án môn học",
+      "team": "Nhóm sinh viên",
+      "year": "Năm học",
+      "university": "Trường đại học"
     },
     "faq": {
       "badge": "FAQ",
@@ -540,8 +544,8 @@
   },
   "services": {
     "meta": {
-      "title": "Dịch vụ",
-      "description": "Khám phá hệ sinh thái HealthOS: hồ sơ y tế, AI, wearables và cảnh báo realtime."
+      "title": "Tính năng — Ứng dụng quản lý sức khỏe HealthOS",
+      "description": "Khám phá tính năng HealthOS: phân tích bữa ăn bằng AI, theo dõi calo và BMI, nhắc nhở thuốc, đồng bộ thiết bị đeo và cảnh báo sức khỏe. Đồ án NT208."
     },
     "badge": "Dịch vụ",
     "title": "Tất cả những công cụ bạn cần",
@@ -567,8 +571,8 @@
   },
   "plans": {
     "meta": {
-      "title": "Gói dịch vụ",
-      "description": "Chọn gói HealthOS phù hợp với nhu cầu và ngân sách của bạn."
+      "title": "Gói dịch vụ — HealthOS",
+      "description": "Chọn gói HealthOS phù hợp cho theo dõi sức khỏe cá nhân, gia đình hoặc chuyên nghiệp. Đồ án môn NT208 — demo mục đích học tập."
     },
     "badge": "Gói dịch vụ",
     "title": "Đầu tư vào sức khỏe của bạn",
@@ -618,8 +622,8 @@
   },
   "articles": {
     "meta": {
-      "title": "Kiến thức sức khỏe",
-      "description": "Đọc các bài viết chuyên sâu về dinh dưỡng, wearables, AI y tế và sống khỏe từ HealthOS."
+      "title": "Kiến thức sức khỏe — HealthOS",
+      "description": "Đọc bài viết về dinh dưỡng, BMI, thể dục, nhận dạng thực phẩm bằng AI và sống khỏe từ nhóm đồ án NT208 HealthOS."
     },
     "badge": "Kiến thức sức khỏe",
     "featuredTitle": "Bài viết mới nhất về sức khỏe",
@@ -640,7 +644,7 @@
   },
   "compliance": {
     "title": "Chỉ mang tính tham khảo",
-    "text": "HealthOS cung cấp thông tin sức khỏe để tham khảo và không thay thế lời khuyên từ bác sĩ có giấy phép hành nghề. Hãy luôn tham khảo ý kiến chuyên gia y tế trước khi đưa ra bất kỳ quyết định y khoa nào."
+    "text": "HealthOS là đồ án môn học (môn NT208) và không cung cấp tư vấn y khoa. Thông tin hiển thị chỉ mang tính tham khảo và không thay thế lời khuyên từ bác sĩ có giấy phép hành nghề. Hãy luôn tham khảo ý kiến chuyên gia y tế trước khi đưa ra bất kỳ quyết định y khoa nào."
   },
   "form": {
     "name": "Họ và tên",
@@ -2231,6 +2235,13 @@
         "sleep": "Giấc ngủ",
         "calories": "Calo",
         "weight": "Cân nặng"
+      },
+      "units": {
+        "heart_rate": "bpm",
+        "steps": "bước",
+        "sleep": "giờ",
+        "calories": "kcal",
+        "weight": "kg"
       }
     },
     "anomalies": {

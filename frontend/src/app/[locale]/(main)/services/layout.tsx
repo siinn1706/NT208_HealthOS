@@ -4,10 +4,18 @@ import { getTranslations } from "next-intl/server";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("services.meta");
   return {
-    title: `${t("title")} — HealthOS`,
+    title: t("title"),
     description: t("description"),
+    keywords: [
+      "HealthOS", "AI meal analysis", "calorie tracking",
+      "BMI tracking", "health management app", "NT208", "Vietnam",
+    ],
+    alternates: {
+      canonical: "/services",
+      languages: { vi: "/vi/services", en: "/en/services", "x-default": "/vi/services" },
+    },
     openGraph: {
-      title: `${t("title")} — HealthOS`,
+      title: t("title"),
       description: t("description"),
       type: "website",
     },

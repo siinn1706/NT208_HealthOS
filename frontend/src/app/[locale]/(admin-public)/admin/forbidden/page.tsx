@@ -1,14 +1,9 @@
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { ShieldX } from "lucide-react";
 
-interface ForbiddenPageProps {
-  params: Promise<{ locale: string }>;
-}
-
-export default async function ForbiddenPage({ params }: ForbiddenPageProps) {
-  const { locale } = await params;
+export default async function ForbiddenPage() {
   const t = await getTranslations("admin.forbidden");
 
   return (
@@ -31,7 +26,7 @@ export default async function ForbiddenPage({ params }: ForbiddenPageProps) {
 
         <div className="mt-7 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
           <Button asChild size="sm">
-            <Link href={`/${locale}/dashboard`}>{t("back")}</Link>
+            <Link href="/dashboard">{t("back")}</Link>
           </Button>
         </div>
       </div>

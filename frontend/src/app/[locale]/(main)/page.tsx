@@ -1,19 +1,15 @@
 // oxlint-disable react-doctor/nextjs-missing-metadata -- Root marketing metadata is supplied by the parent main layout.
-"use client";
-
-import { useTranslations, useLocale } from "next-intl";
+import { getTranslations, getLocale } from "next-intl/server";
 import { Link } from "@/navigation";
-import { useState, useRef, useEffect } from "react";
 import { AnimatedIllustration } from "@/components/shared/AnimatedIllustration";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ServiceCard } from "@/components/shared/ServiceCard";
 import { PlanCard } from "@/components/shared/PlanCard";
-import { TestimonialCard } from "@/components/shared/TestimonialCard";
 import { ArticleCard } from "@/components/shared/ArticleCard";
 import { ContactForm } from "@/components/shared/ContactForm";
+import { MarketingFeaturesTabsIsland } from "@/components/shared/marketing-features-tabs-island";
+import { MarketingTestimonialsCarouselIsland } from "@/components/shared/marketing-testimonials-carousel-island";
 import { coreFeatures, aiFeatures, realtimeFeatures, gamificationFeatures } from "@/data/services";
 import { plans } from "@/data/plans";
 import { testimonials } from "@/data/testimonials";
@@ -24,45 +20,20 @@ import type { Locale } from "@/types";
 import { AtmosphereGrid } from "@/components/shared/AtmosphereGrid";
 import { AtmosphereGlow } from "@/components/shared/AtmosphereGlow";
 import { Reveal } from "@/components/shared/Reveal";
-import { cn } from "@/lib/utils";
 
-export default function HomePage() {
-  const t = useTranslations("home");
-  const locale = useLocale() as Locale;
-  const [activeTab, setActiveTab] = useState("core");
+export default async function HomePage() {
+  const t = await getTranslations("home");
+  const locale = (await getLocale()) as Locale;
 
-  // Show only 2 popular/free plans on homepage
   const previewPlans = plans.slice(0, 3);
-  // Show 3 latest articles
   const previewArticles = articles.slice(0, 3);
 
-  // Testimonials scroll tracking (snap dots)
-  const testimonialScrollRef = useRef<HTMLDivElement>(null);
-  const testimonialItemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [activeTestimonialIdx, setActiveTestimonialIdx] = useState(0);
-
-  useEffect(() => {
-    const container = testimonialScrollRef.current;
-    if (!container) return;
-    const items = testimonialItemRefs.current;
-    const itemIndexByElement = new Map<Element, number>();
-    items.forEach((el, idx) => {
-      if (el) itemIndexByElement.set(el, idx);
-    });
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const idx = itemIndexByElement.get(entry.target) ?? -1;
-            if (idx !== -1) setActiveTestimonialIdx(idx);
-          }
-        }
-      },
-      { root: container, threshold: 0.5 },
-    );
-    items.forEach((el) => { if (el) observer.observe(el); });
-    return () => observer.disconnect();
-  }, []);
+  const featureTabs = [
+    { id: "core", label: t("features.tab1"), services: coreFeatures },
+    { id: "ai", label: t("features.tab2"), services: aiFeatures },
+    { id: "realtime", label: t("features.tab3"), services: realtimeFeatures },
+    { id: "goals", label: t("features.tab4"), services: gamificationFeatures },
+  ];
 
   return (
     <div className="pt-16 md:pt-20">
@@ -71,7 +42,6 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-gradient-to-br from-night-900 via-night-800 to-night-900 py-20 md:py-28">
         <AtmosphereGrid variant="dots" tone="dark" interactive />
         <AtmosphereGlow variant="soft" />
-        {/* Single warm nebula blob — cool bottom-left orb removed for calmer tone */}
         <div className="absolute -top-32 -right-32 size-[500px] rounded-full bg-warm-peach/12 blur-[90px]" />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -108,9 +78,8 @@ export default function HomePage() {
 
             {/* Floating card + robot illustration */}
             <div className="relative flex items-center justify-center">
-              {/* Robot: fade-in-up entrance + gentle float, GPU-only transform */}
               <AnimatedIllustration
-                src="/illustrations/robot_wave_hello.svg"
+                src="/illustrations/raster/robot_wave_hello.avif"
                 alt=""
                 width={384}
                 height={384}
@@ -118,7 +87,6 @@ export default function HomePage() {
                 floatVariant="normal"
                 className="drop-shadow-[0_20px_60px_rgba(65,188,230,0.25)]"
               />
-              {/* floating badge — sample illustration only, NOT a real metric */}
               <div
                 className="absolute -bottom-4 -left-4 rounded-2xl border border-night-500/30 bg-night-900/90 p-4 shadow-xl shadow-night-400/10 backdrop-blur-md"
               >
@@ -155,7 +123,6 @@ export default function HomePage() {
       <section className="relative overflow-hidden py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-            {/* Robot: lazy-loaded below-the-fold, centred with float */}
             <div className="flex items-center justify-center">
               <AnimatedIllustration
                 src="/illustrations/robot_welcome_cheer.svg"
@@ -197,36 +164,7 @@ export default function HomePage() {
             <h2 className="mb-3 text-3xl font-extrabold text-foreground">{t("features.title")}</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">{t("features.subtitle")}</p>
           </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mx-auto mb-10 flex w-fit gap-2 bg-background/50">
-              <TabsTrigger value="core">{t("features.tab1")}</TabsTrigger>
-              <TabsTrigger value="ai">{t("features.tab2")}</TabsTrigger>
-              <TabsTrigger value="realtime">{t("features.tab3")}</TabsTrigger>
-              <TabsTrigger value="goals">{t("features.tab4")}</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="core">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {coreFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
-              </div>
-            </TabsContent>
-            <TabsContent value="ai">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {aiFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
-              </div>
-            </TabsContent>
-            <TabsContent value="realtime">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {realtimeFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
-              </div>
-            </TabsContent>
-            <TabsContent value="goals">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {gamificationFeatures.map((svc) => <ServiceCard key={svc.id} service={svc} />)}
-              </div>
-            </TabsContent>
-          </Tabs>
+          <MarketingFeaturesTabsIsland tabs={featureTabs} />
         </div>
       </section>
 
@@ -266,55 +204,11 @@ export default function HomePage() {
             </Badge>
             <h2 className="text-3xl font-extrabold text-foreground">{t("testimonials.title")}</h2>
           </div>
-          {/* Scroll container with snap + relative wrapper for the fade overlay */}
-          <div className="relative">
-            <div
-              ref={testimonialScrollRef}
-              className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory"
-            >
-              {testimonials.map((testimonial, idx) => (
-                <div
-                  key={testimonial.id}
-                  ref={(el) => { testimonialItemRefs.current[idx] = el; }}
-                  className="snap-start"
-                >
-                  <TestimonialCard testimonial={testimonial} />
-                </div>
-              ))}
-            </div>
-            {/* Right-edge peek affordance — hints at more content */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent"
-            />
-          </div>
-          {/* Scroll indicator dots */}
-          <nav
-            className="mt-4 flex justify-center gap-2"
-            aria-label={t("testimonials.scrollIndicator")}
-          >
-            {testimonials.map((testimonial, idx) => (
-              <button
-                key={testimonial.id}
-                type="button"
-                aria-label={`${t("testimonials.goTo")} ${idx + 1}`}
-                aria-current={activeTestimonialIdx === idx ? "true" : undefined}
-                onClick={() => {
-                  testimonialItemRefs.current[idx]?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "nearest",
-                    inline: "center",
-                  });
-                }}
-                className={cn(
-                  "h-1.5 rounded-full transition-all",
-                  activeTestimonialIdx === idx
-                    ? "w-6 bg-foreground"
-                    : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60",
-                )}
-              />
-            ))}
-          </nav>
+          <MarketingTestimonialsCarouselIsland
+            testimonials={testimonials}
+            scrollIndicatorLabel={t("testimonials.scrollIndicator")}
+            goToLabel={t("testimonials.goTo")}
+          />
         </div>
       </section>
 

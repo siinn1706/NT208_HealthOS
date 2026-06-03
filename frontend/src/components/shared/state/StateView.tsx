@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Link } from "@/navigation";
 
 export type StateViewKind =
   | "empty-first-use"
@@ -60,7 +61,7 @@ function ActionButton({ action }: { action: StateViewAction }) {
   if (action.href) {
     return (
       <Button asChild variant={action.variant ?? "default"} size="sm">
-        <a href={action.href}>{action.label}</a>
+        <Link href={action.href}>{action.label}</Link>
       </Button>
     );
   }

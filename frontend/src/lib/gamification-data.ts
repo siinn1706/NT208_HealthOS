@@ -22,13 +22,17 @@ import {
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 async function bffFetch(path: string): Promise<unknown> {
-  const reqHeaders = await headers();
-  const res = await fetch(`${APP_URL}${path}`, {
-    cache: "no-store",
-    headers: { cookie: reqHeaders.get("cookie") ?? "" },
-  });
-  if (!res.ok) return null;
-  return res.json().catch(() => null);
+  try {
+    const reqHeaders = await headers();
+    const res = await fetch(`${APP_URL}${path}`, {
+      cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+    });
+    if (!res.ok) return null;
+    return res.json().catch(() => null);
+  } catch {
+    return null;
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────

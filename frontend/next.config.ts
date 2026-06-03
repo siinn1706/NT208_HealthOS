@@ -90,12 +90,16 @@ const nextConfig: NextConfig = {
     root: frontendRoot,
   },
   images: {
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [384, 640, 768, 1024, 1280, 1536],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    minimumCacheTTL: 3600,
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "unsplash.com" },
       { protocol: "https", hostname: "randomuser.me" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "avatars.githubusercontent.com" },
+      { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/u/**" },
     ],
   },
   async headers() {

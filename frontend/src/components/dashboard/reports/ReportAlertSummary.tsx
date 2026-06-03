@@ -1,6 +1,6 @@
 import { AlertTriangle, AlertOctagon, FileText, Share2 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
 import type { ReportAlert, HealthStatus } from "@/types/api";
 import { statusBgColor } from "@/lib/report-utils";
@@ -53,13 +53,13 @@ export async function ReportAlertSummary({
       {/* Actions */}
       <div className="flex gap-2 shrink-0">
         <Button asChild size="sm" variant="outline" className="h-8 text-xs gap-1.5">
-          <Link href={`/${locale}/dashboard/reports`}>
+          <Link href={`/dashboard/reports`}>
             <FileText className="size-3.5" aria-hidden />
             {t("viewDetail")}
           </Link>
         </Button>
         <Button asChild size="sm" variant="default" className="h-8 text-xs gap-1.5">
-          <Link href={`/${locale}/dashboard/reports?share=1`}>
+          <Link href={`/dashboard/reports?share=1`}>
             <Share2 className="size-3.5" aria-hidden />
             {t("share")}
           </Link>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { getTranslations } from "next-intl/server";
 import { Camera, CirclePlus } from "lucide-react";
 import type { Metadata } from "next";
@@ -13,11 +13,10 @@ import { WeeklyCalorieChartWidget } from "@/components/dashboard/widgets/WeeklyC
 import { NutritionSuggestionsWidget } from "@/components/dashboard/widgets/NutritionSuggestionsWidget";
 import { PageHeader } from "@/components/shared/page";
 
-export default async function MealsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const [t, cameraT, { locale }, [meals, weeklyData, suggestions]] = await Promise.all([
+export default async function MealsPage() {
+  const [t, cameraT, [meals, weeklyData, suggestions]] = await Promise.all([
     getTranslations("dashboard.meals"),
     getTranslations("camera"),
-    params,
     Promise.all([
       getMealsToday(),
       getWeeklyCalorieChart(),
@@ -32,7 +31,7 @@ export default async function MealsPage({ params }: { params: Promise<{ locale: 
         description={t("subtitle")}
         secondaryActions={
           <Link
-            href={`/${locale}/dashboard/meals/snap`}
+            href="/dashboard/meals/snap"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
           >
             <Camera className="size-4" />
@@ -41,7 +40,7 @@ export default async function MealsPage({ params }: { params: Promise<{ locale: 
         }
         primaryAction={
           <Link
-            href={`/${locale}/dashboard/meals/add`}
+            href="/dashboard/meals/add"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             <CirclePlus className="size-4" />

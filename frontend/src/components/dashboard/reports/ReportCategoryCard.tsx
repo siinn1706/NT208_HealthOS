@@ -11,7 +11,7 @@ import {
   Minus,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { Badge } from "@/components/ui/badge";
 import type { ReportSection } from "@/types/api";
 import { statusColor, statusBadgeVariant, trendColor } from "@/lib/report-utils";
@@ -64,7 +64,7 @@ export async function ReportCategoryCard({
 
   return (
     <Link
-      href={`/${locale}/dashboard/reports/${section.category}?period=${period}`}
+      href={`/dashboard/reports/${section.category}?period=${period}`}
       className="group rounded-xl border border-border bg-card p-5 flex flex-col gap-3 hover:shadow-md transition-shadow duration-200 cursor-pointer"
       aria-label={`Xem chi tiết ${section.title}`}
     >

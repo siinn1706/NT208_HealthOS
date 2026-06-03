@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -377,15 +378,15 @@ export function VisitPrepWizardClient({ initial, attachToAppointmentId }: Props)
               {tWiz("newRevision")}
             </button>
           )}
-          <a
-            href={`/${locale}/dashboard/visit-prep/${brief.id}/print`}
+          <Link
+            href={`/dashboard/visit-prep/${brief.id}/print`}
             target="_blank"
             rel="noopener"
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
           >
             <Printer className="size-3.5" />
             {t("review.print")}
-          </a>
+          </Link>
           <a
             href={`/api/v1/visit-briefs/${encodeURIComponent(brief.id)}/pdf?locale=${locale}`}
             target="_blank"

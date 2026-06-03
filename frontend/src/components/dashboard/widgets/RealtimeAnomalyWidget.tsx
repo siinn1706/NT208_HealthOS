@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import {
   Bell, AlertTriangle, X, Wifi, WifiOff, ChevronRight,
   Heart, Activity, Footprints, Moon, Scale, ShieldCheck, TrendingUp, TrendingDown,
@@ -108,7 +107,6 @@ function DeviationPill({ dev, severity }: { dev: number; severity: "critical" | 
 
 export function RealtimeAnomalyWidget() {
   const t      = useTranslations("dashboard.anomalies");
-  const locale = useLocale();
   // No `enabled` arg needed: this component lives inside the (app) layout which
   // server-redirects unauthenticated users before render. useChatWs handles any
   // residual unauthenticated cases autonomously — fetchToken() failure sets
@@ -216,7 +214,7 @@ export function RealtimeAnomalyWidget() {
                     </div>
                   </div>
                   <Link
-                    href={`/${locale}/pricing`}
+                    href={`/pricing`}
                     className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
                   >
                     Tìm hiểu Pro <ChevronRight className="size-3" />
@@ -355,7 +353,7 @@ export function RealtimeAnomalyWidget() {
 
         {/* ── Footer ── */}
         <Link
-          href={`/${locale}/dashboard/reports/trends`}
+          href={`/dashboard/reports/trends`}
           className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline transition-colors pt-0.5"
         >
           {t("viewAll")}

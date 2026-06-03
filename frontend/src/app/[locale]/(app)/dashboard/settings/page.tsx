@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -204,7 +204,7 @@ function getMountedServerSnapshot(): boolean {
   return false;
 }
 
-export default function SettingsPage() {
+function SettingsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
@@ -675,5 +675,17 @@ export default function SettingsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+/**
+ * Route default export wraps the inner component in Suspense.
+ * Required because SettingsPageInner calls useSearchParams().
+ */
+export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsPageInner />
+    </Suspense>
   );
 }

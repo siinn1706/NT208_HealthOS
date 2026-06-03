@@ -133,7 +133,7 @@ export function AppointmentsPageClient({ appointments: initial }: Props) {
           <p className="text-sm font-semibold text-foreground">{tVp("pageTitle")}</p>
           <p className="text-xs text-muted-foreground">{tVp("pageSubtitle")}</p>
         </div>
-        <span className="text-xs font-medium text-primary">
+        <span className="hidden text-xs font-medium text-primary sm:inline">
           {tVp("list.startCta")} →
         </span>
       </Link>

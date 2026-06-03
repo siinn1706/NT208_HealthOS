@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/navigation";
 import { useTranslations } from "next-intl";
@@ -12,7 +12,7 @@ import { VisitTypePicker } from "@/components/dashboard/visit-prep/VisitTypePick
 import { createBrief } from "@/components/dashboard/visit-prep/VisitPrepApi";
 import type { VisitType } from "@/types/api";
 
-export default function NewVisitPrepPage() {
+function NewVisitPrepPageInner() {
   const t = useTranslations("dashboard.visitPrep");
   const tWiz = useTranslations("dashboard.visitPrep.wizard");
   const router = useRouter();
@@ -67,5 +67,17 @@ export default function NewVisitPrepPage() {
         </button>
       </div>
     </>
+  );
+}
+
+/**
+ * Route default export wraps the inner component in Suspense.
+ * Required because NewVisitPrepPageInner calls useSearchParams().
+ */
+export default function NewVisitPrepPage() {
+  return (
+    <Suspense>
+      <NewVisitPrepPageInner />
+    </Suspense>
   );
 }

@@ -142,7 +142,7 @@ export default function NotificationsAllPage({
           ) : null
         }
       />
-      <div className="px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto px-4 py-5 sm:px-6 lg:px-8">
         {loading ? (
           <div className="space-y-2">
             {[0, 1, 2, 3, 4].map((i) => (

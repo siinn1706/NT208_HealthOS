@@ -135,8 +135,8 @@ export function AppointmentHistoryTable({ appointments, onSelect }: AppointmentH
         </div>
 
         {/* Status filter chips */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <SlidersHorizontal className="size-4 text-muted-foreground mr-1" aria-hidden />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <SlidersHorizontal className="size-4 text-muted-foreground mr-1 flex-shrink-0" aria-hidden />
           {ALL_FILTERS.map(({ key, labelKey }) => (
             <button type="button"
               key={key}

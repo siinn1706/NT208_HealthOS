@@ -3,21 +3,20 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { TimeRangeSelector } from "@/components/charts/TimeRangeSelector";
 import { fetchTrendAnalysisBatch } from "@/lib/reports-trends-client";
 import { cn } from "@/lib/utils";
 import type { ReportPeriod, TrendAnalysis } from "@/types/api";
 
-interface MetricDef { key: string; label: string; unit: string; color: string; scale?: number }
+interface MetricDef { key: string; color: string; scale?: number }
 
 const METRICS: MetricDef[] = [
-  { key: "heart_rate", label: "Nhịp tim",  unit: "bpm",  color: "#ef4444" },
-  { key: "steps",      label: "Bước chân", unit: "bước", color: "#3b82f6" },
-  { key: "sleep",      label: "Giấc ngủ",  unit: "giờ",  color: "#8b5cf6", scale: 1 / 60 },
-  { key: "calories",   label: "Calo",       unit: "kcal", color: "#f97316" },
-  { key: "weight",     label: "Cân nặng",  unit: "kg",   color: "#f59e0b" },
+  { key: "heart_rate", color: "#ef4444" },
+  { key: "steps",      color: "#3b82f6" },
+  { key: "sleep",      color: "#8b5cf6", scale: 1 / 60 },
+  { key: "calories",   color: "#f97316" },
+  { key: "weight",     color: "#f59e0b" },
 ];
 
 const TREND_ICON = {
@@ -67,7 +66,6 @@ interface Props { initialPeriod?: ReportPeriod }
 
 export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
   const t      = useTranslations("dashboard.trends");
-  const locale = useLocale();
   const [period,    setPeriod]    = useState<ReportPeriod>(initialPeriod);
   const [trends,    setTrends]    = useState<Record<string, TrendAnalysis>>({});
   const [isPending, startTransition] = useTransition();
@@ -105,7 +103,7 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
             <p className="text-[11px] text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
-        <div className="flex-shrink-0">
+        <div className="min-w-0">
           <TimeRangeSelector value={period} onChange={handlePeriodChange} />
         </div>
       </div>
@@ -139,7 +137,7 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
                     <span className="size-2 rounded-full" style={{ backgroundColor: m.color }} />
                     <Minus className="size-3.5 text-muted-foreground" />
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{m.label}</p>
+                  <p className="text-[11px] text-muted-foreground">{t(`metrics.${m.key}` as Parameters<typeof t>[0])}</p>
                   <p className="text-lg font-bold text-muted-foreground mt-0.5">--</p>
                 </div>
               );
@@ -177,7 +175,7 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
               return (
                 <Link
                   key={m.key}
-                  href={`/${locale}/dashboard/reports/trends?metric=${m.key}&period=${period}`}
+                  href={`/dashboard/reports/trends?metric=${m.key}&period=${period}`}
                   className="rounded-lg border border-border p-3 hover:bg-muted/50 transition-colors group flex flex-col"
                 >
                   {/* Top row: dot + trend pill */}
@@ -195,12 +193,12 @@ export function TrendSummaryWidget({ initialPeriod = "7d" }: Props) {
                   </div>
 
                   {/* Label */}
-                  <p className="text-[11px] text-muted-foreground leading-none">{m.label}</p>
+                  <p className="text-[11px] text-muted-foreground leading-none">{t(`metrics.${m.key}` as Parameters<typeof t>[0])}</p>
 
                   {/* Value */}
                   <p className="text-lg font-bold text-foreground tabular-nums mt-1 leading-none">
                     {dispVal}
-                    <span className="text-[10px] font-normal text-muted-foreground ml-1">{m.unit}</span>
+                    <span className="text-[10px] font-normal text-muted-foreground ml-1">{t(`units.${m.key}` as Parameters<typeof t>[0])}</span>
                   </p>
 
                   {/* Sparkline */}
