@@ -1,10 +1,28 @@
 import type { MetadataRoute } from "next";
-
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://healthos.vn";
+import { absoluteUrl, getSiteUrl } from "@/lib/seo/site-url";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/" },
-    sitemap: `${BASE}/sitemap.xml`,
+    rules: [
+      {
+        userAgent: "*",
+        allow: ["/"],
+        disallow: [
+          "/api/",
+          "/dashboard/", "/admin/", "/onboarding/",
+          "/*/dashboard/", "/*/dashboard/*",
+          "/*/admin/", "/*/admin/*",
+          "/*/admin/forbidden",
+          "/*/onboarding/", "/*/onboarding/*",
+          "/*/login", "/*/register", "/*/forgot-password", "/*/verify",
+          "/*/e", "/*/e/", "/*/e/*",
+          "/*/dev/", "/*/dev/*",
+          "/*/dashboard/*/print", "/*/dashboard/*/print/*",
+          "/cdn-cgi/",
+        ],
+      },
+    ],
+    sitemap: absoluteUrl("/sitemap.xml"),
+    host: getSiteUrl(),
   };
 }

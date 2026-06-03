@@ -1,52 +1,27 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SkipToMain } from "@/components/shared/SkipToMain";
+import { buildLocaleMetadata } from "@/lib/seo/locale-metadata";
+import { organizationJsonLd, websiteJsonLd, jsonLdScript } from "@/lib/seo/json-ld";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("home.meta");
+  const locale = await getLocale();
   return {
-    title: t("title"),
-    description: t("description"),
+    ...buildLocaleMetadata({
+      locale,
+      path: "",
+      title: t("title"),
+      description: t("description"),
+    }),
     keywords: [
       "HealthOS", "NT208", "đồ án môn học", "health management app",
       "calorie tracking", "AI food recognition", "BMI tracking", "Vietnam",
     ],
-    alternates: {
-      canonical: "/",
-      languages: { vi: "/vi", en: "/en", "x-default": "/vi" },
-    },
-    openGraph: {
-      title: t("title"),
-      description: t("description"),
-      type: "website",
-      siteName: "HealthOS",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("title"),
-      description: t("description"),
-    },
   };
 }
-
-const orgJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "HealthOS",
-  url: "https://healthos.vn",
-  logo: "https://healthos.vn/logo.png",
-  description: "Academic health management project — NT208 course, UIT Vietnam",
-  sameAs: [],
-};
-
-const siteJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "HealthOS",
-  url: "https://healthos.vn",
-};
 
 export default function MainLayout({
   children,
@@ -58,14 +33,14 @@ export default function MainLayout({
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from a static object.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD serialized via jsonLdScript() XSS-safe helper.
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(organizationJsonLd) }}
       />
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from a static object.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD serialized via jsonLdScript() XSS-safe helper.
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteJsonLd) }}
       />
       <SkipToMain />
       <Navbar />

@@ -30,8 +30,9 @@ async def deprecated_websocket_chat(user_id: str, ws: WebSocket) -> None:  # ido
         "payload": {
             "code": "ENDPOINT_DEPRECATED",
             "message": (
-                "/ws/chat/{user_id} has been removed. Use /ws?token=... and "
-                "send {event:'msg:send', payload:{conversation_id, content}} "
+                "/ws/chat/{user_id} has been removed. Connect to /ws and "
+                "send {type:'auth', ticket:'<ws_ticket>'} as the first frame, "
+                "then {event:'msg:send', payload:{conversation_id, content}} "
                 "to the AI conversation instead."
             ),
         },

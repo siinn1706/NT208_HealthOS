@@ -236,17 +236,19 @@ async def health_ready() -> JSONResponse:
 
 # ─── WebSocket ────────────────────────────────────────────────────────────────
 @app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
+async def websocket_endpoint(ws: WebSocket) -> None:
     """
     WebSocket endpoint for realtime chat events.
 
-    Authentication:
-      ?token=<JWT access token>  (required)
+    Authentication (post-connect first-frame protocol):
+      1. Client connects with NO token in the URL.
+      2. Client immediately sends: { "type": "auth", "ticket": "<ws_ticket>" }
+      3. Server validates; rejects with close code 4401 if invalid/timeout.
 
-    The client sends JSON frames:
+    Subsequent client frames:
       { "event": "<event_type>", "payload": { ... } }
 
-    Server sends JSON frames:
+    Server frames:
       { "event": "<event_type>", "payload": { ... }, "timestamp": "<ISO8601>" }
 
     Supported client events:
@@ -254,60 +256,19 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
       msg:react, msg:pin, msg:unpin, msg:read, typing, conv:sync, pong
     """
     import datetime
-    import asyncio
     import json
-    import uuid
     import logging
 
-    from jose import JWTError
-    from app.core.security import JWT_BLACKLIST_PREFIX, decode_token_with_type
     from app.adapters.database import AsyncSessionLocal
-    from app.adapters.redis_client import get_redis
+    from app.ws.auth_first_frame import authenticate_first_frame
 
     log = logging.getLogger("healthos.ws")
 
-    # ── Auth ──────────────────────────────────────────────────────────────────
-    if not token:
-        await ws.accept()
-        await ws.send_json({
-            "event": "error",
-            "payload": {"code": "AUTH_REQUIRED", "message": "Missing ?token= query param."},
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        })
-        await ws.close(code=4001)
+    # ── Auth (first-frame, post-connect) ──────────────────────────────────────
+    user_id = await authenticate_first_frame(ws)
+    if user_id is None:
         return
-
-    try:
-        payload = decode_token_with_type(
-            token,
-            expected_type="ws_ticket",
-            allow_legacy_access=False,
-        )
-        # Check revocation blacklist (ws_tickets have a jti too)
-        jti = payload.get("jti")
-        if jti:
-            try:
-                redis_conn = await get_redis()
-                revoked = await asyncio.wait_for(
-                    redis_conn.exists(f"{JWT_BLACKLIST_PREFIX}{jti}"),
-                    timeout=1.0,
-                )
-            except Exception as exc:
-                log.warning("WS ticket revocation check unavailable: %s", exc)
-                revoked = False
-            if revoked:
-                raise JWTError("ws_ticket has been revoked")
-        user_id_str = payload.get("sub", "")
-        user_id = uuid.UUID(user_id_str)
-    except (JWTError, ValueError, TypeError):
-        await ws.accept()
-        await ws.send_json({
-            "event": "error",
-            "payload": {"code": "AUTH_INVALID_TOKEN", "message": "Invalid or expired token."},
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        })
-        await ws.close(code=4001)
-        return
+    user_id_str = str(user_id)
 
     # ── Connected ─────────────────────────────────────────────────────────────
     connected = await manager.connect(ws, user_id_str)

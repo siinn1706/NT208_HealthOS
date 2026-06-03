@@ -50,6 +50,7 @@ function loadProductionEnv(overrides = {}) {
     NEXTAUTH_URL: "https://healthos.test",
     NEXTAUTH_SECRET: "nextauth-secret-0123456789abcdef012345",
     BFF_TRUSTED_ORIGINS: "https://healthos.test",
+    EXPO_PUBLIC_API_URL: "https://healthos.test",
     COOKIE_MAX_AGE: "3600",
     POSTGRES_PASSWORD: "prod-postgres-pass",
     REDIS_PASSWORD: "prod-redis-pass",
@@ -142,6 +143,7 @@ test("mobile rendering defaults missing public URLs to blank emulator local valu
   assert.doesNotThrow(() => validateEnv(env, ["mobile"]));
 
   const [mobile] = renderTargets(env, ["mobile"], root);
+  assert.match(mobile.content, /^EXPO_PUBLIC_API_URL=$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_CORE_API_URL=$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_WEB_APP_URL=$/m);
@@ -279,6 +281,7 @@ test("rendered files contain only target-relevant service keys", () => {
   const aiWorker = fs.readFileSync(path.join(root, "services/ai-worker/.env"), "utf8");
 
   assert.match(mobile, /EXPO_PUBLIC_CORE_API_URL=/);
+  assert.match(mobile, /EXPO_PUBLIC_API_URL=/);
   assert.match(mobile, /EXPO_PUBLIC_WEB_APP_URL=/);
   assert.match(mobile, /EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=/);
   assert.doesNotMatch(mobile, /AI_PROXY_BASE_URL=/);
@@ -328,6 +331,7 @@ test("mobile production render preserves HTTPS and WSS values", () => {
   const env = loadProductionEnv();
   const [mobile] = renderTargets(env, ["mobile"], root);
 
+  assert.match(mobile.content, /^EXPO_PUBLIC_API_URL=https:\/\/healthos\.test$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_CORE_API_URL=https:\/\/api\.healthos\.test$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=wss:\/\/api\.healthos\.test\/ws$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_WEB_APP_URL=https:\/\/healthos\.test$/m);

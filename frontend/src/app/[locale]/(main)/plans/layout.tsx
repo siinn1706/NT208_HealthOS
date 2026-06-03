@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { buildLocaleMetadata } from "@/lib/seo/locale-metadata";
+import { jsonLdScript } from "@/lib/seo/json-ld";
+import { absoluteUrl } from "@/lib/seo/site-url";
 import { plans } from "@/data/plans";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("plans.meta");
+  const locale = await getLocale();
   return {
-    title: t("title"),
-    description: t("description"),
+    ...buildLocaleMetadata({
+      locale,
+      path: "/plans",
+      title: t("title"),
+      description: t("description"),
+    }),
     keywords: [
       "HealthOS", "health plans", "calorie tracking", "BMI",
       "AI nutrition assistant", "NT208", "university project demo",
     ],
-    alternates: {
-      canonical: "/plans",
-      languages: { vi: "/vi/plans", en: "/en/plans", "x-default": "/vi/plans" },
-    },
-    openGraph: {
-      title: t("title"),
-      description: t("description"),
-      type: "website",
-    },
   };
 }
 
@@ -41,7 +40,7 @@ export default function PlansLayout({
       price: p.price,
       priceCurrency: "VND",
       availability: "https://schema.org/PreOrder",
-      url: `https://healthos.vn/plans#${p.id}`,
+      url: absoluteUrl(`/plans#${p.id}`),
     })),
   };
 
@@ -50,8 +49,8 @@ export default function PlansLayout({
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from static plan metadata.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD serialized via jsonLdScript() XSS-safe helper.
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(productJsonLd) }}
       />
       {children}
     </>

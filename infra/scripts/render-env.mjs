@@ -216,7 +216,12 @@ const TARGETS = {
           "STORAGE_ENDPOINT",
           "NEXTAUTH_URL",
           "NEXTAUTH_SECRET",
+          "NEXT_PUBLIC_APP_URL",
           "NEXT_PUBLIC_CORE_WS_URL",
+          "BFF_TRUSTED_ORIGINS",
+          "BFF_CSRF_GUARD_MODE",
+          "DEV_BYPASS_ENABLED",
+          "DEV_BYPASS_CREDENTIALS",
           "BFF_SHARED_SECRET",
           "METRICS_TOKEN",
         ],
@@ -225,7 +230,13 @@ const TARGETS = {
   },
   mobile: {
     path: "mobile/.env",
-    sections: [["Expo public build-time env", ["EXPO_PUBLIC_CORE_API_URL", "EXPO_PUBLIC_CORE_WS_URL", "EXPO_PUBLIC_WEB_APP_URL", "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI"]]],
+    sections: [["Expo public build-time env", [
+      "EXPO_PUBLIC_API_URL",
+      "EXPO_PUBLIC_CORE_API_URL",
+      "EXPO_PUBLIC_CORE_WS_URL",
+      "EXPO_PUBLIC_WEB_APP_URL",
+      "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI",
+    ]]],
   },
 };
 
@@ -242,6 +253,7 @@ const PROTECTED_ENV_VALUES = new Set(["production", "prod", "staging"]);
 const ANDROID_PACKAGE_RE = /^([A-Za-z][A-Za-z0-9_]*\.)+[A-Za-z][A-Za-z0-9_]*$/;
 const ANDROID_SHA256_FINGERPRINT_RE = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
 const LOCAL_MOBILE_EMULATOR_DEFAULTS = new Map([
+  ["EXPO_PUBLIC_API_URL", "http://10.0.2.2:3000"],
   ["EXPO_PUBLIC_CORE_API_URL", "http://10.0.2.2:8000"],
   ["EXPO_PUBLIC_CORE_WS_URL", "ws://10.0.2.2:8000"],
   ["EXPO_PUBLIC_WEB_APP_URL", "http://10.0.2.2:3000"],
@@ -249,6 +261,7 @@ const LOCAL_MOBILE_EMULATOR_DEFAULTS = new Map([
 const BACKWARD_COMPATIBLE_DEFAULTS = {
   DB_DISABLE_POOL: "false",
   DEV_BYPASS_ENABLED: "false",
+  EXPO_PUBLIC_API_URL: "",
   EXPO_PUBLIC_CORE_API_URL: "",
   EXPO_PUBLIC_CORE_WS_URL: "",
   EXPO_PUBLIC_WEB_APP_URL: "",
@@ -368,13 +381,17 @@ export function validateEnv(env, targetNames, options = {}) {
     "MINIO_ROOT_PASSWORD",
     "NEXT_PUBLIC_APP_URL",
     "NEXT_PUBLIC_CORE_WS_URL",
-    "EXPO_PUBLIC_CORE_API_URL",
     "EXPO_PUBLIC_CORE_WS_URL",
     "EXPO_PUBLIC_WEB_APP_URL",
     "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI",
     "ANDROID_APP_LINK_PACKAGE_NAME",
     "ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS",
   ];
+  const mobileApiKey = assertAtLeastOne(
+    effectiveEnv,
+    ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_CORE_API_URL"],
+    "Production requires EXPO_PUBLIC_API_URL (preferred) or EXPO_PUBLIC_CORE_API_URL.",
+  );
   for (const key of prodRequired) {
     assertPresent(effectiveEnv, key);
     assertNotPlaceholder(effectiveEnv, key);
@@ -388,10 +405,12 @@ export function validateEnv(env, targetNames, options = {}) {
   assertNoLocalhost(effectiveEnv, "REDIS_URL");
   assertNoLocalhost(effectiveEnv, "ALLOWED_ORIGINS");
   assertNoLocalhost(effectiveEnv, "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI");
+  assertNoLocalhost(effectiveEnv, mobileApiKey);
+  assertNoLocalhost(effectiveEnv, "NEXT_PUBLIC_CORE_WS_URL");
   assertNoWildcardOrigins(effectiveEnv.ALLOWED_ORIGINS);
   assertHttps(effectiveEnv, "NEXTAUTH_URL");
   assertHttps(effectiveEnv, "NEXT_PUBLIC_APP_URL");
-  assertHttps(effectiveEnv, "EXPO_PUBLIC_CORE_API_URL");
+  assertHttps(effectiveEnv, mobileApiKey);
   assertHttps(effectiveEnv, "EXPO_PUBLIC_WEB_APP_URL");
   assertHttps(effectiveEnv, "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI");
   assertWss(effectiveEnv, "NEXT_PUBLIC_CORE_WS_URL");
@@ -421,6 +440,14 @@ function assertPresent(env, key) {
   if (!String(env[key] ?? "").trim()) {
     throw new Error(`Production env requires non-empty ${key}`);
   }
+}
+
+function assertAtLeastOne(env, keys, message) {
+  const present = keys.find((key) => String(env[key] ?? "").trim());
+  if (!present) {
+    throw new Error(message);
+  }
+  return present;
 }
 
 function assertNotPlaceholder(env, key) {

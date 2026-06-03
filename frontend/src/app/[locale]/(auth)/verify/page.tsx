@@ -1,13 +1,16 @@
 import { VerifyOTPForm } from "@/components/shared/auth";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { buildNoindexMetadata } from "@/lib/seo/locale-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("auth");
-  return {
+  const [locale, t] = await Promise.all([getLocale(), getTranslations("auth")]);
+  return buildNoindexMetadata({
+    locale,
+    path: "/verify",
     title: `${t("verifyTitle")} — HealthOS`,
     description: t("verifySubtitle"),
-  };
+  });
 }
 
 // Server Component: reads `email` from search params and passes it to the

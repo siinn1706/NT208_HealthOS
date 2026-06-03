@@ -255,6 +255,27 @@ describe('mobile OAuth helpers', () => {
     );
   });
 
+  it('maps provider config callback errors to a stable mobile error code', () => {
+    const err = (() => {
+      try {
+        parseMobileOAuthCallbackUrl(
+          `nt208://auth/oauth/callback?provider=google&error=oauth_not_configured&state=${validState}`,
+          'google',
+          validState,
+        );
+        return null;
+      } catch (error) {
+        return error;
+      }
+    })();
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({
+      code: 'OAUTH_NOT_CONFIGURED',
+      message: 'OAuth sign-in is not configured yet.',
+    });
+  });
+
   it.each([
     'https://healthos.example.com/auth/oauth/callback?provider=github&code=abc',
     'nt208://auth/oauth/wrong?provider=github&code=abc',

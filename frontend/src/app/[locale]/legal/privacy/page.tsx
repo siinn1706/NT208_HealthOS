@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
+import { buildLocaleMetadata } from "@/lib/seo/locale-metadata";
 
 interface PrivacyPageParams {
   params: Promise<{ locale: string }>;
@@ -11,11 +12,12 @@ export async function generateMetadata({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "legal.privacy.meta" });
-  return {
+  return buildLocaleMetadata({
+    locale,
+    path: "/legal/privacy",
     title: `${t("title")} — HealthOS`,
     description: t("description"),
-    robots: { index: true, follow: true },
-  };
+  });
 }
 
 export default async function PrivacyPolicyPage({ params }: PrivacyPageParams) {

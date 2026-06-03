@@ -195,6 +195,65 @@ describe("OAuth route handlers", () => {
     expect(response.status).toBe(400);
   });
 
+  it("redirects mobile OAuth config errors back to the app callback", async () => {
+    delete process.env.GOOGLE_CLIENT_SECRET;
+
+    const response = await googleInit(
+      makeRequest(
+        `http://localhost:3000/api/v1/auth/oauth/google?mobile_redirect_uri=nt208%3A%2F%2Fauth%2Foauth%2Fcallback&mobile_state=${mobileState}&mobile_code_challenge=${mobileCodeChallenge}`,
+        {
+          headers: {
+            host: "localhost:3000",
+          },
+        },
+      ),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(
+      `nt208://auth/oauth/callback?provider=google&error=oauth_not_configured&state=${mobileState}`,
+    );
+  });
+
+  it("redirects web OAuth config errors back to the localized login page", async () => {
+    delete process.env.GITHUB_CLIENT_ID;
+
+    const response = await githubInit(
+      makeRequest(
+        "http://localhost:3000/api/v1/auth/oauth/github?locale=en",
+        {
+          headers: {
+            host: "localhost:3000",
+          },
+        },
+      ),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/en/login?oauth_error=oauth_not_configured",
+    );
+  });
+
+  it("keeps explicit JSON OAuth config errors for API callers", async () => {
+    delete process.env.GITHUB_CLIENT_SECRET;
+
+    const response = await githubInit(
+      makeRequest(
+        "http://localhost:3000/api/v1/auth/oauth/github",
+        {
+          headers: {
+            accept: "application/json",
+            host: "localhost:3000",
+          },
+        },
+      ),
+    );
+
+    await expect(response.json()).resolves.toEqual({ error: "GitHub OAuth not configured" });
+    expect(response.status).toBe(503);
+  });
+
   it("drops unsafe mobile OAuth redirect URIs", async () => {
     const response = await githubInit(
       makeRequest(

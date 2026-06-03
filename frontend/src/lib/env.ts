@@ -99,4 +99,15 @@ export function assertFrontendEnvConfig(env: NodeJS.ProcessEnv = process.env): v
   if (env.DEV_BYPASS_ENABLED === "true" || (env.DEV_BYPASS_CREDENTIALS ?? "").trim()) {
     throw new Error("DEV_BYPASS_ENABLED and DEV_BYPASS_CREDENTIALS are forbidden in protected frontend envs.");
   }
+
+  const appUrl = env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!appUrl) throw new Error("NEXT_PUBLIC_APP_URL must be set in production");
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(appUrl);
+  } catch {
+    throw new Error("NEXT_PUBLIC_APP_URL is not a valid URL");
+  }
+  if (parsedUrl.protocol !== "https:") throw new Error("NEXT_PUBLIC_APP_URL must use https://");
+  if (parsedUrl.host !== "healthos.page") throw new Error(`NEXT_PUBLIC_APP_URL host must be healthos.page (got ${parsedUrl.host})`);
 }

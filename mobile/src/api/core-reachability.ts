@@ -82,7 +82,7 @@ export async function ensureCoreReachable(options: CoreReachabilityOptions = {})
   }
 
   try {
-    await apiRequest('/api/v1/_health', {
+    await apiRequest('/api/v1/health', {
       auth: false,
       timeoutMs: options.timeoutMs ?? CORE_REACHABILITY_TIMEOUT_MS,
     });
@@ -108,11 +108,11 @@ function getDevReachabilityGuidance(hostKind: CoreHostKind): string {
     case 'android-emulator':
       return '10.0.2.2 works only for Android emulator; physical Expo Go needs this computer LAN IP.';
     case 'localhost':
-      return 'Physical Expo Go cannot use localhost; set EXPO_PUBLIC_API_URL to http://<computer-lan-ip>:3000/api.';
+      return 'Physical Expo Go cannot use localhost; set EXPO_PUBLIC_API_URL to http://<computer-lan-ip>:3000.';
     case 'private-lan':
       return 'Verify the phone and computer share the LAN, Windows firewall allows port 3000, and the Next.js BFF is running (start_FE.bat).';
     case 'invalid':
-      return 'Check EXPO_PUBLIC_API_URL format (must be http[s]://host[:port]/api) and restart Expo after editing mobile/.env.';
+      return 'Check EXPO_PUBLIC_API_URL format (must be http[s]://host[:port]) and restart Expo after editing mobile/.env.';
     default:
       return 'Verify the BFF host is reachable from this device before signing in.';
   }

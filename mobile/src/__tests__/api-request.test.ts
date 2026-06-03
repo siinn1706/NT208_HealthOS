@@ -60,6 +60,7 @@ beforeEach(() => {
   mockExpoConstants.manifest2 = {};
   mockExpoConstants.linkingUri = undefined;
   delete process.env.EXPO_PUBLIC_API_URL;
+  delete process.env.EXPO_PUBLIC_CORE_API_URL;
   delete process.env.EXPO_PUBLIC_CORE_WS_URL;
 });
 
@@ -122,6 +123,16 @@ describe('getCoreApiBaseUrl', () => {
     mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
 
     expect(getCoreApiBaseUrl()).toBe('http://10.0.2.2:8000');
+  });
+
+  it('normalizes legacy EXPO_PUBLIC_CORE_API_URL for mobile BFF hosting', () => {
+    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://legacy-api.local:8000/';
+    expect(getCoreApiBaseUrl()).toBe('http://legacy-api.local:3000');
+  });
+
+  it('normalizes legacy EXPO_PUBLIC_CORE_API_URL path for BFF base URL', () => {
+    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://legacy-api.local:8000/api/v1/';
+    expect(getCoreApiBaseUrl()).toBe('http://legacy-api.local:3000');
   });
 
   it('derives dev API fallback from the Expo LAN host for physical devices', () => {

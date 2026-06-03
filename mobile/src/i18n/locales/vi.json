@@ -941,6 +941,7 @@
   },
   "api": {
     "offline": "Không có kết nối mạng",
+    "offlineTitle": "Không có kết nối mạng",
     "offlineMessage": "Một số tính năng có thể không khả dụng",
     "retry": "Thử lại",
     "loading": "Đang tải...",
@@ -969,6 +970,7 @@
       "validation_failed": "Vui lòng kiểm tra lại thông tin và thử lại.",
       "rate_limit_exceeded": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
       "no_active_subscription": "Tính năng này yêu cầu gói đăng ký đang hoạt động.",
+      "oauth_not_configured": "Đăng nhập OAuth tạm thời chưa khả dụng. Vui lòng dùng email và mật khẩu.",
       "upstream_error": "Lỗi dịch vụ bên ngoài. Vui lòng thử lại.",
       "internal_error": "Đã xảy ra lỗi không mong muốn.",
       "internal_server_error": "Lỗi máy chủ không mong muốn."

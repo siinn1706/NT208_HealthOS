@@ -28,6 +28,7 @@ export interface Article {
   id: string;
   title: BilingualText;
   excerpt: BilingualText;
+  body: BilingualText;
   author: string;
   date: string; // ISO date string
   categoryId: string;

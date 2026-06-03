@@ -6,7 +6,8 @@
     "dev": "node tools/dev-proxy-server.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint && pnpm lint:no-legacy-host",
+    "lint:no-legacy-host": "bash scripts/check-no-legacy-host.sh",
     "optimize:assets": "node tools/optimize-assets.mjs",
     "optimize:svgo": "node tools/optimize-assets.mjs --svgo",
     "optimize:thumbs": "node tools/optimize-assets.mjs --thumbs",
@@ -16,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:prod": "PLAYWRIGHT_BASE_URL=https://healthos.page playwright test seo-production-smoke"
   },
   "dependencies": {
     "@dayflow/blossom-color-picker": "^2.2.0",

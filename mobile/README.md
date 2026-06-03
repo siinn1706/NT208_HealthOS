@@ -1,6 +1,6 @@
 # NT208 HealthOS — Mobile
 
-Expo / React Native app for the HealthOS iOS/Android experience. The app uses Core API directly with bearer tokens stored on-device; browser web traffic is handled separately by the Next.js BFF in `../frontend/`.
+Expo / React Native app for the HealthOS iOS/Android experience. The app calls the shared Next.js BFF with bearer tokens stored on-device; browser web traffic is handled separately by `../frontend/`.
 
 ## Scope
 
@@ -76,10 +76,11 @@ LAN metadata is unavailable.
 Set physical-device URLs to this computer's LAN IP:
 
 ```bash
-EXPO_PUBLIC_CORE_API_URL=http://192.168.1.10:8000
+EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
 EXPO_PUBLIC_CORE_WS_URL=ws://192.168.1.10:8000
 EXPO_PUBLIC_WEB_APP_URL=http://192.168.1.10:3000
 ```
+`EXPO_PUBLIC_CORE_API_URL` is still accepted for backward compatibility, but `EXPO_PUBLIC_API_URL` is the preferred variable now.
 
 Use your LAN IP for phones on the same network and start Core so it listens on
 the LAN interface. Start the Next.js frontend/BFF on the same host before using

@@ -139,7 +139,8 @@ WsAction = tuple[str, dict] | str
 
 def _run_ws_script(token: str, actions: list[WsAction]) -> list[dict]:
     responses: list[dict] = []
-    with TestClient(app).websocket_connect(f"/ws?token={token}") as ws_client:
+    with TestClient(app).websocket_connect("/ws") as ws_client:
+        ws_client.send_text(json.dumps({"type": "auth", "ticket": token}))
         for action in actions:
             if isinstance(action, str):
                 ws_client.send_text(action)
