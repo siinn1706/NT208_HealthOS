@@ -8,7 +8,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -20,7 +20,7 @@ from app.adapters.database import get_db
 from app.adapters.email_client import send_otp_email
 from app.adapters.redis_client import get_redis
 from app.core.security import create_ws_ticket, get_current_user, http_bearer, revoke_token
-from app.core.rate_limit import rate_limit_login, rate_limit_otp_request, rate_limit_availability
+from app.core.rate_limit import rate_limit_login, rate_limit_otp_request, rate_limit_availability, rate_limit_mfa, rate_limit_otp_verify
 from app.core.config import settings
 from app.exceptions import (
     ApiException,
@@ -140,15 +140,13 @@ async def _rbac_snapshot(db: AsyncSession, user_id: uuid.UUID) -> tuple[list[str
 def _raise_if_account_banned(user: User) -> None:
     if not is_active_ban(user):
         return
-    raise HTTPException(
+    raise ApiException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail={
-            "code": "ACCOUNT_BANNED",
-            "message": "Your account has been banned.",
-            "details": {
-                "user_id": str(user.id),
-                "banned_until": user.banned_until.isoformat() if user.banned_until else None,
-            },
+        code="ACCOUNT_BANNED",
+        message="Your account has been banned.",
+        details={
+            "user_id": str(user.id),
+            "banned_until": user.banned_until.isoformat() if user.banned_until else None,
         },
     )
 
@@ -236,7 +234,7 @@ async def login_with_password(
         log_event("auth", "login_password", "invalid_credentials",
                   email_hash=hash_email(body.identifier), ip=request.client.host if request.client else None)
         raise UnauthorizedException(
-            message="Tên đăng nhập hoặc mật khẩu không đúng",
+            message="Invalid username or password.",
             code="INVALID_CREDENTIALS",
         )
 
@@ -259,7 +257,7 @@ async def login_with_password(
                   user_id=str(user.id), ip=request.client.host if request.client else None)
         raise UnauthorizedException(
             code="ACCOUNT_LOCKED",
-            message=f"Tài khoản đã bị khóa tạm thời. Vui lòng thử lại sau {locked_minutes} phút.",
+            message=f"Account temporarily locked. Please try again in {locked_minutes} minutes.",
         )
 
     if not user.hashed_password or not verify_password(body.password, user.hashed_password):
@@ -275,7 +273,7 @@ async def login_with_password(
         log_event("auth", "login_password", "invalid_credentials",
                   user_id=str(user.id), ip=request.client.host if request.client else None)
         raise UnauthorizedException(
-            message="Tên đăng nhập hoặc mật khẩu không đúng",
+            message="Invalid username or password.",
             code="INVALID_CREDENTIALS",
         )
 
@@ -284,15 +282,13 @@ async def login_with_password(
     # B7 review P0-3 — soft-deleted users get a typed 403 with the restore
     # link instead of a fresh JWT they can't use.
     if user.deleted_at is not None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "ACCOUNT_PENDING_DELETION",
-                "message": "Your account is pending deletion. Restore it to continue.",
-                "details": {
-                    "user_id": str(user.id),
-                    "purge_at": user.purge_at.isoformat() if user.purge_at else None,
-                },
+            code="ACCOUNT_PENDING_DELETION",
+            message="Your account is pending deletion. Restore it to continue.",
+            details={
+                "user_id": str(user.id),
+                "purge_at": user.purge_at.isoformat() if user.purge_at else None,
             },
         )
 
@@ -340,6 +336,7 @@ async def login_with_mfa(
     request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    _rate: None = Depends(rate_limit_mfa),
 ) -> AuthTokenResponse:
     from app.services.auth import record_failed_login, reset_failed_login_attempts
 
@@ -499,15 +496,17 @@ def verify_bff_secret(request: Request) -> None:
     """Dependency: ensures /auth/token is only callable from the BFF via a shared secret."""
     expected = settings.bff_shared_secret
     if not expected:
-        raise HTTPException(
+        raise ApiException(
             status_code=503,
-            detail={"code": "CONFIG_ERROR", "message": "BFF secret not configured on server"},
+            code="CONFIG_ERROR",
+            message="BFF secret not configured on server",
         )
     actual = request.headers.get("X-BFF-Secret", "")
     if not hmac.compare_digest(actual, expected):
-        raise HTTPException(
+        raise ApiException(
             status_code=403,
-            detail={"code": "FORBIDDEN", "message": "Invalid BFF secret"},
+            code="FORBIDDEN",
+            message="Invalid BFF secret",
         )
 
 
@@ -560,35 +559,29 @@ async def verify_bff_exchange_payload(body: OAuthProfile, redis: Redis) -> None:
         return
 
     if not all(signature_fields):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "BFF_EXCHANGE_SIGNATURE_REQUIRED",
-                "message": "Signed BFF exchange payload is required.",
-            },
+            code="BFF_EXCHANGE_SIGNATURE_REQUIRED",
+            message="Signed BFF exchange payload is required.",
         )
 
     expected_issuer = getattr(settings, "bff_exchange_issuer", "healthos-bff")
     expected_audience = getattr(settings, "bff_exchange_audience", "healthos-core")
     if body.exchange_issuer != expected_issuer or body.exchange_audience != expected_audience:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "BFF_EXCHANGE_CLAIMS_INVALID",
-                "message": "BFF exchange issuer or audience is invalid.",
-            },
+            code="BFF_EXCHANGE_CLAIMS_INVALID",
+            message="BFF exchange issuer or audience is invalid.",
         )
 
     now = datetime.now(timezone.utc)
     expires_at = _parse_exchange_expiry(body.exchange_expires_at)
     max_age = int(getattr(settings, "bff_exchange_max_age_seconds", 300) or 300)
     if expires_at is None or expires_at <= now or expires_at > now + timedelta(seconds=max_age):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "BFF_EXCHANGE_EXPIRED",
-                "message": "BFF exchange payload is expired or outside the allowed window.",
-            },
+            code="BFF_EXCHANGE_EXPIRED",
+            message="BFF exchange payload is expired or outside the allowed window.",
         )
 
     secret = getattr(settings, "bff_shared_secret", "")
@@ -598,24 +591,20 @@ async def verify_bff_exchange_payload(body: OAuthProfile, redis: Redis) -> None:
         hashlib.sha256,
     ).hexdigest()
     if not hmac.compare_digest(body.exchange_signature or "", expected_signature):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "BFF_EXCHANGE_SIGNATURE_INVALID",
-                "message": "BFF exchange signature is invalid.",
-            },
+            code="BFF_EXCHANGE_SIGNATURE_INVALID",
+            message="BFF exchange signature is invalid.",
         )
 
     ttl_seconds = max(1, int((expires_at - now).total_seconds()))
     replay_key = f"{BFF_EXCHANGE_NONCE_PREFIX}{body.exchange_nonce}"
     stored = await redis.set(replay_key, "1", nx=True, ex=ttl_seconds)
     if not stored:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "BFF_EXCHANGE_REPLAYED",
-                "message": "BFF exchange nonce has already been used.",
-            },
+            code="BFF_EXCHANGE_REPLAYED",
+            message="BFF exchange nonce has already been used.",
         )
 
 
@@ -625,29 +614,25 @@ async def _resolve_oauth_user_for_token_exchange(body: OAuthProfile, db: AsyncSe
     except UserPendingDeletion as exc:
         await db.rollback()
         log_event("auth.oauth", "token_exchange", "account_pending_deletion", provider=body.provider)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "ACCOUNT_PENDING_DELETION",
-                "message": "Your account is pending deletion. Restore it to continue.",
-                "details": {
-                    "user_id": str(exc.user_id),
-                    "purge_at": exc.purge_at.isoformat() if exc.purge_at else None,
-                },
+            code="ACCOUNT_PENDING_DELETION",
+            message="Your account is pending deletion. Restore it to continue.",
+            details={
+                "user_id": str(exc.user_id),
+                "purge_at": exc.purge_at.isoformat() if exc.purge_at else None,
             },
         ) from exc
     except UserBanned as exc:
         await db.rollback()
         log_event("auth.oauth", "token_exchange", "account_banned", provider=body.provider)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "ACCOUNT_BANNED",
-                "message": "Your account has been banned.",
-                "details": {
-                    "user_id": str(exc.user_id),
-                    "banned_until": exc.banned_until.isoformat() if exc.banned_until else None,
-                },
+            code="ACCOUNT_BANNED",
+            message="Your account has been banned.",
+            details={
+                "user_id": str(exc.user_id),
+                "banned_until": exc.banned_until.isoformat() if exc.banned_until else None,
             },
         ) from exc
 
@@ -657,13 +642,11 @@ def _mobile_oauth_handoff_key(code: str) -> str:
     return f"{MOBILE_OAUTH_HANDOFF_PREFIX}{digest}"
 
 
-def _invalid_mobile_oauth_handoff() -> HTTPException:
-    return HTTPException(
+def _invalid_mobile_oauth_handoff() -> ApiException:
+    return ApiException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={
-            "code": "MOBILE_OAUTH_HANDOFF_INVALID",
-            "message": "The mobile OAuth session expired or was already used.",
-        },
+        code="MOBILE_OAUTH_HANDOFF_INVALID",
+        message="The mobile OAuth session expired or was already used.",
     )
 
 
@@ -780,15 +763,13 @@ async def redeem_mobile_oauth_handoff(
     if user is None:
         raise _invalid_mobile_oauth_handoff()
     if user.deleted_at is not None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "ACCOUNT_PENDING_DELETION",
-                "message": "Your account is pending deletion. Restore it to continue.",
-                "details": {
-                    "user_id": str(user.id),
-                    "purge_at": user.purge_at.isoformat() if user.purge_at else None,
-                },
+            code="ACCOUNT_PENDING_DELETION",
+            message="Your account is pending deletion. Restore it to continue.",
+            details={
+                "user_id": str(user.id),
+                "purge_at": user.purge_at.isoformat() if user.purge_at else None,
             },
         )
 
@@ -842,9 +823,10 @@ async def attach_oauth_link(
     await verify_bff_exchange_payload(body.profile, redis)
     user = await db.get(User, body.user_id)
     if user is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "User not found."},
+            code="NOT_FOUND",
+            message="User not found.",
         )
     try:
         link, _created = await oauth_link_svc.attach_link(
@@ -865,14 +847,12 @@ async def attach_oauth_link(
             details={"provider": exc.provider, "owning_user_id": str(exc.owning_user_id)},
         )
         await db.commit()
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "OAUTH_ACCOUNT_ALREADY_LINKED",
-                "message": (
-                    f"This {exc.provider} account is already linked to a different user."
-                ),
-            },
+            code="OAUTH_ACCOUNT_ALREADY_LINKED",
+            message=(
+                f"This {exc.provider} account is already linked to a different user."
+            ),
         ) from exc
 
     await audit(
@@ -905,20 +885,19 @@ async def remove_oauth_link(
     try:
         removed = await oauth_link_svc.unlink(db=db, user=current_user, link_id=link_id)
     except LastSignInMethodError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "LAST_SIGN_IN_METHOD",
-                "message": (
-                    "You must set a password before unlinking your only sign-in method."
-                ),
-            },
+            code="LAST_SIGN_IN_METHOD",
+            message=(
+                "You must set a password before unlinking your only sign-in method."
+            ),
         ) from exc
 
     if not removed:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Linked account not found."},
+            code="NOT_FOUND",
+            message="Linked account not found.",
         )
 
     await audit(
@@ -995,8 +974,8 @@ async def request_email_otp(
             if body.purpose == "signup" and existing_user is not None:
                 raise ConflictException(
                     code="EMAIL_TAKEN",
-                    message="Email đã được sử dụng",
-                    field_errors={"email": "Email đã được sử dụng"},
+                    message="Email already in use.",
+                    field_errors={"email": "Email already in use."},
                 )
             if body.purpose in {"login", "reset_password"} and existing_user is not None:
                 _raise_if_account_banned(existing_user)
@@ -1006,7 +985,7 @@ async def request_email_otp(
     if await redis.exists(cooldown_key):
         from app.exceptions import RateLimitException
         raise RateLimitException(
-            message="Vui lòng đợi 60 giây trước khi yêu cầu mã OTP mới",
+            message="Please wait 60 seconds before requesting a new OTP.",
         )
 
     if body.purpose == "login" and existing_user is None:
@@ -1034,7 +1013,7 @@ async def request_email_otp(
                 raise ApiException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     code="PASSWORD_BREACHED",
-                    message="Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu. Vui lòng chọn mật khẩu khác.",
+                    message="This password has been found in data breaches. Please choose a different password.",
                 )
             from app.core.security import hash_password
             hashed_pw = hash_password(plaintext_password)
@@ -1079,7 +1058,7 @@ async def request_email_otp(
                 await redis.delete(otp_key)
                 from app.exceptions import ServerException
                 raise ServerException(
-                    message="Không thể gửi email OTP. Vui lòng thử lại sau.",
+                    message="Failed to send OTP email. Please try again.",
                 ) from exc
 
     log_event("auth", "otp_request", "ok", email_hash=hash_email(body.email))
@@ -1126,6 +1105,7 @@ async def verify_email_otp(
     request: Request,
     redis: Redis = Depends(get_redis),
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(rate_limit_otp_verify),
 ):
     """
     Verify an email OTP code.
@@ -1143,7 +1123,7 @@ async def verify_email_otp(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_LOCKED",
-            message="Bạn đã nhập sai OTP quá nhiều lần. Vui lòng yêu cầu mã mới.",
+            message="Too many incorrect OTP attempts. Please request a new code.",
         )
 
     # Peek (not consume yet) — we need the stored hash to validate before deleting
@@ -1152,7 +1132,7 @@ async def verify_email_otp(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_INVALID",
-            message="Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.",
+            message="OTP has expired. Please request a new code.",
         )
 
     submitted_hash = _hash_otp(body.code)
@@ -1167,7 +1147,7 @@ async def verify_email_otp(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_INVALID",
-            message="Mã OTP không đúng",
+            message="Incorrect OTP code.",
         )
 
     # Atomically consume the OTP — GETDEL prevents two concurrent requests from
@@ -1178,19 +1158,19 @@ async def verify_email_otp(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_INVALID",
-            message="Mã OTP đã được sử dụng. Vui lòng yêu cầu mã mới.",
+            message="OTP has already been used. Please request a new code.",
         )
     if otp_record is not None:
         await mark_otp_consumed(db, otp_record)
 
     # ── reset_password: verify only — do NOT create a new user ──────────────
     if body.purpose == "reset_password":
-        result = await db.execute(select(User).where(User.email == body.email))
+        result = await db.execute(select(User).where(func.lower(User.email) == body.email.lower()))
         user = result.scalar_one_or_none()
         if user is None:
             raise NotFoundException(
                 resource="Email",
-                message="Không tìm thấy tài khoản với email này",
+                message="No account found with this email.",
                 code="ACCOUNT_NOT_FOUND_EMAIL",
             )
         _raise_if_account_banned(user)
@@ -1210,7 +1190,7 @@ async def verify_email_otp(
         if user is None:
             raise NotFoundException(
                 resource="Email",
-                message="Không tìm thấy tài khoản với email này",
+                message="No account found with this email.",
                 code="ACCOUNT_NOT_FOUND_EMAIL",
             )
         _raise_if_account_banned(user)
@@ -1226,12 +1206,12 @@ async def verify_email_otp(
         result = await db.execute(
             select(User)
             .options(selectinload(User.profile))
-            .where(User.email == body.email)
+            .where(func.lower(User.email) == body.email.lower())
         )
         user = result.scalar_one_or_none()
         if user is None:
             raise UnauthorizedException(
-                message="Không tìm thấy tài khoản với email này",
+                message="No account found with this email.",
                 code="INVALID_CREDENTIALS",
             )
         _raise_if_account_banned(user)
@@ -1252,7 +1232,7 @@ async def verify_email_otp(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="SESSION_EXPIRED",
-            message="Phiên đăng ký đã hết hạn. Vui lòng đăng ký lại.",
+            message="Registration session expired. Please register again.",
         )
 
     # Parse signup data from Redis
@@ -1287,27 +1267,25 @@ async def verify_email_otp(
         result = await db.execute(
             _select(User)
             .options(selectinload(User.profile))
-            .where(User.email == body.email)
+            .where(func.lower(User.email) == body.email.lower())
         )
 
         user = result.scalar_one()
     except UserBanned as exc:
         await db.rollback()
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "ACCOUNT_BANNED",
-                "message": "Your account has been banned.",
-                "details": {
-                    "user_id": str(exc.user_id),
-                    "banned_until": exc.banned_until.isoformat() if exc.banned_until else None,
-                },
+            code="ACCOUNT_BANNED",
+            message="Your account has been banned.",
+            details={
+                "user_id": str(exc.user_id),
+                "banned_until": exc.banned_until.isoformat() if exc.banned_until else None,
             },
         ) from exc
     except Exception as exc:
         from app.exceptions import ServerException
         raise ServerException(
-            message="Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.",
+            message="Failed to create account. Please try again.",
         ) from exc
 
     # Set password (already bcrypt-hashed from request-otp step) and username.
@@ -1340,12 +1318,12 @@ async def verify_email_otp(
         if "username" in str(exc.orig).lower() or "users_username_key" in str(exc.orig).lower():
             raise ConflictException(
                 code="USERNAME_TAKEN",
-                message="Tên người dùng đã được sử dụng. Vui lòng chọn tên khác.",
-                field_errors={"username": "Tên người dùng đã được sử dụng"},
+                message="Username already taken.",
+                field_errors={"username": "Username already taken."},
             ) from exc
         raise ConflictException(
             code="CONFLICT",
-            message="Đã xảy ra xung đột dữ liệu. Vui lòng thử lại.",
+            message="Data conflict. Please try again.",
         ) from exc
 
     token = await _issue_auth_token(db=db, user=user, request=request)
@@ -1383,7 +1361,7 @@ async def reset_password(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_REQUIRED",
-            message="Vui lòng xác thực OTP trước khi đặt lại mật khẩu.",
+            message="Please verify your OTP before resetting your password.",
         )
 
     from app.core.security import hash_password
@@ -1394,19 +1372,19 @@ async def reset_password(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="PASSWORD_BREACHED",
-            message="Mật khẩu này đã bị rò rỉ trong các vụ vi phạm dữ liệu. Vui lòng chọn mật khẩu khác.",
+            message="This password has been found in data breaches. Please choose a different password.",
         )
 
     result = await db.execute(
         select(User)
         .options(selectinload(User.profile))
-        .where(User.email == body.email)
+        .where(func.lower(User.email) == body.email.lower())
     )
     user = result.scalar_one_or_none()
     if user is None:
         raise NotFoundException(
             resource="Email",
-            message="Không tìm thấy tài khoản với email này",
+            message="No account found with this email.",
             code="ACCOUNT_NOT_FOUND_EMAIL",
         )
     _raise_if_account_banned(user)
@@ -1416,7 +1394,7 @@ async def reset_password(
         raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
             code="OTP_REQUIRED",
-            message="Vui lòng xác thực OTP trước khi đặt lại mật khẩu.",
+            message="Please verify your OTP before resetting your password.",
         )
 
     user.hashed_password = hash_password(body.new_password)
@@ -1547,9 +1525,10 @@ async def refresh_access_token(
         )
     except RefreshTokenUserBannedError as exc:
         await db.commit()
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": exc.code, "message": exc.message},
+            code=exc.code,
+            message=exc.message,
         ) from exc
     except RefreshTokenReuseError as exc:
         await db.commit()

@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 from typing import Final
+
+logger = logging.getLogger(__name__)
 
 # Public-facing constants. Box size 8 + border 2 yields ~250×250 px PNG which
 # scans reliably on most phone cameras at arm's length when printed at 4×4 cm.
@@ -33,6 +36,7 @@ def render_qr_png_bytes(payload: str) -> bytes:
         import qrcode
         from qrcode.constants import ERROR_CORRECT_Q
     except ImportError as exc:
+        logger.error("qrcode library not installed; QR rendering unavailable")
         raise RuntimeError(
             "qrcode library is not installed. Add 'qrcode[pil]' to requirements.txt."
         ) from exc

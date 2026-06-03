@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy import func, select, update
@@ -17,6 +17,7 @@ from app.adapters.redis_client import get_redis
 from app.adapters.storage import delete_object, presign_storage_url, storage_url_to_bucket_key, upload_file
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.core import Meal, MealStatusEnum, User
 from app.schemas.common import DataResponse, ErrorResponse, PaginationMeta
 from app.schemas.meals import (
@@ -29,6 +30,7 @@ from app.schemas.meals import (
     MealUpdateBody,
 )
 from app.core.metrics import record_idempotency_outcome
+from app.core.rate_limit import rate_limit_meal_create
 from app.services import idempotency as idem_svc
 from app.services import meals as meal_svc
 from app.services.idempotency import IdempotencyOutcome
@@ -48,23 +50,19 @@ _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
-def _bad_request(message: str) -> HTTPException:
-    return HTTPException(
+def _bad_request(message: str) -> ApiException:
+    return ApiException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail={
-            "code": "VALIDATION_ERROR",
-            "message": message,
-        },
+        code="VALIDATION_ERROR",
+        message=message,
     )
 
 
-def _analysis_enqueue_error() -> HTTPException:
-    return HTTPException(
+def _analysis_enqueue_error() -> ApiException:
+    return ApiException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail={
-            "code": "MEAL_ANALYSIS_ENQUEUE_FAILED",
-            "message": "Meal analysis could not be queued. Please try again.",
-        },
+        code="MEAL_ANALYSIS_ENQUEUE_FAILED",
+        message="Meal analysis could not be queued. Please try again.",
     )
 
 
@@ -90,19 +88,19 @@ async def _read_validated_meal_image(image: UploadFile) -> tuple[bytes, str, str
     try:
         image_bytes = await read_upload_bounded(image, _MAX_UPLOAD_BYTES)
     except UploadTooLargeError as exc:
-        raise HTTPException(status_code=413, detail="File too large. Maximum 10 MiB.") from exc
+        raise ApiException(status_code=413, code="FILE_TOO_LARGE", message="File too large. Maximum 10 MiB.") from exc
     if not image_bytes:
         raise _bad_request("image file is empty")
 
     detected_mime = detect_image_mime(image_bytes[:32])
     if detected_mime not in _ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=422, detail="Invalid image content detected.")
+        raise ApiException(status_code=422, code="INVALID_IMAGE", message="Invalid image content detected.")
 
     declared_mime = normalize_content_type(image.content_type)
     if declared_mime and declared_mime not in _ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=415, detail=f"Unsupported file type: {declared_mime}")
+        raise ApiException(status_code=415, code="UNSUPPORTED_MEDIA_TYPE", message=f"Unsupported file type: {declared_mime}")
     if declared_mime and declared_mime != detected_mime:
-        raise HTTPException(status_code=422, detail="Image content does not match declared Content-Type.")
+        raise ApiException(status_code=422, code="CONTENT_TYPE_MISMATCH", message="Image content does not match declared Content-Type.")
 
     return image_bytes, detected_mime, extension_for_mime(detected_mime, "jpg")
 
@@ -142,6 +140,7 @@ async def list_meals(
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
     summary="Create a meal log (with optional image upload)",
+    dependencies=[Depends(rate_limit_meal_create)],
 )
 async def create_meal(
     request: Request,
@@ -165,15 +164,13 @@ async def create_meal(
         if idem_result.outcome == IdempotencyOutcome.REPLAY and idem_result.payload is not None:
             return MealDataResponse.model_validate(idem_result.payload)
         if idem_result.outcome == IdempotencyOutcome.CONFLICT:
-            raise HTTPException(
+            raise ApiException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "code": "IDEMPOTENT_INFLIGHT",
-                    "message": (
-                        "A previous request with this Idempotency-Key is still being "
-                        "processed. Retry in a moment."
-                    ),
-                },
+                code="IDEMPOTENT_INFLIGHT",
+                message=(
+                    "A previous request with this Idempotency-Key is still being "
+                    "processed. Retry in a moment."
+                ),
             )
         # Otherwise OWN — we hold the slot; on any error path below we must
         # release the slot so the next retry isn't permanently stuck waiting.
@@ -350,13 +347,7 @@ async def get_meal(
 ) -> MealDataResponse:
     meal = await meal_svc.get_meal_by_id(db, current_user.id, meal_id)
     if meal is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "NOT_FOUND",
-                "message": "Meal not found.",
-            },
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Meal not found.")
     return MealDataResponse(data=_to_meal_response(meal))
 
 @router.patch(
@@ -385,10 +376,7 @@ async def update_meal(
         nutrition_result=nutrition_result,
     )
     if meal is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Meal not found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Meal not found.")
     await db.commit()
     return MealDataResponse(data=_to_meal_response(meal))
 
@@ -410,10 +398,7 @@ async def delete_meal(
         meal_id=meal_id,
     )
     if meal is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Meal not found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Meal not found.")
     image_url = meal.image_url
     await db.commit()
     _delete_meal_image_object(image_url)
@@ -437,10 +422,7 @@ async def get_meal_ingredients(
         meal_id=meal_id,
     )
     if items is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Meal not found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Meal not found.")
     return MealIngredientListResponse(
         data=[MealIngredientItem.model_validate(item) for item in items]
     )
@@ -534,10 +516,7 @@ async def get_analysis_status_by_job(
     meal = (await db.execute(stmt)).scalar_one_or_none()
 
     if not meal:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Analysis job not found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Analysis job not found.")
 
     nutrition_result: dict | None = None
     result: dict | None = None
@@ -585,8 +564,5 @@ async def get_meal_analysis_status(
     """Get the analysis status for a specific meal."""
     status_info = await meal_svc.get_meal_analysis_status(db, current_user.id, meal_id)
     if not status_info:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Meal not found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Meal not found.")
     return status_info

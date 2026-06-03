@@ -13,13 +13,14 @@ import datetime
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import User
 from app.schemas.common import ErrorResponse
@@ -77,15 +78,11 @@ async def _enforce_rate_limit(
         await redis.expire(key, window_s)
     if current > limit:
         ttl = await redis.ttl(key)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "RATE_LIMITED",
-                "message": (
-                    f"You can perform this action at most {limit} times per hour."
-                ),
-                "details": {"retry_after_s": max(60, int(ttl) if ttl else window_s)},
-            },
+            code="RATE_LIMITED",
+            message=f"You can perform this action at most {limit} times per hour.",
+            details={"retry_after_s": max(60, int(ttl) if ttl else window_s)},
         )
 
 
@@ -146,14 +143,16 @@ async def list_dose_history(
         effective_from = effective_from.replace(tzinfo=datetime.timezone.utc)
 
     if effective_from >= effective_to:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": "Provide a valid `from` < `to` window."},
+            code="VALIDATION_ERROR",
+            message="Provide a valid `from` < `to` window.",
         )
     if effective_to - effective_from > datetime.timedelta(days=_HISTORY_MAX_DAYS):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": f"History window cannot exceed {_HISTORY_MAX_DAYS} days."},
+            code="VALIDATION_ERROR",
+            message=f"History window cannot exceed {_HISTORY_MAX_DAYS} days.",
         )
 
     rows = await med_svc.dose_history(
@@ -193,9 +192,10 @@ async def create_medication(
     try:
         plan = await med_svc.create_plan(db, current_user.id, body)
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
     await audit(
         db=db,
@@ -232,9 +232,10 @@ async def get_medication(
             http_method="GET",
             route="/medications/{plan_id}",
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Medication plan not found."},
+            code="NOT_FOUND",
+            message="Medication plan not found.",
         )
     return MedicationPlanDetailResponse(data=detail)
 
@@ -259,14 +260,16 @@ async def update_medication(
     try:
         plan = await med_svc.update_plan(db, current_user.id, plan_id, body)
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
     if plan is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Medication plan not found."},
+            code="NOT_FOUND",
+            message="Medication plan not found.",
         )
     schedule_changed = (
         body.dose_times is not None
@@ -308,14 +311,16 @@ async def pause_medication(
             update_pause_metadata=bool(body and body.model_fields_set),
         )
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
     if plan is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Medication plan not found."},
+            code="NOT_FOUND",
+            message="Medication plan not found.",
         )
     await audit(
         db=db,
@@ -346,9 +351,10 @@ async def resume_medication(
 ) -> MedicationPlanResponse:
     plan = await med_svc.resume_plan(db, current_user.id, plan_id)
     if plan is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Medication plan not found."},
+            code="NOT_FOUND",
+            message="Medication plan not found.",
         )
     await audit(
         db=db,
@@ -375,9 +381,10 @@ async def delete_medication(
 ) -> None:
     ok = await med_svc.archive_plan(db, current_user.id, plan_id)
     if not ok:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Medication plan not found."},
+            code="NOT_FOUND",
+            message="Medication plan not found.",
         )
     await audit(
         db=db,
@@ -410,14 +417,16 @@ async def get_adherence(
             db=db, user_id=current_user.id, plan_id=plan_id, period=period
         )
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
     if adh is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Medication plan not found."},
+            code="NOT_FOUND",
+            message="Medication plan not found.",
         )
     return AdherenceResponse(data=adh)
 
@@ -441,9 +450,10 @@ async def log_refill(
 ) -> MedicationPlanResponse:
     plan = await med_svc.log_refill(db, current_user.id, plan_id, body)
     if plan is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Medication plan not found."},
+            code="NOT_FOUND",
+            message="Medication plan not found.",
         )
     await audit(
         db=db,
@@ -492,9 +502,10 @@ async def import_from_appointment(
         body=body,
     )
     if result is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     await audit(
         db=db,

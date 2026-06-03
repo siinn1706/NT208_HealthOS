@@ -3,11 +3,12 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.core import AppointmentStatusEnum, User
 from app.schemas.appointments import (
     AppointmentCreateBody,
@@ -66,9 +67,10 @@ async def create_appointment(
     try:
         item = await appointment_svc.create_appointment(db, current_user.id, body)
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
 
     await db.commit()
@@ -92,9 +94,10 @@ async def get_appointment(
         appointment_id=appointment_id,
     )
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     return AppointmentResponse(data=item)
 
@@ -116,9 +119,10 @@ async def get_appointment_prep(
         appointment_id=appointment_id,
     )
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     return AppointmentPrepResponse(data=item)
 
@@ -145,9 +149,10 @@ async def update_appointment_prep(
         body=body,
     )
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     await db.commit()
     return AppointmentPrepResponse(data=item)
@@ -177,14 +182,16 @@ async def update_appointment(
             body=body,
         )
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     await db.commit()
     return AppointmentResponse(data=item)
@@ -215,18 +222,17 @@ async def update_status(
             target=target,
         )
     except InvalidStatusTransition as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "code": "INVALID_STATUS_TRANSITION",
-                "message": str(exc),
-                "details": {"current": exc.current.value, "target": exc.target.value},
-            },
+            code="INVALID_STATUS_TRANSITION",
+            message=str(exc),
+            details={"current": exc.current.value, "target": exc.target.value},
         ) from exc
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     await db.commit()
     return AppointmentResponse(data=item)

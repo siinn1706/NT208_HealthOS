@@ -31,7 +31,7 @@ import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +40,7 @@ from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import ConnectedDevice, User, WearableProviderEnum
 from app.schemas.common import ErrorResponse
@@ -102,12 +103,10 @@ async def google_connect(
         # 503 (not 500) so the FE can show a "Coming soon" message
         # rather than a generic crash dialog.
         logger.warning("Google Health connect failed: %s", exc)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "code": "WEARABLE_NOT_CONFIGURED",
-                "message": "Google Health is not configured on this server.",
-            },
+            code="WEARABLE_NOT_CONFIGURED",
+            message="Google Health is not configured on this server.",
         ) from exc
     return GoogleConnectResponse(authorization_url=url)
 
@@ -154,18 +153,20 @@ async def google_callback(
     try:
         await oauth_state.consume_state(redis, state, expected_user_id=current_user.id)
     except oauth_state.OAuthStateError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "INVALID_STATE", "message": str(exc)},
+            code="INVALID_STATE",
+            message=str(exc),
         ) from exc
 
     # ── Exchange code → tokens ──────────────────────────────────────
     try:
         tokens = await google_health.exchange_code_for_tokens(code)
     except google_health.GoogleHealthError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "OAUTH_EXCHANGE_FAILED", "message": str(exc)},
+            code="OAUTH_EXCHANGE_FAILED",
+            message=str(exc),
         ) from exc
 
     access_token = tokens.get("access_token")
@@ -178,34 +179,31 @@ async def google_callback(
         # the user has already linked the project and Google decides
         # not to re-issue), surface a clear error rather than persist
         # a half-broken connection.
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "OAUTH_INCOMPLETE",
-                "message": (
-                    "Google did not return both access and refresh tokens. "
-                    "Disconnect existing access at https://myaccount.google.com/permissions "
-                    "and retry."
-                ),
-            },
+            code="OAUTH_INCOMPLETE",
+            message=(
+                "Google did not return both access and refresh tokens. "
+                "Disconnect existing access at https://myaccount.google.com/permissions "
+                "and retry."
+            ),
         )
 
     # ── Fetch user profile so we know which Google account to bind ──
     try:
         profile = await google_health.fetch_user_profile(access_token)
     except google_health.GoogleHealthError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "OAUTH_PROFILE_FAILED", "message": str(exc)},
+            code="OAUTH_PROFILE_FAILED",
+            message=str(exc),
         ) from exc
     google_sub = str(profile.get("sub") or "").strip()
     if not google_sub:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "OAUTH_PROFILE_FAILED",
-                "message": "Google profile is missing a stable subject id.",
-            },
+            code="OAUTH_PROFILE_FAILED",
+            message="Google profile is missing a stable subject id.",
         )
     duplicate_owner = (
         await db.execute(
@@ -217,14 +215,12 @@ async def google_callback(
         )
     ).scalar_one_or_none()
     if duplicate_owner is not None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "ACCOUNT_ALREADY_LINKED",
-                "message": (
-                    "This Google Health account is already linked to another user."
-                ),
-            },
+            code="ACCOUNT_ALREADY_LINKED",
+            message=(
+                "This Google Health account is already linked to another user."
+            ),
         )
 
     # ── Encrypt tokens before any DB write ──────────────────────────
@@ -236,12 +232,10 @@ async def google_callback(
         # (not 500) signals operator-fixable; 500 would imply a code
         # bug worth paging on.
         logger.error("FERNET_KEY missing — cannot persist Google Health tokens")
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "code": "WEARABLE_NOT_CONFIGURED",
-                "message": "Server is not configured to store wearable tokens.",
-            },
+            code="WEARABLE_NOT_CONFIGURED",
+            message="Server is not configured to store wearable tokens.",
         ) from exc
 
     # ── Upsert the ConnectedDevice row ──────────────────────────────
@@ -359,12 +353,10 @@ async def google_webhook(
     if not secret:
         # No secret configured → reject everything. Better than silently
         # accepting unsigned pushes and trusting the payload's sub field.
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "code": "WEBHOOK_NOT_CONFIGURED",
-                "message": "Google Health webhooks are not enabled on this server.",
-            },
+            code="WEBHOOK_NOT_CONFIGURED",
+            message="Google Health webhooks are not enabled on this server.",
         )
 
     raw_body = await request.body()
@@ -374,9 +366,10 @@ async def google_webhook(
         # Don't log the signature — that would help an attacker confirm
         # they're close to a valid value. Generic 401, no detail.
         logger.warning("Google webhook signature mismatch")
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "INVALID_SIGNATURE", "message": "Bad webhook signature."},
+            code="INVALID_SIGNATURE",
+            message="Bad webhook signature.",
         )
 
     # Parse the body just enough to extract the affected Google sub.

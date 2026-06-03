@@ -14,12 +14,13 @@ import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.adapters.storage import DEFAULT_GET_EXPIRY_S
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import User
 from app.schemas.common import ErrorResponse
@@ -67,14 +68,16 @@ async def upload_prescription_asset(
     try:
         file_bytes = await read_upload_bounded(file, asset_svc.MAX_BYTES)
     except UploadTooLargeError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={"code": "PAYLOAD_TOO_LARGE", "message": str(exc)},
+            code="PAYLOAD_TOO_LARGE",
+            message=str(exc),
         ) from exc
     if not file_bytes:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "EMPTY_FILE", "message": "Uploaded file is empty."},
+            code="EMPTY_FILE",
+            message="Uploaded file is empty.",
         )
 
     mime_type = detect_prescription_mime(file_bytes[:32], file.content_type)
@@ -89,23 +92,23 @@ async def upload_prescription_asset(
             original_filename=file.filename,
         )
     except AssetTooLargeError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={"code": "PAYLOAD_TOO_LARGE", "message": str(exc)},
+            code="PAYLOAD_TOO_LARGE",
+            message=str(exc),
         ) from exc
     except AssetMimeNotAllowed as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail={
-                "code": "UNSUPPORTED_MEDIA_TYPE",
-                "message": "Only PDF, PNG, JPEG, and WEBP are accepted.",
-            },
+            code="UNSUPPORTED_MEDIA_TYPE",
+            message="Only PDF, PNG, JPEG, and WEBP are accepted.",
         ) from exc
 
     if asset is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
 
     await audit(
@@ -137,9 +140,10 @@ async def list_prescription_assets(
 ) -> PrescriptionAssetListResponse:
     items = await asset_svc.list_assets(db=db, user=current_user, appointment_id=appointment_id)
     if items is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     return PrescriptionAssetListResponse(
         data=[PrescriptionAssetDTO.model_validate(item) for item in items]
@@ -170,9 +174,10 @@ async def get_prescription_asset_url(
             http_method="GET",
             route="/appointments/{appointment_id}/prescription/assets/{asset_id}/url",
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Asset not found."},
+            code="NOT_FOUND",
+            message="Asset not found.",
         )
     url = asset_svc.mint_signed_url(asset, expires_s=DEFAULT_GET_EXPIRY_S)
     await audit(
@@ -210,9 +215,10 @@ async def delete_prescription_asset(
         db=db, user=current_user, appointment_id=appointment_id, asset_id=asset_id
     )
     if not removed:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Asset not found."},
+            code="NOT_FOUND",
+            message="Asset not found.",
         )
     await audit(
         db=db,

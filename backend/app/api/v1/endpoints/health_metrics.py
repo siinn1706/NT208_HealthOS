@@ -5,11 +5,13 @@ import datetime
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
+from app.core.rate_limit import rate_limit_health_metric_create
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.core import MetricTypeEnum, User, WearableSourceEnum
 from app.schemas.common import ErrorResponse, PaginationMeta
 from app.schemas.health_metrics import (
@@ -129,6 +131,7 @@ async def compare_periods_endpoint(
     status_code=status.HTTP_201_CREATED,
     responses={401: {"model": ErrorResponse}, 400: {"model": ErrorResponse}},
     summary="Create a new health metric",
+    dependencies=[Depends(rate_limit_health_metric_create)],
 )
 async def create_metric(
     data: HealthMetricCreate,
@@ -153,8 +156,5 @@ async def update_metric(
 ):
     metric = await health_metric_svc.update_health_metric(db, metric_id, current_user.id, data)
     if not metric:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Metric not found"},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Metric not found")
     return HealthMetricResponse.model_validate(metric)

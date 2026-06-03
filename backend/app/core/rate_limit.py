@@ -50,7 +50,7 @@ def ip_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail={
                         "code": "RATE_LIMIT_EXCEEDED",
-                        "message": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
+                        "message": "Too many requests. Please try again later.",
                     },
                 )
         except HTTPException:
@@ -63,7 +63,7 @@ def ip_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={
                     "code": "SERVICE_UNAVAILABLE",
-                    "message": "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau.",
+                    "message": "Service temporarily unavailable. Please try again later.",
                 },
             )
 
@@ -96,7 +96,7 @@ def user_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail={
                         "code": "RATE_LIMIT_EXCEEDED",
-                        "message": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
+                        "message": "Too many requests. Please try again later.",
                     },
                 )
         except HTTPException:
@@ -109,7 +109,7 @@ def user_rate_limiter(max_requests: int, window_seconds: int, route_key: str):
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={
                     "code": "SERVICE_UNAVAILABLE",
-                    "message": "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau.",
+                    "message": "Service temporarily unavailable. Please try again later.",
                 },
             )
 
@@ -131,4 +131,19 @@ rate_limit_availability = ip_rate_limiter(
 # Stricter limit for MFA verify — 5 attempts per 5-minute window to resist TOTP brute-force
 rate_limit_mfa = ip_rate_limiter(
     max_requests=5, window_seconds=300, route_key="mfa_verify"
+)
+# OTP verify — 10 attempts per minute per IP to limit brute-force against 6-digit codes
+rate_limit_otp_verify = ip_rate_limiter(
+    max_requests=10, window_seconds=60, route_key="otp_verify"
+)
+
+# Write-path rate limits — user-keyed so shared NAT does not penalise multiple users
+rate_limit_meal_create = user_rate_limiter(
+    max_requests=30, window_seconds=60, route_key="meal_create"
+)
+rate_limit_conversation_create = user_rate_limiter(
+    max_requests=20, window_seconds=60, route_key="conversation_create"
+)
+rate_limit_health_metric_create = user_rate_limiter(
+    max_requests=60, window_seconds=60, route_key="health_metric_create"
 )

@@ -14,11 +14,12 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.core import User
 from app.schemas.common import ErrorResponse
 from app.schemas.notifications import (
@@ -100,9 +101,10 @@ async def mark_read(
         notification_id=notification_id,
     )
     if notif is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Notification not found."},
+            code="NOT_FOUND",
+            message="Notification not found.",
         )
     await db.commit()
     return NotificationResponse(data=NotificationDTO.model_validate(notif))

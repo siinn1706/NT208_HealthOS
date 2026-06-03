@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from app.adapters.redis_client import get_redis
 from app.core.metrics import record_health_sync_outcome, record_idempotency_outcome
 from app.core.rate_limit import user_rate_limiter
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import ConnectedDevice, User, WearableProviderEnum
 from app.schemas.common import ErrorResponse
@@ -55,24 +56,20 @@ async def _enforce_sync_state_body_limit(request: Request) -> None:
     if content_length is not None:
         try:
             if int(content_length) > _SYNC_STATE_BODY_LIMIT_BYTES:
-                raise HTTPException(
+                raise ApiException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail={
-                        "code": "PAYLOAD_TOO_LARGE",
-                        "message": "Sync-state payload exceeds 64 KiB.",
-                    },
+                    code="PAYLOAD_TOO_LARGE",
+                    message="Sync-state payload exceeds 64 KiB.",
                 )
         except ValueError:
             pass
 
     raw_body = await request.body()
     if len(raw_body) > _SYNC_STATE_BODY_LIMIT_BYTES:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={
-                "code": "PAYLOAD_TOO_LARGE",
-                "message": "Sync-state payload exceeds 64 KiB.",
-            },
+            code="PAYLOAD_TOO_LARGE",
+            message="Sync-state payload exceeds 64 KiB.",
         )
 
 
@@ -95,9 +92,10 @@ async def _load_user_device(
         )
     ).scalar_one_or_none()
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Device not found."},
+            code="NOT_FOUND",
+            message="Device not found.",
         )
     return item
 
@@ -131,9 +129,10 @@ async def connect_device(
     try:
         item = await device_svc.connect_device(db, current_user.id, body)
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
     await db.commit()
     return ConnectedDeviceResponse(data=item)
@@ -152,9 +151,10 @@ async def sync_device(
 ) -> ConnectedDeviceResponse:
     item = await device_svc.sync_device(db, current_user.id, device_id)
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Device not found."},
+            code="NOT_FOUND",
+            message="Device not found.",
         )
     await db.commit()
     return ConnectedDeviceResponse(data=item)
@@ -183,16 +183,18 @@ async def disconnect_device(
         )
     ).scalar_one_or_none()
     if device is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Device not found."},
+            code="NOT_FOUND",
+            message="Device not found.",
         )
     provider_was = device.provider
     deleted = await device_svc.disconnect_device(db, current_user.id, device_id)
     if not deleted:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Device not found."},
+            code="NOT_FOUND",
+            message="Device not found.",
         )
     if provider_was == WearableProviderEnum.HEALTH_CONNECT:
         await audit(
@@ -251,39 +253,32 @@ async def ingest_health_data(
     persisting the new token does not cause duplicate ingests.
     """
     # ── Body cap (defense in depth on top of any reverse-proxy limit) ──
-    content_length = request.headers.get("content-length")
     if content_length is not None:
         try:
             if int(content_length) > _INGEST_BODY_LIMIT_BYTES:
-                raise HTTPException(
+                raise ApiException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail={
-                        "code": "PAYLOAD_TOO_LARGE",
-                        "message": "Ingest batch exceeds 256 KiB.",
-                    },
+                    code="PAYLOAD_TOO_LARGE",
+                    message="Ingest batch exceeds 256 KiB.",
                 )
         except ValueError:
             pass
 
     raw_body = await request.body()
     if len(raw_body) > _INGEST_BODY_LIMIT_BYTES:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={
-                "code": "PAYLOAD_TOO_LARGE",
-                "message": "Ingest batch exceeds 256 KiB.",
-            },
+            code="PAYLOAD_TOO_LARGE",
+            message="Ingest batch exceeds 256 KiB.",
         )
 
     # ── Idempotency-Key (REQUIRED on this endpoint) ────────────────────
     idem_key = request.headers.get("idempotency-key") or request.headers.get("Idempotency-Key")
     if not idem_key:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "IDEMPOTENCY_KEY_REQUIRED",
-                "message": "POST /devices/{id}/ingest requires an Idempotency-Key header.",
-            },
+            code="IDEMPOTENCY_KEY_REQUIRED",
+            message="POST /devices/{id}/ingest requires an Idempotency-Key header.",
         )
 
     idem_scope = "hc.ingest"
@@ -297,15 +292,13 @@ async def ingest_health_data(
         record_health_sync_outcome("health_connect", "replay")
         return HealthIngestResponse.model_validate(idem_result.payload)
     if idem_result.outcome == IdempotencyOutcome.CONFLICT:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "IDEMPOTENT_INFLIGHT",
-                "message": (
-                    "A previous ingest with this Idempotency-Key is still being "
-                    "processed. Retry in a moment."
-                ),
-            },
+            code="IDEMPOTENT_INFLIGHT",
+            message=(
+                "A previous ingest with this Idempotency-Key is still being "
+                "processed. Retry in a moment."
+            ),
         )
 
     # ── Parse + validate the body BEFORE hitting the DB ──────────────
@@ -317,18 +310,20 @@ async def ingest_health_data(
         body_json = _json.loads(raw_body) if raw_body else {}
     except Exception as exc:
         await idem_svc.release(redis, scoped_key, idem_scope)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "INVALID_JSON", "message": "Body must be valid JSON."},
+            code="INVALID_JSON",
+            message="Body must be valid JSON.",
         ) from exc
 
     try:
         batch = HealthIngestBatch.model_validate(body_json)
     except Exception as exc:
         await idem_svc.release(redis, scoped_key, idem_scope)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "VALIDATION_FAILED", "message": str(exc)},
+            code="VALIDATION_FAILED",
+            message=str(exc),
         ) from exc
 
     # ── Resolve the device (404 if it doesn't belong to the caller) ──
@@ -337,9 +332,10 @@ async def ingest_health_data(
         batch = sync_svc.validate_ingest_batch(device, batch)
     except ValueError as exc:
         await idem_svc.release(redis, scoped_key, idem_scope)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "VALIDATION_FAILED", "message": str(exc)},
+            code="VALIDATION_FAILED",
+            message=str(exc),
         ) from exc
 
     try:
@@ -380,9 +376,10 @@ async def ingest_health_data(
             )
             await db.commit()  # persist failure state in one shot
             await idem_svc.release(redis, scoped_key, idem_scope)
-            raise HTTPException(
+            raise ApiException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"code": "INGEST_FAILED", "message": "Ingest failed."},
+                code="INGEST_FAILED",
+                message="Ingest failed.",
             ) from exc
 
         await audit(
@@ -422,7 +419,7 @@ async def ingest_health_data(
             redis, scoped_key, idem_scope, envelope.model_dump(mode="json")
         )
         return envelope
-    except HTTPException:
+    except ApiException:
         raise
     except Exception:
         # Unhandled — release the slot so retry isn't permanently stuck.
@@ -502,9 +499,10 @@ async def patch_device_permissions(
         db, current_user.id, device_id, body.scopes
     )
     if dto is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Device not found."},
+            code="NOT_FOUND",
+            message="Device not found.",
         )
 
     if transition == "revoked":
