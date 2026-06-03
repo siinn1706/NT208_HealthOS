@@ -1,24 +1,23 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { buildLocaleMetadata } from "@/lib/seo/locale-metadata";
+import { jsonLdScript } from "@/lib/seo/json-ld";
+import { absoluteUrl } from "@/lib/seo/site-url";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("services.meta");
+  const locale = await getLocale();
   return {
-    title: t("title"),
-    description: t("description"),
+    ...buildLocaleMetadata({
+      locale,
+      path: "/services",
+      title: t("title"),
+      description: t("description"),
+    }),
     keywords: [
       "HealthOS", "AI meal analysis", "calorie tracking",
       "BMI tracking", "health management app", "NT208", "Vietnam",
     ],
-    alternates: {
-      canonical: "/services",
-      languages: { vi: "/vi/services", en: "/en/services", "x-default": "/vi/services" },
-    },
-    openGraph: {
-      title: t("title"),
-      description: t("description"),
-      type: "website",
-    },
   };
 }
 
@@ -32,7 +31,7 @@ export default async function ServicesLayout({
     "@context": "https://schema.org",
     "@type": "Service",
     serviceType: "Digital Health Platform",
-    provider: { "@type": "Organization", name: "HealthOS" },
+    provider: { "@type": "Organization", name: "HealthOS", url: absoluteUrl("/") },
     name: t("title"),
     description: t("subtitle"),
     areaServed: { "@type": "Country", name: "Vietnam" },
@@ -53,8 +52,8 @@ export default async function ServicesLayout({
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from static service metadata.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }}
+        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD serialized via jsonLdScript() XSS-safe helper.
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(serviceJsonLd) }}
       />
       {children}
     </>

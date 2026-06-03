@@ -211,6 +211,9 @@ export function parseMobileOAuthCallbackUrl(
   }
   const error = readSearchParam(parsed.searchParams, 'error');
   if (error) {
+    if (error === 'oauth_not_configured') {
+      throw new ApiError('OAuth sign-in is not configured yet.', 0, 'OAUTH_NOT_CONFIGURED', { provider, error });
+    }
     throw new ApiError(`OAuth sign-in failed: ${error}.`, 0, 'OAUTH_FAILED', { provider, error });
   }
   const code = readSearchParam(parsed.searchParams, 'code');

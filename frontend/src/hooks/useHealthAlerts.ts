@@ -10,7 +10,8 @@
  * The server sends frames:
  *   { event: "health_alert", payload: { id, type, message, timestamp } }
  *
- * WebSocket endpoint: /ws?token=<JWT> (proxied via BFF ws-token exchange)
+ * WebSocket endpoint: /ws (auth ticket sent as first post-connect frame; BFF
+ * exchanges the access token for a short-lived ws_ticket).
  *
  * enabled prop allows callers to gate the connection on auth state.
  * Safety note: useChatWs handles unauthenticated cases autonomously —

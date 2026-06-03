@@ -205,6 +205,7 @@ export function LoginForm() {
   return (
     <AuthShell
       title={t("loginTitle")}
+      titleAs="h1"
       subtitle={t("loginSubtitle")}
       banner={
         oauthErrorBanner ? (

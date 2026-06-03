@@ -6,7 +6,6 @@ import { Link } from "@/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { MOBILE_NAV_LINKS } from "./nav-config";
 import { useUnreadConversations } from "./use-unread-conversations";
 
@@ -38,8 +37,8 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
     <nav
       aria-label={tShell("mobileNav")}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:hidden",
-        "pb-[env(safe-area-inset-bottom)]",
+        "fixed inset-x-0 bottom-0 z-30 box-border flex h-[var(--dashboard-mobile-nav-height)] items-stretch border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:hidden",
+        "pb-[env(safe-area-inset-bottom,0px)]",
         className,
       )}
     >
@@ -73,16 +72,15 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
           </Link>
         );
       })}
-      <Button
+      <button
         type="button"
-        variant="ghost"
         onClick={onOpenDrawer}
-        className="flex min-h-[44px] flex-1 min-w-0 flex-col items-center justify-center gap-0.5 rounded-none p-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="relative flex flex-1 flex-col items-center justify-center gap-0.5 p-2 min-h-[44px] min-w-0 overflow-hidden text-xs font-medium text-muted-foreground hover:text-foreground"
         aria-label={tShell("openDrawer")}
       >
         <Menu className="size-5" aria-hidden="true" />
-        <span>{tShell("more")}</span>
-      </Button>
+        <span className="truncate">{tShell("more")}</span>
+      </button>
     </nav>
   );
 }

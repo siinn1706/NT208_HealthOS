@@ -43,6 +43,7 @@ const NOTIFICATION_WS_EVENTS = new Set([
   "notifications.read_all",
 ]);
 const VITALS_WS_EVENTS = new Set(["vitals.updated"]);
+const MOBILE_NAV_HEIGHT = "calc(5.25rem + env(safe-area-inset-bottom, 0px))";
 
 function dispatchNotificationsRefresh(): void {
   window.dispatchEvent(new CustomEvent(NOTIFICATIONS_REFRESH_EVENT));
@@ -127,9 +128,12 @@ export function AppShell({ children, userName, userAvatar }: AppShellProps) {
   }, [pathname]);
 
   const isFullHeight = pathname.includes("/dashboard/chat");
+  const shellStyle = {
+    "--dashboard-mobile-nav-height": MOBILE_NAV_HEIGHT,
+  } as React.CSSProperties;
 
   return (
-    <div className="flex min-h-svh w-full bg-background">
+    <div className="flex min-h-svh w-full bg-background" style={shellStyle}>
       <DashboardRealtimeBridge />
       <a
         href="#main"
@@ -174,10 +178,14 @@ export function AppShell({ children, userName, userAvatar }: AppShellProps) {
         <main
           id="main"
           className={cn(
-            "flex-1",
+            "min-h-0",
             isFullHeight
-              ? "h-[calc(100svh-3.5rem-4rem)] md:h-[calc(100svh-3.5rem)] overflow-hidden"
-              : "overflow-x-hidden pb-16 md:pb-0",
+              // On mobile: flex-none + explicit height so the fixed MobileNav doesn't overlap
+              // the MessageInput. flex-1 (flex-grow:1) would expand past the explicit height
+              // and push content behind the nav. On desktop (md:) no MobileNav exists so
+              // flex-1 is correct.
+              ? "flex-none h-[calc(100svh_-_3.5rem_-_var(--dashboard-mobile-nav-height))] md:flex-1 md:h-[calc(100svh_-_3.5rem)] overflow-hidden"
+              : "flex-1 overflow-x-hidden pb-[var(--dashboard-mobile-nav-height)] md:pb-0",
           )}
         >
           {children}

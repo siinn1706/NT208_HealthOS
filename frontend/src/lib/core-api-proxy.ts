@@ -233,8 +233,19 @@ function buildCoreProxyResponse(status: number, responseData: unknown, requestId
   if (status === 204 || status === 205) {
     response = new NextResponse(null, { status });
   } else if (status >= 500) {
+    const normalized = normalizeUpstreamError(responseData, status);
+    const isDev = process.env.NODE_ENV !== "production";
     response = NextResponse.json(
-      { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error" } },
+      {
+        error: {
+          code: normalized.error.code || "INTERNAL_SERVER_ERROR",
+          message: isDev
+            ? (normalized.error.message || "Internal server error")
+            : "Internal server error",
+          ...(isDev && normalized.error.details ? { details: normalized.error.details } : {}),
+          request_id: requestId,
+        },
+      },
       { status },
     );
   } else if (status >= 400) {

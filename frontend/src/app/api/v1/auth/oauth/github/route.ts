@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateState } from "@/lib/oauth/pkce";
 import { getGitHubAuthUrl } from "@/lib/oauth/github";
 import {
+  buildLocalizedAppUrl,
   buildOAuthCallbackUrl,
   createOAuthContext,
   getOAuthCookieOptions,
@@ -13,49 +14,75 @@ import {
   normalizeOAuthMobileState,
   setOAuthContextCookie,
 } from "@/lib/oauth/flow-context";
+import { buildMobileOAuthRedirectUrl } from "@/lib/oauth/mobile-handoff";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/bff-rate-limit";
 
 const COOKIE_MAX_AGE = 600; // 10 minutes
+
+function wantsJsonResponse(request: NextRequest): boolean {
+  const accept = request.headers.get("accept") ?? "";
+  return accept.includes("application/json") && !accept.includes("text/html");
+}
+
+function githubNotConfiguredResponse(
+  request: NextRequest,
+  context: ReturnType<typeof createOAuthContext>,
+  mobileState: string | null,
+): NextResponse {
+  if (wantsJsonResponse(request)) {
+    return NextResponse.json({ error: "GitHub OAuth not configured" }, { status: 503 });
+  }
+  if (context.mobileRedirectUri && mobileState) {
+    return NextResponse.redirect(
+      buildMobileOAuthRedirectUrl(
+        { ...context, mobileRedirectUri: context.mobileRedirectUri },
+        { provider: "github", error: "oauth_not_configured", state: mobileState },
+      ),
+      302,
+    );
+  }
+  return NextResponse.redirect(
+    buildLocalizedAppUrl(context, "/login", { oauth_error: "oauth_not_configured" }),
+    302,
+  );
+}
 
 export async function GET(request: NextRequest) {
   const limited = await enforceRateLimit(request, RATE_LIMITS["auth:oauth_start"]);
   if (limited) return limited;
 
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-
-  // Check if OAuth is configured
-  if (!clientId || !clientSecret) {
+  const url = new URL(request.url);
+  const context = createOAuthContext(
+    request,
+    {
+      locale: url.searchParams.get("locale") ?? request.cookies.get("NEXT_LOCALE")?.value,
+      postLoginPath: url.searchParams.get("from"),
+      mobileRedirectUri: url.searchParams.get("mobile_redirect_uri"),
+    },
+    [process.env.OAUTH_GITHUB_CALLBACK_URL, process.env.NEXT_PUBLIC_APP_URL],
+  );
+  const mobileState = normalizeOAuthMobileState(url.searchParams.get("mobile_state"));
+  const mobileCodeChallenge = normalizeOAuthMobileCodeChallenge(url.searchParams.get("mobile_code_challenge"));
+  if (context.mobileRedirectUri && (!mobileState || !mobileCodeChallenge)) {
     return NextResponse.json(
-      { error: "GitHub OAuth not configured" },
-      { status: 503 }
+      { error: "Missing or invalid mobile OAuth verifier challenge" },
+      { status: 400 },
     );
   }
 
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return githubNotConfiguredResponse(request, context, mobileState);
+  }
+
   try {
-    const url = new URL(request.url);
     const redirectUri = buildOAuthCallbackUrl(
       request,
       "/api/v1/auth/oauth/github/callback",
       [process.env.OAUTH_GITHUB_CALLBACK_URL, process.env.NEXT_PUBLIC_APP_URL],
     );
-    const context = createOAuthContext(
-      request,
-      {
-        locale: url.searchParams.get("locale") ?? request.cookies.get("NEXT_LOCALE")?.value,
-        postLoginPath: url.searchParams.get("from"),
-        mobileRedirectUri: url.searchParams.get("mobile_redirect_uri"),
-      },
-      [process.env.OAUTH_GITHUB_CALLBACK_URL, process.env.NEXT_PUBLIC_APP_URL],
-    );
-    const mobileState = normalizeOAuthMobileState(url.searchParams.get("mobile_state"));
-    const mobileCodeChallenge = normalizeOAuthMobileCodeChallenge(url.searchParams.get("mobile_code_challenge"));
-    if (context.mobileRedirectUri && (!mobileState || !mobileCodeChallenge)) {
-      return NextResponse.json(
-        { error: "Missing or invalid mobile OAuth verifier challenge" },
-        { status: 400 },
-      );
-    }
     // Generate state for CSRF protection
     const state = generateState();
 

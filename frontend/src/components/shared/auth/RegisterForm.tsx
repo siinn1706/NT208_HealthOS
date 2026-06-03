@@ -360,6 +360,7 @@ export function RegisterForm() {
   return (
     <AuthShell
       title={t("registerTitle")}
+      titleAs="h1"
       subtitle={t("registerSubtitle")}
       brand={
         <div className="flex items-center justify-center gap-2">

@@ -232,6 +232,7 @@ export function ForgotPasswordForm() {
     return (
       <AuthShell
         title={t("forgotPasswordTitle")}
+        titleAs="h1"
         subtitle={t("forgotPasswordSubtitle")}
         brand={
           <>
@@ -289,6 +290,7 @@ export function ForgotPasswordForm() {
     return (
       <AuthShell
         title={t("forgotPasswordOtpTitle")}
+        titleAs="h1"
         subtitle={t("forgotPasswordOtpSubtitle", { email })}
         brand={
           <>
@@ -359,6 +361,7 @@ export function ForgotPasswordForm() {
   return (
     <AuthShell
       title={t("resetPasswordTitle")}
+      titleAs="h1"
       subtitle={t("resetPasswordSubtitle")}
       brand={
         <>

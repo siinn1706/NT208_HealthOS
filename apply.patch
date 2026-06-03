@@ -1,0 +1,46 @@
+*** Begin Patch
+*** Update File: mobile/src/api/client.ts
+@@
+ function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined): string {
+@@
+   return normalized;
+ }
++
++function normalizeLegacyCoreApiUrl(raw: string): string {
++  const trimmed = raw.trim().replace(/\/+$/, '');
++  if (!trimmed) return trimmed;
++
++  try {
++    const parsed = new URL(trimmed);
++
++    const normalizedPath = parsed.pathname.replace(/\/+$/, '') || '/';
++    if (normalizedPath === '/api' || normalizedPath === '/api/v1' || normalizedPath === '/v1') {
++      parsed.pathname = '';
++    } else if (normalizedPath.startsWith('/api/')) {
++      parsed.pathname = normalizedPath.replace(/^\/api\//, '/');
++    } else if (normalizedPath.startsWith('/v1/')) {
++      parsed.pathname = normalizedPath.replace(/^\/v1\//, '/');
++    }
++    if (parsed.pathname === '') {
++      parsed.pathname = '/';
++    }
++    if (parsed.port === '8000' && parsed.pathname === '/') {
++      parsed.port = '3000';
++    }
++
++    return parsed.toString().replace(/\/+$/, '');
++  } catch {
++    return trimmed;
++  }
++}
+@@
+ export function getCoreApiBaseUrl(): string {
+   const extra = Constants.expoConfig?.extra as { apiUrl?: string; coreApiUrl?: string } | undefined;
+-  const configured = process.env.EXPO_PUBLIC_API_URL
+-    ?? process.env.EXPO_PUBLIC_CORE_API_URL
++  const legacyCoreApiUrl = process.env.EXPO_PUBLIC_CORE_API_URL;
++  const configured = process.env.EXPO_PUBLIC_API_URL
++    ?? (legacyCoreApiUrl ? normalizeLegacyCoreApiUrl(legacyCoreApiUrl) : undefined)
+     ?? extra?.apiUrl
+     ?? extra?.coreApiUrl;
+*** End Patch

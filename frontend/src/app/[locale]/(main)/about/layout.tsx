@@ -1,47 +1,25 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { buildLocaleMetadata } from "@/lib/seo/locale-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("about.meta");
+  const locale = await getLocale();
   return {
-    title: t("title"),
-    description: t("description"),
+    ...buildLocaleMetadata({
+      locale,
+      path: "/about",
+      title: t("title"),
+      description: t("description"),
+    }),
     keywords: [
       "HealthOS", "NT208", "student project", "university course project",
       "health management app", "AI food recognition", "UIT Vietnam",
     ],
-    alternates: {
-      canonical: "/about",
-      languages: { vi: "/vi/about", en: "/en/about", "x-default": "/vi/about" },
-    },
-    openGraph: {
-      title: t("title"),
-      description: t("description"),
-      type: "website",
-    },
   };
 }
 
-const orgJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "HealthOS",
-  url: "https://healthos.vn",
-  logo: "https://healthos.vn/logo.png",
-  description: "Academic health management project — NT208 course, UIT Vietnam",
-  sameAs: [],
-};
-
+// Organization JSON-LD is rendered by the parent (main)/layout.tsx — no duplicate here.
 export default function AboutLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        // oxlint-disable-next-line react-doctor/no-danger -- JSON-LD is serialized from static organization metadata.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
-      />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

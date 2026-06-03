@@ -6,16 +6,20 @@ import { NextResponse } from "next/server";
 import { CORE_API_URL } from "@/lib/env";
 
 export async function GET() {
-  let coreApi: "reachable" | "unreachable" = "unreachable";
-
   try {
-    const res = await fetch(`${CORE_API_URL}/health`, {
+    const res = await fetch(`${CORE_API_URL}/health/ready`, {
       next: { revalidate: 0 },
     });
-    if (res.ok) coreApi = "reachable";
+    const payload = await res.json().catch(() => ({}));
+    const body = {
+      status: "ok",
+      core_api: res.ok ? "reachable" : "unreachable",
+      checks: typeof payload === "object" && payload !== null
+        ? payload
+        : { status: res.ok ? "ok" : "degraded" },
+    };
+    return NextResponse.json(body, { status: res.ok ? 200 : 503 });
   } catch {
-    coreApi = "unreachable";
+    return NextResponse.json({ status: "error", core_api: "unreachable" }, { status: 503 });
   }
-
-  return NextResponse.json({ status: "ok", core_api: coreApi });
 }

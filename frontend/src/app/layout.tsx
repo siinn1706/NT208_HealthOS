@@ -7,6 +7,7 @@ import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { OfflineProvider } from "@/components/providers/offline-provider";
+import { getSiteUrl } from "@/lib/seo/site-url";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -19,7 +20,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 const accentEarlyScript = readFileSync(join(process.cwd(), "public", "accent-early.js"), "utf8");
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://healthos.vn"),
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "HealthOS — Ứng dụng quản lý sức khỏe | NT208 Project",
     template: "%s · HealthOS",
@@ -35,9 +36,8 @@ export const metadata: Metadata = {
   icons: {
     icon: { url: "/icon.svg", type: "image/svg+xml" },
   },
-  openGraph: {
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
-  },
+  // OG image deferred — public/og-image.png not yet authored.
+  // Add images: [{ url: "/og-image.png", width: 1200, height: 630 }] once available.
 };
 
 export default async function RootLayout({

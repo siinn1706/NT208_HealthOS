@@ -42,6 +42,12 @@ let refreshHandler: (() => Promise<boolean>) | null = null;
 let refreshPromise: Promise<boolean> | null = null;
 /** Grace period after a successful refresh — skip re-refresh within 2s. */
 let refreshGraceUntil = 0;
+type CoreApiUrlSource = 'api' | 'legacy-core';
+
+interface CoreApiUrlCandidate {
+  source: CoreApiUrlSource;
+  value?: string;
+}
 
 export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null) {
   unauthorizedHandler = handler;
@@ -62,7 +68,7 @@ function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined):
   const normalized = (url ?? '').trim().replace(/\/+$/, '');
   if (kind === 'api' && !normalized) {
     throw new ApiError(
-      'Missing EXPO_PUBLIC_API_URL for production build.',
+      'Missing EXPO_PUBLIC_API_URL (or legacy EXPO_PUBLIC_CORE_API_URL) for production build.',
       0,
       'CORE_API_URL_MISSING',
     );
@@ -103,9 +109,48 @@ function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined):
   return normalized;
 }
 
-export function getCoreApiBaseUrl(): string {
+function normalizeLegacyCoreApiUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return trimmed;
+  }
+
+  parsed.search = '';
+  parsed.hash = '';
+  parsed.pathname = parsed.pathname
+    .replace(/\/+$/, '')
+    .replace(/\/api\/v1$|\/api$|\/v1$/, '');
+  if (!parsed.pathname) parsed.pathname = '/';
+
+  if (parsed.port === '8000') {
+    parsed.port = '3000';
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
+
+function resolveConfiguredApiUrlCandidate(): CoreApiUrlCandidate {
   const extra = Constants.expoConfig?.extra as { apiUrl?: string; coreApiUrl?: string } | undefined;
-  const configured = process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl ?? extra?.coreApiUrl;
+  const candidates: CoreApiUrlCandidate[] = [
+    { source: 'api', value: process.env.EXPO_PUBLIC_API_URL },
+    { source: 'api', value: extra?.apiUrl },
+    { source: 'legacy-core', value: process.env.EXPO_PUBLIC_CORE_API_URL },
+    { source: 'legacy-core', value: extra?.coreApiUrl },
+  ];
+  for (const candidate of candidates) {
+    if (candidate.value !== undefined) return candidate;
+  }
+  return { source: 'api', value: undefined };
+}
+
+export function getCoreApiBaseUrl(): string {
+  const selected = resolveConfiguredApiUrlCandidate();
+  const configured = selected.source === 'legacy-core'
+    ? normalizeLegacyCoreApiUrl(selected.value ?? '')
+    : selected.value;
   if (!__DEV__) {
     return assertProductionSecureUrl('api', configured);
   }

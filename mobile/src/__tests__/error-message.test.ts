@@ -7,6 +7,7 @@ const mockT = jest.fn((key: string, opts?: { defaultValue?: string }) => {
     'api.offline': 'No internet connection.',
     'api.genericError': 'Something went wrong.',
     'api.error.invalid_credentials': 'Invalid username or password.',
+    'api.error.oauth_not_configured': 'OAuth sign-in is temporarily unavailable. Use email and password.',
     'api.error.internal_server_error': 'An unexpected server error occurred.',
   };
   return map[key] ?? opts?.defaultValue ?? '';
@@ -32,6 +33,11 @@ describe('localizeError', () => {
   it('maps known error code to localized string (en)', () => {
     const err = new ApiError('fallback msg', 401, 'INVALID_CREDENTIALS');
     expect(localizeError(err)).toBe('Invalid username or password.');
+  });
+
+  it('maps non-network status 0 codes before falling back to offline', () => {
+    const err = new ApiError('OAuth sign-in is not configured yet.', 0, 'OAUTH_NOT_CONFIGURED');
+    expect(localizeError(err)).toBe('OAuth sign-in is temporarily unavailable. Use email and password.');
   });
 
   it('falls back to backend message for unknown error code', () => {

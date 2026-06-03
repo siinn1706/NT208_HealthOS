@@ -17,8 +17,24 @@ import { BFF_CSRF_GUARD_MODE, BFF_TRUSTED_ORIGINS, isProtectedAppEnv } from "@/l
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-/** Request path prefixes exempt from the CSRF guard (e.g. token-authenticated public endpoints). */
-export const EXEMPT_PATH_PREFIXES = ["/api/v1/public/"] as const;
+/**
+ * Request path prefixes exempt from the CSRF guard.
+ *
+ * Mobile clients call these endpoints with no Origin header and no session cookie
+ * (they authenticate via Bearer tokens stored in SecureStore). These paths return
+ * JWT tokens — they never set httpOnly session cookies — so they are not CSRF targets.
+ * /api/v1/auth/session (cookie-login) is intentionally NOT listed here.
+ */
+export const EXEMPT_PATH_PREFIXES = [
+  "/api/v1/public/",
+  "/api/v1/auth/login",
+  "/api/v1/auth/login/mfa",
+  "/api/v1/auth/request-otp",
+  "/api/v1/auth/verify-otp",
+  "/api/v1/auth/mobile-refresh",
+  "/api/v1/auth/mobile-oauth/",
+  "/api/v1/auth/reset-password",
+] as const;
 
 let _coldStartChecked = false;
 

@@ -48,7 +48,7 @@ describe('ensureCoreReachable', () => {
 
     await ensureCoreReachable({ force: true });
 
-    expect(mockFetch.mock.calls[0][0]).toBe('http://192.168.1.10:8000/api/v1/_health');
+    expect(mockFetch.mock.calls[0][0]).toBe('http://192.168.1.10:8000/api/v1/health');
     expect(mockFetch.mock.calls[0][1].headers.Authorization).toBeUndefined();
   });
 

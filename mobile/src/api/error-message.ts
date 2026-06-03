@@ -6,15 +6,37 @@ const INFRASTRUCTURE_ERROR_PATTERNS = [
   /origin web server/i,
   /invalid or incomplete response/i,
 ];
+const NETWORK_ERROR_CODES = new Set(['NETWORK_ERROR', 'TIMEOUT']);
 
 export function isInfrastructureErrorMessage(message: string | null | undefined): boolean {
   return INFRASTRUCTURE_ERROR_PATTERNS.some((pattern) => pattern.test(message ?? ''));
 }
 
 function localizedServerError(): string {
-  return i18next.t('api.error.internal_server_error', {
-    defaultValue: 'An unexpected server error occurred.',
+  return translateOrDefault('api.error.internal_server_error', 'An unexpected server error occurred.');
+}
+
+function translateOrDefault(key: string, defaultValue: string): string {
+  const translated = i18next.t(key, {
+    defaultValue,
   });
+  return typeof translated === 'string' && translated.trim() ? translated : defaultValue;
+}
+
+function genericErrorFallback(fallback?: string): string {
+  if (fallback) return fallback;
+  return translateOrDefault('api.genericError', 'Something went wrong.');
+}
+
+function offlineErrorFallback(): string {
+  return translateOrDefault('api.offline', 'No internet connection.');
+}
+
+function translateApiErrorCode(code: string): string | null {
+  const localized = i18next.t(`api.error.${code.toLowerCase()}`, {
+    defaultValue: '',
+  });
+  return typeof localized === 'string' && localized.trim() ? localized : null;
 }
 
 /**
@@ -23,17 +45,19 @@ function localizedServerError(): string {
  * falling back to the raw backend message, then to a generic fallback.
  */
 export function localizeError(error: Error | null | undefined, fallback?: string): string {
-  const genericFallback = fallback ?? i18next.t('api.genericError');
+  const genericFallback = genericErrorFallback(fallback);
   if (!error) return genericFallback;
 
   if (error instanceof ApiError) {
-    if (error.status === 0) {
-      return i18next.t('api.offline', { defaultValue: 'No internet connection.' });
+    if (error.code === 'CORE_UNREACHABLE' && error.message) {
+      return error.message;
     }
-    if (error.code && error.code !== 'REQUEST_FAILED') {
-      const i18nKey = `api.error.${error.code.toLowerCase()}`;
-      const localized = i18next.t(i18nKey, { defaultValue: '' });
+    if (error.code && error.code !== 'REQUEST_FAILED' && !NETWORK_ERROR_CODES.has(error.code)) {
+      const localized = translateApiErrorCode(error.code);
       if (localized) return localized;
+    }
+    if (error.status === 0) {
+      return offlineErrorFallback();
     }
     if (error.status >= 500 || isInfrastructureErrorMessage(error.message)) {
       return localizedServerError();

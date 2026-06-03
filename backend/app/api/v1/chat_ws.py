@@ -1,11 +1,14 @@
 """Per-conversation WebSocket endpoint for user-to-user realtime chat.
 
-URL: GET /v1/chat/ws/{conversation_id}?token=<ws_ticket>
+URL: GET /v1/chat/ws/{conversation_id}
 
-Auth: Short-lived WebSocket ticket from GET /v1/auth/ws-ticket.
+Auth: post-connect first-frame protocol.
+  1. Client connects with NO token in the URL.
+  2. Client immediately sends: {"type": "auth", "ticket": "<ws_ticket>"}
+  3. Server validates; rejects with close code 4401 if invalid/timeout.
 
 On connect the endpoint:
-  1. Decodes and validates the JWT.
+  1. Awaits and validates the first-frame auth ticket.
   2. Verifies the user is an accepted member of the conversation.
   3. Registers the socket with the shared ConnectionManager and auto-joins
      the ``conv:{conversation_id}`` room — the client does NOT need to send
@@ -20,19 +23,16 @@ if the client omits it.
 """
 from __future__ import annotations
 
-import asyncio
 import datetime
 import json
 import logging
 import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from jose import JWTError
 
 from app.adapters.database import AsyncSessionLocal
-from app.adapters.redis_client import get_redis
-from app.core.security import JWT_BLACKLIST_PREFIX, decode_token_with_type
 from app.services import chat as chat_svc
+from app.ws.auth_first_frame import authenticate_first_frame
 from app.ws.chat_router import handle_ws_event
 from app.ws.handlers import manager
 
@@ -46,15 +46,16 @@ _WS_MAX_FRAME_BYTES = 65_536
 async def per_conversation_ws(
     ws: WebSocket,
     conversation_id: uuid.UUID,
-    token: str | None = None,
 ) -> None:
     """
     Per-conversation WebSocket for user-to-user realtime chat.
 
-    Authentication:
-      ?token=<ws_ticket>  (required)
+    Authentication (post-connect first-frame protocol):
+      1. Client connects with NO token in the URL.
+      2. Client immediately sends: {"type": "auth", "ticket": "<ws_ticket>"}
+      3. Server validates; rejects with close code 4401 if invalid/timeout.
 
-    The client sends JSON frames:
+    Subsequent client frames:
       { "event": "<type>", "payload": { ... } }
 
     Supported client event types (same as the global /ws):
@@ -73,54 +74,17 @@ async def per_conversation_ws(
     """
     ts_now = lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()  # noqa: E731
 
-    # ── Auth ──────────────────────────────────────────────────────────────────
-    if not token:
-        await ws.accept()
-        await ws.send_json({
-            "event": "error",
-            "payload": {"code": "AUTH_REQUIRED", "message": "Missing ?token= query param."},
-            "timestamp": ts_now(),
-        })
-        await ws.close(code=4001)
+    # ── Auth (first-frame, post-connect) ──────────────────────────────────────
+    user_id = await authenticate_first_frame(ws)
+    if user_id is None:
         return
-
-    try:
-        payload = decode_token_with_type(
-            token,
-            expected_type="ws_ticket",
-            allow_legacy_access=False,
-        )
-        jti = payload.get("jti")
-        if jti:
-            try:
-                redis_conn = await get_redis()
-                revoked = await asyncio.wait_for(
-                    redis_conn.exists(f"{JWT_BLACKLIST_PREFIX}{jti}"),
-                    timeout=1.0,
-                )
-            except Exception as exc:
-                _LOGGER.warning("per_conv_ws ticket revocation check unavailable: %s", exc)
-                revoked = False
-            if revoked:
-                raise JWTError("token has been revoked")
-        user_id_str = payload.get("sub", "")
-        user_id = uuid.UUID(user_id_str)
-    except (JWTError, ValueError, TypeError):
-        await ws.accept()
-        await ws.send_json({
-            "event": "error",
-            "payload": {"code": "AUTH_INVALID_TOKEN", "message": "Invalid or expired token."},
-            "timestamp": ts_now(),
-        })
-        await ws.close(code=4001)
-        return
+    user_id_str = str(user_id)
 
     # ── Verify conversation membership ────────────────────────────────────────
     async with AsyncSessionLocal() as db:
         try:
             await chat_svc.assert_member(db, conversation_id, user_id)
         except ValueError:
-            await ws.accept()
             await ws.send_json({
                 "event": "error",
                 "payload": {

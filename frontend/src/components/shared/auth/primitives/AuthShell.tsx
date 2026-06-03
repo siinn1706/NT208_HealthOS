@@ -8,7 +8,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +23,8 @@ export interface AuthShellProps extends Omit<React.HTMLAttributes<HTMLDivElement
   footer?: React.ReactNode;
   /** Brand chip rendered above the title. */
   brand?: React.ReactNode;
+  /** Heading level for the title. Use "h1" on standalone auth pages (one per page). Defaults to "h2". */
+  titleAs?: "h1" | "h2";
   contentClassName?: string;
   cardClassName?: string;
 }
@@ -69,12 +70,14 @@ export function AuthShell({
   banner,
   footer,
   brand,
+  titleAs,
   children,
   className,
   contentClassName,
   cardClassName,
   ...rest
 }: AuthShellProps) {
+  const TitleEl = titleAs ?? "h2";
   return (
     <div
       className={cn("w-full max-w-md animate-fade-in-up", className)}
@@ -83,9 +86,9 @@ export function AuthShell({
       <Card className={cn("shadow-lg", cardClassName)}>
         <CardHeader className="space-y-1 pb-4">
           <div className="mb-2">{brand ?? <DefaultBrand />}</div>
-          <CardTitle className="text-2xl font-bold text-foreground">
+          <TitleEl className="text-2xl font-bold text-foreground">
             {title}
-          </CardTitle>
+          </TitleEl>
           {subtitle && (
             <CardDescription className="text-muted-foreground">
               {subtitle}

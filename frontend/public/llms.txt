@@ -1,0 +1,24 @@
+# HealthOS
+
+HealthOS is an academic project for the NT208 course at UIT (University of Information Technology, VNU-HCM), Vietnam.
+The site is a demo for health management features: BMI/calorie tracking, AI meal recognition, medication reminders, vitals logging.
+
+Canonical: https://healthos.page
+
+## Public pages
+- https://healthos.page/vi
+- https://healthos.page/en
+- https://healthos.page/vi/about
+- https://healthos.page/en/about
+- https://healthos.page/vi/services
+- https://healthos.page/en/services
+- https://healthos.page/vi/plans
+- https://healthos.page/en/plans
+- https://healthos.page/vi/articles
+- https://healthos.page/en/articles
+
+## Not for indexing
+- Dashboard, admin, onboarding, and auth pages are gated and not intended for crawl.
+
+## Notes
+This is a student project. Content is educational and does not constitute medical advice.

@@ -102,11 +102,47 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/u/**" },
     ],
   },
+  async redirects() {
+    return [
+      // www → apex (308 permanent — host decision never changes).
+      // With Custom Node hosting, next.config.ts redirects() run inside the Node
+      // process and match Host: header directly; no proxy interception.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.healthos.page" }],
+        destination: "https://healthos.page/:path*",
+        permanent: true,
+      },
+      // Root → default locale. 307 (not 308) — locale negotiation varies on
+      // Accept-Language and must not be permanently cached. Runs at edge before
+      // next-intl middleware so the redirect fires before locale detection.
+      {
+        source: "/",
+        destination: "/vi",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      // Bound sitemap + robots cache TTL to prevent stale edge-cached .vn content
+      // from persisting across deploys.
+      {
+        source: "/sitemap.xml",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, s-maxage=300, must-revalidate" }],
+      },
+      {
+        source: "/robots.txt",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, s-maxage=300, must-revalidate" }],
+      },
+      // Auth pages: no-referrer to prevent PII leaking via Referer on /verify?email=
+      {
+        source: "/:locale(vi|en)/(login|register|forgot-password|verify)(.*)",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },
     ];
   },

@@ -941,6 +941,7 @@
   },
   "api": {
     "offline": "No internet connection",
+    "offlineTitle": "No internet connection",
     "offlineMessage": "Some features may be unavailable",
     "retry": "Retry",
     "loading": "Loading...",
@@ -969,6 +970,7 @@
       "validation_failed": "Please check your input and try again.",
       "rate_limit_exceeded": "Too many requests. Please try again later.",
       "no_active_subscription": "An active subscription is required for this feature.",
+      "oauth_not_configured": "OAuth sign-in is temporarily unavailable. Use email and password.",
       "upstream_error": "An external service error occurred. Please try again.",
       "internal_error": "An unexpected error occurred.",
       "internal_server_error": "An unexpected server error occurred."

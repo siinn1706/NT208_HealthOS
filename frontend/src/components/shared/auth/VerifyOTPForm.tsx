@@ -119,6 +119,7 @@ export function VerifyOTPForm({ email, purpose = "signup" }: VerifyOTPFormProps)
   return (
     <AuthShell
       title={t("verifyTitle")}
+      titleAs="h1"
       subtitle={email ? t("otpDescription", { email }) : t("verifySubtitle")}
       brand={
         <div className="flex flex-col items-center gap-2">
