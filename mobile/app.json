@@ -26,7 +26,7 @@
         "backgroundColor": "#F4FCFE"
       },
       "package": "com.nt208.healthos",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS",

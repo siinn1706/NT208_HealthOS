@@ -4,6 +4,7 @@ import pytest
 import time
 from PIL import Image
 
+from app.services.calorieclip_detector import CalorieClipEstimate
 from app.services import food_detector_service as service
 
 
@@ -35,6 +36,7 @@ def test_yolo_timeout_returns_without_waiting_for_hung_inference(monkeypatch: An
 
 def test_valid_yolo_class_returns_dataset_nutrition(monkeypatch: Any) -> None:
     monkeypatch.setattr(service, "detect_with_food_analysis", lambda _image: None)
+    monkeypatch.setattr(service, "estimate_with_calorieclip", lambda _image, _dish_name: None)
     monkeypatch.setattr(
         service,
         "_load_class_db",
@@ -61,6 +63,40 @@ def test_valid_yolo_class_returns_dataset_nutrition(monkeypatch: Any) -> None:
     assert result.confidence == 0.9
     assert result.saturates_g == 4.0
     assert result.salt_g == 1.5
+
+
+def test_yolo_fallback_uses_calorieclip_crosscheck(monkeypatch: Any) -> None:
+    monkeypatch.setattr(service, "detect_with_food_analysis", lambda _image: None)
+    monkeypatch.setattr(
+        service,
+        "estimate_with_calorieclip",
+        lambda _image, _dish_name: CalorieClipEstimate(
+            calories=620.0,
+            confidence=0.7,
+            label="CalorieCLIP regression",
+        ),
+    )
+    monkeypatch.setattr(
+        service,
+        "_load_class_db",
+        lambda _path: [
+            {
+                "name": "Hamburger",
+                "nutrition": {"Calories": 350.0},
+                "serving_type": "1 serving",
+            }
+        ],
+    )
+    monkeypatch.setattr(service, "_best_yolo_prediction", lambda _image: (0, 0.9))
+
+    result = service.detect_food_nutrition(Image.new("RGB", (2, 2), color="white"))
+
+    assert result.source == "yolo+calorieclip"
+    assert result.dish_name == "Hamburger"
+    assert result.confidence == 0.8
+    assert result.calorie_min is not None
+    assert result.calorie_max is not None
+    assert result.calorie_max > result.calories
 
 
 def test_invalid_yolo_class_id_raises_controlled_error(monkeypatch: Any) -> None:

@@ -163,9 +163,8 @@
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       AI_YOLO_MODEL_PATH: /app/models/yolov10/YOLOv10b_VietFood67_SGD_new_bigger.pt
       AI_CLASS_NAMES_PATH: /app/data/class_names.py
-      AI_FOOD_ANALYSIS_MODEL_PATH: /app/models/food-analysis
+      AI_FOOD_ANALYSIS_ENABLED: "false"
       AI_CALORIECLIP_MODEL_PATH: /app/models/calorieclip
-      AI_FOOD_ANALYSIS_TIMEOUT_SECONDS: "120"
       AI_CALORIECLIP_TIMEOUT_SECONDS: "45"
       DEBUG: "false"
     depends_on:

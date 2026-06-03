@@ -176,7 +176,7 @@ export function AppShell({ children, userName, userAvatar }: AppShellProps) {
           className={cn(
             "flex-1",
             isFullHeight
-              ? "h-[calc(100svh-3.5rem)] overflow-hidden"
+              ? "h-[calc(100svh-3.5rem-4rem)] md:h-[calc(100svh-3.5rem)] overflow-hidden"
               : "overflow-x-hidden pb-16 md:pb-0",
           )}
         >

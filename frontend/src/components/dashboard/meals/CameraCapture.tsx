@@ -417,7 +417,6 @@ export function CameraCapture() {
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/heic"
-        capture="environment"
         className="sr-only"
         onChange={handleFileChange}
         aria-label="Upload meal photo"

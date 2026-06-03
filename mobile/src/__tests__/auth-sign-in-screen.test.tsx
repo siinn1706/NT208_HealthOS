@@ -117,4 +117,32 @@ describe('AuthSignInScreen', () => {
     await waitFor(() => expect(signIn).toHaveBeenCalledWith('banned@example.com', 'wrong'));
     expect(getByText('auth.accountBanned')).toBeTruthy();
   });
+
+  it('does not render Cloudflare origin text on password login failure', async () => {
+    const cloudflareMessage = 'The origin web server returned an invalid or incomplete response to Cloudflare.';
+    const signIn = jest.fn().mockRejectedValue(new ApiError(cloudflareMessage, 520, 'REQUEST_FAILED'));
+    mockSession({ signIn });
+
+    const { getByLabelText, getByText, queryByText } = render(<AuthSignInScreen />);
+    fireEvent.changeText(getByLabelText('auth.email'), 'user@example.com');
+    fireEvent.changeText(getByLabelText('auth.password'), 'password');
+    fireEvent.press(getByText('auth.signIn'));
+
+    await waitFor(() => expect(signIn).toHaveBeenCalledWith('user@example.com', 'password'));
+    expect(queryByText(cloudflareMessage)).toBeNull();
+    expect(getByText('api.error.internal_server_error')).toBeTruthy();
+  });
+
+  it('does not render Cloudflare origin text on OAuth login failure', async () => {
+    const cloudflareMessage = 'The origin web server returned an invalid or incomplete response to Cloudflare.';
+    const signInWithOAuth = jest.fn().mockRejectedValue(new Error(cloudflareMessage));
+    mockSession({ signInWithOAuth });
+
+    const { getByLabelText, getByText, queryByText } = render(<AuthSignInScreen />);
+    fireEvent.press(getByLabelText('auth.continueWithGoogle'));
+
+    await waitFor(() => expect(signInWithOAuth).toHaveBeenCalledWith('google'));
+    expect(queryByText(cloudflareMessage)).toBeNull();
+    expect(getByText('api.error.internal_server_error')).toBeTruthy();
+  });
 });
