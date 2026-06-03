@@ -23,19 +23,23 @@ import type {
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 async function bffFetch(path: string): Promise<unknown> {
-  const reqHeaders = await headers();
-  const res = await fetch(`${APP_URL}${path}`, {
-    cache: "no-store",
-    headers: { cookie: reqHeaders.get("cookie") ?? "" },
-  });
-  if (!res.ok) {
-    console.error(`[analytics-data] bffFetch failed: ${res.status} ${path}`);
+  try {
+    const reqHeaders = await headers();
+    const res = await fetch(`${APP_URL}${path}`, {
+      cache: "no-store",
+      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+    });
+    if (!res.ok) {
+      console.error(`[analytics-data] bffFetch failed: ${res.status} ${path}`);
+      return null;
+    }
+    return res.json().catch((e) => {
+      console.error(`[analytics-data] JSON parse error: ${e}`);
+      return null;
+    });
+  } catch {
     return null;
   }
-  return res.json().catch((e) => {
-    console.error(`[analytics-data] JSON parse error: ${e}`);
-    return null;
-  });
 }
 
 export async function getAggregatedMetrics(

@@ -87,7 +87,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Detai
           </nav>
         }
       />
-      <div className="space-y-6 pb-4 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto space-y-6 pb-4 px-4 py-5 sm:px-6 lg:px-8">
       {/* Key Stats */}
       {primaryStats && (
         <Suspense fallback={<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

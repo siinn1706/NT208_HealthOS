@@ -28,11 +28,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // TODO: proxy to Core BE once /v1/reports/share is implemented.
-  // For now, shareReport() is a local stub that simulates delivery results.
-  // Replace with:
-  //   const coreRes = await coreProxy(req, "/v1/reports/share");
-  //   return new NextResponse(coreRes.body, { status: coreRes.status, headers: coreRes.headers });
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: { code: "NOT_IMPLEMENTED", message: "Report sharing is not yet available." } },
+      { status: 501 }
+    );
+  }
   const results = await shareReport(body);
   return NextResponse.json({ data: results });
 }

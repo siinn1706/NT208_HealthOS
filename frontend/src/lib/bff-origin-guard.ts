@@ -118,6 +118,11 @@ export function assertSameOrigin(req: NextRequest): NextResponse | null {
   const method = req.method?.toUpperCase();
   if (!MUTATING_METHODS.has(method)) return null;
 
+  // Bearer-token auth is stateless — CSRF is a session-cookie attack vector.
+  // Mobile clients send Authorization: Bearer without an Origin header.
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) return null;
+
   const path = req.nextUrl.pathname;
 
   // Exempt path prefixes (e.g. public emergency token endpoints).

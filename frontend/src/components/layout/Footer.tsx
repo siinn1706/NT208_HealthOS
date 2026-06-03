@@ -46,7 +46,7 @@ export function Footer() {
           </div>
 
           {/* Menu */}
-          <div>
+          <nav aria-label={t("menuTitle")}>
             <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground">
               {t("menuTitle")}
             </h4>
@@ -62,10 +62,10 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
 
           {/* Help */}
-          <div>
+          <nav aria-label={t("helpTitle")}>
             <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground">
               {t("helpTitle")}
             </h4>
@@ -81,7 +81,7 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
         </div>
 
         {/* Copyright */}

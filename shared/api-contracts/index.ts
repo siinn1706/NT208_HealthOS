@@ -21,6 +21,8 @@ export interface CurrentUser {
   avatar_url: string | null;
   onboarding_status: string;
   onboarding_completed_at: string | null;
+  roles?: string[];
+  permissions?: string[];
   created_at?: string | null;
   full_name?: string | null;
   date_of_birth?: string | null;
@@ -79,6 +81,8 @@ export interface AuthToken {
   display_name: string;
   avatar_url: string | null;
   onboarding_status: string;
+  roles?: string[];
+  permissions?: string[];
 }
 
 export type AuthLoginResult = AuthToken | MfaLoginRequired;
@@ -549,6 +553,7 @@ export interface MealNutritionResult {
   calorie_max?: number | null;
   confidence: number | null;
   source: string | null;
+  notes?: string | null;
   ingredients?: Array<Record<string, unknown>> | null;
   portion_estimate?: string | null;
   portion_options?: Array<Record<string, unknown>> | null;

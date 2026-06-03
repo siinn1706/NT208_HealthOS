@@ -68,7 +68,7 @@ export function PageHeader({
             {meta && <div className="pt-1 text-xs text-muted-foreground">{meta}</div>}
           </div>
           {(primaryAction || secondaryActions) && (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               {secondaryActions}
               {primaryAction}
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Link } from "@/navigation";
 import {
   AddReminderDialog,
   type Reminder,
@@ -144,7 +145,7 @@ function classifyClientSide(reminders: Reminder[], tab: StateTab): Reminder[] {
   });
 }
 
-export default function RemindersPage() {
+function RemindersPageInner() {
   const t = useTranslations("dashboard");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -422,13 +423,13 @@ export default function RemindersPage() {
                           </span>
                         )}
                         {linkedPlanId && (
-                          <a
+                          <Link
                             href={`/dashboard/medications/${linkedPlanId}`}
                             className="text-[10px] px-1.5 py-0.5 rounded-full border border-warm-gold/40 text-warm-gold inline-flex items-center gap-1 hover:bg-warm-gold/10 transition-colors"
                           >
                             <Pill className="size-2.5" />
                             {t("reminders.medicationLinked")}
-                          </a>
+                          </Link>
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -524,5 +525,18 @@ export default function RemindersPage() {
         </AlertDialog>
       </div>
     </>
+  );
+}
+
+/**
+ * Route default export wraps the inner component in Suspense.
+ * Required because RemindersPageInner calls useSearchParams(), which must be
+ * inside a Suspense boundary per the Next.js App Router rules.
+ */
+export default function RemindersPage() {
+  return (
+    <Suspense>
+      <RemindersPageInner />
+    </Suspense>
   );
 }

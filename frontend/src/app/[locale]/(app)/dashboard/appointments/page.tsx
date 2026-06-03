@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -36,7 +37,10 @@ async function fetchAppointments(): Promise<Appointment[]> {
 export default async function AppointmentsPage() {
   const appointments = await fetchAppointments();
 
+  // AppointmentsPageClient calls useSearchParams — must be inside Suspense.
   return (
-    <AppointmentsPageClient appointments={appointments} />
+    <Suspense>
+      <AppointmentsPageClient appointments={appointments} />
+    </Suspense>
   );
 }

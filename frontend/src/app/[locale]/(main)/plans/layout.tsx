@@ -5,10 +5,18 @@ import { plans } from "@/data/plans";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("plans.meta");
   return {
-    title: `${t("title")} — HealthOS`,
+    title: t("title"),
     description: t("description"),
+    keywords: [
+      "HealthOS", "health plans", "calorie tracking", "BMI",
+      "AI nutrition assistant", "NT208", "university project demo",
+    ],
+    alternates: {
+      canonical: "/plans",
+      languages: { vi: "/vi/plans", en: "/en/plans", "x-default": "/vi/plans" },
+    },
     openGraph: {
-      title: `${t("title")} — HealthOS`,
+      title: t("title"),
       description: t("description"),
       type: "website",
     },
@@ -32,7 +40,7 @@ export default function PlansLayout({
       name: p.name.en,
       price: p.price,
       priceCurrency: "VND",
-      availability: "https://schema.org/InStock",
+      availability: "https://schema.org/PreOrder",
       url: `https://healthos.vn/plans#${p.id}`,
     })),
   };

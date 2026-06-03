@@ -12,7 +12,7 @@ import {
   Moon,
   Cookie,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/navigation";
 import { formatTime } from "@/lib/format-utils";
@@ -239,7 +239,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
           </p>
         </div>
         <Link
-          href={`/${locale}/dashboard/meals/add`}
+          href={`/dashboard/meals/add`}
           className={cn(
             "flex items-center gap-1.5 text-xs font-medium",
             "text-primary hover:text-primary/80 transition-colors"
@@ -265,7 +265,7 @@ export function TodayMealsWidget({ meals }: TodayMealsWidgetProps) {
             </p>
           </div>
           <Link
-            href={`/${locale}/dashboard/meals/add`}
+            href={`/dashboard/meals/add`}
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg",
               "text-xs font-medium bg-primary text-primary-foreground",

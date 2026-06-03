@@ -9,6 +9,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("title"),
     description: t("description"),
+    keywords: [
+      "HealthOS", "NT208", "đồ án môn học", "health management app",
+      "calorie tracking", "AI food recognition", "BMI tracking", "Vietnam",
+    ],
+    alternates: {
+      canonical: "/",
+      languages: { vi: "/vi", en: "/en", "x-default": "/vi" },
+    },
     openGraph: {
       title: t("title"),
       description: t("description"),
@@ -29,6 +37,7 @@ const orgJsonLd = {
   name: "HealthOS",
   url: "https://healthos.vn",
   logo: "https://healthos.vn/logo.png",
+  description: "Academic health management project — NT208 course, UIT Vietnam",
   sameAs: [],
 };
 

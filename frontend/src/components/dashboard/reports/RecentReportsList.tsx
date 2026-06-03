@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { FileText, Download, Share2, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,7 @@ export async function RecentReportsList({ locale }: RecentReportsListProps) {
               <Share2 className="size-3.5" aria-hidden />
             </Button>
             <Link
-              href={`/${locale}/dashboard/reports?period=${report.period}`}
+              href={`/dashboard/reports?period=${report.period}`}
               aria-label={t("viewReportAria")}
             >
               <Button variant="ghost" size="icon" className="size-7">

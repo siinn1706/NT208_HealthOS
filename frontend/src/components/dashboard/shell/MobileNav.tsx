@@ -54,7 +54,7 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
             href={link.href as never}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-0.5 p-2 min-h-[44px] text-xs font-medium",
+              "relative flex flex-1 flex-col items-center justify-center gap-0.5 p-2 min-h-[44px] min-w-0 overflow-hidden text-xs font-medium",
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -77,7 +77,7 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
         type="button"
         variant="ghost"
         onClick={onOpenDrawer}
-        className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 rounded-none p-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="flex min-h-[44px] flex-1 min-w-0 flex-col items-center justify-center gap-0.5 rounded-none p-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
         aria-label={tShell("openDrawer")}
       >
         <Menu className="size-5" aria-hidden="true" />

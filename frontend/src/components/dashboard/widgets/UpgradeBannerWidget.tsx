@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useLocale } from "next-intl";
+import { Link } from "@/navigation";
 import {
   Sparkles, Brain, Download, BarChart2, UserCheck,
   ChevronRight, Crown, Zap, Shield, Users,
@@ -45,7 +44,6 @@ interface Props {
 }
 
 export function UpgradeBannerWidget({ variant = "default", fill = false, narrow = false }: Props) {
-  const locale = useLocale();
   const highlights = narrow ? SIDE_HIGHLIGHTS : HIGHLIGHTS;
 
   /* ── Fill mode (tall card, vertical layout) ──────────────────────────── */
@@ -126,7 +124,7 @@ export function UpgradeBannerWidget({ variant = "default", fill = false, narrow 
           {/* CTA */}
           <div className="space-y-2">
             <Link
-              href={`/${locale}/plans`}
+              href={`/plans`}
               className={cn(
                 "flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold",
                 "bg-gradient-to-r from-violet-500 to-indigo-600 text-white",
@@ -182,7 +180,7 @@ export function UpgradeBannerWidget({ variant = "default", fill = false, narrow 
               </div>
             ))}
           </div>
-          <Link href={`/${locale}/plans`}
+          <Link href={`/plans`}
             className={cn(
               "flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-bold",
               "bg-gradient-to-r from-violet-600 to-indigo-600 text-white",
@@ -232,7 +230,7 @@ export function UpgradeBannerWidget({ variant = "default", fill = false, narrow 
           ))}
         </div>
         <div className="flex-shrink-0 flex flex-col items-start sm:items-end gap-1">
-          <Link href={`/${locale}/plans`}
+          <Link href={`/plans`}
             className={cn(
               "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap",
               "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25",

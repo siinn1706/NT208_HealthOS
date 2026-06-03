@@ -5,10 +5,18 @@ import { articles } from "@/data/articles";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("articles.meta");
   return {
-    title: `${t("title")} — HealthOS`,
+    title: t("title"),
     description: t("description"),
+    keywords: [
+      "HealthOS", "health articles", "nutrition", "BMI", "fitness",
+      "AI food recognition", "NT208", "healthy living Vietnam",
+    ],
+    alternates: {
+      canonical: "/articles",
+      languages: { vi: "/vi/articles", en: "/en/articles", "x-default": "/vi/articles" },
+    },
     openGraph: {
-      title: `${t("title")} — HealthOS`,
+      title: t("title"),
       description: t("description"),
       type: "website",
     },

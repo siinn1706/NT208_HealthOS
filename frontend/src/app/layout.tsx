@@ -19,15 +19,24 @@ const beVietnamPro = Be_Vietnam_Pro({
 const accentEarlyScript = readFileSync(join(process.cwd(), "public", "accent-early.js"), "utf8");
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://healthos.vn"),
   title: {
-    default: "HealthOS — Your Virtual Personal Doctor",
+    default: "HealthOS — Ứng dụng quản lý sức khỏe | NT208 Project",
     template: "%s · HealthOS",
   },
   description:
-    "HealthOS — track vitals, meals, reminders, and reports with your AI-powered personal health companion.",
+    "HealthOS là đồ án môn học NT208 — ứng dụng theo dõi BMI, calo, bữa ăn bằng AI, nhắc nhở thuốc và quản lý sức khỏe cá nhân.",
   applicationName: "HealthOS",
+  keywords: [
+    "HealthOS", "NT208", "đồ án môn học", "health management app",
+    "calorie tracking", "AI food recognition", "BMI tracking",
+    "nutrition assistant", "fitness tracking", "university project Vietnam",
+  ],
   icons: {
     icon: { url: "/icon.svg", type: "image/svg+xml" },
+  },
+  openGraph: {
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
 };
 

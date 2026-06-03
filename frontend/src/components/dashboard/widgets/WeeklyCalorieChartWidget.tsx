@@ -171,7 +171,7 @@ export function WeeklyCalorieChartWidget({
           <h2 className="text-sm font-semibold text-foreground">{t("title")}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{t("subtitle", { n: periodDays })}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           {staticData === undefined && (
             <TimeRangeSelector value={period} onChange={handlePeriodChange} />
           )}

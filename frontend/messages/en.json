@@ -402,12 +402,12 @@
     "appStore": "App Store",
     "forDoctors": "Are you a Doctor?",
     "joinAsDoctor": "Join HealthOS",
-    "copyright": "Copyright © 2026 HealthOS. All Rights Reserved."
+    "copyright": "© 2026 HealthOS. University course project (NT208) — for educational purposes only."
   },
   "home": {
     "meta": {
-      "title": "HealthOS — Your Virtual Personal Doctor",
-      "description": "Manage records, track nutrition, scan meals with AI, connect wearables and get realtime health alerts — all in one Vietnamese-built app for individuals, families, and clinicians."
+      "title": "HealthOS — AI Health Management App | NT208 Project",
+      "description": "HealthOS is an NT208 university project: track BMI, calories, and meals with AI food recognition, manage medications, reminders, and personal health records — all in one app."
     },
     "hero": {
       "badge": "#1 Virtual Personal Doctor in NT208.Q22.ANTT",
@@ -472,12 +472,12 @@
   },
   "about": {
     "meta": {
-      "title": "About Us",
-      "description": "HealthOS is built by doctors and engineers with one goal: bring AI-powered healthcare to every family in Vietnam."
+      "title": "About HealthOS — NT208 University Course Project",
+      "description": "HealthOS is a student-built health management app created as an NT208 course project at UIT. It demonstrates AI food recognition, BMI tracking, nutrition assistance, and fitness tracking."
     },
     "hero": {
       "title": "We Put Your Health First",
-      "description": "HealthOS is built by a team of doctors and engineers with one single goal: bring AI-powered medical technology to every Vietnamese family, empowering everyone to proactively protect their health.",
+      "description": "HealthOS is built by a student team as an NT208 university course project at UIT. It demonstrates AI-powered meal analysis, BMI tracking, nutrition assistance, and personal health management — for educational and demonstration purposes.",
       "imageAlt": "HealthOS Team"
     },
     "story": {
@@ -522,7 +522,11 @@
       "users": "Active users",
       "doctors": "Medical advisors",
       "records": "Records secured",
-      "uptime": "Platform uptime"
+      "uptime": "Platform uptime",
+      "project": "Course project",
+      "team": "Student team",
+      "year": "Academic year",
+      "university": "University"
     },
     "faq": {
       "badge": "FAQ",
@@ -540,8 +544,8 @@
   },
   "services": {
     "meta": {
-      "title": "Services",
-      "description": "Explore the HealthOS ecosystem: medical records, AI, wearables and realtime alerts."
+      "title": "Features — HealthOS Health Management App",
+      "description": "Explore HealthOS features: AI meal analysis, calorie tracking, BMI monitoring, medication reminders, wearable sync, and real-time health alerts. Built as an NT208 academic project."
     },
     "badge": "Services",
     "title": "All the Tools You Need",
@@ -567,8 +571,8 @@
   },
   "plans": {
     "meta": {
-      "title": "Plans",
-      "description": "Choose the HealthOS plan that fits your needs and budget."
+      "title": "Plans — HealthOS",
+      "description": "Choose a HealthOS plan for personal, family, or professional health tracking. Includes calorie tracking, BMI, AI nutrition assistant, and more. NT208 university project demo."
     },
     "badge": "Service Plans",
     "title": "Invest in Your Health",
@@ -618,8 +622,8 @@
   },
   "articles": {
     "meta": {
-      "title": "Health Insights",
-      "description": "Read in-depth articles on nutrition, wearables, AI health, and healthy living from HealthOS."
+      "title": "Health Insights — HealthOS",
+      "description": "Read articles on nutrition, BMI, fitness, AI food recognition, and healthy living from the HealthOS NT208 project team."
     },
     "badge": "Health Insights",
     "featuredTitle": "Latest Health Articles",
@@ -640,7 +644,7 @@
   },
   "compliance": {
     "title": "Reference information only",
-    "text": "HealthOS provides health information for reference and is not a substitute for medical advice from a licensed clinician. Always consult a qualified professional before making any medical decision."
+    "text": "HealthOS is an academic project (NT208 course) and does not provide medical advice. Information shown is for reference only and is not a substitute for consultation with a licensed clinician. Always consult a qualified professional before making any medical decision."
   },
   "form": {
     "name": "Full Name",
@@ -2221,7 +2225,7 @@
       },
       "previewTitleDraft": "What responders see (draft)"
     },
-     "trends": {
+    "trends": {
       "title": "Health Trends",
       "subtitle": "Changes over time",
       "noData": "Not enough data to show trends yet.",
@@ -2231,6 +2235,13 @@
         "sleep": "Sleep",
         "calories": "Calories",
         "weight": "Weight"
+      },
+      "units": {
+        "heart_rate": "bpm",
+        "steps": "steps",
+        "sleep": "hr",
+        "calories": "kcal",
+        "weight": "kg"
       }
     },
     "anomalies": {

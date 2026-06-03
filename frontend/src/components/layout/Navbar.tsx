@@ -42,7 +42,7 @@ export function Navbar() {
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between md:h-20">
+        <div className="flex h-16 items-center justify-between lg:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div
@@ -59,7 +59,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 lg:flex">
             {NAV_KEYS.map((link) => (
               <Link
                 key={link.href}
@@ -78,7 +78,7 @@ export function Navbar() {
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-3 lg:flex">
             <Link
               href={pathname}
               locale={otherLocale}
@@ -101,7 +101,7 @@ export function Navbar() {
 
           {/* Mobile Menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild className="md:hidden">
+            <SheetTrigger asChild className="lg:hidden">
               <Button variant="ghost" size="icon" className="text-white hover:bg-night-800">
                 <Menu className="size-6" />
               </Button>

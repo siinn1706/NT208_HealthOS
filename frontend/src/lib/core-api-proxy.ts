@@ -273,9 +273,21 @@ export async function coreProxy(
   const requestId = getOrCreateRequestId(req);
   const csrfReject = assertSameOrigin(req);
   if (csrfReject) return csrfReject;
-  const { accessToken, refreshToken } = await getAuthCookies();
+  const { accessToken: cookieToken, refreshToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
   const method = options.method ?? req.method;
+
+  // Mobile clients use bearer-token auth (no cookie). Accept Authorization header
+  // as fallback when no session cookie is present. Skip the refresh flow for bearer
+  // auth — mobile manages its own token lifecycle via SecureStore.
+  const incomingBearer = (() => {
+    const h = req.headers.get("authorization");
+    if (!h?.startsWith("Bearer ")) return null;
+    const t = h.slice(7).trim();
+    return t || null;
+  })();
+  const accessToken = cookieToken ?? incomingBearer;
+  const isBearerAuth = !cookieToken && !!incomingBearer;
 
   if (requireAuth && !accessToken) {
     const resp = NextResponse.json(
@@ -417,6 +429,11 @@ export async function coreProxy(
     return buildCoreProxyResponse(firstAttempt.status, firstAttempt.data, requestId);
   }
 
+  // Bearer-auth callers (mobile) manage their own token refresh — return 401 directly.
+  if (isBearerAuth) {
+    return buildCoreProxyResponse(401, firstAttempt.data, requestId);
+  }
+
   if (!refreshToken) {
     const response = NextResponse.json(
       { error: { code: "AUTH_REQUIRED", message: "Session expired. Please sign in again." } },
@@ -494,9 +511,18 @@ export async function coreFetchStream(
   const requestId = getOrCreateRequestId(req);
   const csrfReject = assertSameOrigin(req);
   if (csrfReject) return csrfReject;
-  const { accessToken, refreshToken } = await getAuthCookies();
+  const { accessToken: cookieTokenStream, refreshToken } = await getAuthCookies();
   const requireAuth = options.requireAuth ?? true;
   const method = options.method ?? req.method;
+
+  const incomingBearerStream = (() => {
+    const h = req.headers.get("authorization");
+    if (!h?.startsWith("Bearer ")) return null;
+    const t = h.slice(7).trim();
+    return t || null;
+  })();
+  const accessToken = cookieTokenStream ?? incomingBearerStream;
+  const isBearerAuthStream = !cookieTokenStream && !!incomingBearerStream;
 
   const url = new URL(corePath, CORE_API_URL);
   req.nextUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));
@@ -594,6 +620,9 @@ export async function coreFetchStream(
     }
     return firstAttempt;
   }
+
+  // Bearer-auth callers (mobile) manage their own token refresh.
+  if (isBearerAuthStream) return firstAttempt;
 
   if (!refreshToken) return makeAuthRequiredResponse(true);
 

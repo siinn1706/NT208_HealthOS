@@ -51,12 +51,13 @@ export function TimeRangeSelector({
   );
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 overflow-x-auto scrollbar-none min-w-0">
       {PRESETS.map((preset) => (
         <Button
           key={preset.value}
           variant={value === preset.value ? "default" : "outline"}
           size="sm"
+          className="flex-shrink-0"
           onClick={() => onChange(preset.value)}
         >
           {preset.label}
@@ -67,7 +68,7 @@ export function TimeRangeSelector({
           <Button
             variant={value === "custom" ? "default" : "outline"}
             size="sm"
-            className="gap-1"
+            className="gap-1 flex-shrink-0"
           >
             <CalendarIcon className="size-3" />
             {value === "custom" && dateFrom && dateTo

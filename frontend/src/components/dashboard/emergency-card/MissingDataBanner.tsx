@@ -8,7 +8,7 @@
 "use client";
 
 import { AlertTriangle, ChevronRight, Info } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 

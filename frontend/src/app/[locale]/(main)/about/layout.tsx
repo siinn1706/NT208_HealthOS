@@ -4,10 +4,18 @@ import { getTranslations } from "next-intl/server";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("about.meta");
   return {
-    title: `${t("title")} — HealthOS`,
+    title: t("title"),
     description: t("description"),
+    keywords: [
+      "HealthOS", "NT208", "student project", "university course project",
+      "health management app", "AI food recognition", "UIT Vietnam",
+    ],
+    alternates: {
+      canonical: "/about",
+      languages: { vi: "/vi/about", en: "/en/about", "x-default": "/vi/about" },
+    },
     openGraph: {
-      title: `${t("title")} — HealthOS`,
+      title: t("title"),
       description: t("description"),
       type: "website",
     },
@@ -20,6 +28,7 @@ const orgJsonLd = {
   name: "HealthOS",
   url: "https://healthos.vn",
   logo: "https://healthos.vn/logo.png",
+  description: "Academic health management project — NT208 course, UIT Vietnam",
   sameAs: [],
 };
 

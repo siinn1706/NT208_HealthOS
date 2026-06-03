@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import type { NutritionSuggestion, NutritionSuggestionType } from "@/types/api";
 
 interface NutritionSuggestionsWidgetProps {

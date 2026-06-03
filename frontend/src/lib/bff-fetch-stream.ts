@@ -51,7 +51,8 @@ export async function bffFetchStream(
     // AbortSignal.any is available in modern browsers (2023+). Fall back to
     // a manual approach for environments that don't support it yet.
     if (typeof (AbortSignal as { any?: unknown }).any === "function") {
-      combinedSignal = (AbortSignal as { any: (...signals: AbortSignal[]) => AbortSignal }).any(
+      type AbortSignalWithAny = { any: (signals: AbortSignal[]) => AbortSignal };
+      combinedSignal = (AbortSignal as unknown as AbortSignalWithAny).any(
         [init.signal as AbortSignal, headersController.signal],
       );
     } else {

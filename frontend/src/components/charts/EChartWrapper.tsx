@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useImperativeHandle, type Ref } from "rea
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import type { EChartsOption, EChartsReactProps } from "echarts-for-react";
-import * as echarts from "echarts";
+import type * as echarts from "echarts";
 
 function resolveCssVar(value: string): string {
   if (typeof window === "undefined") return value;

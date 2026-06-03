@@ -128,15 +128,14 @@ export function AccentColorSetting() {
 
   return (
     <div className="space-y-3 w-full">
-      {/* Two-column: preview LEFT, BlossomColorPicker RIGHT */}
-      <div className="flex gap-4 items-start">
-        {/* LEFT: scoped preview — compact fixed width so it doesn't stretch across the row */}
-        <div className="flex-none w-100">
+      {/* Two-column on sm+, single column on mobile */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start">
+        {/* LEFT: scoped preview */}
+        <div className="w-full sm:flex-none sm:w-100 min-w-0 overflow-hidden">
           <AccentPreviewCard accentHex={displayHex} />
         </div>
 
-        {/* RIGHT: dedicated picker zone — flex-1 fills remaining space,
-            picker centered so it sits in the middle of the open area */}
+        {/* RIGHT: dedicated picker zone */}
         <div className="flex-1 flex justify-center items-start">
           <BlossomColorPicker
             value={blossomValue}

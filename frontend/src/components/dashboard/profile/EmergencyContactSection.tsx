@@ -1,9 +1,9 @@
 "use client";
 
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { AlertCircle, HeartPulse, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/navigation";
 
 import {
   FormField,
@@ -81,7 +81,6 @@ export function EmergencyContactSection({
   isEditing,
 }: EmergencyContactSectionProps) {
   const t = useTranslations("dashboard.profile");
-  const locale = useLocale();
   const form = useFormContext<ProfileFormValues>();
 
   const { fields, append, remove } = useFieldArray({
@@ -91,7 +90,7 @@ export function EmergencyContactSection({
 
   const emergencyCardLink = (
     <Link
-      href={`/${locale}/dashboard/emergency-card`}
+      href={`/dashboard/emergency-card`}
       className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <HeartPulse className="size-3" aria-hidden />

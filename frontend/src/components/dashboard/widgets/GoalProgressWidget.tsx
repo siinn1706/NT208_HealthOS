@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { getLocale } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import { Target } from "lucide-react";
@@ -85,7 +85,7 @@ export async function GoalProgressWidget({ summary }: GoalProgressWidgetProps) {
         })}
 
         <Link
-          href={`/${locale}/dashboard/progress`}
+          href={`/dashboard/progress`}
           className={cn(
             "inline-flex items-center text-xs font-medium text-primary",
             "hover:underline transition-colors duration-200"
