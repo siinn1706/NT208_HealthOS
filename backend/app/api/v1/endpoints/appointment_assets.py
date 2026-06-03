@@ -4,12 +4,13 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.adapters.storage import DEFAULT_GET_EXPIRY_S
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import User
 from app.schemas.appointment_assets import (
@@ -35,14 +36,12 @@ from app.services.upload_security import UploadTooLargeError, detect_document_mi
 router = APIRouter(tags=["Appointment Assets"])
 
 
-def _unsupported_kind(exc: AppointmentAssetKindNotAllowed) -> HTTPException:
-    return HTTPException(
+def _unsupported_kind(exc: AppointmentAssetKindNotAllowed) -> ApiException:
+    return ApiException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail={
-            "code": "UNSUPPORTED_ASSET_KIND",
-            "message": "Only attachment and lab_report are accepted.",
-            "details": {"kind": exc.kind},
-        },
+        code="UNSUPPORTED_ASSET_KIND",
+        message="Only attachment and lab_report are accepted.",
+        details={"kind": exc.kind},
     )
 
 
@@ -94,9 +93,10 @@ async def list_appointment_assets(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
     return AppointmentAssetListResponse(
         data=[AppointmentAssetDTO.model_validate(item) for item in items]
@@ -126,14 +126,16 @@ async def upload_appointment_asset(
     try:
         file_bytes = await read_upload_bounded(file, asset_svc.MAX_BYTES)
     except UploadTooLargeError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={"code": "PAYLOAD_TOO_LARGE", "message": str(exc)},
+            code="PAYLOAD_TOO_LARGE",
+            message=str(exc),
         ) from exc
     if not file_bytes:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "EMPTY_FILE", "message": "Uploaded file is empty."},
+            code="EMPTY_FILE",
+            message="Uploaded file is empty.",
         )
 
     mime_type = detect_document_mime(file_bytes[:32], file.content_type)
@@ -150,17 +152,16 @@ async def upload_appointment_asset(
     except AppointmentAssetKindNotAllowed as exc:
         raise _unsupported_kind(exc) from exc
     except AppointmentAssetTooLargeError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={"code": "PAYLOAD_TOO_LARGE", "message": str(exc)},
+            code="PAYLOAD_TOO_LARGE",
+            message=str(exc),
         ) from exc
     except AppointmentAssetMimeNotAllowed as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail={
-                "code": "UNSUPPORTED_MEDIA_TYPE",
-                "message": "Only PDF, PNG, JPEG, and WEBP are accepted.",
-            },
+            code="UNSUPPORTED_MEDIA_TYPE",
+            message="Only PDF, PNG, JPEG, and WEBP are accepted.",
         ) from exc
 
     if asset is None:
@@ -173,9 +174,10 @@ async def upload_appointment_asset(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Appointment not found."},
+            code="NOT_FOUND",
+            message="Appointment not found.",
         )
 
     bucket = asset.bucket
@@ -229,9 +231,10 @@ async def get_appointment_asset_url(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Asset not found."},
+            code="NOT_FOUND",
+            message="Asset not found.",
         )
     url = asset_svc.mint_signed_url(asset, expires_s=DEFAULT_GET_EXPIRY_S)
     await audit(
@@ -269,12 +272,10 @@ async def delete_appointment_asset(
         removed = await asset_svc.soft_delete_asset(db=db, user=current_user, appointment_id=appointment_id, asset_id=asset_id)
     except AppointmentAssetObjectDeleteError as exc:
         await db.rollback()
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "code": "STORAGE_DELETE_FAILED",
-                "message": "Could not delete appointment asset from storage. Try again.",
-            },
+            code="STORAGE_DELETE_FAILED",
+            message="Could not delete appointment asset from storage. Try again.",
         ) from exc
     if not removed:
         await log_resource_access_denied(
@@ -286,9 +287,10 @@ async def delete_appointment_asset(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Asset not found."},
+            code="NOT_FOUND",
+            message="Asset not found.",
         )
     await audit(
         db=db,

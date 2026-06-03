@@ -15,7 +15,7 @@ import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,9 @@ from app.adapters.database import AsyncSessionLocal, get_db
 from app.adapters.storage import upload_file
 from app.core.config import settings
 from app.core.metrics import record_ws_fanout_failure
+from app.core.rate_limit import rate_limit_conversation_create
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.core import (
     Conversation,
     ConversationMember,
@@ -76,11 +78,8 @@ CHAT_IMAGE_ALLOWED_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/web
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _http_error(status_code: int, code: str, message: str) -> HTTPException:
-    return HTTPException(
-        status_code=status_code,
-        detail={"code": code, "message": message},
-    )
+def _http_error(status_code: int, code: str, message: str) -> ApiException:
+    return ApiException(status_code=status_code, code=code, message=message)
 
 
 def _chat_image_object_key(user_id: uuid.UUID, mime_type: str) -> str:
@@ -312,6 +311,7 @@ async def get_conversation(
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
     summary="Create or get a direct conversation",
+    dependencies=[Depends(rate_limit_conversation_create)],
 )
 async def create_direct_conversation(
     body: CreateDirectConversationBody,
@@ -345,6 +345,7 @@ async def create_direct_conversation(
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
     summary="Create a group conversation",
+    dependencies=[Depends(rate_limit_conversation_create)],
 )
 async def create_group_conversation(
     body: CreateGroupConversationBody,
@@ -367,6 +368,7 @@ async def create_group_conversation(
     status_code=status.HTTP_201_CREATED,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
     summary="Create or get current user's AI conversation",
+    dependencies=[Depends(rate_limit_conversation_create)],
 )
 async def create_ai_conversation(
     current_user: Annotated[User, Depends(get_current_user)],

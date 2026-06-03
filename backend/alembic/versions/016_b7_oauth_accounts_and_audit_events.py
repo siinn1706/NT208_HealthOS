@@ -1,6 +1,6 @@
 """B7 P3 — oauth_accounts table + extend audit_event_type_enum.
 
-Revision ID: 016_b7_oauth_accounts_and_audit_events
+Revision ID: 016_b7_oauth_accounts
 Revises: 015_b7_appt_ingredients
 Create Date: 2026-04-19
 
@@ -19,7 +19,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "016_b7_oauth_accounts_and_audit_events"
+revision: str = "016_b7_oauth_accounts"
 down_revision: Union[str, None] = "015_b7_appt_ingredients"
 branch_labels = None
 depends_on = None

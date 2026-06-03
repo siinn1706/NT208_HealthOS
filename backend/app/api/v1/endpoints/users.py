@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,6 +21,7 @@ from app.core.security import (
     get_current_user_for_restore,
     http_bearer,
 )
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import OnboardingStatusEnum, User, UserProfile
 from app.schemas.auth import (
@@ -138,39 +139,18 @@ async def upload_profile_avatar(
     """Upload a profile image to object storage and persist URL on ``user_profiles.avatar_url``."""
     declared_type = normalize_content_type(file.content_type)
     if declared_type not in _ALLOWED_AVATAR_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "INVALID_AVATAR_TYPE",
-                "message": "Avatar must be JPEG, PNG, or WebP.",
-            },
-        )
+        raise ApiException(status_code=status.HTTP_400_BAD_REQUEST, code="INVALID_AVATAR_TYPE", message="Avatar must be JPEG, PNG, or WebP.")
     try:
         raw = await read_upload_bounded(file, _MAX_AVATAR_BYTES)
     except UploadTooLargeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "AVATAR_TOO_LARGE", "message": "Avatar must be at most 2 MiB."},
-        ) from exc
+        raise ApiException(status_code=status.HTTP_400_BAD_REQUEST, code="AVATAR_TOO_LARGE", message="Avatar must be at most 2 MiB.") from exc
     if len(raw) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "EMPTY_FILE", "message": "Empty upload."},
-        )
+        raise ApiException(status_code=status.HTTP_400_BAD_REQUEST, code="EMPTY_FILE", message="Empty upload.")
     detected_type = detect_image_mime(raw[:32])
     if detected_type not in _ALLOWED_AVATAR_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "INVALID_AVATAR_CONTENT", "message": "Avatar bytes must be a valid image."},
-        )
+        raise ApiException(status_code=status.HTTP_400_BAD_REQUEST, code="INVALID_AVATAR_CONTENT", message="Avatar bytes must be a valid image.")
     if detected_type != declared_type:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "AVATAR_MIME_MISMATCH",
-                "message": "Avatar content does not match the declared file type.",
-            },
-        )
+        raise ApiException(status_code=status.HTTP_400_BAD_REQUEST, code="AVATAR_MIME_MISMATCH", message="Avatar content does not match the declared file type.")
     suffix = f".{extension_for_mime(detected_type, 'jpg')}"
     key = f"profile-avatars/{current_user.id}/{uuid.uuid4()}{suffix}"
     try:
@@ -181,20 +161,11 @@ async def upload_profile_avatar(
             content_type=detected_type,
         )
     except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"code": "STORAGE_UNAVAILABLE", "message": str(exc)},
-        ) from exc
+        raise ApiException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, code="STORAGE_UNAVAILABLE", message=str(exc)) from exc
 
     url = public_url
     if len(url) > 512:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "code": "AVATAR_URL_TOO_LONG",
-                "message": "Avatar URL exceeds 512 characters (check STORAGE_ENDPOINT / bucket path).",
-            },
-        )
+        raise ApiException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, code="AVATAR_URL_TOO_LONG", message="Avatar URL exceeds 512 characters (check STORAGE_ENDPOINT / bucket path).")
 
     locked = await db.execute(
         select(UserProfile)
@@ -309,14 +280,11 @@ async def request_data_export(
     try:
         req = await export_svc.request_export(db, current_user.id)
     except ExportRateLimited as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "RATE_LIMITED",
-                "message": "An export request was already created in the last 24 hours.",
-                "details": {"retry_after_s": exc.retry_after_s},
-            },
-        ) from exc
+        raise ApiException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                code="RATE_LIMITED",
+                message="An export request was already created in the last 24 hours.",
+            ) from exc
     await audit(
         db=db,
         event_type=AuditEventTypeEnum.DATA_EXPORT_REQUESTED,
@@ -352,10 +320,7 @@ async def get_data_export_status(
             http_method="GET",
             route="/users/me/export/{request_id}",
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Export request not found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Export request not found.")
     return DataExportRequestResponse(data=DataExportRequestDTO.model_validate(req))
 
 
@@ -387,21 +352,12 @@ async def get_data_export_download(
             http_method="GET",
             route="/users/me/export/{request_id}/download",
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Export request not found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="Export request not found.")
     if req.status != DataExportStatusEnum.COMPLETED.value:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "EXPORT_NOT_READY", "message": "Export is not complete yet."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="EXPORT_NOT_READY", message="Export is not complete yet.")
     now = datetime.now(timezone.utc)
     if req.expires_at is not None and req.expires_at <= now:
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE,
-            detail={"code": "EXPORT_EXPIRED", "message": "Download link has expired."},
-        )
+        raise ApiException(status_code=status.HTTP_410_GONE, code="EXPORT_EXPIRED", message="Download link has expired.")
     url = export_svc.mint_signed_download(req)
     await audit(
         db=db,
@@ -468,32 +424,24 @@ async def soft_delete_account(
                 db=db, email=current_user.email, purpose="delete_account"
             )
             if otp_record is None or otp_record.attempts_left <= 0:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
-                )
+                raise ApiException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, code="OTP_INVALID", message="OTP expired or invalid.")
             if hash_otp_code(body.otp_code) != otp_record.code_hash:
                 await decrement_attempts(db, otp_record)
                 await db.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={"code": "OTP_INVALID", "message": "OTP expired or invalid."},
-                )
+                raise ApiException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, code="OTP_INVALID", message="OTP expired or invalid.")
             await mark_otp_consumed(db, otp_record)
             otp_verified = True
         else:
             verified_key = f"auth:otp:delete_account_verified:{current_user.email}"
             consumed = await redis_getdel_compat(redis, verified_key)
             if consumed is None:
-                raise HTTPException(
+                raise ApiException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={
-                        "code": "OTP_REQUIRED",
-                        "message": (
-                            "OAuth-only accounts must verify a one-time code emailed to them. "
-                            "Request one via /v1/auth/request-otp with purpose='delete_account'."
-                        ),
-                    },
+                    code="OTP_REQUIRED",
+                    message=(
+                        "OAuth-only accounts must verify a one-time code emailed to them. "
+                        "Request one via /v1/auth/request-otp with purpose='delete_account'."
+                    ),
                 )
             otp_verified = True
 
@@ -507,18 +455,9 @@ async def soft_delete_account(
             reason=body.reason,
         )
     except AlreadyPendingDeletion as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "ALREADY_PENDING_DELETION",
-                "message": "An active deletion request already exists for this account.",
-            },
-        ) from exc
+        raise ApiException(status_code=status.HTTP_409_CONFLICT, code="ALREADY_PENDING_DELETION", message="An active deletion request already exists for this account.") from exc
     except IdentityCheckFailed as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "IDENTITY_CHECK_FAILED", "message": str(exc)},
-        ) from exc
+        raise ApiException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, code="IDENTITY_CHECK_FAILED", message=str(exc)) from exc
 
     await audit(
         db=db,
@@ -574,13 +513,7 @@ async def restore_account(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     if user.deleted_at is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "NOT_PENDING_DELETION",
-                "message": "Account is not in a deletion state.",
-            },
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_PENDING_DELETION", message="Account is not in a deletion state.")
     await deletion_svc.restore(db, user)
     await audit(
         db=db,
@@ -616,10 +549,7 @@ async def get_onboarding_draft(
 ) -> OnboardingDraftResponse:
     draft = await draft_svc.get_draft(db, current_user.id)
     if draft is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "No onboarding draft found."},
-        )
+        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, code="NOT_FOUND", message="No onboarding draft found.")
     return OnboardingDraftResponse(
         data=OnboardingDraftData(
             data=draft.data,

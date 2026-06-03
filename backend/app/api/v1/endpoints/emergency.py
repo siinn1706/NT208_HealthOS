@@ -22,11 +22,12 @@ import logging
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import User
 from app.schemas.common import ErrorResponse
@@ -153,33 +154,29 @@ async def mint_emergency_token(
 
     # Surface the friendly 4xx reasons before doing any expensive rendering.
     if not preflight.is_published:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "CARD_NOT_PUBLISHED",
-                "message": (
-                    "Publish your emergency card before minting a QR token. "
-                    "Toggle 'Publish' in the dashboard."
-                ),
-            },
+            code="CARD_NOT_PUBLISHED",
+            message=(
+                "Publish your emergency card before minting a QR token. "
+                "Toggle 'Publish' in the dashboard."
+            ),
         )
     if (
         preflight.completeness_score < emergency_svc.COMPLETENESS_PUBLISH_THRESHOLD
         and not body.acknowledge_low_completeness
     ):
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "INSUFFICIENT_PROFILE",
-                "message": (
-                    "Your emergency profile is below the recommended completeness. "
-                    "Resolve the missing-critical-fields nudges, or re-submit with "
-                    "`acknowledge_low_completeness=true`."
-                ),
-                "details": {
-                    "completeness_score": preflight.completeness_score,
-                    "missing_critical_fields": preflight.missing_critical_fields,
-                },
+            code="INSUFFICIENT_PROFILE",
+            message=(
+                "Your emergency profile is below the recommended completeness. "
+                "Resolve the missing-critical-fields nudges, or re-submit with "
+                "`acknowledge_low_completeness=true`."
+            ),
+            details={
+                "completeness_score": preflight.completeness_score,
+                "missing_critical_fields": preflight.missing_critical_fields,
             },
         )
 
@@ -214,23 +211,22 @@ async def mint_emergency_token(
             acknowledge_low_completeness=body.acknowledge_low_completeness,
         )
     except (CardNotPublished, InsufficientProfile) as exc:  # pragma: no cover — preflight catches these
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "PREFLIGHT_INVARIANT_BROKEN", "message": str(exc)},
+            code="PREFLIGHT_INVARIANT_BROKEN",
+            message=str(exc),
         ) from exc
     except TooManyActiveTokens as exc:
         # Race: the preflight didn't see the cap, but a concurrent mint
         # crossed it before our FOR UPDATE landed.
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "TOO_MANY_ACTIVE_TOKENS",
-                "message": (
-                    "You already have the maximum number of active QR tokens. "
-                    "Revoke one before minting a new card."
-                ),
-                "details": {"max_active_tokens": preflight.max_active_tokens},
-            },
+            code="TOO_MANY_ACTIVE_TOKENS",
+            message=(
+                "You already have the maximum number of active QR tokens. "
+                "Revoke one before minting a new card."
+            ),
+            details={"max_active_tokens": preflight.max_active_tokens},
         ) from exc
 
     # Step 6 — audit + commit.
@@ -295,9 +291,10 @@ async def revoke_emergency_token(
             db, user_id=current_user.id, token_id=token_id
         )
     except TokenNotFound as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Token not found."},
+            code="NOT_FOUND",
+            message="Token not found.",
         ) from exc
 
     await audit(

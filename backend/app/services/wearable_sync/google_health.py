@@ -170,7 +170,11 @@ async def exchange_code_for_tokens(code: str) -> dict[str, Any]:
     if resp.status_code != 200:
         # Body may contain a 'error' / 'error_description' pair; safe to
         # log because it never carries PHI, only OAuth machinery state.
-        logger.warning("Google token exchange failed: %s %s", resp.status_code, resp.text)
+        try:
+            err_code = resp.json().get("error", "unknown")
+        except Exception:
+            err_code = "unparseable_response"
+        logger.warning("Google token exchange failed: %s error=%s", resp.status_code, err_code)
         raise GoogleHealthError(
             "Google rejected the authorization code.",
             status_code=resp.status_code,
@@ -199,7 +203,11 @@ async def refresh_access_token(refresh_token: str) -> dict[str, Any]:
         # revoked (user disconnected from their Google account settings)
         # — caller should mark the connection inactive and prompt
         # re-consent rather than retrying.
-        logger.warning("Google token refresh failed: %s %s", resp.status_code, resp.text)
+        try:
+            err_code = resp.json().get("error", "unknown")
+        except Exception:
+            err_code = "unparseable_response"
+        logger.warning("Google token refresh failed: %s error=%s", resp.status_code, err_code)
         raise GoogleHealthError(
             "Failed to refresh Google access token.",
             status_code=resp.status_code,

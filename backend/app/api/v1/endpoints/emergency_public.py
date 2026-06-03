@@ -15,12 +15,13 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import NotificationKindEnum
 from app.schemas.common import ErrorResponse
@@ -55,30 +56,25 @@ async def _enforce_public_rate_limit(redis: Redis, ip_truncated: str) -> None:
     if current > _RATE_LIMIT_MAX:
         ttl = await redis.ttl(key)
         retry_after = max(60, int(ttl) if ttl and ttl > 0 else _RATE_LIMIT_WINDOW_S)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "RATE_LIMITED",
-                "message": "Too many requests. Please slow down.",
-                "details": {"retry_after_s": retry_after},
-            },
-            headers={"Retry-After": str(retry_after)},
+            code="RATE_LIMITED",
+            message="Too many requests. Please slow down.",
+            details={"retry_after_s": retry_after},
         )
 
 
-def _gone() -> HTTPException:
+def _gone() -> ApiException:
     """Single canonical 410 response. Generic message — never identifies the
     card owner, never differentiates revoked from missing.
     """
-    return HTTPException(
+    return ApiException(
         status_code=status.HTTP_410_GONE,
-        detail={
-            "code": "EMERGENCY_CARD_UNAVAILABLE",
-            "message": (
-                "This emergency card is no longer active. Please contact the "
-                "patient or use other identification."
-            ),
-        },
+        code="EMERGENCY_CARD_UNAVAILABLE",
+        message=(
+            "This emergency card is no longer active. Please contact the "
+            "patient or use other identification."
+        ),
     )
 
 
@@ -127,12 +123,10 @@ async def get_public_emergency_card(
         or emergency_svc.truncate_ip(socket_host)
     )
     if ip_truncated is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "MISSING_CLIENT_IP",
-                "message": "Cannot identify client. Check proxy configuration.",
-            },
+            code="MISSING_CLIENT_IP",
+            message="Cannot identify client. Check proxy configuration.",
         )
 
     await _enforce_public_rate_limit(redis, ip_truncated)

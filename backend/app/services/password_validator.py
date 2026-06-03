@@ -48,22 +48,22 @@ def validate_password_strength(password: str) -> Tuple[bool, List[str]]:
 
     # Length checks
     if len(password) < PasswordRequirements.MIN_LENGTH:
-        errors.append(f"Mật khẩu phải có ít nhất {PasswordRequirements.MIN_LENGTH} ký tự")
+        errors.append(f"Password must be at least {PasswordRequirements.MIN_LENGTH} characters long.")
     elif len(password) > PasswordRequirements.MAX_LENGTH:
-        errors.append(f"Mật khẩu không được quá {PasswordRequirements.MAX_LENGTH} ký tự")
+        errors.append(f"Password must not exceed {PasswordRequirements.MAX_LENGTH} characters.")
 
     # Character type checks
     if PasswordRequirements.REQUIRE_UPPERCASE and not re.search(r"[A-Z]", password):
-        errors.append("Cần ít nhất 1 chữ hoa (A-Z)")
+        errors.append("Must contain at least 1 uppercase letter (A-Z).")
 
     if PasswordRequirements.REQUIRE_LOWERCASE and not re.search(r"[a-z]", password):
-        errors.append("Cần ít nhất 1 chữ thường (a-z)")
+        errors.append("Must contain at least 1 lowercase letter (a-z).")
 
     if PasswordRequirements.REQUIRE_DIGIT and not re.search(r"\d", password):
-        errors.append("Cần ít nhất 1 số (0-9)")
+        errors.append("Must contain at least 1 digit (0-9).")
 
     if PasswordRequirements.REQUIRE_SPECIAL and not re.search(r"[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]", password):
-        errors.append(f"Cần ít nhất 1 ký tự đặc biệt ({PasswordRequirements.SPECIAL_CHARS})")
+        errors.append(f"Must contain at least 1 special character ({PasswordRequirements.SPECIAL_CHARS}).")
 
     return len(errors) == 0, errors
 
@@ -126,12 +126,12 @@ def get_password_strength_score(password: str) -> int:
 def get_password_strength_label(score: int) -> str:
     """Get Vietnamese label for strength score."""
     labels = {
-        0: "Yếu",
-        1: "Yếu",
-        2: "Trung bình",
-        3: "Khá",
-        4: "Mạnh",
-        5: "Rất mạnh",
+        0: "Very weak",
+        1: "Weak",
+        2: "Fair",
+        3: "Good",
+        4: "Strong",
+        5: "Very strong",
     }
     return labels.get(score, "Yếu")
 
@@ -149,7 +149,7 @@ def validate_password(password: str) -> Tuple[bool, List[str]]:
 
     # Check blacklist first
     if is_password_blacklisted(password):
-        errors.append("Mật khẩu này quá phổ biến. Vui lòng chọn mật khẩu khác")
+        errors.append("This password is too common. Please choose a different one.")
 
     # Check complexity
     is_valid, complexity_errors = validate_password_strength(password)

@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from app.adapters.redis_client import get_redis
 from app.adapters.storage import DEFAULT_GET_EXPIRY_S
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.audit import AuditEventTypeEnum
 from app.models.core import User
 from app.schemas.common import ErrorResponse
@@ -48,15 +49,11 @@ async def _enforce_pdf_rate_limit(redis: Redis, user_id: uuid.UUID) -> None:
         await redis.expire(key, _PDF_RATE_LIMIT_WINDOW_S)
     if current > _PDF_RATE_LIMIT_MAX:
         ttl = await redis.ttl(key)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "RATE_LIMITED",
-                "message": (
-                    f"You can request at most {_PDF_RATE_LIMIT_MAX} PDF exports per hour."
-                ),
-                "details": {"retry_after_s": max(60, int(ttl) if ttl else _PDF_RATE_LIMIT_WINDOW_S)},
-            },
+            code="RATE_LIMITED",
+            message=f"You can request at most {_PDF_RATE_LIMIT_MAX} PDF exports per hour.",
+            details={"retry_after_s": max(60, int(ttl) if ttl else _PDF_RATE_LIMIT_WINDOW_S)},
         )
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
@@ -89,12 +86,10 @@ def _parse_trend_metrics_param(raw: str) -> list[str]:
         requested.append(metric)
 
     if not requested:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "VALIDATION_ERROR",
-                "message": "No supported trend metrics requested.",
-            },
+            code="VALIDATION_ERROR",
+            message="No supported trend metrics requested.",
         )
 
     return requested
@@ -189,12 +184,10 @@ async def request_report_pdf(
 ) -> ReportExportRequestResponse:
     invalid = [s for s in body.sections if s not in SUPPORTED_SECTIONS]
     if invalid:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "VALIDATION_ERROR",
-                "message": f"Unknown sections: {', '.join(invalid)}",
-            },
+            code="VALIDATION_ERROR",
+            message=f"Unknown sections: {', '.join(invalid)}",
         )
 
     # B7 review P1-10 — gate request rate per user before queueing the work.
@@ -250,9 +243,10 @@ async def get_report_pdf_status(
             http_method="GET",
             route="/reports/export-pdf/{request_id}",
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "PDF export request not found."},
+            code="NOT_FOUND",
+            message="PDF export request not found.",
         )
     return ReportExportRequestResponse(data=ReportExportRequestDTO.model_validate(req))
 
@@ -282,20 +276,23 @@ async def get_report_pdf_download(
             http_method="GET",
             route="/reports/export-pdf/{request_id}/download",
         )
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "PDF export request not found."},
+            code="NOT_FOUND",
+            message="PDF export request not found.",
         )
     if req.status != "completed":
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "EXPORT_NOT_READY", "message": "PDF is not complete yet."},
+            code="EXPORT_NOT_READY",
+            message="PDF is not complete yet.",
         )
     now = datetime.datetime.now(datetime.timezone.utc)
     if req.expires_at is not None and req.expires_at <= now:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_410_GONE,
-            detail={"code": "EXPORT_EXPIRED", "message": "Download link has expired."},
+            code="EXPORT_EXPIRED",
+            message="Download link has expired.",
         )
     url = report_export_svc.mint_signed_download(req)
     await audit(

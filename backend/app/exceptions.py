@@ -3,6 +3,7 @@
 from typing import Optional
 from fastapi import HTTPException, status
 from app.schemas.common import ErrorDetail, ErrorResponse
+from app.constants.error_codes import ErrorCode
 
 
 class ApiException(HTTPException):
@@ -32,12 +33,12 @@ class ValidationException(ApiException):
 
     def __init__(
         self,
-        message: str = "Dữ liệu không hợp lệ",
+        message: str = "Validation failed.",
         field_errors: Optional[dict[str, str]] = None,
     ):
         super().__init__(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            code="VALIDATION_FAILED",
+            code=ErrorCode.VALIDATION_FAILED,
             message=message,
             field_errors=field_errors,
         )
@@ -50,12 +51,12 @@ class NotFoundException(ApiException):
         self,
         resource: str = "Resource",
         message: Optional[str] = None,
-        code: str = "NOT_FOUND",
+        code: str = ErrorCode.NOT_FOUND,
     ):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             code=code,
-            message=message or f"{resource} không tìm thấy",
+            message=message or f"{resource} not found.",
         )
 
 
@@ -64,8 +65,8 @@ class UnauthorizedException(ApiException):
 
     def __init__(
         self,
-        message: str = "Vui lòng đăng nhập để tiếp tục",
-        code: str = "UNAUTHORIZED",
+        message: str = "Authentication required.",
+        code: str = ErrorCode.UNAUTHORIZED,
     ):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -79,11 +80,11 @@ class ForbiddenException(ApiException):
 
     def __init__(
         self,
-        message: str = "Bạn không có quyền truy cập",
+        message: str = "Access denied.",
     ):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            code="FORBIDDEN",
+            code=ErrorCode.FORBIDDEN,
             message=message,
         )
 
@@ -93,8 +94,8 @@ class ConflictException(ApiException):
 
     def __init__(
         self,
-        message: str = "Tài nguyên đã tồn tại",
-        code: str = "CONFLICT",
+        message: str = "Resource already exists.",
+        code: str = ErrorCode.CONFLICT,
         field_errors: Optional[dict[str, str]] = None,
     ):
         super().__init__(
@@ -110,11 +111,11 @@ class RateLimitException(ApiException):
 
     def __init__(
         self,
-        message: str = "Thao tác quá nhanh, vui lòng thử lại sau",
+        message: str = "Rate limit exceeded. Please try again later.",
     ):
         super().__init__(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            code="RATE_LIMIT_EXCEEDED",
+            code=ErrorCode.RATE_LIMIT_EXCEEDED,
             message=message,
         )
 
@@ -124,11 +125,11 @@ class ServerException(ApiException):
 
     def __init__(
         self,
-        message: str = "Đã xảy ra lỗi máy chủ",
+        message: str = "An internal server error occurred.",
     ):
         super().__init__(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            code="INTERNAL_SERVER_ERROR",
+            code=ErrorCode.INTERNAL_SERVER_ERROR,
             message=message,
         )
 

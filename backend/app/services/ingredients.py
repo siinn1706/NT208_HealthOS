@@ -7,6 +7,7 @@ locale picks which to display.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Optional
 
@@ -14,6 +15,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.core import Ingredient
+
+logger = logging.getLogger(__name__)
 
 
 MAX_PER_PAGE = 100

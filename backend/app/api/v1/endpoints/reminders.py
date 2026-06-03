@@ -4,14 +4,13 @@ import datetime
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from sqlalchemy import select
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
-from app.models.core import Reminder, User
+from app.exceptions import ApiException
+from app.models.core import User
 from app.schemas.common import ErrorResponse
 from app.schemas.reminders import (
     ReminderCreateBody,
@@ -102,9 +101,10 @@ async def create_reminder(
     try:
         item = await reminder_svc.create_reminder(db, current_user.id, body)
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
     await db.commit()
     return ReminderResponse(data=item)
@@ -129,9 +129,10 @@ async def update_reminder(
         done=body.done,
     )
     if item is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Reminder not found."},
+            code="NOT_FOUND",
+            message="Reminder not found.",
         )
     await db.commit()
     return ReminderResponse(data=item)
@@ -150,9 +151,10 @@ async def delete_reminder(
 ) -> None:
     deleted = await reminder_svc.delete_reminder(db, current_user.id, reminder_id)
     if not deleted:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Reminder not found."},
+            code="NOT_FOUND",
+            message="Reminder not found.",
         )
     await db.commit()
 
@@ -192,9 +194,10 @@ async def list_occurrences(
     if today:
         range_from, range_to = reminder_today_window(tzid)
     if range_from is None or range_to is None or range_from >= range_to:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": "Provide a valid `from` < `to` window or set `today=true`."},
+            code="VALIDATION_ERROR",
+            message="Provide a valid `from` < `to` window or set `today=true`.",
         )
     statuses = [s.strip() for s in status_filter.split(",")] if status_filter else None
     rows = await reminder_svc.list_occurrences_in_range(
@@ -219,21 +222,20 @@ async def skip_reminder(
     db: Annotated[AsyncSession, Depends(get_db)],
     body: ReminderSkipBody = ReminderSkipBody(),  # noqa: B008 — pydantic default is intentional for empty body
 ) -> ReminderOccurrenceResponse:
-    occ = await reminder_svc.skip_occurrence(
+    pair = await reminder_svc.skip_occurrence(
         db=db,
         user_id=current_user.id,
         reminder_id=reminder_id,
         occurrence_id=body.occurrence_id,
     )
-    if occ is None:
-        raise HTTPException(
+    if pair is None:
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "No matching occurrence to skip."},
+            code="NOT_FOUND",
+            message="No matching occurrence to skip.",
         )
     await db.commit()
-    parent = (
-        await db.execute(select(Reminder).where(Reminder.id == reminder_id))
-    ).scalar_one()
+    occ, parent = pair
     return ReminderOccurrenceResponse(data=_occurrence_dto(occ, parent))
 
 
@@ -250,7 +252,7 @@ async def snooze_reminder(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ReminderOccurrenceResponse:
     try:
-        occ = await reminder_svc.snooze_occurrence(
+        pair = await reminder_svc.snooze_occurrence(
             db=db,
             user_id=current_user.id,
             reminder_id=reminder_id,
@@ -259,19 +261,19 @@ async def snooze_reminder(
             occurrence_id=body.occurrence_id,
         )
     except ValueError as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+            code="VALIDATION_ERROR",
+            message=str(exc),
         ) from exc
-    if occ is None:
-        raise HTTPException(
+    if pair is None:
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "No matching occurrence to snooze."},
+            code="NOT_FOUND",
+            message="No matching occurrence to snooze.",
         )
     await db.commit()
-    parent = (
-        await db.execute(select(Reminder).where(Reminder.id == reminder_id))
-    ).scalar_one()
+    occ, parent = pair
     return ReminderOccurrenceResponse(data=_occurrence_dto(occ, parent))
 
 
@@ -287,20 +289,19 @@ async def mark_done(
     db: Annotated[AsyncSession, Depends(get_db)],
     body: ReminderDoneBody = ReminderDoneBody(),  # noqa: B008
 ) -> ReminderOccurrenceResponse:
-    occ = await reminder_svc.mark_done_occurrence(
+    pair = await reminder_svc.mark_done_occurrence(
         db=db,
         user_id=current_user.id,
         reminder_id=reminder_id,
         occurrence_id=body.occurrence_id,
     )
-    if occ is None:
-        raise HTTPException(
+    if pair is None:
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "No matching occurrence to mark done."},
+            code="NOT_FOUND",
+            message="No matching occurrence to mark done.",
         )
     await db.commit()
-    parent = (
-        await db.execute(select(Reminder).where(Reminder.id == reminder_id))
-    ).scalar_one()
+    occ, parent = pair
     return ReminderOccurrenceResponse(data=_occurrence_dto(occ, parent))
 

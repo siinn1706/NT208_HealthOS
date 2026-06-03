@@ -205,6 +205,23 @@ class Settings(BaseSettings):
                 "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
             )
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def validate_database_url_scheme(cls, v: str) -> str:
+        """When DATABASE_URL is provided it must use a supported scheme."""
+        if not v:
+            return v  # empty is allowed in dev; production guard is in model_validator
+        stripped = v.strip()
+        if not (
+            stripped.startswith("postgresql")
+            or stripped.startswith("sqlite")
+        ):
+            raise ValueError(
+                "DATABASE_URL must start with 'postgresql' or 'sqlite'; "
+                f"got scheme from value starting with: {stripped[:30]!r}"
+            )
+        return stripped
+
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
         """Validate required secrets in production mode."""
@@ -249,6 +266,20 @@ class Settings(BaseSettings):
             # M14: SMTP config validation for OTP email delivery
             if not self.smtp_host or not self.smtp_user or not self.smtp_password:
                 raise ValueError("SMTP_HOST, SMTP_USER, SMTP_PASSWORD must be set in production for OTP email delivery")
+            # Structured logging is required in production so log aggregators
+            # receive parseable JSON rather than raw text lines.
+            if self.log_format.strip().lower() != "json":
+                raise ValueError(
+                    "LOG_FORMAT must be 'json' in production for structured logging. "
+                    "Set LOG_FORMAT=json in your production environment."
+                )
+            # DEBUG=true in production exposes OTP codes in API responses and
+            # enables SQL echo — reject immediately rather than warn at runtime.
+            if self.debug:
+                raise ValueError(
+                    "DEBUG must be False (or unset) in production. "
+                    "Set DEBUG=false in your production environment."
+                )
         # H5: Fernet key format validation (when set)
         if self.fernet_key:
             try:

@@ -105,7 +105,7 @@ export default function MedsScreen() {
 
       {refillPlan?.next_refill_estimated_at && (
         <RefillAlertCard
-          message={`${refillPlan.name} refill due soon`}
+          message={i18n('meds.refillDueSoon', { name: refillPlan.name })}
           daysLeft={refillDaysLeft}
           onPress={() => router.push(('/meds/refill/' + refillPlan.id) as never)}
         />

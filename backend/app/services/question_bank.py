@@ -5,12 +5,15 @@ small public surface here (no business logic — just DB filtering).
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.visit_briefs import QuestionTemplate
+
+logger = logging.getLogger(__name__)
 
 
 async def list_canonical(db: AsyncSession) -> list[QuestionTemplate]:

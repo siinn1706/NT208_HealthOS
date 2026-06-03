@@ -4,11 +4,12 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.core import User
 from app.schemas.common import ErrorResponse
 from app.schemas.plans import (
@@ -81,9 +82,10 @@ async def get_plan(
 ) -> PlanResponse:
     plan = await plan_svc.get_plan(db, current_user.id, plan_id)
     if plan is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Plan not found."},
+            code="NOT_FOUND",
+            message="Plan not found.",
         )
     return PlanResponse(data=PlanDTO.model_validate(plan))
 
@@ -107,9 +109,10 @@ async def update_plan(
 ) -> PlanResponse:
     plan = await plan_svc.update_plan(db, current_user.id, plan_id, body)
     if plan is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Plan not found."},
+            code="NOT_FOUND",
+            message="Plan not found.",
         )
     await db.commit()
     await db.refresh(plan)
@@ -129,9 +132,10 @@ async def archive_plan(
 ) -> PlanResponse:
     plan = await plan_svc.archive_plan(db, current_user.id, plan_id)
     if plan is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Plan not found."},
+            code="NOT_FOUND",
+            message="Plan not found.",
         )
     await db.commit()
     await db.refresh(plan)
@@ -151,8 +155,9 @@ async def delete_plan(
 ) -> None:
     deleted = await plan_svc.delete_plan(db, current_user.id, plan_id)
     if not deleted:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Plan not found."},
+            code="NOT_FOUND",
+            message="Plan not found.",
         )
     await db.commit()

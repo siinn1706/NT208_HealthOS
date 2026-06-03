@@ -239,10 +239,10 @@ class CheckEmailResponse(BaseModel):
 class EmergencyContact(BaseModel):
     """Emergency contact information."""
 
-    name: str
+    name: str = Field(min_length=1, max_length=128)
     email: Optional[EmailStr] = None
-    phone: str
-    relationship: str
+    phone: str = Field(min_length=1, max_length=32)
+    relationship: str = Field(min_length=1, max_length=64)
 
 
 class InsuranceInfo(BaseModel):

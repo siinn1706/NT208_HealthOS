@@ -30,7 +30,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import Response
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.adapters.database import get_db
 from app.adapters.redis_client import get_redis
 from app.core.security import get_current_user
+from app.exceptions import ApiException
 from app.models.core import User
 from app.schemas.common import ErrorResponse, PaginationMeta
 from app.schemas.visit_briefs import (
@@ -115,13 +116,11 @@ async def _enforce_rate_limit(
         await redis.expire(key, window_s)
     if current > max_calls:
         ttl = await redis.ttl(key)
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": code,
-                "message": message,
-                "details": {"retry_after_s": max(60, int(ttl) if ttl else window_s)},
-            },
+            code=code,
+            message=message,
+            details={"retry_after_s": max(60, int(ttl) if ttl else window_s)},
         )
 
 
@@ -154,24 +153,27 @@ async def _enforce_pdf_rate_limit(redis: Redis, user_id: uuid.UUID) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _http_400(code: str, message: str) -> HTTPException:
-    return HTTPException(
+def _http_400(code: str, message: str) -> ApiException:
+    return ApiException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail={"code": code, "message": message},
+        code=code,
+        message=message,
     )
 
 
-def _http_404(code: str, message: str) -> HTTPException:
-    return HTTPException(
+def _http_404(code: str, message: str) -> ApiException:
+    return ApiException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail={"code": code, "message": message},
+        code=code,
+        message=message,
     )
 
 
-def _http_409(code: str, message: str) -> HTTPException:
-    return HTTPException(
+def _http_409(code: str, message: str) -> ApiException:
+    return ApiException(
         status_code=status.HTTP_409_CONFLICT,
-        detail={"code": code, "message": message},
+        code=code,
+        message=message,
     )
 
 
@@ -658,12 +660,10 @@ async def download_pdf(
     try:
         payload = render_pdf(brief, locale=locale)
     except PdfRenderUnavailable as exc:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "code": "PDF_RENDER_UNAVAILABLE",
-                "message": str(exc),
-            },
+            code="PDF_RENDER_UNAVAILABLE",
+            message=str(exc),
         ) from exc
     headers = {
         "Content-Disposition": (

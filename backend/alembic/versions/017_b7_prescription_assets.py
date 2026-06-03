@@ -1,7 +1,7 @@
 """B7 P4 — prescription_assets table.
 
 Revision ID: 017_b7_prescription_assets
-Revises: 016_b7_oauth_accounts_and_audit_events
+Revises: 016_b7_oauth_accounts
 Create Date: 2026-04-19
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision: str = "017_b7_prescription_assets"
-down_revision: Union[str, None] = "016_b7_oauth_accounts_and_audit_events"
+down_revision: Union[str, None] = "016_b7_oauth_accounts"
 branch_labels = None
 depends_on = None
 

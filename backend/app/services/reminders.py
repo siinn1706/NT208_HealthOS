@@ -229,18 +229,25 @@ async def _resolve_target_occurrence(
     user_id: uuid.UUID,
     reminder_id: uuid.UUID,
     occurrence_id: Optional[uuid.UUID] = None,
-) -> Optional[ReminderOccurrence]:
-    """Pick the occurrence to act on: explicit `occurrence_id` if given, else
-    the next pending one in the future. Cross-checks user ownership via the
-    parent reminder."""
+) -> Optional[tuple[ReminderOccurrence, Reminder]]:
+    """Pick the occurrence to act on and return it alongside its parent Reminder.
+
+    Returns a (ReminderOccurrence, Reminder) tuple so callers have the parent
+    available without an extra round-trip. Returns None when no matching
+    occurrence exists or the reminder is not owned by user_id.
+
+    Cross-checks ownership via the JOIN — a user can only mutate occurrences
+    that belong to their own reminders.
+    """
     base = (
-        select(ReminderOccurrence)
+        select(ReminderOccurrence, Reminder)
         .join(Reminder, Reminder.id == ReminderOccurrence.reminder_id)
         .where(Reminder.id == reminder_id, Reminder.user_id == user_id)
     )
     if occurrence_id is not None:
         result = await db.execute(base.where(ReminderOccurrence.id == occurrence_id))
-        return result.scalar_one_or_none()
+        row = result.one_or_none()
+        return (row[0], row[1]) if row is not None else None
 
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     result = await db.execute(
@@ -254,7 +261,8 @@ async def _resolve_target_occurrence(
             ),
         ).order_by(ReminderOccurrence.scheduled_at.asc()).limit(1)
     )
-    return result.scalar_one_or_none()
+    row = result.one_or_none()
+    return (row[0], row[1]) if row is not None else None
 
 
 async def skip_occurrence(
@@ -262,14 +270,15 @@ async def skip_occurrence(
     user_id: uuid.UUID,
     reminder_id: uuid.UUID,
     occurrence_id: Optional[uuid.UUID] = None,
-) -> Optional[ReminderOccurrence]:
-    occ = await _resolve_target_occurrence(db, user_id, reminder_id, occurrence_id)
-    if occ is None:
+) -> Optional[tuple[ReminderOccurrence, Reminder]]:
+    pair = await _resolve_target_occurrence(db, user_id, reminder_id, occurrence_id)
+    if pair is None:
         return None
+    occ, parent = pair
     occ.status = ReminderOccurrenceStatusEnum.SKIPPED.value
     occ.skipped_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()
-    return occ
+    return occ, parent
 
 
 async def snooze_occurrence(
@@ -280,20 +289,21 @@ async def snooze_occurrence(
     until: Optional[datetime.datetime] = None,
     minutes: Optional[int] = None,
     occurrence_id: Optional[uuid.UUID] = None,
-) -> Optional[ReminderOccurrence]:
+) -> Optional[tuple[ReminderOccurrence, Reminder]]:
     if until is None and minutes is None:
         raise ValueError("snooze requires `until` or `minutes`")
     snooze_to = until or (
         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=int(minutes or 0))
     )
-    occ = await _resolve_target_occurrence(db, user_id, reminder_id, occurrence_id)
-    if occ is None:
+    pair = await _resolve_target_occurrence(db, user_id, reminder_id, occurrence_id)
+    if pair is None:
         return None
+    occ, parent = pair
     occ.status = ReminderOccurrenceStatusEnum.SNOOZED.value
     occ.snoozed_until = snooze_to
     occ.scheduled_at = snooze_to  # so the firing job picks it up at the new time
     await db.flush()
-    return occ
+    return occ, parent
 
 
 async def mark_done_occurrence(
@@ -301,23 +311,22 @@ async def mark_done_occurrence(
     user_id: uuid.UUID,
     reminder_id: uuid.UUID,
     occurrence_id: Optional[uuid.UUID] = None,
-) -> Optional[ReminderOccurrence]:
-    occ = await _resolve_target_occurrence(db, user_id, reminder_id, occurrence_id)
-    if occ is None:
+) -> Optional[tuple[ReminderOccurrence, Reminder]]:
+    pair = await _resolve_target_occurrence(db, user_id, reminder_id, occurrence_id)
+    if pair is None:
         return None
+    occ, parent = pair
     occ.status = ReminderOccurrenceStatusEnum.DONE.value
     occ.done_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()
 
-    # If this is a `once` reminder, archive the schedule too so it stops materializing.
-    parent = (
-        await db.execute(select(Reminder).where(Reminder.id == reminder_id))
-    ).scalar_one_or_none()
-    if parent is not None and parent.repeat == ReminderRepeatEnum.ONCE:
+    # If this is a `once` reminder, archive the schedule so it stops materializing.
+    # `parent` was already fetched by _resolve_target_occurrence — no extra query needed.
+    if parent.repeat == ReminderRepeatEnum.ONCE:
         parent.is_active = False
         parent.done = True
         await db.flush()
-    return occ
+    return occ, parent
 
 
 async def list_occurrences_in_range(

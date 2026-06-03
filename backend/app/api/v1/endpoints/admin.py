@@ -3,11 +3,12 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.database import get_db
 from app.core.rbac_deps import require_permission
+from app.exceptions import ApiException
 from app.models.core import User
 from app.schemas.admin import (
     AdminBanUserBody,
@@ -85,9 +86,10 @@ async def get_admin_user_detail(
 ) -> AdminUserDetailResponse:
     detail = await admin_service.get_user_detail(db, user_id)
     if detail is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "User not found."},
+            code="NOT_FOUND",
+            message="User not found.",
         )
     return AdminUserDetailResponse(data=detail)
 
@@ -161,9 +163,10 @@ async def get_admin_user_subscription(
 ) -> UserSubscriptionResponse:
     detail = await admin_service.get_user_detail(db, user_id)
     if detail is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "User not found."},
+            code="NOT_FOUND",
+            message="User not found.",
         )
     summary = await subscription_service.get_user_subscription_summary(db, user_id)
     return UserSubscriptionResponse(data=summary)
@@ -227,9 +230,10 @@ async def ban_admin_user(
     await db.refresh(target)
     detail = await admin_service.get_user_detail(db, target.id)
     if detail is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "User not found."},
+            code="NOT_FOUND",
+            message="User not found.",
         )
     return AdminUserDetailResponse(data=detail)
 
@@ -259,8 +263,9 @@ async def unban_admin_user(
     await db.refresh(target)
     detail = await admin_service.get_user_detail(db, target.id)
     if detail is None:
-        raise HTTPException(
+        raise ApiException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "User not found."},
+            code="NOT_FOUND",
+            message="User not found.",
         )
     return AdminUserDetailResponse(data=detail)
