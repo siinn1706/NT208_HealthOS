@@ -36,6 +36,7 @@ app.include_router(ai_router)
 
 
 @app.get("/health")
+@app.get("/health/ready")
 async def health() -> dict:
     detector_status = get_detector_runtime_status()
     return {
