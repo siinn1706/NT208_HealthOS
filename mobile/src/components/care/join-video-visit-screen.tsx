@@ -117,13 +117,13 @@ export function JoinVideoVisitScreen() {
           )}
           {apptId && (
             <Button
-              label="Open appointment"
+              label={i18n('care.openAppointment')}
               variant="solid"
               onPress={() => router.push(`/care/appointment/${apptId}` as never)}
             />
           )}
           <Button
-            label="Open chat"
+            label={i18n('care.openChat')}
             variant="ghost"
             icon={<IconChat size={16} color={nt.ink} />}
             onPress={() => router.push('/chat' as never)}

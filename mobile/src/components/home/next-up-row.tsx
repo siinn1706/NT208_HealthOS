@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
+import { typography, tabularNums } from '../../theme/typography';
 import { Chip, type ChipVariant } from '../primitives/chip';
 import { PressableCard } from '../primitives/pressable-card';
 import { IconPill, IconVideo, IconCoffee, ChevronRight } from '../../icons';
@@ -32,7 +32,7 @@ export const NextUpRow = React.memo(function NextUpRow({ time, title, meta, icon
       </View>
       <View style={styles.mid}>
         <View style={styles.timeRow}>
-          <Text style={[styles.timeText, { color: t.ink2 }]}>{time}</Text>
+      <Text style={[styles.timeText, { color: t.ink2 }]}>{time}</Text>
           {badge && <Chip label={badge.label} variant={badge.variant} />}
         </View>
         <Text style={[typography.bodyMed, { color: t.ink }]} numberOfLines={1}>{title}</Text>
@@ -46,7 +46,7 @@ export const NextUpRow = React.memo(function NextUpRow({ time, title, meta, icon
 const styles = StyleSheet.create({
   row:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   iconWrap: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: 12, flexShrink: 0 },
-  timeText: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  timeText: { ...typography.caption, fontWeight: '700', ...tabularNums },
   mid:     { flex: 1, marginRight: 8 },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
 });

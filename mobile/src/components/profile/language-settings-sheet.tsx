@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { UserPreference } from '../../../../shared/api-contracts';
 import i18n from '../../i18n';
+import { setStoredLocale } from '../../i18n/language-storage';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { preferenceService } from '../../api/services/preference-service';
@@ -47,6 +48,7 @@ export function LanguageSettingsSheet({ visible, onClose }: { visible: boolean; 
     try {
       const updated = await preferenceService.update({ locale });
       await i18n.changeLanguage(updated.locale);
+      void setStoredLocale(updated.locale as 'vi' | 'en');
       invalidateApiQuery(queryKeys.preferences);
       setSelected(updated.locale);
       setSuccess(`Language set to ${LANGUAGE_OPTIONS.find((opt) => opt.locale === updated.locale)?.label ?? updated.locale}.`);

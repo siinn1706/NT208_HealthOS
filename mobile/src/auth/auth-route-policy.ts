@@ -11,6 +11,7 @@ const PUBLIC_ROUTES = new Set([
   'auth/otp',
   'auth/mfa',
   'auth/forgot',
+  'auth/oauth/callback',
 ]);
 
 export function isPublicAuthRoute(segments: readonly string[], devMode = __DEV__): boolean {

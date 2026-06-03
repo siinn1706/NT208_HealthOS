@@ -108,7 +108,7 @@ export function useChatWebSocket({
       try {
         const ticket = await chatRealtimeService.wsTicket();
         const expiresAt = now + ticket.expires_in_seconds * 1_000;
-        ticketCache = { url: buildChatWsUrl(), ticket: ticket.ws_ticket, expiresAt };
+        ticketCache = { url: buildChatWsUrl(), ticket: ticket.token, expiresAt };
         return { url: ticketCache.url, ticket: ticketCache.ticket };
       } catch {
         // Ticket fetch failed; will retry on next reconnect cycle.

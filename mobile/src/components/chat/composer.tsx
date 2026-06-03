@@ -57,6 +57,6 @@ export function Composer({ onSend, onAttach, disabled = false }: ComposerProps) 
 const styles = StyleSheet.create({
   bar:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 64, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
   icon:  { padding: 4 },
-  input: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, maxHeight: 100, fontSize: 14 },
+  input: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, maxHeight: 100, fontSize: 14, lineHeight: 20 },
   send:  { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

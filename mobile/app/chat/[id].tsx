@@ -18,6 +18,7 @@ import { useChatFallbackPolling } from '../../src/hooks/use-chat-fallback-pollin
 import { useChatThreadActions } from '../../src/hooks/use-chat-thread-actions';
 import { mergeMessagesChronologically } from '../../src/chat/message-pagination';
 import { getConversationDisplay } from '../../src/chat/conversation-display';
+import { ErrorBoundary } from '../../src/components/error/error-boundary';
 import type { Conversation, Message, MessageListResponse } from '../../../shared/api-contracts';
 
 const CHAT_PAGE_SIZE = 50;
@@ -102,7 +103,11 @@ export default function AiConversationScreen() {
   useEffect(() => {
     const page = messageQuery.data;
     if (chatActions.sending || !page) return;
-    setMessages((prev) => mergeMessagesChronologically(prev, page.data));
+    setMessages((prev) => {
+      // Strip optimistic stubs before merging so they don't duplicate real server messages
+      const withoutOptimistic = prev.filter((m) => !m.id.startsWith('optimistic-'));
+      return mergeMessagesChronologically(withoutOptimistic, page.data);
+    });
     setHasMore(page.has_more);
     setNextCursor(page.next_cursor);
     setOlderError(null);
@@ -135,58 +140,60 @@ export default function AiConversationScreen() {
   });
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} edges={['top', 'bottom']}>
-      <ChatThreadHeader
-        display={conversationDisplay}
-        realtimeState={realtime.state}
-        onBack={() => router.back()}
-        onMore={() => setMoreOpen(true)}
-      />
-
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoider}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        <ChatMessageList
-          messages={messages}
-          currentUserId={user?.id}
-          loading={messageQuery.isLoading}
-          error={messageQuery.error}
-          sending={chatActions.sending || chatActions.attaching}
-          sendError={deliveryMessage}
-          sendState={deliveryState}
-          hasMore={hasMore}
-          loadingOlder={loadingOlder}
-          olderError={olderError}
-          onRetry={() => { void messageQuery.reload(); }}
-          onDismissSendError={() => {
-            chatActions.dismissSendError();
-            chatActions.dismissAttachError();
-          }}
-          onLoadOlder={() => { void handleLoadOlder(); }}
+    <ErrorBoundary>
+      <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} edges={['top', 'bottom']}>
+        <ChatThreadHeader
+          display={conversationDisplay}
+          realtimeState={realtime.state}
+          onBack={() => router.back()}
+          onMore={() => setMoreOpen(true)}
         />
-        <Composer
-          onSend={chatActions.handleSend}
-          onAttach={chatActions.handlePickImageAttachment}
-          disabled={!chatActions.canSend || chatActions.attaching}
+
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoider}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <ChatMessageList
+            messages={messages}
+            currentUserId={user?.id}
+            loading={messageQuery.isLoading}
+            error={messageQuery.error}
+            sending={chatActions.sending || chatActions.attaching}
+            sendError={deliveryMessage}
+            sendState={deliveryState}
+            hasMore={hasMore}
+            loadingOlder={loadingOlder}
+            olderError={olderError}
+            onRetry={() => { void messageQuery.reload(); }}
+            onDismissSendError={() => {
+              chatActions.dismissSendError();
+              chatActions.dismissAttachError();
+            }}
+            onLoadOlder={() => { void handleLoadOlder(); }}
+          />
+          <Composer
+            onSend={chatActions.handleSend}
+            onAttach={chatActions.handlePickImageAttachment}
+            disabled={!chatActions.canSend || chatActions.attaching}
+          />
+        </KeyboardAvoidingView>
+
+        <ChatThreadOptionsModal
+          visible={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          onRefresh={() => { void reloadThread(); setMoreOpen(false); }}
         />
-      </KeyboardAvoidingView>
 
-      <ChatThreadOptionsModal
-        visible={moreOpen}
-        onClose={() => setMoreOpen(false)}
-        onRefresh={() => { void reloadThread(); setMoreOpen(false); }}
-      />
-
-      <AttachmentLinkModal
-        visible={chatActions.attachOpen}
-        submitting={chatActions.attaching}
-        error={chatActions.attachError}
-        onClose={chatActions.closeAttachmentModal}
-        onSubmit={chatActions.handleSendAttachment}
-      />
-    </SafeAreaView>
+        <AttachmentLinkModal
+          visible={chatActions.attachOpen}
+          submitting={chatActions.attaching}
+          error={chatActions.attachError}
+          onClose={chatActions.closeAttachmentModal}
+          onSubmit={chatActions.handleSendAttachment}
+        />
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 

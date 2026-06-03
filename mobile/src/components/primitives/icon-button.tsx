@@ -38,7 +38,7 @@ export function IconButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityRole="button"
-      hitSlop={8}
+      hitSlop={12}
       style={({ pressed }) => [
         styles.btn,
         { width: size, height: size, borderRadius: size / 2, backgroundColor: bg, ...borderStyle },

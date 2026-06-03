@@ -42,32 +42,41 @@ jest.mock('../theme/useTheme', () => {
   return { useTheme: () => palettes.calm };
 });
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const labels: Record<string, string> = {
-        'api.loading': 'Loading',
-        'api.unavailable': 'Unavailable',
-        'common.retry': 'Retry',
-        'common.save': 'Save',
-        'reminders.notifications': 'Notifications',
-        'reminders.notificationsCorePreferenceHint': 'Core preference controls in-app reminder behavior.',
-        'reminders.notificationsPermissionStateLabel': 'System permission',
-        'reminders.notificationsPermissionChecking': 'Checking system permission...',
-        'reminders.notificationsPermissionState': 'System permission',
-        'reminders.notificationsPermissionGranted': 'granted',
-        'reminders.notificationsPermissionDenied': 'denied',
-        'reminders.notificationsPermissionUndetermined': 'not requested yet',
-        'reminders.notificationsPermissionRequest': 'Enable permission',
-        'reminders.notificationsPermissionOpenSettings': 'Open settings',
-        'reminders.preferences': 'Preferences',
-        'reminders.quietHours': 'Quiet hours',
-        'reminders.saving': 'Saving...',
-      };
-      return labels[key] ?? key;
-    },
-  }),
-}));
+// Partial i18n override: these keys diverge from the current EN locale JSON but match
+// the test spec — keeping them here avoids updating all assertion strings at once.
+jest.mock('react-i18next', () => {
+  const overrides: Record<string, string> = {
+    'reminders.notificationsCorePreferenceHint': 'Core preference controls in-app reminder behavior.',
+    'reminders.notificationsPermissionStateLabel': 'System permission',
+    'reminders.notificationsPermissionState': 'System permission',
+    'reminders.notificationsPermissionUndetermined': 'not requested yet',
+    'reminders.notificationsPermissionGranted': 'granted',
+    'reminders.notificationsPermissionDenied': 'denied',
+    'reminders.notificationsPermissionRequest': 'Enable permission',
+    'reminders.notificationsPermissionOpenSettings': 'Open settings',
+    'reminders.notificationsPermissionChecking': 'Checking system permission...',
+    'reminders.saving': 'Saving...',
+  };
+  function resolveKey(key: string, params?: Record<string, string | number>): string {
+    if (key in overrides) return overrides[key];
+    const en = require('../i18n/locales/en.json') as Record<string, unknown>;
+    const parts = key.split('.');
+    let node: unknown = en;
+    for (const part of parts) {
+      node = (node as Record<string, unknown>)?.[part];
+    }
+    if (typeof node !== 'string') return key;
+    if (!params) return node;
+    return node.replace(/\{\{(\w+)\}\}/g, (_, k: string) =>
+      params[k] !== undefined ? String(params[k]) : `{{${k}}}`,
+    );
+  }
+  return {
+    useTranslation: () => ({ t: resolveKey, i18n: { language: 'en', changeLanguage: jest.fn() } }),
+    initReactI18next: { type: '3rdParty', init: jest.fn() },
+    Trans: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => children,

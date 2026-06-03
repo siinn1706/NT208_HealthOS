@@ -20,7 +20,7 @@ export interface PrescriptionAssetSignedUrl {
 }
 
 function prescriptionAssetsPath(appointmentId: string) {
-  return `/v1/appointments/${encodeURIComponent(appointmentId)}/prescription/assets`;
+  return `/api/v1/appointments/${encodeURIComponent(appointmentId)}/prescription/assets`;
 }
 
 export const prescriptionAssetService = {

@@ -5,7 +5,7 @@ import { useChatWebSocket } from '../hooks/use-chat-websocket';
 
 const mockWsTicket = jest.fn();
 const mockIsAuthRejected = jest.fn((_code: number): boolean => false);
-const mockGetMessageFromChatEvent = jest.fn((_event: unknown): null => null);
+const mockGetMessageFromChatEvent = jest.fn((_event: unknown): null | Record<string, unknown> => null);
 const mockGetThreadReloadConversationIdFromChatEvent = jest.fn((_event: unknown): string | null => null);
 const mockGetRemovedConversationIdFromChatEvent = jest.fn((_event: unknown): string | null => null);
 
@@ -48,7 +48,7 @@ beforeEach(() => {
   socketInstances.length = 0;
   appStateListener = null;
   (global as Record<string, unknown>).WebSocket = FakeWebSocket;
-  mockWsTicket.mockResolvedValue({ ws_ticket: 'test-ticket', expires_in_seconds: 120 });
+  mockWsTicket.mockResolvedValue({ token: 'test-ticket', expires_in_seconds: 120 });
   jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, listener) => {
     appStateListener = listener as (state: string) => void;
     return { remove: jest.fn() } as never;

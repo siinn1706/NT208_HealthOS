@@ -318,7 +318,7 @@ export function MealsHubScreen() {
 
 const styles = StyleSheet.create({
   topActions:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  plusCircle:      { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  plusCircle:      { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   dayStrip:        { marginHorizontal: -16, marginBottom: 12 },
   dayStripContent: { paddingHorizontal: 16, gap: 8 },
   dayPill:         { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, minWidth: 54 },

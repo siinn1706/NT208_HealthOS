@@ -118,7 +118,7 @@ export function CreateAppointmentScreen() {
         {error && <ApiState title="Could not book appointment" message={error} />}
 
         <Input
-          label="Specialty"
+          label={i18n('care.specialty')}
           leadingIcon={<IconStethoscope size={16} color={t.ink3} />}
           placeholder="e.g. Cardiology"
           value={specialty}
@@ -127,7 +127,7 @@ export function CreateAppointmentScreen() {
         />
 
         <Input
-          label="Doctor / Provider *"
+          label={i18n('care.doctorProvider')}
           leadingIcon={<IconStethoscope size={16} color={t.ink3} />}
           trailingText="Recent"
           onTrailingPress={() => setDoctorSheetOpen(true)}
@@ -142,7 +142,7 @@ export function CreateAppointmentScreen() {
         />
 
         <Input
-          label="Clinic / Location"
+          label={i18n('care.clinicLocation')}
           leadingIcon={<IconMapPin size={14} color={t.ink3} />}
           placeholder="Clinic or hospital"
           value={clinic}
@@ -154,7 +154,7 @@ export function CreateAppointmentScreen() {
         <View style={s.dateTimeRow}>
           <View style={s.dateTimeCell}>
             <Input
-              label="Date *"
+              label={i18n('care.date')}
               leadingIcon={<IconCalendar size={14} color={t.ink3} />}
               placeholder="e.g. Apr 28"
               value={date}
@@ -168,7 +168,7 @@ export function CreateAppointmentScreen() {
           </View>
           <View style={s.dateTimeCell}>
             <Input
-              label="Time"
+              label={i18n('forms.time')}
               leadingIcon={<IconClock size={14} color={t.ink3} />}
               placeholder="e.g. 2:00 PM"
               value={time}
@@ -194,7 +194,7 @@ export function CreateAppointmentScreen() {
 
         {visitType === 'video' && (
           <Input
-            label="Meeting link"
+            label={i18n('care.meetingLink')}
             leadingIcon={<IconVideo size={14} color={t.ink3} />}
             placeholder="https://meet.example/room"
             value={videoJoinUrl}

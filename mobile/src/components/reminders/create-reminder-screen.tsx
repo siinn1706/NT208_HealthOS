@@ -5,6 +5,7 @@ import {
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { Screen } from '../layout/screen';
 import { ChevronLeft, IconBell, IconCalendar, IconActivity, IconClock } from '../../icons';
 import { ApiState } from '../api/api-state';
@@ -261,32 +262,32 @@ const styles = StyleSheet.create({
   // back bar
   backBar:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 },
   backBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  backTitle:   { fontSize: 17, fontWeight: '700' },
-  saveLink:    { fontSize: 16, fontWeight: '600' },
+  backTitle:   { ...typography.h3 },
+  saveLink:    { ...typography.bodyMed, fontSize: 16 },
 
   scrollContent: { paddingTop: 8 },
-  fieldLabel:    { fontSize: 12, fontWeight: '600', marginBottom: 8, marginTop: 20, textTransform: 'uppercase', letterSpacing: 0.5 },
+  fieldLabel:    { ...typography.caption, fontWeight: '600' as const, marginBottom: 8, marginTop: 20, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 
   // category grid
   catGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   catTile:      { width: '30%', flexGrow: 1, aspectRatio: 1.3, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  catTileLabel: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  catTileLabel: { ...typography.micro, fontWeight: '700' as const, textAlign: 'center' as const },
 
   // inputs
   input:        { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15 },
   inputRow:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 14 },
-  timeInput:    { flex: 1, padding: 0, fontSize: 15, fontWeight: '500' },
+  timeInput:    { flex: 1, padding: 0, fontSize: 15, fontWeight: '500' as const },
 
   // repeat days
   daysRow:      { flexDirection: 'row', gap: 6 },
   dayBtn:       { flex: 1, height: 40, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  dayBtnText:   { fontSize: 12, fontWeight: '700' },
+  dayBtnText:   { ...typography.caption, fontWeight: '700' as const },
 
   // repeat type
   repeatTypeRow:  { flexDirection: 'row', gap: 8 },
   repeatTile:     { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  repeatTileText: { fontSize: 13, fontWeight: '600' },
+  repeatTileText: { ...typography.bodyMed },
 
   // notes
-  notesInput: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 14, minHeight: 80, textAlignVertical: 'top' },
+  notesInput: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 14, minHeight: 80, textAlignVertical: 'top' as const },
 });

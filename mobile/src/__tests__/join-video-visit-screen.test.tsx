@@ -36,24 +36,6 @@ jest.mock('../theme/useTheme', () => {
   return { useTheme: () => palettes.calm };
 });
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => ({
-      'care.joinVideoVisit': 'Join video visit',
-      'care.noAppointments': 'No appointments',
-      'care.appointmentNotFoundMessage': 'No appointment found for this id.',
-      'care.videoVisitLinkUnavailable': 'Video link unavailable',
-      'care.videoVisitLinkUnavailableMessage': 'Add a meeting link to this video appointment before joining.',
-      'care.videoVisitUnavailableForAppointment': 'No video visit for this appointment',
-      'care.videoVisitUnavailableMessage': 'This appointment is not marked as a video visit.',
-      'care.videoVisitOpenFailed': 'Could not open video visit link',
-      'care.openVideoVisitLink': 'Open video visit link',
-      'common.back': 'Back',
-      'common.retry': 'Retry',
-    }[key] ?? key),
-  }),
-}));
-
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -162,7 +144,7 @@ describe('JoinVideoVisitScreen', () => {
 
     expect(mockSafeOpenUrl).toHaveBeenCalledWith('http://meet.example/room-123');
     expect(mockOpenURL).not.toHaveBeenCalled();
-    expect(getByText('Could not open video visit link')).toBeTruthy();
+    expect(getByText('Could not open video visit link.')).toBeTruthy();
     expect(getByText('Use an HTTPS meeting link that this device can open.')).toBeTruthy();
   });
 

@@ -15,6 +15,7 @@ import { AptRow } from './apt-row';
 import { PrepForVisitCard } from './prep-for-visit-card';
 import { IconFilter, IconPlus } from '../../icons';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { useApiQuery } from '../../api/query';
 import { appointmentService } from '../../api/services';
 import { queryKeys } from '../../api/queryKeys';
@@ -98,7 +99,7 @@ export function AppointmentsScreen() {
       <WeekStrip days={weekDays} selectedDate={selectedDate ?? todayDate} onSelect={(d) => setSelectedDate((prev) => prev === d ? null : d)} />
       {selectedDate !== null && (
         <Pressable onPress={() => setSelectedDate(null)} style={[styles.resetDate, { backgroundColor: t.brandSoft }]}>
-          <Text style={{ color: t.brand, fontSize: 12 }}>{i18n('care.showingDay', { day: selectedDate })}</Text>
+          <Text style={[typography.caption, { color: t.brand }]}>{i18n('care.showingDay', { day: selectedDate })}</Text>
         </Pressable>
       )}
       <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
@@ -132,7 +133,7 @@ export function AppointmentsScreen() {
       <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setFilterOpen(false)} />
         <View style={[styles.sheet, { backgroundColor: t.card, borderColor: t.border }]}>
-          <Text style={{ color: t.ink, fontSize: 16, fontWeight: '600', marginBottom: 16 }}>{i18n('care.filterAppointments')}</Text>
+          <Text style={[typography.h3, { color: t.ink, marginBottom: 16 }]}>{i18n('care.filterAppointments')}</Text>
           {(['All', 'Upcoming', 'Past'] as StatusFilter[]).map((opt) => {
             const label = opt === 'All' ? i18n('care.all') : opt === 'Upcoming' ? i18n('care.upcoming') : i18n('care.past');
             return (
@@ -141,7 +142,7 @@ export function AppointmentsScreen() {
                 onPress={() => setPendingFilter(opt)}
                 style={[styles.filterOption, { backgroundColor: pendingFilter === opt ? t.brandSoft : t.bg, borderColor: pendingFilter === opt ? t.brand : t.border }]}
               >
-                <Text style={{ color: pendingFilter === opt ? t.brand : t.ink, fontWeight: pendingFilter === opt ? '600' : '400' }}>{label}</Text>
+                <Text style={[typography.body, { color: pendingFilter === opt ? t.brand : t.ink, fontWeight: pendingFilter === opt ? '600' : '400' }]}>{label}</Text>
               </Pressable>
             );
           })}
@@ -150,7 +151,7 @@ export function AppointmentsScreen() {
               <Text style={{ color: t.ink3 }}>{i18n('common.clear')}</Text>
             </Pressable>
             <Pressable onPress={() => { setAppliedFilter(pendingFilter); setFilterOpen(false); }} style={[styles.filterBtn, { backgroundColor: t.brand, flex: 2 }]}>
-              <Text style={{ color: '#FFF', fontWeight: '600' }}>{i18n('common.apply')}</Text>
+              <Text style={[typography.button, { color: '#FFF' }]}>{i18n('common.apply')}</Text>
             </Pressable>
           </View>
         </View>

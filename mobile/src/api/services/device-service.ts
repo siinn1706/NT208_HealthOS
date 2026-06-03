@@ -70,12 +70,12 @@ export interface HealthIngestResult {
 
 export const deviceService = {
   async list() {
-    const response = await apiRequest<DataResponse<ConnectedDevice[]>>('/v1/devices');
+    const response = await apiRequest<DataResponse<ConnectedDevice[]>>('/api/v1/devices');
     return response.data;
   },
 
   async connect(body: DeviceConnectBody) {
-    const response = await apiRequest<DataResponse<ConnectedDevice>>('/v1/devices', {
+    const response = await apiRequest<DataResponse<ConnectedDevice>>('/api/v1/devices', {
       method: 'POST',
       json: body,
     });
@@ -83,14 +83,14 @@ export const deviceService = {
   },
 
   async sync(deviceId: string) {
-    const response = await apiRequest<DataResponse<ConnectedDevice>>(`/v1/devices/${encodeURIComponent(deviceId)}/sync`, {
+    const response = await apiRequest<DataResponse<ConnectedDevice>>(`/api/v1/devices/${encodeURIComponent(deviceId)}/sync`, {
       method: 'POST',
     });
     return response.data;
   },
 
   async disconnect(deviceId: string) {
-    await apiRequest<void>(`/v1/devices/${encodeURIComponent(deviceId)}`, {
+    await apiRequest<void>(`/api/v1/devices/${encodeURIComponent(deviceId)}`, {
       method: 'DELETE',
     });
   },
@@ -106,7 +106,7 @@ export const deviceService = {
     if (!sanitizedTokens) {
       delete (payload as { next_changes_tokens?: Record<string, string> }).next_changes_tokens;
     }
-    const response = await apiRequest<DataResponse<HealthIngestResult>>(`/v1/devices/${encodeURIComponent(deviceId)}/ingest`, {
+    const response = await apiRequest<DataResponse<HealthIngestResult>>(`/api/v1/devices/${encodeURIComponent(deviceId)}/ingest`, {
       method: 'POST',
       json: payload,
       headers: { 'Idempotency-Key': idempotencyKey },
@@ -115,12 +115,12 @@ export const deviceService = {
   },
 
   async getSyncState(deviceId: string) {
-    const response = await apiRequest<DataResponse<DeviceSyncState[]>>(`/v1/devices/${encodeURIComponent(deviceId)}/sync-state`);
+    const response = await apiRequest<DataResponse<DeviceSyncState[]>>(`/api/v1/devices/${encodeURIComponent(deviceId)}/sync-state`);
     return response.data;
   },
 
   async putSyncState(deviceId: string, tokens: Record<string, string | null>) {
-    const response = await apiRequest<DataResponse<DeviceSyncState[]>>(`/v1/devices/${encodeURIComponent(deviceId)}/sync-state`, {
+    const response = await apiRequest<DataResponse<DeviceSyncState[]>>(`/api/v1/devices/${encodeURIComponent(deviceId)}/sync-state`, {
       method: 'PUT',
       json: { tokens },
     });
@@ -128,7 +128,7 @@ export const deviceService = {
   },
 
   async patchPermissions(deviceId: string, scopes: string[]) {
-    const response = await apiRequest<DataResponse<ConnectedDevice>>(`/v1/devices/${encodeURIComponent(deviceId)}/permissions`, {
+    const response = await apiRequest<DataResponse<ConnectedDevice>>(`/api/v1/devices/${encodeURIComponent(deviceId)}/permissions`, {
       method: 'PATCH',
       json: { scopes },
     });

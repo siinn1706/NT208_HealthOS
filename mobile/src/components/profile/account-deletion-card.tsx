@@ -9,6 +9,7 @@ import { Button } from '../primitives/button';
 import { Card } from '../primitives/card';
 import { Input } from '../primitives/input/input';
 import { IconShield, IconTrash } from '../../icons';
+import { useTranslation } from 'react-i18next';
 
 interface AccountDeletionCardProps {
   onDeleted?: () => void;
@@ -27,6 +28,7 @@ function normalizeEmail(value: string) {
 
 export function AccountDeletionCard({ onDeleted }: AccountDeletionCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { user, clearSession } = useSession();
   const [confirmationEmail, setConfirmationEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -115,7 +117,7 @@ export function AccountDeletionCard({ onDeleted }: AccountDeletionCardProps) {
       </View>
 
       <Input
-        label="Confirm email"
+        label={i18n('profile.confirmEmail')}
         value={confirmationEmail}
         onChangeText={setConfirmationEmail}
         placeholder={userEmail || 'you@example.com'}
@@ -124,7 +126,7 @@ export function AccountDeletionCard({ onDeleted }: AccountDeletionCardProps) {
         error={confirmationEmail.length > 0 && !emailMatches ? 'Email does not match this account.' : undefined}
       />
       <Input
-        label="Password"
+        label={i18n('auth.password')}
         value={password}
         onChangeText={setPassword}
         placeholder="Account password"
@@ -132,7 +134,7 @@ export function AccountDeletionCard({ onDeleted }: AccountDeletionCardProps) {
         autoCapitalize="none"
       />
       <Input
-        label="Deletion code"
+        label={i18n('profile.deletionCode')}
         value={otpCode}
         onChangeText={(value) => setOtpCode(value.replace(/\D/g, '').slice(0, 6))}
         placeholder="6-digit code"
@@ -140,7 +142,7 @@ export function AccountDeletionCard({ onDeleted }: AccountDeletionCardProps) {
         maxLength={6}
       />
       <Input
-        label="Reason"
+        label={i18n('profile.deletionReason')}
         value={reason}
         onChangeText={setReason}
         placeholder="Optional"

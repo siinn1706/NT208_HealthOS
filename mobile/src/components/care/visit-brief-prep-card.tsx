@@ -8,6 +8,7 @@ import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { visitBriefService } from '../../api/services';
 import type { VisitBriefDetail } from '../../types/api';
+import { useTranslation } from 'react-i18next';
 import { bucketLabel, canFinalizeBrief, normalizeVisitType, templateToQuestion } from './visit-brief-prep-state';
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
 
 export function VisitBriefPrepCard({ appointmentId, appointmentLabel, appointmentVisitType }: Props) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [briefOverride, setBriefOverride] = useState<VisitBriefDetail | null>(null);
   const [concernText, setConcernText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -146,7 +148,7 @@ export function VisitBriefPrepCard({ appointmentId, appointmentLabel, appointmen
       {!brief && !briefQuery.isLoading ? (
         <>
           <Text style={[typography.body, { color: t.ink3 }]}>Prepare concerns, questions, routing, and final handoff for this appointment.</Text>
-          <Button label="Create clinical brief" onPress={createBrief} loading={busy === 'create'} disabled={!appointmentId || Boolean(busy)} />
+          <Button label={i18n('care.createBrief')} onPress={createBrief} loading={busy === 'create'} disabled={!appointmentId || Boolean(busy)} />
         </>
       ) : null}
 
@@ -168,14 +170,14 @@ export function VisitBriefPrepCard({ appointmentId, appointmentLabel, appointmen
                 style={[s.input, { borderColor: t.border, color: t.ink, borderRadius: t.radius.md }]}
                 editable={!busy}
               />
-              <Button label="Add concern" variant="soft" onPress={addConcern} loading={busy === 'concern'} disabled={Boolean(busy)} />
+              <Button label={i18n('care.addConcern')} variant="soft" onPress={addConcern} loading={busy === 'concern'} disabled={Boolean(busy)} />
             </View>
           )}
 
           <View style={s.actions}>
-            <Button label="Questions" variant="ghost" size="sm" onPress={addSuggestedQuestions} loading={busy === 'questions'} disabled={!isDraft || Boolean(busy)} accessibilityLabel="Add suggested questions" />
-            <Button label="Route now" variant="ghost" size="sm" onPress={routeNow} loading={busy === 'route'} disabled={Boolean(busy)} />
-            <Button label="Finalize" variant="solid" size="sm" onPress={finalizeBrief} loading={busy === 'finalize'} disabled={!isDraft || !canFinalize || Boolean(busy)} />
+            <Button label={i18n('care.questions')} variant="ghost" size="sm" onPress={addSuggestedQuestions} loading={busy === 'questions'} disabled={!isDraft || Boolean(busy)} accessibilityLabel="Add suggested questions" />
+            <Button label={i18n('care.routeNow')} variant="ghost" size="sm" onPress={routeNow} loading={busy === 'route'} disabled={Boolean(busy)} />
+            <Button label={i18n('care.finalize')} variant="solid" size="sm" onPress={finalizeBrief} loading={busy === 'finalize'} disabled={!isDraft || !canFinalize || Boolean(busy)} />
           </View>
           {isDraft && !canFinalize && (
             <Text style={[typography.caption, { color: t.ink3 }]}>Add one concern and one question before finalizing.</Text>

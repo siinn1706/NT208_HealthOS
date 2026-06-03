@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
+import { typography, tabularNums } from '../../theme/typography';
 import { Screen } from '../layout/screen';
 import { ApiState } from '../api/api-state';
 import { BottomSheet } from '../primitives/sheet/bottom-sheet';
@@ -526,65 +527,65 @@ const styles = StyleSheet.create({
   heroRow:   { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
   heroIcon:  { width: 72, height: 72, alignItems: 'center', justifyContent: 'center', marginRight: 14, flexShrink: 0 },
   heroText:  { flex: 1 },
-  heroTitle: { fontSize: 22, fontWeight: '800', lineHeight: 28 },
-  heroSub:   { fontSize: 13, marginTop: 3 },
+  heroTitle: { ...typography.title, fontWeight: '800' as const, lineHeight: 28 },
+  heroSub:   { ...typography.bodyMed, marginTop: 3 },
   heroChips: { flexDirection: 'row', gap: 6, marginTop: 8 },
   statusChip:{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
   statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
-  chipText:  { fontSize: 11, fontWeight: '600' },
+  chipText:  { ...typography.micro, fontWeight: '600' as const },
 
   // next reminder card
   nextCard:    { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 16 },
-  nextLabel:   { fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
+  nextLabel:   { ...typography.micro, fontWeight: '700' as const, letterSpacing: 1, marginBottom: 4 },
   nextTimeRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 12 },
-  nextTime:    { fontSize: 32, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  nextRelative:{ fontSize: 14 },
+  nextTime:    { fontSize: 32, fontWeight: '800' as const, ...tabularNums },
+  nextRelative:{ ...typography.body },
   nextActions: { flexDirection: 'row', gap: 8 },
   nextBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 38, borderRadius: 10 },
-  nextBtnText: { fontSize: 13, fontWeight: '600' },
+  nextBtnText: { ...typography.bodyMed },
 
   // 7-day grid section
   section:      { borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 12 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 12 },
+  sectionTitle: { ...typography.bodyMed, marginBottom: 12 },
   dayGrid:      { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   dayCol:       { alignItems: 'center', gap: 4 },
-  dayLabel:     { fontSize: 10, fontWeight: '600' },
+  dayLabel:     { ...typography.micro, fontWeight: '600' as const },
   daySquare:    { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  lateText:     { fontSize: 12, fontWeight: '700', color: '#fff' },
+  lateText:     { ...typography.caption, fontWeight: '700' as const, color: '#fff' },
   statRow:      { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
   statItem:     { flex: 1, alignItems: 'center' },
-  statValue:    { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  statLabel:    { fontSize: 10, marginTop: 2 },
+  statValue:    { fontSize: 18, fontWeight: '800' as const, ...tabularNums },
+  statLabel:    { ...typography.micro, marginTop: 2 },
 
   // settings
-  groupLabel:   { fontSize: 15, fontWeight: '700', marginBottom: 8, marginTop: 4 },
+  groupLabel:   { ...typography.button, marginBottom: 8, marginTop: 4 },
   settingsCard: { borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 12 },
   settingsRow:  { flexDirection: 'row', alignItems: 'center', padding: 14 },
   settingsIconCell: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  settingsLabel:{ flex: 1, fontSize: 14, fontWeight: '500' },
-  settingsValue:{ fontSize: 13, marginRight: 4 },
+  settingsLabel:{ flex: 1, ...typography.body },
+  settingsValue:{ ...typography.bodyMed, marginRight: 4 },
 
   // delete
   deleteBtn:     { marginHorizontal: 20, marginTop: 8, height: 50, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  deleteBtnText: { fontSize: 15, fontWeight: '600' },
+  deleteBtnText: { ...typography.button },
 
   // sheets
   sheetBody:    {},
   sheetHeader:  { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   sheetIconCell:{ width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   sheetTitleBlock: {},
-  sheetTitle:   { fontSize: 18, fontWeight: '800' },
-  sheetSub:     { fontSize: 12, lineHeight: 18, marginTop: 2 },
+  sheetTitle:   { ...typography.h3, fontSize: 18, fontWeight: '800' as const },
+  sheetSub:     { ...typography.caption, lineHeight: 18, marginTop: 2 },
   streakCard:   { paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 16 },
-  streakText:   { fontSize: 14, fontWeight: '700' },
+  streakText:   { ...typography.bodyMed, fontWeight: '700' as const },
   guidanceCard: { padding: 12, borderRadius: 10, marginBottom: 16 },
-  guidanceText: { fontSize: 12, lineHeight: 18 },
+  guidanceText: { ...typography.caption, lineHeight: 18 },
   sheetBtns:    { flexDirection: 'row', gap: 10 },
   sheetBtn:     { flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  sheetBtnText: { fontSize: 15, fontWeight: '700' },
+  sheetBtnText: { ...typography.button, fontWeight: '700' as const },
 
   // snooze tiles
   snoozeGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   snoozeTile:     { width: '46%', height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  snoozeTileLabel:{ fontSize: 14, fontWeight: '700' },
+  snoozeTileLabel:{ ...typography.bodyMed, fontWeight: '700' as const },
 });

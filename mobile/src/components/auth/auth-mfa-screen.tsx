@@ -12,10 +12,12 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
+import { useTranslation } from 'react-i18next';
 import { useSession } from '../../auth/session-provider';
 
 export function AuthMfaScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const session = useSession();
   const params = useLocalSearchParams<{ challenge_id?: string; expires_in_seconds?: string }>();
   const challengeId = typeof params.challenge_id === 'string' ? params.challenge_id : '';
@@ -48,7 +50,7 @@ export function AuthMfaScreen() {
     return (
       <View style={styles.center}>
         <Text style={[typography.bodyMed, { color: t.danger }]}>MFA challenge is missing.</Text>
-        <Button label="Back to sign in" onPress={() => router.replace('/auth/sign-in')} style={{ marginTop: 16 }} />
+        <Button label={i18n('auth.backToSignIn')} onPress={() => router.replace('/auth/sign-in')} style={{ marginTop: 16 }} />
       </View>
     );
   }
@@ -64,7 +66,7 @@ export function AuthMfaScreen() {
       </Text>
       {error ? <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text> : null}
       <Input
-        label="Verification code"
+        label={i18n('auth.verificationCode')}
         value={code}
         onChangeText={setCode}
         autoCapitalize="none"
@@ -72,7 +74,7 @@ export function AuthMfaScreen() {
         keyboardType="default"
         placeholder="123456 or recovery code"
       />
-      <Button label="Verify and continue" size="lg" loading={loading} onPress={handleVerify} style={{ marginTop: 14 }} />
+      <Button label={i18n('auth.verifyAndContinue')} size="lg" loading={loading} onPress={handleVerify} style={{ marginTop: 14 }} />
     </KeyboardAvoidingView>
   );
 }

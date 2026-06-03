@@ -284,7 +284,7 @@ describe('AdherenceHero', () => {
       <AdherenceHero percent={0.9} taken={27} total={30} missed={3} />,
     );
     expect(getByText(/27/)).toBeTruthy();
-    expect(getByText(/3 doses missed/)).toBeTruthy();
+    expect(getByText('meds.onTrackMissed')).toBeTruthy();
   });
 
   it('shows percentage label inside ring', () => {

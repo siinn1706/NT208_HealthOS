@@ -337,10 +337,10 @@ export function MealDetailScreen() {
 
       <View style={styles.btnRow}>
         {!isEditing && (
-          <Button label="Log another" variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} disabled={isDeleting} />
+          <Button label={i18n('meals.logAnother')} variant="ghost" style={{ flex: 1 }} onPress={() => router.push('/meals/add' as never)} disabled={isDeleting} />
         )}
         {!isEditing && (
-          <Button label="Delete meal" variant="ghost" style={{ flex: 1 }} onPress={handleDeleteMeal} loading={isDeleting} />
+          <Button label={i18n('meals.deleteMeal')} variant="ghost" style={{ flex: 1 }} onPress={handleDeleteMeal} loading={isDeleting} />
         )}
         {isEditing && <Button label={i18n('common.cancel')} variant="ghost" style={{ flex: 1 }} onPress={() => setIsEditing(false)} disabled={isDeleting} />}
         <Button

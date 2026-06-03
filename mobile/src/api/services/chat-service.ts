@@ -47,7 +47,7 @@ function contentTypeForAttachment(attachment: ChatAttachmentInput): MessageConte
 }
 
 async function sendChatMessage(conversationId: string, content: string, options: SendMessageOptions = {}) {
-  const response = await apiRequest<DataResponse<Message>>(`/v1/conversations/${encodeURIComponent(conversationId)}/messages`, {
+  const response = await apiRequest<DataResponse<Message>>(`/api/v1/conversations/${encodeURIComponent(conversationId)}/messages`, {
     method: 'POST',
     json: {
       content,
@@ -94,17 +94,17 @@ function aiStreamFailureMessage(text: string): string | null {
 
 export const chatService = {
   async conversations() {
-    const response = await apiRequest<{ data: Conversation[]; total: number }>('/v1/conversations');
+    const response = await apiRequest<{ data: Conversation[]; total: number }>('/api/v1/conversations');
     return response.data;
   },
 
   async conversation(id: string) {
-    const response = await apiRequest<DataResponse<Conversation>>(`/v1/conversations/${encodeURIComponent(id)}`);
+    const response = await apiRequest<DataResponse<Conversation>>(`/api/v1/conversations/${encodeURIComponent(id)}`);
     return response.data;
   },
 
   async createAiConversation(initialMessage?: string) {
-    const response = await apiRequest<DataResponse<Conversation>>('/v1/conversations/ai', {
+    const response = await apiRequest<DataResponse<Conversation>>('/api/v1/conversations/ai', {
       method: 'POST',
       json: initialMessage ? { initial_message: initialMessage } : undefined,
     });
@@ -112,7 +112,7 @@ export const chatService = {
   },
 
   async lookupUsers(query: string, limit = 10) {
-    const response = await apiRequest<DataResponse<ChatUserLookupResult[]>>(`/v1/users/lookup${buildQuery({
+    const response = await apiRequest<DataResponse<ChatUserLookupResult[]>>(`/api/v1/users/lookup${buildQuery({
       q: query.trim(),
       limit,
     })}`);
@@ -120,7 +120,7 @@ export const chatService = {
   },
 
   async createDirectConversation(targetUserId: string) {
-    const response = await apiRequest<DataResponse<Conversation>>('/v1/conversations/direct', {
+    const response = await apiRequest<DataResponse<Conversation>>('/api/v1/conversations/direct', {
       method: 'POST',
       json: { target_user_id: targetUserId },
     });
@@ -128,7 +128,7 @@ export const chatService = {
   },
 
   async createGroupConversation(title: string, memberIds: string[]) {
-    const response = await apiRequest<DataResponse<Conversation>>('/v1/conversations', {
+    const response = await apiRequest<DataResponse<Conversation>>('/api/v1/conversations', {
       method: 'POST',
       json: { title, member_ids: memberIds },
     });
@@ -137,7 +137,7 @@ export const chatService = {
 
   async messages(conversationId: string, options: ChatMessagesOptions = {}) {
     const response = await apiRequest<MessageListResponse>(
-      `/v1/conversations/${encodeURIComponent(conversationId)}/messages${buildQuery({
+      `/api/v1/conversations/${encodeURIComponent(conversationId)}/messages${buildQuery({
         limit: options.limit ?? 50,
         before: options.before,
       })}`,
@@ -172,7 +172,7 @@ export const chatService = {
   ): Promise<{ client_message_id: string }> {
     const clientMsgId = nextClientMessageId();
     const streamText = await apiRequest<string>(
-      `/v1/conversations/${encodeURIComponent(conversationId)}/messages/stream`,
+      `/api/v1/conversations/${encodeURIComponent(conversationId)}/messages/stream`,
       {
         method: 'POST',
         // NOTE: The mobile Fetch implementation buffers the entire SSE body
@@ -205,7 +205,7 @@ export const chatService = {
   },
 
   async uploadImageAttachment(image: ChatImageUploadInput) {
-    const response = await apiRequest<DataResponse<ChatAttachmentInput>>('/v1/conversations/uploads/image', {
+    const response = await apiRequest<DataResponse<ChatAttachmentInput>>('/api/v1/conversations/uploads/image', {
       method: 'POST',
       body: createUploadFormData({}, {
         fieldName: 'image',
@@ -219,7 +219,7 @@ export const chatService = {
   },
 
   async markRead(conversationId: string, lastReadMessageId: string) {
-    return apiRequest<void>(`/v1/conversations/${encodeURIComponent(conversationId)}/read`, {
+    return apiRequest<void>(`/api/v1/conversations/${encodeURIComponent(conversationId)}/read`, {
       method: 'POST',
       json: { last_read_message_id: lastReadMessageId },
     });

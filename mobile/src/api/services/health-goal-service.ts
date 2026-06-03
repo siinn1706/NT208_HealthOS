@@ -12,12 +12,12 @@ export interface GoalProgressPoint {
 
 export const healthGoalService = {
   async current() {
-    const response = await apiRequest<DataResponse<HealthGoal | null>>('/v1/health-goals');
+    const response = await apiRequest<DataResponse<HealthGoal | null>>('/api/v1/health-goals');
     return response.data;
   },
 
   async upsert(body: { target_weight_kg: number; deadline?: string | null }) {
-    const response = await apiRequest<DataResponse<HealthGoal>>('/v1/health-goals', {
+    const response = await apiRequest<DataResponse<HealthGoal>>('/api/v1/health-goals', {
       method: 'POST',
       json: body,
     });
@@ -25,7 +25,7 @@ export const healthGoalService = {
   },
 
   async progress(params: { metric: 'weight_kg'; target: number; period?: GoalProgressPeriod }) {
-    const response = await apiRequest<DataResponse<GoalProgressPoint[]>>(`/v1/goals/progress${buildQuery({
+    const response = await apiRequest<DataResponse<GoalProgressPoint[]>>(`/api/v1/goals/progress${buildQuery({
       metric: params.metric,
       target: params.target,
       period: params.period ?? '7d',

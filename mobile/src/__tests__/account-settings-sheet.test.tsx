@@ -93,7 +93,7 @@ describe('SettingsSheet', () => {
     await waitFor(() => expect(mockAccountExport.requestExport).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(getByText('Status: pending')).toBeTruthy());
 
-    fireEvent.press(getByText('Refresh'));
+    fireEvent.press(getByText('Retry'));
     await waitFor(() => expect(mockAccountExport.exportStatus).toHaveBeenCalledWith('export-1'));
     await waitFor(() => expect(getByText('Status: completed')).toBeTruthy());
 

@@ -1,6 +1,53 @@
 /* eslint-env jest */
-import { humanizeError } from '../api/error-message';
+import { humanizeError, localizeError } from '../api/error-message';
 import { ApiError } from '../api/client';
+
+const mockT = jest.fn((key: string, opts?: { defaultValue?: string }) => {
+  const map: Record<string, string> = {
+    'api.offline': 'No internet connection.',
+    'api.genericError': 'Something went wrong.',
+    'api.error.invalid_credentials': 'Invalid username or password.',
+    'api.error.internal_server_error': 'An unexpected server error occurred.',
+  };
+  return map[key] ?? opts?.defaultValue ?? '';
+});
+
+jest.mock('i18next', () => ({ t: (...args: Parameters<typeof mockT>) => mockT(...args) }));
+
+describe('localizeError', () => {
+  beforeEach(() => mockT.mockClear());
+
+  it('returns genericError fallback for null', () => {
+    expect(localizeError(null)).toBe('Something went wrong.');
+  });
+
+  it('returns custom fallback for null', () => {
+    expect(localizeError(null, 'Custom')).toBe('Custom');
+  });
+
+  it('returns offline message for ApiError with status 0', () => {
+    expect(localizeError(new ApiError('ignored', 0))).toBe('No internet connection.');
+  });
+
+  it('maps known error code to localized string (en)', () => {
+    const err = new ApiError('fallback msg', 401, 'INVALID_CREDENTIALS');
+    expect(localizeError(err)).toBe('Invalid username or password.');
+  });
+
+  it('falls back to backend message for unknown error code', () => {
+    const err = new ApiError('Custom server message', 400, 'SOME_UNKNOWN_CODE');
+    expect(localizeError(err)).toBe('Custom server message');
+  });
+
+  it('falls back to internal_server_error key for 5xx with generic message', () => {
+    const err = new ApiError('Request failed with status 500.', 500, 'REQUEST_FAILED');
+    expect(localizeError(err)).toBe('An unexpected server error occurred.');
+  });
+
+  it('returns error.message for plain Error', () => {
+    expect(localizeError(new Error('Plain error text'))).toBe('Plain error text');
+  });
+});
 
 describe('humanizeError', () => {
   it('returns fallback for null error', () => {

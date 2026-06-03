@@ -39,7 +39,7 @@ export function MenuRow({ label, icon, type, val, defaultVal = false, onPress, s
       <View style={[styles.iconWrap, { backgroundColor: isDanger ? `${t.danger}18` : t.brandSoft, borderRadius: t.radius.sm }]}>
         {icon}
       </View>
-      <Text style={[typography.body, styles.label, { color: isDanger ? t.danger : t.ink, fontSize: 15, fontWeight: '600' }]}>
+      <Text style={[typography.bodyMed, styles.label, { color: isDanger ? t.danger : t.ink }]}>
         {label}
       </Text>
       {type === 'toggle' ? (
@@ -58,6 +58,6 @@ const styles = StyleSheet.create({
   row:     { flexDirection: 'row', alignItems: 'center', height: 56, gap: 12 },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth },
   iconWrap:{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  label:   { flex: 1, fontSize: 15, fontWeight: '600' },
+  label:   { flex: 1 },
   right:   { flexDirection: 'row', alignItems: 'center' },
 });

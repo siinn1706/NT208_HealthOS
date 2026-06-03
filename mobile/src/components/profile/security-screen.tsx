@@ -22,6 +22,7 @@ import { queryKeys } from '../../api/queryKeys';
 import { securityService, type MfaSetupPayload } from '../../api/services/security-service';
 import { PasswordResetPanel } from './password-reset-panel';
 import { AppLockSecurityCard } from './app-lock-security-card';
+import { useTranslation } from 'react-i18next';
 
 interface SettingRowProps {
   label: string;
@@ -54,7 +55,7 @@ function SettingRow({ label, sub, iconColor, Icon, badge, toggle, value, onPress
           <Toggle value={on} onChange={setOn} />
         ) : badge ? (
           <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[typography.micro, { color: badge.color, fontWeight: '700', fontSize: 10 }]}>{badge.label}</Text>
+            <Text style={[typography.micro, { color: badge.color, fontWeight: '700' }]}>{badge.label}</Text>
           </View>
         ) : value ? (
           <View style={styles.valueRow}>
@@ -72,6 +73,7 @@ function SettingRow({ label, sub, iconColor, Icon, badge, toggle, value, onPress
 
 export function SecurityScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const { user, refreshUser } = useSession();
   const mfaQuery = useApiQuery(queryKeys.mfaStatus, () => securityService.mfaStatus());
   const logsQuery = useApiQuery(queryKeys.securityLogs, () => securityService.securityLogs({ limit: 8 }));
@@ -219,14 +221,14 @@ export function SecurityScreen() {
         <SettingRow
           Icon={IconLock}
           iconColor="#1965B3"
-          label="Password"
+          label={i18n('auth.password')}
           sub="Email-verified reset"
           onPress={openPasswordReset}
         />
         <SettingRow
           Icon={IconShield}
           iconColor={mfaEnabled ? t.success : t.warning}
-          label="Two-factor authentication"
+          label={i18n('profile.twoFactorAuth')}
           badge={{ label: mfaEnabled ? 'ON' : 'OFF', color: mfaEnabled ? t.success : t.warning, bg: mfaEnabled ? t.successSoft : t.warningSoft }}
           onPress={mfaEnabled ? pointToMfaControls : startMfaSetup}
         />
@@ -342,12 +344,12 @@ export function SecurityScreen() {
         </Card>
       )}
 
-      <SectionHeader title="Recent activity" />
+      <SectionHeader title={i18n('profile.recentActivity')} />
       <Card tight style={styles.sectionCard}>
         <SettingRow
           Icon={IconRefresh}
           iconColor={t.ink3}
-          label="Recent activity"
+          label={i18n('profile.recentActivity')}
           sub="Sign-ins, password changes, MFA events"
           last
           onPress={logsQuery.reload}
@@ -393,7 +395,7 @@ export function SecurityScreen() {
         <SettingRow
           Icon={IconShield}
           iconColor={t.ink3}
-          label="Recovery codes"
+          label={i18n('profile.recoveryCodes')}
           badge={{ label: latestRecoveryCodes ? 'READY' : 'GENERATE', color: t.brand, bg: t.brandSoft }}
           last
           onPress={mfaEnabled ? pointToMfaControls : startMfaSetup}

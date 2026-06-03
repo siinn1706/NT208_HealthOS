@@ -81,7 +81,7 @@ export function isEncryptedEnvelope(value: unknown): value is EncryptedEnvelope 
  */
 export async function encryptItem(plain: string): Promise<EncryptedEnvelope> {
   const key = await getOrCreateQueueKey();
-  const iv = await Crypto.getRandomBytesAsync(IV_BYTE_LENGTH);
+  const iv = new Uint8Array(await Crypto.getRandomBytesAsync(IV_BYTE_LENGTH));
   const encoded = new TextEncoder().encode(plain);
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },

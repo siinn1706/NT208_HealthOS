@@ -28,6 +28,7 @@ jest.mock('../i18n', () => ({
     language: 'en',
     changeLanguage: jest.fn(),
   },
+  initLocaleFromStorage: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockUseSession = useSession as jest.MockedFunction<typeof useSession>;

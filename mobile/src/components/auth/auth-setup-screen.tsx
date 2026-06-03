@@ -567,12 +567,11 @@ export function AuthSetupScreen() {
 
         <Text
           style={[
-            typography.caption,
+            typography.micro,
             {
               color: t.ink3,
               fontFamily: 'Inter_700Bold',
               letterSpacing: 1.4,
-              fontSize: 11,
               lineHeight: 14,
               marginBottom: 6,
             },
@@ -635,7 +634,7 @@ export function AuthSetupScreen() {
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={i18n(opt.labelKey)}
               >
-                <Text style={{ fontSize: 14, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular', color: active ? t.brand : t.ink2 }}>
+                <Text style={[typography.body, { fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular', color: active ? t.brand : t.ink2 }]}>
                   {i18n(opt.labelKey)}
                 </Text>
               </TouchableOpacity>

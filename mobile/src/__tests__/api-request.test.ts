@@ -59,7 +59,7 @@ beforeEach(() => {
   mockExpoConstants.manifest = {};
   mockExpoConstants.manifest2 = {};
   mockExpoConstants.linkingUri = undefined;
-  delete process.env.EXPO_PUBLIC_CORE_API_URL;
+  delete process.env.EXPO_PUBLIC_API_URL;
   delete process.env.EXPO_PUBLIC_CORE_WS_URL;
 });
 
@@ -112,13 +112,13 @@ describe('buildQuery', () => {
 
 describe('getCoreApiBaseUrl', () => {
   it('strips trailing slash in dev', () => {
-    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://localhost:8000/';
+    process.env.EXPO_PUBLIC_API_URL = 'http://localhost:8000/';
     expect(getCoreApiBaseUrl()).toBe('http://localhost:8000');
   });
 
   it('keeps explicit dev API config ahead of Expo LAN host metadata', () => {
     setPlatformOS('android');
-    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://10.0.2.2:8000/';
+    process.env.EXPO_PUBLIC_API_URL = 'http://10.0.2.2:8000/';
     mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
 
     expect(getCoreApiBaseUrl()).toBe('http://10.0.2.2:8000');
@@ -128,33 +128,33 @@ describe('getCoreApiBaseUrl', () => {
     setPlatformOS('android');
     mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
 
-    expect(getCoreApiBaseUrl()).toBe('http://192.168.1.10:8000');
+    expect(getCoreApiBaseUrl()).toBe('http://192.168.1.10:3000');
   });
 
   it('keeps the Android emulator API fallback when no LAN host metadata exists', () => {
     setPlatformOS('android');
     mockExpoConstants.expoConfig.hostUri = 'localhost:8081';
 
-    expect(getCoreApiBaseUrl()).toBe('http://10.0.2.2:8000');
+    expect(getCoreApiBaseUrl()).toBe('http://10.0.2.2:3000');
   });
 
   it('throws when production API URL is missing', () => {
     setDevMode(false);
-    expect(() => getCoreApiBaseUrl()).toThrow('Missing EXPO_PUBLIC_CORE_API_URL');
+    expect(() => getCoreApiBaseUrl()).toThrow('Missing EXPO_PUBLIC_API_URL');
   });
 
   it('throws when production API URL uses http://', () => {
     setDevMode(false);
-    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://core.internal';
+    process.env.EXPO_PUBLIC_API_URL = 'http://core.internal';
     expect(() => getCoreApiBaseUrl()).toThrow('Production API URL must use HTTPS.');
   });
 
   it('throws when production API URL is not absolute HTTPS', () => {
     setDevMode(false);
-    process.env.EXPO_PUBLIC_CORE_API_URL = 'api.healthos.example.com';
+    process.env.EXPO_PUBLIC_API_URL = 'api.healthos.example.com';
     expect(() => getCoreApiBaseUrl()).toThrow('Production API URL must be an absolute HTTPS URL.');
 
-    process.env.EXPO_PUBLIC_CORE_API_URL = 'ftp://api.healthos.example.com';
+    process.env.EXPO_PUBLIC_API_URL = 'ftp://api.healthos.example.com';
     expect(() => getCoreApiBaseUrl()).toThrow('Production API URL must use HTTPS.');
   });
 });

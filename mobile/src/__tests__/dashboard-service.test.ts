@@ -22,7 +22,7 @@ describe('dashboardService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: payload } as never);
 
     await expect(dashboardService.summary()).resolves.toEqual(payload);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/dashboard/summary');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/dashboard/summary');
   });
 
   it('vitals() fetches vitals timeseries with default 7-day window', async () => {
@@ -30,7 +30,7 @@ describe('dashboardService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: points } as never);
 
     await expect(dashboardService.vitals()).resolves.toEqual(points);
-    expect(mockApiRequest).toHaveBeenCalledWith(expect.stringContaining('/v1/vitals/timeseries'));
+    expect(mockApiRequest).toHaveBeenCalledWith(expect.stringContaining('/api/v1/vitals/timeseries'));
   });
 
   it('vitals() passes custom days parameter', async () => {
@@ -45,7 +45,7 @@ describe('dashboardService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: reminders } as never);
 
     await expect(dashboardService.upcomingReminders()).resolves.toEqual(reminders);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/reminders/upcoming');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/reminders/upcoming');
   });
 
   it('propagates ApiError from apiRequest', async () => {

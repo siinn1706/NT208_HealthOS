@@ -4,10 +4,12 @@ import { ApiState } from '../api/api-state';
 import { Button } from '../primitives/button';
 import { Toggle } from '../primitives/toggle';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { withOpacity } from '../../utils/color-mix';
 import { IconBell } from '../../icons';
 import { QuietHoursRing } from './quiet-hours-ring';
 import type { ReminderPreferenceRowConfig } from './reminder-preferences-contract';
+import { useTranslation } from 'react-i18next';
 
 export function GroupLabel({ text }: { text: string }) {
   const t = useTheme();
@@ -87,6 +89,7 @@ export function MasterPermissionCard({
 
 export function NotificationsOffHero({ onEnable }: { onEnable: () => void }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   return (
     <View style={[s.offHero, { backgroundColor: t.warningSoft, borderColor: withOpacity(t.warning, 0.3), marginHorizontal: 20 }]}>
       <View style={[s.offIconTile, { backgroundColor: t.card }]}>
@@ -96,7 +99,7 @@ export function NotificationsOffHero({ onEnable }: { onEnable: () => void }) {
       <Text style={[s.offBody, { color: t.ink3 }]}>
         You'll miss medication reminders, appointment alerts, and care team messages.
       </Text>
-      <Button label="Turn on notifications" variant="solid" onPress={onEnable} style={{ marginTop: 4 }} />
+      <Button label={i18n('reminders.turnOnNotifications')} variant="solid" onPress={onEnable} style={{ marginTop: 4 }} />
     </View>
   );
 }
@@ -128,26 +131,26 @@ export function PreferenceFeedback({ error, success }: { error: string | null; s
 }
 
 const s = StyleSheet.create({
-  groupLabel: { fontSize: 14, fontWeight: '700', marginBottom: 8, marginTop: 4 },
+  groupLabel: { ...typography.bodyMed, marginBottom: 8, marginTop: 4 },
   groupCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden', marginBottom: 20 },
   divider: { height: StyleSheet.hairlineWidth },
   prefRow: { flexDirection: 'row', alignItems: 'center', padding: 14 },
   rowIconCell: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   rowText: { flex: 1 },
   rowTitleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rowLabel: { fontSize: 13, fontWeight: '700' },
-  rowSub: { fontSize: 11, marginTop: 2 },
+  rowLabel: { ...typography.bodyMed },
+  rowSub: { ...typography.micro, marginTop: 2 },
   criticalBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  criticalBadgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  criticalBadgeText: { fontSize: 9, fontWeight: '800' as const, letterSpacing: 0.5 },
   masterCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 20 },
   masterIconCell: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   masterText: { flex: 1 },
-  masterLabel: { fontSize: 15, fontWeight: '700' },
-  masterSub: { fontSize: 12, marginTop: 2 },
+  masterLabel: { ...typography.button },
+  masterSub: { ...typography.caption, marginTop: 2 },
   offHero: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 20, alignItems: 'center', gap: 8 },
   offIconTile: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  offHeadline: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  offBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  offHeadline: { ...typography.h3, fontSize: 18, fontWeight: '800' as const, textAlign: 'center' as const },
+  offBody: { ...typography.bodyMed, lineHeight: 19, textAlign: 'center' as const },
   quietCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden', marginBottom: 20 },
   ringWrap: { paddingVertical: 16, alignItems: 'center' },
   feedback: { marginHorizontal: 20, marginTop: 8 },

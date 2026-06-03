@@ -7,6 +7,7 @@ import { ApiState } from '../../api/api-state';
 import { invalidateApiQuery } from '../../../api/query';
 import { queryKeys } from '../../../api/queryKeys';
 import { healthMetricService } from '../../../api/services/health-metric-service';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme/useTheme';
 import { typography } from '../../../theme/typography';
 
@@ -25,6 +26,7 @@ function parseWeight(value: string) {
 
 export function GoalWeightLogCard({ onSaved }: GoalWeightLogCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [weight, setWeight] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function GoalWeightLogCard({ onSaved }: GoalWeightLogCardProps) {
         Saves a manual Core weight metric used by goal progress, reports, and risk screens.
       </Text>
       <Input
-        label="Weight"
+        label={i18n('profile.fieldWeight')}
         value={weight}
         onChangeText={setWeight}
         keyboardType="decimal-pad"

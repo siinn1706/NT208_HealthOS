@@ -19,7 +19,7 @@ export function StatCell({ label, value, icon, tint }: StatCellProps) {
           {icon}
         </View>
       ) : null}
-      <Text style={[typography.title, { color: t.ink, marginTop: icon ? 8 : 0, fontSize: 22, fontWeight: '800' }]}>{value}</Text>
+      <Text style={[typography.title, { color: t.ink, marginTop: icon ? 8 : 0, fontWeight: '800' }]}>{value}</Text>
       <Text style={[typography.micro,  { color: t.ink3, marginTop: 2 }]}>{label}</Text>
     </View>
   );

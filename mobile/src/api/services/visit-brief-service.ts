@@ -51,7 +51,7 @@ export interface SymptomEntryCreateBody {
 }
 
 function visitBriefListPath(params: VisitBriefListParams = {}) {
-  return `/v1/visit-briefs${buildQuery({
+  return `/api/v1/visit-briefs${buildQuery({
     status: params.status,
     page: params.page ?? 1,
     per_page: params.perPage ?? 50,
@@ -67,7 +67,7 @@ async function listVisitBriefPage(params: VisitBriefListParams = {}) {
 }
 
 async function getVisitBrief(briefId: string) {
-  const response = await apiRequest<VisitBriefResponse>(`/v1/visit-briefs/${encodeURIComponent(briefId)}`);
+  const response = await apiRequest<VisitBriefResponse>(`/api/v1/visit-briefs/${encodeURIComponent(briefId)}`);
   return response.data;
 }
 
@@ -99,7 +99,7 @@ export const visitBriefService = {
   get: getVisitBrief,
 
   async create(body: VisitBriefCreateBody) {
-    const response = await apiRequest<VisitBriefResponse>('/v1/visit-briefs', {
+    const response = await apiRequest<VisitBriefResponse>('/api/v1/visit-briefs', {
       method: 'POST',
       json: body,
     });
@@ -107,7 +107,7 @@ export const visitBriefService = {
   },
 
   async update(briefId: string, body: { visit_type?: VisitType; title?: string | null }) {
-    const response = await apiRequest<VisitBriefResponse>(`/v1/visit-briefs/${encodeURIComponent(briefId)}`, {
+    const response = await apiRequest<VisitBriefResponse>(`/api/v1/visit-briefs/${encodeURIComponent(briefId)}`, {
       method: 'PATCH',
       json: body,
     });
@@ -115,14 +115,14 @@ export const visitBriefService = {
   },
 
   async finalize(briefId: string) {
-    const response = await apiRequest<VisitBriefResponse>(`/v1/visit-briefs/${encodeURIComponent(briefId)}/finalize`, {
+    const response = await apiRequest<VisitBriefResponse>(`/api/v1/visit-briefs/${encodeURIComponent(briefId)}/finalize`, {
       method: 'POST',
     });
     return response.data;
   },
 
   async addSymptom(briefId: string, body: SymptomEntryCreateBody) {
-    const response = await apiRequest<SymptomEntryResponse>(`/v1/visit-briefs/${encodeURIComponent(briefId)}/symptoms`, {
+    const response = await apiRequest<SymptomEntryResponse>(`/api/v1/visit-briefs/${encodeURIComponent(briefId)}/symptoms`, {
       method: 'POST',
       json: body,
     });
@@ -131,7 +131,7 @@ export const visitBriefService = {
 
   async routeNow(briefId: string) {
     const response = await apiRequest<TriageOutcomeResponse>(
-      `/v1/visit-briefs/${encodeURIComponent(briefId)}/route-now`,
+      `/api/v1/visit-briefs/${encodeURIComponent(briefId)}/route-now`,
       { method: 'POST' },
     );
     return response.data;
@@ -142,7 +142,7 @@ export const visitBriefService = {
     params: { visitType?: VisitType | null; concernCategory?: ConcernCategory | null } = {},
   ) {
     const response = await apiRequest<QuestionTemplateResponse>(
-      `/v1/visit-briefs/${encodeURIComponent(briefId)}/questions/suggested${buildQuery({
+      `/api/v1/visit-briefs/${encodeURIComponent(briefId)}/questions/suggested${buildQuery({
         visit_type: params.visitType,
         concern_category: params.concernCategory,
       })}`,
@@ -151,7 +151,7 @@ export const visitBriefService = {
   },
 
   async replaceQuestions(briefId: string, questions: QuestionItem[]) {
-    const response = await apiRequest<QuestionSetResponse>(`/v1/visit-briefs/${encodeURIComponent(briefId)}/questions`, {
+    const response = await apiRequest<QuestionSetResponse>(`/api/v1/visit-briefs/${encodeURIComponent(briefId)}/questions`, {
       method: 'PATCH',
       json: { questions },
     });
@@ -160,7 +160,7 @@ export const visitBriefService = {
 
   async attachToAppointment(briefId: string, appointmentId: string) {
     const response = await apiRequest<AppointmentBriefLinkResponse>(
-      `/v1/visit-briefs/${encodeURIComponent(briefId)}/attach`,
+      `/api/v1/visit-briefs/${encodeURIComponent(briefId)}/attach`,
       {
         method: 'POST',
         json: { appointment_id: appointmentId },

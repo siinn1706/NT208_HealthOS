@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { ErrorBoundary } from '../../src/components/error/error-boundary';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
 import { SectionHeader } from '../../src/components/layout/section-header';
@@ -24,6 +25,14 @@ import { toDoseRow, toMedicationCard } from '../../src/api/viewModels';
 import type { Adherence, MedicationDose, MedicationPlan } from '../../../shared/api-contracts';
 
 export default function MedsScreen() {
+  return (
+    <ErrorBoundary>
+      <MedsScreenInner />
+    </ErrorBoundary>
+  );
+}
+
+function MedsScreenInner() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const loadMeds = useCallback(async () => {

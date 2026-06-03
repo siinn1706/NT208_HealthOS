@@ -104,7 +104,7 @@ export function AppLockSecurityCard() {
           </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: `${badgeColor}18` }]}>
-          <Text style={[typography.micro, { color: badgeColor, fontWeight: '800', fontSize: 10 }]}>{status}</Text>
+          <Text style={[typography.micro, { color: badgeColor, fontWeight: '800' }]}>{status}</Text>
         </View>
       </View>
       <Button

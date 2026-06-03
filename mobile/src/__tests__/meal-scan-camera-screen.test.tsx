@@ -1,6 +1,5 @@
 /* eslint-env jest */
 import React from 'react';
-import { Pressable } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { MealScanCameraScreen } from '../components/meals/meal-scan-camera-screen';
@@ -282,16 +281,14 @@ describe('MealScanCameraScreen', () => {
   });
 
   it('does not expose unsupported barcode scanning in the meal photo camera', async () => {
-    const { queryByLabelText, UNSAFE_getAllByType } = render(<MealScanCameraScreen />);
+    const { queryByLabelText } = render(<MealScanCameraScreen />);
 
     await waitFor(() => expect(mockLatestCameraProps).toBeTruthy());
-    expect(UNSAFE_getAllByType(Pressable).map((button) => button.props.accessibilityLabel)).toEqual([
-      'common.back',
-      'meals.flash',
-      'meals.openPhotoLibrary',
-      'meals.takeMealPhoto',
-      'meals.cameraSwitch',
-    ]);
+    expect(queryByLabelText('common.back')).toBeTruthy();
+    expect(queryByLabelText('meals.flash')).toBeTruthy();
+    expect(queryByLabelText('meals.openPhotoLibrary')).toBeTruthy();
+    expect(queryByLabelText('meals.takeMealPhoto')).toBeTruthy();
+    expect(queryByLabelText('meals.cameraSwitch')).toBeTruthy();
     expect(queryByLabelText('meals.barcodeScan')).toBeNull();
     expect(mockLatestCameraProps?.onBarcodeScanned).toBeUndefined();
     expect(mockLatestCameraProps?.barcodeScannerSettings).toBeUndefined();

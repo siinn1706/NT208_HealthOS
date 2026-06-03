@@ -5,7 +5,7 @@ import { clearStoredSession, getAccessToken, getRefreshToken, saveAuthToken } fr
 import Constants from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import type {
   AuthLoginResult,
   AuthToken,
@@ -220,9 +220,73 @@ export function parseMobileOAuthCallbackUrl(
   return { provider, code, state };
 }
 
+async function openOAuthBrowserDefault(oauthUrl: string, redirectUri: string): Promise<string> {
+  const result = await WebBrowser.openAuthSessionAsync(oauthUrl, redirectUri);
+  if (result.type !== 'success' || !('url' in result) || !result.url) {
+    throw new ApiError('OAuth sign-in was cancelled.', 0, 'OAUTH_CANCELLED');
+  }
+  return result.url;
+}
+
+async function openOAuthBrowserAndroid(oauthUrl: string, redirectUri: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    let settled = false;
+    let linkingSub: ReturnType<typeof Linking.addEventListener> | null = null;
+    let appStateSub: ReturnType<typeof AppState.addEventListener> | null = null;
+    let gracePeriodTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function cleanup() {
+      linkingSub?.remove();
+      appStateSub?.remove();
+      if (gracePeriodTimer !== null) clearTimeout(gracePeriodTimer);
+      linkingSub = null;
+      appStateSub = null;
+      gracePeriodTimer = null;
+    }
+
+    function settle(result: string | ApiError) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (result instanceof ApiError) reject(result);
+      else resolve(result);
+    }
+
+    linkingSub = Linking.addEventListener('url', (event) => {
+      if (event.url.startsWith(redirectUri)) {
+        settle(event.url);
+      }
+    });
+
+    let browserOpened = false;
+    appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && browserOpened) {
+        // Give the Linking 'url' event a grace period to arrive before declaring cancel
+        gracePeriodTimer = setTimeout(() => {
+          settle(new ApiError('OAuth sign-in was cancelled.', 0, 'OAUTH_CANCELLED'));
+        }, 300);
+      }
+    });
+
+    WebBrowser.warmUpAsync()
+      .catch(() => {})
+      .finally(() => {
+        WebBrowser.openBrowserAsync(oauthUrl)
+          .then(({ type }) => {
+            if (type === 'opened') {
+              browserOpened = true;
+            } else {
+              settle(new ApiError('OAuth sign-in failed to open.', 0, 'OAUTH_CANCELLED'));
+            }
+          })
+          .catch((err: unknown) => settle(err instanceof ApiError ? err : new ApiError('OAuth browser error.', 0, 'OAUTH_CANCELLED')));
+      });
+  });
+}
+
 export const authService = {
   async login(identifier: string, password: string) {
-    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthLoginResult>>('/v1/auth/login', {
+    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthLoginResult>>('/api/v1/auth/login', {
       method: 'POST',
       auth: false,
       json: { identifier, password },
@@ -232,7 +296,7 @@ export const authService = {
   },
 
   async verifyLoginMfa(challenge_id: string, code: string): Promise<AuthToken> {
-    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken>>('/v1/auth/login/mfa', {
+    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken>>('/api/v1/auth/login/mfa', {
       method: 'POST',
       auth: false,
       json: { challenge_id, code },
@@ -243,7 +307,7 @@ export const authService = {
   },
 
   async requestOtp(body: RequestOtpBody) {
-    return submitPublicAuthRequest(() => apiRequest<DataResponse<OtpRequested>>('/v1/auth/request-otp', {
+    return submitPublicAuthRequest(() => apiRequest<DataResponse<OtpRequested>>('/api/v1/auth/request-otp', {
       method: 'POST',
       auth: false,
       json: body,
@@ -252,7 +316,7 @@ export const authService = {
   },
 
   async verifyOtp(body: VerifyOtpBody) {
-    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken | OtpNextStep>>('/v1/auth/verify-otp', {
+    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken | OtpNextStep>>('/api/v1/auth/verify-otp', {
       method: 'POST',
       auth: false,
       json: body,
@@ -265,7 +329,7 @@ export const authService = {
   },
 
   async resetPassword(email: string, newPassword: string): Promise<AuthToken> {
-    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken>>('/v1/auth/reset-password', {
+    const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken>>('/api/v1/auth/reset-password', {
       method: 'POST',
       auth: false,
       json: { email, new_password: newPassword },
@@ -282,7 +346,7 @@ export const authService = {
     await clearStoredSession();
 
     try {
-      await apiRequest('/v1/auth/logout', {
+      await apiRequest('/api/v1/auth/logout', {
         method: 'POST',
         json: refresh_token ? { refresh_token } : {},
         auth: false,
@@ -300,7 +364,7 @@ export const authService = {
     const refresh_token = await getRefreshToken();
     if (!refresh_token) throw new Error('No refresh token stored.');
     const response = await apiRequest<DataResponse<AuthToken>>(
-      '/v1/auth/refresh',
+      '/api/v1/auth/mobile-refresh',
       { method: 'POST', auth: false, json: { refresh_token }, timeoutMs: AUTH_REQUEST_TIMEOUT_MS },
     );
     await saveAuthToken(response.data);
@@ -309,7 +373,7 @@ export const authService = {
 
   async redeemMobileOAuthCode(code: string, state: string, codeVerifier: string): Promise<AuthToken> {
     const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken>>(
-      '/v1/auth/mobile-oauth/redeem',
+      '/api/v1/auth/mobile-oauth/redeem',
       {
         method: 'POST',
         auth: false,
@@ -330,14 +394,13 @@ export const authService = {
     const state = createMobileOAuthState();
     const codeVerifier = createMobileOAuthVerifier();
     const codeChallenge = await createMobileOAuthCodeChallenge(codeVerifier);
-    const result = await WebBrowser.openAuthSessionAsync(
-      buildMobileOAuthStartUrl(provider, state, codeChallenge),
-      redirectUri,
-    );
-    if (result.type !== 'success' || !('url' in result) || !result.url) {
-      throw new ApiError('OAuth sign-in was cancelled.', 0, 'OAUTH_CANCELLED');
-    }
-    const callback = parseMobileOAuthCallbackUrl(result.url, provider, state);
+    const oauthUrl = buildMobileOAuthStartUrl(provider, state, codeChallenge);
+
+    const callbackUrl = Platform.OS === 'android'
+      ? await openOAuthBrowserAndroid(oauthUrl, redirectUri)
+      : await openOAuthBrowserDefault(oauthUrl, redirectUri);
+
+    const callback = parseMobileOAuthCallbackUrl(callbackUrl, provider, state);
     return this.redeemMobileOAuthCode(callback.code, callback.state, codeVerifier);
   },
 };

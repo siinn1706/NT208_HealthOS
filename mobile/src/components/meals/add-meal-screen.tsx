@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform, View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../layout/screen';
@@ -195,6 +195,7 @@ export function AddMealScreen() {
   }
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <Screen>
       {/* Header */}
       <View style={styles.header}>
@@ -397,6 +398,7 @@ export function AddMealScreen() {
         ))}
       </Card>
     </Screen>
+    </KeyboardAvoidingView>
   );
 }
 

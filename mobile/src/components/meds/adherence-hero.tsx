@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
+import { typography, tabularNums } from '../../theme/typography';
 import { Card } from '../primitives/card';
 import { ProgressRing } from '../charts/progress-ring';
 
@@ -14,21 +15,22 @@ interface AdherenceHeroProps {
 
 export function AdherenceHero({ percent, taken, total, missed }: AdherenceHeroProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   return (
     <Card style={styles.card}>
       <ProgressRing value={percent} size={72} stroke={7} color={t.success} track={t.border}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: t.success }}>{Math.round(percent * 100)}%</Text>
+        <Text style={[typography.bodyMed, { color: t.success }]}>{Math.round(percent * 100)}%</Text>
       </ProgressRing>
       <View style={styles.meta}>
-        <Text style={{ fontSize: 12, fontWeight: '700', color: t.ink3, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-          30-day adherence
+        <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase' }]}>
+          {i18n('meds.thirtyDayAdherence')}
         </Text>
-        <Text style={{ fontSize: 22, fontWeight: '700', color: t.ink, fontVariant: ['tabular-nums'] as any, marginTop: 4 }}>
-          {taken}<Text style={{ fontSize: 14, color: t.ink3, fontWeight: '500' }}>/{total} days</Text>
+        <Text style={[typography.title, tabularNums, { color: t.ink, marginTop: 4 }]}>
+          {taken}<Text style={[typography.bodyMed, { color: t.ink3 }]}>/{total} {i18n('meds.days')}</Text>
         </Text>
         <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
-          On track - {missed} doses missed this month
+          {i18n('meds.onTrackMissed', { count: missed })}
         </Text>
       </View>
     </Card>

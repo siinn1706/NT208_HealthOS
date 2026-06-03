@@ -23,6 +23,7 @@ import { LanguagePreferenceHydrator } from '../src/i18n/language-preference-hydr
 import { AppearancePreferenceHydrator } from '../src/theme/appearance-preference-hydrator';
 import { getAuthGateRedirect } from '../src/auth/auth-route-policy';
 import { useTheme } from '../src/theme/useTheme';
+import { ErrorBoundary } from '../src/components/error/error-boundary';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -70,6 +71,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
@@ -87,5 +89,6 @@ export default function RootLayout() {
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

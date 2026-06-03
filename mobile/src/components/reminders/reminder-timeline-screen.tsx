@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
+import { typography, tabularNums } from '../../theme/typography';
 import { Screen } from '../layout/screen';
 import { ApiState } from '../api/api-state';
 import { useApiQuery } from '../../api/query';
@@ -262,19 +263,19 @@ const styles = StyleSheet.create({
   // back bar
   backBar:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   backBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  backTitle: { fontSize: 17, fontWeight: '700' },
+  backTitle: { ...typography.h3 },
   datePill:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
-  datePillText: { fontSize: 12, fontWeight: '500' },
+  datePillText: { ...typography.caption },
 
   // segmented
   segmented: { flexDirection: 'row', borderRadius: 10, padding: 3, marginBottom: 12 },
   segTab:    { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
-  segTabText:{ fontSize: 14 },
+  segTabText:{ ...typography.body },
 
   // day timeline
   dayContent: { paddingLeft: 20 },
   hourRow:    { flexDirection: 'row', alignItems: 'flex-start', minHeight: 52 },
-  hourLabel:  { width: 38, fontSize: 11, fontWeight: '600', fontVariant: ['tabular-nums'], marginTop: 10, textAlign: 'right' },
+  hourLabel:  { ...typography.micro, ...tabularNums, fontWeight: '600' as const, width: 38, marginTop: 10, textAlign: 'right' as const },
 
   // spine column
   spineCol:  { width: 28, alignItems: 'center', position: 'relative' },
@@ -301,24 +302,24 @@ const styles = StyleSheet.create({
   eventCard:   { flexDirection: 'row', alignItems: 'center', borderRadius: 10, borderWidth: 1, padding: 8, gap: 8 },
   eventIconCell: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   eventText:   { flex: 1 },
-  eventTitle:  { fontSize: 12, fontWeight: '600' },
-  eventMore:   { fontSize: 10, marginTop: 2 },
+  eventTitle:  { ...typography.caption, fontWeight: '600' as const },
+  eventMore:   { ...typography.micro, marginTop: 2 },
   doneTag:     { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  doneTagText: { fontSize: 11, fontWeight: '700' },
+  doneTagText: { ...typography.micro, fontWeight: '700' as const },
 
   // week view
   weekContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
   weekGrid:    { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
   weekCol:     { alignItems: 'center', gap: 6 },
-  weekDayLabel:{ fontSize: 11, fontWeight: '600' },
+  weekDayLabel:{ ...typography.micro, fontWeight: '600' as const },
   weekCircle:  { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  weekPct:     { fontSize: 10, fontWeight: '700' },
+  weekPct:     { ...typography.micro, fontWeight: '700' as const },
 
   breakdown:      { padding: 16, borderRadius: 14, borderWidth: 1 },
-  breakdownTitle: { fontSize: 14, fontWeight: '700', marginBottom: 12 },
+  breakdownTitle: { ...typography.bodyMed, marginBottom: 12 },
   breakRow:       { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  breakLabel:     { width: 90, fontSize: 13 },
+  breakLabel:     { width: 90, ...typography.bodyMed },
   breakBar:       { flex: 1, height: 6, borderRadius: 3, marginHorizontal: 8, overflow: 'hidden' },
   breakFill:      { height: '100%', borderRadius: 3 },
-  breakPct:       { width: 36, textAlign: 'right', fontSize: 13, fontWeight: '600' },
+  breakPct:       { width: 36, textAlign: 'right' as const, ...typography.bodyMed },
 });

@@ -47,7 +47,7 @@ export function AuthWelcomeScreen() {
       <View style={styles.ctas}>
         <Button label={i18n('auth.getStarted')} size="lg" onPress={() => router.push('/auth/sign-up')} />
         <Button variant="text" label={i18n('auth.iAlreadyHaveAccount')} size="md" onPress={() => router.push('/auth/sign-in')} />
-        <Text style={[typography.caption, { color: t.ink4, textAlign: 'center', fontSize: 12, lineHeight: 16, marginTop: 8 }]}>
+        <Text style={[typography.caption, { color: t.ink4, textAlign: 'center', lineHeight: 16, marginTop: 8 }]}>
           {i18n('auth.termsNotice')}
         </Text>
       </View>

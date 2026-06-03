@@ -40,7 +40,7 @@ describe('appointmentService', () => {
       doctor_name: 'Dr Create',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments', {
       method: 'POST',
       json: body,
     });
@@ -71,7 +71,7 @@ describe('appointmentService', () => {
       appointment_date: '2099-06-04T10:30:00.000Z',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt%2F1', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt%2F1', {
       method: 'PATCH',
       json: { appointment_date: '2099-06-04T10:30:00.000Z' },
     });
@@ -89,7 +89,7 @@ describe('appointmentService', () => {
       updated_at: null,
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt%2F1/prep');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt%2F1/prep');
   });
 
   it('updates appointment prep checklist', async () => {
@@ -105,7 +105,7 @@ describe('appointmentService', () => {
       updated_at: '2026-05-30T03:00:00.000Z',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/prep', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt-1/prep', {
       method: 'PATCH',
       json: { checklist_items: checklist },
     });
@@ -134,7 +134,7 @@ describe('appointmentService', () => {
       status: 'cancelled',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt%2F1/status', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt%2F1/status', {
       method: 'PATCH',
       json: { status: 'cancelled' },
     });

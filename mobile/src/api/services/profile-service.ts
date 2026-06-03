@@ -15,7 +15,7 @@ interface ProfileRequestOptions {
 
 export const profileService = {
   async me(options: ProfileRequestOptions = {}) {
-    const response = await apiRequest<DataResponse<CurrentUser>>('/v1/users/me', options);
+    const response = await apiRequest<DataResponse<CurrentUser>>('/api/v1/users/me', options);
     return response.data;
   },
 
@@ -24,7 +24,7 @@ export const profileService = {
   },
 
   async updateMe(body: UserProfileUpdate) {
-    const response = await apiRequest<DataResponse<CurrentUser>>('/v1/users/me', {
+    const response = await apiRequest<DataResponse<CurrentUser>>('/api/v1/users/me', {
       method: 'PATCH',
       json: body,
     });
@@ -32,7 +32,7 @@ export const profileService = {
   },
 
   async requestAccountDeletion(body: AccountDeletionRequestBody) {
-    const response = await apiRequest<DataResponse<AccountDeletionResult>>('/v1/users/me', {
+    const response = await apiRequest<DataResponse<AccountDeletionResult>>('/api/v1/users/me', {
       method: 'DELETE',
       json: body,
     });
@@ -40,7 +40,7 @@ export const profileService = {
   },
 
   async restoreAccount() {
-    const response = await apiRequest<DataResponse<AccountRestoreResult>>('/v1/users/me/restore', {
+    const response = await apiRequest<DataResponse<AccountRestoreResult>>('/api/v1/users/me/restore', {
       method: 'POST',
     });
     return response.data;

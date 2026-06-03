@@ -15,7 +15,7 @@ describe('deviceService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: [{ id: 'dev-1', name: 'Health Connect' }] } as never);
 
     await expect(deviceService.list()).resolves.toEqual([{ id: 'dev-1', name: 'Health Connect' }]);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices');
   });
 
   it('connects a provider', async () => {
@@ -25,7 +25,7 @@ describe('deviceService', () => {
       id: 'dev-2',
       provider: 'google_fit',
     });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices', {
       method: 'POST',
       json: { provider: 'google_fit', device_label: 'Google Fit' },
     });
@@ -35,7 +35,7 @@ describe('deviceService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { id: 'dev-2', last_sync_status: 'pending' } } as never);
 
     await expect(deviceService.sync('dev-2')).resolves.toEqual({ id: 'dev-2', last_sync_status: 'pending' });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev-2/sync', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices/dev-2/sync', {
       method: 'POST',
     });
   });
@@ -44,7 +44,7 @@ describe('deviceService', () => {
     mockApiRequest.mockResolvedValueOnce(undefined as never);
 
     await expect(deviceService.disconnect('dev-2')).resolves.toBeUndefined();
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev-2', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices/dev-2', {
       method: 'DELETE',
     });
   });
@@ -64,7 +64,7 @@ describe('deviceService', () => {
       ),
     ).resolves.toEqual({ inserted: 1, updated: 0, deleted: 0, skipped: 0, errors: [] });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev%2F1/ingest', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices/dev%2F1/ingest', {
       method: 'POST',
       json: {
         provider: 'health_connect',
@@ -94,7 +94,7 @@ describe('deviceService', () => {
       ),
     ).resolves.toEqual({ inserted: 0, updated: 0, deleted: 0, skipped: 0, errors: [] });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev-1/ingest', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices/dev-1/ingest', {
       method: 'POST',
       json: {
         provider: 'health_connect',
@@ -113,7 +113,7 @@ describe('deviceService', () => {
       id: 'dev-3',
       scopes: ['Steps', 'HeartRate'],
     });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev-3/permissions', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices/dev-3/permissions', {
       method: 'PATCH',
       json: { scopes: ['Steps', 'HeartRate'] },
     });
@@ -141,7 +141,7 @@ describe('deviceService', () => {
         consecutive_failures: 0,
       },
     ]);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev-4/sync-state');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices/dev-4/sync-state');
   });
 
   it('updates sync-state cursors', async () => {
@@ -166,7 +166,7 @@ describe('deviceService', () => {
         consecutive_failures: 0,
       },
     ]);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/devices/dev-4/sync-state', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/devices/dev-4/sync-state', {
       method: 'PUT',
       json: { tokens: { Steps: null } },
     });

@@ -18,6 +18,7 @@ import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { authService } from '../../api/services';
 import { useSession } from '../../auth/session-provider';
+import { useTranslation } from 'react-i18next';
 import { consumePendingSignup } from '../../auth/pending-signup';
 
 const OTP_LEN = 6;
@@ -67,6 +68,7 @@ function OtpBox({
 
 export function AuthOtpScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const session = useSession();
   const params = useLocalSearchParams<{ email?: string; purpose?: string }>();
   const [digits, setDigits] = useState<string[]>(() => Array(OTP_LEN).fill(''));
@@ -168,7 +170,7 @@ export function AuthOtpScreen() {
     return (
       <View style={styles.center}>
         <Text style={[typography.bodyMed, { color: t.danger }]}>No email provided. Go back and try again.</Text>
-        <Button label="Go back" onPress={() => router.replace('/auth/sign-in')} style={{ marginTop: 16 }} />
+        <Button label={i18n('common.back')} onPress={() => router.replace('/auth/sign-in')} style={{ marginTop: 16 }} />
       </View>
     );
   }
@@ -207,7 +209,7 @@ export function AuthOtpScreen() {
         ))}
       </View>
 
-      <Button label="Verify" size="lg" loading={loading} onPress={handleVerify} style={{ marginTop: 24 }} />
+      <Button label={i18n('auth.verifyCode')} size="lg" loading={loading} onPress={handleVerify} style={{ marginTop: 24 }} />
 
       {/* Resend row — plain View; tap only when countdown expired */}
       <View style={styles.resendRow}>

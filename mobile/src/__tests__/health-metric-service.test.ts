@@ -30,7 +30,7 @@ describe('healthMetricService', () => {
       recorded_at: '2026-05-31T10:00:00.000Z',
     })).resolves.toEqual(metric);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/health-metrics', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/health-metrics', {
       method: 'POST',
       json: {
         source: 'manual',
@@ -61,7 +61,7 @@ describe('healthMetricService', () => {
       recorded_at: '2026-05-31T10:00:00.000Z',
     })).resolves.toEqual(metric);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/health-metrics', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/health-metrics', {
       method: 'POST',
       json: {
         source: 'manual',

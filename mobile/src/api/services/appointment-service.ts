@@ -15,17 +15,17 @@ export const appointmentService = {
     const qs = new URLSearchParams();
     qs.set('limit', String(limit));
     if (cursor) qs.set('cursor', cursor);
-    const response = await apiRequest<PaginatedResponse<Appointment>>(`/v1/appointments?${qs.toString()}`);
+    const response = await apiRequest<PaginatedResponse<Appointment>>(`/api/v1/appointments?${qs.toString()}`);
     return response.data;
   },
 
   async detail(id: string) {
-    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${encodeURIComponent(id)}`);
+    const response = await apiRequest<DataResponse<Appointment>>(`/api/v1/appointments/${encodeURIComponent(id)}`);
     return response.data;
   },
 
   async create(body: AppointmentCreateBody) {
-    const response = await apiRequest<DataResponse<Appointment>>('/v1/appointments', {
+    const response = await apiRequest<DataResponse<Appointment>>('/api/v1/appointments', {
       method: 'POST',
       json: body,
     });
@@ -33,7 +33,7 @@ export const appointmentService = {
   },
 
   async update(id: string, body: AppointmentUpdateBody) {
-    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${encodeURIComponent(id)}`, {
+    const response = await apiRequest<DataResponse<Appointment>>(`/api/v1/appointments/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       json: body,
     });
@@ -41,12 +41,12 @@ export const appointmentService = {
   },
 
   async getPrep(id: string) {
-    const response = await apiRequest<DataResponse<AppointmentPrep>>(`/v1/appointments/${encodeURIComponent(id)}/prep`);
+    const response = await apiRequest<DataResponse<AppointmentPrep>>(`/api/v1/appointments/${encodeURIComponent(id)}/prep`);
     return response.data;
   },
 
   async updatePrep(id: string, body: AppointmentPrepUpdateBody) {
-    const response = await apiRequest<DataResponse<AppointmentPrep>>(`/v1/appointments/${encodeURIComponent(id)}/prep`, {
+    const response = await apiRequest<DataResponse<AppointmentPrep>>(`/api/v1/appointments/${encodeURIComponent(id)}/prep`, {
       method: 'PATCH',
       json: body,
     });
@@ -54,7 +54,7 @@ export const appointmentService = {
   },
 
   async updateStatus(id: string, status: Appointment['status']) {
-    const response = await apiRequest<DataResponse<Appointment>>(`/v1/appointments/${encodeURIComponent(id)}/status`, {
+    const response = await apiRequest<DataResponse<Appointment>>(`/api/v1/appointments/${encodeURIComponent(id)}/status`, {
       method: 'PATCH',
       json: { status },
     });

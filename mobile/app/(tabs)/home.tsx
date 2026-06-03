@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { ErrorBoundary } from '../../src/components/error/error-boundary';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
@@ -27,6 +28,14 @@ import { useSession } from '../../src/auth/session-provider';
 import type { DashboardSummary, Reminder, VitalPoint } from '../../../shared/api-contracts';
 
 export default function HomeScreen() {
+  return (
+    <ErrorBoundary>
+      <HomeScreenInner />
+    </ErrorBoundary>
+  );
+}
+
+function HomeScreenInner() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const { user } = useSession();

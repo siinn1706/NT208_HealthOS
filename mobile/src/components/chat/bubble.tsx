@@ -96,7 +96,7 @@ export const Bubble = memo(function Bubble({ side, text, time, attachments = [],
                       <IconPaperclip size={16} color={isMe ? '#FFF' : t.brand} />
                     )}
                     <View style={isImage ? styles.imageAttachmentMeta : styles.attachmentText}>
-                      <Text numberOfLines={1} style={[typography.caption, { color: textColor, fontWeight: '700' }]}>
+                      <Text numberOfLines={1} style={[typography.bodyMed, { color: textColor }]}>
                         {attachment.name}
                       </Text>
                       <Text numberOfLines={1} style={[typography.micro, { color: isMe ? 'rgba(255,255,255,0.72)' : t.ink3 }]}>

@@ -15,7 +15,7 @@ describe('accountExportService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { id: 'export-1', status: 'pending' } } as never);
 
     await expect(accountExportService.requestExport()).resolves.toEqual({ id: 'export-1', status: 'pending' });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/users/me/export', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/users/me/export', {
       method: 'POST',
       timeoutMs: 60000,
     });
@@ -25,13 +25,13 @@ describe('accountExportService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { id: 'export/1', status: 'completed' } } as never);
 
     await expect(accountExportService.exportStatus('export/1')).resolves.toEqual({ id: 'export/1', status: 'completed' });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/users/me/export/export%2F1');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/users/me/export/export%2F1');
   });
 
   it('gets the signed download URL for a completed export', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: { url: 'https://example.test/export.zip' } } as never);
 
     await expect(accountExportService.exportDownload('export-1')).resolves.toEqual({ url: 'https://example.test/export.zip' });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/users/me/export/export-1/download');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/users/me/export/export-1/download');
   });
 });

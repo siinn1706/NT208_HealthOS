@@ -162,6 +162,27 @@ export function useChatThreadActions({
     if (!conversationId || !canSend) return;
     setSending(true);
     setSendError(null);
+    // Optimistically render user message immediately so it appears before the AI responds
+    if (isAiThread) {
+      appendMessage({
+        id: `optimistic-${Date.now()}`,
+        conversation_id: conversationId,
+        sender_id: user?.id ?? null,
+        sender_display_name: user?.display_name ?? null,
+        sender_avatar_url: user?.avatar_url ?? null,
+        sender_kind: 'user',
+        client_message_id: null,
+        content: text,
+        content_type: 'text',
+        attachments: null,
+        reply_to_id: null,
+        is_recalled: false,
+        reactions: [],
+        is_pinned: false,
+        created_at: new Date().toISOString(),
+        edited_at: null,
+      });
+    }
     try {
       if (isAiThread) {
         await chatService.sendAiMessage(conversationId, text);
@@ -176,7 +197,7 @@ export function useChatThreadActions({
     } finally {
       setSending(false);
     }
-  }, [appendMessage, canSend, conversationId, isAiThread, reloadThread]);
+  }, [appendMessage, canSend, conversationId, isAiThread, reloadThread, user?.id, user?.display_name, user?.avatar_url]);
 
   const handleSendAttachment = useCallback(async (attachment: ChatAttachmentInput, caption: string) => {
     if (!conversationId || !canSend) return;

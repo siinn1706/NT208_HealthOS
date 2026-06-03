@@ -58,6 +58,9 @@ jest.mock('expo-linking', () => ({
 }));
 jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
+  warmUpAsync: jest.fn().mockResolvedValue(undefined),
+  openBrowserAsync: jest.fn().mockResolvedValue({ type: 'opened' }),
+  coolDownAsync: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: {
@@ -68,6 +71,14 @@ jest.mock('expo-crypto', () => ({
 }));
 jest.mock('react-native', () => ({
   Platform: { OS: 'android' },
+  Linking: {
+    addEventListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+    removeEventListener: jest.fn(),
+  },
+  AppState: {
+    addEventListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+    currentState: 'active',
+  },
 }));
 
 const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
@@ -266,7 +277,7 @@ describe('authService.login', () => {
     const result = await authService.login('user', 'pass');
     expect(result).toEqual(mockToken);
     expect(mockEnsureCoreReachable).toHaveBeenCalledTimes(1);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/login', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/login', {
       method: 'POST',
       auth: false,
       json: { identifier: 'user', password: 'pass' },
@@ -328,11 +339,11 @@ describe('authService.verifyOtp', () => {
 });
 
 describe('authService.verifyLoginMfa', () => {
-  it('calls /v1/auth/login/mfa and stores returned session token', async () => {
+  it('calls /api/v1/auth/login/mfa and stores returned session token', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: mockToken });
     mockSaveAuthToken.mockResolvedValueOnce();
     const result = await authService.verifyLoginMfa('challenge-id', '123456');
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/login/mfa', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/login/mfa', {
       method: 'POST',
       auth: false,
       json: { challenge_id: 'challenge-id', code: '123456' },
@@ -361,7 +372,7 @@ describe('authService.resetPassword', () => {
     mockApiRequest.mockResolvedValueOnce({ data: mockToken });
     mockSaveAuthToken.mockResolvedValueOnce();
     const result = await authService.resetPassword('a@b.com', 'newpass');
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/reset-password', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/reset-password', {
       method: 'POST',
       auth: false,
       json: { email: 'a@b.com', new_password: 'newpass' },
@@ -409,12 +420,12 @@ describe('authService.refreshToken', () => {
     await expect(authService.refreshToken()).rejects.toThrow('No refresh token stored.');
   });
 
-  it('calls /v1/auth/refresh with auth:false and saves token', async () => {
+  it('calls /api/v1/auth/mobile-refresh with auth:false and saves token', async () => {
     mockGetRefreshToken.mockResolvedValueOnce('rt-tok');
     mockApiRequest.mockResolvedValueOnce({ data: mockToken });
     mockSaveAuthToken.mockResolvedValueOnce();
     const result = await authService.refreshToken();
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/refresh', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/mobile-refresh', {
       method: 'POST',
       auth: false,
       json: { refresh_token: 'rt-tok' },
@@ -426,6 +437,10 @@ describe('authService.refreshToken', () => {
 });
 
 describe('authService.signInWithOAuth', () => {
+  beforeEach(() => {
+    (Platform as unknown as { OS: string }).OS = 'ios';
+  });
+
   it('opens the BFF provider flow and redeems the returned Core handoff code', async () => {
     process.env.EXPO_PUBLIC_WEB_APP_URL = 'http://localhost:3000/';
     mockOpenAuthSessionAsync.mockResolvedValueOnce({
@@ -442,7 +457,7 @@ describe('authService.signInWithOAuth', () => {
       'nt208://auth/oauth/callback',
     );
     expect(mockEnsureCoreReachable).toHaveBeenCalledTimes(1);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/mobile-oauth/redeem', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/mobile-oauth/redeem', {
       method: 'POST',
       auth: false,
       json: { code: 'handoff-code', state: generatedState, code_verifier: generatedVerifier },
@@ -467,7 +482,7 @@ describe('authService.signInWithOAuth', () => {
       `http://localhost:3000/api/v1/auth/oauth/google?mobile_redirect_uri=nt208%3A%2F%2Fauth%2Foauth%2Fcallback&mobile_state=${generatedState}&mobile_code_challenge=${generatedChallenge}`,
       'nt208://auth/oauth/callback',
     );
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/mobile-oauth/redeem', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/mobile-oauth/redeem', {
       method: 'POST',
       auth: false,
       json: { code: 'google-handoff-code', state: generatedState, code_verifier: generatedVerifier },
@@ -533,7 +548,7 @@ describe('authService.logout', () => {
     mockClearStoredSession.mockResolvedValueOnce();
     try {
       await authService.logout();
-      expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/logout', {
+      expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/logout', {
         method: 'POST',
         json: { refresh_token: 'rt-tok' },
         auth: false,
@@ -568,7 +583,7 @@ describe('authService.logout', () => {
     mockApiRequest.mockResolvedValueOnce(undefined);
     mockClearStoredSession.mockResolvedValueOnce();
     await authService.logout();
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/logout', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/logout', {
       method: 'POST',
       json: {},
       auth: false,

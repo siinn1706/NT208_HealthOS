@@ -111,7 +111,8 @@ describe('useChatThreadActions', () => {
     it('reloads thread for AI thread after send', async () => {
       mockSendAiMessage.mockResolvedValueOnce(undefined);
       const reloadThread = jest.fn().mockResolvedValue(undefined);
-      const { result } = renderHook(() => useChatThreadActions({ ...defaultOpts, isAiThread: true, reloadThread }));
+      const appendMessage = jest.fn();
+      const { result } = renderHook(() => useChatThreadActions({ ...defaultOpts, isAiThread: true, reloadThread, appendMessage }));
 
       await act(async () => {
         await result.current.handleSend('AI question');
@@ -119,6 +120,13 @@ describe('useChatThreadActions', () => {
 
       expect(mockSendAiMessage).toHaveBeenCalledWith('conv-1', 'AI question');
       expect(reloadThread).toHaveBeenCalled();
+      // Optimistic message must appear immediately before the API resolves
+      expect(appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+        id: expect.stringMatching(/^optimistic-/),
+        content: 'AI question',
+        sender_kind: 'user',
+        conversation_id: 'conv-1',
+      }));
     });
 
     it('sets sendError when send fails', async () => {

@@ -252,11 +252,11 @@ export function RemindersCenterScreen() {
       <Card style={styles.snapshotCard}>
         <View style={styles.snapshotRow}>
           <ProgressRing size={64} stroke={7} value={progressValue} color={t.brand} track={t.border}>
-            <Text style={{ fontSize: 17, fontWeight: '800', color: t.ink }}>{done.length}/{rows.length}</Text>
+            <Text style={[typography.h3, { color: t.ink }]}>{done.length}/{rows.length}</Text>
           </ProgressRing>
           <View style={styles.snapshotText}>
             <Text style={[typography.micro, { color: t.ink3, textTransform: 'uppercase', letterSpacing: 0.8 }]}>{i18n('reminders.today')}</Text>
-            <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '800', fontSize: 17, marginTop: 2 }]}>
+            <Text style={[typography.h3, { color: t.ink, marginTop: 2 }]}>
               {done.length} done · {left} left
             </Text>
             <Text style={[typography.micro, { color: t.ink3, marginTop: 2 }]} numberOfLines={1}>

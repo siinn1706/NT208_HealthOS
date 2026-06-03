@@ -20,7 +20,7 @@ describe('profileService', () => {
 
     await expect(profileService.meForBootstrap()).resolves.toEqual({ id: 'u1' });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/users/me', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/users/me', {
       timeoutMs: BOOTSTRAP_PROFILE_TIMEOUT_MS,
     });
   });
@@ -39,7 +39,7 @@ describe('profileService', () => {
       purge_at: '2026-06-30T00:00:00.000Z',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/users/me', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/users/me', {
       method: 'DELETE',
       json: {
         confirmation_email: 'person@example.com',
@@ -53,6 +53,6 @@ describe('profileService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { status: 'active' } } as never);
 
     await expect(profileService.restoreAccount()).resolves.toEqual({ status: 'active' });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/users/me/restore', { method: 'POST' });
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/users/me/restore', { method: 'POST' });
   });
 });

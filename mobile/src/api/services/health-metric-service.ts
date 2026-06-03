@@ -26,7 +26,7 @@ export interface HealthMetric {
 
 export const healthMetricService = {
   async create(body: HealthMetricCreateBody) {
-    return apiRequest<HealthMetric>('/v1/health-metrics', {
+    return apiRequest<HealthMetric>('/api/v1/health-metrics', {
       method: 'POST',
       json: { source: 'manual', ...body },
     });

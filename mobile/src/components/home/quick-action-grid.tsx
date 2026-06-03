@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { PressableCard } from '../primitives/pressable-card';
 import { IconCoffee, IconActivity, IconSparkle, IconHeartPulse, IconTrendUp } from '../../icons';
 
@@ -55,5 +56,5 @@ const styles = StyleSheet.create({
   grid:      { flexDirection: 'row', gap: 10, marginVertical: 4 },
   tile:      { flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, gap: 6 },
   iconBox:   { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  tileLabel: { fontSize: 11, fontWeight: '600' },
+  tileLabel: { ...typography.micro, fontWeight: '600' },
 });
