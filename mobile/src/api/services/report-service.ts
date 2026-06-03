@@ -3,12 +3,12 @@ import type { DataResponse, HealthReport, ReportExportDownload, ReportExportRequ
 
 export const reportService = {
   async get(period: '7d' | '30d' | '90d' = '7d') {
-    const response = await apiRequest<DataResponse<HealthReport>>(`/v1/reports${buildQuery({ period })}`);
+    const response = await apiRequest<DataResponse<HealthReport>>(`/api/v1/reports${buildQuery({ period })}`);
     return response.data;
   },
 
   async generate(period: '7d' | '30d' | '90d' = '7d') {
-    const response = await apiRequest<DataResponse<HealthReport>>(`/v1/reports${buildQuery({ period })}`, {
+    const response = await apiRequest<DataResponse<HealthReport>>(`/api/v1/reports${buildQuery({ period })}`, {
       method: 'POST',
       timeoutMs: 60000,
     });
@@ -16,13 +16,13 @@ export const reportService = {
   },
 
   async trends(metric: string, period: '7d' | '30d' | '90d' = '7d') {
-    const response = await apiRequest<DataResponse<TrendAnalysis>>(`/v1/reports/trends${buildQuery({ metric, period })}`);
+    const response = await apiRequest<DataResponse<TrendAnalysis>>(`/api/v1/reports/trends${buildQuery({ metric, period })}`);
     return response.data;
   },
 
   async trendsBatch(metrics: string[], period: '7d' | '30d' | '90d' = '7d') {
     const response = await apiRequest<DataResponse<Record<string, TrendAnalysis>>>(
-      `/v1/reports/trends/batch${buildQuery({ metrics: metrics.join(','), period })}`,
+      `/api/v1/reports/trends/batch${buildQuery({ metrics: metrics.join(','), period })}`,
     );
     return response.data;
   },
@@ -33,7 +33,7 @@ export const reportService = {
     locale?: 'en' | 'vi';
     include_sensitive?: boolean;
   }) {
-    const response = await apiRequest<DataResponse<ReportExportRequest>>('/v1/reports/export-pdf', {
+    const response = await apiRequest<DataResponse<ReportExportRequest>>('/api/v1/reports/export-pdf', {
       method: 'POST',
       json: body,
       timeoutMs: 60000,
@@ -42,12 +42,12 @@ export const reportService = {
   },
 
   async pdfStatus(requestId: string) {
-    const response = await apiRequest<DataResponse<ReportExportRequest>>(`/v1/reports/export-pdf/${requestId}`);
+    const response = await apiRequest<DataResponse<ReportExportRequest>>(`/api/v1/reports/export-pdf/${requestId}`);
     return response.data;
   },
 
   async pdfDownload(requestId: string) {
-    const response = await apiRequest<DataResponse<ReportExportDownload>>(`/v1/reports/export-pdf/${requestId}/download`);
+    const response = await apiRequest<DataResponse<ReportExportDownload>>(`/api/v1/reports/export-pdf/${requestId}/download`);
     return response.data;
   },
 };

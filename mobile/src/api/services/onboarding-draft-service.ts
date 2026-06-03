@@ -6,12 +6,12 @@ import type {
 
 export const onboardingDraftService = {
   async getDraft() {
-    const response = await apiRequest<OnboardingDraftResponse>('/v1/users/me/onboarding-draft');
+    const response = await apiRequest<OnboardingDraftResponse>('/api/v1/users/me/onboarding-draft');
     return response.data;
   },
 
   async saveDraft(body: OnboardingDraftPayload) {
-    const response = await apiRequest<OnboardingDraftResponse>('/v1/users/me/onboarding-draft', {
+    const response = await apiRequest<OnboardingDraftResponse>('/api/v1/users/me/onboarding-draft', {
       method: 'PUT',
       json: body,
     });
@@ -19,6 +19,6 @@ export const onboardingDraftService = {
   },
 
   async clearDraft() {
-    return apiRequest<void>('/v1/users/me/onboarding-draft', { method: 'DELETE' });
+    return apiRequest<void>('/api/v1/users/me/onboarding-draft', { method: 'DELETE' });
   },
 };

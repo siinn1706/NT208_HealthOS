@@ -34,7 +34,7 @@ describe('prescriptionAssetService', () => {
       {},
       { fieldName: 'file', ...file },
     );
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt%2F1/prescription/assets', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt%2F1/prescription/assets', {
       method: 'POST',
       body: form,
     });
@@ -46,7 +46,7 @@ describe('prescriptionAssetService', () => {
 
     await expect(prescriptionAssetService.list('apt-1')).resolves.toEqual([]);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/prescription/assets');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt-1/prescription/assets');
   });
 
   it('mints signed urls per asset', async () => {
@@ -55,7 +55,7 @@ describe('prescriptionAssetService', () => {
 
     await expect(prescriptionAssetService.signedUrl('apt-1', 'asset-1')).resolves.toEqual(url);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/prescription/assets/asset-1/url');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt-1/prescription/assets/asset-1/url');
   });
 
   it('deletes a prescription asset', async () => {
@@ -63,7 +63,7 @@ describe('prescriptionAssetService', () => {
 
     await prescriptionAssetService.remove('apt-1', 'asset-1');
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/prescription/assets/asset-1', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt-1/prescription/assets/asset-1', {
       method: 'DELETE',
     });
   });

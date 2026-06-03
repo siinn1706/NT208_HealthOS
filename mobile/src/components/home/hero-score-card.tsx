@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
   text:  { flex: 1 },
   label: { color: 'rgba(255,255,255,0.75)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.6 },
   score: { color: '#FFFFFF', marginBottom: 4 },
-  scoreTarget: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
+  scoreTarget: { ...typography.h3, color: 'rgba(255,255,255,0.7)' },
   copy:  { color: 'rgba(255,255,255,0.85)' },
 });

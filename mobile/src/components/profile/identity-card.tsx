@@ -6,6 +6,7 @@ import { Avatar } from '../primitives/avatar';
 import { Chip } from '../primitives/chip';
 import { Card } from '../primitives/card';
 import { IconCheck, IconShield, IconBadge } from '../../icons';
+import { useTranslation } from 'react-i18next';
 
 interface IdentityCardProps {
   name: string;
@@ -20,6 +21,7 @@ interface IdentityCardProps {
 
 export function IdentityCard({ name, email, age, gender, city, level, verified, compact }: IdentityCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
 
   if (compact) {
     return (
@@ -36,13 +38,13 @@ export function IdentityCard({ name, email, age, gender, city, level, verified, 
 
         {/* Right: name, meta, chips */}
         <View style={styles.compactRight}>
-          <Text style={[typography.title, { color: t.ink, fontSize: 17, fontWeight: '700' }]}>{name}</Text>
-          <Text style={[typography.caption, { color: t.ink3, fontSize: 12, marginTop: 2 }]}>
+          <Text style={[typography.h3, { color: t.ink }]}>{name}</Text>
+          <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
             {age > 0 ? `${age} · ` : ''}{gender}{city ? ` · ${city}` : ''}
           </Text>
           <View style={styles.chips}>
             {verified && (
-              <Chip label="Verified" variant="success" icon={<IconShield size={11} color={t.success} />} />
+              <Chip label={i18n('profile.verified')} variant="success" icon={<IconShield size={11} color={t.success} />} />
             )}
             <Chip label={`Level ${level}`} variant="brand" icon={<IconBadge size={11} color={t.brand} />} />
           </View>
@@ -62,16 +64,16 @@ export function IdentityCard({ name, email, age, gender, city, level, verified, 
           </View>
         )}
       </View>
-      <Text style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3, color: t.ink, marginTop: 12 }}>{name}</Text>
+      <Text style={[typography.h3, { fontSize: 20, letterSpacing: -0.3, color: t.ink, marginTop: 12 }]}>{name}</Text>
       {email && (
-        <Text style={[typography.caption, { color: t.ink3, marginTop: 2, fontSize: 13 }]}>{email}</Text>
+        <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>{email}</Text>
       )}
       <Text style={[typography.caption, { color: t.ink3, marginTop: 2 }]}>
         {age > 0 ? `${age} · ` : ''}{gender} · {city}
       </Text>
       <View style={styles.chips}>
         {verified && (
-          <Chip label="Verified" variant="success" icon={<IconShield size={11} color={t.success} />} />
+          <Chip label={i18n('profile.verified')} variant="success" icon={<IconShield size={11} color={t.success} />} />
         )}
         <Chip label={`Level ${level}`} variant="brand" icon={<IconBadge size={11} color={t.brand} />} />
       </View>

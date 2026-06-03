@@ -19,7 +19,7 @@ describe('reportService', () => {
       generated_at: '2026-05-31T00:00:00Z',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/reports?period=30d', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/reports?period=30d', {
       method: 'POST',
       timeoutMs: 60000,
     });
@@ -30,7 +30,7 @@ describe('reportService', () => {
 
     await expect(reportService.trends('calories', '7d')).resolves.toEqual({ trend: 'increasing' });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/reports/trends?metric=calories&period=7d');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/reports/trends?metric=calories&period=7d');
   });
 
   it('requests batch trend analysis through the existing Core report endpoint', async () => {
@@ -40,6 +40,6 @@ describe('reportService', () => {
       blood_pressure: { trend: 'declining' },
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/reports/trends/batch?metrics=blood_pressure%2Cbmi&period=30d');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/reports/trends/batch?metrics=blood_pressure%2Cbmi&period=30d');
   });
 });

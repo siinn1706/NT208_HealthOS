@@ -351,14 +351,14 @@ const styles = StyleSheet.create({
   tabScroll:   { flexGrow: 0, marginBottom: 4 },
   tabContent:  { paddingHorizontal: 20, gap: 8, paddingVertical: 8 },
   tabPill:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100, borderWidth: 1 },
-  tabPillText: { fontSize: 13, fontWeight: '600' },
+  tabPillText: { ...typography.bodyMed },
   countBadge:  { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 100 },
-  countBadgeText: { fontSize: 11, fontWeight: '700' },
-  actionError: { marginHorizontal: 20, marginBottom: 8, fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  countBadgeText: { ...typography.micro, fontWeight: '700' as const },
+  actionError: { ...typography.caption, marginHorizontal: 20, marginBottom: 8, lineHeight: 17, fontWeight: '600' as const },
 
   // list
   listContent:  { paddingHorizontal: 20, paddingTop: 4 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
+  sectionLabel: { ...typography.micro, fontWeight: '700' as const, letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
   groupCard:    { borderRadius: 16, borderWidth: 1, overflow: 'hidden', marginBottom: 16 },
   divider:      { height: StyleSheet.hairlineWidth, marginLeft: 68 },
 
@@ -368,9 +368,9 @@ const styles = StyleSheet.create({
   iconCell:     { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', marginRight: 10, flexShrink: 0 },
   notifContent: { flex: 1 },
   notifTitleRow:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 },
-  notifTitle:   { flex: 1, fontSize: 13, lineHeight: 18 },
-  notifTime:    { fontSize: 10, flexShrink: 0, marginTop: 2 },
-  notifBody:    { fontSize: 12, lineHeight: 17, marginTop: 3 },
+  notifTitle:   { flex: 1, ...typography.bodyMed, lineHeight: 18 },
+  notifTime:    { ...typography.micro, flexShrink: 0, marginTop: 2 },
+  notifBody:    { ...typography.caption, lineHeight: 17, marginTop: 3 },
 
   empty: { alignItems: 'center', paddingTop: 48 },
 });

@@ -43,7 +43,7 @@ export interface MealAnalysisStatus {
 
 export const mealService = {
   async list(params: { page?: number; per_page?: number; date_from?: string; date_to?: string } = {}) {
-    const response = await apiRequest<PaginatedResponse<Meal>>(`/v1/meals${buildQuery({
+    const response = await apiRequest<PaginatedResponse<Meal>>(`/api/v1/meals${buildQuery({
       page: params.page,
       per_page: params.per_page,
       date_from: params.date_from,
@@ -66,7 +66,7 @@ export const mealService = {
         },
         { fieldName: 'image', ...input.image },
       );
-      const response = await apiRequest<DataResponse<Meal>>('/v1/meals', {
+      const response = await apiRequest<DataResponse<Meal>>('/api/v1/meals', {
         method: 'POST',
         body: form,
         headers,
@@ -74,7 +74,7 @@ export const mealService = {
       return response.data;
     }
 
-    const response = await apiRequest<DataResponse<Meal>>('/v1/meals', {
+    const response = await apiRequest<DataResponse<Meal>>('/api/v1/meals', {
       method: 'POST',
       headers,
       json: compactBody({
@@ -93,7 +93,7 @@ export const mealService = {
       { name: input.name },
       { fieldName: 'image', ...input.image },
     );
-    return apiRequest<MealAnalysisStatus>('/v1/meals/analyze-photo', {
+    return apiRequest<MealAnalysisStatus>('/api/v1/meals/analyze-photo', {
       method: 'POST',
       body: form,
       timeoutMs: 60000,
@@ -101,12 +101,12 @@ export const mealService = {
   },
 
   async detail(id: string) {
-    const response = await apiRequest<DataResponse<Meal>>(`/v1/meals/${encodeURIComponent(id)}`);
+    const response = await apiRequest<DataResponse<Meal>>(`/api/v1/meals/${encodeURIComponent(id)}`);
     return response.data;
   },
 
   async update(id: string, body: { name?: string; logged_at?: string; nutrition_result?: MealNutritionResult | null }) {
-    const response = await apiRequest<DataResponse<Meal>>(`/v1/meals/${encodeURIComponent(id)}`, {
+    const response = await apiRequest<DataResponse<Meal>>(`/api/v1/meals/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       json: compactBody(body),
     });
@@ -114,26 +114,26 @@ export const mealService = {
   },
 
   async delete(id: string) {
-    await apiRequest<void>(`/v1/meals/${encodeURIComponent(id)}`, {
+    await apiRequest<void>(`/api/v1/meals/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   },
 
   async analysisStatus(id: string) {
-    return apiRequest<MealAnalysisStatus>(`/v1/meals/${encodeURIComponent(id)}/analysis-status`);
+    return apiRequest<MealAnalysisStatus>(`/api/v1/meals/${encodeURIComponent(id)}/analysis-status`);
   },
 
   async analysisStatusByJob(jobId: string) {
-    return apiRequest<MealAnalysisStatus>(`/v1/meals/analyze-photo/${encodeURIComponent(jobId)}`);
+    return apiRequest<MealAnalysisStatus>(`/api/v1/meals/analyze-photo/${encodeURIComponent(jobId)}`);
   },
 
   async ingredients(id: string) {
-    const response = await apiRequest<DataResponse<MealIngredient[]>>(`/v1/meals/${encodeURIComponent(id)}/ingredients`);
+    const response = await apiRequest<DataResponse<MealIngredient[]>>(`/api/v1/meals/${encodeURIComponent(id)}/ingredients`);
     return response.data;
   },
 
   async caloriesSummary(date_from: string, date_to: string) {
-    const response = await apiRequest<DataResponse<CalorieSummaryPoint[]>>(`/v1/meals/calories-summary${buildQuery({
+    const response = await apiRequest<DataResponse<CalorieSummaryPoint[]>>(`/api/v1/meals/calories-summary${buildQuery({
       date_from,
       date_to,
     })}`);

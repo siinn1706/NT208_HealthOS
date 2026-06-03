@@ -37,6 +37,6 @@ describe('nutritionService', () => {
 
     await expect(nutritionService.ingredients({ q: 'pho', per_page: 8 })).resolves.toEqual(items);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/nutrition/ingredients?q=pho&per_page=8');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/nutrition/ingredients?q=pho&per_page=8');
   });
 });

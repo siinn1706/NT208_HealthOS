@@ -142,17 +142,17 @@ export function CareHubScreen() {
                       )}
                     >
                       {canJoinNextVideo && <IconVideo size={16} color={heroFg} />}
-                      <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700', marginLeft: canJoinNextVideo ? 6 : 0 }]}>
+                      <Text style={[typography.button, { color: heroFg, marginLeft: canJoinNextVideo ? 6 : 0 }]}>
                         {canJoinNextVideo ? i18n('care.join') : i18n('care.details')}
                       </Text>
                     </Pressable>
                     <Pressable style={styles.heroBtnGhost} onPress={() => router.push(`/care/prep/${nextAppointment.id}` as never)}>
-                      <Text style={[typography.bodyMed, { color: '#FFF', fontWeight: '600' }]}>{i18n('care.prep')}</Text>
+                      <Text style={[typography.button, { color: '#FFF' }]}>{i18n('care.prep')}</Text>
                     </Pressable>
                   </>
                 ) : (
                   <Pressable style={styles.heroBtnPrimary} onPress={() => router.push('/care/appointments/new' as never)}>
-                    <Text style={[typography.bodyMed, { color: heroFg, fontWeight: '700' }]}>{i18n('care.bookNow')}</Text>
+                    <Text style={[typography.button, { color: heroFg }]}>{i18n('care.bookNow')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -174,10 +174,10 @@ export function CareHubScreen() {
                   <View style={[styles.tileIcon, { backgroundColor: tile.iconBg }]}>
                     {tile.icon}
                   </View>
-                  <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '700', fontSize: 14, marginTop: 8 }]}>
+                  <Text style={[typography.bodyMed, { color: t.ink, marginTop: 8 }]}>
                     {tile.title}
                   </Text>
-                  <Text style={[typography.micro, { color: t.ink3, fontSize: 11, marginTop: 2 }]} numberOfLines={1}>
+                  <Text style={[typography.micro, { color: t.ink3, marginTop: 2 }]} numberOfLines={1}>
                     {tile.subtitle}
                   </Text>
                 </TouchableOpacity>
@@ -204,7 +204,7 @@ export function CareHubScreen() {
                       <row.IconComponent size={20} color={color} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[typography.bodyMed, { color: t.ink, fontWeight: '600' }]}>{i18n(row.titleKey as any)}</Text>
+                      <Text style={[typography.bodyMed, { color: t.ink }]}>{i18n(row.titleKey as any)}</Text>
                       <Text style={[typography.micro, { color: t.ink3 }]}>{i18n(row.subtitleKey as any)}</Text>
                     </View>
                     <ChevronRight size={16} color={t.ink3} />
@@ -224,13 +224,13 @@ const styles = StyleSheet.create({
   heroWrap:    { marginHorizontal: 16, marginTop: 8, marginBottom: 20 },
   heroGradient:{ borderRadius: 16, padding: 20 },
   heroActions: { flexDirection: 'row', gap: 10 },
-  heroBtnPrimary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
-  heroBtnGhost:   { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
+  heroBtnPrimary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44 },
+  heroBtnGhost:   { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44 },
   section:     { marginBottom: 20 },
   grid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile:        { width: '47%', borderRadius: 16, borderWidth: 1, padding: 14, position: 'relative' },
   tileIcon:    { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel:{ fontSize: 11, fontWeight: '600', letterSpacing: 0.8, marginHorizontal: 16, marginBottom: 8 },
+  sectionLabel:{ ...typography.micro, textTransform: 'uppercase' as const, letterSpacing: 0.8, marginHorizontal: 16, marginBottom: 8 },
   quickCard:   { marginBottom: 24 },
   quickRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   quickIcon:   { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

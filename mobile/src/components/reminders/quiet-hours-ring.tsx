@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { withOpacity } from '../../utils/color-mix';
 
 const SIZE = 200;
@@ -126,5 +127,5 @@ const s = StyleSheet.create({
   legend:     { flexDirection: 'row', gap: 16, marginTop: 6 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot:  { width: 10, height: 10, borderRadius: 3 },
-  legendText: { fontSize: 11, fontWeight: '600' },
+  legendText: { ...typography.micro, fontWeight: '600' as const },
 });

@@ -74,6 +74,6 @@ const styles = StyleSheet.create({
   avatarWrap: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   headerInfo: { flex: 1, minWidth: 0 },
   titleRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  title:      { flex: 1, fontSize: 16, fontWeight: '700' },
+  title:      { flex: 1 },
   statusDot:  { width: 6, height: 6, borderRadius: 3 },
 });

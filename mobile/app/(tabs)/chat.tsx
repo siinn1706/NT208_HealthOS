@@ -19,6 +19,7 @@ import { queryKeys } from '../../src/api/queryKeys';
 import { toConversationRow } from '../../src/api/viewModels';
 import { humanizeError } from '../../src/api/error-message';
 import { useSession } from '../../src/auth/session-provider';
+import { ErrorBoundary } from '../../src/components/error/error-boundary';
 import type { Conversation } from '../../../shared/api-contracts';
 
 const AI_SUGGESTIONS = [
@@ -143,7 +144,9 @@ export default function ChatScreen() {
           onAction={() => openAiConversation()}
         />
       )}
-      <SectionHeader title={i18n('chat.conversations')} />
+      <View style={styles.padded}>
+        <SectionHeader title={i18n('chat.conversations')} />
+      </View>
       {conversations.isLoading && (
         <ApiState title={i18n('chat.loadingConversations')} loading skeleton={<ChatListSkeleton />} />
       )}
@@ -159,27 +162,29 @@ export default function ChatScreen() {
   );
 
   return (
-    <Screen scroll={false} padding={false}>
-      <FlatList
-        data={filteredRows}
-        keyExtractor={(item) => item.id}
-        renderItem={renderRow}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={
-          !conversations.isLoading && !conversations.error
-            ? <ApiState title={i18n('chat.noConversations')} message={i18n('chat.noConversationsMessage')} />
-            : null
-        }
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      />
+    <ErrorBoundary>
+      <Screen scroll={false} padding={false}>
+        <FlatList
+          data={filteredRows}
+          keyExtractor={(item) => item.id}
+          renderItem={renderRow}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            !conversations.isLoading && !conversations.error
+              ? <ApiState title={i18n('chat.noConversations')} message={i18n('chat.noConversationsMessage')} />
+              : null
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
 
-      <NewChatModal
-        visible={newChatOpen}
-        onClose={() => setNewChatOpen(false)}
-        onCreated={handleConversationCreated}
-      />
-    </Screen>
+        <NewChatModal
+          visible={newChatOpen}
+          onClose={() => setNewChatOpen(false)}
+          onCreated={handleConversationCreated}
+        />
+      </Screen>
+    </ErrorBoundary>
   );
 }
 
@@ -187,4 +192,5 @@ const styles = StyleSheet.create({
   actions:      { flexDirection: 'row', gap: 4 },
   searchInput:  { marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, fontSize: 14 },
   listContent:  { paddingBottom: 120 },
+  padded:       { paddingHorizontal: 16 },
 });

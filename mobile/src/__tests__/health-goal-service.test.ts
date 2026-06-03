@@ -37,7 +37,7 @@ describe('healthGoalService', () => {
       target: 70,
       period: '7d',
     });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/goals/progress?metric=weight_kg&target=70&period=7d');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/goals/progress?metric=weight_kg&target=70&period=7d');
   });
 
   it('fetches the current health goal', async () => {
@@ -45,7 +45,7 @@ describe('healthGoalService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: goal } as never);
 
     await expect(healthGoalService.current()).resolves.toEqual(goal);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/health-goals');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/health-goals');
   });
 
   it('returns null when no health goal is set', async () => {
@@ -58,7 +58,7 @@ describe('healthGoalService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: goal } as never);
 
     await expect(healthGoalService.upsert({ target_weight_kg: 65, deadline: '2026-06-30' })).resolves.toEqual(goal);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/health-goals', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/health-goals', {
       method: 'POST',
       json: { target_weight_kg: 65, deadline: '2026-06-30' },
     });
@@ -69,7 +69,7 @@ describe('healthGoalService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: goal } as never);
 
     await expect(healthGoalService.upsert({ target_weight_kg: 68 })).resolves.toEqual(goal);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/health-goals', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/health-goals', {
       method: 'POST',
       json: { target_weight_kg: 68 },
     });

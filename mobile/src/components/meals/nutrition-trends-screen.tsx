@@ -123,7 +123,7 @@ export function NutritionTrendsScreen() {
           <View style={styles.stats}>
             <StatCard label={i18n('meals.avgDaily')} value={`${avg} ${i18n('common.kcal')}`} />
             <StatCard label={i18n('meals.calories')} value={`${Math.round(total)} ${i18n('common.kcal')}`} />
-            <StatCard label="Peak day" value={`${Math.round(peak)} ${i18n('common.kcal')}`} />
+            <StatCard label={i18n('insights.peakDay')} value={`${Math.round(peak)} ${i18n('common.kcal')}`} />
           </View>
 
           <Card style={styles.splitCard}>

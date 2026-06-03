@@ -32,7 +32,7 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggesti
             <IconRobot size={22} color="#FFFFFF" />
           </View>
           <View style={styles.info}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: t.ink }}>{i18n('chat.aiName')}</Text>
+            <Text style={[typography.h3, { color: t.ink }]}>{i18n('chat.aiName')}</Text>
             <View style={styles.online}>
               <View style={[styles.dot, { backgroundColor: t.success }]} />
               <Text style={[typography.micro, { color: t.ink3 }]}>{i18n('chat.aiStatus')}</Text>
@@ -59,7 +59,7 @@ export function AiAssistantHero({ suggestions, onPress, onSuggestion, onSuggesti
 }
 
 const styles = StyleSheet.create({
-  card:   { padding: 14, borderWidth: 1, marginVertical: 8 },
+  card:   { padding: 14, borderWidth: 1, marginVertical: 8, marginHorizontal: 16 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   info:   { flex: 1 },

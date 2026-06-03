@@ -25,7 +25,7 @@ function setDevMode(value: boolean) {
 beforeEach(() => {
   jest.clearAllMocks();
   setDevMode(true);
-  delete process.env.EXPO_PUBLIC_CORE_API_URL;
+  delete process.env.EXPO_PUBLIC_API_URL;
 });
 
 describe('describeCoreApiTarget', () => {
@@ -38,7 +38,7 @@ describe('describeCoreApiTarget', () => {
 
 describe('ensureCoreReachable', () => {
   it('checks the Core readiness route without auth', async () => {
-    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://192.168.1.10:8000/';
+    process.env.EXPO_PUBLIC_API_URL = 'http://192.168.1.10:8000/';
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -48,12 +48,12 @@ describe('ensureCoreReachable', () => {
 
     await ensureCoreReachable({ force: true });
 
-    expect(mockFetch.mock.calls[0][0]).toBe('http://192.168.1.10:8000/health/ready');
+    expect(mockFetch.mock.calls[0][0]).toBe('http://192.168.1.10:8000/api/v1/_health');
     expect(mockFetch.mock.calls[0][1].headers.Authorization).toBeUndefined();
   });
 
   it('turns network failures into actionable dev guidance', async () => {
-    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://192.168.1.10:8000';
+    process.env.EXPO_PUBLIC_API_URL = 'http://192.168.1.10:8000';
     mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
     const err = await ensureCoreReachable({ force: true }).catch((error: unknown) => error);
@@ -61,7 +61,7 @@ describe('ensureCoreReachable', () => {
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ code: 'CORE_UNREACHABLE' });
     expect((err as Error).message).toContain('Core unreachable at http://192.168.1.10:8000');
-    expect((err as Error).message).toContain('start_BE.bat -Host 0.0.0.0');
+    expect((err as Error).message).toContain('start_FE.bat');
   });
 });
 

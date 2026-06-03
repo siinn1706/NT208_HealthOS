@@ -29,7 +29,7 @@ describe('planService', () => {
     await expect(planService.list({ status: 'active', perPage: 100 })).resolves.toEqual([plan]);
 
     expect(mockBuildQuery).toHaveBeenCalledWith({ status: 'active', per_page: 100, cursor: undefined });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/plans?status=active&per_page=100');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/plans?status=active&per_page=100');
   });
 
   it('finds an active category plan across Core pagination pages', async () => {
@@ -41,8 +41,8 @@ describe('planService', () => {
 
     await expect(planService.findActiveByCategory('risk_prevention')).resolves.toEqual(preventionPlan);
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/plans?status=active&per_page=100');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/plans?status=active&per_page=100&cursor=cursor-2');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/plans?status=active&per_page=100');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/plans?status=active&per_page=100&cursor=cursor-2');
   });
 
   it('creates a wellness plan through Core', async () => {
@@ -52,7 +52,7 @@ describe('planService', () => {
 
     await expect(planService.create(body)).resolves.toEqual(plan);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/plans', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/plans', {
       method: 'POST',
       json: body,
     });
@@ -65,7 +65,7 @@ describe('planService', () => {
 
     await expect(planService.update('plan/1', body)).resolves.toEqual(plan);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/plans/plan%2F1', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/plans/plan%2F1', {
       method: 'PATCH',
       json: body,
     });

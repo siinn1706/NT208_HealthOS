@@ -11,6 +11,7 @@ import { IconCalendar, IconClock } from '../../icons';
 import { ApiState } from '../api/api-state';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
+import { useTranslation } from 'react-i18next';
 import { BottomSheet } from '../primitives/sheet/bottom-sheet';
 import {
   formatAppointmentDateInput,
@@ -28,6 +29,7 @@ export function AppointmentRescheduleSheet({
   onClose: () => void;
 }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -72,7 +74,7 @@ export function AppointmentRescheduleSheet({
 
         <View style={styles.row}>
           <Input
-            label="Date"
+            label={i18n('forms.date')}
             value={date}
             onChangeText={setDate}
             placeholder="YYYY-MM-DD"
@@ -81,7 +83,7 @@ export function AppointmentRescheduleSheet({
             style={styles.field}
           />
           <Input
-            label="Time"
+            label={i18n('forms.time')}
             value={time}
             onChangeText={setTime}
             placeholder="HH:mm"
@@ -95,7 +97,7 @@ export function AppointmentRescheduleSheet({
         {error && <ApiState title="Unable to reschedule appointment" message={error} />}
 
         <View style={styles.actions}>
-          <Button label="Close" variant="ghost" onPress={onClose} disabled={saving} style={styles.actionBtn} />
+          <Button label={i18n('common.close')} variant="ghost" onPress={onClose} disabled={saving} style={styles.actionBtn} />
           <Button
             label={saving ? 'Saving...' : 'Save reschedule'}
             variant="solid"

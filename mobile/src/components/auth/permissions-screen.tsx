@@ -103,7 +103,7 @@ export function PermissionsScreen({ kind }: PermissionsScreenProps) {
       {/* Footer micro — between features and CTAs */}
       <View style={[styles.footerMicro, { marginBottom: 12 }]}>
         <Lock size={11} color={t.ink3} />
-        <Text style={[typography.caption, { color: t.ink3, fontSize: 12, marginLeft: 4 }]}>
+        <Text style={[typography.caption, { color: t.ink3, marginLeft: 4 }]}>
           {i18n('auth.permissionsPrivacyNote')}
         </Text>
       </View>

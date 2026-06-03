@@ -108,7 +108,7 @@ function RiskRefreshState() {
               { backgroundColor: step.done ? t.success + '18' : i === 1 ? t.brand + '18' : t.border + '40', borderRadius: 999 },
             ]}>
               {step.done
-                ? <Text style={{ fontSize: 12, color: t.success }}>✓</Text>
+                ? <Text style={[typography.caption, { color: t.success }]}>✓</Text>
                 : i === 1
                   ? <View style={[rfStyles.innerSpinner, { borderColor: t.brand }]} />
                   : <View style={[rfStyles.dot, { backgroundColor: t.ink4 }]} />

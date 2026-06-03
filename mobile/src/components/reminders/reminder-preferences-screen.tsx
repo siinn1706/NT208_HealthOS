@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { Screen } from '../layout/screen';
 import { ApiState } from '../api/api-state';
 import { Button } from '../primitives/button';
@@ -305,7 +306,7 @@ export function ReminderPreferencesScreen() {
           style={{ marginHorizontal: 20, marginTop: 8 }}
         />
         <Button
-          label="Reset to defaults"
+          label={i18n('reminders.resetToDefaults')}
           variant="text"
           onPress={handleReset}
           disabled={saving}
@@ -320,7 +321,7 @@ export function ReminderPreferencesScreen() {
 const s = StyleSheet.create({
   backBar:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
   backBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  backTitle: { fontSize: 17, fontWeight: '700' },
+  backTitle: { ...typography.h3 },
   resetBtn: { marginHorizontal: 20, marginTop: 6 },
   permissionCard: {
     borderRadius: 16,
@@ -330,7 +331,7 @@ const s = StyleSheet.create({
     padding: 14,
     gap: 8,
   },
-  permissionTitle: { fontSize: 13, fontWeight: '700' },
-  permissionValue: { fontSize: 12, lineHeight: 18 },
-  permissionAction: { alignSelf: 'flex-start' },
+  permissionTitle: { ...typography.bodyMed },
+  permissionValue: { ...typography.caption, lineHeight: 18 },
+  permissionAction: { alignSelf: 'flex-start' as const },
 });

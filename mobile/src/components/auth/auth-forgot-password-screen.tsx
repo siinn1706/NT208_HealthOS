@@ -12,11 +12,13 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input/input';
+import { useTranslation } from 'react-i18next';
 import { authService } from '../../api/services';
 import { useSession } from '../../auth/session-provider';
 
 export function AuthForgotPasswordScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const session = useSession();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -72,9 +74,9 @@ export function AuthForgotPasswordScreen() {
           </Text>
         </View>
         {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
-        <Input label="OTP code" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} placeholder="000000" />
-        <Input label="New password" value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Min 8 characters" />
-        <Button label="Reset password" size="lg" loading={loading} onPress={completeReset} style={{ marginTop: 8 }} />
+        <Input label={i18n('auth.otpCode')} value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} placeholder="000000" />
+        <Input label={i18n('auth.newPassword')} value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Min 8 characters" />
+        <Button label={i18n('auth.resetPassword')} size="lg" loading={loading} onPress={completeReset} style={{ marginTop: 8 }} />
       </KeyboardAvoidingView>
     );
   }
@@ -99,7 +101,7 @@ export function AuthForgotPasswordScreen() {
       {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
 
       <Input
-        label="Email"
+        label={i18n('auth.email')}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -109,7 +111,7 @@ export function AuthForgotPasswordScreen() {
         placeholder="you@example.com"
       />
 
-      <Button label="Send reset link" size="lg" loading={loading} onPress={requestReset} style={{ marginTop: 8 }} />
+      <Button label={i18n('auth.sendResetLink')} size="lg" loading={loading} onPress={requestReset} style={{ marginTop: 8 }} />
     </KeyboardAvoidingView>
   );
 }

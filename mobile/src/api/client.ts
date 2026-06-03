@@ -60,13 +60,18 @@ export function setRefreshHandler(handler: (() => Promise<boolean>) | null) {
 
 function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined): string {
   const normalized = (url ?? '').trim().replace(/\/+$/, '');
-  if (!normalized) {
+  if (kind === 'api' && !normalized) {
     throw new ApiError(
-      kind === 'api'
-        ? 'Missing EXPO_PUBLIC_CORE_API_URL for production build.'
-        : 'Missing EXPO_PUBLIC_CORE_WS_URL for production build.',
+      'Missing EXPO_PUBLIC_API_URL for production build.',
       0,
-      kind === 'api' ? 'CORE_API_URL_MISSING' : 'CORE_WS_URL_MISSING',
+      'CORE_API_URL_MISSING',
+    );
+  }
+  if (kind === 'ws' && !normalized) {
+    throw new ApiError(
+      'Missing EXPO_PUBLIC_CORE_WS_URL for production build.',
+      0,
+      'CORE_WS_URL_MISSING',
     );
   }
   let parsed: URL;
@@ -99,13 +104,13 @@ function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined):
 }
 
 export function getCoreApiBaseUrl(): string {
-  const extra = Constants.expoConfig?.extra as { coreApiUrl?: string } | undefined;
-  const configured = process.env.EXPO_PUBLIC_CORE_API_URL ?? extra?.coreApiUrl;
+  const extra = Constants.expoConfig?.extra as { apiUrl?: string; coreApiUrl?: string } | undefined;
+  const configured = process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl ?? extra?.coreApiUrl;
   if (!__DEV__) {
     return assertProductionSecureUrl('api', configured);
   }
-  const fallback = buildExpoDevLanBaseUrl('http', 8000)
-    ?? (Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000');
+  const fallback = buildExpoDevLanBaseUrl('http', 3000)
+    ?? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
   const url = (configured || fallback).replace(/\/+$/, '');
   return url;
 }

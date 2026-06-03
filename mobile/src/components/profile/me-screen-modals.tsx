@@ -22,6 +22,7 @@ import {
   themeSelectionToPreference,
   type ThemeSelection,
 } from '../../theme/theme-preference-mapping';
+import { useTranslation } from 'react-i18next';
 import {
   emergencyService,
   type AssistanceNeed,
@@ -114,7 +115,7 @@ export function AppearanceSheet({ visible, onClose }: { visible: boolean; onClos
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} />
+      <Pressable style={styles.overlay} onPress={onClose} testID="appearance-sheet-overlay" />
       <View style={[styles.sheet, { backgroundColor: t.card, borderTopLeftRadius: t.radius.xxl, borderTopRightRadius: t.radius.xxl }]}>
         <SheetHandle />
         <Text style={[typography.h3, { color: t.ink, margin: 20, marginBottom: 12 }]}>Appearance</Text>
@@ -153,6 +154,7 @@ export function EmergencySheet({
   onClose: () => void;
 }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const profileQuery = useApiQuery(queryKeys.emergencyProfile, () => emergencyService.profile(), { enabled: visible });
   const tokensQuery = useApiQuery(queryKeys.emergencyTokens, () => emergencyService.listTokens(), { enabled: visible });
   const logsQuery = useApiQuery(queryKeys.emergencyAccessLogs, () => emergencyService.accessLogs({ limit: 8 }), { enabled: visible });
@@ -312,19 +314,19 @@ export function EmergencySheet({
                 <Toggle value={draft.nkda_confirmed} onChange={(next) => setDraft({ ...draft, nkda_confirmed: next })} />
               </View>
               <Input
-                label="Preferred language"
+                label={i18n('profile.preferredLanguage')}
                 value={draft.preferred_language}
                 onChangeText={(text) => setDraft({ ...draft, preferred_language: text })}
                 placeholder="en"
               />
               <Input
-                label="Equipment notes"
+                label={i18n('profile.equipmentNotes')}
                 value={draft.equipment_notes}
                 onChangeText={(text) => setDraft({ ...draft, equipment_notes: text })}
                 placeholder="Wheelchair, oxygen support..."
               />
               <Input
-                label="Communication notes"
+                label={i18n('profile.communicationNotes')}
                 value={draft.communication_notes}
                 onChangeText={(text) => setDraft({ ...draft, communication_notes: text })}
                 placeholder="Preferred communication guidance..."
@@ -457,6 +459,7 @@ export function SignOutModal({
   onCancel: () => void;
 }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
       <View style={[styles.overlay, styles.centered]}>
@@ -469,7 +472,7 @@ export function SignOutModal({
             <Text style={[typography.caption, { color: t.danger, marginBottom: 12 }]}>{error}</Text>
           )}
           <View style={styles.dialogActions}>
-            <Button label="Cancel" variant="ghost" onPress={onCancel} style={styles.dialogBtn} />
+            <Button label={i18n('common.cancel')} variant="ghost" onPress={onCancel} style={styles.dialogBtn} />
             <Button
               label={loading ? 'Signing out…' : 'Sign out'}
               variant="solid"

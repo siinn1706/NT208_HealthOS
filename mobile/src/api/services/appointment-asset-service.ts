@@ -13,7 +13,7 @@ interface AssetListParams {
 }
 
 function appointmentAssetsPath(appointmentId: string) {
-  return `/v1/appointments/${encodeURIComponent(appointmentId)}/assets`;
+  return `/api/v1/appointments/${encodeURIComponent(appointmentId)}/assets`;
 }
 
 export const appointmentAssetService = {
@@ -28,14 +28,14 @@ export const appointmentAssetService = {
 
   async list(appointmentId: string, params: AssetListParams = {}) {
     const response = await apiRequest<DataResponse<AppointmentAsset[]>>(
-      `/v1/appointments/${encodeURIComponent(appointmentId)}/assets${buildQuery({ kind: params.kind })}`,
+      `/api/v1/appointments/${encodeURIComponent(appointmentId)}/assets${buildQuery({ kind: params.kind })}`,
     );
     return response.data;
   },
 
   async listUser(params: AssetListParams = {}) {
     const response = await apiRequest<DataResponse<AppointmentAsset[]>>(
-      `/v1/appointment-assets${buildQuery({ kind: params.kind, limit: params.limit })}`,
+      `/api/v1/appointment-assets${buildQuery({ kind: params.kind, limit: params.limit })}`,
     );
     return response.data;
   },

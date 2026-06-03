@@ -40,7 +40,7 @@ describe('mealService photo analysis', () => {
       logged_at: '2026-05-20T12:00:00.000Z',
     }, { idempotencyKey: 'idem-json-1' });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/meals', {
       method: 'POST',
       headers: { 'Idempotency-Key': 'idem-json-1' },
       json: {
@@ -78,7 +78,7 @@ describe('mealService photo analysis', () => {
       { name: 'Lunch', logged_at: '2026-05-20T12:00:00.000Z' },
       { fieldName: 'image', ...file },
     );
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/meals', {
       method: 'POST',
       body: form,
       headers: { 'Idempotency-Key': 'idem-multipart-1' },
@@ -102,7 +102,7 @@ describe('mealService photo analysis', () => {
       { name: 'Lunch' },
       { fieldName: 'image', ...file },
     );
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/analyze-photo', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/meals/analyze-photo', {
       method: 'POST',
       body: form,
       timeoutMs: 60000,
@@ -114,7 +114,7 @@ describe('mealService photo analysis', () => {
 
     await expect(mealService.analysisStatus('meal/1')).resolves.toEqual({ status: 'ready', job_id: 'job-1' });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/meal%2F1/analysis-status');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/meals/meal%2F1/analysis-status');
   });
 
   it('checks analysis status by job id', async () => {
@@ -122,7 +122,7 @@ describe('mealService photo analysis', () => {
 
     await expect(mealService.analysisStatusByJob('job/1')).resolves.toEqual({ status: 'processing', job_id: 'job/1' });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/analyze-photo/job%2F1');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/meals/analyze-photo/job%2F1');
   });
 
   it('deletes a meal through the Core delete contract', async () => {
@@ -130,7 +130,7 @@ describe('mealService photo analysis', () => {
 
     await expect(mealService.delete('meal/1')).resolves.toBeUndefined();
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/meals/meal%2F1', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/meals/meal%2F1', {
       method: 'DELETE',
     });
   });

@@ -20,29 +20,6 @@ jest.mock('../theme/useTheme', () => {
   return { useTheme: () => palettes.calm };
 });
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, params?: { count?: number; day?: number }) => {
-      const labels: Record<string, string> = {
-        'care.upcoming': 'Upcoming',
-        'care.past': 'Past',
-        'care.all': 'All',
-        'care.appointments': 'Appointments',
-        'care.join': 'Join',
-        'care.thisWeek': 'This week',
-        'care.createAppointment': 'Create appointment',
-        'care.bookAppointmentCta': 'Book appointment',
-        'care.noAppointments': 'No appointments',
-        'common.filter': 'Filter',
-      };
-      if (key === 'care.upcomingCount') return `${params?.count ?? 0} upcoming`;
-      if (key === 'care.pastCount') return `${params?.count ?? 0} past`;
-      if (key === 'care.dayN') return `Day ${params?.day}`;
-      return labels[key] ?? key;
-    },
-  }),
-}));
-
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),

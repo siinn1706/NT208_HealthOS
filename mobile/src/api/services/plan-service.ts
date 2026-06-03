@@ -50,7 +50,7 @@ export interface PlanCreateBody {
 export type PlanUpdateBody = Partial<PlanCreateBody>;
 
 async function listPlanPage(params: PlanListParams = {}) {
-  return apiRequest<PlanListResponse>(`/v1/plans${buildQuery({
+  return apiRequest<PlanListResponse>(`/api/v1/plans${buildQuery({
     status: params.status,
     per_page: params.perPage,
     cursor: params.cursor,
@@ -86,7 +86,7 @@ export const planService = {
   },
 
   async create(body: PlanCreateBody) {
-    const response = await apiRequest<PlanResponse>('/v1/plans', {
+    const response = await apiRequest<PlanResponse>('/api/v1/plans', {
       method: 'POST',
       json: body,
     });
@@ -94,7 +94,7 @@ export const planService = {
   },
 
   async update(planId: string, body: PlanUpdateBody) {
-    const response = await apiRequest<PlanResponse>(`/v1/plans/${encodeURIComponent(planId)}`, {
+    const response = await apiRequest<PlanResponse>(`/api/v1/plans/${encodeURIComponent(planId)}`, {
       method: 'PATCH',
       json: body,
     });

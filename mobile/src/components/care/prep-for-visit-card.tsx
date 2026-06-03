@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { IconSparkle } from '../../icons';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../primitives/button';
 
 interface PrepForVisitCardProps {
@@ -12,6 +13,7 @@ interface PrepForVisitCardProps {
 
 export function PrepForVisitCard({ doctorName, onPress }: PrepForVisitCardProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const subtitle = doctorName
     ? `AI-generated questions for ${doctorName}`
     : 'AI-generated questions for your next visit';
@@ -32,7 +34,7 @@ export function PrepForVisitCard({ doctorName, onPress }: PrepForVisitCardProps)
           </Text>
         </View>
       </View>
-      <Button label="View questions" variant="soft" onPress={onPress} style={styles.btn} />
+      <Button label={i18n('care.viewQuestions')} variant="soft" onPress={onPress} style={styles.btn} />
     </View>
   );
 }

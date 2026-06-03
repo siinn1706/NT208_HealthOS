@@ -527,4 +527,13 @@ describe('HealthProfileScreen', () => {
 
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
+
+  it('renders no raw i18n keys — profile namespace bug regression', () => {
+    const { toJSON } = render(<HealthProfileScreen />);
+    const tree = JSON.stringify(toJSON());
+    // If any profile.* key appears literally in the output, the namespace is missing from locales
+    expect(tree).not.toMatch(/profile\.\w+/);
+    // Screen title must resolve to the translated string, not the raw key
+    expect(tree).toContain('Health profile');
+  });
 });

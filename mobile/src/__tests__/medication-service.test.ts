@@ -28,11 +28,11 @@ describe('medicationService', () => {
     await medicationService.detail('med/1');
     await medicationService.adherence('med/1', '7d');
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/medications?status=all');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/medications/today?tzid=Asia%2FHo_Chi_Minh');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/v1/medications/history?from=2026-05-01T00%3A00%3A00Z&to=2026-06-01T00%3A00%3A00Z');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/v1/medications/med%2F1');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(5, '/v1/medications/med%2F1/adherence?period=7d');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/medications?status=all');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/medications/today?tzid=Asia%2FHo_Chi_Minh');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/api/v1/medications/history?from=2026-05-01T00%3A00%3A00Z&to=2026-06-01T00%3A00%3A00Z');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/api/v1/medications/med%2F1');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(5, '/api/v1/medications/med%2F1/adherence?period=7d');
   });
 
   it('sends medication create and update bodies directly to Core', async () => {
@@ -49,11 +49,11 @@ describe('medicationService', () => {
     await medicationService.create(body);
     await medicationService.update('med/1', { notes: 'with food' });
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/medications', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/medications', {
       method: 'POST',
       json: body,
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/medications/med%2F1', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/medications/med%2F1', {
       method: 'PATCH',
       json: { notes: 'with food' },
     });
@@ -67,16 +67,16 @@ describe('medicationService', () => {
     await medicationService.archive('med/1');
     await medicationService.refill('med/1', 12);
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/medications/med%2F1/pause', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/medications/med%2F1/pause', {
       method: 'POST',
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/medications/med%2F1/resume', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/medications/med%2F1/resume', {
       method: 'POST',
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/v1/medications/med%2F1', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/api/v1/medications/med%2F1', {
       method: 'DELETE',
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/v1/medications/med%2F1/refill', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/api/v1/medications/med%2F1/refill', {
       method: 'POST',
       json: { supply_units: 12 },
     });
@@ -90,7 +90,7 @@ describe('medicationService', () => {
       pause_reason: 'travel',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/medications/med%2F1/pause', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/medications/med%2F1/pause', {
       method: 'POST',
       json: {
         pause_until: '2026-06-04T00:00:00.000Z',
@@ -112,7 +112,7 @@ describe('medicationService', () => {
       medicine_indices: [0, 2],
     })).resolves.toEqual(importResult);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/medications/import/apt%2F1', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/medications/import/apt%2F1', {
       method: 'POST',
       json: {
         default_dose_times: ['08:00'],
@@ -128,11 +128,11 @@ describe('medicationService', () => {
     await medicationService.markDoseDone('rem/1', 'occ/1');
     await medicationService.skipDose('rem/1', 'occ/1');
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/reminders/rem%2F1/done', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/reminders/rem%2F1/done', {
       method: 'POST',
       json: { occurrence_id: 'occ/1' },
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/reminders/rem%2F1/skip', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/reminders/rem%2F1/skip', {
       method: 'POST',
       json: { occurrence_id: 'occ/1' },
     });

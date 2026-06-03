@@ -16,7 +16,7 @@ describe('riskService', () => {
 
     await expect(riskService.summary()).resolves.toEqual({ risks: [] });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/health/risk-predictions');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/health/risk-predictions');
   });
 
   it('refreshes risk predictions through POST without faking success locally', async () => {
@@ -26,7 +26,7 @@ describe('riskService', () => {
       generatedAt: '2026-05-31T00:00:00Z',
     });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/health/risk-predictions', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/health/risk-predictions', {
       method: 'POST',
       timeoutMs: 60000,
     });

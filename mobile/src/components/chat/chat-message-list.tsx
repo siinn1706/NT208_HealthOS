@@ -107,7 +107,7 @@ export function ChatMessageList({
                 {olderError}
               </Text>
             )}
-            <DateChip label="Today" />
+            <DateChip label={i18n('common.today')} />
           </View>
         )}
         contentContainerStyle={styles.messages}

@@ -92,7 +92,7 @@ describe('reminderService', () => {
 
     await expect(reminderService.list('medicine')).resolves.toEqual([]);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/reminders?type=medicine');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/reminders?type=medicine');
   });
 
   it('creates reminders with repeat and weekday contract fields', async () => {
@@ -109,7 +109,7 @@ describe('reminderService', () => {
 
     await reminderService.create(body);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/reminders', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/reminders', {
       method: 'POST',
       json: body,
     });
@@ -125,7 +125,7 @@ describe('reminderService', () => {
     });
 
     expect(mockApiRequest).toHaveBeenCalledWith(
-      '/v1/reminders/occurrences?today=true&tzid=Asia%2FHo_Chi_Minh&status=pending%2Cdone',
+      '/api/v1/reminders/occurrences?today=true&tzid=Asia%2FHo_Chi_Minh&status=pending%2Cdone',
     );
   });
 
@@ -136,15 +136,15 @@ describe('reminderService', () => {
     await reminderService.skip('rem/1', 'occ/1');
     await reminderService.snooze('rem/1', { minutes: 15, occurrence_id: 'occ/1' });
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/reminders/rem%2F1/done', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/reminders/rem%2F1/done', {
       method: 'POST',
       json: { occurrence_id: 'occ/1' },
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/reminders/rem%2F1/skip', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/reminders/rem%2F1/skip', {
       method: 'POST',
       json: { occurrence_id: 'occ/1' },
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/v1/reminders/rem%2F1/snooze', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/api/v1/reminders/rem%2F1/snooze', {
       method: 'POST',
       json: { minutes: 15, occurrence_id: 'occ/1' },
     });
@@ -156,11 +156,11 @@ describe('reminderService', () => {
     await reminderService.updateDone('rem/1', true);
     await reminderService.delete('rem/1');
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/reminders/rem%2F1', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/reminders/rem%2F1', {
       method: 'PATCH',
       json: { done: true },
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/reminders/rem%2F1', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/reminders/rem%2F1', {
       method: 'DELETE',
     });
   });

@@ -19,11 +19,11 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('chatRealtimeService', () => {
   it('requests a short-lived websocket ticket', async () => {
-    mockApiRequest.mockResolvedValueOnce({ data: { ws_ticket: 'ticket-1', expires_in_seconds: 120 } });
+    mockApiRequest.mockResolvedValueOnce({ data: { token: 'ticket-1', expires_in_seconds: 120 } });
 
-    await expect(chatRealtimeService.wsTicket()).resolves.toEqual({ ws_ticket: 'ticket-1', expires_in_seconds: 120 });
+    await expect(chatRealtimeService.wsTicket()).resolves.toEqual({ token: 'ticket-1', expires_in_seconds: 120 });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/auth/ws-ticket');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/ws-token');
   });
 
   it('builds /ws URL without token in query string', () => {

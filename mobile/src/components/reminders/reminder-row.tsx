@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
+import { typography, tabularNums } from '../../theme/typography';
 import { IconCheck, IconBell, IconCalendar, IconActivity, IconHeart, IconMore } from '../../icons';
 
 type ReminderCategory = 'med' | 'appt' | 'vitals' | 'activity' | 'goal' | 'care';
@@ -161,14 +162,14 @@ const styles = StyleSheet.create({
   },
   content:     { flex: 1, minWidth: 0 },
   titleRow:    { flexDirection: 'row', alignItems: 'baseline', minWidth: 0, flexShrink: 1 },
-  titleText:   { fontSize: 13, fontWeight: '700', color: '#0F2743', flexShrink: 1 },
-  timeInline:  { fontSize: 12, fontWeight: '500', flexShrink: 0 },
-  subtitleText:{ fontSize: 11, marginTop: 2 },
+  titleText:   { ...typography.bodyMed, flexShrink: 1 },
+  timeInline:  { ...typography.caption, flexShrink: 0 },
+  subtitleText:{ ...typography.micro, marginTop: 2 },
   rightSlot:   { marginLeft: 10, alignItems: 'flex-end', flexShrink: 0 },
   actionGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   actionPill:  { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100, minWidth: 60, alignItems: 'center' },
   secondaryPill: { borderWidth: 1, backgroundColor: 'transparent', minWidth: 0, paddingHorizontal: 10 },
-  actionPillText: { fontSize: 12, fontWeight: '700' },
+  actionPillText: { ...typography.caption, fontWeight: '700' as const },
   doneChip:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 100 },
-  doneChipText:{ fontSize: 10, fontWeight: '600', marginLeft: 3 },
+  doneChipText:{ ...typography.micro, fontWeight: '600' as const, marginLeft: 3 },
 });

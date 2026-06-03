@@ -14,7 +14,7 @@ describe('preferenceService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: pref } as never);
 
     await expect(preferenceService.me()).resolves.toEqual(pref);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/preferences/me');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/preferences/me');
   });
 
   it('update() patches user preferences', async () => {
@@ -22,7 +22,7 @@ describe('preferenceService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: updated } as never);
 
     await expect(preferenceService.update({ theme_mode: 'dark' })).resolves.toEqual(updated);
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/preferences/me', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/preferences/me', {
       method: 'PATCH',
       json: { theme_mode: 'dark' },
     });

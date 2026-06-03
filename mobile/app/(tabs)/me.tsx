@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { ErrorBoundary } from '../../src/components/error/error-boundary';
 import { Screen } from '../../src/components/layout/screen';
 import { TopBar } from '../../src/components/layout/top-bar';
 import { IconButton } from '../../src/components/primitives/icon-button';
@@ -23,6 +24,14 @@ import { useSession } from '../../src/auth/session-provider';
 import { profileMenuGroups, toIdentity } from '../../src/api/viewModels';
 
 export default function MeScreen() {
+  return (
+    <ErrorBoundary>
+      <MeScreenInner />
+    </ErrorBoundary>
+  );
+}
+
+function MeScreenInner() {
   const t = useTheme();
   const router = useRouter();
   const session = useSession();

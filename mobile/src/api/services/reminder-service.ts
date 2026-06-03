@@ -76,17 +76,17 @@ export function resolveReminderActionError(
 
 export const reminderService = {
   async list(type?: ReminderType) {
-    const response = await apiRequest<DataResponse<Reminder[]>>(`/v1/reminders${buildQuery({ type })}`);
+    const response = await apiRequest<DataResponse<Reminder[]>>(`/api/v1/reminders${buildQuery({ type })}`);
     return response.data;
   },
 
   async upcoming() {
-    const response = await apiRequest<DataResponse<Reminder[]>>('/v1/reminders/upcoming');
+    const response = await apiRequest<DataResponse<Reminder[]>>('/api/v1/reminders/upcoming');
     return response.data;
   },
 
   async create(body: ReminderCreateBody) {
-    const response = await apiRequest<DataResponse<Reminder>>('/v1/reminders', {
+    const response = await apiRequest<DataResponse<Reminder>>('/api/v1/reminders', {
       method: 'POST',
       json: body,
     });
@@ -94,7 +94,7 @@ export const reminderService = {
   },
 
   async updateDone(reminderId: string, done: boolean) {
-    const response = await apiRequest<DataResponse<Reminder>>(`/v1/reminders/${encodeURIComponent(reminderId)}`, {
+    const response = await apiRequest<DataResponse<Reminder>>(`/api/v1/reminders/${encodeURIComponent(reminderId)}`, {
       method: 'PATCH',
       json: { done },
     });
@@ -102,11 +102,11 @@ export const reminderService = {
   },
 
   async delete(reminderId: string) {
-    return apiRequest<void>(`/v1/reminders/${encodeURIComponent(reminderId)}`, { method: 'DELETE' });
+    return apiRequest<void>(`/api/v1/reminders/${encodeURIComponent(reminderId)}`, { method: 'DELETE' });
   },
 
   async occurrences(params: { from?: string; to?: string; today?: boolean; tzid?: string; status?: string } = {}) {
-    const response = await apiRequest<DataResponse<ReminderOccurrence[]>>(`/v1/reminders/occurrences${buildQuery({
+    const response = await apiRequest<DataResponse<ReminderOccurrence[]>>(`/api/v1/reminders/occurrences${buildQuery({
       from: params.from,
       to: params.to,
       today: params.today,
@@ -117,7 +117,7 @@ export const reminderService = {
   },
 
   async markDone(reminderId: string, occurrence_id?: string) {
-    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/v1/reminders/${encodeURIComponent(reminderId)}/done`, {
+    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/api/v1/reminders/${encodeURIComponent(reminderId)}/done`, {
       method: 'POST',
       json: occurrence_id ? { occurrence_id } : {},
     });
@@ -125,7 +125,7 @@ export const reminderService = {
   },
 
   async skip(reminderId: string, occurrence_id?: string) {
-    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/v1/reminders/${encodeURIComponent(reminderId)}/skip`, {
+    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/api/v1/reminders/${encodeURIComponent(reminderId)}/skip`, {
       method: 'POST',
       json: occurrence_id ? { occurrence_id } : {},
     });
@@ -133,7 +133,7 @@ export const reminderService = {
   },
 
   async snooze(reminderId: string, body: { until?: string; minutes?: number; occurrence_id?: string }) {
-    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/v1/reminders/${encodeURIComponent(reminderId)}/snooze`, {
+    const response = await apiRequest<DataResponse<ReminderOccurrence>>(`/api/v1/reminders/${encodeURIComponent(reminderId)}/snooze`, {
       method: 'POST',
       json: body,
     });

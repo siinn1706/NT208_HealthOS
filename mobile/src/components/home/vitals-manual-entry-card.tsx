@@ -8,6 +8,7 @@ import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
+import { useTranslation } from 'react-i18next';
 import { healthMetricService, type HealthMetricCreateBody } from '../../api/services/health-metric-service';
 
 type DraftMetric = Pick<HealthMetricCreateBody, 'metric_type' | 'unit' | 'value'>;
@@ -54,6 +55,7 @@ function buildDrafts(heartRateText: string, systolicText: string, diastolicText:
 
 export function VitalsManualEntryCard() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [heartRate, setHeartRate] = useState('');
   const [systolic, setSystolic] = useState('');
   const [diastolic, setDiastolic] = useState('');
@@ -98,7 +100,7 @@ export function VitalsManualEntryCard() {
         <Text style={[typography.bodyMed, { color: t.ink }]}>Manual vitals</Text>
       </View>
       <Input
-        label="Heart rate"
+        label={i18n('home.heartRate')}
         value={heartRate}
         onChangeText={setHeartRate}
         keyboardType="numeric"
@@ -108,7 +110,7 @@ export function VitalsManualEntryCard() {
       />
       <View style={styles.bpRow}>
         <Input
-          label="Systolic"
+          label={i18n('home.systolic')}
           value={systolic}
           onChangeText={setSystolic}
           keyboardType="numeric"
@@ -118,7 +120,7 @@ export function VitalsManualEntryCard() {
           style={styles.bpInput}
         />
         <Input
-          label="Diastolic"
+          label={i18n('home.diastolic')}
           value={diastolic}
           onChangeText={setDiastolic}
           keyboardType="numeric"

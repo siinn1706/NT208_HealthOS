@@ -30,7 +30,7 @@ describe('notificationService', () => {
     })).resolves.toBe(listResponse);
 
     expect(mockApiRequest).toHaveBeenCalledWith(
-      '/v1/notifications?cursor=next&per_page=50&only_unread=true',
+      '/api/v1/notifications?cursor=next&per_page=50&only_unread=true',
     );
   });
 
@@ -39,7 +39,7 @@ describe('notificationService', () => {
 
     await expect(notificationService.unreadCount()).resolves.toBe(3);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/notifications/unread-count');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/notifications/unread-count');
   });
 
   it('marks one notification read through an encoded id', async () => {
@@ -48,7 +48,7 @@ describe('notificationService', () => {
 
     await expect(notificationService.markRead('notif/1')).resolves.toBe(item);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/notifications/notif%2F1/read', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/notifications/notif%2F1/read', {
       method: 'POST',
     });
   });
@@ -58,7 +58,7 @@ describe('notificationService', () => {
 
     await expect(notificationService.markAllRead()).resolves.toBe(4);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/notifications/read-all', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/notifications/read-all', {
       method: 'POST',
     });
   });
@@ -77,8 +77,8 @@ describe('notificationService', () => {
     await expect(notificationService.preferences()).resolves.toBe(preferences);
     await expect(notificationService.updatePreferences({ enabled: false })).resolves.toBe(preferences);
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/notifications/preferences');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/notifications/preferences', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/notifications/preferences');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/notifications/preferences', {
       method: 'PATCH',
       json: { enabled: false },
     });

@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 import Animated, {
   useSharedValue,
   withTiming,
@@ -9,19 +8,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-
-function useIsOffline(): boolean {
-  const [offline, setOffline] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      setOffline(!(state.isConnected && state.isInternetReachable !== false));
-    });
-    return () => unsubscribe();
-  }, []);
-
-  return offline;
-}
+import { useIsOffline } from '../../hooks/use-network-status';
 
 export function OfflineBanner() {
   const t = useTheme();

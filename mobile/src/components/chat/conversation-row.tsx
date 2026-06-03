@@ -51,5 +51,5 @@ const styles = StyleSheet.create({
   mid:      { flex: 1 },
   right:    { alignItems: 'flex-end', gap: 6 },
   badge:    { minWidth: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  badgeText:{ color: '#fff', fontSize: 10, fontWeight: '700' },
+  badgeText:{ ...typography.micro, color: '#fff', fontWeight: '700' as const },
 });

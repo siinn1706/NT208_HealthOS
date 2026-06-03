@@ -119,12 +119,12 @@ export interface EmergencyShareTokenWithSecret {
 
 export const emergencyService = {
   async profile() {
-    const response = await apiRequest<DataResponse<EmergencyProfileOwnerView>>('/v1/users/me/emergency-profile');
+    const response = await apiRequest<DataResponse<EmergencyProfileOwnerView>>('/api/v1/users/me/emergency-profile');
     return response.data;
   },
 
   async updateProfile(body: EmergencyProfileUpdateBody) {
-    const response = await apiRequest<DataResponse<EmergencyProfileOwnerView>>('/v1/users/me/emergency-profile', {
+    const response = await apiRequest<DataResponse<EmergencyProfileOwnerView>>('/api/v1/users/me/emergency-profile', {
       method: 'PATCH',
       json: body,
     });
@@ -132,7 +132,7 @@ export const emergencyService = {
   },
 
   async createToken(body: EmergencyShareTokenCreateBody) {
-    const response = await apiRequest<DataResponse<EmergencyShareTokenWithSecret>>('/v1/users/me/emergency-profile/tokens', {
+    const response = await apiRequest<DataResponse<EmergencyShareTokenWithSecret>>('/api/v1/users/me/emergency-profile/tokens', {
       method: 'POST',
       json: body,
     });
@@ -140,26 +140,26 @@ export const emergencyService = {
   },
 
   async listTokens() {
-    const response = await apiRequest<DataResponse<EmergencyShareToken[]>>('/v1/users/me/emergency-profile/tokens');
+    const response = await apiRequest<DataResponse<EmergencyShareToken[]>>('/api/v1/users/me/emergency-profile/tokens');
     return response.data;
   },
 
   async revokeToken(tokenId: string) {
-    const response = await apiRequest<DataResponse<EmergencyShareToken[]>>(`/v1/users/me/emergency-profile/tokens/${encodeURIComponent(tokenId)}`, {
+    const response = await apiRequest<DataResponse<EmergencyShareToken[]>>(`/api/v1/users/me/emergency-profile/tokens/${encodeURIComponent(tokenId)}`, {
       method: 'DELETE',
     });
     return response.data;
   },
 
   async revokeAllTokens() {
-    const response = await apiRequest<DataResponse<EmergencyShareToken[]>>('/v1/users/me/emergency-profile/tokens/revoke-all', {
+    const response = await apiRequest<DataResponse<EmergencyShareToken[]>>('/api/v1/users/me/emergency-profile/tokens/revoke-all', {
       method: 'POST',
     });
     return response.data;
   },
 
   async accessLogs(params: { limit?: number; token_id?: string } = {}) {
-    const response = await apiRequest<DataResponse<EmergencyAccessLog[]>>(`/v1/users/me/emergency-profile/access-logs${buildQuery({
+    const response = await apiRequest<DataResponse<EmergencyAccessLog[]>>(`/api/v1/users/me/emergency-profile/access-logs${buildQuery({
       limit: params.limit,
       token_id: params.token_id,
     })}`);

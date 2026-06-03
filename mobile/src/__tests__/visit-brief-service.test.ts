@@ -55,7 +55,7 @@ describe('visitBriefService', () => {
     await expect(visitBriefService.list({ status: 'draft', page: 2, perPage: 25 })).resolves.toHaveLength(1);
 
     expect(mockBuildQuery).toHaveBeenCalledWith({ status: 'draft', page: 2, per_page: 25 });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/visit-briefs?status=draft&page=2&per_page=25');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/visit-briefs?status=draft&page=2&per_page=25');
   });
 
   it('creates an appointment-attached draft through Core', async () => {
@@ -65,7 +65,7 @@ describe('visitBriefService', () => {
 
     await expect(visitBriefService.create(body)).resolves.toEqual(created);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/visit-briefs', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/visit-briefs', {
       method: 'POST',
       json: body,
     });
@@ -88,10 +88,10 @@ describe('visitBriefService', () => {
       id: 'brief-2',
     });
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/visit-briefs?page=1&per_page=1');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/visit-briefs/brief-1');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/v1/visit-briefs?page=2&per_page=1');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/v1/visit-briefs/brief-2');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/visit-briefs?page=1&per_page=1');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/visit-briefs/brief-1');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/api/v1/visit-briefs?page=2&per_page=1');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(4, '/api/v1/visit-briefs/brief-2');
   });
 
   it('updates questions and finalizes through the existing visit-brief endpoints', async () => {
@@ -112,12 +112,12 @@ describe('visitBriefService', () => {
     await expect(visitBriefService.replaceQuestions('brief-1', [question])).resolves.toMatchObject({ id: 'set-1' });
     await expect(visitBriefService.finalize('brief-1')).resolves.toMatchObject({ status: 'finalized' });
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/v1/visit-briefs/brief-1/questions/suggested?visit_type=gp_routine');
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/v1/visit-briefs/brief-1/questions', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/visit-briefs/brief-1/questions/suggested?visit_type=gp_routine');
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/visit-briefs/brief-1/questions', {
       method: 'PATCH',
       json: { questions: [question] },
     });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/v1/visit-briefs/brief-1/finalize', {
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, '/api/v1/visit-briefs/brief-1/finalize', {
       method: 'POST',
     });
   });

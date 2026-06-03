@@ -5,7 +5,7 @@ import { buildAuthFrame, isAuthRejected } from '../../lib/ws-auth-protocol';
 export { buildAuthFrame, isAuthRejected };
 
 export interface WsTicket {
-  ws_ticket: string;
+  token: string;
   expires_in_seconds: number;
 }
 
@@ -109,7 +109,7 @@ export function getAiLifecycleEventFromChatEvent(event: ChatWsEvent): AiLifecycl
 
 export const chatRealtimeService = {
   async wsTicket() {
-    const response = await apiRequest<DataResponse<WsTicket>>('/v1/auth/ws-ticket');
+    const response = await apiRequest<DataResponse<WsTicket>>('/api/v1/auth/ws-token');
     return response.data;
   },
 
@@ -117,7 +117,7 @@ export const chatRealtimeService = {
     const ticket = await this.wsTicket();
     const ws = new WebSocket(buildChatWsUrl());
     // Auth ticket sent as first post-connect frame — never in URL
-    ws.addEventListener('open', () => ws.send(buildAuthFrame(ticket.ws_ticket)));
+    ws.addEventListener('open', () => ws.send(buildAuthFrame(ticket.token)));
     return ws;
   },
 };

@@ -7,6 +7,7 @@ import { Card } from '../primitives/card';
 import { Input } from '../primitives/input/input';
 import { ApiState } from '../api/api-state';
 import { authService } from '../../api/services/auth-service';
+import { useTranslation } from 'react-i18next';
 
 interface PasswordResetPanelProps {
   email?: string | null;
@@ -16,6 +17,7 @@ interface PasswordResetPanelProps {
 
 export function PasswordResetPanel({ email, onClose, onSessionRefresh }: PasswordResetPanelProps) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -81,7 +83,7 @@ export function PasswordResetPanel({ email, onClose, onSessionRefresh }: Passwor
           <Text style={[typography.bodyMed, { color: t.ink }]}>Password reset</Text>
           <Text style={[typography.micro, { color: t.ink3 }]}>Verify by email before setting a new password.</Text>
         </View>
-        <Button label="Close" variant="text" size="sm" onPress={onClose} />
+        <Button label={i18n('common.close')} variant="text" size="sm" onPress={onClose} />
       </View>
 
       {!email && <ApiState title="Password reset unavailable" message="Your session does not include an email address." />}
@@ -97,11 +99,11 @@ export function PasswordResetPanel({ email, onClose, onSessionRefresh }: Passwor
         />
       ) : (
         <View style={styles.form}>
-          <Input label="OTP code" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} placeholder="000000" />
-          <Input label="New password" value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Min 8 characters" />
-          <Input label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" />
+          <Input label={i18n('auth.otpCode')} value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} placeholder="000000" />
+          <Input label={i18n('auth.newPassword')} value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Min 8 characters" />
+          <Input label={i18n('auth.confirmPassword')} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" />
           <Button label={loading ? 'Resetting...' : 'Reset password'} variant="solid" onPress={resetPassword} disabled={loading} />
-          <Button label="Send new code" variant="ghost" onPress={sendResetCode} disabled={loading} />
+          <Button label={i18n('auth.sendNewCode')} variant="ghost" onPress={sendResetCode} disabled={loading} />
         </View>
       )}
     </Card>

@@ -65,7 +65,7 @@ describe('AuthOtpScreen', () => {
     ['1', '2', '3', '4', '5', '6'].forEach((digit, index) => {
       fireEvent.changeText(inputs[index], digit);
     });
-    fireEvent.press(getByText('Verify'));
+    fireEvent.press(getByText('Verify code'));
 
     await waitFor(() => {
       expect(mockAuthService.verifyOtp).toHaveBeenCalledWith({
@@ -87,7 +87,7 @@ describe('AuthOtpScreen', () => {
     ['1', '2', '3', '4', '5', '6'].forEach((digit, index) => {
       fireEvent.changeText(inputs[index], digit);
     });
-    fireEvent.press(getByText('Verify'));
+    fireEvent.press(getByText('Verify code'));
 
     await waitFor(() => {
       expect(mockClearSession).toHaveBeenCalledTimes(1);

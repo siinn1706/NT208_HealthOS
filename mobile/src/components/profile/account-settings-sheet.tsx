@@ -10,6 +10,7 @@ import { accountExportService } from '../../api/services/account-export-service'
 import { safeOpenUrl } from '../../utils/safe-url';
 import { AccountDeletionCard } from './account-deletion-card';
 import type { AccountDataExportRequest } from '../../../../shared/api-contracts';
+import { useTranslation } from 'react-i18next';
 
 const HANDLE_OFFSET = 12;
 
@@ -29,6 +30,7 @@ function formatBytes(bytes: number | null) {
 
 export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [exportRequest, setExportRequest] = useState<AccountDataExportRequest | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [statusText, setStatusText] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
                 disabled={busyAction !== null}
               />
               <Button
-                label="Refresh"
+                label={i18n('common.retry')}
                 variant="ghost"
                 icon={<IconRefresh size={16} color={t.ink} />}
                 onPress={refreshExportStatus}

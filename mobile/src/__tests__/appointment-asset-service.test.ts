@@ -43,7 +43,7 @@ describe('appointmentAssetService', () => {
       { kind: 'attachment' },
       { fieldName: 'file', ...file },
     );
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt%2F1/assets', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt%2F1/assets', {
       method: 'POST',
       body: form,
     });
@@ -55,7 +55,7 @@ describe('appointmentAssetService', () => {
 
     await expect(appointmentAssetService.list('apt-1', { kind: 'lab_report' })).resolves.toEqual([]);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/assets?kind=lab_report');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt-1/assets?kind=lab_report');
   });
 
   it('lists current user assets by kind', async () => {
@@ -63,7 +63,7 @@ describe('appointmentAssetService', () => {
 
     await appointmentAssetService.listUser({ kind: 'lab_report', limit: 50 });
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointment-assets?kind=lab_report&limit=50');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointment-assets?kind=lab_report&limit=50');
   });
 
   it('mints signed urls per asset', async () => {
@@ -72,7 +72,7 @@ describe('appointmentAssetService', () => {
 
     await expect(appointmentAssetService.signedUrl('apt-1', 'asset-1')).resolves.toEqual(url);
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/assets/asset-1/url');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt-1/assets/asset-1/url');
   });
 
   it('deletes an appointment asset', async () => {
@@ -80,7 +80,7 @@ describe('appointmentAssetService', () => {
 
     await appointmentAssetService.remove('apt-1', 'asset-1');
 
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/appointments/apt-1/assets/asset-1', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/appointments/apt-1/assets/asset-1', {
       method: 'DELETE',
     });
   });

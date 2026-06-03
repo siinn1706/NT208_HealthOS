@@ -24,21 +24,21 @@ describe('securityService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { enabled: true } } as never);
 
     await expect(securityService.mfaStatus()).resolves.toEqual({ enabled: true });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/mfa/status');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/mfa/status');
   });
 
   it('starts MFA setup', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: { secret: 'abc', qr_code: '123', recovery_codes: ['x'] } } as never);
 
     await expect(securityService.mfaSetup()).resolves.toEqual({ secret: 'abc', qr_code: '123', recovery_codes: ['x'] });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/mfa/setup', { method: 'POST' });
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/mfa/setup', { method: 'POST' });
   });
 
   it('verifies setup code', async () => {
     mockApiRequest.mockResolvedValueOnce({ data: { enabled: true } } as never);
 
     await expect(securityService.verifyMfaSetup('123456')).resolves.toEqual({ enabled: true });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/mfa/verify-setup', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/mfa/verify-setup', {
       method: 'POST',
       json: { code: '123456' },
     });
@@ -48,7 +48,7 @@ describe('securityService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { verified: true, method: 'totp' } } as never);
 
     await expect(securityService.verifyMfa('123456')).resolves.toEqual({ verified: true, method: 'totp' });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/mfa/verify', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/mfa/verify', {
       method: 'POST',
       json: { code: '123456' },
     });
@@ -58,7 +58,7 @@ describe('securityService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { enabled: false } } as never);
 
     await expect(securityService.disableMfa('654321')).resolves.toEqual({ enabled: false });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/mfa/disable', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/mfa/disable', {
       method: 'POST',
       json: { code: '654321' },
     });
@@ -68,7 +68,7 @@ describe('securityService', () => {
     mockApiRequest.mockResolvedValueOnce({ data: { enabled: true, recovery_codes: ['A', 'B'] } } as never);
 
     await expect(securityService.regenerateRecoveryCodes('654321')).resolves.toEqual({ enabled: true, recovery_codes: ['A', 'B'] });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/mfa/regenerate-recovery-codes', {
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/mfa/regenerate-recovery-codes', {
       method: 'POST',
       json: { code: '654321' },
     });
@@ -81,6 +81,6 @@ describe('securityService', () => {
       { id: 'log-1', event_type: 'mfa_enabled' },
     ]);
     expect(mockBuildQuery).toHaveBeenCalledWith({ event_type: 'mfa_enabled', limit: 10, offset: 0 });
-    expect(mockApiRequest).toHaveBeenCalledWith('/v1/security-logs/?event_type=mfa_enabled&limit=10&offset=0');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/security-logs/?event_type=mfa_enabled&limit=10&offset=0');
   });
 });

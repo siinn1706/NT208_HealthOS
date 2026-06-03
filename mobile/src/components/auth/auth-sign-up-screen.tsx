@@ -15,10 +15,12 @@ import { Input } from '../primitives/input/input';
 import { Checkbox } from '../primitives/input/checkbox';
 import { ProgressBar } from '../primitives/progress-bar';
 import { authService } from '../../api/services';
+import { useTranslation } from 'react-i18next';
 import { setPendingSignup } from '../../auth/pending-signup';
 
 export function AuthSignUpScreen() {
   const t = useTheme();
+  const { t: i18n } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,10 +77,10 @@ export function AuthSignUpScreen() {
       {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
 
       <View style={styles.fieldGroup}>
-        <Input label="Full name" value={name} onChangeText={setName} autoComplete="name" textContentType="name" placeholder="Jane Doe" />
-        <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" placeholder="you@example.com" />
+        <Input label={i18n('auth.fullName')} value={name} onChangeText={setName} autoComplete="name" textContentType="name" placeholder="Jane Doe" />
+        <Input label={i18n('auth.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" placeholder="you@example.com" />
         <Input
-          label="Password"
+          label={i18n('auth.password')}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -100,7 +102,7 @@ export function AuthSignUpScreen() {
         </Text>
       </TouchableOpacity>
 
-      <Button label="Continue" size="lg" loading={loading} onPress={handleContinue} style={styles.mainBtn} />
+      <Button label={i18n('common.continue')} size="lg" loading={loading} onPress={handleContinue} style={styles.mainBtn} />
     </View>
     </KeyboardAvoidingView>
   );

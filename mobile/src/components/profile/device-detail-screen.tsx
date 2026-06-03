@@ -61,7 +61,7 @@ function SyncStatusRow({ state }: { state: SyncState }) {
   return (
     <View style={[styles.syncRow, { backgroundColor: c.bg }]}>
       <View style={[styles.syncDot, { backgroundColor: c.color }]} />
-      <Text style={[typography.bodyMed, { color: c.color, fontWeight: '700', fontSize: 13 }]}>{c.label}</Text>
+      <Text style={[typography.bodyMed, { color: c.color, fontWeight: '700' }]}>{c.label}</Text>
     </View>
   );
 }

@@ -139,7 +139,7 @@ export function AppointmentDetailScreen() {
                 />
               ) : (
                 <View style={[s.joinBtn, s.videoUnavailable]}>
-                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
+                  <Text style={[typography.caption, { color: 'rgba(255,255,255,0.65)' }]}>
                     {isVideoEligible
                       ? i18n('care.videoVisitLinkUnavailableForAppointment')
                       : i18n('care.videoVisitUnavailableForAppointment')}
@@ -304,7 +304,7 @@ export function AppointmentDetailScreen() {
             {/* Danger icon tile */}
             <View style={s.confirmIconWrap}>
               <View style={[s.confirmIconTile, { backgroundColor: t.dangerSoft }]}>
-                <Text style={{ fontSize: 24 }}>✕</Text>
+                <Text style={[typography.display, { fontSize: 24, color: t.danger }]}>✕</Text>
               </View>
             </View>
             {/* Record pill */}

@@ -138,9 +138,8 @@ describe('AppearanceSheet', () => {
   it('calls onClose when overlay pressed', () => {
     mockUseApiQuery.mockReturnValue(idleQuery as never);
     const onClose = jest.fn();
-    const { UNSAFE_getAllByType } = render(<AppearanceSheet visible onClose={onClose} />);
-    const { Pressable } = require('react-native');
-    fireEvent.press(UNSAFE_getAllByType(Pressable)[0]);
+    const { getByTestId } = render(<AppearanceSheet visible onClose={onClose} />);
+    fireEvent.press(getByTestId('appearance-sheet-overlay'));
     expect(onClose).toHaveBeenCalled();
   });
 

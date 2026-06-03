@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { MissingApiState } from '../api/api-state';
 import { TodayOverviewScreen } from './today-overview-screen';
 import { HealthScoreDetailScreen } from './health-score-detail-screen';
@@ -55,6 +56,6 @@ export function HomeDetailScreen({ kind }: HomeDetailScreenProps) {
 const styles = StyleSheet.create({
   safe:          { flex: 1 },
   container:     { flex: 1, paddingHorizontal: 24, paddingTop: 16 },
-  back:          { fontSize: 15, marginBottom: 16 },
-  title:         { fontSize: 26, fontWeight: '700', marginBottom: 8 },
+  back:          { ...typography.bodyMed, marginBottom: 16 },
+  title:         { ...typography.title, fontSize: 26, marginBottom: 8 },
 });

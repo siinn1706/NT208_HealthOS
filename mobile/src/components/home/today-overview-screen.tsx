@@ -102,7 +102,7 @@ export function TodayOverviewScreen() {
                     <Text style={[typography.display, { color: '#FFF', fontFamily: 'Inter_800ExtraBold' }]}>{score}</Text>
                   </ProgressRing>
                   <View style={styles.heroLabels}>
-                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_700Bold', letterSpacing: 0.5, fontSize: 12, marginBottom: 4 }}>
+                    <Text style={[typography.caption, { color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_700Bold', letterSpacing: 0.5, marginBottom: 4 }]}>
                       {i18n('home.todaysHealth')}
                     </Text>
                     <Text style={[typography.h3, { color: '#FFF', fontFamily: 'Inter_700Bold' }]}>

@@ -106,7 +106,7 @@ describe('CreateGoalScreen', () => {
     });
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('http://localhost:8000/v1/health-goals', expect.objectContaining({
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/v1/health-goals', expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ target_weight_kg: 72.5 }),
       }));

@@ -30,8 +30,8 @@ export function EmergencyCard({ onPress, onShare, variant = 'gradient' }: Emerge
               <IconHeartPulse size={24} color={t.danger} />
             </View>
             <View style={styles.text}>
-              <Text style={[typography.bodyMed, { color: t.ink, fontSize: 16, fontWeight: '700' }]}>Emergency card</Text>
-              <Text style={[typography.caption, { color: t.ink3, fontSize: 13, fontWeight: '500' }]}>
+              <Text style={[typography.bodyMed, { color: t.ink }]}>Emergency card</Text>
+              <Text style={[typography.caption, { color: t.ink3 }]}>
                 Allergies · contacts · meds - lock-screen ready
               </Text>
             </View>
@@ -56,8 +56,8 @@ export function EmergencyCard({ onPress, onShare, variant = 'gradient' }: Emerge
             <IconHeartPulse size={20} color="#FFF" />
           </View>
           <View style={styles.text}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Emergency card</Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 1 }}>Share vitals & allergies instantly</Text>
+            <Text style={[typography.bodyMed, { color: '#FFF' }]}>Emergency card</Text>
+            <Text style={[typography.caption, { color: 'rgba(255,255,255,0.9)', marginTop: 1 }]}>Share vitals & allergies instantly</Text>
           </View>
           <ChevronRight size={18} color="#FFF" />
         </View>

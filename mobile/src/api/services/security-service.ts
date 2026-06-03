@@ -32,19 +32,19 @@ export interface SecurityLogItem {
 
 export const securityService = {
   async mfaStatus() {
-    const response = await apiRequest<DataResponse<MfaStatus>>('/v1/mfa/status');
+    const response = await apiRequest<DataResponse<MfaStatus>>('/api/v1/mfa/status');
     return response.data;
   },
 
   async mfaSetup() {
-    const response = await apiRequest<DataResponse<MfaSetupPayload>>('/v1/mfa/setup', {
+    const response = await apiRequest<DataResponse<MfaSetupPayload>>('/api/v1/mfa/setup', {
       method: 'POST',
     });
     return response.data;
   },
 
   async verifyMfaSetup(code: string) {
-    const response = await apiRequest<DataResponse<MfaSetupState>>('/v1/mfa/verify-setup', {
+    const response = await apiRequest<DataResponse<MfaSetupState>>('/api/v1/mfa/verify-setup', {
       method: 'POST',
       json: { code },
     });
@@ -52,7 +52,7 @@ export const securityService = {
   },
 
   async verifyMfa(code: string) {
-    const response = await apiRequest<DataResponse<MfaVerifyResult>>('/v1/mfa/verify', {
+    const response = await apiRequest<DataResponse<MfaVerifyResult>>('/api/v1/mfa/verify', {
       method: 'POST',
       json: { code },
     });
@@ -60,7 +60,7 @@ export const securityService = {
   },
 
   async disableMfa(code: string) {
-    const response = await apiRequest<DataResponse<MfaSetupState>>('/v1/mfa/disable', {
+    const response = await apiRequest<DataResponse<MfaSetupState>>('/api/v1/mfa/disable', {
       method: 'POST',
       json: { code },
     });
@@ -68,7 +68,7 @@ export const securityService = {
   },
 
   async regenerateRecoveryCodes(code: string) {
-    const response = await apiRequest<DataResponse<MfaSetupState>>('/v1/mfa/regenerate-recovery-codes', {
+    const response = await apiRequest<DataResponse<MfaSetupState>>('/api/v1/mfa/regenerate-recovery-codes', {
       method: 'POST',
       json: { code },
     });
@@ -76,7 +76,7 @@ export const securityService = {
   },
 
   async securityLogs(params: { event_type?: string; limit?: number; offset?: number } = {}) {
-    const response = await apiRequest<DataResponse<SecurityLogItem[]>>(`/v1/security-logs/${buildQuery({
+    const response = await apiRequest<DataResponse<SecurityLogItem[]>>(`/api/v1/security-logs/${buildQuery({
       event_type: params.event_type,
       limit: params.limit,
       offset: params.offset,

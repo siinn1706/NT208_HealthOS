@@ -3,12 +3,12 @@ import type { DataResponse, UserPreference } from '../../../../shared/api-contra
 
 export const preferenceService = {
   async me() {
-    const response = await apiRequest<DataResponse<UserPreference>>('/v1/preferences/me');
+    const response = await apiRequest<DataResponse<UserPreference>>('/api/v1/preferences/me');
     return response.data;
   },
 
   async update(body: Partial<UserPreference>) {
-    const response = await apiRequest<DataResponse<UserPreference>>('/v1/preferences/me', {
+    const response = await apiRequest<DataResponse<UserPreference>>('/api/v1/preferences/me', {
       method: 'PATCH',
       json: body,
     });

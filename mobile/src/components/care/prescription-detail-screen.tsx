@@ -75,8 +75,8 @@ export function PrescriptionDetailScreen() {
             </Card>
 
             <Card>
-              <InfoRow icon={<IconUser size={14} color={t.ink3} />} label="Doctor" value={prescription.doctor ?? 'Not specified'} />
-              <InfoRow icon={<IconClock size={14} color={t.ink3} />} label="Issued" value={formatDate(prescription.issued_at)} />
+              <InfoRow icon={<IconUser size={14} color={t.ink3} />} label={i18n('care.doctor')} value={prescription.doctor ?? 'Not specified'} />
+              <InfoRow icon={<IconClock size={14} color={t.ink3} />} label={i18n('care.issued')} value={formatDate(prescription.issued_at)} />
             </Card>
 
             <Text style={[typography.h3, { color: t.ink, marginTop: 14, marginBottom: 8 }]}>Medicines</Text>

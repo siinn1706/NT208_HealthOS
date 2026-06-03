@@ -3,7 +3,7 @@ import type { AccountDataExportDownload, AccountDataExportRequest, DataResponse 
 
 export const accountExportService = {
   async requestExport() {
-    const response = await apiRequest<DataResponse<AccountDataExportRequest>>('/v1/users/me/export', {
+    const response = await apiRequest<DataResponse<AccountDataExportRequest>>('/api/v1/users/me/export', {
       method: 'POST',
       timeoutMs: 60000,
     });
@@ -12,14 +12,14 @@ export const accountExportService = {
 
   async exportStatus(requestId: string) {
     const response = await apiRequest<DataResponse<AccountDataExportRequest>>(
-      `/v1/users/me/export/${encodeURIComponent(requestId)}`,
+      `/api/v1/users/me/export/${encodeURIComponent(requestId)}`,
     );
     return response.data;
   },
 
   async exportDownload(requestId: string) {
     const response = await apiRequest<DataResponse<AccountDataExportDownload>>(
-      `/v1/users/me/export/${encodeURIComponent(requestId)}/download`,
+      `/api/v1/users/me/export/${encodeURIComponent(requestId)}/download`,
     );
     return response.data;
   },
