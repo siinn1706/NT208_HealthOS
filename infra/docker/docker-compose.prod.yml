@@ -1,11 +1,11 @@
-services:
+﻿services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,7 +17,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -27,14 +27,14 @@ services:
       retries: 10
 
   minio:
-    # Pin to explicit release — avoid floating `latest`.
+    # Pin to explicit release â€” avoid floating `latest`.
     # Verify / update tag at: https://hub.docker.com/r/minio/minio/tags
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
     volumes:
       - minio_data:/data
     healthcheck:
@@ -44,8 +44,8 @@ services:
       retries: 10
 
   minio-init:
-    # Verify / update tag at: https://hub.docker.com/r/minio/mc/tags
-    image: minio/mc:RELEASE.2025-04-18T07-47-37Z
+    # Pin to explicit release — verify/update at: https://hub.docker.com/r/minio/mc/tags
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
     depends_on:
       minio:
         condition: service_healthy
@@ -88,8 +88,6 @@ services:
       dockerfile: Dockerfile
       target: prod
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     env_file:
       - ../../backend/.env
     environment:
@@ -114,7 +112,7 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready').read()"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -154,8 +152,6 @@ services:
       dockerfile: Dockerfile
       target: prod
     restart: unless-stopped
-    ports:
-      - "8001:8001"
     env_file:
       - ../../services/ai-worker/.env
     environment:
@@ -164,6 +160,10 @@ services:
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      AI_YOLO_MODEL_PATH: /app/models/yolov10/YOLOv10b_VietFood67_SGD_new_bigger.pt
+      AI_CLASS_NAMES_PATH: /app/data/class_names.py
+      AI_FOOD_ANALYSIS_MODEL_PATH: /app/models/food-analysis
+      AI_CALORIECLIP_MODEL_PATH: /app/models/calorieclip
       DEBUG: "false"
     depends_on:
       redis:
@@ -182,8 +182,6 @@ services:
       dockerfile: Dockerfile
       target: prod
     restart: unless-stopped
-    ports:
-      - "8002:8002"
     env_file:
       - ../../services/notification/.env
     environment:
@@ -214,11 +212,12 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXT_PUBLIC_CORE_WS_URL: ${NEXT_PUBLIC_CORE_WS_URL}
       BFF_SHARED_SECRET: ${BFF_SHARED_SECRET:?BFF_SHARED_SECRET is required}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
     depends_on:
       core-be:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000',{signal:AbortSignal.timeout(4000)}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -231,3 +230,4 @@ volumes:
 networks:
   default:
     name: healthos_prod_net
+

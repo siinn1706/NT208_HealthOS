@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dataclasses import replace
 from typing import Any
 
@@ -20,6 +19,7 @@ from app.services.food_analysis_detector import (
 )
 from app.services.portion_options import build_calorie_range
 from app.services.yolo_food_detector import (
+    _best_yolo_prediction,
     _load_class_db,
     _load_yolo_model,
     _prepare_image_for_yolo,
@@ -27,44 +27,6 @@ from app.services.yolo_food_detector import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _best_yolo_prediction(image: Image.Image) -> tuple[int, float] | None:
-    """Compatibility wrapper kept here for focused unit monkeypatches."""
-    model = _load_yolo_model()
-    executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(
-        model,
-        image,
-        conf=settings.ai_confidence_threshold,
-        device="cpu",
-        verbose=False,
-    )
-    try:
-        results = future.result(timeout=settings.ai_yolo_timeout_seconds)
-    except FuturesTimeoutError as exc:
-        future.cancel()
-        raise TimeoutError(
-            f"YOLO inference timed out after {settings.ai_yolo_timeout_seconds}s"
-        ) from exc
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    first_result = results[0] if results else None
-    if first_result is None or first_result.boxes is None or len(first_result.boxes) == 0:
-        return None
-
-    best_conf = 0.0
-    best_class_id: int | None = None
-    for box in first_result.boxes:
-        conf = float(box.conf)
-        class_id = int(box.cls)
-        if conf > best_conf:
-            best_conf = conf
-            best_class_id = class_id
-    if best_class_id is None:
-        return None
-    return best_class_id, best_conf
 
 
 def _raw_from_yolo_item(
@@ -113,6 +75,8 @@ def _detect_with_yolo(image: Image.Image) -> RawFoodNutrition:
             yolo_error = ValueError(
                 f"YOLO returned invalid class_id={class_id} for class_db size={len(class_db)}"
             )
+        else:
+            yolo_error = ValueError("YOLO found no boxes above confidence threshold")
     except Exception as exc:  # pragma: no cover - model runtime path
         yolo_error = exc
 

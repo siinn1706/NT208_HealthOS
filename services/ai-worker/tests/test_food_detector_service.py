@@ -22,7 +22,8 @@ def test_yolo_timeout_returns_without_waiting_for_hung_inference(monkeypatch: An
             time.sleep(0.5)
             return []
 
-    monkeypatch.setattr(service, "_load_yolo_model", lambda: SlowModel())
+    import app.services.yolo_food_detector as yolo_mod
+    monkeypatch.setattr(yolo_mod, "_load_yolo_model", lambda: SlowModel())
     monkeypatch.setattr(service.settings, "ai_yolo_timeout_seconds", 0.01, raising=False)
 
     started = time.perf_counter()

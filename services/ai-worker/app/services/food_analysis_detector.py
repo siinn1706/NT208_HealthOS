@@ -183,7 +183,7 @@ def _load_food_analysis_runtime() -> FoodAnalysisRuntime:
         base_model = _load_adapter_base_model()
         model = Qwen3VLForConditionalGeneration.from_pretrained(
             base_model,
-            torch_dtype=torch.float32,
+            dtype=torch.float32,
             device_map="cpu",
             trust_remote_code=True,
             low_cpu_mem_usage=True,
