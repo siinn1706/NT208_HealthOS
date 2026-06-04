@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
-import { cacheGet, cacheSet } from "@/lib/redis-cache";
+import { getBffAuthContext } from "@/lib/bff-auth-context";
 
 import { CORE_API_URL } from "@/lib/env";
 
-async function getToken(): Promise<string | null> {
-  try {
-    const store = await cookies();
-    return store.get(SESSION_COOKIE_NAME)?.value ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const ctx = await getBffAuthContext(req);
+  if (!ctx.token) {
     return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
   }
 
@@ -30,9 +19,10 @@ export async function GET(req: NextRequest) {
 
   // Try BE endpoint first
   try {
+    const beParams = new URLSearchParams({ date_from: from, date_to: to });
     const beRes = await fetch(
-      `${CORE_API_URL}/v1/meals/calories-summary?date_from=${from}&date_to=${to}`,
-      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      `${CORE_API_URL}/v1/meals/calories-summary?${beParams}`,
+      { headers: { Authorization: `Bearer ${ctx.token}` }, cache: "no-store" }
     );
     if (beRes.ok) {
       const json = await beRes.json();
@@ -53,9 +43,10 @@ export async function GET(req: NextRequest) {
   }
 
   // Fallback: fetch raw meals and aggregate
+  const mealsParams = new URLSearchParams({ date_from: from, date_to: to, per_page: "500" });
   const mealsRes = await fetch(
-    `${CORE_API_URL}/v1/meals?date_from=${from}&date_to=${to}&per_page=500`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    `${CORE_API_URL}/v1/meals?${mealsParams}`,
+    { headers: { Authorization: `Bearer ${ctx.token}` }, cache: "no-store" }
   );
 
   if (!mealsRes.ok) {

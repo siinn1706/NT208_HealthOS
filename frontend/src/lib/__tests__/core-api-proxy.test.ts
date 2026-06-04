@@ -266,11 +266,11 @@ describe("meals BFF route", () => {
         method: "POST",
         body: JSON.stringify(payload),
         cache: "no-store",
-        headers: {
+        headers: expect.objectContaining({
           Authorization: "Bearer meal-access",
           "Content-Type": "application/json",
           "Idempotency-Key": "meal-key-1",
-        },
+        }),
       }),
     );
   });
@@ -279,9 +279,7 @@ describe("meals BFF route", () => {
     setCookieStore({ [SESSION_COOKIE_NAME]: "meal-access" });
     fetchMock.mockResolvedValue(jsonResponse({ data: { id: "meal-photo" } }, 201));
 
-    const form = new FormData();
-    form.set("name", "Photo meal");
-    form.set("image", new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }), "meal.png");
+    const rawBody = new Uint8Array([1, 2, 3]).buffer;
 
     const { POST } = await import("@/app/api/v1/meals/route");
     const req = {
@@ -293,7 +291,7 @@ describe("meals BFF route", () => {
         host: "localhost",
         origin: "http://localhost",
       }),
-      formData: vi.fn().mockResolvedValue(form),
+      arrayBuffer: vi.fn().mockResolvedValue(rawBody),
       text: vi.fn(),
     } as unknown as NextRequest;
 
@@ -304,11 +302,14 @@ describe("meals BFF route", () => {
     expect(await response.json()).toEqual({ data: { id: "meal-photo" } });
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://core.example/v1/meals");
     expect(forwarded.method).toBe("POST");
-    expect(forwarded.body).toBeInstanceOf(FormData);
-    expect(forwarded.headers).toEqual({
-      Authorization: "Bearer meal-access",
-      "Idempotency-Key": "meal-photo-key",
-    });
+    expect(forwarded.body).toBeInstanceOf(ArrayBuffer);
+    expect(forwarded.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer meal-access",
+        "Idempotency-Key": "meal-photo-key",
+        "Content-Type": "multipart/form-data; boundary=test",
+      }),
+    );
   });
 
   it("forwards meal deletes to Core with bearer auth", async () => {

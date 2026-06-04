@@ -42,7 +42,7 @@ class TestWebSocket {
 }
 
 function okToken(token: string) {
-  return Response.json({ token });
+  return Response.json({ data: { token } });
 }
 
 function failedToken() {
@@ -138,7 +138,7 @@ describe("chat websocket lifecycle", () => {
         expect(result.current.isReconnecting).toBe(true);
 
         await act(async () => {
-          vi.advanceTimersByTime(1000);
+          vi.advanceTimersByTime(2000);
           await Promise.resolve();
         });
 

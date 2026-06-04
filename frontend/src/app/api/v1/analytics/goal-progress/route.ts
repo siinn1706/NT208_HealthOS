@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { getBffAuthContext } from "@/lib/bff-auth-context";
 
 import { CORE_API_URL } from "@/lib/env";
 
-async function getToken() {
-  try { return (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? null; }
-  catch { return null; }
-}
-
 export async function GET(req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+  const ctx = await getBffAuthContext(req);
+  if (!ctx.token) {
     return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
   }
 
@@ -32,9 +26,10 @@ export async function GET(req: NextRequest) {
 
   // Try BE endpoint first — fallback only on 404
   try {
+    const beParams = new URLSearchParams({ metric, target, period });
     const beRes = await fetch(
-      `${CORE_API_URL}/v1/goals/progress?metric=${metric}&target=${target}&period=${period}`,
-      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      `${CORE_API_URL}/v1/goals/progress?${beParams}`,
+      { headers: { Authorization: `Bearer ${ctx.token}` }, cache: "no-store" }
     );
     if (beRes.ok) return NextResponse.json(await beRes.json());
     // Fall through to client-side fallback for any non-ok response
@@ -42,9 +37,10 @@ export async function GET(req: NextRequest) {
 
   // Fallback: calculate from raw metrics
   const targetNum = parseFloat(target);
+  const fallbackParams = new URLSearchParams({ metric_type: metric, date_from: dateFrom, date_to: dateTo, per_page: "500" });
   const res = await fetch(
-    `${CORE_API_URL}/v1/health-metrics?metric_type=${metric}&date_from=${dateFrom}&date_to=${dateTo}&per_page=500`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    `${CORE_API_URL}/v1/health-metrics?${fallbackParams}`,
+    { headers: { Authorization: `Bearer ${ctx.token}` }, cache: "no-store" }
   );
 
   if (!res.ok) {

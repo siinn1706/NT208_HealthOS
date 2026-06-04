@@ -1,49 +1,15 @@
 /**
  * BFF — POST multipart avatar to Core BE /v1/users/me/avatar.
+ *
+ * Dual-auth via multipartProxy (cookie precedence; bearer fallback). 5 MiB cap
+ * — stricter than meals (10 MiB) because avatar is a profile thumbnail.
+ * CSRF handled inside multipartProxy via assertSameOrigin (bypassed for Bearer).
  */
-import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
-import { assertSameOrigin } from "@/lib/bff-origin-guard";
-import { CORE_API_URL } from "@/lib/env";
+import { NextRequest } from "next/server";
+import { multipartProxy } from "@/lib/bff/multipart-proxy";
 
-async function getAccessToken(): Promise<string | null> {
-  try {
-    const store = await cookies();
-    return store.get(SESSION_COOKIE_NAME)?.value ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function unauthorized() {
-  return NextResponse.json(
-    { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
-    { status: 401 }
-  );
-}
+const AVATAR_UPLOAD_LIMIT = 5 * 1024 * 1024; // 5 MiB.
 
 export async function POST(req: NextRequest) {
-  const csrfReject = assertSameOrigin(req);
-  if (csrfReject) return csrfReject;
-
-  const token = await getAccessToken();
-  if (!token) return unauthorized();
-
-  try {
-    const body = await req.formData();
-    const res = await fetch(`${CORE_API_URL}/v1/users/me/avatar`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body,
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json(
-      { error: { code: "UPSTREAM_UNAVAILABLE", message: "Core service is temporarily unavailable." } },
-      { status: 503 }
-    );
-  }
+  return multipartProxy(req, "/v1/users/me/avatar", { bodySizeLimit: AVATAR_UPLOAD_LIMIT });
 }

@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { getBffAuthContext } from "@/lib/bff-auth-context";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/redis-cache";
-import { getUserCacheScope } from "@/lib/user-scoped-cache";
 
 import { CORE_API_URL } from "@/lib/env";
-
-async function getToken(): Promise<string | null> {
-  try {
-    const store = await cookies();
-    return store.get(SESSION_COOKIE_NAME)?.value ?? null;
-  } catch {
-    return null;
-  }
-}
 
 async function coreFetch(path: string, token: string): Promise<unknown> {
   const res = await fetch(`${CORE_API_URL}${path}`, {
@@ -24,25 +13,27 @@ async function coreFetch(path: string, token: string): Promise<unknown> {
   return res.json().catch(() => null);
 }
 
-export async function GET(_req: NextRequest) {
-  const token = await getToken();
-  if (!token) {
+export async function GET(req: NextRequest) {
+  const ctx = await getBffAuthContext(req);
+  if (!ctx.token) {
     return NextResponse.json(
       { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
       { status: 401 }
     );
   }
 
-  // P0 fix — scope cache key to authenticated user id (was the literal "user",
-  // which caused cross-user cache collision and would leak personalized data).
-  const userId = await getUserCacheScope();
-  const ck = cacheKey(userId, "gamification-summary", {});
-  const cached = await cacheGet(ck);
-  if (cached) {
-    return NextResponse.json(JSON.parse(cached));
+  // Only cache when principal is user-bucketed (JWT-derived). Opaque-token fallback
+  // (tk: prefix, 32-bit collision space) skips cache to prevent cross-user bleed.
+  const allowCache = ctx.principal?.startsWith("user:") ?? false;
+  const ck = allowCache ? cacheKey(ctx.principal!, "gamification-summary", {}) : null;
+  if (ck) {
+    const cached = await cacheGet(ck);
+    if (cached) {
+      return NextResponse.json(JSON.parse(cached));
+    }
   }
 
-  const profileRes = await coreFetch("/v1/users/me", token);
+  const profileRes = await coreFetch("/v1/users/me", ctx.token);
 
   const profile = profileRes as { display_name?: string; name?: string; height_cm?: number; weight_kg?: number } | null;
 
@@ -90,6 +81,6 @@ export async function GET(_req: NextRequest) {
     recentUnlocked: [],
   };
 
-  await cacheSet(ck, JSON.stringify(response), 300);
+  if (ck) await cacheSet(ck, JSON.stringify(response), 300);
   return NextResponse.json(response);
 }

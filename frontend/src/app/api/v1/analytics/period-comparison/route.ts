@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { getBffAuthContext } from "@/lib/bff-auth-context";
 
 import { CORE_API_URL } from "@/lib/env";
 
-async function getToken() {
-  try { return (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? null; }
-  catch { return null; }
-}
-
 export async function GET(req: NextRequest) {
-  const token = await getToken();
-  if (!token) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
+  const ctx = await getBffAuthContext(req);
+  if (!ctx.token) return NextResponse.json({ error: { code: "AUTH_REQUIRED" } }, { status: 401 });
 
   const { searchParams } = req.nextUrl;
   const metric = searchParams.get("metric");
@@ -24,9 +18,10 @@ export async function GET(req: NextRequest) {
 
   // Try BE endpoint first — fallback only on 404
   try {
+    const beParams = new URLSearchParams({ metric, period });
     const beRes = await fetch(
-      `${CORE_API_URL}/v1/health-metrics/compare-periods?metric=${metric}&period=${period}`,
-      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      `${CORE_API_URL}/v1/health-metrics/compare-periods?${beParams}`,
+      { headers: { Authorization: `Bearer ${ctx.token}` }, cache: "no-store" }
     );
     if (beRes.ok) return NextResponse.json(await beRes.json());
     // Fall through to client-side fallback for any non-ok response
@@ -39,9 +34,11 @@ export async function GET(req: NextRequest) {
   const prevTo = new Date(now.getTime() - days * 86400000).toISOString().slice(0, 10);
   const prevFrom = new Date(now.getTime() - (2 * days - 1) * 86400000).toISOString().slice(0, 10);
 
+  const token = ctx.token;
   async function fetchPeriod(from: string, to: string) {
+    const params = new URLSearchParams({ metric_type: metric!, date_from: from, date_to: to, per_page: "500" });
     const res = await fetch(
-      `${CORE_API_URL}/v1/health-metrics?metric_type=${metric}&date_from=${from}&date_to=${to}&per_page=500`,
+      `${CORE_API_URL}/v1/health-metrics?${params}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
     if (!res.ok) return [];

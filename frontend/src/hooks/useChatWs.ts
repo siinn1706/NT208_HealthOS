@@ -103,8 +103,8 @@ export function useChatWs({
     try {
       const res = await fetch("/api/v1/auth/ws-token");
       if (!res.ok) return null;
-      const data = (await res.json()) as { token?: string };
-      return data.token ?? null;
+      const data = (await res.json()) as { data?: { token?: string } };
+      return data.data?.token ?? null;
     } catch {
       return null;
     }

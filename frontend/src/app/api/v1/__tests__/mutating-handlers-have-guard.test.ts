@@ -9,7 +9,7 @@ import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const MUTATING_RE = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\s*[(<]/;
-const CORE_PROXY_IMPORT_RE = /from\s+["']@\/lib\/core-api-proxy["']/;
+const CORE_PROXY_IMPORT_RE = /from\s+["']@\/lib\/(core-api-proxy|bff\/multipart-proxy)["']/;
 const GUARD_IMPORT_RE = /from\s+["']@\/lib\/bff-origin-guard["']/;
 
 /** Path segments that are unconditionally exempt (GET-only or token-authenticated). */

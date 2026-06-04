@@ -10,14 +10,12 @@
  * buffering hints prevent CDNs and reverse proxies from breaking the
  * incremental delivery.
  *
- * Rate limiting: token bucket (10 req / 60 s burst of 5) per session.
- * Concurrency cap: at most 1 concurrent stream per session to prevent a
+ * Rate limiting: token bucket (10 req / 60 s burst of 5) per user principal.
+ * Concurrency cap: at most 1 concurrent stream per user to prevent a
  * single user from stacking multiple long-lived GPU allocations.
  */
-import { createHash } from "node:crypto";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
+import { getBffAuthContext } from "@/lib/bff-auth-context";
 import { coreFetchStream } from "@/lib/core-api-proxy";
 import { takeToken } from "@/lib/rate-limit";
 
@@ -26,7 +24,7 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 // ── Concurrency cap ──────────────────────────────────────────────────────────
-// Module-level set tracking sessions that currently hold an active stream.
+// Module-level set tracking principals that currently hold an active stream.
 // In-process only; acceptable for per-worker approximation.
 const activeStreams = new Set<string>();
 
@@ -54,23 +52,26 @@ function copySetCookieHeaders(source: Headers, target: Headers): void {
   }
 }
 
-function sessionKeyFromToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
 // ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest, ctx: RouteContext) {
   const { id } = await ctx.params;
 
-  // Resolve session key for rate-limiting and concurrency tracking.
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  const sessionKey = sessionToken ? sessionKeyFromToken(sessionToken) : null;
+  // Resolve principal for rate-limiting and concurrency tracking.
+  // Captured as a const before any IIFE so closures (stream cleanup) bind correctly.
+  const authCtx = await getBffAuthContext(req);
+  const principal = authCtx.principal;
 
-  if (sessionKey) {
+  if (!authCtx.token) {
+    return NextResponse.json(
+      { error: { code: "AUTH_REQUIRED", message: "Authentication required." } },
+      { status: 401 },
+    );
+  }
+
+  if (principal) {
     // 1. Rate-limit check.
-    const rl = takeToken(`chat-stream:${sessionKey}`, STREAM_RATE_LIMIT);
+    const rl = takeToken(`chat-stream:${principal}`, STREAM_RATE_LIMIT);
     if (!rl.ok) {
       return NextResponse.json(
         { error: { code: "RATE_LIMIT_EXCEEDED", message: "Too many requests. Please try again later." } },
@@ -81,15 +82,15 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       );
     }
 
-    // 2. Concurrency cap: reject if this session already has an active stream.
-    if (activeStreams.has(sessionKey)) {
+    // 2. Concurrency cap: reject if this user already has an active stream.
+    if (activeStreams.has(principal)) {
       return NextResponse.json(
         { error: { code: "STREAM_ALREADY_ACTIVE", message: "A stream is already in progress for this session." } },
         { status: 429 },
       );
     }
 
-    activeStreams.add(sessionKey);
+    activeStreams.add(principal);
   }
 
   const safe = encodeURIComponent(id);
@@ -101,13 +102,13 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     });
   } catch (err) {
     // Ensure concurrency slot is released on fetch failure.
-    if (sessionKey) activeStreams.delete(sessionKey);
+    if (principal) activeStreams.delete(principal);
     throw err;
   }
 
   // Guard rejection returns JSON 403 — short-circuit before applying SSE headers.
   if (!upstream.ok && upstream.headers.get("content-type")?.startsWith("application/json")) {
-    if (sessionKey) activeStreams.delete(sessionKey);
+    if (principal) activeStreams.delete(principal);
     return upstream;
   }
 
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   // Wrap the upstream body in a TransformStream so we can release the
   // concurrency slot when the stream closes (either normally or on error).
   let body: ReadableStream<Uint8Array> | null = upstream.body;
-  if (sessionKey && body) {
+  if (principal && body) {
     const transform = new TransformStream<Uint8Array, Uint8Array>();
     const writer = transform.writable.getWriter();
 
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       } catch {
         await writer.abort(new Error("upstream_stream_error")).catch(() => {});
       } finally {
-        activeStreams.delete(sessionKey);
+        activeStreams.delete(principal);
       }
     })();
 

@@ -11,15 +11,19 @@
  *
  * GET /api/v1/meals/analyze-photo/:job_id is handled in the [job_id]/ route.
  *
- * Rate limiting: 6 requests per session per 10 s burst window to protect GPU
+ * Rate limiting: 6 requests per user per 10 s burst window to protect GPU
  * inference workers from a single authenticated user saturating capacity.
+ *
+ * Note: getBffAuthContext is called here for the rate-limit principal, and
+ * coreProxy (via multipartProxy) independently reads the same cookie store for
+ * forwarding auth. Both reads hit the same immutable Next.js cookie store, so
+ * there is no divergence risk. A future refactor could add a preResolvedToken
+ * option to coreProxy to eliminate the redundant read.
  */
 
-import { createHash } from "node:crypto";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { getBffAuthContext } from "@/lib/bff-auth-context";
 import { assertSameOrigin } from "@/lib/bff-origin-guard";
-import { SESSION_COOKIE_NAME } from "@/lib/bff-auth-cookie";
 import { multipartProxy } from "@/lib/bff/multipart-proxy";
 import { takeToken } from "@/lib/rate-limit";
 
@@ -29,13 +33,11 @@ export async function POST(req: NextRequest) {
   const csrfReject = assertSameOrigin(req);
   if (csrfReject) return csrfReject;
 
-  // Rate-limit by session token hash. Unauthenticated requests (no cookie) are
+  // Rate-limit by user-bucketed principal. Unauthenticated requests (no cookie/bearer) are
   // handled downstream by multipartProxy / coreProxy (returns 401).
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (sessionToken) {
-    const sessionKey = createHash("sha256").update(sessionToken).digest("hex");
-    const rl = takeToken(`analyze-photo:${sessionKey}`, ANALYZE_PHOTO_RATE_LIMIT);
+  const ctx = await getBffAuthContext(req);
+  if (ctx.principal) {
+    const rl = takeToken(`analyze-photo:${ctx.principal}`, ANALYZE_PHOTO_RATE_LIMIT);
     if (!rl.ok) {
       return NextResponse.json(
         { error: { code: "RATE_LIMIT_EXCEEDED", message: "Too many requests. Please try again later." } },

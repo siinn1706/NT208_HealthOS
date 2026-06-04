@@ -65,9 +65,9 @@ describe("/api/v1/auth/ws-token route", () => {
     const response = await GET(request());
     const payload = await response.json();
 
-    const expectedPrincipal = `session:${createHash("sha256").update(sessionCookieValue).digest("hex")}`;
+    const expectedPrincipal = `tk:${createHash("sha256").update(sessionCookieValue).digest("hex").slice(0, 8)}`;
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ token: "ticket-1", expires_in_seconds: 90 });
+    expect(payload).toEqual({ data: { token: "ticket-1", expires_in_seconds: 90 } });
     expect(enforceRateLimitMock).toHaveBeenCalledTimes(2);
     expect(enforceRateLimitMock).toHaveBeenNthCalledWith(
       1,
