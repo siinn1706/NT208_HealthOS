@@ -92,6 +92,7 @@ const TARGETS = {
         "Public browser env",
         [
           "NEXT_PUBLIC_APP_URL",
+          "NEXT_PUBLIC_WS_URL",
           "NEXT_PUBLIC_CORE_WS_URL",
           "NEXT_PUBLIC_APP_ENV",
           "NEXT_PUBLIC_ONBOARDING_DRAFT_SERVER",
@@ -217,6 +218,7 @@ const TARGETS = {
           "NEXTAUTH_URL",
           "NEXTAUTH_SECRET",
           "NEXT_PUBLIC_APP_URL",
+          "NEXT_PUBLIC_WS_URL",
           "NEXT_PUBLIC_CORE_WS_URL",
           "BFF_TRUSTED_ORIGINS",
           "BFF_CSRF_GUARD_MODE",
@@ -233,6 +235,7 @@ const TARGETS = {
     sections: [["Expo public build-time env", [
       "EXPO_PUBLIC_API_URL",
       "EXPO_PUBLIC_CORE_API_URL",
+      "EXPO_PUBLIC_WS_URL",
       "EXPO_PUBLIC_CORE_WS_URL",
       "EXPO_PUBLIC_WEB_APP_URL",
       "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI",
@@ -252,9 +255,18 @@ const PLACEHOLDER_PATTERN = /(change-me|replace-with|your-domain|example\.com|de
 const PROTECTED_ENV_VALUES = new Set(["production", "prod", "staging"]);
 const ANDROID_PACKAGE_RE = /^([A-Za-z][A-Za-z0-9_]*\.)+[A-Za-z][A-Za-z0-9_]*$/;
 const ANDROID_SHA256_FINGERPRINT_RE = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+// Maps legacy key names to their canonical replacements.
+// When the legacy key is present and the new key is absent/empty, the value is
+// forwarded automatically and a deprecation warning is emitted to stderr.
+const LEGACY_KEY_MAP = {
+  NEXT_PUBLIC_CORE_WS_URL: "NEXT_PUBLIC_WS_URL",
+  EXPO_PUBLIC_CORE_WS_URL: "EXPO_PUBLIC_WS_URL",
+};
+
 const LOCAL_MOBILE_EMULATOR_DEFAULTS = new Map([
   ["EXPO_PUBLIC_API_URL", "http://10.0.2.2:3000"],
   ["EXPO_PUBLIC_CORE_API_URL", "http://10.0.2.2:8000"],
+  ["EXPO_PUBLIC_WS_URL", "ws://10.0.2.2:8000"],
   ["EXPO_PUBLIC_CORE_WS_URL", "ws://10.0.2.2:8000"],
   ["EXPO_PUBLIC_WEB_APP_URL", "http://10.0.2.2:3000"],
 ]);
@@ -263,6 +275,7 @@ const BACKWARD_COMPATIBLE_DEFAULTS = {
   DEV_BYPASS_ENABLED: "false",
   EXPO_PUBLIC_API_URL: "",
   EXPO_PUBLIC_CORE_API_URL: "",
+  EXPO_PUBLIC_WS_URL: "",
   EXPO_PUBLIC_CORE_WS_URL: "",
   EXPO_PUBLIC_WEB_APP_URL: "",
   EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: "",
@@ -271,10 +284,21 @@ const BACKWARD_COMPATIBLE_DEFAULTS = {
 };
 
 export function applyEnvDefaults(env) {
-  return {
-    ...BACKWARD_COMPATIBLE_DEFAULTS,
-    ...env,
-  };
+  const base = { ...BACKWARD_COMPATIBLE_DEFAULTS, ...env };
+  // Forward legacy keys to canonical names when new key is absent or empty.
+  // Uses || (not ??) so that empty-string injections are treated as "not set".
+  for (const [legacyKey, newKey] of Object.entries(LEGACY_KEY_MAP)) {
+    const resolved = (base[newKey] || "").trim() || (base[legacyKey] || "").trim();
+    if (resolved) {
+      if (!(base[newKey] || "").trim() && (base[legacyKey] || "").trim()) {
+        process.stderr.write(
+          `[render-env] DEPRECATED: ${legacyKey} → rename to ${newKey} (will be removed next release)\n`,
+        );
+      }
+      base[newKey] = resolved;
+    }
+  }
+  return base;
 }
 
 export function parseDotenv(text) {
@@ -380,8 +404,6 @@ export function validateEnv(env, targetNames, options = {}) {
     "MINIO_ROOT_USER",
     "MINIO_ROOT_PASSWORD",
     "NEXT_PUBLIC_APP_URL",
-    "NEXT_PUBLIC_CORE_WS_URL",
-    "EXPO_PUBLIC_CORE_WS_URL",
     "EXPO_PUBLIC_WEB_APP_URL",
     "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI",
     "ANDROID_APP_LINK_PACKAGE_NAME",
@@ -392,10 +414,25 @@ export function validateEnv(env, targetNames, options = {}) {
     ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_CORE_API_URL"],
     "Production requires EXPO_PUBLIC_API_URL (preferred) or EXPO_PUBLIC_CORE_API_URL.",
   );
+  // Resolve canonical WS keys (applyEnvDefaults already forwarded legacy → new).
+  const webWsKey = assertAtLeastOne(
+    effectiveEnv,
+    ["NEXT_PUBLIC_WS_URL", "NEXT_PUBLIC_CORE_WS_URL"],
+    "Production requires NEXT_PUBLIC_WS_URL (preferred) or NEXT_PUBLIC_CORE_WS_URL.",
+  );
+  const mobileWsKey = assertAtLeastOne(
+    effectiveEnv,
+    ["EXPO_PUBLIC_WS_URL", "EXPO_PUBLIC_CORE_WS_URL"],
+    "Production requires EXPO_PUBLIC_WS_URL (preferred) or EXPO_PUBLIC_CORE_WS_URL.",
+  );
   for (const key of prodRequired) {
     assertPresent(effectiveEnv, key);
     assertNotPlaceholder(effectiveEnv, key);
   }
+  assertPresent(effectiveEnv, webWsKey);
+  assertNotPlaceholder(effectiveEnv, webWsKey);
+  assertPresent(effectiveEnv, mobileWsKey);
+  assertNotPlaceholder(effectiveEnv, mobileWsKey);
 
   assertMinLength(effectiveEnv, "SECRET_KEY", 32);
   assertMinLength(effectiveEnv, "BFF_SHARED_SECRET", 32);
@@ -406,15 +443,15 @@ export function validateEnv(env, targetNames, options = {}) {
   assertNoLocalhost(effectiveEnv, "ALLOWED_ORIGINS");
   assertNoLocalhost(effectiveEnv, "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI");
   assertNoLocalhost(effectiveEnv, mobileApiKey);
-  assertNoLocalhost(effectiveEnv, "NEXT_PUBLIC_CORE_WS_URL");
+  assertNoLocalhost(effectiveEnv, webWsKey);
   assertNoWildcardOrigins(effectiveEnv.ALLOWED_ORIGINS);
   assertHttps(effectiveEnv, "NEXTAUTH_URL");
   assertHttps(effectiveEnv, "NEXT_PUBLIC_APP_URL");
   assertHttps(effectiveEnv, mobileApiKey);
   assertHttps(effectiveEnv, "EXPO_PUBLIC_WEB_APP_URL");
   assertHttps(effectiveEnv, "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI");
-  assertWss(effectiveEnv, "NEXT_PUBLIC_CORE_WS_URL");
-  assertWss(effectiveEnv, "EXPO_PUBLIC_CORE_WS_URL");
+  assertWss(effectiveEnv, webWsKey);
+  assertWss(effectiveEnv, mobileWsKey);
   assertAndroidPackageName(effectiveEnv.ANDROID_APP_LINK_PACKAGE_NAME);
   assertAndroidSha256Fingerprints(effectiveEnv.ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS);
   assertMobileOAuthRedirectAllowlist(effectiveEnv);

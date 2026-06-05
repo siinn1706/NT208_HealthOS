@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { clearStoredSession, getAccessToken } from '../auth/session-store';
 import { buildExpoDevLanBaseUrl } from './expo-dev-host';
+import { getDevWsFallback, warnFallbackOnce } from './dev-fallback';
 
 export interface UploadFilePart {
   fieldName: string;
@@ -49,6 +50,9 @@ interface CoreApiUrlCandidate {
   value?: string;
 }
 
+let hasWarnedLegacy = false;
+let hasWarnedWsLegacy = false;
+
 export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null) {
   unauthorizedHandler = handler;
 }
@@ -75,7 +79,7 @@ function assertProductionSecureUrl(kind: 'api' | 'ws', url: string | undefined):
   }
   if (kind === 'ws' && !normalized) {
     throw new ApiError(
-      'Missing EXPO_PUBLIC_CORE_WS_URL for production build.',
+      'Missing EXPO_PUBLIC_WS_URL (or legacy EXPO_PUBLIC_CORE_WS_URL) for production build.',
       0,
       'CORE_WS_URL_MISSING',
     );
@@ -146,8 +150,14 @@ function resolveConfiguredApiUrlCandidate(): CoreApiUrlCandidate {
   return { source: 'api', value: undefined };
 }
 
-export function getCoreApiBaseUrl(): string {
+export function getBffApiBaseUrl(): string {
   const selected = resolveConfiguredApiUrlCandidate();
+  if (__DEV__ && selected.source === 'legacy-core' && !hasWarnedLegacy) {
+    hasWarnedLegacy = true;
+    console.warn(
+      '[mobile/api] EXPO_PUBLIC_CORE_API_URL is deprecated; rename to EXPO_PUBLIC_API_URL. Legacy value will be normalized to BFF port.',
+    );
+  }
   const configured = selected.source === 'legacy-core'
     ? normalizeLegacyCoreApiUrl(selected.value ?? '')
     : selected.value;
@@ -160,16 +170,42 @@ export function getCoreApiBaseUrl(): string {
   return url;
 }
 
-export function getCoreWsBaseUrl(): string {
-  const extra = Constants.expoConfig?.extra as { coreWsUrl?: string } | undefined;
-  const configured = process.env.EXPO_PUBLIC_CORE_WS_URL ?? extra?.coreWsUrl;
+/** @deprecated Use getBffApiBaseUrl(). */
+export function getCoreApiBaseUrl(): string {
+  return getBffApiBaseUrl();
+}
+
+// Prefers EXPO_PUBLIC_WS_URL; falls back to legacy EXPO_PUBLIC_CORE_WS_URL with a __DEV__
+// deprecation warning. Uses || not ?? so empty-string injections fall through.
+export function readWsUrlEnv(): string | undefined {
+  const fresh = process.env.EXPO_PUBLIC_WS_URL?.trim();
+  if (fresh) return fresh;
+  const legacy = process.env.EXPO_PUBLIC_CORE_WS_URL?.trim();
+  if (legacy && __DEV__ && !hasWarnedWsLegacy) {
+    hasWarnedWsLegacy = true;
+    console.warn("[deprecation 2026-09-01] EXPO_PUBLIC_CORE_WS_URL → EXPO_PUBLIC_WS_URL");
+  }
+  return legacy;
+}
+
+export function getWebSocketBaseUrl(): string {
+  const configured = readWsUrlEnv();
   if (!__DEV__) {
     return assertProductionSecureUrl('ws', configured);
   }
-  const fallback = buildExpoDevLanBaseUrl('ws', 8000)
-    ?? (Platform.OS === 'android' ? 'ws://10.0.2.2:8000' : 'ws://localhost:8000');
-  return (configured || fallback).replace(/\/+$/, '');
+  if (configured) return configured.replace(/\/+$/, '');
+  const devLan = buildExpoDevLanBaseUrl('ws', 8000);
+  if (devLan) return devLan;
+  const fallback = getDevWsFallback(Platform.OS);
+  if (fallback) {
+    warnFallbackOnce();
+    return fallback;
+  }
+  return '';
 }
+
+/** @deprecated Use getWebSocketBaseUrl(). Removed 2026-09-01. */
+export const getCoreWsBaseUrl = getWebSocketBaseUrl;
 
 export function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
   const search = new URLSearchParams();
@@ -231,7 +267,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   // Refuse authenticated requests over plain HTTP in production
   if (!__DEV__ && options.auth !== false) {
-    const baseUrl = getCoreApiBaseUrl();
+    const baseUrl = getBffApiBaseUrl();
     if (baseUrl.startsWith('http://')) {
       throw new ApiError(
         'Refusing to send authenticated request over plain HTTP in production.',
@@ -260,7 +296,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       if (token) headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${getCoreApiBaseUrl()}${path}`, {
+    const response = await fetch(`${getBffApiBaseUrl()}${path}`, {
       method: options.method ?? 'GET',
       headers,
       body: options.body !== undefined

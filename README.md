@@ -229,7 +229,7 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 - Keep `OAUTH_GOOGLE_CALLBACK_URL` and `OAUTH_GITHUB_CALLBACK_URL` as fallback values for local development. They are no longer the sole source of truth for callback generation.
 - `ALLOWED_DEV_ORIGINS` entries must be hostnames or wildcard hostnames, not full URLs. Example: `localhost,127.0.0.1,healthos-dev.example.com`.
 - If you temporarily use a rotating `trycloudflare.com` URL, add `*.trycloudflare.com` to `ALLOWED_DEV_ORIGINS` so Next.js accepts `/_next/*` HMR traffic during dev. This only affects Next's dev-origin guard; OAuth providers still require exact callback URLs.
-- For chat WebSocket testing through the same frontend tunnel, set `NEXT_PUBLIC_CORE_WS_URL=wss://<tunnel-host>` and restart `npm run dev`; the frontend dev proxy forwards `/ws` and `/v1/**` WebSocket upgrades to `CORE_API_URL`.
+- For chat WebSocket testing through the same frontend tunnel, set `NEXT_PUBLIC_WS_URL=wss://<tunnel-host>` and restart `npm run dev`; the frontend dev proxy forwards `/ws` and `/v1/**` WebSocket upgrades to `CORE_API_URL`. (`NEXT_PUBLIC_WS_URL` renamed from `NEXT_PUBLIC_CORE_WS_URL` in 2026-06.)
 - Register both localhost and the stable tunnel callback URIs in Google Cloud Console and GitHub OAuth App settings:
   - `http://localhost:3000/api/v1/auth/oauth/google/callback`
   - `https://<stable-tunnel>/api/v1/auth/oauth/google/callback`

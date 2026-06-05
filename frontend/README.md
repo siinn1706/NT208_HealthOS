@@ -40,8 +40,8 @@ Open `http://localhost:3000`.
 The Core backend must be running at `CORE_API_URL` for BFF-backed pages and routes to work.
 In development, `npm run dev` starts a small Next.js wrapper that forwards Core
 HTTP paths and WebSocket upgrades (`/ws`, `/v1/**`) to `CORE_API_URL`. This keeps
-single-origin public tunnel testing working when `NEXT_PUBLIC_CORE_WS_URL` points
-at the same frontend tunnel URL.
+single-origin public tunnel testing working when `NEXT_PUBLIC_WS_URL` points
+at the same frontend tunnel URL. (`NEXT_PUBLIC_WS_URL` renamed from `NEXT_PUBLIC_CORE_WS_URL` in 2026-06.)
 
 ## Environment Variables
 
@@ -51,7 +51,7 @@ Set these in `frontend/.env.local` for local development:
 CORE_API_URL=http://localhost:8000
 BFF_SHARED_SECRET=dev-bff-secret-change-in-production
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_CORE_WS_URL=ws://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
 ```
 
 Optional or environment-specific variables:
@@ -90,5 +90,5 @@ Optional or environment-specific variables:
 - Login, OAuth callback, or refresh returns 401: confirm `BFF_SHARED_SECRET` matches the backend and cookies are being set for the current origin.
 - BFF route returns an upstream error: confirm Core is running and `CORE_API_URL` points to it from the frontend process.
 - OAuth through a public tunnel redirects to the wrong host: register the exact provider callback URL and keep `ALLOWED_DEV_ORIGINS` to hostnames or wildcard hostnames, not full URLs.
-- WebSocket chat cannot connect: check `NEXT_PUBLIC_CORE_WS_URL`, confirm Core `/ws` is reachable, and restart `npm run dev` after env changes so the dev proxy can forward upgrades.
+- WebSocket chat cannot connect: check `NEXT_PUBLIC_WS_URL`, confirm Core `/ws` is reachable, and restart `npm run dev` after env changes so the dev proxy can forward upgrades.
 - Production auth rate limiting returns 503: provide `REDIS_URL`; development falls back to in-memory rate limiting.

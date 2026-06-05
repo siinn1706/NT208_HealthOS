@@ -76,7 +76,7 @@ export const securityService = {
   },
 
   async securityLogs(params: { event_type?: string; limit?: number; offset?: number } = {}) {
-    const response = await apiRequest<DataResponse<SecurityLogItem[]>>(`/api/v1/security-logs/${buildQuery({
+    const response = await apiRequest<DataResponse<SecurityLogItem[]>>(`/api/v1/security-logs${buildQuery({
       event_type: params.event_type,
       limit: params.limit,
       offset: params.offset,

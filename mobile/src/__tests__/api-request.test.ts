@@ -3,7 +3,9 @@ import {
   apiRequest,
   ApiError,
   getCoreApiBaseUrl,
+  getBffApiBaseUrl,
   getCoreWsBaseUrl,
+  getWebSocketBaseUrl,
   buildQuery,
   createIdempotencyKey,
   setRefreshHandler,
@@ -62,6 +64,7 @@ beforeEach(() => {
   delete process.env.EXPO_PUBLIC_API_URL;
   delete process.env.EXPO_PUBLIC_CORE_API_URL;
   delete process.env.EXPO_PUBLIC_CORE_WS_URL;
+  delete process.env.EXPO_PUBLIC_WS_URL;
 });
 
 describe('createIdempotencyKey', () => {
@@ -170,45 +173,82 @@ describe('getCoreApiBaseUrl', () => {
   });
 });
 
-describe('getCoreWsBaseUrl', () => {
-  it('strips trailing slash in dev', () => {
-    process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://localhost:8000/';
-    expect(getCoreWsBaseUrl()).toBe('ws://localhost:8000');
+describe('getBffApiBaseUrl (canonical name)', () => {
+  it('returns the same value as the deprecated getCoreApiBaseUrl alias', () => {
+    process.env.EXPO_PUBLIC_API_URL = 'http://localhost:3000';
+    expect(getBffApiBaseUrl()).toBe(getCoreApiBaseUrl());
+  });
+
+  it('warns once per session when legacy env var is used', () => {
+    process.env.EXPO_PUBLIC_CORE_API_URL = 'http://legacy.local:8000';
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Use isolateModules to get a fresh module instance so hasWarnedLegacy starts false.
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { getBffApiBaseUrl: freshFn } = require('../api/client') as { getBffApiBaseUrl: () => string };
+      freshFn(); // should warn
+      freshFn(); // should NOT warn again
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('EXPO_PUBLIC_CORE_API_URL is deprecated'));
+    });
+
+    warnSpy.mockRestore();
+  });
+});
+
+describe('getWebSocketBaseUrl', () => {
+  it('strips trailing slash in dev (new key)', () => {
+    process.env.EXPO_PUBLIC_WS_URL = 'ws://localhost:8000/';
+    expect(getWebSocketBaseUrl()).toBe('ws://localhost:8000');
+  });
+
+  it('prefers new EXPO_PUBLIC_WS_URL over legacy EXPO_PUBLIC_CORE_WS_URL', () => {
+    process.env.EXPO_PUBLIC_WS_URL = 'ws://10.0.2.2:8000/';
+    process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://legacy.local:8000';
+    expect(getWebSocketBaseUrl()).toBe('ws://10.0.2.2:8000');
   });
 
   it('derives dev WS fallback from Expo Go debugger host metadata', () => {
     setPlatformOS('android');
     mockExpoConstants.expoGoConfig.debuggerHost = '192.168.1.11:8081';
 
-    expect(getCoreWsBaseUrl()).toBe('ws://192.168.1.11:8000');
+    expect(getWebSocketBaseUrl()).toBe('ws://192.168.1.11:8000');
   });
 
   it('keeps explicit dev WS config ahead of Expo LAN host metadata', () => {
     setPlatformOS('android');
-    process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://10.0.2.2:8000/';
+    process.env.EXPO_PUBLIC_WS_URL = 'ws://10.0.2.2:8000/';
     mockExpoConstants.expoGoConfig.debuggerHost = '192.168.1.11:8081';
 
-    expect(getCoreWsBaseUrl()).toBe('ws://10.0.2.2:8000');
+    expect(getWebSocketBaseUrl()).toBe('ws://10.0.2.2:8000');
   });
 
   it('throws when production WS URL is missing', () => {
     setDevMode(false);
-    expect(() => getCoreWsBaseUrl()).toThrow('Missing EXPO_PUBLIC_CORE_WS_URL');
+    expect(() => getWebSocketBaseUrl()).toThrow('Missing EXPO_PUBLIC_WS_URL');
   });
 
   it('throws when production WS URL uses ws://', () => {
     setDevMode(false);
-    process.env.EXPO_PUBLIC_CORE_WS_URL = 'ws://core.internal/ws';
-    expect(() => getCoreWsBaseUrl()).toThrow('Production WebSocket URL must use WSS.');
+    process.env.EXPO_PUBLIC_WS_URL = 'ws://core.internal/ws';
+    expect(() => getWebSocketBaseUrl()).toThrow('Production WebSocket URL must use WSS.');
   });
 
   it('throws when production WS URL is not absolute WSS', () => {
     setDevMode(false);
-    process.env.EXPO_PUBLIC_CORE_WS_URL = 'api.healthos.example.com/ws';
-    expect(() => getCoreWsBaseUrl()).toThrow('Production WebSocket URL must be an absolute WSS URL.');
+    process.env.EXPO_PUBLIC_WS_URL = 'api.healthos.example.com/ws';
+    expect(() => getWebSocketBaseUrl()).toThrow('Production WebSocket URL must be an absolute WSS URL.');
 
-    process.env.EXPO_PUBLIC_CORE_WS_URL = 'https://api.healthos.example.com/ws';
-    expect(() => getCoreWsBaseUrl()).toThrow('Production WebSocket URL must use WSS.');
+    process.env.EXPO_PUBLIC_WS_URL = 'https://api.healthos.example.com/ws';
+    expect(() => getWebSocketBaseUrl()).toThrow('Production WebSocket URL must use WSS.');
+  });
+});
+
+describe('getCoreWsBaseUrl (deprecated alias)', () => {
+  it('is the same function as getWebSocketBaseUrl', () => {
+    process.env.EXPO_PUBLIC_WS_URL = 'ws://localhost:8000/';
+    expect(getCoreWsBaseUrl()).toBe(getWebSocketBaseUrl());
   });
 });
 

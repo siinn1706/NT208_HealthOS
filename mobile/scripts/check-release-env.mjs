@@ -90,9 +90,18 @@ function requireAppLinkUrl(varName) {
   return true;
 }
 
+// Resolve EXPO_PUBLIC_WS_URL with fallback to legacy EXPO_PUBLIC_CORE_WS_URL.
+// Warn if only the legacy key is set so operators know to migrate.
+const wsUrl = (process.env.EXPO_PUBLIC_WS_URL ?? '').trim();
+const legacyWsUrl = (process.env.EXPO_PUBLIC_CORE_WS_URL ?? '').trim();
+const resolvedWsKey = wsUrl ? 'EXPO_PUBLIC_WS_URL' : (legacyWsUrl ? 'EXPO_PUBLIC_CORE_WS_URL' : 'EXPO_PUBLIC_WS_URL');
+if (!wsUrl && legacyWsUrl) {
+  console.warn('[check-release-env] WARNING: EXPO_PUBLIC_CORE_WS_URL is deprecated — rename to EXPO_PUBLIC_WS_URL before next release.');
+}
+
 let ok = true;
 ok = requireHttpsUrl('EXPO_PUBLIC_CORE_API_URL') && ok;
-ok = requireWssUrl('EXPO_PUBLIC_CORE_WS_URL') && ok;
+ok = requireWssUrl(resolvedWsKey) && ok;
 ok = requireHttpsUrl('EXPO_PUBLIC_WEB_APP_URL') && ok;
 ok = requireAppLinkUrl('EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI') && ok;
 

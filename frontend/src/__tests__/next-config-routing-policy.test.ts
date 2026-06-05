@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { resolveCoreWebSocketBase } from "@/lib/core-websocket-url";
+import { resolveWebSocketBase } from "@/lib/websocket-url";
 
 describe("Next.js routing policy", () => {
   const source = readFileSync(path.join(process.cwd(), "next.config.ts"), "utf8");
@@ -67,24 +67,27 @@ describe("Next.js routing policy", () => {
   });
 
   it("normalizes Core websocket bases for localhost and public tunnels", () => {
-    expect(resolveCoreWebSocketBase("https://core.trycloudflare.com/", {
+    expect(resolveWebSocketBase("https://core.trycloudflare.com/", {
       protocol: "https:",
       host: "frontend.trycloudflare.com",
     })).toBe("wss://core.trycloudflare.com");
 
-    expect(resolveCoreWebSocketBase("ws://localhost:8000/", {
+    expect(resolveWebSocketBase("ws://localhost:8000/", {
       protocol: "https:",
       host: "frontend.trycloudflare.com",
     })).toBe("wss://frontend.trycloudflare.com");
 
-    expect(resolveCoreWebSocketBase("localhost:8000", {
+    expect(resolveWebSocketBase("localhost:8000", {
       protocol: "https:",
       host: "frontend.trycloudflare.com",
     })).toBe("wss://frontend.trycloudflare.com");
 
-    expect(resolveCoreWebSocketBase(undefined, {
+    expect(resolveWebSocketBase(undefined, {
       protocol: "http:",
       host: "localhost:3000",
     })).toBe("ws://localhost:3000");
+
+    // SSR (no window) returns empty string — callers must guard
+    expect(resolveWebSocketBase(undefined, null)).toBe("");
   });
 });

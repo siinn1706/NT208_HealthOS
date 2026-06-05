@@ -3,7 +3,10 @@
 Scans all ``mobile/src/api/**/*.ts`` files via ts-morph AST and
 cross-references extracted Core paths against ``contracts/openapi/core-api.yaml``.
 
-Mobile calls Core DIRECTLY via ``EXPO_PUBLIC_CORE_API_URL`` (not via BFF).
+Mobile uses BFF for REST. WebSocket connects to the public gateway
+(``EXPO_PUBLIC_WS_URL``), authenticating with a first-frame ticket from
+BFF ``GET /api/v1/auth/ws-token``. REST call sites still reference Core
+contract paths so the drift gate can verify payload compatibility.
 Pattern: ``apiRequest(path, opts?)`` where ``path`` is arg 0.
 
 Unparseable call sites (null corePath) are treated as test errors.

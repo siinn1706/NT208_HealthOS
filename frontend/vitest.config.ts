@@ -10,7 +10,7 @@ export default defineConfig({
     env: { VITEST: 'true' },
     setupFiles: ['./src/__tests__/setup-vitest.ts'],
     globalSetup: ['./src/__tests__/setup-rate-limit-global.ts'],
-    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**', 'scripts/**'],
     testTimeout: 20000,
     pool: 'forks',
     maxWorkers: 4,

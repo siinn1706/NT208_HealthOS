@@ -1,4 +1,4 @@
-import { ApiError, apiRequest, getCoreApiBaseUrl } from './client';
+import { ApiError, apiRequest, getBffApiBaseUrl } from './client';
 
 export const CORE_REACHABILITY_TIMEOUT_MS = 3000;
 export const AUTH_REQUEST_TIMEOUT_MS = 8000;
@@ -27,7 +27,7 @@ interface CoreReachabilityOptions {
 
 let reachabilityCache: ReachabilityCache | null = null;
 
-export function describeCoreApiTarget(baseUrl = getCoreApiBaseUrl()): CoreApiTarget {
+export function describeCoreApiTarget(baseUrl = getBffApiBaseUrl()): CoreApiTarget {
   try {
     const parsed = new URL(baseUrl);
     const host = parsed.hostname;
@@ -71,7 +71,7 @@ export function toCoreReachabilityMessage(error: unknown, baseUrl?: string): str
 }
 
 export async function ensureCoreReachable(options: CoreReachabilityOptions = {}): Promise<void> {
-  const baseUrl = getCoreApiBaseUrl();
+  const baseUrl = getBffApiBaseUrl();
   const now = Date.now();
   if (
     !options.force

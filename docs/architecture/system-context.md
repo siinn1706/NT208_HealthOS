@@ -9,7 +9,7 @@ HealthOS là "bác sĩ cá nhân ảo": quản lý hồ sơ y tế, nhật ký d
 | Actor | Mô tả |
 |-------|--------|
 | End User (Browser) | Sử dụng app web qua Next.js FE + BFF |
-| End User (Mobile) | Sử dụng app native (Expo/React Native) gọi Core BE trực tiếp (see ADR-001) |
+| End User (Mobile) | Sử dụng app native (Expo/React Native); REST qua BFF, WebSocket qua public gateway (see ADR-001) |
 | Admin | Quản trị viên hệ thống |
 | Wearable Device | Thiết bị đeo (Apple Health, Garmin, Fitbit, …) gửi dữ liệu tự động |
 
@@ -27,18 +27,16 @@ HealthOS là "bác sĩ cá nhân ảo": quản lý hồ sơ y tế, nhật ký d
 ```
 Browser          FE (Next.js)
   End User   →     ↓
-              BFF (Route Handlers)
-                    ↓
-                    ↓ (HTTP)
-Mobile          ──→ Core BE (FastAPI) → PostgreSQL
-  End User   ──┘       ↓
-            (HTTP)  AI Worker (FastAPI) ← Queue/Worker
-                           ↑
-              Wearable APIs ────────────
-              Notification Gateway ←─────
+              BFF (Route Handlers) ──→ Core BE (FastAPI) → PostgreSQL
+                    │                       ↓
+                    │ ws-ticket mint    AI Worker (FastAPI) ← Queue/Worker
+                    ↓                          ↑
+Mobile       Public WS Gateway        Wearable APIs ────────
+  End User   →  (Cloudflare Tunnel)   Notification Gateway ←─
+              └─→ BFF (REST)
 ```
 
-**Note**: Browser clients use BFF layer (cookie-based auth, CORS mitigation). Mobile clients call Core BE directly (see ADR-001).
+**Note**: All REST traffic goes via BFF layer. WebSocket (both web and mobile) connects to the public gateway (`wss://healthos.page`), which tunnels to Core BE. See [ADR-001](./decisions/adr-001-public-ws-gateway.md).
 
 ## Tài liệu liên quan
 

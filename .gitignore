@@ -18,6 +18,7 @@ AGENTS.md
 scripts/
 !mobile/scripts/
 !mobile/scripts/check-route-matrix.mjs
+!frontend/scripts/
 !services/ai-worker/scripts/
 !services/ai-worker/scripts/*.py
 .kiro/

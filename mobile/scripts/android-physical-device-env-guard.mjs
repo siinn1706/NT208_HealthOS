@@ -10,6 +10,12 @@ export const ANDROID_PUBLIC_URL_KEYS = [
   'EXPO_PUBLIC_WEB_APP_URL',
 ];
 
+// Optional keys validated when present but not required.
+// EXPO_PUBLIC_WS_URL is the canonical replacement for EXPO_PUBLIC_CORE_WS_URL (DEPRECATED 2026-09-01).
+export const ANDROID_OPTIONAL_URL_KEYS = [
+  'EXPO_PUBLIC_WS_URL',
+];
+
 const BLOCKED_PHYSICAL_HOSTS = new Set([
   '10.0.2.2',
   'localhost',
@@ -21,7 +27,8 @@ const BLOCKED_PHYSICAL_HOSTS = new Set([
 
 const EXPECTED_PROTOCOLS = {
   EXPO_PUBLIC_CORE_API_URL: new Set(['http:', 'https:']),
-  EXPO_PUBLIC_CORE_WS_URL: new Set(['ws:', 'wss:']),
+  EXPO_PUBLIC_WS_URL: new Set(['ws:', 'wss:']),
+  EXPO_PUBLIC_CORE_WS_URL: new Set(['ws:', 'wss:']),  // DEPRECATED 2026-09-01
   EXPO_PUBLIC_WEB_APP_URL: new Set(['http:', 'https:']),
 };
 

@@ -12,6 +12,7 @@
     "test": "jest",
     "test:coverage": "jest --coverage --passWithNoTests",
     "check:routes": "node scripts/check-route-matrix.mjs",
+    "check:no-direct-core": "node scripts/check-no-direct-core.mjs",
     "check:expo-config": "node scripts/check-expo-app-config.mjs",
     "check:logo-parity": "node scripts/check-logo-parity.mjs",
     "check:expo-deps": "expo install --check",

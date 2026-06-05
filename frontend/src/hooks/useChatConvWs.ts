@@ -22,7 +22,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { WsFrame, WsStatus } from "@/hooks/useChatWs";
 import { buildAuthFrame, isAuthRejected } from "@/lib/ws-auth-protocol";
-import { resolveCoreWebSocketBase } from "@/lib/core-websocket-url";
+import { readWebSocketEnv, resolveWebSocketBase } from "@/lib/websocket-url";
 
 const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -138,7 +138,7 @@ export function useChatConvWs({
       return;
     }
 
-    const wsBase = resolveCoreWebSocketBase(process.env.NEXT_PUBLIC_CORE_WS_URL);
+    const wsBase = resolveWebSocketBase(readWebSocketEnv());
     // Token sent as first post-connect frame — never in URL (prevents log leakage)
     const wsUrl = `${wsBase}/v1/chat/ws/${encodeURIComponent(conversationId)}`;
 

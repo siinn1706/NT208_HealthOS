@@ -2459,7 +2459,7 @@
     "usernameTaken": "Username already taken",
     "passwordRequirements": "Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special character",
     "passwordMinLength": "Password must be at least 8 characters",
-    "oauthErrorCoreUnreachable": "Cannot reach the Core API. Start the backend (port 8000 by default), or set CORE_API_URL in frontend/.env.local to match where the API runs.",
+    "oauthErrorCoreUnreachable": "API server unreachable. Ensure the backend is running and your environment is configured correctly.",
     "oauthErrorServerError": "Sign-in with this provider failed. Please try again.",
     "oauthErrorMissingCode": "OAuth response was incomplete. Please try signing in again.",
     "oauthErrorInvalidState": "Sign-in session expired or was invalid. Please try again.",

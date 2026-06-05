@@ -81,6 +81,6 @@ describe('securityService', () => {
       { id: 'log-1', event_type: 'mfa_enabled' },
     ]);
     expect(mockBuildQuery).toHaveBeenCalledWith({ event_type: 'mfa_enabled', limit: 10, offset: 0 });
-    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/security-logs/?event_type=mfa_enabled&limit=10&offset=0');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/security-logs?event_type=mfa_enabled&limit=10&offset=0');
   });
 });

@@ -77,7 +77,7 @@ Set physical-device URLs to this computer's LAN IP:
 
 ```bash
 EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
-EXPO_PUBLIC_CORE_WS_URL=ws://192.168.1.10:8000
+EXPO_PUBLIC_WS_URL=ws://192.168.1.10:8000
 EXPO_PUBLIC_WEB_APP_URL=http://192.168.1.10:3000
 ```
 `EXPO_PUBLIC_CORE_API_URL` is still accepted for backward compatibility, but `EXPO_PUBLIC_API_URL` is the preferred variable now.
@@ -157,7 +157,7 @@ EAS environment variables or a release `.env` that is not committed:
 
 ```text
 EXPO_PUBLIC_CORE_API_URL=https://api.example.com
-EXPO_PUBLIC_CORE_WS_URL=wss://api.example.com
+EXPO_PUBLIC_WS_URL=wss://api.example.com
 EXPO_PUBLIC_WEB_APP_URL=https://app.example.com
 EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://app.example.com/auth/oauth/mobile-callback
 ```

@@ -13,10 +13,10 @@
 │  │ Port: 3000       │           │ Port: 3000 (same process)    │   │
 │  └──────────────────┘           └──────────────┬───────────────┘   │
 │                                                │                    │
-│  ┌──────────────────┐   HTTP (direct) ─────────┘                   │
+│  ┌──────────────────┐   HTTP (via BFF) ─────────┘                  │
 │  │ Mobile           │──────────────────────────────────────────┐   │
-│  │ Expo / RN 0.79   │  (see ADR below)                         │   │
-│  └──────────────────┘                                          │   │
+│  │ Expo / RN 0.79   │  REST → BFF; WS → public gateway         │   │
+│  └──────────────────┘  (see ADR-001 below)                     │   │
 │                                                │ HTTP               │
 │                                  ┌─────────────▼──────────────┐    │
 │                                  │ Core BE                    │    │
@@ -61,21 +61,21 @@ External:
 | Redis | Redis 7 | Cache query, pub/sub realtime, rate-limit, Celery broker |
 | Object Storage | MinIO (local) / S3 (prod) | Binary blobs: ảnh bữa ăn, tài liệu y tế |
 
-## ADR-001: Mobile → Core BE direct connection (C1 exemption)
+## ADR-001: Public WebSocket Gateway
 
-**Decision**: The mobile app (Expo/React Native) calls Core BE directly via `EXPO_PUBLIC_CORE_API_URL`, bypassing the Next.js BFF layer.
+**Decision**: All clients (web and mobile) connect to WebSocket via the public gateway (`wss://healthos.page`, Cloudflare Tunnel → `core-be:8000`). Core BE port 8000 is internal-only. Mobile REST traffic routes via the Next.js BFF, not directly to Core BE. Auth uses a short-lived `ws_ticket` minted by BFF `GET /api/v1/auth/ws-token`, sent as the first WS frame.
 
 **Rationale**:
-- Native mobile clients are a distinct deployment target from browser SPAs. The BFF pattern addresses browser-specific concerns (cookie-based session, CORS, SSR hydration) that do not apply to a native app with `expo-secure-store`.
-- Routing mobile traffic through the web BFF would introduce an unnecessary network hop and couple the mobile release cycle to the Next.js deployment.
-- Auth is handled natively: JWT stored in SecureStore, `Authorization: Bearer` header on every request.
+- Core port 8000 must not be publicly reachable. Gateway passthrough (Cloudflare Tunnel) decouples public origin from internal service address.
+- Short-lived ticket auth prevents long-lived JWT exposure in WS handshake URLs.
+- Unified gateway origin simplifies client config (`NEXT_PUBLIC_WS_URL` / `EXPO_PUBLIC_WS_URL` — base only, no path suffix).
 
 **Constraints**:
-- Mobile MUST use HTTPS in production (`getCoreApiBaseUrl()` warns if `http://` detected outside `__DEV__`).
-- Mobile MUST handle 401 with token refresh before hard logout (see H2 in code-review plan).
-- Any new Core BE endpoint must also be considered for BFF exposure if the web frontend needs it.
+- Ops must expose both `/ws` and `/v1/chat/ws/{id}` paths in cloudflared config (off-repo).
+- Env vars `NEXT_PUBLIC_CORE_WS_URL` / `EXPO_PUBLIC_CORE_WS_URL` deprecated; removed 2026-09-01.
+- Mobile keeps `ws://10.0.2.2:8000` / `ws://localhost:8000` fallback for emulator dev only.
 
-**Status**: Accepted — 2026-05-15.
+**Status**: Accepted — 2026-06-05. Full spec: [decisions/adr-001-public-ws-gateway.md](./decisions/adr-001-public-ws-gateway.md).
 
 ## Ports chuẩn (local dev)
 

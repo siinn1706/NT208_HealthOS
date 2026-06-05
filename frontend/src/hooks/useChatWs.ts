@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { buildAuthFrame, isAuthRejected } from "@/lib/ws-auth-protocol";
-import { resolveCoreWebSocketBase } from "@/lib/core-websocket-url";
+import { readWebSocketEnv, resolveWebSocketBase } from "@/lib/websocket-url";
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
@@ -128,7 +128,7 @@ export function useChatWs({
       return;
     }
 
-    const wsBase = resolveCoreWebSocketBase(process.env.NEXT_PUBLIC_CORE_WS_URL);
+    const wsBase = resolveWebSocketBase(readWebSocketEnv());
     // Token sent as first post-connect frame — never in URL (prevents log leakage)
     const wsUrl = `${wsBase}/ws`;
 

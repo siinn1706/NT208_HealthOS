@@ -57,9 +57,11 @@ function loadProductionEnv(overrides = {}) {
     MINIO_ROOT_USER: "prod-minio-root",
     MINIO_ROOT_PASSWORD: "prod-minio-pass",
     NEXT_PUBLIC_APP_URL: "https://healthos.test",
-    NEXT_PUBLIC_CORE_WS_URL: "wss://healthos.test/ws",
+    NEXT_PUBLIC_WS_URL: "wss://healthos.test",
+    NEXT_PUBLIC_CORE_WS_URL: "wss://healthos.test",
     EXPO_PUBLIC_CORE_API_URL: "https://api.healthos.test",
-    EXPO_PUBLIC_CORE_WS_URL: "wss://api.healthos.test/ws",
+    EXPO_PUBLIC_WS_URL: "wss://api.healthos.test",
+    EXPO_PUBLIC_CORE_WS_URL: "wss://api.healthos.test",
     EXPO_PUBLIC_WEB_APP_URL: "https://healthos.test",
     EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: "https://healthos.test/auth/oauth/mobile-callback",
     MOBILE_OAUTH_REDIRECT_URIS: "nt208://auth/oauth/callback,https://healthos.test/auth/oauth/mobile-callback",
@@ -333,7 +335,8 @@ test("mobile production render preserves HTTPS and WSS values", () => {
 
   assert.match(mobile.content, /^EXPO_PUBLIC_API_URL=https:\/\/healthos\.test$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_CORE_API_URL=https:\/\/api\.healthos\.test$/m);
-  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=wss:\/\/api\.healthos\.test\/ws$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_WS_URL=wss:\/\/api\.healthos\.test$/m);
+  assert.match(mobile.content, /^EXPO_PUBLIC_CORE_WS_URL=wss:\/\/api\.healthos\.test$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_WEB_APP_URL=https:\/\/healthos\.test$/m);
   assert.match(mobile.content, /^EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https:\/\/healthos\.test\/auth\/oauth\/mobile-callback$/m);
 });

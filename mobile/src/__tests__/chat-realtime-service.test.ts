@@ -8,10 +8,15 @@ import {
 } from '../api/services/chat-realtime-service';
 import { apiRequest } from '../api/client';
 
-jest.mock('../api/client', () => ({
-  apiRequest: jest.fn(),
-  getCoreWsBaseUrl: jest.fn(() => 'ws://localhost:8000'),
-}));
+jest.mock('../api/client', () => {
+  const actual = jest.requireActual('../api/client');
+  return {
+    ...actual,
+    apiRequest: jest.fn(),
+    getCoreWsBaseUrl: jest.fn(() => 'ws://localhost:8000'),
+    getWebSocketBaseUrl: jest.fn(() => 'ws://localhost:8000'),
+  };
+});
 
 const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
@@ -77,5 +82,15 @@ describe('chatRealtimeService', () => {
       event: 'chat.conversation.updated',
       payload: { conversation_id: 'conv-1' },
     })).toBeNull();
+  });
+
+  it('throws ApiError with WS_TICKET_MALFORMED when BFF returns { data: {} }', async () => {
+    // BFF returned a valid envelope but token field is missing — guard at chat-realtime-service.ts:113-114
+    mockApiRequest.mockResolvedValueOnce({ data: {} });
+
+    await expect(chatRealtimeService.wsTicket()).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 'WS_TICKET_MALFORMED',
+    });
   });
 });

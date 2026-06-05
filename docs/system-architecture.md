@@ -1,19 +1,19 @@
 # NT208 HealthOS — System Architecture
 
-> **Version**: 1.3.2  
-> **Last Updated**: 2026-05-25  
+> **Version**: 1.3.3  
+> **Last Updated**: 2026-06-05  
 > **Scope**: Web + Mobile + Microservices + Background Tasks
 
 ---
 
 ## Architecture Overview
 
-HealthOS follows a **BFF (Backend-for-Frontend) pattern** for web and direct **REST + WebSocket** for mobile.
+HealthOS follows a **BFF (Backend-for-Frontend) pattern** for all clients. Web uses BFF for REST and for minting WS auth tickets. Mobile uses BFF for REST and for fetching WS auth tickets; WebSocket connects to the public gateway origin (same as web). See [ADR-001](./architecture/decisions/adr-001-public-ws-gateway.md) for the gateway contract.
 
 ### Web Request Flow
 ```
 Browser (HTTPS)
-    ↓
+    ↓ REST
 Next.js BFF (port 3000)
     ├─ Authorization (httpOnly cookie)
     ├─ Rate limit pre-flight (Redis)
@@ -34,16 +34,24 @@ Data Layer (internal network)
 Response (JSON/binary)
     ↓
 Browser (HTTPS)
+
+Web WebSocket:
+Browser → wss://healthos.page (Cloudflare Tunnel) → core-be:8000/ws or /v1/chat/ws/{id}
+  Ticket:  BFF GET /api/v1/auth/ws-token → short-lived ws_ticket → first auth frame
 ```
 
 ### Mobile Request Flow
 ```
 Mobile App (HTTPS via Expo)
-    ↓
-Core API (port 8000)
-    ├─ Authorization (Bearer token from SecureStore)
-    ├─ Rate limiting (Redis)
-    ├─ JWT validation (check blacklist)
+    ↓ REST
+Next.js BFF (/api/v1/**)
+    ├─ Authorization (Bearer token from SecureStore → forwarded as session)
+    ├─ Rate limit pre-flight
+    └─ Proxy request
+        ↓
+Core API (port 8000, internal)
+    ├─ Validate JWT
+    ├─ Apply rate limits (Redis)
     └─ Process request
         ↓
 Data Layer (PostgreSQL, Redis, MinIO)
@@ -51,6 +59,10 @@ Data Layer (PostgreSQL, Redis, MinIO)
 Response (JSON)
     ↓
 Mobile App (AsyncStorage cache)
+
+Mobile WebSocket:
+Mobile App → wss://healthos.page (Cloudflare Tunnel) → core-be:8000/ws or /v1/chat/ws/{id}
+  Ticket:  BFF GET /api/v1/auth/ws-token → short-lived ws_ticket → first auth frame
 ```
 
 ### Meal Photo AI Pipeline
@@ -193,24 +205,28 @@ sequenceDiagram
 │           │ HTTPS                       │ HTTPS                │
 └───────────┼───────────────────────────────┼────────────────────┘
             │                               │
-            ↓ (BFF only)                    ↓ (Direct)
+            ↓ (BFF only)                    ↓ (BFF + public gateway)
 ┌───────────────────────────────────────────────────────────────┐
 │                   GATEWAY / API LAYER                         │
 ├───────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌─────────────────┐                ┌─────────────────────┐ │
 │  │ Next.js BFF     │                │  FastAPI Core       │ │
-│  │ (port 3000)     │────HTTPS──────▶│  (port 8000)        │ │
-│  │                 │                │                     │ │
+│  │ (port 3000)     │────HTTPS──────▶│  (port 8000,        │ │
+│  │                 │                │   internal only)    │ │
 │  │ • Routes        │                │ • 30+ endpoints     │ │
 │  │ • Auth proxy    │                │ • Validation        │ │
 │  │ • Rate limit    │                │ • Rate limiting     │ │
-│  │ • Error norm.   │                │ • WebSocket (WSS)   │ │
-│  └─────────────────┘                │ • JWT validation    │ │
-│           ▲                         └────────┬─────────────┘ │
-│           │ (session cookie)                │               │
-│           └─────────────────────────────────┘               │
-│                                                             │
+│  │ • WS ticket     │                │ • WebSocket (WSS)   │ │
+│  │ • Error norm.   │                │ • JWT validation    │ │
+│  └─────────────────┘                └────────┬─────────────┘ │
+│           ▲                                  ▲               │
+│           │ (session cookie / Bearer)        │               │
+│           └──────────────────────────────────┘               │
+│                  Public gateway (wss://healthos.page)        │
+│                  Cloudflare Tunnel → core-be:8000/ws         │
+│                  Web + Mobile WS connect to gateway,         │
+│                  authenticate with BFF-minted ws_ticket      │
 └──────────────────────────────┬──────────────────────────────┘
                                │ (async, auth-required)
 ┌──────────────────────────────┴──────────────────────────────┐
@@ -771,6 +787,42 @@ Check: count > limit?
 Fail Closed: If Redis unavailable → 503 (don't allow through)
 ```
 
+### WebSocket URL Configuration
+
+Clients resolve the public WebSocket gateway origin via environment variables. Both web and mobile use gateway-first topology: traffic routes through a public gateway (Cloudflare Tunnel) rather than connecting directly to Core port 8000.
+
+**Environment Variables** (as of 2026-06):
+
+| Client | Variable | Examples |
+|--------|----------|----------|
+| **Web (Next.js)** | `NEXT_PUBLIC_WS_URL` | Production: `wss://healthos.page`; Dev: `ws://localhost:8000` |
+| **Mobile (Expo)** | `EXPO_PUBLIC_WS_URL` | Production: `wss://healthos.page`; Dev: Expo LAN auto-discovery or `ws://10.0.2.2:8000` |
+
+**Legacy variables (deprecated, removed 2026-09-01):**
+- `NEXT_PUBLIC_CORE_WS_URL` → Use `NEXT_PUBLIC_WS_URL`
+- `EXPO_PUBLIC_CORE_WS_URL` → Use `EXPO_PUBLIC_WS_URL`
+
+**Resolution logic:**
+
+**Frontend** (`frontend/src/lib/websocket-url.ts`):
+1. Read `NEXT_PUBLIC_WS_URL` (preferred)
+2. Fall back to `NEXT_PUBLIC_CORE_WS_URL` if not set (with deprecation warning in dev)
+3. SSR returns `""` to fail loudly if neither is set
+4. Client validates: HTTPS page → require WSS, reject bare WS:// (insecure)
+5. Loopback on HTTPS → route to same-origin gateway instead
+
+**Mobile** (`mobile/src/api/client.ts`):
+1. Read `EXPO_PUBLIC_WS_URL` (preferred)
+2. Fall back to `EXPO_PUBLIC_CORE_WS_URL` if not set (with deprecation warning)
+3. Dev: Attempt Expo LAN auto-discovery via `buildExpoDevLanBaseUrl()`
+4. Dev fallback: Use device-specific port (Android: `10.0.2.2:8000`, iOS: `localhost:8000`)
+5. Production: Enforce WSS (throw error on bare `ws://`)
+
+**Implementation files:**
+- **Frontend URL resolver**: `frontend/src/lib/websocket-url.ts` — `resolveWebSocketBase()`, `readWebSocketEnv()`
+- **Mobile URL resolver**: `mobile/src/api/client.ts` — `getWebSocketBaseUrl()`, `readWsUrlEnv()`
+- **Mobile dev fallback**: `mobile/src/api/dev-fallback.ts` — Isolated dev-only `:8000` references
+
 ---
 
 ## Asynchronous Job Architecture (Celery)
@@ -843,11 +895,12 @@ Mobile app displays nutrition breakdown
 - Flexibility: BFF can add auth middleware, rate limiting, error normalization
 - Privacy: Sensitive data (tokens, secrets) never leave backend
 
-### 2. Direct API for Mobile
+### 2. All Clients Through BFF/Gateway
 **Rationale**:
-- Performance: Eliminates extra hop (mobile → BFF → Core)
-- Simplicity: No cookie/session overhead
-- Security: Bearer tokens in SecureStore (more secure than browser storage)
+- Consistency: Single auth surface; BFF mints WS tickets for both web and mobile
+- Security: Core port 8000 stays internal; public WS traffic goes through Cloudflare Tunnel gateway
+- Mobile REST uses BFF; WS connects to public gateway (`wss://healthos.page`) with ticket from BFF
+- See [ADR-001](./architecture/decisions/adr-001-public-ws-gateway.md) for gateway contract
 
 ### 3. WebSocket for Real-time Chat
 **Rationale**:

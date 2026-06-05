@@ -1,4 +1,4 @@
-import { apiRequest, getCoreWsBaseUrl } from '../client';
+import { ApiError, apiRequest, getWebSocketBaseUrl } from '../client';
 import type { DataResponse, Message } from '../../../../shared/api-contracts';
 import { buildAuthFrame, isAuthRejected } from '../../lib/ws-auth-protocol';
 
@@ -34,7 +34,7 @@ export interface AiLifecycleEvent {
  * The ticket is sent as the first post-connect frame via buildAuthFrame()
  * to prevent it from appearing in proxy logs and browser history.
  */
-export function buildChatWsUrl(baseUrl = getCoreWsBaseUrl()) {
+export function buildChatWsUrl(baseUrl = getWebSocketBaseUrl()) {
   return `${baseUrl.replace(/\/+$/, '')}/ws`;
 }
 
@@ -110,6 +110,9 @@ export function getAiLifecycleEventFromChatEvent(event: ChatWsEvent): AiLifecycl
 export const chatRealtimeService = {
   async wsTicket() {
     const response = await apiRequest<DataResponse<WsTicket>>('/api/v1/auth/ws-token');
+    if (!response?.data?.token) {
+      throw new ApiError('Invalid ws-token response.', 0, 'WS_TICKET_MALFORMED');
+    }
     return response.data;
   },
 
