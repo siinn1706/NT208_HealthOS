@@ -27,6 +27,7 @@ const FORBIDDEN_PATTERNS = [
   { name: 'NEXT_PUBLIC_CORE_WS_URL', regex: /\bNEXT_PUBLIC_CORE_WS_URL\b/ },
   { name: 'EXPO_PUBLIC_CORE_WS_URL', regex: /\bEXPO_PUBLIC_CORE_WS_URL\b/ },
   { name: 'EXPO_PUBLIC_CORE_API_URL', regex: /\bEXPO_PUBLIC_CORE_API_URL\b/ },
+  { name: 'EXPO_PUBLIC_API_URL', regex: /\bEXPO_PUBLIC_API_URL\b/ },
   { name: "fetch('/v1/", regex: /fetch\s*\(\s*['"`]\/v1\// },
   { name: 'template /v1/', regex: /['"`][^'"`]*\$\{[^}]+\}\/v1\// },
 ];

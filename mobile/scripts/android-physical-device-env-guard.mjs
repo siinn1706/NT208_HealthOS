@@ -5,8 +5,9 @@ const require = createRequire(import.meta.url);
 const { parseProjectEnv } = require('@expo/env');
 
 export const ANDROID_PUBLIC_URL_KEYS = [
-  'EXPO_PUBLIC_CORE_API_URL',
-  'EXPO_PUBLIC_CORE_WS_URL',
+  'EXPO_PUBLIC_CORE_API_URL',  // DEPRECATED 2026-09-01 — use EXPO_PUBLIC_API_URL
+  'EXPO_PUBLIC_API_URL',       // canonical BFF URL
+  'EXPO_PUBLIC_CORE_WS_URL',   // DEPRECATED 2026-09-01
   'EXPO_PUBLIC_WEB_APP_URL',
 ];
 
@@ -26,7 +27,8 @@ const BLOCKED_PHYSICAL_HOSTS = new Set([
 ]);
 
 const EXPECTED_PROTOCOLS = {
-  EXPO_PUBLIC_CORE_API_URL: new Set(['http:', 'https:']),
+  EXPO_PUBLIC_CORE_API_URL: new Set(['http:', 'https:']),  // DEPRECATED 2026-09-01
+  EXPO_PUBLIC_API_URL: new Set(['http:', 'https:']),       // canonical BFF URL
   EXPO_PUBLIC_WS_URL: new Set(['ws:', 'wss:']),
   EXPO_PUBLIC_CORE_WS_URL: new Set(['ws:', 'wss:']),  // DEPRECATED 2026-09-01
   EXPO_PUBLIC_WEB_APP_URL: new Set(['http:', 'https:']),

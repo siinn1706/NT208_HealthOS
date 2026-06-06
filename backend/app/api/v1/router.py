@@ -34,6 +34,7 @@ from app.api.v1.endpoints import (
     vitals,
     wearables,
     chat,
+    ws_smoke_ticket,
 )
 
 router = APIRouter(prefix="/v1")
@@ -71,3 +72,4 @@ router.include_router(emergency.router)
 router.include_router(emergency_public.router)
 router.include_router(chat_rest.router)
 router.include_router(chat_ws.router)
+router.include_router(ws_smoke_ticket.router)

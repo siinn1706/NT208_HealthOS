@@ -23,6 +23,7 @@ from fastapi import WebSocket
 from jose import JWTError
 
 from app.adapters.redis_client import get_redis
+from app.core.config import settings
 from app.core.security import JWT_BLACKLIST_PREFIX, decode_token_with_type
 
 _LOGGER = logging.getLogger("healthos.ws.auth")
@@ -38,12 +39,28 @@ def _ts_now() -> str:
 async def authenticate_first_frame(ws: WebSocket) -> Optional[uuid.UUID]:
     """Accept the socket, await {type:"auth",ticket:...}, validate the ticket.
 
+    THIS FUNCTION OWNS THE SINGLE ws.accept() CALL.
+    Callers (endpoints, ConnectionManager.connect()) MUST NOT call accept again.
+    The socket arrives un-accepted; this function accepts it, then validates
+    the auth frame.  On success the caller receives the authenticated user_id
+    and the socket is ready for the message loop.
+
     Returns the authenticated user_id on success.
     Returns None and closes the socket with code 4401 on any failure
     (timeout, malformed frame, invalid/expired/revoked ticket).
 
     Callers that want a string form can use str(user_id).
     """
+    # Origin validation (CSWSH defense-in-depth — CORS does not apply to WS).
+    # Only applied when the client sends an Origin header; non-browser clients
+    # (API callers, test harnesses) do not send Origin and are not rejected here.
+    # Browsers ALWAYS send Origin, so browser-originated CSWSH is still blocked.
+    origin = ws.headers.get("origin")
+    allowed = settings.allowed_origins
+    if origin and origin not in allowed:
+        await ws.close(code=4403)
+        return None
+
     await ws.accept()
 
     try:

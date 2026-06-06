@@ -80,7 +80,7 @@ EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
 EXPO_PUBLIC_WS_URL=ws://192.168.1.10:8000
 EXPO_PUBLIC_WEB_APP_URL=http://192.168.1.10:3000
 ```
-`EXPO_PUBLIC_CORE_API_URL` is still accepted for backward compatibility, but `EXPO_PUBLIC_API_URL` is the preferred variable now.
+`EXPO_PUBLIC_CORE_API_URL` is still accepted as legacy fallback until 2026-09-01, but `EXPO_PUBLIC_API_URL` is the canonical variable. The API URL must point at the BFF gateway, never directly at Core port 8000.
 
 Use your LAN IP for phones on the same network and start Core so it listens on
 the LAN interface. Start the Next.js frontend/BFF on the same host before using
@@ -156,10 +156,10 @@ Production builds also need public HTTPS/WSS runtime URLs configured through
 EAS environment variables or a release `.env` that is not committed:
 
 ```text
-EXPO_PUBLIC_CORE_API_URL=https://api.example.com
-EXPO_PUBLIC_WS_URL=wss://api.example.com
-EXPO_PUBLIC_WEB_APP_URL=https://app.example.com
-EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://app.example.com/auth/oauth/mobile-callback
+EXPO_PUBLIC_API_URL=https://healthos.page
+EXPO_PUBLIC_WS_URL=wss://healthos.page
+EXPO_PUBLIC_WEB_APP_URL=https://healthos.page
+EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://healthos.page/auth/oauth/mobile-callback
 ```
 
 This repo uses EAS local app versioning, so `app.json` starts Android at

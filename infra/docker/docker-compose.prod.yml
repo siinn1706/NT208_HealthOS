@@ -240,6 +240,28 @@
       timeout: 5s
       retries: 10
 
+  # ── WS core-be smoke ───────────────────────────────────────────────────
+  # One-shot smoke test that verifies Core WS endpoints are reachable and the
+  # single-accept fix works.  Run manually via `run-ws-corebe-smoke.sh` or
+  # during CI.  NOT started as part of the default compose up.
+  # Uses pre-built python:3.12-slim image (no build: key) to avoid a broken-
+  # build window when the compose file is used in CI (Red Team F15).
+  ws-corebe-smoke:
+    image: python:3.12-slim
+    command: python /app/ws-corebe-smoke.py
+    volumes:
+      - ./ws-corebe-smoke:/app:ro
+    profiles:
+      - smoke
+    depends_on:
+      core-be:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      - WS_SMOKE_TARGET=core-be:8000
+      - WS_SMOKE_SECRET=${WS_SMOKE_SECRET}
+    # env_file intentionally omitted — all vars passed explicitly above.
+
 volumes:
   postgres_data:
   redis_data:

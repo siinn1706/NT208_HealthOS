@@ -146,6 +146,14 @@ class Settings(BaseSettings):
     #         the FE invite-acceptance surface ships.
     group_conv_require_accept: bool = True
 
+    # ── WS smoke test secret ─────────────────────────────────────────────
+    # Shared secret for the ws-corebe-smoke auth-success probe.
+    # The smoke script sends this as X-Smoke-Secret to GET /api/v1/ws/smoke-ticket
+    # to obtain a short-lived ws_ticket for a well-known test user.
+    # If unset, the endpoint returns 403 and the auth-success probe is skipped
+    # with a warning (smoke runs in degraded-but-not-failing mode).
+    ws_smoke_secret: str = ""
+
     # ── Wearable sync — Google Health API (Luồng B) ───────────────────────
     # Obtain client_id + client_secret from https://console.cloud.google.com/
     # (APIs & Services → Credentials → OAuth 2.0 Client ID, Web app type).

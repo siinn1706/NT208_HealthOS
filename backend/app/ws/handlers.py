@@ -7,15 +7,28 @@ Design:
   - Heartbeat: server sends ping every 30s.
   - Rate limiting: 5 sends/second per user (token bucket).
 
+Pre-condition for connect():
+  The socket MUST already be accepted (by `authenticate_first_frame`)
+  before calling ConnectionManager.connect().  A runtime assertion at
+  the top of connect() enforces this.  See auth_first_frame.py for the
+  single source of truth on ws.accept().
+
 ACCEPTED LIMITATION — In-process WS presence state (#6):
   All connection state (user_connections, room_connections, presence, rate-limiter
-  buckets) is stored in a single Python dict in this process. This means:
+  buckets) is stored in a single Python dict in this process.  This means:
     * Presence and online/offline events are NOT shared across multiple worker
       processes or replicas.
     * A user connected to worker A appears offline to worker B.
   Resolution path: replace in-process state with a Redis Pub/Sub fan-out and a
   Redis-backed presence store (e.g. HSET healthos:presence:<user_id> ...).
   For the current single-worker student deployment this is an acceptable trade-off.
+
+ACCEPTED LIMITATION — DoS amplification (Red Team F4):
+  The global-cap check at connect() runs AFTER auth, so unauthenticated
+  flooders consume auth work before being counted.  Acceptable for the
+  current single-worker student deployment (JWT symmetric, Redis localhost).
+  A future multi-worker deployment should add an unauthenticated-pending
+  counter or move rate-limiting to the reverse proxy (Cloudflare).
 """
 from __future__ import annotations
 
@@ -25,6 +38,7 @@ import time
 from typing import Any
 
 from fastapi import WebSocket
+from starlette.websockets import WebSocketState
 
 
 class WebSocketDeliveryError(Exception):
@@ -85,16 +99,24 @@ class ConnectionManager:
     # ──────────────────────────────────────────────────────────────────────────
 
     async def connect(self, ws: WebSocket, user_id: str) -> bool:
-        # Check global cap first — reject without accept to minimise resource use
+        # Pre-condition: caller MUST have already accepted the socket
+        # (typically via authenticate_first_frame).  This assertion catches
+        # silent breakage if a future endpoint calls connect() without accept.
+        assert ws.client_state == WebSocketState.CONNECTED, (
+            "ConnectionManager.connect() requires an already-accepted socket; "
+            "call authenticate_first_frame() first"
+        )
+
+        # Global cap — socket already accepted; close(1013) is a post-accept
+        # close with no error frame, matching "Try Again Later" RFC semantics.
         total = sum(len(conns) for conns in self.user_connections.values())
         if total >= self.MAX_GLOBAL_CONNECTIONS:
-            await ws.close(code=1013)  # Try Again Later
+            await ws.close(code=1013)
             return False
 
-        # Check per-user connection limit before accepting
+        # Per-user connection limit
         current_count = len(self.user_connections.get(user_id, set()))
         if current_count >= self.MAX_CONNECTIONS_PER_USER:
-            await ws.accept()
             await ws.send_json({
                 "event": "error",
                 "payload": {"code": "TOO_MANY_CONNECTIONS", "message": f"Maximum {self.MAX_CONNECTIONS_PER_USER} connections per user exceeded."},
@@ -102,7 +124,6 @@ class ConnectionManager:
             })
             await ws.close(code=4008)
             return False
-        await ws.accept()
         self.user_connections.setdefault(user_id, set()).add(ws)
         self.ws_to_user[ws] = user_id
         self.ws_to_rooms[ws] = set()

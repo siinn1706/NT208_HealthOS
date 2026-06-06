@@ -33,6 +33,26 @@ function requireHttpsUrl(varName) {
   return true;
 }
 
+function requireBffHost(varName) {
+  const value = (process.env[varName] ?? '').trim();
+  const allowlist = (process.env.MOBILE_API_BFF_ALLOWED_HOSTS ?? 'healthos.page')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  if (!value) return true; // handled by requireHttpsUrl
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    if (!allowlist.includes(hostname)) {
+      const allowed = allowlist.join(', ');
+      fail(`${varName}: URL hostname "${hostname}" is not in MOBILE_API_BFF_ALLOWED_HOSTS allowlist. Allowed: ${allowed}. The mobile API URL must point at the BFF gateway.`);
+      return false;
+    }
+  } catch {
+    return true; // validation handled by requireHttpsUrl
+  }
+  return true;
+}
+
 function requireWssUrl(varName) {
   const value = (process.env[varName] ?? '').trim();
   if (!value) {
@@ -99,8 +119,20 @@ if (!wsUrl && legacyWsUrl) {
   console.warn('[check-release-env] WARNING: EXPO_PUBLIC_CORE_WS_URL is deprecated — rename to EXPO_PUBLIC_WS_URL before next release.');
 }
 
+// Resolve EXPO_PUBLIC_API_URL with fallback to legacy EXPO_PUBLIC_CORE_API_URL.
+// The API URL must point at the BFF gateway, never directly at Core port 8000.
+const apiUrl = (process.env.EXPO_PUBLIC_API_URL ?? '').trim();
+const legacyApiUrl = (process.env.EXPO_PUBLIC_CORE_API_URL ?? '').trim();
+const resolvedApiKey = apiUrl
+  ? 'EXPO_PUBLIC_API_URL'
+  : (legacyApiUrl ? 'EXPO_PUBLIC_CORE_API_URL' : 'EXPO_PUBLIC_API_URL');
+if (!apiUrl && legacyApiUrl) {
+  console.warn('[check-release-env] WARNING: EXPO_PUBLIC_CORE_API_URL is deprecated — rename to EXPO_PUBLIC_API_URL (must point at BFF, not Core).');
+}
+
 let ok = true;
-ok = requireHttpsUrl('EXPO_PUBLIC_CORE_API_URL') && ok;
+ok = requireHttpsUrl(resolvedApiKey) && ok;
+ok = requireBffHost(resolvedApiKey) && ok;
 ok = requireWssUrl(resolvedWsKey) && ok;
 ok = requireHttpsUrl('EXPO_PUBLIC_WEB_APP_URL') && ok;
 ok = requireAppLinkUrl('EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI') && ok;
