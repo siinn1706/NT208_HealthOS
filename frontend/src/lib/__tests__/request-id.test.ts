@@ -63,4 +63,14 @@ describe("getOrCreateRequestId", () => {
     expect(getOrCreateRequestId(req)).toBe("stable-id");
     expect(getOrCreateRequestId(req)).toBe("stable-id");
   });
+
+  it("accepts new X-Request-Id casing (canonical)", () => {
+    const req = makeReq({ "X-Request-Id": "canonical-id" });
+    expect(getOrCreateRequestId(req)).toBe("canonical-id");
+  });
+
+  it("falls back to legacy X-Request-ID casing (backward-compat until 2026-09-01)", () => {
+    const req = makeReq({ "X-Request-ID": "legacy-id" });
+    expect(getOrCreateRequestId(req)).toBe("legacy-id");
+  });
 });

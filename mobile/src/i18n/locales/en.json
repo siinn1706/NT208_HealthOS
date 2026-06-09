@@ -139,7 +139,11 @@
     "verifyAndContinue": "Verify and continue",
     "fullName": "Full name",
     "sendNewCode": "Send new code",
-    "confirmPassword": "Confirm password"
+    "confirmPassword": "Confirm password",
+    "usernameLabel": "Username (optional)",
+    "usernamePlaceholder": "yourusername",
+    "usernameHelper": "3+ chars; letters, numbers, underscore. Leave blank to use email prefix.",
+    "usernameInvalid": "Username must be 3+ characters of letters, numbers, or underscores."
   },
   "home": {
     "todaysHealth": "TODAY'S HEALTH",

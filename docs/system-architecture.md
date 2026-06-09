@@ -8,7 +8,7 @@
 
 ## Architecture Overview
 
-HealthOS follows a **BFF (Backend-for-Frontend) pattern** for all clients. Web uses BFF for REST and for minting WS auth tickets. Mobile uses BFF for REST and for fetching WS auth tickets; WebSocket connects to the public gateway origin (same as web). See [ADR-001](./architecture/decisions/adr-001-public-ws-gateway.md) for the gateway contract.
+HealthOS follows a **BFF (Backend-for-Frontend) pattern** for all clients. Web uses BFF for REST and for minting WS auth tickets. Mobile uses BFF for REST and for fetching WS auth tickets; WebSocket connects to the public gateway origin (same as web). See [ADR-001](./architecture/decisions/adr-001-public-ws-gateway.md) for the WS gateway contract and [ADR-002](./architecture/decisions/adr-002-rest-bff-contract.md) for the REST BFF contract.
 
 ### Web Request Flow
 ```

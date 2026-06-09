@@ -292,7 +292,7 @@ try {
             try {
                 switch ($component) {
                     "infra" { Invoke-LocalScript -Component "infra" -ScriptName "start_infra.ps1" -ExtraParams @{ Mode = "local"; InstallPolicy = $InstallPolicy } }
-                    "be" { Invoke-LocalScript -Component "be" -ScriptName "start_be.ps1" }
+                    "be" { Invoke-LocalScript -Component "be" -ScriptName "start_be.ps1" -ExtraParams @{ Mode = "local" } }
                     "fe" { Invoke-LocalScript -Component "fe" -ScriptName "start_fe.ps1" }
                     "ai" { Invoke-LocalScript -Component "ai" -ScriptName "start_ai_worker.ps1" }
                     "queue" { Invoke-LocalScript -Component "queue" -ScriptName "start_queue_worker.ps1" }

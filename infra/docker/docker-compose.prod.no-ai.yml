@@ -1,0 +1,24 @@
+# Low-resource production override — disables the YOLO meal-analysis pipeline.
+#
+# Layer ON TOP of the main prod compose, e.g.:
+#   docker compose \
+#       -f infra/docker/docker-compose.prod.yml \
+#       -f infra/docker/docker-compose.prod.no-ai.yml \
+#       up -d
+#
+# What this override does:
+#   * Forces AI_FOOD_ANALYSIS_ENABLED=false on the ai-worker (chat/embeddings
+#     still work; meal photo analysis returns 503 immediately).
+#   * Same flag propagates so /health/ready stops requiring the YOLO model file
+#     — the worker becomes ready without ~165 MB of weights baked or mounted.
+#   * Skips the YOLO bake-in expectation on the ai-worker image; callers that
+#     enqueue meal-analysis tasks will get MEAL_ANALYSIS_UNAVAILABLE from
+#     core-be (see backend gating).
+#
+# Use this for demo boxes, RAM-constrained VMs, or smoke environments where
+# meal photo analysis is not exercised. For the canonical prod deployment,
+# leave this override OFF — meal analysis is part of the core product.
+services:
+  ai-worker:
+    environment:
+      AI_FOOD_ANALYSIS_ENABLED: "false"

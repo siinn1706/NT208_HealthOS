@@ -115,6 +115,7 @@ export function LinkedAccountsSection() {
       locale,
       from: "/dashboard/profile",
     });
+    // route-matrix-ok: provider constrained to github/google; literal handlers exist at /api/v1/auth/oauth/{github,google}/link/init
     window.location.assign(`/api/v1/auth/oauth/${provider}/link/init?${params.toString()}`);
   };
 

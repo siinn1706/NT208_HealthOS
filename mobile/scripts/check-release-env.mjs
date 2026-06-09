@@ -35,7 +35,7 @@ function requireHttpsUrl(varName) {
 
 function requireBffHost(varName) {
   const value = (process.env[varName] ?? '').trim();
-  const allowlist = (process.env.MOBILE_API_BFF_ALLOWED_HOSTS ?? 'healthos.page')
+  const allowlist = (process.env.MOBILE_API_BFF_ALLOWED_HOSTS ?? 'healthos.shop')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);

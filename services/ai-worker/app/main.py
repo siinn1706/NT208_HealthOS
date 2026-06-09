@@ -36,17 +36,49 @@ app.include_router(ai_router)
 
 
 @app.get("/health")
-@app.get("/health/ready")
 async def health() -> dict:
+    """Liveness probe — returns 200 as long as the FastAPI app is running."""
+    return {"status": "ok", "service": "ai-worker", "debug": settings.debug}
+
+
+@app.get("/health/ready")
+async def health_ready() -> dict:
+    """Readiness probe — 503 when meal-analysis is enabled but no detector is available.
+
+    Readiness rules:
+      * ``ai_food_analysis_enabled=False`` → meal analysis is intentionally off;
+        readiness only requires the FastAPI app to be alive. Chat/embeddings
+        endpoints stay servable; meal-analysis enqueue is gated by core-be.
+      * ``ai_food_analysis_enabled=True`` → the worker MUST have a detection
+        backend (YOLO model file on disk OR primary food-analysis model
+        loaded); otherwise return 503 so docker healthchecks, ``ai-check.sh``,
+        and the core-be enqueue gate all flip red simultaneously.
+    """
     detector_status = get_detector_runtime_status()
-    return {
+    yolo_status = detector_status.get("legacy_yolo", {}) or {}
+    primary_status = detector_status.get("primary", {}) or {}
+    yolo_available = bool(yolo_status.get("model_exists") or yolo_status.get("model_loaded"))
+    primary_available = bool(primary_status.get("model_loaded"))
+
+    body = {
         "status": "ok",
         "service": "ai-worker",
         "debug": settings.debug,
+        "food_analysis_enabled": settings.ai_food_analysis_enabled,
         "detector": detector_status,
         "ai_proxy": "configured" if llm_proxy_service.is_configured() else "missing_config",
         "ai_proxy_model": settings.ai_proxy_model,
     }
+
+    if settings.ai_food_analysis_enabled and not (yolo_available or primary_available):
+        body["status"] = "not_ready"
+        body["reason"] = (
+            f"AI_FOOD_ANALYSIS_ENABLED=true but no detection backend available "
+            f"(yolo_model_path={settings.yolo_model_path})."
+        )
+        raise HTTPException(status_code=503, detail=body)
+
+    return body
 
 
 @app.post("/analyze")

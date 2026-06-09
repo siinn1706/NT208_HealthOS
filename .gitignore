@@ -20,7 +20,7 @@ scripts/
 !mobile/scripts/check-route-matrix.mjs
 !frontend/scripts/
 !services/ai-worker/scripts/
-!services/ai-worker/scripts/*.py
+!services/ai-worker/scripts/**
 .kiro/
 
 
@@ -77,8 +77,6 @@ contracts/openapi/_generated/*.yaml
 
 # AI local model cache (downloaded model weights stay outside git)
 services/ai-worker/models/
-services/ai-worker/model/
-services/ai-worker/class_names.py
 
 # Ignore local infrastructure data
 .data/

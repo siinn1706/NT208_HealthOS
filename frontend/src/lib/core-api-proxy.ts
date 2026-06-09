@@ -5,10 +5,11 @@
  *   import { coreProxy } from "@/lib/core-api-proxy";
  *   return coreProxy(request, "/v1/conversations");
  *
- * Rules (docs/standards/code-style.md):
+ * Contract (docs/architecture/decisions/adr-002-rest-bff-contract.md):
  *   - BFF has NO business logic — only proxy + session check
  *   - Never expose Core BE directly to the browser
- *   - Always forward Authorization header when session token is available
+ *   - Bearer callers (mobile) get 401 directly — no server-side refresh
+ *   - Cross-origin requests → 403 before any Core call
  */
 
 import { cookies } from "next/headers";

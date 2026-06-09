@@ -287,6 +287,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       ...options.headers,
     };
 
+    headers['X-Request-Id'] = (options.headers?.['X-Request-Id'] as string | undefined)
+      ?? (options.headers?.['x-request-id'] as string | undefined)
+      ?? createIdempotencyKey();
+
     if (options.json !== undefined) {
       headers['Content-Type'] = 'application/json';
     }

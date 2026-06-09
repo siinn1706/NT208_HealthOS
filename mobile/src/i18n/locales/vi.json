@@ -139,7 +139,11 @@
     "verifyAndContinue": "Xác thực và tiếp tục",
     "fullName": "Họ và tên",
     "sendNewCode": "Gửi mã mới",
-    "confirmPassword": "Xác nhận mật khẩu"
+    "confirmPassword": "Xác nhận mật khẩu",
+    "usernameLabel": "Tên đăng nhập (không bắt buộc)",
+    "usernamePlaceholder": "tendangnhap",
+    "usernameHelper": "Tối thiểu 3 ký tự; chữ, số, gạch dưới. Bỏ trống để dùng phần trước @ của email.",
+    "usernameInvalid": "Tên đăng nhập phải dài ít nhất 3 ký tự gồm chữ, số hoặc gạch dưới."
   },
   "home": {
     "todaysHealth": "SỨC KHỎE HÔM NAY",

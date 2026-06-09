@@ -515,7 +515,7 @@ describe('authService.signInWithOAuth', () => {
 
   it('uses the Expo auth session on Android so custom-scheme redirects return to the app', async () => {
     (Platform as unknown as { OS: string }).OS = 'android';
-    process.env.EXPO_PUBLIC_WEB_APP_URL = 'https://healthos.page/';
+    process.env.EXPO_PUBLIC_WEB_APP_URL = 'https://healthos.io.vn/';
     process.env.EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI = 'nt208://auth/oauth/callback';
     mockOpenAuthSessionAsync.mockResolvedValueOnce({
       type: 'success',
@@ -527,7 +527,7 @@ describe('authService.signInWithOAuth', () => {
     await expect(authService.signInWithOAuth('google')).resolves.toEqual(mockToken);
 
     expect(mockOpenAuthSessionAsync).toHaveBeenCalledWith(
-      `https://healthos.page/api/v1/auth/oauth/google?mobile_redirect_uri=nt208%3A%2F%2Fauth%2Foauth%2Fcallback&mobile_state=${generatedState}&mobile_code_challenge=${generatedChallenge}`,
+      `https://healthos.io.vn/api/v1/auth/oauth/google?mobile_redirect_uri=nt208%3A%2F%2Fauth%2Foauth%2Fcallback&mobile_state=${generatedState}&mobile_code_challenge=${generatedChallenge}`,
       'nt208://auth/oauth/callback',
     );
     expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/mobile-oauth/redeem', {
