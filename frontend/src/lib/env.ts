@@ -109,5 +109,5 @@ export function assertFrontendEnvConfig(env: NodeJS.ProcessEnv = process.env): v
     throw new Error("NEXT_PUBLIC_APP_URL is not a valid URL");
   }
   if (parsedUrl.protocol !== "https:") throw new Error("NEXT_PUBLIC_APP_URL must use https://");
-  if (parsedUrl.host !== "healthos.page") throw new Error(`NEXT_PUBLIC_APP_URL host must be healthos.page (got ${parsedUrl.host})`);
+  if (!parsedUrl.host) throw new Error("NEXT_PUBLIC_APP_URL must include a hostname");
 }

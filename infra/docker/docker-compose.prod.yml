@@ -152,6 +152,16 @@
       context: ../../services/ai-worker
       dockerfile: Dockerfile
       target: prod
+      # YOLO weights are baked into the image at build time. Override these
+      # build args to switch sources (mirror URL vs GDrive id) or rotate
+      # checksums. See services/ai-worker/scripts/fetch-yolo.sh for the
+      # contract. Pass a bearer token via BuildKit secret:
+      #   docker buildx build --secret id=ai_yolo_mirror_token,src=token.txt ...
+      args:
+        AI_YOLO_GDRIVE_FILE_ID: ${AI_YOLO_GDRIVE_FILE_ID:-1n9tMmb2P5rAlIJsZrBB1wtjRmCKFreZc}
+        AI_YOLO_MODEL_SHA256: ${AI_YOLO_MODEL_SHA256:-2e4a0cd266c5b723d67e5d5e9528114d87178cb453bab2f449beb0b19fd90465}
+        AI_YOLO_MODEL_PATH: ${AI_YOLO_MODEL_PATH:-models/yolov10/YOLOv10b_VietFood67_SGD_new_bigger.pt}
+        AI_YOLO_MIRROR_URL: ${AI_YOLO_MIRROR_URL:-}
     restart: unless-stopped
     env_file:
       - ../../services/ai-worker/.env
@@ -163,7 +173,10 @@
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       AI_YOLO_MODEL_PATH: /app/models/yolov10/YOLOv10b_VietFood67_SGD_new_bigger.pt
       AI_CLASS_NAMES_PATH: /app/data/class_names.py
-      AI_FOOD_ANALYSIS_ENABLED: "false"
+      # Food analysis is ON by default in prod. To run a low-resource deployment
+      # without meal analysis, layer `docker-compose.prod.no-ai.yml` on top of
+      # this file (it sets AI_FOOD_ANALYSIS_ENABLED=false and skips YOLO weights).
+      AI_FOOD_ANALYSIS_ENABLED: ${AI_FOOD_ANALYSIS_ENABLED:-true}
       AI_CALORIECLIP_MODEL_PATH: /app/models/calorieclip
       AI_CALORIECLIP_TIMEOUT_SECONDS: "45"
       DEBUG: "false"
@@ -173,7 +186,7 @@
       minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health').read()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health/ready').read()"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -206,8 +219,8 @@
       args:
         APP_ENV: ${APP_ENV:-production}
         NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-prod}
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://healthos.page}
-        BFF_TRUSTED_ORIGINS: ${BFF_TRUSTED_ORIGINS:-https://healthos.page,https://www.healthos.page}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://healthos.io.vn}
+        BFF_TRUSTED_ORIGINS: ${BFF_TRUSTED_ORIGINS:-https://healthos.io.vn,https://www.healthos.io.vn,https://healthos.shop}
         BFF_CSRF_GUARD_MODE: ${BFF_CSRF_GUARD_MODE:-enforce}
         DEV_BYPASS_ENABLED: ${DEV_BYPASS_ENABLED:-false}
         DEV_BYPASS_CREDENTIALS: ${DEV_BYPASS_CREDENTIALS}
@@ -219,8 +232,8 @@
     environment:
       APP_ENV: ${APP_ENV:-production}
       NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-prod}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://healthos.page}
-      BFF_TRUSTED_ORIGINS: ${BFF_TRUSTED_ORIGINS:-https://healthos.page,https://www.healthos.page}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://healthos.io.vn}
+      BFF_TRUSTED_ORIGINS: ${BFF_TRUSTED_ORIGINS:-https://healthos.io.vn,https://www.healthos.io.vn,https://healthos.shop}
       BFF_CSRF_GUARD_MODE: ${BFF_CSRF_GUARD_MODE:-enforce}
       DEV_BYPASS_ENABLED: ${DEV_BYPASS_ENABLED:-false}
       DEV_BYPASS_CREDENTIALS: ${DEV_BYPASS_CREDENTIALS}

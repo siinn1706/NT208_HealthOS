@@ -18,8 +18,8 @@ set -euo pipefail
 #     the single-accept fix (no RuntimeError from double ws.accept()).
 #
 # What this does NOT prove:
-#   - Cloudflare Tunnel routing of wss://healthos.page/ws → core-be.
-#   - External reachability of wss://healthos.page from the internet.
+#   - Cloudflare Tunnel routing of wss://healthos.shop/ws → core-be.
+#   - External reachability of wss://healthos.shop from the internet.
 #   - See docs/deployment-guide.md "Post-deploy WS core-be verification".
 
 COMPOSE_FILE="$(dirname "$0")/docker-compose.prod.yml"

@@ -9,6 +9,7 @@
     "lint": "eslint && npm run lint:no-legacy-host && npm run check:no-direct-core",
     "lint:no-legacy-host": "bash scripts/check-no-legacy-host.sh",
     "check:no-direct-core": "node scripts/check-no-direct-core.mjs",
+    "check:route-matrix": "node scripts/check-route-matrix.mjs",
     "optimize:assets": "node tools/optimize-assets.mjs",
     "optimize:svgo": "node tools/optimize-assets.mjs --svgo",
     "optimize:thumbs": "node tools/optimize-assets.mjs --thumbs",
@@ -19,7 +20,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:prod": "PLAYWRIGHT_BASE_URL=https://healthos.page playwright test seo-production-smoke"
+    "test:e2e:prod": "PLAYWRIGHT_BASE_URL=https://healthos.io.vn playwright test seo-production-smoke"
   },
   "dependencies": {
     "@dayflow/blossom-color-picker": "^2.2.0",

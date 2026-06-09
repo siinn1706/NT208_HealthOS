@@ -19,7 +19,7 @@ describe("buildLocaleMetadata", () => {
       title: "About — HealthOS",
       description: "About page",
     });
-    expect(meta.alternates?.canonical).toBe("https://healthos.page/vi/about");
+    expect(meta.alternates?.canonical).toBe("https://healthos.io.vn/vi/about");
   });
 
   it("includes vi, en, and x-default hreflang entries", () => {
@@ -30,9 +30,9 @@ describe("buildLocaleMetadata", () => {
       description: "Plans page",
     });
     const langs = meta.alternates?.languages as Record<string, string>;
-    expect(langs.vi).toBe("https://healthos.page/vi/plans");
-    expect(langs.en).toBe("https://healthos.page/en/plans");
-    expect(langs["x-default"]).toBe("https://healthos.page/vi/plans");
+    expect(langs.vi).toBe("https://healthos.io.vn/vi/plans");
+    expect(langs.en).toBe("https://healthos.io.vn/en/plans");
+    expect(langs["x-default"]).toBe("https://healthos.io.vn/vi/plans");
   });
 
   it("sets openGraph.url to the canonical self URL", () => {
@@ -42,7 +42,7 @@ describe("buildLocaleMetadata", () => {
       title: "Services",
       description: "Services page",
     });
-    expect(meta.openGraph?.url).toBe("https://healthos.page/en/services");
+    expect(meta.openGraph?.url).toBe("https://healthos.io.vn/en/services");
   });
 
   it("includes OG image when provided", () => {

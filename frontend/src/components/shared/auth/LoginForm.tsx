@@ -199,6 +199,7 @@ export function LoginForm() {
     if (fromSafe) {
       params.set("from", fromSafe);
     }
+    // route-matrix-ok: provider constrained to github/google; literal handlers exist at /api/v1/auth/oauth/{github,google}
     window.location.href = `/api/v1/auth/oauth/${provider}?${params.toString()}`;
   }
 

@@ -32,10 +32,10 @@ function runScript(env) {
 describe('check-release-env.mjs', () => {
   it('passes with canonical-only vars', () => {
     const { code, stdout, stderr } = runScript({
-      EXPO_PUBLIC_API_URL: 'https://healthos.page',
-      EXPO_PUBLIC_WS_URL: 'wss://healthos.page',
-      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.page',
-      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.page/auth/oauth/mobile-callback',
+      EXPO_PUBLIC_API_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_WS_URL: 'wss://healthos.shop',
+      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.shop/auth/oauth/mobile-callback',
     });
     assert.equal(code, 0, `expected exit 0, got ${code}\nstderr: ${stderr}`);
     assert.match(stdout, /All release env vars valid/);
@@ -43,10 +43,10 @@ describe('check-release-env.mjs', () => {
 
   it('passes with legacy-only vars (deprecation warning)', () => {
     const { code, stdout, stderr } = runScript({
-      EXPO_PUBLIC_CORE_API_URL: 'https://healthos.page',
-      EXPO_PUBLIC_CORE_WS_URL: 'wss://healthos.page',
-      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.page',
-      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.page/auth/oauth/mobile-callback',
+      EXPO_PUBLIC_CORE_API_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_CORE_WS_URL: 'wss://healthos.shop',
+      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.shop/auth/oauth/mobile-callback',
     });
     assert.equal(code, 0, `expected exit 0, got ${code}\nstderr: ${stderr}`);
     assert.match(stdout, /EXPO_PUBLIC_CORE_API_URL is deprecated/);
@@ -55,8 +55,8 @@ describe('check-release-env.mjs', () => {
 
   it('fails when both API and WS URLs are missing', () => {
     const { code, stdout, stderr } = runScript({
-      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.page',
-      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.page/auth/oauth/mobile-callback',
+      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.shop/auth/oauth/mobile-callback',
     });
     assert.notEqual(code, 0, `expected non-zero exit, got ${code}`);
     assert.match(stderr, /EXPO_PUBLIC_API_URL is not set/);
@@ -65,20 +65,20 @@ describe('check-release-env.mjs', () => {
   it('fails when API URL hostname is not in allowlist', () => {
     const { code, stderr } = runScript({
       EXPO_PUBLIC_API_URL: 'https://core-be.internal:443',
-      EXPO_PUBLIC_WS_URL: 'wss://healthos.page',
-      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.page',
-      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.page/auth/oauth/mobile-callback',
+      EXPO_PUBLIC_WS_URL: 'wss://healthos.shop',
+      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.shop/auth/oauth/mobile-callback',
     });
     assert.notEqual(code, 0, `expected non-zero exit, got ${code}`);
     assert.match(stderr, /MOBILE_API_BFF_ALLOWED_HOSTS/);
   });
 
-  it('passes when allowlist env is missing (defaults to healthos.page)', () => {
+  it('passes when allowlist env is missing (defaults to healthos.shop)', () => {
     const env = {
-      EXPO_PUBLIC_API_URL: 'https://healthos.page',
-      EXPO_PUBLIC_WS_URL: 'wss://healthos.page',
-      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.page',
-      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.page/auth/oauth/mobile-callback',
+      EXPO_PUBLIC_API_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_WS_URL: 'wss://healthos.shop',
+      EXPO_PUBLIC_WEB_APP_URL: 'https://healthos.shop',
+      EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: 'https://healthos.shop/auth/oauth/mobile-callback',
     };
     // Explicitly unset MOBILE_API_BFF_ALLOWED_HOSTS
     delete env.MOBILE_API_BFF_ALLOWED_HOSTS;

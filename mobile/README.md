@@ -156,10 +156,10 @@ Production builds also need public HTTPS/WSS runtime URLs configured through
 EAS environment variables or a release `.env` that is not committed:
 
 ```text
-EXPO_PUBLIC_API_URL=https://healthos.page
-EXPO_PUBLIC_WS_URL=wss://healthos.page
-EXPO_PUBLIC_WEB_APP_URL=https://healthos.page
-EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://healthos.page/auth/oauth/mobile-callback
+EXPO_PUBLIC_API_URL=https://healthos.shop
+EXPO_PUBLIC_WS_URL=wss://healthos.shop
+EXPO_PUBLIC_WEB_APP_URL=https://healthos.io.vn
+EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI=https://healthos.io.vn/auth/oauth/mobile-callback
 ```
 
 This repo uses EAS local app versioning, so `app.json` starts Android at

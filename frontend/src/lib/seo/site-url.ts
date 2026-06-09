@@ -5,7 +5,7 @@ let _cachedSiteUrl: string | null = null;
 /** Returns the canonical origin. Reads NEXT_PUBLIC_APP_URL lazily so tests can stub env. */
 export function getSiteUrl(): string {
   if (_cachedSiteUrl !== null) return _cachedSiteUrl;
-  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://healthos.page";
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://healthos.io.vn";
   _cachedSiteUrl = raw.replace(/\/+$/, "");
   return _cachedSiteUrl;
 }
@@ -17,8 +17,8 @@ export function _resetSiteUrlCache(): void {
 
 /**
  * Build an absolute URL from a locale-prefixed or plain path.
- * absoluteUrl("/vi/about") → "https://healthos.page/vi/about"
- * absoluteUrl("/") → "https://healthos.page"
+ * absoluteUrl("/vi/about") → "https://healthos.io.vn/vi/about"
+ * absoluteUrl("/") → "https://healthos.io.vn"
  */
 export function absoluteUrl(path: string = "/"): string {
   const p = path.startsWith("/") ? path : `/${path}`;

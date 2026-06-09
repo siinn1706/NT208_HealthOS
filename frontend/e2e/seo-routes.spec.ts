@@ -111,5 +111,5 @@ test("/llms.txt — is reachable and contains canonical", async ({ page }) => {
   const res = await page.goto("/llms.txt");
   expect(res?.status()).toBe(200);
   const body = await res?.text();
-  expect(body).toContain("healthos.page");
+  expect(body).toContain("healthos.io.vn");
 });

@@ -261,6 +261,14 @@ const ANDROID_SHA256_FINGERPRINT_RE = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
 const LEGACY_KEY_MAP = {
   NEXT_PUBLIC_CORE_WS_URL: "NEXT_PUBLIC_WS_URL",
   EXPO_PUBLIC_CORE_WS_URL: "EXPO_PUBLIC_WS_URL",
+  EXPO_PUBLIC_CORE_API_URL: "EXPO_PUBLIC_API_URL",
+};
+// Sunset dates for legacy keys. Hard-fail triggers on/after the date, or immediately
+// when RENDER_ENV_LEGACY_HARDFAIL=1 is set (useful for CI prod checks).
+const LEGACY_SUNSET = {
+  NEXT_PUBLIC_CORE_WS_URL: { sunsetDate: "2026-09-01" },
+  EXPO_PUBLIC_CORE_WS_URL: { sunsetDate: "2026-09-01" },
+  EXPO_PUBLIC_CORE_API_URL: { sunsetDate: "2026-09-01" },
 };
 
 const LOCAL_MOBILE_EMULATOR_DEFAULTS = new Map([
@@ -285,17 +293,25 @@ const BACKWARD_COMPATIBLE_DEFAULTS = {
 
 export function applyEnvDefaults(env) {
   const base = { ...BACKWARD_COMPATIBLE_DEFAULTS, ...env };
+  const forceHardFail = process.env.RENDER_ENV_LEGACY_HARDFAIL === "1";
   // Forward legacy keys to canonical names when new key is absent or empty.
   // Uses || (not ??) so that empty-string injections are treated as "not set".
   for (const [legacyKey, newKey] of Object.entries(LEGACY_KEY_MAP)) {
-    const resolved = (base[newKey] || "").trim() || (base[legacyKey] || "").trim();
-    if (resolved) {
-      if (!(base[newKey] || "").trim() && (base[legacyKey] || "").trim()) {
-        process.stderr.write(
-          `[render-env] DEPRECATED: ${legacyKey} → rename to ${newKey} (will be removed next release)\n`,
+    const legacyVal = (base[legacyKey] || "").trim();
+    if (!legacyVal) continue;
+    const newVal = (base[newKey] || "").trim();
+    if (!newVal) {
+      const sunset = LEGACY_SUNSET[legacyKey];
+      const pastSunset = sunset ? Date.now() >= Date.parse(`${sunset.sunsetDate}T00:00:00Z`) : false;
+      if (forceHardFail || pastSunset) {
+        const reason = forceHardFail ? "RENDER_ENV_LEGACY_HARDFAIL=1" : `sunset date ${sunset.sunsetDate} reached`;
+        throw new Error(
+          `Legacy key ${legacyKey} is no longer accepted (${reason}). Rename it to ${newKey} in infra/env/.env.master.`,
         );
       }
-      base[newKey] = resolved;
+      const sunsetNote = sunset ? ` — will hard-fail after ${sunset.sunsetDate}` : " (will be removed next release)";
+      process.stderr.write(`[render-env] DEPRECATED: ${legacyKey} → rename to ${newKey}${sunsetNote}\n`);
+      base[newKey] = legacyVal;
     }
   }
   return base;

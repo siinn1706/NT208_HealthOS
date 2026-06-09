@@ -26,7 +26,7 @@ function jsonResponse(payload: unknown, status: number): Response {
   });
 }
 
-const REQUEST_ID_HEADER = "X-Request-ID";
+const REQUEST_ID_HEADER = "X-Request-Id";
 
 describe("coreProxy refresh rotation", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -999,5 +999,210 @@ describe("coreFetchStream auth refresh", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain(SESSION_COOKIE_NAME);
     expect(await response.text()).toBe("data: ok\n\n");
+  });
+});
+
+describe("coreProxy error normalization, contract, and timeout", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    cookiesMock.mockReset();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.CORE_API_URL = "http://core.example";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("normalizes FastAPI detail string into canonical error shape", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Value is required" }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "PATCH",
+      headers: { host: "localhost", origin: "http://localhost", "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const res = await coreProxy(req, "/v1/users/me", { method: "PATCH" });
+    const body = await res.json();
+
+    expect(res.status).toBe(422);
+    expect(body.error.code).toBe("VALIDATION_FAILED");
+    expect(body.error.message).toBe("Value is required");
+  });
+
+  it("normalizes FastAPI detail object with code+message", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({ detail: { code: "USERNAME_TAKEN", message: "That username is taken." } }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "PATCH",
+      headers: { host: "localhost", origin: "http://localhost", "content-type": "application/json" },
+      body: JSON.stringify({ username: "taken" }),
+    });
+    const res = await coreProxy(req, "/v1/users/me", { method: "PATCH" });
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.error.code).toBe("USERNAME_TAKEN");
+    expect(body.error.message).toBe("That username is taken.");
+  });
+
+  it("normalizes null upstream body into fallback code+message", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockResolvedValue(new Response(null, { status: 400 }));
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "PATCH",
+      headers: { host: "localhost", origin: "http://localhost", "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const res = await coreProxy(req, "/v1/users/me", { method: "PATCH" });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe("BAD_REQUEST");
+    expect(typeof body.error.message).toBe("string");
+  });
+
+  it("propagates X-Request-Id on the response and forwards it to Core", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockResolvedValue(jsonResponse({ data: {} }, 200));
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "GET",
+      headers: { host: "localhost", origin: "http://localhost", [REQUEST_ID_HEADER]: "trace-abc" },
+    });
+    const res = await coreProxy(req, "/v1/users/me");
+
+    expect(res.headers.get(REQUEST_ID_HEADER)).toBe("trace-abc");
+    const forwarded = (fetchMock.mock.calls[0][1] as RequestInit & { headers: Record<string, string> }).headers;
+    expect(forwarded[REQUEST_ID_HEADER]).toBe("trace-abc");
+  });
+
+  it("accepts legacy X-Request-ID casing as backward-compat (until 2026-09-01)", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockResolvedValue(jsonResponse({ data: {} }, 200));
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "GET",
+      headers: { host: "localhost", origin: "http://localhost", "X-Request-ID": "legacy-trace" },
+    });
+    const res = await coreProxy(req, "/v1/users/me");
+
+    // Legacy header should still be accepted; response carries the propagated id
+    expect(res.headers.get(REQUEST_ID_HEADER)).toBe("legacy-trace");
+  });
+
+  it("returns 413 when non-multipart JSON body exceeds 1 MiB", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const oversizeBody = "x".repeat(1024 * 1024 + 1);
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "PATCH",
+      headers: { host: "localhost", origin: "http://localhost", "content-type": "application/json" },
+      body: oversizeBody,
+    });
+    const res = await coreProxy(req, "/v1/users/me", { method: "PATCH" });
+    const body = await res.json();
+
+    expect(res.status).toBe(413);
+    expect(body.error.code).toBe("PAYLOAD_TOO_LARGE");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 504 when Core request times out (AbortError)", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockRejectedValue(Object.assign(new Error("timeout"), { name: "AbortError" }));
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "GET",
+      headers: { host: "localhost", origin: "http://localhost" },
+    });
+    const res = await coreProxy(req, "/v1/users/me");
+    const body = await res.json();
+
+    expect(res.status).toBe(504);
+    expect(body.error.code).toBe("UPSTREAM_TIMEOUT");
+    expect(res.headers.get(REQUEST_ID_HEADER)).toBeTruthy();
+  });
+
+  it("returns 503 when Core transport fails (connection refused)", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+    fetchMock.mockRejectedValue(new Error("connect ECONNREFUSED"));
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "GET",
+      headers: { host: "localhost", origin: "http://localhost" },
+    });
+    const res = await coreProxy(req, "/v1/users/me");
+    const body = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(body.error.code).toBe("UPSTREAM_UNAVAILABLE");
+    expect(res.headers.get(REQUEST_ID_HEADER)).toBeTruthy();
+  });
+
+  it("returns 401 directly for bearer-auth callers without attempting refresh", async () => {
+    // Mobile sends Authorization: Bearer — no session cookie present.
+    // On 401 from Core, coreProxy must NOT attempt token refresh (mobile manages its own lifecycle).
+    setCookieStore({}); // no cookie
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: { code: "AUTH_INVALID_TOKEN", message: "Token expired" } }, 401),
+    );
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "GET",
+      headers: {
+        host: "localhost",
+        origin: "http://localhost",
+        authorization: "Bearer mobile-token",
+      },
+    });
+    const res = await coreProxy(req, "/v1/users/me");
+
+    expect(res.status).toBe(401);
+    // Only one fetch call — no refresh attempt
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects cross-origin requests with 403 before reaching Core", async () => {
+    setCookieStore({ [SESSION_COOKIE_NAME]: "access-token" });
+
+    const { coreProxy } = await import("@/lib/core-api-proxy");
+    const req = new NextRequest("http://localhost/api/v1/users/me", {
+      method: "GET",
+      headers: {
+        host: "localhost",
+        origin: "https://evil.example.com",
+      },
+    });
+    const res = await coreProxy(req, "/v1/users/me");
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

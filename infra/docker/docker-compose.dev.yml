@@ -156,6 +156,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-healthos_dev_pass}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-healthos_dev_pass}@redis:6379/2
       AI_WORKER_URL: http://ai-worker:8001
+      AI_WORKER_TIMEOUT_SECONDS: "240"
       STORAGE_ENDPOINT: http://minio:9000
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -201,7 +202,7 @@ services:
       - ../../services/ai-worker:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health').read()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health/ready').read()"]
       interval: 10s
       timeout: 5s
       retries: 10

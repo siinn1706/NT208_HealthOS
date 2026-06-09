@@ -10,7 +10,7 @@ describe("getSiteUrl", () => {
 
   it("returns the default canonical when env is unset", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
-    expect(getSiteUrl()).toBe("https://healthos.page");
+    expect(getSiteUrl()).toBe("https://healthos.io.vn");
   });
 
   it("uses NEXT_PUBLIC_APP_URL when set", () => {
@@ -50,19 +50,19 @@ describe("absoluteUrl", () => {
   });
 
   it('returns origin only for "/"', () => {
-    expect(absoluteUrl("/")).toBe("https://healthos.page");
+    expect(absoluteUrl("/")).toBe("https://healthos.io.vn");
   });
 
   it("appends path to origin", () => {
-    expect(absoluteUrl("/vi/about")).toBe("https://healthos.page/vi/about");
+    expect(absoluteUrl("/vi/about")).toBe("https://healthos.io.vn/vi/about");
   });
 
   it("prepends slash if missing", () => {
-    expect(absoluteUrl("en/plans")).toBe("https://healthos.page/en/plans");
+    expect(absoluteUrl("en/plans")).toBe("https://healthos.io.vn/en/plans");
   });
 
   it("uses default argument", () => {
-    expect(absoluteUrl()).toBe("https://healthos.page");
+    expect(absoluteUrl()).toBe("https://healthos.io.vn");
   });
 });
 
@@ -78,17 +78,17 @@ describe("localeAlternates", () => {
 
   it("returns correct vi and en URLs", () => {
     const alts = localeAlternates("/about");
-    expect(alts.languages.vi).toBe("https://healthos.page/vi/about");
-    expect(alts.languages.en).toBe("https://healthos.page/en/about");
+    expect(alts.languages.vi).toBe("https://healthos.io.vn/vi/about");
+    expect(alts.languages.en).toBe("https://healthos.io.vn/en/about");
   });
 
   it("sets x-default to the vi (defaultLocale) variant", () => {
     const alts = localeAlternates("/plans");
-    expect(alts.languages["x-default"]).toBe("https://healthos.page/vi/plans");
+    expect(alts.languages["x-default"]).toBe("https://healthos.io.vn/vi/plans");
   });
 
   it("canonical equals the vi variant", () => {
     const alts = localeAlternates("/services");
-    expect(alts.canonical).toBe("https://healthos.page/vi/services");
+    expect(alts.canonical).toBe("https://healthos.io.vn/vi/services");
   });
 });

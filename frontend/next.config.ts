@@ -109,8 +109,8 @@ const nextConfig: NextConfig = {
       // process and match Host: header directly; no proxy interception.
       {
         source: "/:path*",
-        has: [{ type: "host", value: "www.healthos.page" }],
-        destination: "https://healthos.page/:path*",
+        has: [{ type: "host", value: "www.healthos.io.vn" }],
+        destination: "https://healthos.io.vn/:path*",
         permanent: true,
       },
       // Root → default locale. 307 (not 308) — locale negotiation varies on

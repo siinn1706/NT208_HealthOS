@@ -24,16 +24,19 @@ export function AuthSignUpScreen() {
   const { t: i18n } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const passwordValid = password.length >= 8 && /\d/.test(password);
+  const usernameValid = username.length === 0 || /^[a-z][a-z0-9_]{2,29}$/.test(username);
 
   function validate() {
     if (!name.trim()) return 'Full name is required.';
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return 'A valid email is required.';
+    if (!usernameValid) return i18n('auth.usernameInvalid');
     if (password.length < 8) return 'Password must be at least 8 characters.';
     if (!agreed) return 'Please accept the terms to continue.';
     return null;
@@ -44,15 +47,16 @@ export function AuthSignUpScreen() {
     if (msg) { setError(msg); return; }
     setLoading(true);
     setError(null);
+    const finalUsername = username.trim() || normalizeUsername(email);
     try {
       await authService.requestOtp({
         email: email.trim(),
         purpose: 'signup',
         name: name.trim(),
-        username: normalizeUsername(email),
+        username: finalUsername,
         password,
       });
-      setPendingSignup({ email: email.trim(), password, name: name.trim(), username: normalizeUsername(email) });
+      setPendingSignup({ email: email.trim(), password, name: name.trim(), username: finalUsername });
       router.push({ pathname: '/auth/otp', params: { email: email.trim(), purpose: 'signup' } });
     } catch (err) {
       setError(localizeError(err instanceof Error ? err : null, i18n('api.genericError')));
@@ -80,6 +84,17 @@ export function AuthSignUpScreen() {
       <View style={styles.fieldGroup}>
         <Input label={i18n('auth.fullName')} value={name} onChangeText={setName} autoComplete="name" textContentType="name" placeholder="Jane Doe" />
         <Input label={i18n('auth.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" placeholder="you@example.com" />
+        <Input
+          label={i18n('auth.usernameLabel')}
+          value={username}
+          onChangeText={(v) => setUsername(v.toLowerCase().trim())}
+          autoCapitalize="none"
+          autoComplete="username"
+          textContentType="username"
+          placeholder={i18n('auth.usernamePlaceholder')}
+          helper={i18n('auth.usernameHelper')}
+          valid={username.length === 0 ? undefined : usernameValid}
+        />
         <Input
           label={i18n('auth.password')}
           value={password}

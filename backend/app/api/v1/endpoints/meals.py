@@ -33,6 +33,7 @@ from app.core.metrics import record_idempotency_outcome
 from app.core.rate_limit import rate_limit_meal_create
 from app.services import idempotency as idem_svc
 from app.services import meals as meal_svc
+from app.services.ai_worker_health import assert_ai_worker_ready_for_meal_analysis
 from app.services.idempotency import IdempotencyOutcome
 from app.services.upload_security import (
     UploadTooLargeError,
@@ -238,6 +239,7 @@ async def create_meal(
 
         # If image was uploaded, trigger async analysis after meal is created
         if image_url:
+            await assert_ai_worker_ready_for_meal_analysis()
             try:
                 job = analyze_meal_image.delay(str(meal.id), image_url)
             except Exception as exc:
@@ -479,6 +481,7 @@ async def analyze_meal_photo(
     )
 
     # Trigger async analysis
+    await assert_ai_worker_ready_for_meal_analysis()
     try:
         job = analyze_meal_image.delay(str(meal.id), image_url)
     except Exception as exc:

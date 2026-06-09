@@ -1,4 +1,6 @@
 param(
+    [ValidateSet("auto", "docker", "local")]
+    [string]$Mode = "auto",
     [switch]$SkipInstall,
     [switch]$CheckOnly,
     [Alias("Host")]
@@ -20,6 +22,9 @@ $ScriptLogFile = Resolve-LogFilePath -RepoRoot $RepoRoot -DefaultName "be" -Requ
 Start-HealthOSTranscript -LogFilePath $ScriptLogFile
 
 Write-Host "[BE] Log file: $ScriptLogFile" -ForegroundColor DarkCyan
+
+$effectiveMode = Resolve-EffectiveMode -Mode $Mode -LogPrefix "[BE]"
+Write-Host "[BE] Effective mode: $effectiveMode" -ForegroundColor DarkCyan
 
 Set-Location $BackendDir
 
@@ -75,6 +80,18 @@ if (-not $SkipInstall) {
 }
 
 Assert-SingleAlembicHead -PythonExe $PythonExe -BackendDir $BackendDir -ErrorPrefix "[BE]"
+
+# In local mode the DATABASE_URL in backend/.env uses the Docker service hostname
+# "postgres" which is unresolvable on the host. Override it to localhost so that
+# Alembic (and the app) can reach a native PostgreSQL instance.
+if ($effectiveMode -eq "local" -and -not $env:ALEMBIC_DATABASE_URL) {
+    $localUser     = if ($env:POSTGRES_APP_USER)     { $env:POSTGRES_APP_USER }     else { "healthos" }
+    $localPassword = if ($env:POSTGRES_APP_PASSWORD) { $env:POSTGRES_APP_PASSWORD } else { "healthos_dev_pass" }
+    $localDb       = if ($env:POSTGRES_APP_DB)       { $env:POSTGRES_APP_DB }       else { "healthos" }
+    $env:ALEMBIC_DATABASE_URL = "postgresql+asyncpg://${localUser}:${localPassword}@localhost:5432/${localDb}"
+    $env:DATABASE_URL         = $env:ALEMBIC_DATABASE_URL
+    Write-Host "[BE] Local mode: overriding DATABASE_URL to localhost:5432" -ForegroundColor Yellow
+}
 
 Write-Host "[BE] Running migrations via python -m alembic..." -ForegroundColor Cyan
 & $PythonExe -m alembic upgrade head

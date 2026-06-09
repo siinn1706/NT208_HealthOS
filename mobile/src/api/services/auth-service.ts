@@ -139,6 +139,7 @@ function normalizeMobileOAuthRedirectUri(raw: string | undefined): string | null
 }
 
 export function buildMobileOAuthStartUrl(provider: MobileOAuthProvider, state: string, codeChallenge: string): string {
+  // route-matrix-ok: provider constrained to MobileOAuthProvider (github/google); literal handlers exist
   const url = new URL(`/api/v1/auth/oauth/${provider}`, getWebAppBaseUrl());
   url.searchParams.set('mobile_redirect_uri', getMobileOAuthRedirectUri());
   url.searchParams.set('mobile_state', assertMobileOAuthState(state));

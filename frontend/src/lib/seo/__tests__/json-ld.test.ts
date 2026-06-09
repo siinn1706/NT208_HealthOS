@@ -41,9 +41,9 @@ describe("organizationJsonLd", () => {
     expect(organizationJsonLd["@type"]).toBe("Organization");
   });
 
-  it("url and logo point to healthos.page", () => {
-    expect(organizationJsonLd.url).toContain("healthos.page");
-    expect(organizationJsonLd.logo).toContain("healthos.page");
+  it("url and logo point to healthos.io.vn", () => {
+    expect(organizationJsonLd.url).toContain("healthos.io.vn");
+    expect(organizationJsonLd.logo).toContain("healthos.io.vn");
   });
 
   it("logo references /logo.svg", () => {
@@ -56,7 +56,7 @@ describe("websiteJsonLd", () => {
     expect(websiteJsonLd["@type"]).toBe("WebSite");
   });
 
-  it("url points to healthos.page", () => {
-    expect(websiteJsonLd.url).toContain("healthos.page");
+  it("url points to healthos.io.vn", () => {
+    expect(websiteJsonLd.url).toContain("healthos.io.vn");
   });
 });
