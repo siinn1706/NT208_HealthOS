@@ -197,7 +197,6 @@ const TARGETS = {
           "MINIO_ROOT_PASSWORD",
           "NEXTAUTH_SECRET",
           "BFF_SHARED_SECRET",
-          "AI_WORKER_URL",
         ],
       ],
     ],
@@ -239,6 +238,7 @@ const TARGETS = {
       "EXPO_PUBLIC_CORE_WS_URL",
       "EXPO_PUBLIC_WEB_APP_URL",
       "EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI",
+      "EXPO_PUBLIC_APP_ENV",
     ]]],
   },
 };
@@ -287,6 +287,7 @@ const BACKWARD_COMPATIBLE_DEFAULTS = {
   EXPO_PUBLIC_CORE_WS_URL: "",
   EXPO_PUBLIC_WEB_APP_URL: "",
   EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI: "",
+  EXPO_PUBLIC_APP_ENV: "",
   ANDROID_APP_LINK_PACKAGE_NAME: "com.nt208.healthos",
   ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS: "",
 };
@@ -478,7 +479,7 @@ export function validateEnv(env, targetNames, options = {}) {
 }
 
 function isProtectedEnv(env) {
-  return [env.APP_ENV, env.NEXT_PUBLIC_APP_ENV, env.NODE_ENV].some((value) =>
+  return [env.APP_ENV, env.NEXT_PUBLIC_APP_ENV, env.EXPO_PUBLIC_APP_ENV, env.NODE_ENV].some((value) =>
     PROTECTED_ENV_VALUES.has(String(value ?? "").trim().toLowerCase()),
   );
 }

@@ -1,5 +1,5 @@
 /* eslint-env jest */
-import { humanizeError, localizeError } from '../api/error-message';
+import { humanizeError, localizeDisplayMessage, localizeError } from '../api/error-message';
 import { ApiError } from '../api/client';
 
 const mockT = jest.fn((key: string, opts?: { defaultValue?: string }) => {
@@ -68,6 +68,24 @@ describe('localizeError', () => {
     expect(localizeError(new Error('The origin web server returned an invalid or incomplete response to Cloudflare.'))).toBe(
       'An unexpected server error occurred.',
     );
+  });
+});
+
+describe('localizeDisplayMessage', () => {
+  beforeEach(() => mockT.mockClear());
+
+  it('does not expose raw Cloudflare origin text', () => {
+    expect(localizeDisplayMessage('The origin web server returned an invalid or incomplete response to Cloudflare.')).toBe(
+      'An unexpected server error occurred.',
+    );
+  });
+
+  it('does not expose raw 5xx status text', () => {
+    expect(localizeDisplayMessage('Request failed with status 503.')).toBe('An unexpected server error occurred.');
+  });
+
+  it('keeps normal user-facing messages', () => {
+    expect(localizeDisplayMessage('Invalid username or password.')).toBe('Invalid username or password.');
   });
 });
 

@@ -1,11 +1,31 @@
 #!/usr/bin/env node
 // Validates that all required production env vars are present and well-formed.
-// Exits non-zero in CI; warns locally (process.env.CI distinguishes the two).
+// Exits non-zero in CI or with --strict; warns locally for advisory checks.
 
-const IS_CI = Boolean(process.env.CI);
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const { parseProjectEnv } = require('@expo/env');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const IS_STRICT = Boolean(process.env.CI) || process.argv.includes('--strict');
+const PROJECT_ROOT = process.env.CHECK_RELEASE_ENV_PROJECT_ROOT
+  ? resolve(process.env.CHECK_RELEASE_ENV_PROJECT_ROOT)
+  : resolve(__dirname, '..');
+const releaseEnv = loadReleaseEnv();
+
+function loadReleaseEnv() {
+  const parsed = parseProjectEnv(PROJECT_ROOT, {
+    mode: 'production',
+    silent: true,
+    systemEnv: process.env,
+  });
+  return { ...parsed.env, ...process.env };
+}
 
 function fail(message) {
-  if (IS_CI) {
+  if (IS_STRICT) {
     console.error(`[check-release-env] ERROR: ${message}`);
     process.exit(1);
   } else {
@@ -14,7 +34,7 @@ function fail(message) {
 }
 
 function requireHttpsUrl(varName) {
-  const value = (process.env[varName] ?? '').trim();
+  const value = (releaseEnv[varName] ?? '').trim();
   if (!value) {
     fail(`${varName} is not set.`);
     return false;
@@ -34,8 +54,8 @@ function requireHttpsUrl(varName) {
 }
 
 function requireBffHost(varName) {
-  const value = (process.env[varName] ?? '').trim();
-  const allowlist = (process.env.MOBILE_API_BFF_ALLOWED_HOSTS ?? 'healthos.shop')
+  const value = (releaseEnv[varName] ?? '').trim();
+  const allowlist = (releaseEnv.MOBILE_API_BFF_ALLOWED_HOSTS ?? 'healthos.shop')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
@@ -54,7 +74,7 @@ function requireBffHost(varName) {
 }
 
 function requireWssUrl(varName) {
-  const value = (process.env[varName] ?? '').trim();
+  const value = (releaseEnv[varName] ?? '').trim();
   if (!value) {
     fail(`${varName} is not set.`);
     return false;
@@ -74,7 +94,7 @@ function requireWssUrl(varName) {
 }
 
 function requireAppLinkUrl(varName) {
-  const value = (process.env[varName] ?? '').trim();
+  const value = (releaseEnv[varName] ?? '').trim();
   if (!value) {
     fail(`${varName} is not set.`);
     return false;
@@ -112,8 +132,8 @@ function requireAppLinkUrl(varName) {
 
 // Resolve EXPO_PUBLIC_WS_URL with fallback to legacy EXPO_PUBLIC_CORE_WS_URL.
 // Warn if only the legacy key is set so operators know to migrate.
-const wsUrl = (process.env.EXPO_PUBLIC_WS_URL ?? '').trim();
-const legacyWsUrl = (process.env.EXPO_PUBLIC_CORE_WS_URL ?? '').trim();
+const wsUrl = (releaseEnv.EXPO_PUBLIC_WS_URL ?? '').trim();
+const legacyWsUrl = (releaseEnv.EXPO_PUBLIC_CORE_WS_URL ?? '').trim();
 const resolvedWsKey = wsUrl ? 'EXPO_PUBLIC_WS_URL' : (legacyWsUrl ? 'EXPO_PUBLIC_CORE_WS_URL' : 'EXPO_PUBLIC_WS_URL');
 if (!wsUrl && legacyWsUrl) {
   console.warn('[check-release-env] WARNING: EXPO_PUBLIC_CORE_WS_URL is deprecated — rename to EXPO_PUBLIC_WS_URL before next release.');
@@ -121,8 +141,8 @@ if (!wsUrl && legacyWsUrl) {
 
 // Resolve EXPO_PUBLIC_API_URL with fallback to legacy EXPO_PUBLIC_CORE_API_URL.
 // The API URL must point at the BFF gateway, never directly at Core port 8000.
-const apiUrl = (process.env.EXPO_PUBLIC_API_URL ?? '').trim();
-const legacyApiUrl = (process.env.EXPO_PUBLIC_CORE_API_URL ?? '').trim();
+const apiUrl = (releaseEnv.EXPO_PUBLIC_API_URL ?? '').trim();
+const legacyApiUrl = (releaseEnv.EXPO_PUBLIC_CORE_API_URL ?? '').trim();
 const resolvedApiKey = apiUrl
   ? 'EXPO_PUBLIC_API_URL'
   : (legacyApiUrl ? 'EXPO_PUBLIC_CORE_API_URL' : 'EXPO_PUBLIC_API_URL');

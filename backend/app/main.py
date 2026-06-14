@@ -1,4 +1,5 @@
 """HealthOS Core BE — FastAPI application factory."""
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -17,6 +18,7 @@ from app.ws.handlers import manager
 from app.ws.chat_router import handle_ws_event
 
 _startup_logger = logging.getLogger("healthos")
+HEALTH_READY_CHECK_TIMEOUT_SECONDS = 2.0
 
 
 @asynccontextmanager
@@ -207,23 +209,28 @@ async def health() -> JSONResponse:
 @app.get("/health/ready")
 async def health_ready() -> JSONResponse:
     """Readiness probe — 503 if DB or Redis unreachable."""
-    from app.adapters.redis_client import get_redis
+    from app.adapters.redis_client import check_redis_ready
     from app.adapters.database import engine
     from sqlalchemy import text
 
     checks: dict[str, str] = {"db": "ok", "redis": "ok"}
     status_code = 200
 
-    try:
+    async def check_db() -> None:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
+
+    async def check_redis() -> None:
+        await check_redis_ready(timeout_seconds=HEALTH_READY_CHECK_TIMEOUT_SECONDS)
+
+    try:
+        await asyncio.wait_for(check_db(), timeout=HEALTH_READY_CHECK_TIMEOUT_SECONDS)
     except Exception:
         checks["db"] = "error"
         status_code = 503
 
     try:
-        r = await get_redis()
-        await r.ping()
+        await asyncio.wait_for(check_redis(), timeout=HEALTH_READY_CHECK_TIMEOUT_SECONDS)
     except Exception:
         checks["redis"] = "error"
         status_code = 503

@@ -6,10 +6,22 @@ const INFRASTRUCTURE_ERROR_PATTERNS = [
   /origin web server/i,
   /invalid or incomplete response/i,
 ];
+const SERVER_FAILURE_MESSAGE_PATTERNS = [
+  /request failed with status 5\d{2}\.?/i,
+  /\bhttp\s*5\d{2}\b/i,
+  /internal server error/i,
+  /bad gateway/i,
+  /service unavailable/i,
+  /gateway timeout/i,
+];
 const NETWORK_ERROR_CODES = new Set(['NETWORK_ERROR', 'TIMEOUT']);
 
 export function isInfrastructureErrorMessage(message: string | null | undefined): boolean {
   return INFRASTRUCTURE_ERROR_PATTERNS.some((pattern) => pattern.test(message ?? ''));
+}
+
+export function isServerFailureMessage(message: string | null | undefined): boolean {
+  return SERVER_FAILURE_MESSAGE_PATTERNS.some((pattern) => pattern.test(message ?? ''));
 }
 
 function localizedServerError(): string {
@@ -72,6 +84,15 @@ export function localizeError(error: Error | null | undefined, fallback?: string
   }
 
   return error.message || genericFallback;
+}
+
+export function localizeDisplayMessage(message: string | null | undefined, fallback?: string): string | undefined {
+  const trimmed = message?.trim();
+  if (!trimmed) return fallback;
+  if (isInfrastructureErrorMessage(trimmed) || isServerFailureMessage(trimmed)) {
+    return localizedServerError();
+  }
+  return trimmed;
 }
 
 /** Legacy helper — kept for backward compatibility. Prefer localizeError. */

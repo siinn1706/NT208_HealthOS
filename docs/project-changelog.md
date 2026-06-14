@@ -6,7 +6,23 @@
 
 ## [Unreleased]
 
+### Fixed
+
+#### Mobile Android Emulator BFF Fallback and Health Probe Recovery (2026-06-12)
+- **Android emulator BFF fallback fixed**: Blank dev mobile API/OAuth/WS fallbacks now keep Android emulator traffic on `10.0.2.2` even when Expo exposes LAN Metro metadata; explicit physical-device LAN env still wins.
+- **Bounded health probes**: BFF `/api/v1/health` and Core `/health/ready` now time-bound upstream readiness checks so mobile reports accurate Core readiness state instead of hanging into a network timeout.
+- **Local backend Redis recovery**: `start_be.ps1 -Mode local` now sets local run mode and Redis localhost override alongside the DB override, while Core readiness uses a short-lived Redis probe.
+- **Verification**: Backend health/Redis tests, mobile API/auth/reachability Jest, Android env guard scripts, frontend health route Vitest, mobile typecheck, env render check, and live Core/BFF health probes passed.
+
 ### Added
+
+#### Mobile Dev/Production Env Stabilization (2026-06-11)
+- **BFF-first mobile env**: Physical-device guard and docs now use canonical `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WS_URL`, and `EXPO_PUBLIC_WEB_APP_URL`; legacy Core-named vars remain temporary fallback with warnings.
+- **Source-of-truth runtime mode**: Env renderer now emits `EXPO_PUBLIC_APP_ENV` for mobile and example env files default it to development.
+- **Production OAuth fail-close**: Android production OAuth now requires an HTTPS App Link redirect and rejects missing/custom-scheme release config.
+- **Strict release build gate**: `npm run build:android:production` runs strict release-env validation before EAS production build.
+- **Safer error cards**: Shared mobile `ApiState` filters infrastructure/5xx text before rendering.
+- **Verification**: Mobile typecheck, route/no-direct-core/config/native-readiness checks, strict release-env sample, lint, full Jest (158 suites / 948 tests), render-env tests, Android env guard tests, release-env tests, and diff check passed. Lint still has 95 existing warnings.
 
 #### AI Meal Calorie Pipeline Upgrade (2026-06-01)
 - **Worker-owned inference**: AI Worker now routes meal photo analysis through local `Ateeqq/food-analysis`, `jc-builds/CalorieCLIP`, then legacy YOLO fallback without moving model code into Core backend.
@@ -363,6 +379,16 @@
 - **Env/docs/tests**: Worker env templates expose the new DeepSeek and embedding knobs; tests cover payloads, JSON fallback, streaming reasoning suppression, embedding service, and endpoint validation.
 
 ### Fixed
+
+#### Mobile Dev Env Reset for Local and Docker (2026-06-12)
+- **Local mobile dev reset**: Master env now renders mobile Expo dev mode with blank public Core/BFF URLs and `EXPO_PUBLIC_APP_ENV=development`, so emulator dev falls back to local BFF instead of stale `https://healthos.shop`.
+- **`.bat`/Docker split**: Local `.bat` env keeps `AI_WORKER_URL=http://localhost:8001`; Docker dev env no longer renders that host-local URL and keeps the compose `ai-worker:8001` service fallback.
+- **Verification**: Env renderer `--target all --check`, Docker dev/prod compose config checks, env renderer tests, mobile env guard tests, Android native readiness, release-env check, and focused mobile API/reachability Jest passed.
+
+#### Mobile Android Offline Emulator Recovery (2026-06-12)
+- **Cold-boot stale emulator recovery**: Android ADB preflight now relaunches the configured emulator with `-no-snapshot-load` after closing an offline emulator transport, preventing broken Quick Boot snapshots from restoring the same `device offline` state.
+- **Docs synced**: Mobile README now documents the cold-boot recovery behavior for `npm run android`.
+- **Verification**: Focused Android ADB Node tests passed: 16 tests. Android native readiness passed. Live `Pixel_8` preflight recovered `emulator-5554`, and `adb -s emulator-5554 shell getprop sys.boot_completed` returned `1`.
 
 #### Mobile Vitals Test Sync Cleanup (2026-06-01)
 - **Async success assertion settled**: Vitals manual-entry regression now waits for the post-save success copy after Core create and cache invalidation complete.

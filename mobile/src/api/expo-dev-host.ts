@@ -55,3 +55,15 @@ export function buildExpoDevLanBaseUrl(scheme: 'http' | 'ws', port: number): str
   const host = resolveExpoDevLanHost();
   return host ? `${scheme}://${host}:${port}` : null;
 }
+
+export function buildExpoDevLanBaseUrlForPlatform(
+  scheme: 'http' | 'ws',
+  port: number,
+  platformOS: string,
+): string | null {
+  // Android emulator reaches the host machine through 10.0.2.2. Expo can still
+  // expose the Metro LAN host, but using that host here makes emulator auth
+  // depend on Windows firewall/LAN reachability and breaks local dev sign-in.
+  if (platformOS === 'android') return null;
+  return buildExpoDevLanBaseUrl(scheme, port);
+}

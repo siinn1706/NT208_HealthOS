@@ -178,7 +178,16 @@ describe('mobile OAuth helpers', () => {
     );
   });
 
-  it('derives the BFF origin from the Expo LAN host when mobile env is absent', () => {
+  it('keeps Android OAuth BFF fallback on emulator host even when Expo LAN host metadata exists', () => {
+    mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
+
+    expect(buildMobileOAuthStartUrl('github', validState, validChallenge)).toBe(
+      `http://10.0.2.2:3000/api/v1/auth/oauth/github?mobile_redirect_uri=nt208%3A%2F%2Fauth%2Foauth%2Fcallback&mobile_state=${validState}&mobile_code_challenge=${validChallenge}`,
+    );
+  });
+
+  it('derives the BFF origin from the Expo LAN host for non-Android dev targets', () => {
+    (Platform as unknown as { OS: string }).OS = 'ios';
     mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
 
     expect(buildMobileOAuthStartUrl('github', validState, validChallenge)).toBe(
@@ -193,12 +202,28 @@ describe('mobile OAuth helpers', () => {
     expect(() => buildMobileOAuthStartUrl('google', validState, validChallenge)).toThrow('Production web app URL must use HTTPS.');
   });
 
-  it('accepts production HTTPS BFF origin from app config', () => {
+  it('requires an HTTPS App Link redirect for production Android OAuth', () => {
     setDevMode(false);
     mockExpoConstants.expoConfig.extra.webAppUrl = 'https://healthos.example.com/';
 
+    expect(() => buildMobileOAuthStartUrl('github', validState, validChallenge)).toThrow('Missing EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI for production Android OAuth.');
+  });
+
+  it('rejects custom scheme redirects in production Android OAuth', () => {
+    setDevMode(false);
+    mockExpoConstants.expoConfig.extra.webAppUrl = 'https://healthos.example.com/';
+    process.env.EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI = 'nt208://auth/oauth/callback';
+
+    expect(() => buildMobileOAuthStartUrl('github', validState, validChallenge)).toThrow('Production Android OAuth redirect URI must use HTTPS App Link.');
+  });
+
+  it('accepts production HTTPS BFF origin and App Link redirect from app config', () => {
+    setDevMode(false);
+    mockExpoConstants.expoConfig.extra.webAppUrl = 'https://healthos.example.com/';
+    mockExpoConstants.expoConfig.extra.mobileOAuthRedirectUri = 'https://healthos.example.com/auth/oauth/mobile-callback';
+
     expect(buildMobileOAuthStartUrl('github', validState, validChallenge)).toBe(
-      `https://healthos.example.com/api/v1/auth/oauth/github?mobile_redirect_uri=nt208%3A%2F%2Fauth%2Foauth%2Fcallback&mobile_state=${validState}&mobile_code_challenge=${validChallenge}`,
+      `https://healthos.example.com/api/v1/auth/oauth/github?mobile_redirect_uri=https%3A%2F%2Fhealthos.example.com%2Fauth%2Foauth%2Fmobile-callback&mobile_state=${validState}&mobile_code_challenge=${validChallenge}`,
     );
   });
 

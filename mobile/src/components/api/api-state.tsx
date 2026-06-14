@@ -8,6 +8,7 @@ import { Button } from '../primitives/button';
 import { EmptyState } from '../primitives/feedback/empty-state';
 import { isMobileFeatureEnabled } from '../../config/feature-flags';
 import { useIsOffline } from '../../hooks/use-network-status';
+import { localizeDisplayMessage } from '../../api/error-message';
 
 interface EmptyConfig {
   icon?: React.ReactNode;
@@ -62,9 +63,10 @@ export function ApiState({
 
   // When not loading and there's an error condition, surface a no-internet message instead
   const resolvedTitle = !loading && isOffline && !isEmpty ? i18n('api.offlineTitle', { defaultValue: 'No internet connection' }) : title;
+  const displayMessage = !loading && !isEmpty ? localizeDisplayMessage(message) : message;
   const resolvedMessage = !loading && isOffline && !isEmpty
     ? i18n('api.offlineMessage', { defaultValue: 'Please check your connection and try again.' })
-    : message;
+    : displayMessage;
 
   return (
     <Card style={styles.card}>

@@ -24,9 +24,13 @@ export async function parseJsonBody(req: Request): Promise<unknown> {
  * fetch() wrapper that aborts after BFF_TIMEOUT_MS milliseconds.
  * Prevents BFF worker threads from blocking indefinitely on a slow Core BE.
  */
-export function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+export function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = BFF_TIMEOUT_MS,
+): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), BFF_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(url, { ...init, signal: controller.signal }).finally(() =>
     clearTimeout(timeoutId)
   );

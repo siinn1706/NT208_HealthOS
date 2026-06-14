@@ -153,11 +153,11 @@ test("mobile rendering defaults missing public URLs to blank emulator local valu
 });
 
 test("validateEnv rejects production placeholder values", () => {
-  const env = loadExampleEnv({ APP_ENV: "production", NODE_ENV: "production" });
+  const env = loadProductionEnv({ SECRET_KEY: "change-me" });
 
   assert.throws(
     () => validateEnv(env, resolveTargetNames("prod"), { requireProdValidation: true }),
-    /placeholder\/development value/,
+    /SECRET_KEY.*placeholder\/development value/,
   );
 });
 
@@ -231,6 +231,23 @@ test("validateEnv treats NEXT_PUBLIC_APP_ENV protected values as protected", () 
   }
 });
 
+test("validateEnv treats EXPO_PUBLIC_APP_ENV protected values as protected", () => {
+  for (const mobileEnv of ["production", "staging"]) {
+    const env = loadProductionEnv({
+      APP_ENV: "dev",
+      NODE_ENV: "development",
+      NEXT_PUBLIC_APP_ENV: "dev",
+      EXPO_PUBLIC_APP_ENV: mobileEnv,
+      BFF_CSRF_GUARD_MODE: "dry-run",
+    });
+
+    assert.throws(
+      () => validateEnv(env, ["mobile"]),
+      /BFF_CSRF_GUARD_MODE/,
+    );
+  }
+});
+
 test("validateEnv rejects production cookie ttl beyond access token ttl", () => {
   const env = loadProductionEnv({
     COOKIE_MAX_AGE: "604800",
@@ -296,6 +313,19 @@ test("rendered files contain only target-relevant service keys", () => {
   assert.match(aiWorker, /AI_EMBEDDING_DIMENSION=384/);
   assert.match(aiWorker, /AI_CHAT_MAX_TOKENS=32768/);
   assert.doesNotMatch(aiWorker, /GEMINI_API_KEY=/);
+});
+
+test("compose dev does not inherit local AI worker URL from bat env", () => {
+  const root = makeTempRoot();
+  const env = loadExampleEnv({ AI_WORKER_URL: "http://localhost:8001" });
+  const rendered = renderTargets(env, ["backend", "compose-dev"], root);
+  for (const file of rendered) writeRenderedFile(file);
+
+  const backend = fs.readFileSync(path.join(root, "backend/.env"), "utf8");
+  const composeDev = fs.readFileSync(path.join(root, "infra/docker/.env.dev"), "utf8");
+
+  assert.match(backend, /^AI_WORKER_URL=http:\/\/localhost:8001$/m);
+  assert.doesNotMatch(composeDev, /^AI_WORKER_URL=/m);
 });
 
 test("mobile local render blanks old emulator defaults for emulator workflows", () => {

@@ -1,5 +1,7 @@
 """Redis connection pool — cache, pub/sub, rate-limit."""
 import asyncio
+import os
+from urllib.parse import urlsplit, urlunsplit
 
 from redis.asyncio import Redis, from_url
 
@@ -7,6 +9,54 @@ from app.core.config import settings
 
 _redis: Redis | None = None
 _redis_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _replace_url_hostname(url: str, hostname: str) -> str:
+    parsed = urlsplit(url)
+    current_hostname = parsed.hostname
+    if not current_hostname:
+        return url
+
+    host_start = parsed.netloc.lower().rfind(current_hostname.lower())
+    if host_start < 0:
+        return url
+
+    netloc = (
+        parsed.netloc[:host_start]
+        + hostname
+        + parsed.netloc[host_start + len(current_hostname):]
+    )
+    return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+
+
+def _resolve_redis_url() -> str:
+    redis_url = os.environ.get("REDIS_URL") or settings.redis_url
+    run_mode = os.environ.get("HEALTHOS_RUN_MODE", "").strip().lower()
+
+    try:
+        parsed = urlsplit(redis_url)
+    except ValueError:
+        return redis_url
+
+    if run_mode == "local" and (parsed.hostname or "").lower() == "redis":
+        return _replace_url_hostname(redis_url, "localhost")
+
+    return redis_url
+
+
+async def check_redis_ready(timeout_seconds: float = 1.0) -> None:
+    """Ping Redis with a short-lived client for readiness checks."""
+    probe = from_url(
+        _resolve_redis_url(),
+        decode_responses=True,
+        socket_timeout=timeout_seconds,
+        socket_connect_timeout=timeout_seconds,
+        retry_on_timeout=False,
+    )
+    try:
+        await probe.ping()
+    finally:
+        await probe.aclose()
 
 
 async def get_redis() -> Redis:
@@ -19,7 +69,7 @@ async def get_redis() -> Redis:
 
     if _redis is None:
         _redis = from_url(
-            settings.redis_url,
+            _resolve_redis_url(),
             decode_responses=True,
             socket_timeout=5,
             socket_connect_timeout=5,
