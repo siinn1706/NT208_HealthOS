@@ -1,6 +1,6 @@
 import { ApiError, apiRequest } from '../client';
 import { AUTH_REQUEST_TIMEOUT_MS, ensureCoreReachable, toCoreReachabilityMessage } from '../core-reachability';
-import { buildExpoDevLanBaseUrl } from '../expo-dev-host';
+import { buildExpoDevLanBaseUrlForPlatform } from '../expo-dev-host';
 import { clearStoredSession, getAccessToken, getRefreshToken, saveAuthToken } from '../../auth/session-store';
 import Constants from 'expo-constants';
 import * as Crypto from 'expo-crypto';
@@ -70,13 +70,22 @@ export function getWebAppBaseUrl(): string {
   }
   const configured = normalizeBaseUrl(rawConfigured);
   if (configured) return configured;
-  return buildExpoDevLanBaseUrl('http', 3000)
+  return buildExpoDevLanBaseUrlForPlatform('http', 3000, Platform.OS)
     ?? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
 }
 
 export function getMobileOAuthRedirectUri(): string {
   const extra = Constants.expoConfig?.extra as { mobileOAuthRedirectUri?: string } | undefined;
   const configured = normalizeMobileOAuthRedirectUri(process.env.EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI ?? extra?.mobileOAuthRedirectUri);
+  if (!__DEV__ && Platform.OS === 'android') {
+    if (!configured) {
+      throw new ApiError('Missing EXPO_PUBLIC_MOBILE_OAUTH_REDIRECT_URI for production Android OAuth.', 0, 'OAUTH_REDIRECT_URI_MISSING');
+    }
+    if (!configured.startsWith('https:')) {
+      throw new ApiError('Production Android OAuth redirect URI must use HTTPS App Link.', 0, 'OAUTH_REDIRECT_URI_INVALID');
+    }
+    return configured;
+  }
   if (configured?.startsWith('https:') && Platform.OS !== 'android') {
     return DEFAULT_MOBILE_OAUTH_REDIRECT_URI;
   }

@@ -39,10 +39,11 @@ npx expo start
 
 Open in Expo Go (iOS/Android) or press `i` / `a` for simulators.
 Use `npm run android` to start Expo and open Android. The command checks ADB
-first, closes stale offline emulator transports, starts the selected Android
-emulator when no device is online, waits until ADB and the emulator console are
-ready, and skips Expo's online dependency-validation fetch so local startup
-still works without access to the Expo versions endpoint. When online, run
+first, closes stale offline emulator transports, cold-boots the selected Android
+emulator without reusing a broken Quick Boot snapshot when recovering from that
+state, waits until ADB and the emulator console are ready, and skips Expo's
+online dependency-validation fetch so local startup still works without access
+to the Expo versions endpoint. When online, run
 `npm run check:expo-deps` to review SDK-compatible package versions.
 
 Health Connect native sync cannot be signed off from Expo Go. Use the native
@@ -150,6 +151,7 @@ while still allowing local and cloud release checks:
 ```powershell
 $env:EAS_PROJECT_ID="<expo-project-uuid>"
 npm run check:expo-config
+npm run check:release-env
 ```
 
 Production builds also need public HTTPS/WSS runtime URLs configured through
@@ -172,8 +174,11 @@ Build Android binaries from this `mobile/` directory:
 
 ```powershell
 npx eas-cli@latest build --platform android --profile preview
-npx eas-cli@latest build --platform android --profile production
+npm run build:android:production
 ```
+
+Use `npm run build:android:production` for production builds so the strict
+release env gate runs before EAS starts.
 
 Submit the latest production Android build after the Google Play app, package
 name, first manual upload, and service account access are configured:
@@ -209,6 +214,7 @@ env/EAS secrets, not git.
 ```powershell
 npm run check:logo-parity
 npm run check:expo-config
+npm run check:release-env
 npm run check:routes
 npm run check:android-native-readiness
 ```

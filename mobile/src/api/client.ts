@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { clearStoredSession, getAccessToken } from '../auth/session-store';
-import { buildExpoDevLanBaseUrl } from './expo-dev-host';
+import { buildExpoDevLanBaseUrlForPlatform } from './expo-dev-host';
 import { getDevWsFallback, warnFallbackOnce } from './dev-fallback';
 
 export interface UploadFilePart {
@@ -164,7 +164,7 @@ export function getBffApiBaseUrl(): string {
   if (!__DEV__) {
     return assertProductionSecureUrl('api', configured);
   }
-  const fallback = buildExpoDevLanBaseUrl('http', 3000)
+  const fallback = buildExpoDevLanBaseUrlForPlatform('http', 3000, Platform.OS)
     ?? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
   const url = (configured || fallback).replace(/\/+$/, '');
   return url;
@@ -194,7 +194,7 @@ export function getWebSocketBaseUrl(): string {
     return assertProductionSecureUrl('ws', configured);
   }
   if (configured) return configured.replace(/\/+$/, '');
-  const devLan = buildExpoDevLanBaseUrl('ws', 8000);
+  const devLan = buildExpoDevLanBaseUrlForPlatform('ws', 8000, Platform.OS);
   if (devLan) return devLan;
   const fallback = getDevWsFallback(Platform.OS);
   if (fallback) {

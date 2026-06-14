@@ -126,7 +126,7 @@ export function prepareAndroidDevice({
     return null;
   }
 
-  function startConfiguredEmulator() {
+  function startConfiguredEmulator({ noSnapshotLoad = false } = {}) {
     const avds = listAvds();
     const avd = selectAvd(avds, env.ANDROID_AVD_NAME);
     if (!avd) {
@@ -134,8 +134,11 @@ export function prepareAndroidDevice({
       fail(`No Android emulator AVD is available.${suffix} Create one in Android Studio or connect a physical device.`);
     }
 
-    log(`opening emulator ${avd}; waiting for ADB and console readiness before Expo starts`);
-    const child = spawnProcess(emulator, [`@${avd}`], {
+    const emulatorArgs = [`@${avd}`];
+    if (noSnapshotLoad) emulatorArgs.push('-no-snapshot-load');
+    const mode = noSnapshotLoad ? ' with a cold boot' : '';
+    log(`opening emulator ${avd}${mode}; waiting for ADB and console readiness before Expo starts`);
+    const child = spawnProcess(emulator, emulatorArgs, {
       detached: true,
       shell: process.platform === 'win32',
       stdio: 'ignore',
@@ -144,7 +147,8 @@ export function prepareAndroidDevice({
 
     const ready = waitForBootedEmulator();
     if (!ready) {
-      fail(`Timed out waiting for emulator ${avd}. Start it manually with "${emulator} @${avd}", then rerun npm run android.`);
+      const manualArgs = [`@${avd}`, noSnapshotLoad ? '-no-snapshot-load' : ''].filter(Boolean).join(' ');
+      fail(`Timed out waiting for emulator ${avd}. Start it manually with "${emulator} ${manualArgs}", then rerun npm run android.`);
     }
     log(`using ${ready.id}`);
     return ready;
@@ -153,6 +157,7 @@ export function prepareAndroidDevice({
   startServer();
 
   let current = devices();
+  let shouldColdBootEmulator = false;
   const initialOnline = readyOnlineDevice(current);
   if (initialOnline) {
     log(`using ${initialOnline.id}`);
@@ -190,7 +195,8 @@ export function prepareAndroidDevice({
     killStaleEmulators(staleIds);
     runAdb(['kill-server'], 5000);
     startServer();
-    log('stale emulator closed; starting a fresh Android emulator');
+    shouldColdBootEmulator = true;
+    log('stale emulator closed; starting a fresh Android emulator without reusing the previous Quick Boot snapshot');
   }
 
   current = devices();
@@ -199,5 +205,5 @@ export function prepareAndroidDevice({
     fail(`Device ${unauthorized.id} is unauthorized. Unlock the emulator and accept the USB debugging prompt, then run npm run android again.`);
   }
 
-  return startConfiguredEmulator();
+  return startConfiguredEmulator({ noSnapshotLoad: shouldColdBootEmulator });
 }

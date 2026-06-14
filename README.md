@@ -277,7 +277,7 @@ HealthOS is a demo-oriented full-stack project with separate web, Core API, work
 - **Web**: Browser traffic goes through the Next.js BFF under `/api/v1/**`; Core remains a server-side `/v1/**` target.
 - **Core backend**: FastAPI provides auth, profile/dashboard, meals, reports, appointments, reminders, medications, plans, onboarding drafts, chat/WebSocket, devices, notification list/read/unread routes, and audit/security flows.
 - **Workers/services**: AI meal analysis is available when Core, MinIO, and the AI worker are configured. The worker keeps model inference local with `Ateeqq/food-analysis` primary detection, `jc-builds/CalorieCLIP` calorie cross-check, and legacy YOLO fallback. Notification dispatch supports Core in-app persistence and optional SMTP email through the standalone notification service.
-- **Mobile**: The Expo app calls Core directly with bearer-token auth and uses the shared API contracts where available.
+- **Mobile**: The Expo app calls the Next.js BFF gateway through `EXPO_PUBLIC_API_URL` with bearer-token auth, uses `EXPO_PUBLIC_WS_URL` for realtime, and keeps legacy Core URL env vars as temporary dev fallback only.
 
 ## Known Limitations
 

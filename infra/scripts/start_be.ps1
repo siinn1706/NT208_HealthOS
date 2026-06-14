@@ -24,6 +24,7 @@ Start-HealthOSTranscript -LogFilePath $ScriptLogFile
 Write-Host "[BE] Log file: $ScriptLogFile" -ForegroundColor DarkCyan
 
 $effectiveMode = Resolve-EffectiveMode -Mode $Mode -LogPrefix "[BE]"
+$env:HEALTHOS_RUN_MODE = $effectiveMode
 Write-Host "[BE] Effective mode: $effectiveMode" -ForegroundColor DarkCyan
 
 Set-Location $BackendDir
@@ -81,9 +82,9 @@ if (-not $SkipInstall) {
 
 Assert-SingleAlembicHead -PythonExe $PythonExe -BackendDir $BackendDir -ErrorPrefix "[BE]"
 
-# In local mode the DATABASE_URL in backend/.env uses the Docker service hostname
-# "postgres" which is unresolvable on the host. Override it to localhost so that
-# Alembic (and the app) can reach a native PostgreSQL instance.
+# In local mode backend/.env can use Docker service hostnames which are
+# unresolvable on the host. Override process env for host-run services without
+# editing generated env files.
 if ($effectiveMode -eq "local" -and -not $env:ALEMBIC_DATABASE_URL) {
     $localUser     = if ($env:POSTGRES_APP_USER)     { $env:POSTGRES_APP_USER }     else { "healthos" }
     $localPassword = if ($env:POSTGRES_APP_PASSWORD) { $env:POSTGRES_APP_PASSWORD } else { "healthos_dev_pass" }
@@ -91,6 +92,12 @@ if ($effectiveMode -eq "local" -and -not $env:ALEMBIC_DATABASE_URL) {
     $env:ALEMBIC_DATABASE_URL = "postgresql+asyncpg://${localUser}:${localPassword}@localhost:5432/${localDb}"
     $env:DATABASE_URL         = $env:ALEMBIC_DATABASE_URL
     Write-Host "[BE] Local mode: overriding DATABASE_URL to localhost:5432" -ForegroundColor Yellow
+}
+
+if ($effectiveMode -eq "local" -and -not $env:REDIS_URL) {
+    $localRedisDb = if ($env:REDIS_DB) { $env:REDIS_DB } else { "0" }
+    $env:REDIS_URL = "redis://localhost:6379/$localRedisDb"
+    Write-Host "[BE] Local mode: overriding REDIS_URL to localhost:6379/$localRedisDb" -ForegroundColor Yellow
 }
 
 Write-Host "[BE] Running migrations via python -m alembic..." -ForegroundColor Cyan

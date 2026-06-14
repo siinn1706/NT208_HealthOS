@@ -5,16 +5,31 @@ const require = createRequire(import.meta.url);
 const { parseProjectEnv } = require('@expo/env');
 
 export const ANDROID_PUBLIC_URL_KEYS = [
-  'EXPO_PUBLIC_CORE_API_URL',  // DEPRECATED 2026-09-01 — use EXPO_PUBLIC_API_URL
   'EXPO_PUBLIC_API_URL',       // canonical BFF URL
+  'EXPO_PUBLIC_CORE_API_URL',  // DEPRECATED 2026-09-01 — use EXPO_PUBLIC_API_URL
+  'EXPO_PUBLIC_WS_URL',
   'EXPO_PUBLIC_CORE_WS_URL',   // DEPRECATED 2026-09-01
   'EXPO_PUBLIC_WEB_APP_URL',
 ];
 
-// Optional keys validated when present but not required.
-// EXPO_PUBLIC_WS_URL is the canonical replacement for EXPO_PUBLIC_CORE_WS_URL (DEPRECATED 2026-09-01).
-export const ANDROID_OPTIONAL_URL_KEYS = [
-  'EXPO_PUBLIC_WS_URL',
+export const ANDROID_OPTIONAL_URL_KEYS = [];
+
+const REQUIRED_URL_GROUPS = [
+  {
+    label: 'API URL',
+    preferredKey: 'EXPO_PUBLIC_API_URL',
+    keys: ['EXPO_PUBLIC_API_URL', 'EXPO_PUBLIC_CORE_API_URL'],
+  },
+  {
+    label: 'WebSocket URL',
+    preferredKey: 'EXPO_PUBLIC_WS_URL',
+    keys: ['EXPO_PUBLIC_WS_URL', 'EXPO_PUBLIC_CORE_WS_URL'],
+  },
+  {
+    label: 'Web app URL',
+    preferredKey: 'EXPO_PUBLIC_WEB_APP_URL',
+    keys: ['EXPO_PUBLIC_WEB_APP_URL'],
+  },
 ];
 
 const BLOCKED_PHYSICAL_HOSTS = new Set([
@@ -111,12 +126,45 @@ export function findPhysicalDeviceInvalidUrls(values) {
 
 export function findPhysicalDeviceMissingUrls(values) {
   const byKey = new Map(values.map((entry) => [entry.key, entry]));
-  return ANDROID_PUBLIC_URL_KEYS.flatMap((key) => {
-    const entry = byKey.get(key);
-    if (!entry) return [{ key, value: '', source: 'not set' }];
-    if (!entry.value.trim()) return [entry];
-    return [];
+  return REQUIRED_URL_GROUPS.flatMap((group) => {
+    const configured = group.keys
+      .map((key) => byKey.get(key))
+      .find((entry) => entry?.value.trim());
+    if (configured) return [];
+
+    const preferred = byKey.get(group.preferredKey);
+    if (preferred && !preferred.value.trim()) return [preferred];
+
+    const blankLegacy = group.keys
+      .map((key) => byKey.get(key))
+      .find((entry) => entry && !entry.value.trim());
+    if (blankLegacy) return [blankLegacy];
+
+    return [{ key: group.preferredKey, value: '', source: 'not set' }];
   });
+}
+
+function resolveRequiredPhysicalDeviceUrls(values) {
+  const byKey = new Map(values.map((entry) => [entry.key, entry]));
+  return REQUIRED_URL_GROUPS.flatMap((group) => {
+    const entry = group.keys
+      .map((key) => byKey.get(key))
+      .find((candidate) => candidate?.value.trim());
+    if (!entry) return [];
+    return [entry];
+  });
+}
+
+function legacyGuidance(values) {
+  const configuredKeys = new Set(values.filter((entry) => entry.value.trim()).map((entry) => entry.key));
+  const hints = [];
+  if (!configuredKeys.has('EXPO_PUBLIC_API_URL') && configuredKeys.has('EXPO_PUBLIC_CORE_API_URL')) {
+    hints.push('EXPO_PUBLIC_CORE_API_URL is deprecated; prefer EXPO_PUBLIC_API_URL pointing at the BFF gateway.');
+  }
+  if (!configuredKeys.has('EXPO_PUBLIC_WS_URL') && configuredKeys.has('EXPO_PUBLIC_CORE_WS_URL')) {
+    hints.push('EXPO_PUBLIC_CORE_WS_URL is deprecated; prefer EXPO_PUBLIC_WS_URL.');
+  }
+  return hints;
 }
 
 export function assertPhysicalDeviceReachableEnv({
@@ -131,10 +179,11 @@ export function assertPhysicalDeviceReachableEnv({
     env,
   });
   const missing = findPhysicalDeviceMissingUrls(values);
-  const invalid = findPhysicalDeviceInvalidUrls(values);
+  const invalid = findPhysicalDeviceInvalidUrls(resolveRequiredPhysicalDeviceUrls(values));
   if (missing.length === 0 && invalid.length === 0) return;
 
   const details = [
+    ...legacyGuidance(values).map((hint) => `- ${hint}`),
     ...missing.map(({ key, source }) => `- ${key} is blank or missing (${source})`),
     ...invalid.map(({ key, value, source, reason }) => `- ${key}=${value} (${source}) ${reason}`),
   ].join('\n');
@@ -144,6 +193,6 @@ export function assertPhysicalDeviceReachableEnv({
     details,
     'Blank values can fall back to emulator-only 10.0.2.2 when Expo LAN metadata is unavailable.',
     'Set these mobile env values to this computer LAN IP before launching a physical device.',
-    'Example: EXPO_PUBLIC_CORE_API_URL=http://192.168.x.x:8000, EXPO_PUBLIC_CORE_WS_URL=ws://192.168.x.x:8000, EXPO_PUBLIC_WEB_APP_URL=http://192.168.x.x:3000.',
+    'Example: EXPO_PUBLIC_API_URL=http://192.168.x.x:3000, EXPO_PUBLIC_WS_URL=ws://192.168.x.x:8000, EXPO_PUBLIC_WEB_APP_URL=http://192.168.x.x:3000.',
   ].join('\n'));
 }

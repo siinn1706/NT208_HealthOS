@@ -172,6 +172,64 @@ emulator-5554 device product:sdk model:Pixel_8
   assert.equal(calls.includes('-list-avds'), true);
 });
 
+test('prepareAndroidDevice cold boots after closing a stale offline emulator', () => {
+  const calls = [];
+  const logs = [];
+  const spawnCalls = [];
+  let clock = 0;
+  let staleKilled = false;
+  let emulatorSpawned = false;
+
+  const runCommand = (_command, args) => {
+    const command = args.join(' ');
+    calls.push(command);
+    if (command === 'devices -l') {
+      if (emulatorSpawned) {
+        return ok(`List of devices attached
+emulator-5554 device product:sdk model:Pixel_8
+`);
+      }
+      if (staleKilled) return ok('List of devices attached\n');
+      return ok(`List of devices attached
+emulator-5554 offline transport_id:1
+`);
+    }
+    if (command === '-s emulator-5554 emu kill') {
+      staleKilled = true;
+      return ok();
+    }
+    if (command === '-list-avds') return ok('Pixel_8\n');
+    if (command === '-s emulator-5554 shell getprop sys.boot_completed') return ok('1\n');
+    if (command === '-s emulator-5554 emu avd name') return ok('Pixel_8\nOK\n');
+    return ok();
+  };
+
+  const ready = prepareAndroidDevice({
+    adb: 'adb',
+    emulator: 'emulator',
+    waitMs: 2,
+    emulatorWaitMs: 2,
+    consolePorts: [],
+    runCommand,
+    spawnProcess: (command, args, options) => {
+      emulatorSpawned = true;
+      spawnCalls.push({ command, args, options });
+      return { unref: () => {} };
+    },
+    now: () => clock,
+    sleep: (ms) => {
+      clock += ms;
+    },
+    log: (message) => logs.push(message),
+    fail: failWithError,
+  });
+
+  assert.deepEqual(ready, { id: 'emulator-5554', state: 'device' });
+  assert.equal(calls.includes('-s emulator-5554 emu kill'), true);
+  assert.deepEqual(spawnCalls[0].args, ['@Pixel_8', '-no-snapshot-load']);
+  assert.equal(logs.some((message) => message.includes('without reusing the previous Quick Boot snapshot')), true);
+});
+
 test('prepareAndroidDevice times out when booting emulator never finishes', () => {
   let clock = 0;
   const runCommand = (_command, args) => {

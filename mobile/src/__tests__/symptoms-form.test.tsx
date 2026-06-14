@@ -42,10 +42,11 @@ const mockUseApiQuery = useApiQuery as jest.MockedFunction<typeof useApiQuery>;
 const mockCreateBrief = visitBriefService.create as jest.MockedFunction<typeof visitBriefService.create>;
 const mockAddSymptom = visitBriefService.addSymptom as jest.MockedFunction<typeof visitBriefService.addSymptom>;
 const mockRouteNow = visitBriefService.routeNow as jest.MockedFunction<typeof visitBriefService.routeNow>;
+const futureAppointmentDate = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
 const appointment = {
   id: 'apt-1',
-  appointment_date: '2026-06-03T09:00:00.000Z',
+  appointment_date: futureAppointmentDate(),
   doctor_name: 'Dr. Lane',
   specialty: 'Primary care',
   clinic: 'HealthOS Clinic',

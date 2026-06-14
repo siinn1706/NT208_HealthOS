@@ -138,8 +138,15 @@ describe('getCoreApiBaseUrl', () => {
     expect(getCoreApiBaseUrl()).toBe('http://legacy-api.local:3000');
   });
 
-  it('derives dev API fallback from the Expo LAN host for physical devices', () => {
+  it('keeps Android dev API fallback on emulator host even when Expo LAN host metadata exists', () => {
     setPlatformOS('android');
+    mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
+
+    expect(getCoreApiBaseUrl()).toBe('http://10.0.2.2:3000');
+  });
+
+  it('derives dev API fallback from the Expo LAN host for non-Android dev targets', () => {
+    setPlatformOS('ios');
     mockExpoConstants.expoConfig.hostUri = '192.168.1.10:8081';
 
     expect(getCoreApiBaseUrl()).toBe('http://192.168.1.10:3000');
@@ -209,8 +216,18 @@ describe('getWebSocketBaseUrl', () => {
     expect(getWebSocketBaseUrl()).toBe('ws://10.0.2.2:8000');
   });
 
-  it('derives dev WS fallback from Expo Go debugger host metadata', () => {
+  it('keeps Android dev WS fallback on emulator host even when Expo LAN host metadata exists', () => {
     setPlatformOS('android');
+    mockExpoConstants.expoGoConfig.debuggerHost = '192.168.1.11:8081';
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(getWebSocketBaseUrl()).toBe('ws://10.0.2.2:8000');
+
+    warnSpy.mockRestore();
+  });
+
+  it('derives dev WS fallback from Expo Go debugger host metadata for non-Android dev targets', () => {
+    setPlatformOS('ios');
     mockExpoConstants.expoGoConfig.debuggerHost = '192.168.1.11:8081';
 
     expect(getWebSocketBaseUrl()).toBe('ws://192.168.1.11:8000');
