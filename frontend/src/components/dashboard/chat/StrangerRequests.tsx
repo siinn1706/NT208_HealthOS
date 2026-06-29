@@ -12,14 +12,12 @@ interface StrangerRequestsProps {
   requests: StrangerRequest[];
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
-  onBlock: (id: string) => void;
 }
 
 export function StrangerRequests({
   requests,
   onAccept,
   onReject,
-  onBlock,
 }: StrangerRequestsProps) {
   const t = useTranslations("chat");
   const locale = useLocale();
@@ -77,15 +75,6 @@ export function StrangerRequests({
                 >
                   <UserX className="size-3.5" />
                   {t("reject")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onBlock(req.id)}
-                  className="h-8 px-3 gap-1.5 text-xs text-destructive hover:text-destructive"
-                >
-                  <Shield className="size-3.5" />
-                  {t("block")}
                 </Button>
               </div>
             </div>

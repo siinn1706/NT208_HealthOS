@@ -82,8 +82,9 @@ export function QuickActionsWidget() {
       router.push("/dashboard/reminders");
     } else if (key === "visitPrep") {
       router.push("/dashboard/visit-prep/new");
+    } else if (key === "addVital") {
+      router.push("/dashboard/health/add");
     }
-    // TODO: handler for addVital
   }
 
   return (

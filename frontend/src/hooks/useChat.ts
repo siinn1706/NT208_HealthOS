@@ -1600,14 +1600,7 @@ export function useStrangerRequests() {
     }
   }, []);
 
-  const blockRequest = useCallback((id: string) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "blocked" } : r))
-    );
-    // TODO: block endpoint when added to backend
-  }, []);
-
-  return { requests, pendingRequests, acceptRequest, rejectRequest, blockRequest };
+  return { requests, pendingRequests, acceptRequest, rejectRequest };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

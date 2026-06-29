@@ -5,8 +5,18 @@ import smtplib
 from app.core.config import settings
 
 
-def send_email(to_email: str, subject: str, text_body: str, html_body: str | None = None) -> None:
-    """Send an email (text + optional HTML) using configured SMTP settings."""
+def send_email(
+    to_email: str,
+    subject: str,
+    text_body: str,
+    html_body: str | None = None,
+    attachments: list[tuple[str, bytes, str, str]] | None = None,
+) -> None:
+    """Send an email (text + optional HTML) using configured SMTP settings.
+
+    ``attachments`` is an optional list of ``(filename, content_bytes, maintype,
+    subtype)`` tuples — e.g. ``("report.pdf", b"...", "application", "pdf")``.
+    """
     if not settings.smtp_host or not settings.smtp_user or not settings.smtp_password:
         raise RuntimeError("SMTP is not configured. Please set SMTP_* env variables.")
 
@@ -18,6 +28,9 @@ def send_email(to_email: str, subject: str, text_body: str, html_body: str | Non
 
     if html_body is not None:
         msg.add_alternative(html_body, subtype="html")
+
+    for filename, content, maintype, subtype in attachments or []:
+        msg.add_attachment(content, maintype=maintype, subtype=subtype, filename=filename)
 
     if settings.smtp_use_tls:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:

@@ -11,8 +11,6 @@ import type {
   TrendDirection,
   TrendAnalysis,
   TrendAnalysisBatch,
-  ShareRequest,
-  ShareResult,
 } from "@/types/api";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -187,21 +185,6 @@ export async function getTrendAnalysisBatch(
   } catch {
     return {};
   }
-}
-
-export async function shareReport(request: ShareRequest): Promise<ShareResult[]> {
-  // TODO: implement actual share endpoint (POST /api/v1/reports/share) once
-  // the notification dispatch service is wired up.  Until then, return a
-  // transparent "not_implemented" status so callers can surface a clear message
-  // rather than silently reporting "failed".
-  return request.recipients.flatMap((recipient) =>
-    request.channels.map((channel) => ({
-      recipient,
-      channel,
-      status: "failed" as const,
-      error_message: "Tính năng chia sẻ báo cáo chưa được triển khai.",
-    }))
-  );
 }
 
 export async function listRecentReports(): Promise<

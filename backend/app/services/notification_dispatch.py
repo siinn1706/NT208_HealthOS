@@ -29,6 +29,8 @@ class NormalizedNotification:
     body: str
     channels: list[str]
     kind: str
+    recipient_phone: str | None = None
+    recipient_push_tokens: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -107,6 +109,14 @@ def _channels(raw: object | None) -> list[str]:
     return normalized
 
 
+def _push_tokens(raw: object | None) -> list[str]:
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    return [item.strip() for item in raw if isinstance(item, str) and item.strip()]
+
+
 def _first_string(*values: object | None) -> str | None:
     for value in values:
         text = _string(value)
@@ -175,6 +185,8 @@ def normalize_event(event: dict[str, Any]) -> NormalizedNotification:
         body=body or "",
         channels=channels,
         kind=_first_string(event.get("kind"), payload.get("kind"), template.get("id")) or "info",
+        recipient_phone=_first_string(event.get("phone"), recipient.get("phone")),
+        recipient_push_tokens=_push_tokens(event.get("push_tokens") or recipient.get("push_tokens")),
     )
 
 
@@ -274,13 +286,46 @@ def _dispatch_email(notification: NormalizedNotification) -> ChannelResult:
 
 
 def _dispatch_push(notification: NormalizedNotification) -> ChannelResult:
-    logger.info("channel=push status=skipped event_id=%s reason=provider_not_configured", notification.event_id)
-    return ChannelResult(channel="push", status="skipped", reason="provider_not_configured")
+    channel = "push"
+    from app.adapters import push_client
+
+    if not push_client.is_configured():
+        logger.info("channel=push status=skipped event_id=%s reason=provider_not_configured", notification.event_id)
+        return ChannelResult(channel=channel, status="skipped", reason="provider_not_configured")
+    if not notification.recipient_push_tokens:
+        logger.info("channel=push status=skipped event_id=%s reason=no_device_token", notification.event_id)
+        return ChannelResult(channel=channel, status="skipped", reason="no_device_token")
+    try:
+        push_client.send_push(
+            notification.recipient_push_tokens,
+            _strip_crlf(notification.title),
+            _strip_crlf(notification.body),
+        )
+        logger.info("channel=push status=delivered event_id=%s", notification.event_id)
+        return ChannelResult(channel=channel, status="delivered")
+    except Exception as exc:
+        logger.error("channel=push status=failed event_id=%s exc=%s", notification.event_id, type(exc).__name__)
+        return ChannelResult(channel=channel, status="failed", reason=type(exc).__name__)
 
 
 def _dispatch_sms(notification: NormalizedNotification) -> ChannelResult:
-    logger.info("channel=sms status=skipped event_id=%s reason=provider_not_configured", notification.event_id)
-    return ChannelResult(channel="sms", status="skipped", reason="provider_not_configured")
+    channel = "sms"
+    from app.adapters import sms_client
+
+    if not sms_client.is_configured():
+        logger.info("channel=sms status=skipped event_id=%s reason=provider_not_configured", notification.event_id)
+        return ChannelResult(channel=channel, status="skipped", reason="provider_not_configured")
+    if not notification.recipient_phone:
+        logger.info("channel=sms status=skipped event_id=%s reason=missing_recipient_phone", notification.event_id)
+        return ChannelResult(channel=channel, status="skipped", reason="missing_recipient_phone")
+    try:
+        sms_body = "; ".join(part for part in (notification.title, notification.body) if part)
+        sms_client.send_sms(notification.recipient_phone, _strip_crlf(sms_body))
+        logger.info("channel=sms status=delivered event_id=%s", notification.event_id)
+        return ChannelResult(channel=channel, status="delivered")
+    except Exception as exc:
+        logger.error("channel=sms status=failed event_id=%s exc=%s", notification.event_id, type(exc).__name__)
+        return ChannelResult(channel=channel, status="failed", reason=type(exc).__name__)
 
 
 _CHANNEL_HANDLERS = {

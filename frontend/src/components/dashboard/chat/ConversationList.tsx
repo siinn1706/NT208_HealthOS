@@ -40,7 +40,6 @@ interface ConversationListProps {
   onDeleteConversation: (id: string) => void;
   onAcceptStranger: (id: string) => void;
   onRejectStranger: (id: string) => void;
-  onBlockStranger: (id: string) => void;
   onCreateConversation: (targetUserId: string) => Promise<Conversation | null>;
   onCreateGroup: (title: string, memberIds: string[]) => Promise<Conversation | null>;
 }
@@ -57,7 +56,6 @@ export function ConversationList({
   onDeleteConversation,
   onAcceptStranger,
   onRejectStranger,
-  onBlockStranger,
   onCreateConversation,
   onCreateGroup,
 }: ConversationListProps) {
@@ -187,7 +185,6 @@ export function ConversationList({
             requests={strangerRequests}
             onAccept={onAcceptStranger}
             onReject={onRejectStranger}
-            onBlock={onBlockStranger}
           />
         </TabsContent>
       </Tabs>

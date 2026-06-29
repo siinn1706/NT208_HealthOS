@@ -28,8 +28,10 @@ from app.schemas.report_export import (
     ReportExportSignedUrlResponse,
     SUPPORTED_SECTIONS,
 )
+from app.schemas.report_share import ShareReportRequest, ShareReportResponse
 from app.services import insights as insight_svc
 from app.services import report_export as report_export_svc
+from app.services import report_share as report_share_svc
 from app.services.audit import audit
 from app.services.security_logging import log_resource_access_denied
 
@@ -54,6 +56,28 @@ async def _enforce_pdf_rate_limit(redis: Redis, user_id: uuid.UUID) -> None:
             code="RATE_LIMITED",
             message=f"You can request at most {_PDF_RATE_LIMIT_MAX} PDF exports per hour.",
             details={"retry_after_s": max(60, int(ttl) if ttl else _PDF_RATE_LIMIT_WINDOW_S)},
+        )
+
+
+# Report sharing sends email to arbitrary external addresses, so it is a spam
+# vector — cap it per user the same way as the PDF export.
+_SHARE_RATE_LIMIT_KEY = "rate:reports.share:{user_id}"
+_SHARE_RATE_LIMIT_MAX = 10
+_SHARE_RATE_LIMIT_WINDOW_S = 60 * 60  # 10 shares per rolling hour per user
+
+
+async def _enforce_share_rate_limit(redis: Redis, user_id: uuid.UUID) -> None:
+    key = _SHARE_RATE_LIMIT_KEY.format(user_id=user_id)
+    current = await redis.incr(key)
+    if current == 1:
+        await redis.expire(key, _SHARE_RATE_LIMIT_WINDOW_S)
+    if current > _SHARE_RATE_LIMIT_MAX:
+        ttl = await redis.ttl(key)
+        raise ApiException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code="RATE_LIMITED",
+            message=f"You can share at most {_SHARE_RATE_LIMIT_MAX} reports per hour.",
+            details={"retry_after_s": max(60, int(ttl) if ttl else _SHARE_RATE_LIMIT_WINDOW_S)},
         )
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
@@ -123,6 +147,28 @@ async def generate_report(
 ) -> HealthReportResponse:
     data = await insight_svc.get_health_report(db, current_user, period)
     return HealthReportResponse(data=data)
+
+
+@router.post(
+    "/share",
+    response_model=ShareReportResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
+    },
+    summary="Share a health report with recipients via email / in-app.",
+)
+async def share_report_endpoint(
+    body: ShareReportRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis, Depends(get_redis)],
+) -> ShareReportResponse:
+    await _enforce_share_rate_limit(redis, current_user.id)
+    results = await report_share_svc.share_report(db, current_user, body)
+    await db.commit()
+    return ShareReportResponse(data=results)
 
 
 @router.get(
