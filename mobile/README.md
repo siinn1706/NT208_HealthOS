@@ -105,6 +105,32 @@ start a clean one. If `adb start-server` reports `socketpair` or `WinError
 10106`, repair the Windows network stack and reboot before retrying; that is a
 machine-level ADB failure, not an Expo app failure.
 
+### Testing Health Connect (wearables) locally
+
+The `/profile/devices` Health Connect sync only runs in a native build
+(`npm run android:native`) — never Expo Go — and needs a device that actually
+has Health Connect plus some data to read. Checklist:
+
+1. **Device/emulator with Health Connect.** Use a physical Android phone, or an
+   **Android 14 (API 34) Google Play emulator** — Health Connect is built in
+   there. Older or non-Google-Play images have no Health Connect provider, so the
+   adapter reports it as unavailable instead of syncing.
+2. **Seed some data first.** Health Connect starts empty on a fresh emulator, so
+   a sync returns nothing (this is not a bug). Get records in via any of:
+   - walk a few steps on a physical phone (its own step counter writes to HC),
+   - install **Health Connect Toolbox** and inject Steps/HeartRate/Weight, or
+   - connect Google Fit / Samsung Health and let it share into Health Connect.
+
+   Real wearable data flows the same way: pair the watch in its vendor app
+   (Garmin Connect, Mi Fitness, …) and enable that app's Health Connect sharing.
+   The app never talks to the watch over Bluetooth — it only reads Health Connect.
+3. **Run the in-app flow.** Profile → Devices → **Connect Health Connect** →
+   pick data types → **Grant** (accept the system permission dialog) →
+   **Sync now**. The adapter backfills the last 30 days, so previously stored
+   records show up on the first sync, not just new deltas.
+4. **Backend must be up.** Sync goes through the BFF, so start the Next.js
+   frontend/BFF (see the env notes above) before connecting a device.
+
 ### Codex Run actions
 
 Codex actions are wired inside this Expo app root:
@@ -235,8 +261,8 @@ Switch via **Me → Preferences → Appearance**:
 
 ## Stack
 
-- Expo SDK 53 · React Native 0.79 · Expo Router v5
-- react-native-reanimated v3 · react-native-svg · expo-blur
+- Expo SDK 54 · React Native 0.81 · Expo Router v6
+- react-native-reanimated v4 · react-native-svg · expo-blur
 - lucide-react-native · @expo-google-fonts/inter
 - Mobile-native Core API client under `src/api/`
 - Bearer session storage via `expo-secure-store`
@@ -246,9 +272,9 @@ Switch via **Me → Preferences → Appearance**:
 
 ### Jest / testing dependencies
 
-`react-test-renderer@19.0.0` is a required devDependency because
+`react-test-renderer@19.1.0` is a required devDependency because
 `@testing-library/react-native` declares `react-test-renderer>=18.2.0` as a peer dep.
-It must be pinned to match `react@19.0.0` exactly — using a mismatched version causes
+It must be pinned to match `react@19.1.0` exactly — using a mismatched version causes
 runtime errors in tests.
 
 ## Shared API contracts
