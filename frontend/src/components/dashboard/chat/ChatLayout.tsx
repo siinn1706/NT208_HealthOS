@@ -90,7 +90,7 @@ export function ChatLayout({ initialCurrentUserId = null }: ChatLayoutProps) {
     prevOnlineRef.current = isOnline;
   }, [isOnline, refetchConversations]);
 
-  const { pendingRequests, acceptRequest, rejectRequest, blockRequest } = useStrangerRequests();
+  const { pendingRequests, acceptRequest, rejectRequest } = useStrangerRequests();
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId),
@@ -254,7 +254,6 @@ export function ChatLayout({ initialCurrentUserId = null }: ChatLayoutProps) {
           onDeleteConversation={handleDeleteConversation}
           onAcceptStranger={acceptRequest}
           onRejectStranger={rejectRequest}
-          onBlockStranger={blockRequest}
           onCreateConversation={handleCreateConversation}
           onCreateGroup={handleCreateGroup}
         />

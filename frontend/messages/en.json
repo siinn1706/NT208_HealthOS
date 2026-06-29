@@ -876,7 +876,28 @@
         "temperature": "Body Temperature",
         "spo2": "SpO₂"
       },
-      "trendVsYesterday": "vs yesterday"
+      "trendVsYesterday": "vs yesterday",
+      "metricForm": {
+        "intro": "Enter the readings you measured yourself. Leave blank anything you don't have.",
+        "heartRate": "Heart rate",
+        "bloodPressure": "Blood pressure",
+        "systolic": "Systolic",
+        "diastolic": "Diastolic",
+        "spo2": "SpO₂",
+        "temperature": "Body temperature",
+        "weight": "Weight",
+        "recordedAt": "Measured at",
+        "placeholder": "Enter value",
+        "save": "Save readings",
+        "saving": "Saving…",
+        "viewMetrics": "View metrics",
+        "successSaved": "Saved {count} reading(s).",
+        "partialSaved": "Saved {ok}/{total} readings.",
+        "errorEmpty": "Enter at least one reading.",
+        "errorBpPair": "Enter both systolic and diastolic pressure.",
+        "errorRange": "{label} must be between {min}–{max} {unit}.",
+        "errorGeneric": "Couldn't save readings. Please try again."
+      }
     },
     "appointments": {
       "status": {
@@ -2811,6 +2832,8 @@
     "channels": "Channels",
     "channelEmail": "Email (with PDF)",
     "channelInApp": "In-App Notification",
+    "channelSms": "SMS (needs a phone number)",
+    "phone": "Phone (for SMS)",
     "message": "Personal message (optional)",
     "messagePlaceholder": "Add a note for the recipient...",
     "send": "Send Now",

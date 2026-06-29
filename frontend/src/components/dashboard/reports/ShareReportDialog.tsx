@@ -10,6 +10,7 @@ import {
   Loader2,
   User,
   Mail,
+  Phone,
   AlertTriangle,
   ExternalLink,
 } from "lucide-react";
@@ -47,6 +48,7 @@ interface RecipientForm {
   id: string;
   name: string;
   email: string;
+  phone: string;
   relationship: string;
   selected: boolean;
 }
@@ -68,6 +70,7 @@ export function ShareReportDialog({
           id: `ec-${i}`,
           name: c.name,
           email: "",
+          phone: "",
           relationship: c.relationship ?? "",
           selected: true,
         }]
@@ -90,7 +93,7 @@ export function ShareReportDialog({
   function addRecipient() {
     setRecipients((prev) => [
       ...prev,
-      { id: `manual-${Date.now()}`, name: "", email: "", relationship: "", selected: true },
+      { id: `manual-${Date.now()}`, name: "", email: "", phone: "", relationship: "", selected: true },
     ]);
   }
 
@@ -105,15 +108,17 @@ export function ShareReportDialog({
   }
 
   async function handleSend() {
-    const selected: ShareRecipient[] = recipients.flatMap(({ name, email, relationship, selected }) =>
-      selected && email.includes("@") ? [{ name, email, relationship }] : []
+    const selected: ShareRecipient[] = recipients.flatMap(({ name, email, phone, relationship, selected }) =>
+      selected && email.includes("@")
+        ? [{ name, email, phone: phone.trim() || undefined, relationship }]
+        : []
     );
 
     if (selected.length === 0) {
       return;
     }
 
-    await shareToContacts(report, selected, channels, message || undefined);
+    await shareToContacts(report, selected, channels, message || undefined, locale);
     onOpenChange(false);
   }
 
@@ -245,6 +250,18 @@ export function ShareReportDialog({
                         aria-label={t("email")}
                       />
                     </div>
+
+                    <div className="relative">
+                      <Phone className="absolute left-2.5 top-2.5 size-3 text-muted-foreground" aria-hidden />
+                      <Input
+                        type="tel"
+                        placeholder={t("phone")}
+                        value={r.phone}
+                        onChange={(e) => updateRecipient(r.id, "phone", e.target.value)}
+                        className="h-8 text-xs pl-7"
+                        aria-label={t("phone")}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -256,7 +273,7 @@ export function ShareReportDialog({
             <div>
               <p className="text-sm font-semibold text-foreground mb-3">{t("channels")}</p>
               <div className="space-y-2">
-                {(["email", "in_app"] as ShareChannel[]).map((ch) => (
+                {(["email", "in_app", "sms"] as ShareChannel[]).map((ch) => (
                   <div key={ch} className="flex items-center gap-2">
                     <Checkbox
                       id={`ch-${ch}`}
@@ -264,7 +281,11 @@ export function ShareReportDialog({
                       onCheckedChange={() => toggleChannel(ch)}
                     />
                     <Label htmlFor={`ch-${ch}`} className="text-sm font-normal cursor-pointer">
-                      {ch === "email" ? t("channelEmail") : t("channelInApp")}
+                      {ch === "email"
+                        ? t("channelEmail")
+                        : ch === "in_app"
+                        ? t("channelInApp")
+                        : t("channelSms")}
                     </Label>
                   </div>
                 ))}

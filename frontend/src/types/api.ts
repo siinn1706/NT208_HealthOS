@@ -778,11 +778,12 @@ export type TrendAnalysisBatch = Record<string, TrendAnalysis>;
 export interface ShareRecipient {
   name: string;
   email: string;
+  phone?: string;
   relationship?: string;
   user_id?: string;
 }
 
-export type ShareChannel = "email" | "in_app";
+export type ShareChannel = "email" | "in_app" | "sms";
 
 export interface ShareRequest {
   report_id: string;
@@ -790,9 +791,11 @@ export interface ShareRequest {
   channels: ShareChannel[];
   message?: string;
   include_pdf: boolean;
+  period?: ReportPeriod;
+  locale?: string;
 }
 
-export type ShareStatus = "sent" | "failed" | "pending";
+export type ShareStatus = "sent" | "failed" | "skipped" | "pending";
 
 export interface ShareResult {
   recipient: ShareRecipient;

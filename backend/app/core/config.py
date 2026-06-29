@@ -81,6 +81,16 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from: str | None = None
     smtp_use_tls: bool = True
+    # SMS (Twilio) — optional. When any of these is unset, SMS delivery is
+    # skipped (never an error) so the platform runs fine without a provider.
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_from_number: str | None = None
+    # Push (Expo) — optional. Expo's push API needs no server key for basic
+    # sends; an access token is only required when the Expo project has
+    # "Enhanced Security" enabled. Disabled by default → push is skipped.
+    expo_push_enabled: bool = False
+    expo_access_token: str | None = None
     # Backwards-compatible aliases (e.g. other repos / old .env keys)
     smtp_pass: str | None = None  # SMTP_PASS
     from_email: str | None = None  # FROM_EMAIL

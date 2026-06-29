@@ -876,7 +876,28 @@
         "temperature": "Nhiệt độ cơ thể",
         "spo2": "SpO₂"
       },
-      "trendVsYesterday": "so với hôm qua"
+      "trendVsYesterday": "so với hôm qua",
+      "metricForm": {
+        "intro": "Nhập các chỉ số bạn tự đo được. Để trống ô nào bạn không có.",
+        "heartRate": "Nhịp tim",
+        "bloodPressure": "Huyết áp",
+        "systolic": "Tâm thu",
+        "diastolic": "Tâm trương",
+        "spo2": "SpO₂",
+        "temperature": "Nhiệt độ cơ thể",
+        "weight": "Cân nặng",
+        "recordedAt": "Thời điểm đo",
+        "placeholder": "Nhập giá trị",
+        "save": "Lưu chỉ số",
+        "saving": "Đang lưu…",
+        "viewMetrics": "Xem chỉ số",
+        "successSaved": "Đã lưu {count} chỉ số.",
+        "partialSaved": "Đã lưu {ok}/{total} chỉ số.",
+        "errorEmpty": "Hãy nhập ít nhất một chỉ số.",
+        "errorBpPair": "Hãy nhập cả huyết áp tâm thu và tâm trương.",
+        "errorRange": "{label} phải trong khoảng {min}–{max} {unit}.",
+        "errorGeneric": "Không lưu được chỉ số. Vui lòng thử lại."
+      }
     },
     "appointments": {
       "status": {
@@ -2811,6 +2832,8 @@
     "channels": "Kênh gửi",
     "channelEmail": "Email (đính kèm PDF)",
     "channelInApp": "Thông báo trong app",
+    "channelSms": "SMS (cần số điện thoại)",
+    "phone": "Số điện thoại (cho SMS)",
     "message": "Lời nhắn (tuỳ chọn)",
     "messagePlaceholder": "Thêm ghi chú cho người nhận...",
     "send": "Gửi ngay",

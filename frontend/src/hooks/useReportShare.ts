@@ -75,7 +75,8 @@ export function useReportShare() {
       report: HealthReport,
       recipients: ShareRecipient[],
       channels: ShareChannel[],
-      message?: string
+      message?: string,
+      locale = "vi"
     ): Promise<ShareResult[]> => {
       if (!recipients.length) {
         toast.error("Vui lòng chọn ít nhất một người nhận.");
@@ -95,6 +96,8 @@ export function useReportShare() {
         channels,
         message,
         include_pdf: channels.includes("email"),
+        period: report.period,
+        locale,
       };
 
       try {
@@ -112,11 +115,13 @@ export function useReportShare() {
         setShareResults(results);
 
         const sentCount = results.filter((r) => r.status === "sent").length;
-        const failCount = results.filter((r) => r.status === "failed").length;
-        if (sentCount > 0 && failCount === 0) {
+        const skippedCount = results.filter((r) => r.status === "skipped").length;
+        if (sentCount > 0 && sentCount === results.length) {
           toast.success(`Đã gửi báo cáo đến ${sentCount} người nhận thành công.`);
         } else if (sentCount > 0) {
           toast.warning(`Gửi thành công ${sentCount}/${results.length} người nhận.`);
+        } else if (skippedCount > 0) {
+          toast.info("Chưa gửi được: kênh email chưa được cấu hình hoặc người nhận chưa dùng HealthOS.");
         } else {
           toast.error("Gửi báo cáo thất bại. Vui lòng thử lại.");
         }

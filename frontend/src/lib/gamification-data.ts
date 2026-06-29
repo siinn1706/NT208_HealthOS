@@ -7,13 +7,10 @@
 import { headers } from "next/headers";
 import {
   MOCK_ALL_MILESTONES,
-  MOCK_LEADERBOARD,
   MOCK_STREAK_HISTORY,
   MOCK_ACTIVE_GOALS,
   type ActivityMilestone,
-  type ActivityType,
   type GamificationSummary,
-  type LeaderboardEntry,
   type UserBmiData,
   type UserGoal,
   type UserStreakEntry,
@@ -108,17 +105,6 @@ export async function getAllMilestones(): Promise<ActivityMilestone[]> {
   return [];
 }
 
-export async function getMilestonesByActivity(
-  type: ActivityType
-): Promise<ActivityMilestone[]> {
-  // TODO: connect to Core endpoint once /api/v1/analytics/milestones is implemented
-  if (process.env.NODE_ENV === "development") {
-    console.warn("[gamification] getMilestonesByActivity: returning mock data (no API yet)");
-    return MOCK_ALL_MILESTONES.filter((m) => m.activityType === type);
-  }
-  return [];
-}
-
 export async function getUserStreakHistory(): Promise<UserStreakEntry[]> {
   const json = await bffFetch("/api/v1/analytics/gamification-summary");
   const devFallback = process.env.NODE_ENV === "development" ? MOCK_STREAK_HISTORY : [];
@@ -204,15 +190,6 @@ interface HealthGoalBEData {
   deadline: string | null;
 }
 
-export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  // TODO: Create GET /api/v1/leaderboard BFF route and connect to Core endpoint
-  if (process.env.NODE_ENV === "development") {
-    console.warn("[gamification] getLeaderboard: returning mock data (no API yet)");
-    return MOCK_LEADERBOARD;
-  }
-  return [];
-}
-
 /** Full summary for the Goals hub page. */
 export async function getGamificationSummary(): Promise<GamificationSummary> {
   const json = await bffFetch("/api/v1/analytics/gamification-summary");
@@ -287,17 +264,4 @@ export async function getGamificationSummary(): Promise<GamificationSummary> {
     streakHistory: data.streakHistory ?? [],
     recentUnlocked: data.recentUnlocked ?? [],
   };
-}
-
-/** Group milestones by activity type for Achievements page. */
-export async function getMilestonesGrouped(): Promise<
-  Record<ActivityType, ActivityMilestone[]>
-> {
-  const all = await getAllMilestones();
-  const grouped: Partial<Record<ActivityType, ActivityMilestone[]>> = {};
-  for (const m of all) {
-    if (!grouped[m.activityType]) grouped[m.activityType] = [];
-    grouped[m.activityType]!.push(m);
-  }
-  return grouped as Record<ActivityType, ActivityMilestone[]>;
 }
