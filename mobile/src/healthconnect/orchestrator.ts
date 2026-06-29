@@ -38,7 +38,12 @@ export interface HealthConnectReadChangesResult {
 }
 
 export interface HealthConnectSyncAdapter {
+  // Side-effect-free read of already-granted scopes. Safe to call on every sync.
   getGrantedPermissions: () => Promise<string[]>;
+  // Opens the system permission prompt for any missing scopes. Call only from an
+  // explicit user-initiated grant flow (e.g. connecting a device), never inside
+  // the sync loop, so routine syncs don't re-prompt for partially-granted scopes.
+  requestPermissions?: () => Promise<string[]>;
   readChanges: (input: HealthConnectReadChangesInput) => Promise<HealthConnectReadChangesResult>;
 }
 

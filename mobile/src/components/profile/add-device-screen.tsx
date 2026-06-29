@@ -58,7 +58,11 @@ export function AddDeviceScreen() {
   const quickSource = useMemo(() => ALL_SOURCES.find((item) => item.id === 'health_connect') ?? ALL_SOURCES[0], []);
 
   async function connectHealthConnect(source: SourceItem): Promise<ConnectedDevice> {
-    const grantedScopes = await healthConnectAdapter.getGrantedPermissions();
+    // Connecting is the explicit grant moment: prompt for missing scopes here.
+    // Routine syncs only read granted scopes (no prompt).
+    const grantedScopes = await (
+      healthConnectAdapter.requestPermissions?.() ?? healthConnectAdapter.getGrantedPermissions()
+    );
     if (grantedScopes.length === 0) {
       throw new Error('Health Connect permissions were not granted.');
     }

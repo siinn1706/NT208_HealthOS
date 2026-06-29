@@ -58,11 +58,22 @@ describe('native Health Connect adapter', () => {
       loadModule: () => module as never,
     });
 
-    await expect(adapter.getGrantedPermissions()).resolves.toEqual(['HeartRate', 'Steps']);
+    await expect(adapter.requestPermissions!()).resolves.toEqual(['HeartRate', 'Steps']);
     expect(module.requestPermission).toHaveBeenCalledWith(expect.arrayContaining([
       { accessType: 'read', recordType: 'Steps' },
       { accessType: 'read', recordType: 'ExerciseSession' },
     ]));
+  });
+
+  it('getGrantedPermissions reads scopes without opening the permission prompt', async () => {
+    const module = createNativeModule();
+    const adapter = createHealthConnectAdapter({
+      platform: 'android',
+      loadModule: () => module as never,
+    });
+
+    await expect(adapter.getGrantedPermissions()).resolves.toEqual(['Steps']);
+    expect(module.requestPermission).not.toHaveBeenCalled();
   });
 
   it('backfills first sync and stores a fresh changes token', async () => {

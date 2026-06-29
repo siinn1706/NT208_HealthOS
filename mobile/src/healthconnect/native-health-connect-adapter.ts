@@ -46,6 +46,7 @@ export function createUnavailableHealthConnectAdapter(platform: typeof Platform.
   };
   return {
     getGrantedPermissions: throwUnavailable,
+    requestPermissions: throwUnavailable,
     readChanges: throwUnavailable,
   };
 }
@@ -60,7 +61,17 @@ export function createHealthConnectAdapter(options: HealthConnectAdapterOptions 
   const readyModule = async () => ensureReady(loadModule, platform);
 
   return {
+    // Read-only: never opens the permission prompt. The sync loop calls this on
+    // every run, so prompting here would re-ask on each sync when scopes are
+    // partially granted. Use requestPermissions() for the grant flow instead.
     async getGrantedPermissions() {
+      const module = await readyModule();
+      return normalizePermissionRecordTypes(await module.getGrantedPermissions());
+    },
+
+    // User-initiated: opens the system prompt for any missing read scopes, then
+    // returns the resulting granted set. Call this from the connect/grant flow.
+    async requestPermissions() {
       const module = await readyModule();
       const existing = normalizePermissionRecordTypes(await module.getGrantedPermissions());
       const missing = HEALTH_CONNECT_RECORD_TYPES.filter((type) => !existing.includes(type));

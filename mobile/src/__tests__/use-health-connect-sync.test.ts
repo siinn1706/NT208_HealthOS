@@ -67,6 +67,25 @@ describe('useHealthConnectSync', () => {
     expect(result.current.error?.message).toBe('Health Connect sync failed.');
   });
 
+  it('rejects a second operation while one is already in progress', async () => {
+    let resolveFirst: (value: unknown) => void = () => {};
+    mockSyncHealthConnect.mockReturnValueOnce(
+      new Promise((resolve) => { resolveFirst = resolve; }) as never,
+    );
+
+    const { result } = renderHook(() => useHealthConnectSync(mockAdapter));
+
+    await act(async () => {
+      const first = result.current.sync();
+      await expect(result.current.sync()).rejects.toThrow('already in progress');
+      await expect(result.current.reset()).rejects.toThrow('already in progress');
+      resolveFirst({ synced: 1 });
+      await first;
+    });
+
+    expect(result.current.isSyncing).toBe(false);
+  });
+
   it('reset() resolves and clears isSyncing', async () => {
     const fakeResetResult = { cleared: 3 } as any;
     mockReset.mockResolvedValueOnce(fakeResetResult);

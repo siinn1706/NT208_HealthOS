@@ -61,6 +61,14 @@ export function mapHealthConnectRecordToIngestRecords(
   }
 }
 
+// Health Connect deletion changes only carry the platform record UUID, so a
+// deletion can only target a stored record whose external_id was derived from
+// `metadata.id` (the same UUID) — see buildExternalId, which prefers it. Records
+// ingested via the clientRecordId / synthesized fallbacks (when metadata.id is
+// absent) are therefore not reachable by a deletion; in practice HC always
+// supplies metadata.id for any record it can later emit a deletion for, so the
+// upsert and deletion external_ids stay consistent. Keep both paths on the same
+// normalizeExternalId() so the UUID-based ids match byte-for-byte.
 export function mapHealthConnectDeletionToIngestDeletions(
   recordId: string,
   recordType: HealthConnectRecordType,

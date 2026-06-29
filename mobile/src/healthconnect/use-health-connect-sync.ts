@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   resetHealthConnectSyncState,
   syncHealthConnect,
@@ -13,8 +13,17 @@ export function useHealthConnectSync(adapter: HealthConnectSyncAdapter) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [lastResult, setLastResult] = useState<SyncHealthConnectResult | null>(null);
+  // Synchronous in-flight guard: state updates are async, so a ref is the only
+  // reliable way to reject a second call before the first finishes. sync and
+  // reset share it because both mutate the device's sync-state tokens — running
+  // them concurrently could interleave token reads/writes.
+  const busyRef = useRef(false);
 
   const sync = useCallback(async (options: SyncHealthConnectOptions = {}) => {
+    if (busyRef.current) {
+      throw new Error('A Health Connect operation is already in progress.');
+    }
+    busyRef.current = true;
     setIsSyncing(true);
     setError(null);
     try {
@@ -26,6 +35,7 @@ export function useHealthConnectSync(adapter: HealthConnectSyncAdapter) {
       setError(normalized);
       throw normalized;
     } finally {
+      busyRef.current = false;
       setIsSyncing(false);
     }
   }, [adapter]);
@@ -33,6 +43,10 @@ export function useHealthConnectSync(adapter: HealthConnectSyncAdapter) {
   const reset = useCallback(async (
     options: ResetHealthConnectSyncStateOptions = {},
   ): Promise<ResetHealthConnectSyncStateResult> => {
+    if (busyRef.current) {
+      throw new Error('A Health Connect operation is already in progress.');
+    }
+    busyRef.current = true;
     setIsSyncing(true);
     setError(null);
     try {
@@ -42,6 +56,7 @@ export function useHealthConnectSync(adapter: HealthConnectSyncAdapter) {
       setError(normalized);
       throw normalized;
     } finally {
+      busyRef.current = false;
       setIsSyncing(false);
     }
   }, []);
