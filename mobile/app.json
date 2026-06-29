@@ -20,11 +20,20 @@
       "bundleIdentifier": "com.nt208.healthos"
     },
     "android": {
+      "minSdkVersion": 26,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/adaptive-icon.png",
         "backgroundColor": "#F4FCFE"
       },
-      "package": "com.nt208.healthos"
+      "package": "com.nt208.healthos",
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_BLOOD_PRESSURE",
+        "android.permission.health.READ_EXERCISE"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -38,10 +47,20 @@
           "backgroundColor": "#F4FCFE"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "react-native-health-connect",
+      "./plugins/withHealthConnectManifest",
+      ["expo-build-properties", { "android": { "minSdkVersion": 26 } }]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6340db14-1f76-44fd-b076-a502283c2310"
+      }
+    },
+    "owner": "dreamgnouhts-team"
   }
 }

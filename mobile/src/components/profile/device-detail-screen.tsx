@@ -17,7 +17,7 @@ import { useApiQuery, invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { deviceService, type ConnectedDevice } from '../../api/services/device-service';
 import { useHealthConnectSync } from '../../healthconnect/use-health-connect-sync';
-import type { HealthConnectSyncAdapter } from '../../healthconnect/orchestrator';
+import { createNativeHealthConnectAdapter, requestHealthConnectPermissions } from '../../healthconnect/native-adapter';
 
 type SyncState = 'ok' | 'failed' | 'stale' | 'syncing' | 'inactive';
 
@@ -29,14 +29,6 @@ const HEALTH_CONNECT_SCOPES = [
   'BloodPressure',
   'ExerciseSession',
 ] as const;
-
-function createLocalHealthConnectAdapter(scopes: string[]): HealthConnectSyncAdapter {
-  const snapshot = [...scopes];
-  return {
-    getGrantedPermissions: async () => snapshot,
-    readChanges: async () => ({ records: [], deletions: [] }),
-  };
-}
 
 function toSyncState(device: ConnectedDevice): SyncState {
   switch ((device.last_sync_status ?? '').toLowerCase()) {
@@ -96,11 +88,9 @@ export function DeviceDetailScreen() {
   const [syncingLegacy, setSyncingLegacy] = useState(false);
   const [resettingSyncState, setResettingSyncState] = useState(false);
   const [savingScopes, setSavingScopes] = useState(false);
+  const [grantingPermissions, setGrantingPermissions] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const healthConnectAdapter = useMemo(
-    () => createLocalHealthConnectAdapter(device?.scopes ?? []),
-    [device?.scopes],
-  );
+  const healthConnectAdapter = useMemo(() => createNativeHealthConnectAdapter(), []);
   const {
     sync: syncHealthConnectNow,
     reset: resetHealthConnectNow,
@@ -222,6 +212,20 @@ export function DeviceDetailScreen() {
       setActionError(err instanceof Error ? err.message : 'Could not update permissions.');
     } finally {
       setSavingScopes(false);
+    }
+  }
+
+  async function handleGrantPermissions() {
+    setGrantingPermissions(true);
+    setActionError(null);
+    try {
+      await requestHealthConnectPermissions(selectedScopes);
+      invalidateApiQuery(queryKeys.devices);
+      await devicesQuery.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not request Health Connect permissions.');
+    } finally {
+      setGrantingPermissions(false);
     }
   }
 
@@ -378,11 +382,18 @@ export function DeviceDetailScreen() {
               );
             })}
             <Button
+              label={grantingPermissions ? 'Requesting…' : 'Grant Health Connect access'}
+              variant="soft"
+              onPress={handleGrantPermissions}
+              disabled={grantingPermissions || savingScopes || deleting || selectedScopes.length === 0}
+              style={{ marginTop: 12 }}
+            />
+            <Button
               label={savingScopes ? 'Saving…' : 'Save permissions'}
               variant="solid"
               onPress={handleSaveScopes}
-              disabled={savingScopes || deleting}
-              style={{ marginTop: 12 }}
+              disabled={savingScopes || grantingPermissions || deleting}
+              style={{ marginTop: 8 }}
             />
           </View>
         )}

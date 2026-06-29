@@ -18,6 +18,8 @@ import { invalidateApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { deviceService, type DeviceProvider } from '../../api/services/device-service';
 
+const HEALTH_CONNECT_PACKAGE = 'com.google.android.apps.healthdata';
+
 const HERO_GRADIENTS: Record<string, readonly [string, string]> = {
   calm: ['#1965B3', '#3A8FD4'],
   night: ['#1A4060', '#0B2030'],
@@ -39,7 +41,7 @@ const ALL_SOURCES: SourceItem[] = [
   { id: 'apple', name: 'Apple Health', sub: 'iOS health metrics and vitals', Icon: IconHeart, color: '#EF4444', provider: 'apple_health' },
   { id: 'garmin', name: 'Garmin Connect', sub: 'GPS run data · Heart rate · VO2max', Icon: IconActivity, color: '#059669', provider: 'garmin' },
   { id: 'fitbit', name: 'Fitbit', sub: 'Activity and wearable insights', Icon: IconActivity, color: '#0F8F7E', provider: 'fitbit' },
-  { id: 'samsung', name: 'Samsung Health', sub: 'Not yet supported in current mobile flow', Icon: IconActivity, color: '#1428A0' },
+  { id: 'samsung', name: 'Samsung Health', sub: 'Syncs automatically via Health Connect', Icon: IconActivity, color: '#1428A0' },
 ];
 
 export function AddDeviceScreen() {
@@ -65,6 +67,7 @@ export function AddDeviceScreen() {
       const connected = await deviceService.connect({
         provider: source.provider,
         device_label: source.name,
+        ...(source.provider === 'health_connect' && { external_account_id: HEALTH_CONNECT_PACKAGE }),
       });
       invalidateApiQuery(queryKeys.devices);
       router.replace((`/profile/devices/${connected.id}`) as never);

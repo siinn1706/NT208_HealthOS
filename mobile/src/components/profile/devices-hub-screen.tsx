@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../layout/screen';
 import { TopBar } from '../layout/top-bar';
@@ -185,6 +185,14 @@ export function DevicesHubScreen() {
                     router.push((`/profile/devices/${connected.id}`) as never);
                     return;
                   }
+                  if (platform.id === 'apple_health' && Platform.OS !== 'ios') {
+                    openMissing('Apple Health');
+                    return;
+                  }
+                  if (platform.id === 'health_connect' && Platform.OS !== 'android') {
+                    openMissing('Health Connect');
+                    return;
+                  }
                   router.push('/profile/devices/add' as never);
                 }}
               />
@@ -237,7 +245,7 @@ export function DevicesHubScreen() {
       {[
         { id: 'google', name: 'Google Fit', sub: 'Android · Activity & vitals', color: t.info, action: () => router.push('/profile/devices/add' as never) },
         { id: 'garmin', name: 'Garmin Connect', sub: 'GPS watches · Running data', color: t.success, action: () => router.push('/profile/devices/add' as never) },
-        { id: 'samsung', name: 'Samsung Health', sub: 'Not yet supported in mobile flow', color: t.brand, action: () => openMissing('Samsung Health integration is not yet available') },
+        { id: 'samsung', name: 'Samsung Health', sub: 'Syncs automatically via Health Connect', color: t.brand, action: () => router.push('/profile/devices/add' as never) },
       ].map((source) => (
         <TouchableOpacity
           key={source.id}
