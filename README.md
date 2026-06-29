@@ -334,9 +334,9 @@ See [Production Checklist](./docs/production-checklist.md) for required master e
 ## Thành viên & Tỷ lệ đóng góp
 
 | Thành viên | MSSV | Tỷ lệ đóng góp |
-|---|---|---|
+|---|---|:---:|
 | Nguyễn Văn Nam | `24521120` | 28% |
-| Hoàng Trí | `24521829` | 24% |
+| Hoàng Xuân Minh Trí | `24521829` | 24% |
 | Nguyễn Đỗ Ngọc Huyền Thương | `24521750` | 24% |
 | Trà Chí Chung | `24520229` | 24% |
 | **Tổng** | | **100%** |

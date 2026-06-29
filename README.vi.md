@@ -316,12 +316,12 @@ Xem [Production Checklist](./docs/production-checklist.md) để biết các env
 
 ## Thành viên & Tỷ lệ đóng góp
 
-| Thành viên | GitHub | Tỷ lệ đóng góp |
-|---|---|---|
-| Nguyễn Văn Nam | `siinn1706` | 60% |
-| Hoàng Trí | `trihoang0901` | 18% |
-| Nguyễn Đỗ Ngọc Huyền Thương | `huyenthuongnguyen` | 16% |
-| Trà Chí Chung | `Chung-Tra` | 6% |
+| Thành viên | MSSV | Tỷ lệ đóng góp |
+|---|---|:---:|
+| Nguyễn Văn Nam | `24521120` | 28% |
+| Hoàng Xuân Minh Trí | `24521829` | 24% |
+| Nguyễn Đỗ Ngọc Huyền Thương | `24521750` | 24% |
+| Trà Chí Chung | `24520229` | 24% |
 | **Tổng** | | **100%** |
 
 ---
