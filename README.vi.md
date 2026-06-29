@@ -313,3 +313,21 @@ Xem [Production Checklist](./docs/production-checklist.md) để biết các env
 - [Folder Convention](./docs/standards/folder-convention.md)
 - [API Conventions](./docs/standards/api-conventions.md)
 - [Git Workflow](./docs/standards/git-workflow.md)
+
+## Thành viên & Tỷ lệ đóng góp
+
+| Thành viên | GitHub | Tỷ lệ đóng góp |
+|---|---|---|
+| Nguyễn Văn Nam | `siinn1706` | 60% |
+| Hoàng Trí | `trihoang0901` | 18% |
+| Nguyễn Đỗ Ngọc Huyền Thương | `huyenthuongnguyen` | 16% |
+| Trà Chí Chung | `Chung-Tra` | 6% |
+| **Tổng** | | **100%** |
+
+---
+
+<div align="center">
+
+### ✨ Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào. ✨
+
+</div>

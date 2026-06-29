@@ -330,3 +330,21 @@ See [Production Checklist](./docs/production-checklist.md) for required master e
 - [Folder Convention](./docs/standards/folder-convention.md)
 - [API Conventions](./docs/standards/api-conventions.md)
 - [Git Workflow](./docs/standards/git-workflow.md)
+
+## Thành viên & Tỷ lệ đóng góp
+
+| Thành viên | MSSV | Tỷ lệ đóng góp |
+|---|---|---|
+| Nguyễn Văn Nam | `24521120` | 28% |
+| Hoàng Trí | `24521829` | 24% |
+| Nguyễn Đỗ Ngọc Huyền Thương | `24521750` | 24% |
+| Trà Chí Chung | `24520229` | 24% |
+| **Tổng** | | **100%** |
+
+---
+
+<div align="center">
+
+### ✨ Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào. ✨
+
+</div>
