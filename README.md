@@ -345,6 +345,6 @@ See [Production Checklist](./docs/production-checklist.md) for required master e
 
 <div align="center">
 
-### ✨ Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào. ✨
+### Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào. 
 
 </div>
