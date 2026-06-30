@@ -140,6 +140,38 @@ describe('toHomeView', () => {
     expect(result.kpis[0]).toMatchObject({ id: 'steps', v: expect.any(Number) });
   });
 
+  it('renders known Health Connect camelCase KPI labels and units', () => {
+    const summary = makeSummary({
+      kpis: {
+        caloriesBurned: { current: 40, target: 2000 },
+        sleepScore: { current: 0, target: 100 },
+        heartRate: { current: 72, target: 100 },
+        steps: { current: 1000, target: 10000 },
+      },
+    });
+
+    const result = toHomeView(summary as any, [], []);
+
+    expect(result.kpis[0]).toMatchObject({ label: 'Calories burned', val: '40 kcal', tgt: '2000 kcal' });
+    expect(result.kpis[1]).toMatchObject({ label: 'Sleep score', val: '0 pts', tgt: '100 pts' });
+    expect(result.kpis[2]).toMatchObject({ label: 'Heart rate', val: '72 bpm', tgt: '100 bpm' });
+    expect(result.kpis[3]).toMatchObject({ label: 'Steps', val: '1.0k', tgt: '10.0k' });
+  });
+
+  it('splits fallback camelCase labels without changing duration sleep metrics', () => {
+    const summary = makeSummary({
+      kpis: {
+        activeMinutes: { current: 15, target: 30 },
+        sleepMinutes: { current: 120, target: 480 },
+      },
+    });
+
+    const result = toHomeView(summary as any, [], []);
+
+    expect(result.kpis[0]).toMatchObject({ label: 'Active Minutes', val: '15', tgt: '30' });
+    expect(result.kpis[1]).toMatchObject({ label: 'Sleep minutes', val: '2h', tgt: '8h' });
+  });
+
   it('maps reminders to nextUp items', () => {
     const reminder = {
       id: 'r1',

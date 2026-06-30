@@ -1,17 +1,11 @@
 import { useEffect, useRef } from 'react';
-import type { UserPreference } from '../../../shared/api-contracts';
 import { useSession } from '../auth/session-provider';
 import { useApiQuery } from '../api/query';
 import { queryKeys } from '../api/queryKeys';
 import { preferenceService } from '../api/services/preference-service';
 import i18n, { initLocaleFromStorage } from './index';
 import { setStoredLocale } from './language-storage';
-
-type Locale = UserPreference['locale'];
-
-function normalizeLocale(value?: string | null): Locale {
-  return value?.toLowerCase().startsWith('vi') ? 'vi' : 'en';
-}
+import { normalizeLocale } from './supported-locales';
 
 export function LanguagePreferenceHydrator() {
   const { authenticated, booting } = useSession();

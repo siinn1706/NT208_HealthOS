@@ -1,17 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSupportedLocale, type SupportedLocale } from './supported-locales';
 
 const LOCALE_KEY = 'app.locale';
-
-export type SupportedLocale = 'vi' | 'en';
-
-export function isValidLocale(value: unknown): value is SupportedLocale {
-  return value === 'vi' || value === 'en';
-}
 
 export async function getStoredLocale(): Promise<SupportedLocale | null> {
   try {
     const stored = await AsyncStorage.getItem(LOCALE_KEY);
-    return isValidLocale(stored) ? stored : null;
+    return isSupportedLocale(stored) ? stored : null;
   } catch {
     return null;
   }

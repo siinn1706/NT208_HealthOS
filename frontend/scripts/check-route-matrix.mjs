@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Asserts every /api/v1/** path called from FE client code or mobile services
- * has a matching route.ts handler under frontend/src/app/api/v1/.
+ * Asserts every /api/v1/** path+method called from FE client code or mobile
+ * services has a matching route.ts handler under frontend/src/app/api/v1/.
  *
  * Exit 0 = all references covered.  Exit 1 = at least one gap (printed to stderr).
  *
@@ -29,6 +29,7 @@ const FE_CLIENT_EXCLUDE_PREFIX = join(FRONTEND_ROOT, 'src', 'app', 'api', 'v1');
 const MOBILE_SERVICE_DIR = join(REPO_ROOT, 'mobile', 'src', 'api', 'services');
 
 const OPTOUT_RE = /\/\/\s*route-matrix-ok:/i;
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 
 // Server-side files that contain /api/v1/** URL strings as config/allowlists,
 // not as actual client fetch calls.
@@ -70,8 +71,33 @@ function normalizePath(p) {
 
 // ── Handler inventory ─────────────────────────────────────────────────────────
 
+function collectRouteMethods(file) {
+  const source = readFileSync(file, 'utf8');
+  const methods = new Set();
+  const exportedFunctionRe = /export\s+(?:async\s+)?(?:function|const)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g;
+  const exportedListRe = /export\s*\{([^}]+)\}/g;
+  let match;
+
+  while ((match = exportedFunctionRe.exec(source)) !== null) {
+    methods.add(match[1].toUpperCase());
+  }
+  while ((match = exportedListRe.exec(source)) !== null) {
+    for (const part of match[1].split(',')) {
+      const candidate = part.trim().split(/\s+as\s+/i)[0]?.trim().toUpperCase();
+      if (HTTP_METHODS.has(candidate)) methods.add(candidate);
+    }
+  }
+  return methods;
+}
+
+function addHandler(handlers, path, methods) {
+  const existing = handlers.get(path) ?? new Set();
+  for (const method of methods) existing.add(method);
+  handlers.set(path, existing);
+}
+
 function collectHandlers(dir, prefix = '/api/v1') {
-  const handlers = new Set();
+  const handlers = new Map();
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -82,9 +108,12 @@ function collectHandlers(dir, prefix = '/api/v1') {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       const seg = entry.name.startsWith('(') ? '' : `/${normalizePath(entry.name)}`;
-      for (const p of collectHandlers(full, prefix + seg)) handlers.add(p);
+      for (const [p, methods] of collectHandlers(full, prefix + seg)) {
+        addHandler(handlers, p, methods);
+      }
     } else if (entry.isFile() && entry.name === 'route.ts') {
-      handlers.add(normalizePath(prefix));
+      const methods = collectRouteMethods(full);
+      if (methods.size > 0) addHandler(handlers, normalizePath(prefix), methods);
     }
   }
   return handlers;
@@ -157,6 +186,31 @@ function extractPathsFromLine(line) {
   return paths;
 }
 
+function inferMethodForLine(lines, index) {
+  const chunk = [];
+  for (let i = index; i < Math.min(lines.length, index + 8); i++) {
+    chunk.push(lines[i]);
+    if (/[);]\s*;?\s*$/.test(lines[i].trim())) break;
+  }
+  const chunkText = chunk.join('\n');
+  const methodMatch = chunkText.match(/\bmethod\s*:\s*['"`]([A-Za-z]+)['"`]/);
+  if (!methodMatch) {
+    const initMatch = chunkText.match(/,\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)?\s*;?\s*$/);
+    const initName = initMatch?.[1];
+    if (initName) {
+      const escapedName = initName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const priorText = lines.slice(Math.max(0, index - 6), index).join('\n');
+      const initMethodMatch = priorText.match(
+        new RegExp(`\\b(?:const|let)\\s+${escapedName}\\b[\\s\\S]*?\\bmethod\\s*:\\s*['"\`]([A-Za-z]+)['"\`]`),
+      );
+      const initMethod = initMethodMatch?.[1]?.toUpperCase();
+      if (HTTP_METHODS.has(initMethod)) return initMethod;
+    }
+  }
+  const method = methodMatch?.[1]?.toUpperCase();
+  return HTTP_METHODS.has(method) ? method : 'GET';
+}
+
 function extractApiRefs(source) {
   const refs = [];
   const lines = source.split('\n');
@@ -166,8 +220,9 @@ function extractApiRefs(source) {
     if (OPTOUT_RE.test(line)) continue;
     if (i > 0 && OPTOUT_RE.test(lines[i - 1])) continue;
 
+    const method = inferMethodForLine(lines, i);
     for (const path of extractPathsFromLine(line)) {
-      refs.push({ lineNo: i + 1, path });
+      refs.push({ lineNo: i + 1, path, method });
     }
   }
   return refs;
@@ -224,8 +279,9 @@ for (const dir of FE_CLIENT_DIRS) {
     try { source = readFileSync(file, 'utf8'); } catch { continue; }
     const relFile = relToRepo(file);
     for (const ref of extractApiRefs(source)) {
-      if (!handlers.has(ref.path)) {
-        violations.push({ file: relFile, line: ref.lineNo, path: ref.path });
+      const methods = handlers.get(ref.path);
+      if (!methods?.has(ref.method)) {
+        violations.push({ file: relFile, line: ref.lineNo, path: ref.path, method: ref.method });
       }
     }
   }
@@ -236,8 +292,9 @@ for (const file of walkDir(MOBILE_SERVICE_DIR)) {
   try { source = readFileSync(file, 'utf8'); } catch { continue; }
   const relFile = relToRepo(file);
   for (const ref of extractApiRefs(source)) {
-    if (!handlers.has(ref.path)) {
-      violations.push({ file: relFile, line: ref.lineNo, path: ref.path });
+    const methods = handlers.get(ref.path);
+    if (!methods?.has(ref.method)) {
+      violations.push({ file: relFile, line: ref.lineNo, path: ref.path, method: ref.method });
     }
   }
 }
@@ -246,16 +303,16 @@ if (violations.length > 0) {
   // Deduplicate (same file:line:path)
   const seen = new Set();
   const unique = violations.filter((v) => {
-    const k = `${v.file}:${v.line}:${v.path}`;
+    const k = `${v.file}:${v.line}:${v.method}:${v.path}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
   });
   unique.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
   for (const v of unique) {
-    process.stderr.write(`${v.file}:${v.line} — calls ${v.path} — no BFF route handler\n`);
+    process.stderr.write(`${v.file}:${v.line} — calls ${v.method} ${v.path} — no BFF route handler method\n`);
   }
   process.exit(1);
 }
 
-process.stdout.write(`OK: ${handlers.size} BFF route handlers cover all /api/v1/** references\n`);
+process.stdout.write(`OK: ${handlers.size} BFF route paths cover all /api/v1/** method references\n`);

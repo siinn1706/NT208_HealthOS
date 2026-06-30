@@ -14,8 +14,9 @@ import {
 } from '../../icons';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
-import { useApiQuery, invalidateApiQuery } from '../../api/query';
+import { useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
+import { invalidateHealthDataCaches } from '../../api/health-data-cache';
 import { deviceService, type ConnectedDevice } from '../../api/services/device-service';
 import { useHealthConnectSync } from '../../healthconnect/use-health-connect-sync';
 import { createHealthConnectAdapter } from '../../healthconnect/native-health-connect-adapter';
@@ -79,6 +80,7 @@ export function DeviceDetailScreen() {
   );
 
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [syncingLegacy, setSyncingLegacy] = useState(false);
   const [resettingSyncState, setResettingSyncState] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -164,16 +166,24 @@ export function DeviceDetailScreen() {
     }
     if (!isHealthConnect) setSyncingLegacy(true);
     setActionError(null);
+    setActionMessage(null);
     try {
+      let changedRecords: number | null = null;
       if (isHealthConnect) {
-        await syncHealthConnectNow({ deviceId: id });
+        const result = await syncHealthConnectNow({ deviceId: id });
+        changedRecords = result.ingest.inserted + result.ingest.updated + result.ingest.deleted;
       } else {
-        await deviceService.sync(id);
+        const synced = await deviceService.sync(id);
+        changedRecords = synced.last_sync_count;
       }
-      invalidateApiQuery(queryKeys.devices);
-      invalidateApiQuery(queryKeys.device(id));
+      invalidateHealthDataCaches(id);
       await devicesQuery.reload();
       await syncStateQuery.reload();
+      if (changedRecords === 0) {
+        setActionMessage(i18n('devices.syncNoNewRecords'));
+      } else if (typeof changedRecords === 'number') {
+        setActionMessage(i18n('devices.syncImportedRecords', { count: changedRecords }));
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : i18n('devices.syncFailed'));
     } finally {
@@ -184,9 +194,10 @@ export function DeviceDetailScreen() {
   async function handleDisconnect() {
     setDeleting(true);
     setActionError(null);
+    setActionMessage(null);
     try {
       await deviceService.disconnect(id);
-      invalidateApiQuery(queryKeys.devices);
+      invalidateHealthDataCaches(id);
       router.back();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : i18n('devices.disconnectFailed'));
@@ -204,6 +215,7 @@ export function DeviceDetailScreen() {
     if (entries.length === 0) return;
     setResettingSyncState(true);
     setActionError(null);
+    setActionMessage(null);
     try {
       if (isHealthConnect) {
         await resetHealthConnectNow({
@@ -217,8 +229,10 @@ export function DeviceDetailScreen() {
         }, {});
         await deviceService.putSyncState(id, tokens);
       }
+      invalidateHealthDataCaches(id);
+      await devicesQuery.reload();
       await syncStateQuery.reload();
-      setActionError(null);
+      setActionMessage(i18n('devices.syncTokensReset'));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : i18n('devices.resetSyncStateFailed'));
     } finally {
@@ -281,6 +295,7 @@ export function DeviceDetailScreen() {
       </Card>
 
       {actionError && <ApiState title={i18n('devices.actionFailed')} message={actionError} />}
+      {actionMessage && <ApiState title={actionMessage} />}
 
       <SectionHeader title={i18n('devices.syncStateByRecordType')} />
       <Card style={styles.sectionCard}>

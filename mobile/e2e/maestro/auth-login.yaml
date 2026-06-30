@@ -1,0 +1,19 @@
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "Sign in"
+    optional: true
+- tapOn:
+    id: "auth-sign-in-email"
+- inputText: ${MAESTRO_TEST_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: "auth-sign-in-password"
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "auth-sign-in-submit"
+- assertVisible:
+    id: "tab-me"

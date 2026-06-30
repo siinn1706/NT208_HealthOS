@@ -126,16 +126,20 @@ export function AuthOtpScreen() {
     if (!params.email || !isComplete) return;
     setLoading(true);
     setError(null);
+    const purpose = (params.purpose ?? 'signup') as 'signup' | 'reset_password' | 'login';
     try {
-      const pending = consumePendingSignup();
+      if (purpose === 'signup') consumePendingSignup();
       const result = await authService.verifyOtp({
         email: params.email!,
-        password: pending?.password,
-        purpose: (params.purpose ?? 'signup') as 'signup' | 'reset_password' | 'login',
+        purpose,
         code,
       });
+      if (purpose === 'reset_password') {
+        router.replace('/auth/sign-in');
+        return;
+      }
       if (!('access_token' in result)) {
-        setError('Verification succeeded but no session was created. Please sign in.');
+        setError(i18n('auth.verificationNoSession'));
         router.replace('/auth/sign-in');
         return;
       }
@@ -145,12 +149,9 @@ export function AuthOtpScreen() {
         await session.clearSession();
         throw refreshError;
       }
-      if (params.purpose === 'reset_password') {
-        router.replace('/auth/sign-in');
-      }
       // AuthGate owns signup/login post-auth navigation after refreshUser sets the session user.
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code.');
+      setError(err instanceof Error ? err.message : i18n('auth.otpInvalid'));
     } finally {
       setLoading(false);
     }
@@ -169,7 +170,7 @@ export function AuthOtpScreen() {
   if (!params.email) {
     return (
       <View style={styles.center}>
-        <Text style={[typography.bodyMed, { color: t.danger }]}>No email provided. Go back and try again.</Text>
+        <Text style={[typography.bodyMed, { color: t.danger }]}>{i18n('auth.noEmailProvided')}</Text>
         <Button label={i18n('common.back')} onPress={() => router.replace('/auth/sign-in')} style={{ marginTop: 16 }} />
       </View>
     );
@@ -181,9 +182,9 @@ export function AuthOtpScreen() {
         <Shield size={26} color={t.brand} />
       </View>
 
-      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>Verify it's you</Text>
+      <Text style={[typography.title, { color: t.ink, marginBottom: 4 }]}>{i18n('auth.verifyOtpTitle')}</Text>
       <Text style={[typography.body, { color: t.ink3, marginBottom: 24 }]}>
-        We sent a 6-digit code to {maskContact(params.email)}
+        {i18n('auth.verifyOtpSubtitle', { email: maskContact(params.email) })}
       </Text>
 
       {error && <Text style={[typography.caption, { color: t.danger, marginBottom: 10 }]}>{error}</Text>}
@@ -214,12 +215,12 @@ export function AuthOtpScreen() {
       {/* Resend row — plain View; tap only when countdown expired */}
       <View style={styles.resendRow}>
         {resent ? (
-          <Text style={[typography.caption, { color: t.success }]}>Sent!</Text>
+          <Text style={[typography.caption, { color: t.success }]}>{i18n('auth.codeSent')}</Text>
         ) : countdown > 0 ? (
           <Text style={[typography.caption, { color: t.ink3 }]}>
-            Didn't get it?{' '}
+            {i18n('auth.resendQuestion')}{' '}
             <Text style={{ color: t.ink4, fontFamily: 'Inter_600SemiBold' }}>
-              Resend in 0:{String(countdown).padStart(2, '0')}
+              {i18n('auth.resendInClock', { seconds: String(countdown).padStart(2, '0') })}
             </Text>
           </Text>
         ) : (
@@ -227,11 +228,11 @@ export function AuthOtpScreen() {
             onPress={handleResend}
             hitSlop={12}
             accessibilityRole="button"
-            accessibilityLabel="Resend code"
+            accessibilityLabel={i18n('auth.resendCode')}
           >
             <Text style={[typography.caption, { color: t.ink3 }]}>
-              Didn't get it?{' '}
-              <Text style={{ color: t.brand, fontFamily: 'Inter_600SemiBold' }}>Resend code</Text>
+              {i18n('auth.resendQuestion')}{' '}
+              <Text style={{ color: t.brand, fontFamily: 'Inter_600SemiBold' }}>{i18n('auth.resendCode')}</Text>
             </Text>
           </Pressable>
         )}

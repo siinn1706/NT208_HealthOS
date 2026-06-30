@@ -19,6 +19,7 @@ interface ButtonProps {
   labelColor?: string;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  testID?: string;
 }
 
 /** Touch targets aligned to 8pt-ish grid; horizontal padding tracks theme `space`. */
@@ -41,6 +42,7 @@ export function Button({
   labelColor,
   accessibilityLabel,
   accessibilityHint,
+  testID,
 }: ButtonProps) {
   const t = useTheme();
 
@@ -62,6 +64,7 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: isDisabled }}
+      testID={testID}
       style={({ pressed }) => [
         styles.btn,
         {

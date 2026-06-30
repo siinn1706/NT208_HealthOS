@@ -24,6 +24,33 @@ jest.mock('../api/services/preference-service', () => ({
   },
 }));
 
+const mockTranslations: Record<string, string> = {
+  'common.close': 'Close',
+  'common.retry': 'Retry',
+  'me.languageTitle': 'Language',
+  'me.languageSubtitle': 'Saved to your HealthOS preferences.',
+  'me.languageLoading': 'Loading language preference',
+  'me.languagePreferenceUnavailable': 'Language preference unavailable',
+  'me.languageOptionEnglish': 'English',
+  'me.languageOptionEnglishDescription': 'Use English across the mobile app and AI responses.',
+  'me.languageOptionVietnamese': 'Vietnamese',
+  'me.languageOptionVietnameseDescription': 'Use Vietnamese across the mobile app and AI responses.',
+  'me.languageOptionAccessibility': 'Set language to {{language}}',
+  'me.languageUpdateSuccess': 'Language set to {{language}}.',
+  'me.languageSaveFailed': 'Could not save language preference.',
+  'me.languageUpdateFailed': 'Language update failed',
+  'profile.saving': 'Saving',
+};
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, vars?: Record<string, string>) => {
+      const value = mockTranslations[key] ?? key;
+      return value.replace(/\{\{(\w+)\}\}/g, (_, name) => vars?.[name] ?? '');
+    },
+  }),
+}));
+
 jest.mock('../i18n', () => ({
   __esModule: true,
   default: {

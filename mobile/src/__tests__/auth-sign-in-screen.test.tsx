@@ -97,7 +97,7 @@ describe('AuthSignInScreen', () => {
     mockSession({ signIn });
 
     const { getByLabelText, getByText } = render(<AuthSignInScreen />);
-    fireEvent.changeText(getByLabelText('auth.email'), 'bad@example.com');
+    fireEvent.changeText(getByLabelText('auth.loginIdentifier'), 'bad@example.com');
     fireEvent.changeText(getByLabelText('auth.password'), 'wrong');
     fireEvent.press(getByText('auth.signIn'));
 
@@ -110,7 +110,7 @@ describe('AuthSignInScreen', () => {
     mockSession({ signIn });
 
     const { getByLabelText, getByText } = render(<AuthSignInScreen />);
-    fireEvent.changeText(getByLabelText('auth.email'), 'banned@example.com');
+    fireEvent.changeText(getByLabelText('auth.loginIdentifier'), 'banned@example.com');
     fireEvent.changeText(getByLabelText('auth.password'), 'wrong');
     fireEvent.press(getByText('auth.signIn'));
 
@@ -124,7 +124,7 @@ describe('AuthSignInScreen', () => {
     mockSession({ signIn });
 
     const { getByLabelText, getByText, queryByText } = render(<AuthSignInScreen />);
-    fireEvent.changeText(getByLabelText('auth.email'), 'user@example.com');
+    fireEvent.changeText(getByLabelText('auth.loginIdentifier'), 'user@example.com');
     fireEvent.changeText(getByLabelText('auth.password'), 'password');
     fireEvent.press(getByText('auth.signIn'));
 

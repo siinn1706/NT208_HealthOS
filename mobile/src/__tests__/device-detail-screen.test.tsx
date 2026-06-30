@@ -4,7 +4,11 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { DeviceDetailScreen } from '../components/profile/device-detail-screen';
 import { invalidateApiQuery, useApiQuery } from '../api/query';
+import { queryKeys } from '../api/queryKeys';
 import { deviceService } from '../api/services/device-service';
+
+const mockGetGrantedPermissions = jest.fn();
+const mockReadChanges = jest.fn();
 
 jest.mock('../api/query', () => ({
   invalidateApiQuery: jest.fn(),
@@ -22,6 +26,13 @@ jest.mock('../api/services/device-service', () => ({
     patchPermissions: jest.fn(),
     connect: jest.fn(),
   },
+}));
+
+jest.mock('../healthconnect/native-health-connect-adapter', () => ({
+  createHealthConnectAdapter: jest.fn(() => ({
+    getGrantedPermissions: mockGetGrantedPermissions,
+    readChanges: mockReadChanges,
+  })),
 }));
 
 jest.mock('expo-router', () => ({
@@ -125,6 +136,22 @@ const syncRows = [
 const devicesReload = jest.fn();
 const syncStateReload = jest.fn();
 
+function expectHealthDataInvalidated(deviceId: string) {
+  [
+    queryKeys.devices,
+    queryKeys.device(deviceId),
+    queryKeys.deviceSyncState(deviceId),
+    queryKeys.dashboard,
+    queryKeys.riskSummary,
+    queryKeys.healthGoal,
+    'reports.',
+    'goals.progress.',
+    'vitals.timeseries.',
+  ].forEach((prefix) => {
+    expect(mockInvalidateApiQuery).toHaveBeenCalledWith(prefix);
+  });
+}
+
 function renderDetail(device = healthDevice) {
   mockUseLocalSearchParams.mockReturnValue({ id: device.id });
   mockUseApiQuery.mockImplementation((key) => {
@@ -169,6 +196,9 @@ beforeEach(() => {
   mockDeviceService.getSyncState.mockResolvedValue(syncRows);
   mockDeviceService.putSyncState.mockResolvedValue(syncRows as never);
   mockDeviceService.disconnect.mockResolvedValue(undefined);
+  mockDeviceService.ingest.mockResolvedValue({ inserted: 0, updated: 0, deleted: 0, skipped: 0, errors: [] });
+  mockGetGrantedPermissions.mockRejectedValue(new Error('Core device identity is saved, but real permission reads and data sync need native support.'));
+  mockReadChanges.mockResolvedValue({});
 });
 
 describe('DeviceDetailScreen Health Connect behavior', () => {
@@ -203,6 +233,40 @@ describe('DeviceDetailScreen Health Connect behavior', () => {
       });
       expect(syncStateReload).toHaveBeenCalled();
     });
+    expectHealthDataInvalidated('dev-hc-1');
+  });
+
+  it('invalidates dashboard-derived caches after a successful Health Connect sync', async () => {
+    mockGetGrantedPermissions.mockResolvedValueOnce(['Steps']);
+    mockReadChanges.mockResolvedValueOnce({
+      records: [{
+        external_id: 'steps-1',
+        metric_type: 'steps',
+        value: 1200,
+        unit: 'count',
+        recorded_at: '2026-06-29T15:00:00Z',
+        source: 'health_connect',
+      }],
+      nextChangesTokens: { Steps: 'tok-next' },
+    });
+    mockDeviceService.ingest.mockResolvedValueOnce({
+      inserted: 1,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
+      errors: [],
+    });
+    const { getByText } = renderDetail({ ...healthDevice, last_sync_status: 'ok' });
+
+    fireEvent.press(getByText('devices.syncNow'));
+
+    await waitFor(() => {
+      expect(mockDeviceService.ingest).toHaveBeenCalled();
+      expect(devicesReload).toHaveBeenCalled();
+      expect(syncStateReload).toHaveBeenCalled();
+    });
+    expectHealthDataInvalidated('dev-hc-1');
+    expect(getByText('devices.syncImportedRecords')).toBeTruthy();
   });
 
   it('renders legacy provider rows without enabling stub sync success even if the handler is reached', () => {
@@ -236,7 +300,7 @@ describe('DeviceDetailScreen Health Connect behavior', () => {
 
     await waitFor(() => {
       expect(mockDeviceService.disconnect).toHaveBeenCalledWith('dev-hc-1');
-      expect(mockInvalidateApiQuery).toHaveBeenCalledWith('devices.list');
+      expectHealthDataInvalidated('dev-hc-1');
       expect(mockRouterBack).toHaveBeenCalled();
     });
   });

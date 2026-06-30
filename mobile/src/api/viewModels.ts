@@ -27,14 +27,27 @@ const KPI_COLORS = ['#1965B3', '#12A88A', '#F59E0B', '#8B5CF6'];
 
 const KPI_ICONS: Record<string, string> = {
   steps: 'IconFootprints',
-  steps_count: 'IconFootprints',
+  stepscount: 'IconFootprints',
   water: 'IconWater',
-  water_intake: 'IconWater',
+  waterintake: 'IconWater',
   calories: 'IconFire',
+  caloriesburned: 'IconFire',
   kcal: 'IconFire',
   energy: 'IconFire',
   sleep: 'IconMoon',
-  sleep_hours: 'IconMoon',
+  sleephours: 'IconMoon',
+  sleepminutes: 'IconMoon',
+  sleepscore: 'IconMoon',
+  heartrate: 'IconActivity',
+};
+
+const KPI_LABELS: Record<string, string> = {
+  caloriesburned: 'Calories burned',
+  healthscore: 'Health score',
+  heartrate: 'Heart rate',
+  sleepminutes: 'Sleep minutes',
+  sleepscore: 'Sleep score',
+  steps: 'Steps',
 };
 
 export function toHomeView(summary: DashboardSummary, reminders: Reminder[], vitals: VitalPoint[]) {
@@ -46,12 +59,12 @@ export function toHomeView(summary: DashboardSummary, reminders: Reminder[], vit
       const target = (value.target ?? current) || 1;
       return {
         id: key,
-        label: labelize(key),
+        label: labelizeMetric(key),
         val: formatMetric(current, key),
         tgt: formatMetric(target, key),
         v: clampRatio(current, target),
         color: KPI_COLORS[index % KPI_COLORS.length],
-        icon: KPI_ICONS[key] ?? 'IconActivity',
+        icon: KPI_ICONS[normalizeMetricKey(key)] ?? 'IconActivity',
       };
     });
 
@@ -256,7 +269,20 @@ export const profileMenuGroups = [
 ];
 
 function labelize(value: string) {
-  return value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function normalizeMetricKey(key: string) {
+  return key.replace(/[_\s-]+/g, '').toLowerCase();
+}
+
+function labelizeMetric(key: string) {
+  return KPI_LABELS[normalizeMetricKey(key)] ?? labelize(key);
 }
 
 function average(values: number[]) {
@@ -275,10 +301,13 @@ function normalizePercent(value: number) {
 }
 
 function formatMetric(value: number, key: string) {
-  if (key.includes('sleep')) return `${Math.round(value / 60)}h`;
-  if (key.includes('water')) return value >= 1000 ? `${(value / 1000).toFixed(1)}L` : `${Math.round(value)}ml`;
-  if (key.includes('calorie') || key.includes('kcal')) return `${Math.round(value)} kcal`;
-  if (key.includes('step')) return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value)}`;
+  const metricKey = normalizeMetricKey(key);
+  if (metricKey === 'sleepscore') return `${Math.round(value)} pts`;
+  if (metricKey.includes('sleep')) return `${Math.round(value / 60)}h`;
+  if (metricKey.includes('water')) return value >= 1000 ? `${(value / 1000).toFixed(1)}L` : `${Math.round(value)}ml`;
+  if (metricKey.includes('calorie') || metricKey.includes('kcal')) return `${Math.round(value)} kcal`;
+  if (metricKey === 'heartrate') return `${Math.round(value)} bpm`;
+  if (metricKey.includes('step')) return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value)}`;
   return `${Math.round(value)}`;
 }
 

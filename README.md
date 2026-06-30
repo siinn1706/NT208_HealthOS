@@ -174,7 +174,7 @@ $env:SEED_ADMIN_EMAIL="admin@healthos.local"
 ### Option A: Docker (recommended)
 
 ```bash
-docker compose -f infra/docker/docker-compose.dev.yml up -d
+docker compose --env-file infra/docker/.env.dev -f infra/docker/docker-compose.dev.yml up -d
 ```
 
 ### Option B: Local (each in a separate terminal)
@@ -242,7 +242,7 @@ Keep `BFF_SHARED_SECRET` server-only and never expose it via `NEXT_PUBLIC_*`.
 1. Clone the repo
 2. Run `.\infra\scripts\setup.ps1` (Windows) or `bash infra/scripts/setup.sh` (Linux/macOS)
 3. Start Docker Desktop
-4. Run `docker compose -f infra/docker/docker-compose.dev.yml up -d`
+4. Run `docker compose --env-file infra/docker/.env.dev -f infra/docker/docker-compose.dev.yml up -d`
 5. Open http://localhost:3000
 
 **Running without Docker:**

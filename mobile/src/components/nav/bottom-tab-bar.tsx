@@ -25,12 +25,14 @@ const TAB_ICONS = [
 ];
 
 function TabItem({
+  testID,
   label,
   Icon,
   active,
   badgeCount,
   onPress,
 }: {
+  testID: string;
   label: string;
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
   active: boolean;
@@ -49,7 +51,14 @@ function TabItem({
   const color = active ? t.brand : t.ink4;
 
   return (
-    <Pressable onPress={handlePress} style={styles.tabItem} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: active }}>
+    <Pressable
+      onPress={handlePress}
+      style={styles.tabItem}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      testID={testID}
+    >
       <Animated.View style={[styles.iconWrap, bounce.style]}>
         <Icon size={22} color={color} strokeWidth={active ? 2.2 : 1.8} />
         {badgeCount !== undefined && badgeCount > 0 && (
@@ -90,6 +99,7 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
         {TAB_ICONS.map((tab, i) => (
           <TabItem
             key={tab.key}
+            testID={`tab-${tab.key}`}
             label={i18n(tab.labelKey)}
             Icon={tab.Icon}
             active={state.index === i}

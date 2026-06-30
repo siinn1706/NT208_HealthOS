@@ -47,7 +47,10 @@ else {
 if ($docker) {
     Write-Host "[DOCKER] Starting full stack..." -ForegroundColor Cyan
     Set-Location $Root
-    docker compose -f infra/docker/docker-compose.dev.yml up -d
+    $ComposeFile = "$Root\infra\docker\docker-compose.dev.yml"
+    $ComposeEnvFile = "$Root\infra\docker\.env.dev"
+    $ComposeArgs = Get-ComposeArgs -ComposeFile $ComposeFile -ComposeEnvFile $ComposeEnvFile
+    docker compose @ComposeArgs up -d
     if ($LASTEXITCODE -ne 0) {
         throw "[DOCKER] Failed to start docker compose stack."
     }

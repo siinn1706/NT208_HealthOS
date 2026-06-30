@@ -65,6 +65,7 @@ jest.mock('expo-web-browser', () => ({
 jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: {
     SHA256: 'SHA-256',
+    SHA1: 'SHA-1',
   },
   digestStringAsync: jest.fn(),
   getRandomValues: jest.fn(),
@@ -428,6 +429,19 @@ describe('authService.resetPassword', () => {
     expect(result).toEqual(mockToken);
   });
 
+  it('submits public reset payload without storing the returned token when requested', async () => {
+    mockApiRequest.mockResolvedValueOnce({ data: mockToken });
+    const result = await authService.resetPassword('a@b.com', 'newpass', { persistToken: false });
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/reset-password', {
+      method: 'POST',
+      auth: false,
+      json: { email: 'a@b.com', new_password: 'newpass' },
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    });
+    expect(mockSaveAuthToken).not.toHaveBeenCalled();
+    expect(result).toEqual(mockToken);
+  });
+
   it('maps reset-password network failures to Core reachability guidance', async () => {
     mockApiRequest.mockRejectedValueOnce(new ApiError('Network request failed.', 0, 'NETWORK_ERROR'));
     mockToCoreReachabilityMessage.mockReturnValueOnce('Core unreachable at http://localhost:8000. Physical Expo Go cannot use localhost.');
@@ -456,6 +470,46 @@ describe('authService.requestOtp', () => {
     expect(err).toMatchObject({
       code: 'CORE_UNREACHABLE',
       message: 'Core unreachable at http://localhost:8000. Physical Expo Go cannot use localhost.',
+    });
+  });
+});
+
+describe('authService availability and breach helpers', () => {
+  it('checks email and username availability through BFF routes', async () => {
+    mockApiRequest
+      .mockResolvedValueOnce({ available: true })
+      .mockResolvedValueOnce({ available: false });
+
+    await expect(authService.checkEmailAvailability('a@b.com')).resolves.toBe(true);
+    await expect(authService.checkUsernameAvailability('taken_user')).resolves.toBe(false);
+
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, '/api/v1/auth/check-email?email=a%40b.com', {
+      method: 'GET',
+      auth: false,
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, '/api/v1/auth/check-username?username=taken_user', {
+      method: 'GET',
+      auth: false,
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    });
+  });
+
+  it('checks password breaches with a SHA-1 k-anonymity prefix', async () => {
+    const suffix = 'F'.repeat(35);
+    mockDigestStringAsync.mockResolvedValueOnce(`ABCDE${suffix}`);
+    mockApiRequest.mockResolvedValueOnce(`${suffix}:12\r\n${'0'.repeat(35)}:1`);
+
+    await expect(authService.checkPasswordBreach('Str0ng!pass')).resolves.toEqual({
+      breached: true,
+      count: 12,
+    });
+
+    expect(mockDigestStringAsync).toHaveBeenCalledWith('SHA-1', 'Str0ng!pass');
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/auth/check-password-breach/range/ABCDE', {
+      method: 'GET',
+      auth: false,
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     });
   });
 });

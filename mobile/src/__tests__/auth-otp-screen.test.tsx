@@ -70,7 +70,6 @@ describe('AuthOtpScreen', () => {
     await waitFor(() => {
       expect(mockAuthService.verifyOtp).toHaveBeenCalledWith({
         email: 'person@example.com',
-        password: undefined,
         purpose: 'signup',
         code: '123456',
       });
@@ -93,6 +92,31 @@ describe('AuthOtpScreen', () => {
       expect(mockClearSession).toHaveBeenCalledTimes(1);
       expect(getByText('Profile API down')).toBeTruthy();
       expect(mockRouterReplace).not.toHaveBeenCalled();
+    });
+  });
+
+  it('routes reset-password OTP verification to sign-in without refreshing a session', async () => {
+    mockParams = { email: 'person@example.com', purpose: 'reset_password' };
+    mockAuthService.verifyOtp.mockResolvedValueOnce({
+      email: 'person@example.com',
+      next_step: 'reset_password',
+    });
+    const { getByText, UNSAFE_getAllByType } = render(<AuthOtpScreen />);
+    const inputs = UNSAFE_getAllByType('TextInput' as never);
+
+    ['1', '2', '3', '4', '5', '6'].forEach((digit, index) => {
+      fireEvent.changeText(inputs[index], digit);
+    });
+    fireEvent.press(getByText('Verify code'));
+
+    await waitFor(() => {
+      expect(mockAuthService.verifyOtp).toHaveBeenCalledWith({
+        email: 'person@example.com',
+        purpose: 'reset_password',
+        code: '123456',
+      });
+      expect(mockRefreshUser).not.toHaveBeenCalled();
+      expect(mockRouterReplace).toHaveBeenCalledWith('/auth/sign-in');
     });
   });
 });
