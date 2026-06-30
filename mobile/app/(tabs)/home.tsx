@@ -25,7 +25,8 @@ import { queryKeys } from '../../src/api/queryKeys';
 import { toHomeView } from '../../src/api/viewModels';
 import { humanizeError } from '../../src/api/error-message';
 import { useSession } from '../../src/auth/session-provider';
-import type { DashboardSummary, Reminder, VitalPoint } from '../../../shared/api-contracts';
+import { normalizeLocale } from '../../src/i18n/supported-locales';
+import type { DashboardAiAdviceActionType, DashboardSummary, Reminder, VitalPoint } from '../../../shared/api-contracts';
 
 export default function HomeScreen() {
   return (
@@ -37,8 +38,9 @@ export default function HomeScreen() {
 
 function HomeScreenInner() {
   const t = useTheme();
-  const { t: i18n } = useTranslation();
+  const { t: i18n, i18n: i18next } = useTranslation();
   const { user } = useSession();
+  const adviceLocale = normalizeLocale(i18next.language);
   const greetingTitle = useGreetingTitle();
   const firstName = user?.display_name?.split(' ')[0] ?? 'there';
   const dateLine = useMemo(
@@ -72,6 +74,22 @@ function HomeScreenInner() {
     vitalPoints: VitalPoint[];
   }>(queryKeys.dashboard, loadHome);
   const model = home.data?.summary ? toHomeView(home.data.summary, home.data.reminders, home.data.vitalPoints) : null;
+  const aiAdvice = useApiQuery(
+    queryKeys.dashboardAiAdvice(adviceLocale),
+    () => dashboardService.aiAdvice(adviceLocale),
+  );
+  const showAiAdviceCard = Boolean(aiAdvice.isLoading || aiAdvice.data || aiAdvice.error || model?.aiInsight);
+  const handleAdviceAction = useCallback((type: DashboardAiAdviceActionType) => {
+    const routeByType: Record<DashboardAiAdviceActionType, string> = {
+      log_meal: '/meals/add',
+      walk: '/home/vitals',
+      sleep_hygiene: '/insights/reports',
+      view_trends: '/insights/reports',
+      open_chat: '/chat',
+      track_vitals: '/home/vitals',
+    };
+    router.push(routeByType[type] as never);
+  }, []);
 
   return (
     <Screen>
@@ -102,10 +120,26 @@ function HomeScreenInner() {
         <ApiState title={i18n('home.noDashboardData')} message={i18n('home.dashboardEmptyMessage')} />
       )}
 
+      {model && <HeroScoreCard value={model.score.value} target={model.score.target} copy={model.score.copy} onPress={() => router.push('/home/score')} />}
+
+      <SectionHeader title={i18n('home.aiInsightCard')} />
+      {showAiAdviceCard ? (
+        <AiInsightCard
+          title={model?.aiInsight?.title}
+          body={model?.aiInsight?.body}
+          advice={aiAdvice.data}
+          loading={aiAdvice.isLoading}
+          error={Boolean(aiAdvice.error)}
+          onActionPress={handleAdviceAction}
+          onPress={() => router.push('/home/insight/current' as never)}
+          onRetry={aiAdvice.reload}
+        />
+      ) : (
+        <ApiState title={i18n('home.noAiInsight')} message={i18n('home.noAiInsightMessage')} />
+      )}
+
       {model && (
         <>
-          <HeroScoreCard value={model.score.value} target={model.score.target} copy={model.score.copy} onPress={() => router.push('/home/score')} />
-
           {model.kpis.length > 0 ? (
             <KpiRingGrid items={model.kpis} onItemPress={() => router.push('/home/today')} />
           ) : (
@@ -127,13 +161,6 @@ function HomeScreenInner() {
             ))
           ) : (
             <ApiState title={i18n('home.nothingScheduled')} message={i18n('home.nothingScheduledMessage')} />
-          )}
-
-          <SectionHeader title={i18n('home.aiInsightCard')} />
-          {model.aiInsight ? (
-            <AiInsightCard title={model.aiInsight.title} body={model.aiInsight.body} onPress={() => router.push('/home/insight/current' as never)} />
-          ) : (
-            <ApiState title={i18n('home.noAiInsight')} message={i18n('home.noAiInsightMessage')} />
           )}
 
           <SectionHeader title={i18n('home.vitals')} action={i18n('home.reportAction')} onActionPress={() => router.push('/home/vitals')} />

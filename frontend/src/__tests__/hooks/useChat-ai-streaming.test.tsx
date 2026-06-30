@@ -165,4 +165,39 @@ describe("useMessages — AI streaming reducers", () => {
       locale: "vi",
     });
   });
+
+  it("fills the assistant bubble when the SSE stream errors before any delta", async () => {
+    const fallback = "Trợ lý AI tạm thời không phản hồi. Vui lòng thử lại sau.";
+    const fetchMock = vi.fn<(
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => Promise<Response>>(async () => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(
+            [
+              `event: start\ndata: {"assistant_message_id":"${MSG_ID}"}\n\n`,
+              'event: error\ndata: {"message_id":"msg-stream-1","detail":"AI proxy stream request failed."}\n\n',
+            ].join(""),
+          ));
+          controller.close();
+        },
+      });
+      return { ok: true, status: 200, body } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useMessages(CONV_ID, USER_ID, { locale: "vi" }),
+    );
+
+    await act(async () => {
+      await result.current.streamAiMessage(CONV_ID, "hello");
+    });
+
+    const msg = result.current.messages.find((m) => m.id === MSG_ID);
+    expect(msg).toBeDefined();
+    expect(msg!.content).toBe(fallback);
+    expect(msg!.status).toBe("failed");
+  });
 });

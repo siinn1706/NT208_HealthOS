@@ -166,6 +166,21 @@ def _load_adapter_base_model() -> str:
     return base_model
 
 
+def _cuda_available() -> bool:
+    try:
+        import torch
+
+        return bool(torch.cuda.is_available())
+    except Exception:
+        return False
+
+
+def _should_run_primary_detector() -> bool:
+    if settings.ai_food_analysis_allow_cpu_primary:
+        return True
+    return _cuda_available()
+
+
 def _load_food_analysis_runtime() -> FoodAnalysisRuntime:
     global _FOOD_ANALYSIS_RUNTIME
     if _FOOD_ANALYSIS_RUNTIME is not None:
@@ -239,6 +254,9 @@ def detect_with_food_analysis(image: Image.Image) -> RawFoodNutrition | None:
         return None
     if not settings.food_analysis_model_path.exists():
         return None
+    if not _should_run_primary_detector():
+        _LOGGER.info("food_analysis_skipped reason=cpu_only_primary_disabled")
+        return None
 
     prepared = image.copy()
     prepared.thumbnail((settings.ai_max_image_size_px, settings.ai_max_image_size_px), Image.Resampling.LANCZOS)
@@ -266,6 +284,7 @@ def get_food_analysis_runtime_status() -> dict[str, Any]:
     """Expose non-secret runtime status for health checks."""
     return {
         "enabled": settings.ai_food_analysis_enabled,
+        "cpu_primary_allowed": settings.ai_food_analysis_allow_cpu_primary,
         "model_loaded": _FOOD_ANALYSIS_RUNTIME is not None,
         "model_path": str(settings.food_analysis_model_path),
         "model_exists": settings.food_analysis_model_path.exists(),

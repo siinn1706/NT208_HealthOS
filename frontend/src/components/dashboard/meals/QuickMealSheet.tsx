@@ -29,6 +29,7 @@ import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { bffFetch } from "@/lib/api-client";
+import { hydrateCatalogIngredientsNutrition } from "@/lib/meal-ingredient-payload";
 import { findIngredient, calcNutrition, searchIngredients } from "@/data/ingredients";
 import {
   quickMealSchema,
@@ -120,6 +121,7 @@ export function QuickMealSheet({ open, onOpenChange }: QuickMealSheetProps) {
     try {
       const payload = {
         ...data,
+        ingredients: hydrateCatalogIngredientsNutrition(data.ingredients),
         logged_at: new Date().toISOString(),
       };
       await bffFetch("/api/v1/meals", { method: "POST", body: payload });

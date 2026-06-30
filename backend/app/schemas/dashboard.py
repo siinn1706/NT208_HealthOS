@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 from app.schemas.common import DataResponse
@@ -31,6 +33,63 @@ class DashboardAiInsight(BaseModel):
     category: str | None = None
     insight_code: str | None = None
     insight_params: dict | None = None
+
+
+AiAdviceStatus = Literal["ready", "fallback"]
+AiAdviceCategory = Literal[
+    "nutrition",
+    "activity",
+    "sleep",
+    "vitals",
+    "medication",
+    "general",
+]
+AiAdvicePriority = Literal["low", "medium", "high"]
+AiAdviceSource = Literal["ai", "rule", "cache"]
+AiAdviceActionType = Literal[
+    "log_meal",
+    "walk",
+    "sleep_hygiene",
+    "view_trends",
+    "open_chat",
+    "track_vitals",
+]
+
+
+class DashboardAiAdviceActionDTO(BaseModel):
+    id: str
+    label: str
+    route: str | None = None
+    type: AiAdviceActionType
+
+
+class DashboardAiAdviceEvidenceDTO(BaseModel):
+    metric: str
+    value: float | str | None = None
+    unit: str | None = None
+    comparison: str | None = None
+
+
+class DashboardAiAdviceRagSourceDTO(BaseModel):
+    title: str
+    organization: str
+    url: str
+
+
+class DashboardAiAdviceDTO(BaseModel):
+    id: str
+    status: AiAdviceStatus
+    category: AiAdviceCategory
+    priority: AiAdvicePriority
+    title: str
+    body: str
+    actions: list[DashboardAiAdviceActionDTO]
+    evidence: list[DashboardAiAdviceEvidenceDTO]
+    source: AiAdviceSource
+    rag_sources: list[DashboardAiAdviceRagSourceDTO] = []
+    generated_at: str
+    expires_at: str
+    disclaimer: str
 
 
 class DashboardSummaryDTO(BaseModel):
@@ -74,6 +133,10 @@ class NutritionSuggestionDTO(BaseModel):
 
 
 class DashboardSummaryResponse(DataResponse[DashboardSummaryDTO]):
+    ...
+
+
+class DashboardAiAdviceResponse(DataResponse[DashboardAiAdviceDTO]):
     ...
 
 

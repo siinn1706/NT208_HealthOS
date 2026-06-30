@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { parseOptionalNumberInput } from "@/lib/form-number-input";
 import { searchIngredients, findIngredient, calcNutrition } from "@/data/ingredients";
 import type { IngredientItem } from "@/types/api";
 import type { AddMealFormValues } from "@/lib/validators/meal-schema";
@@ -344,7 +345,7 @@ export function IngredientListEditor({
                   <div className="relative w-24">
                     <Input
                       {...register(`${fieldName}.${index}.manual_calories`, {
-                        valueAsNumber: true,
+                        setValueAs: parseOptionalNumberInput,
                       })}
                       type="number"
                       inputMode="decimal"

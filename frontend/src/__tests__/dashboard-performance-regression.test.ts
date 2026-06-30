@@ -13,5 +13,6 @@ describe("dashboard performance regression guards", () => {
 
     expect(source).toContain("<ExerciseSuggestionsWidget");
     expect(source).not.toMatch(/getExerciseSuggestions|exercise-suggestions/);
+    expect(source).not.toMatch(/ai-advice|getDashboardAiAdvice/);
   });
 });

@@ -52,6 +52,30 @@ _NUMERIC_PORTION_KEYS = {
 _STRING_PORTION_KEYS = {"value", "label", "serving_type"}
 
 
+def _meal_analysis_timeout_seconds() -> float:
+    """Use a longer floor for image analysis on CPU-only local workers."""
+    return max(
+        float(settings.ai_worker_timeout_seconds or 0.0),
+        float(settings.meal_analysis_worker_timeout_seconds or 0.0),
+    )
+
+
+def _ai_worker_error_payload(exc: httpx.HTTPError) -> dict[str, dict[str, str]]:
+    if isinstance(exc, httpx.TimeoutException):
+        return {
+            "__error__": {
+                "code": "AI_WORKER_TIMEOUT",
+                "message": "AI worker timed out while analyzing the image",
+            }
+        }
+    return {
+        "__error__": {
+            "code": "AI_WORKER_FAILED",
+            "message": "AI worker returned error",
+        }
+    }
+
+
 def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
@@ -150,7 +174,7 @@ def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
 
     try:
         # Call AI Worker
-        with httpx.Client(timeout=settings.ai_worker_timeout_seconds) as client:
+        with httpx.Client(timeout=_meal_analysis_timeout_seconds()) as client:
             response = client.post(
                 f"{settings.ai_worker_url}/analyze",
                 json=_build_ai_worker_payload(meal_id, image_url),
@@ -179,7 +203,7 @@ def analyze_meal_image(self: Task, meal_id: str, image_url: str) -> dict:
             update_meal_status_sync(
                 meal_uuid,
                 MealStatusEnum.FAILED,
-                {"__error__": {"code": "AI_WORKER_FAILED", "message": "AI worker returned error"}},
+                _ai_worker_error_payload(exc),
             )
             logger.error(
                 "meal_analysis failed meal_id=%s attempt=%s exc_type=%s",

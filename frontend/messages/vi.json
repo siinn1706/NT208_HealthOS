@@ -2282,6 +2282,19 @@
       "critical": "Nghiêm trọng",
       "warning": "Cảnh báo"
     },
+    "aiAdvice": {
+      "eyebrow": "Gợi ý AI",
+      "loadingTitle": "AI đang phân tích",
+      "loadingBody": "Đang đọc tín hiệu sức khỏe mới nhất của bạn.",
+      "errorTitle": "Chưa tải được gợi ý AI",
+      "errorBody": "Bảng điều khiển vẫn hoạt động bình thường. Bạn có thể thử lại sau.",
+      "retry": "Thử lại",
+      "source": {
+        "ai": "AI",
+        "rule": "Dự phòng an toàn",
+        "cache": "Bộ nhớ đệm"
+      }
+    },
     "exercise": {
       "title": "Gợi ý luyện tập",
       "subtitle": "Dựa trên dữ liệu sức khỏe của bạn",

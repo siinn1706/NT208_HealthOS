@@ -6,13 +6,13 @@ import { Link } from "@/navigation";
 import {
   Bell, AlertTriangle, X, Wifi, WifiOff, ChevronRight,
   Heart, Activity, Footprints, Moon, Scale, ShieldCheck, TrendingUp, TrendingDown,
-  Crown, Brain, BarChart2,
 } from "lucide-react";
 import { useHealthAlerts } from "@/hooks/useHealthAlerts";
 import { fetchTrendAnalysisBatch } from "@/lib/reports-trends-client";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { AnomalyPoint } from "@/types/api";
+import { AiAdvicePanel } from "./AiAdvicePanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ export function RealtimeAnomalyWidget() {
 
         {loaded && (
           <>
-            {/* ── All-clear banner + Pro CTA ── */}
+            {/* ── All-clear banner + AI advice ── */}
             {!hasRt && !hasHist ? (
               <div className="flex flex-col gap-3">
                 {/* All-clear status */}
@@ -195,31 +195,7 @@ export function RealtimeAnomalyWidget() {
                   <p className="text-xs text-muted-foreground">{t("allClear")}</p>
                 </div>
 
-                {/* Inline Pro CTA */}
-                <div className="rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-950/20 dark:to-indigo-950/20 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="size-5 rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                      <Crown className="size-3 text-white" aria-hidden />
-                    </div>
-                    <p className="text-[11px] font-bold text-foreground">Phân tích sức khoẻ nâng cao</p>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Brain className="size-3 text-violet-500 flex-shrink-0" aria-hidden />
-                      <p className="text-[10px] text-muted-foreground">Dự báo bất thường trước 7 ngày bằng AI</p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <BarChart2 className="size-3 text-indigo-500 flex-shrink-0" aria-hidden />
-                      <p className="text-[10px] text-muted-foreground">Biểu đồ xu hướng 90 ngày + so sánh dân số</p>
-                    </div>
-                  </div>
-                  <Link
-                    href={`/pricing`}
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
-                  >
-                    Tìm hiểu Pro <ChevronRight className="size-3" />
-                  </Link>
-                </div>
+                <AiAdvicePanel />
               </div>
             ) : (
               <>
@@ -346,6 +322,8 @@ export function RealtimeAnomalyWidget() {
                     })}
                   </div>
                 )}
+
+                <AiAdvicePanel compact />
               </>
             )}
           </>

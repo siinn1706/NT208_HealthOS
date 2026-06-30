@@ -107,6 +107,60 @@ export interface DashboardAiInsight {
   insight_params: Record<string, unknown> | null;
 }
 
+export type DashboardAiAdviceStatus = 'ready' | 'fallback';
+export type DashboardAiAdviceCategory =
+  | 'nutrition'
+  | 'activity'
+  | 'sleep'
+  | 'vitals'
+  | 'medication'
+  | 'general';
+export type DashboardAiAdvicePriority = 'low' | 'medium' | 'high';
+export type DashboardAiAdviceSource = 'ai' | 'rule' | 'cache';
+export type DashboardAiAdviceActionType =
+  | 'log_meal'
+  | 'walk'
+  | 'sleep_hygiene'
+  | 'view_trends'
+  | 'open_chat'
+  | 'track_vitals';
+
+export interface DashboardAiAdviceAction {
+  id: string;
+  label: string;
+  route?: string | null;
+  type: DashboardAiAdviceActionType;
+}
+
+export interface DashboardAiAdviceEvidence {
+  metric: string;
+  value: number | string | null;
+  unit?: string | null;
+  comparison?: string | null;
+}
+
+export interface DashboardAiAdviceRagSource {
+  title: string;
+  organization: string;
+  url: string;
+}
+
+export interface DashboardAiAdvice {
+  id: string;
+  status: DashboardAiAdviceStatus;
+  category: DashboardAiAdviceCategory;
+  priority: DashboardAiAdvicePriority;
+  title: string;
+  body: string;
+  actions: DashboardAiAdviceAction[];
+  evidence: DashboardAiAdviceEvidence[];
+  source: DashboardAiAdviceSource;
+  rag_sources?: DashboardAiAdviceRagSource[];
+  generated_at: string;
+  expires_at: string;
+  disclaimer: string;
+}
+
 export interface DashboardSummary {
   user_name: string;
   alerts: Array<{

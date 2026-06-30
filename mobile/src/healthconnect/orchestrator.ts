@@ -23,6 +23,7 @@ const MAX_BATCH_ITEMS = 500;
 const MAX_BATCH_BYTES = 256 * 1024;
 const DEFAULT_RETRY_ATTEMPTS = 2;
 const DEFAULT_DEVICE_LABEL = 'Health Connect';
+const SEED_SYNC_TOKEN_PREFIX = 'healthos.seed_health_data.';
 
 type MaybeToken = string | null | undefined;
 
@@ -288,9 +289,13 @@ function createBatch(provider: string, records: HealthRecordIn[], deletions: Hea
 
 function toSyncTokenMap(syncStateRows: DeviceSyncState[]) {
   return syncStateRows.reduce<Record<string, string | null>>((acc, row) => {
-    acc[row.record_type] = row.changes_token;
+    acc[row.record_type] = isSeedSyncToken(row.changes_token) ? null : row.changes_token;
     return acc;
   }, {});
+}
+
+function isSeedSyncToken(token: string | null) {
+  return typeof token === 'string' && token.startsWith(SEED_SYNC_TOKEN_PREFIX);
 }
 
 async function resolveHealthConnectDevice(deviceId?: string): Promise<ConnectedDevice> {

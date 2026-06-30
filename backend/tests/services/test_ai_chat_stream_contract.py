@@ -1,3 +1,4 @@
+import json
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -133,6 +134,20 @@ class _FakeSession:
     async def __aexit__(self, exc_type, exc, tb):
         return False
 
+    def add(self, item):
+        item.id = uuid.uuid4()
+
+    async def flush(self):
+        return None
+
+    async def commit(self):
+        return None
+
+
+class _FakeRequest:
+    async def is_disconnected(self):
+        return False
+
 
 @pytest.mark.asyncio
 async def test_stream_worker_payload_uses_shared_personal_context_builder(monkeypatch):
@@ -208,6 +223,48 @@ async def test_stream_worker_payload_fallback_keeps_token_budget(monkeypatch):
         "locale": "en",
         "max_tokens": 2048,
     }
+
+
+@pytest.mark.asyncio
+async def test_stream_failure_before_first_token_persists_visible_fallback(monkeypatch):
+    finalized: dict[str, object] = {}
+
+    async def broken_upstream(*_args, **_kwargs):
+        raise RuntimeError("AI proxy stream request failed.")
+        yield "", None
+
+    async def fake_finalize(message_id, final_text, status, ai_metadata=None):
+        finalized.update(
+            {
+                "message_id": message_id,
+                "final_text": final_text,
+                "status": status,
+                "ai_metadata": ai_metadata,
+            }
+        )
+
+    monkeypatch.setattr(ai_chat_stream, "AsyncSessionLocal", lambda: _FakeSession())
+    monkeypatch.setattr(ai_chat_stream, "_upstream_token_stream", broken_upstream)
+    monkeypatch.setattr(ai_chat_stream, "_finalize_assistant", fake_finalize)
+
+    frames = [
+        frame
+        async for frame in ai_chat_stream.stream_assistant_response(
+            request=_FakeRequest(),
+            conversation_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+            user_message_id=uuid.uuid4(),
+            prompt="hello",
+            assistant_sender_id=uuid.uuid4(),
+            locale="vi",
+        )
+    ]
+
+    assert finalized["final_text"] == ai_chat_stream.AI_STREAM_FALLBACK_TEXT["vi"]
+    assert finalized["status"] is ai_chat_stream.MessageStatusEnum.FAILED
+    assert frames[-1].startswith("event: error\n")
+    error_payload = json.loads(frames[-1].split("data:", 1)[1])
+    assert error_payload["display_text"] == ai_chat_stream.AI_STREAM_FALLBACK_TEXT["vi"]
 
 
 @pytest.mark.asyncio

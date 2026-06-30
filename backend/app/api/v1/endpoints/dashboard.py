@@ -13,11 +13,13 @@ from app.core.security import get_current_user
 from app.models.core import User
 from app.schemas.common import ErrorResponse
 from app.schemas.dashboard import (
+    DashboardAiAdviceResponse,
     DashboardSummaryResponse,
     ExerciseSuggestionsResponse,
     ExtendedVitalsTimeseriesResponse,
 )
 from app.services import dashboard as dashboard_svc
+from app.services import dashboard_ai_advice as dashboard_ai_advice_svc
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 _LOGGER = logging.getLogger(__name__)
@@ -47,6 +49,30 @@ async def get_dashboard_summary(
     data = await dashboard_svc.get_dashboard_summary(db, current_user)
     _log_endpoint_duration("summary", started_at)
     return DashboardSummaryResponse(data=data)
+
+
+@router.get(
+    "/ai-advice",
+    response_model=DashboardAiAdviceResponse,
+    responses={401: {"model": ErrorResponse}},
+    summary="Get AI health advice for dashboard entry surfaces",
+)
+async def get_dashboard_ai_advice(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    locale: str = "vi",
+    surface: str = "web",
+) -> DashboardAiAdviceResponse:
+    started_at = time.perf_counter()
+    data = await dashboard_ai_advice_svc.get_dashboard_ai_advice(
+        db=db,
+        user=current_user,
+        locale=locale,
+        surface=surface,
+    )
+    _log_endpoint_duration("ai-advice", started_at)
+    return DashboardAiAdviceResponse(data=data)
+
 
 @router.get(
     "/vitals-extended",

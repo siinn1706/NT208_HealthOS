@@ -2282,6 +2282,19 @@
       "critical": "Critical",
       "warning": "Warning"
     },
+    "aiAdvice": {
+      "eyebrow": "AI advice",
+      "loadingTitle": "AI is analyzing",
+      "loadingBody": "Reading your latest health signals.",
+      "errorTitle": "AI advice is unavailable",
+      "errorBody": "The dashboard still works normally. You can retry in a moment.",
+      "retry": "Retry",
+      "source": {
+        "ai": "AI",
+        "rule": "Safe fallback",
+        "cache": "Cached"
+      }
+    },
     "exercise": {
       "title": "Exercise Suggestions",
       "subtitle": "Based on your health data",

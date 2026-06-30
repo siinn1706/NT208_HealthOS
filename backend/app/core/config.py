@@ -140,6 +140,7 @@ class Settings(BaseSettings):
     app_url: str = "http://localhost:3000"
     # ── AI chat orchestrator ──────────────────────────────────────────────
     ai_worker_timeout_seconds: float = 30.0
+    meal_analysis_worker_timeout_seconds: float = 120.0
     ai_context_max_messages: int = 20
     ai_chat_reply_max_tokens: int = 2048
     ai_chat_max_user_message_chars: int = 2000

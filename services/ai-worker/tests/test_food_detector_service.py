@@ -99,10 +99,31 @@ def test_yolo_fallback_uses_calorieclip_crosscheck(monkeypatch: Any) -> None:
     assert result.calorie_max > result.calories
 
 
-def test_invalid_yolo_class_id_raises_controlled_error(monkeypatch: Any) -> None:
+def test_generic_fallback_returns_low_confidence_estimate(monkeypatch: Any) -> None:
     monkeypatch.setattr(service, "detect_with_food_analysis", lambda _image: None)
+    monkeypatch.setattr(service, "_load_class_db", lambda _path: [{"name": "Pho bo", "nutrition": {}}])
+    monkeypatch.setattr(service, "_best_yolo_prediction", lambda _image: None)
+
+    result = service.detect_food_nutrition(Image.new("RGB", (2, 2), color="white"))
+
+    assert result.source == "generic-photo-estimate"
+    assert result.dish_name == "Photo meal"
+    assert result.calories == 250.0
+    assert result.confidence == 0.25
+    assert result.calorie_min is not None
+    assert result.calorie_max is not None
+    assert result.warnings == [
+        "Low-confidence fallback estimate; confirm food name and portion before saving.",
+    ]
+
+
+def test_invalid_yolo_class_id_uses_generic_fallback(monkeypatch: Any) -> None:
+    monkeypatch.setattr(service, "detect_with_food_analysis", lambda _image: None)
+    monkeypatch.setattr(service, "estimate_with_calorieclip", lambda _image, _dish_name: None)
     monkeypatch.setattr(service, "_load_class_db", lambda _path: [{"name": "Pho bo", "nutrition": {}}])
     monkeypatch.setattr(service, "_best_yolo_prediction", lambda _image: (99, 0.9))
 
-    with pytest.raises(RuntimeError, match="Local meal detector"):
-        service.detect_food_nutrition(Image.new("RGB", (2, 2), color="white"))
+    result = service.detect_food_nutrition(Image.new("RGB", (2, 2), color="white"))
+
+    assert result.source == "generic-photo-estimate"
+    assert result.confidence == 0.25

@@ -58,7 +58,10 @@ This command first verifies Android native readiness, selects a JDK with
 ADB/emulator preflight, then builds and installs the native Android app with
 `expo run:android` so the Health Connect modules and Android permissions
 declared in `app.json` are present. Expo Go remains valid for general UI/API
-smoke only.
+smoke only. On a physical USB device, the native runner lets Expo open Metro
+through ADB reverse with `127.0.0.1:8081` by default, avoiding flaky LAN Metro
+loads. Keep `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WS_URL`, and
+`EXPO_PUBLIC_WEB_APP_URL` on LAN-reachable hosts for BFF/Core/web traffic.
 
 Optional Android startup knobs:
 

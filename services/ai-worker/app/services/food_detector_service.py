@@ -121,6 +121,33 @@ def _with_calorieclip_range(image: Image.Image, primary: RawFoodNutrition) -> Ra
     )
 
 
+def _detect_with_generic_estimate(image: Image.Image) -> RawFoodNutrition:
+    calories = 250.0
+    calorie_min, calorie_max = build_calorie_range(
+        calories,
+        settings.ai_calorie_range_ratio,
+    )
+    result = RawFoodNutrition(
+        dish_name="Photo meal",
+        serving_type="1 photo estimate",
+        calories=calories,
+        confidence=0.25,
+        source="generic-photo-estimate",
+        calorie_min=calorie_min,
+        calorie_max=calorie_max,
+        portion_estimate="medium",
+        warnings=[
+            "Low-confidence fallback estimate; confirm food name and portion before saving.",
+        ],
+    )
+    _LOGGER.info(
+        "food_detection_success source=generic-photo-estimate dish=%s confidence=%.3f",
+        result.dish_name,
+        result.confidence,
+    )
+    return result
+
+
 def detect_food_nutrition(image: Image.Image) -> RawFoodNutrition:
     """Detect food and retrieve raw nutrition attributes."""
     try:
@@ -137,7 +164,10 @@ def detect_food_nutrition(image: Image.Image) -> RawFoodNutrition:
     except Exception as exc:  # pragma: no cover - model runtime path
         _LOGGER.warning("food_detection_failed source=food-analysis reason=%s", exc)
 
-    return _detect_with_yolo(image)
+    try:
+        return _detect_with_yolo(image)
+    except Exception:
+        return _detect_with_generic_estimate(image)
 
 
 def get_detector_runtime_status() -> dict[str, Any]:

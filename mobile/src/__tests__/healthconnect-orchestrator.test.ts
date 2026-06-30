@@ -226,6 +226,39 @@ describe('healthconnect orchestrator', () => {
     expect(mockedDeviceService.patchPermissions).toHaveBeenCalledWith('dev-hc-1', ['HeartRate', 'Steps']);
   });
 
+  it('drops seed-generated Health Connect tokens so native sync can backfill real data', async () => {
+    mockedDeviceService.list.mockResolvedValueOnce([{
+      ...baseDevice,
+      device_label: 'HealthOS Demo Device (baseline)',
+      external_account_id: 'healthos.seed_health_data.v2:devices:baseline:42:health-connect-demo',
+    }]);
+    mockedDeviceService.getSyncState.mockResolvedValueOnce([{
+      ...baseSyncStateRow,
+      changes_token: 'healthos.seed_health_data.v2:Steps:token',
+    }]);
+    const adapter: HealthConnectSyncAdapter = {
+      ...baseAdapter,
+      readChanges: jest.fn(async () => ({
+        records: [{
+          external_id: 'steps-real-1',
+          metric_type: 'STEPS',
+          value: 1447,
+          unit: 'count',
+          recorded_at: '2026-06-30T11:29:00.000Z',
+        }],
+        nextChangesTokens: { Steps: 'tok-real' },
+      })),
+    };
+
+    await syncHealthConnect(adapter, { deviceId: 'dev-hc-1' });
+
+    expect(adapter.readChanges).toHaveBeenCalledWith({
+      currentTokens: { Steps: null },
+      grantedPermissions: ['Steps'],
+    });
+    expect(mockedDeviceService.ingest.mock.calls[0][1].records?.[0].value).toBe(1447);
+  });
+
   it('sends a stable external account id when creating the Health Connect device row', async () => {
     mockedDeviceService.list.mockResolvedValueOnce([]);
 

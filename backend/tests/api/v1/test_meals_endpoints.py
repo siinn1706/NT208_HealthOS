@@ -18,7 +18,12 @@ from app.core.security import get_current_user
 from app.main import app
 from app.models.core import Meal, MealStatusEnum, User
 from app.services import meals as meal_service
-from app.tasks.meal_analysis import _build_ai_worker_payload, _validate_nutrition
+from app.tasks.meal_analysis import (
+    _ai_worker_error_payload,
+    _build_ai_worker_payload,
+    _meal_analysis_timeout_seconds,
+    _validate_nutrition,
+)
 
 
 class _MemoryRedis:
@@ -39,6 +44,11 @@ class _MemoryRedis:
         existed = key in self.values
         self.values.pop(key, None)
         return int(existed)
+
+    async def eval(self, _script: str, _numkeys: int, key: str, _window_seconds: str):
+        count = int(self.values.get(key, "0")) + 1
+        self.values[key] = str(count)
+        return count
 
 
 @pytest_asyncio.fixture
@@ -574,6 +584,33 @@ def test_ai_worker_payload_uses_presigned_download_url(monkeypatch: pytest.Monke
 
     assert presigned_inputs == [raw_url]
     assert payload == {"meal_id": "meal-1", "image_url": signed_url}
+
+
+def test_meal_analysis_uses_cpu_friendly_timeout_floor(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("app.tasks.meal_analysis.settings.ai_worker_timeout_seconds", 30.0)
+    monkeypatch.setattr("app.tasks.meal_analysis.settings.meal_analysis_worker_timeout_seconds", 120.0)
+
+    assert _meal_analysis_timeout_seconds() == 120.0
+
+
+def test_meal_analysis_preserves_explicit_longer_ai_timeout(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("app.tasks.meal_analysis.settings.ai_worker_timeout_seconds", 240.0)
+    monkeypatch.setattr("app.tasks.meal_analysis.settings.meal_analysis_worker_timeout_seconds", 120.0)
+
+    assert _meal_analysis_timeout_seconds() == 240.0
+
+
+def test_ai_worker_timeout_error_payload_uses_timeout_code():
+    import httpx
+
+    payload = _ai_worker_error_payload(httpx.ReadTimeout("timed out"))
+
+    assert payload == {
+        "__error__": {
+            "code": "AI_WORKER_TIMEOUT",
+            "message": "AI worker timed out while analyzing the image",
+        }
+    }
 
 
 @pytest.mark.asyncio
