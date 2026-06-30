@@ -55,8 +55,12 @@ export function AuthGateStack({ fontsLoaded }: { fontsLoaded: boolean }) {
     segments,
     onboardingStatus: user?.onboarding_status,
   });
-  if (redirectHref) return <Redirect href={redirectHref} />;
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      {redirectHref ? <Redirect href={redirectHref} /> : null}
+      <Stack screenOptions={{ headerShown: false }} />
+    </>
+  );
 }
 
 export default function RootLayout() {

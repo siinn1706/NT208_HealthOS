@@ -200,6 +200,74 @@ async def exercise_suggestions(payload: ExerciseSuggestionsRequest) -> ExerciseS
         ) from exc
 
 
+# ── /api/ai/health-advice ────────────────────────────────────────────────────
+
+class HealthAdviceRequest(BaseModel):
+    user_context: dict[str, Any]
+    dominant_signal: str = Field(min_length=1, max_length=80)
+    evidence: list[dict[str, Any]] = Field(default_factory=list, max_length=8)
+    rag_context: dict[str, Any] = Field(default_factory=dict)
+    locale: str = Field(default="vi", max_length=8)
+    surface: str = Field(default="web", max_length=16)
+
+
+class HealthAdviceAction(BaseModel):
+    id: str
+    label: str
+    route: str | None = None
+    type: str
+
+
+class HealthAdviceResponse(BaseModel):
+    category: str
+    priority: str
+    title: str
+    body: str
+    actions: list[HealthAdviceAction]
+
+
+@router.post("/health-advice", response_model=HealthAdviceResponse)
+async def health_advice(payload: HealthAdviceRequest) -> HealthAdviceResponse:
+    """Generate one structured health-advice card for dashboard entry surfaces."""
+    try:
+        advice = await llm_proxy_service.generate_health_advice(
+            user_context=payload.user_context,
+            dominant_signal=payload.dominant_signal,
+            evidence=payload.evidence,
+            rag_context=payload.rag_context,
+            locale=payload.locale,
+            surface=payload.surface,
+        )
+        return HealthAdviceResponse(**advice)
+    except LlmProxyUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "AI_UNCONFIGURED", "message": str(exc)},
+        ) from exc
+    except LlmProxyTimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail={"code": "AI_TIMEOUT", "message": str(exc)},
+        ) from exc
+    except LlmProxyBlockedError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "AI_SAFETY_BLOCKED", "message": str(exc)},
+        ) from exc
+    except (ValueError, json.JSONDecodeError) as exc:
+        _LOGGER.warning("health_advice_parse_failed reason=%s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "AI_PARSE_ERROR", "message": str(exc)},
+        ) from exc
+    except Exception as exc:
+        _LOGGER.exception("health_advice_failed")
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "AI_UPSTREAM_ERROR", "message": str(exc)},
+        ) from exc
+
+
 # ── /api/ai/embed ────────────────────────────────────────────────────────────
 
 class EmbeddingRequest(BaseModel):

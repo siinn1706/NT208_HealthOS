@@ -20,14 +20,15 @@ _LOGGER = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     try:
-        from app.services.food_detector_service import _load_class_db, _load_yolo_model
+        from app.services.food_detector_service import _load_class_db
 
         _load_class_db(settings.class_names_path)
-        _load_yolo_model()
-        _LOGGER.info("food_detector_warmup_success")
+        # Keep startup health endpoints responsive on CPU-only hosts. The YOLO
+        # model is loaded lazily by the first analysis request.
+        _LOGGER.info("food_detector_metadata_warmup_success")
     except Exception as exc:  # pragma: no cover - startup runtime path
         # Keep worker booting; analysis requests return controlled failures if assets are unavailable.
-        _LOGGER.warning("food_detector_warmup_failed reason=%s", exc)
+        _LOGGER.warning("food_detector_metadata_warmup_failed reason=%s", exc)
     yield
 
 

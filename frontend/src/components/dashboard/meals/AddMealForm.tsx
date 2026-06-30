@@ -42,6 +42,7 @@ import type { SnapPrefillPayload } from "./camera-analysis-normalizer";
 
 import { addMealSchema, type AddMealFormValues } from "@/lib/validators/meal-schema";
 import { bffFetch } from "@/lib/api-client";
+import { hydrateCatalogIngredientsNutrition } from "@/lib/meal-ingredient-payload";
 import { requestMealDiaryRefresh } from "@/lib/meal-diary-refresh";
 import { cn } from "@/lib/utils";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
@@ -257,8 +258,10 @@ export function AddMealForm() {
 
   async function onSubmit(data: AddMealFormValues) {
     setIsSubmitting(true);
+    const ingredients = hydrateCatalogIngredientsNutrition(data.ingredients);
     const payload = {
       ...data,
+      ingredients,
       logged_at: new Date(data.logged_at).toISOString(),
     };
 

@@ -35,8 +35,10 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.45
     ai_yolo_timeout_seconds: float = 15.0
     ai_food_analysis_enabled: bool = False
+    ai_food_analysis_allow_cpu_primary: bool = False
     ai_food_analysis_timeout_seconds: float = 30.0
     ai_calorieclip_enabled: bool = True
+    ai_calorieclip_allow_windows: bool = False
     ai_calorieclip_timeout_seconds: float = 15.0
     ai_calorie_range_ratio: float = 0.18
     ai_max_image_size_px: int = 640

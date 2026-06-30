@@ -3,8 +3,8 @@
 These tests run offline (no running server, no real models) and verify that:
 - All seven test-image factories produce valid JPEG-decodable images.
 - Each image has the expected dimensions/properties.
-- detect_food_nutrition() gracefully propagates RuntimeError when all three
-  detectors are unavailable (YOLO fallback is the last resort and raises).
+- detect_food_nutrition() returns a low-confidence editable fallback when
+  model-backed detectors are unavailable.
 """
 from __future__ import annotations
 
@@ -108,20 +108,23 @@ def test_build_test_images_sizes_are_positive():
 
 
 # ---------------------------------------------------------------------------
-# Pipeline fallback chain: all detectors absent → controlled RuntimeError
+# Pipeline fallback chain: all detectors absent → editable fallback
 # ---------------------------------------------------------------------------
 
-def test_detect_food_nutrition_raises_when_all_detectors_unavailable(monkeypatch: Any) -> None:
+def test_detect_food_nutrition_returns_generic_when_all_detectors_unavailable(monkeypatch: Any) -> None:
     from app.services import food_detector_service as svc
     import app.services.yolo_food_detector as yolo_mod
 
     monkeypatch.setattr(svc, "detect_with_food_analysis", lambda _img: None)
+    monkeypatch.setattr(svc, "estimate_with_calorieclip", lambda _img, _name: None)
     monkeypatch.setattr(svc, "_load_class_db", lambda _path: [])
     monkeypatch.setattr(yolo_mod, "_load_yolo_model", lambda: None)
     monkeypatch.setattr(svc, "_best_yolo_prediction", lambda _img: None)
 
-    with pytest.raises(RuntimeError, match="Local meal detector"):
-        svc.detect_food_nutrition(Image.new("RGB", (2, 2)))
+    result = svc.detect_food_nutrition(Image.new("RGB", (2, 2)))
+
+    assert result.source == "generic-photo-estimate"
+    assert result.confidence == 0.25
 
 
 def test_detect_food_nutrition_uses_primary_when_available(monkeypatch: Any) -> None:

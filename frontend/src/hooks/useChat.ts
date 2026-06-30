@@ -43,6 +43,34 @@ const FALLBACK_AI_CONVERSATION: Conversation = {
   updated_at: new Date().toISOString(),
 };
 
+const AI_STREAM_FALLBACK_TEXT = {
+  vi: "Trợ lý AI tạm thời không phản hồi. Vui lòng thử lại sau.",
+  en: "The AI assistant is temporarily unavailable. Please try again later.",
+} as const;
+
+function aiStreamFallbackText(locale: string | undefined): string {
+  return locale?.toLowerCase().startsWith("en")
+    ? AI_STREAM_FALLBACK_TEXT.en
+    : AI_STREAM_FALLBACK_TEXT.vi;
+}
+
+function isTechnicalAiStreamError(text: string): boolean {
+  return /\b(proxy|upstream|request failed|returned|http|traceback|exception|runtimeerror)\b/i.test(text);
+}
+
+function aiStreamErrorDisplayText(
+  parsed: Record<string, unknown>,
+  locale: string | undefined,
+): string {
+  const displayText = typeof parsed.display_text === "string" ? parsed.display_text.trim() : "";
+  if (displayText) return displayText;
+
+  const detail = typeof parsed.detail === "string" ? parsed.detail.trim() : "";
+  if (detail && !isTechnicalAiStreamError(detail)) return detail;
+
+  return aiStreamFallbackText(locale);
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // API response → frontend type adapters
 // The backend uses slightly different field names; these helpers normalise them.
@@ -1127,7 +1155,12 @@ export function useMessages(
             } else if (eventName === "aborted") {
               replaceAssistant((m) => ({ ...m, status: "sent" as const }));
             } else if (eventName === "error") {
-              replaceAssistant((m) => ({ ...m, status: "failed" as const }));
+              const displayText = aiStreamErrorDisplayText(parsed, locale);
+              replaceAssistant((m) => ({
+                ...m,
+                content: m.content.trim() ? m.content : displayText,
+                status: "failed" as const,
+              }));
             }
           }
         }

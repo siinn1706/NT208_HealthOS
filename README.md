@@ -50,6 +50,10 @@
 
 </div>
 
+## Video Demo
+
+[![Video Demo](https://img.youtube.com/vi/_rEEmY-Ufpk/0.jpg)](https://youtu.be/_rEEmY-Ufpk)
+
 ## Tech Stack
 
 | Layer | Stack | Notes |

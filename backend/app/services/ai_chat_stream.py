@@ -48,6 +48,10 @@ logger = logging.getLogger(__name__)
 
 
 HEARTBEAT_EVERY_S = 15.0  # idle keepalive — proxies often kill silent SSE connections.
+AI_STREAM_FALLBACK_TEXT = {
+    "vi": "Trợ lý AI tạm thời không phản hồi. Vui lòng thử lại sau.",
+    "en": "The AI assistant is temporarily unavailable. Please try again later.",
+}
 MessageBroadcastFn = Callable[[MessageDTO], Awaitable[None]]
 UpstreamStreamEvent = tuple[str, dict[str, Any] | None]
 
@@ -57,6 +61,14 @@ def _sse_event(event: str, data: dict | str) -> str:
     if isinstance(data, dict):
         data = json.dumps(data, separators=(",", ":"))
     return f"event: {event}\ndata: {data}\n\n"
+
+
+def _stream_error_display_text(locale: str, partial_text: str) -> str:
+    """Return visible content for a failed AI stream row."""
+    if partial_text.strip():
+        return partial_text.strip()
+    normalized = (locale or "vi").strip().lower()
+    return AI_STREAM_FALLBACK_TEXT["en"] if normalized.startswith("en") else AI_STREAM_FALLBACK_TEXT["vi"]
 
 
 async def _upstream_token_stream(
@@ -354,12 +366,18 @@ async def stream_assistant_response(
                 last_emit = now
     except Exception as exc:  # noqa: BLE001
         logger.exception("AI stream %s failed", assistant_id)
+        display_text = _stream_error_display_text(locale, "".join(accumulated))
         await _finalize_assistant(
-            assistant_id, "".join(accumulated), MessageStatusEnum.FAILED
+            assistant_id, display_text, MessageStatusEnum.FAILED
         )
         yield _sse_event(
             "error",
-            {"message_id": str(assistant_id), "code": "STREAM_FAILED", "detail": str(exc)},
+            {
+                "message_id": str(assistant_id),
+                "code": "STREAM_FAILED",
+                "detail": display_text,
+                "display_text": display_text,
+            },
         )
         return
 

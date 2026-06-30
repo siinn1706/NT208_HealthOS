@@ -15,6 +15,7 @@ import { AuthSetupScreen } from './auth-setup-screen';
 import { AuthForgotPasswordScreen } from './auth-forgot-password-screen';
 import { PermissionsScreen } from './permissions-screen';
 import { AuthMfaScreen } from './auth-mfa-screen';
+import { AUTH_WELCOME_ROUTE } from '../../auth/auth-route-policy';
 
 export type AuthKind = 'welcome' | 'sign-in' | 'sign-up' | 'otp' | 'mfa' | 'setup' | 'forgot' | 'permissions';
 
@@ -42,6 +43,13 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
   const isWelcome = kind === 'welcome';
   const showHeader = !isWelcome;
   const showSkip = kind === 'permissions';
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(AUTH_WELCOME_ROUTE as never);
+  };
 
   if (isWelcome) {
     return (
@@ -58,7 +66,7 @@ export function AuthFlowScreen({ kind, permissionKind }: AuthFlowScreenProps) {
           <IconButton
             variant="subtle"
             icon={<ChevronLeft size={18} color={t.ink} />}
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityLabel={i18n('common.back')}
             size={40}
           />

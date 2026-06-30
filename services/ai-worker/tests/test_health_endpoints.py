@@ -12,10 +12,11 @@ core-be meal-analysis enqueue gate all rely on these semantics.
 """
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
-from app.main import app
+from app.main import app, lifespan
 
 client = TestClient(app)
 
@@ -34,6 +35,19 @@ def test_health_returns_200_regardless_of_detector_state(monkeypatch: Any) -> No
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "ai-worker"
+
+
+@pytest.mark.asyncio
+async def test_lifespan_does_not_eagerly_load_yolo_model(monkeypatch: Any) -> None:
+    monkeypatch.setattr("app.services.food_detector_service._load_class_db", lambda _path: [])
+
+    def fail_if_called() -> None:
+        raise AssertionError("YOLO model should lazy-load during analysis, not worker startup")
+
+    monkeypatch.setattr("app.services.food_detector_service._load_yolo_model", fail_if_called)
+
+    async with lifespan(app):
+        pass
 
 
 def test_health_ready_returns_200_when_yolo_present(monkeypatch: Any) -> None:

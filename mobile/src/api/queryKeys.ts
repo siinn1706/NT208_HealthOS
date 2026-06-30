@@ -1,6 +1,7 @@
 export const queryKeys = {
   session: 'session',
   dashboard: 'dashboard.summary',
+  dashboardAiAdvice: (locale: string) => `dashboard.ai-advice.${locale}`,
   vitals: (days: number) => `vitals.timeseries.${days}`,
   reminders: 'reminders.upcoming',
   appointments: 'appointments.list',

@@ -8,6 +8,11 @@
 
 ### Fixed
 
+#### Mobile Android Native Physical Device Metro Host (2026-06-30)
+- **Physical dev-client Metro load fixed**: `npm run android:native` now injects `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1` for physical USB devices when no Metro host/proxy override exists, so Expo dev-client loads Metro through ADB reverse instead of timing out on the LAN URL.
+- **LAN API contract preserved**: Physical-device public API/WS/web env checks still require LAN-reachable BFF/Core/web URLs; only the Metro packager URL uses USB loopback.
+- **Verification**: Android native runner Node tests and Android native readiness check passed.
+
 #### Mobile Android Emulator BFF Fallback and Health Probe Recovery (2026-06-12)
 - **Android emulator BFF fallback fixed**: Blank dev mobile API/OAuth/WS fallbacks now keep Android emulator traffic on `10.0.2.2` even when Expo exposes LAN Metro metadata; explicit physical-device LAN env still wins.
 - **Bounded health probes**: BFF `/api/v1/health` and Core `/health/ready` now time-bound upstream readiness checks so mobile reports accurate Core readiness state instead of hanging into a network timeout.

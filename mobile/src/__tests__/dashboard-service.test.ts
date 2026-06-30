@@ -48,6 +48,15 @@ describe('dashboardService', () => {
     expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/reminders/upcoming');
   });
 
+  it('aiAdvice() fetches mobile advice through the BFF and unwraps DataResponse.data', async () => {
+    const advice = { id: 'ai-advice-1', title: 'Walk', body: 'Take a short walk.' };
+    mockApiRequest.mockResolvedValueOnce({ data: advice } as never);
+
+    await expect(dashboardService.aiAdvice('en')).resolves.toEqual(advice);
+    expect(buildQuery).toHaveBeenCalledWith({ surface: 'mobile', locale: 'en' });
+    expect(mockApiRequest).toHaveBeenCalledWith('/api/v1/dashboard/ai-advice?surface=mobile&locale=en');
+  });
+
   it('propagates ApiError from apiRequest', async () => {
     const err = new Error('Network error');
     mockApiRequest.mockRejectedValueOnce(err);

@@ -96,10 +96,12 @@ describe('AuthGateStack', () => {
 
     const { findByTestId } = render(<AuthGateStack fontsLoaded />);
     await findByTestId('auth-redirect');
+    await findByTestId('auth-stack');
 
     expect(mockRedirect).toHaveBeenCalledWith(
       expect.objectContaining({ href: '/auth/welcome' }),
     );
+    expect(mockStack).toHaveBeenCalledTimes(1);
     expect(SplashScreen.hideAsync).toHaveBeenCalledTimes(1);
     expect(SplashScreen.hideAsync).toHaveBeenCalledWith();
   });

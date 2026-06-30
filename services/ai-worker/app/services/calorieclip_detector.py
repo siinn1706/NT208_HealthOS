@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+import platform
 import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
@@ -67,6 +68,9 @@ def estimate_with_calorieclip(image: Image.Image, dish_name: str | None) -> Calo
     """Estimate calories with CalorieCLIP when the local model is available."""
     if not settings.ai_calorieclip_enabled:
         return None
+    if platform.system().lower() == "windows" and not settings.ai_calorieclip_allow_windows:
+        _LOGGER.info("calorieclip_skipped reason=windows_cpu_native_runtime")
+        return None
     if not settings.calorieclip_model_path.exists():
         return None
     prepared = image.copy().convert("RGB")
@@ -92,6 +96,7 @@ def get_calorieclip_runtime_status() -> dict[str, Any]:
     """Expose non-secret runtime status for health checks."""
     return {
         "enabled": settings.ai_calorieclip_enabled,
+        "windows_allowed": settings.ai_calorieclip_allow_windows,
         "model_loaded": _CALORIECLIP_MODEL is not None,
         "model_path": str(settings.calorieclip_model_path),
         "model_exists": settings.calorieclip_model_path.exists(),
