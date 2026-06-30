@@ -52,7 +52,11 @@
 
 ## Video Demo
 
-[![Video Demo](https://img.youtube.com/vi/_rEEmY-Ufpk/0.jpg)](https://youtu.be/_rEEmY-Ufpk)
+<p align="center">
+  <a href="https://youtu.be/_rEEmY-Ufpk">
+    <img src="https://img.youtube.com/vi/_rEEmY-Ufpk/0.jpg" alt="Video Demo" width="720" />
+  </a>
+</p>
 
 ## Tech Stack
 
