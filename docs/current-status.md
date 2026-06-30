@@ -1,6 +1,6 @@
 # HealthOS Current Status
 
-Last updated: 2026-05-23
+Last updated: 2026-06-30
 
 ## Implemented
 
@@ -9,7 +9,7 @@ Last updated: 2026-05-23
 - Core auth, profile, dashboard, meals, reports, appointments, reminders, medications, plans, onboarding drafts, emergency profile, device management, and notification list/read/unread routes are implemented.
 - In-app notification persistence is implemented in Core and is used by the backend notification dispatch task for `in_app` dispatch.
 - AI meal photo analysis is implemented through Core meal upload/status routes and the AI worker `/analyze` path when the AI worker is running and configured.
-- Mobile login, token refresh, session clearing, direct Core API calls, and WebSocket ticket flow are implemented for the native app.
+- Mobile login, signup, forgot-password/reset, token refresh, session clearing, direct Core API calls, and WebSocket ticket flow are implemented for the native app; auth copy and validation now match the web parity rules.
 
 ## Partial
 

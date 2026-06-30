@@ -13,8 +13,7 @@ import {
 import { useTheme } from '../../theme/useTheme';
 import { useThemeContext } from '../../theme/theme-provider';
 import { typography } from '../../theme/typography';
-import { invalidateApiQuery } from '../../api/query';
-import { queryKeys } from '../../api/queryKeys';
+import { invalidateHealthDataCaches } from '../../api/health-data-cache';
 import { deviceService, type ConnectedDevice, type DeviceConnectBody, type DeviceProvider } from '../../api/services/device-service';
 import {
   getHealthConnectExternalAccountId,
@@ -91,7 +90,7 @@ export function AddDeviceScreen() {
           provider: source.provider,
           device_label: source.name,
         } satisfies DeviceConnectBody);
-      invalidateApiQuery(queryKeys.devices);
+      invalidateHealthDataCaches(connected.id);
       router.replace((`/profile/devices/${connected.id}`) as never);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not connect source.');

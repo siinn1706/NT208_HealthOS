@@ -253,6 +253,7 @@ async def ingest_health_data(
     persisting the new token does not cause duplicate ingests.
     """
     # ── Body cap (defense in depth on top of any reverse-proxy limit) ──
+    content_length = request.headers.get("content-length")
     if content_length is not None:
         try:
             if int(content_length) > _INGEST_BODY_LIMIT_BYTES:

@@ -44,7 +44,7 @@ fi
 if [[ "$DOCKER_MODE" -eq 1 ]]; then
     echo "[DOCKER] Starting full stack..."
     cd "$ROOT_DIR"
-    docker compose -f infra/docker/docker-compose.dev.yml up -d
+    docker compose --env-file infra/docker/.env.dev -f infra/docker/docker-compose.dev.yml up -d
     echo "[DOCKER] Stack running. Ports: FE=3000 BE=8000 AI=8001 Notification=8002 PG=5432 Redis=6379 MinIO=9000"
     exit 0
 fi
@@ -75,4 +75,4 @@ echo "[BE] Done."
 
 echo ""
 echo "=== Setup complete ==="
-echo "Run: docker compose -f infra/docker/docker-compose.dev.yml up -d"
+echo "Run: docker compose --env-file infra/docker/.env.dev -f infra/docker/docker-compose.dev.yml up -d"

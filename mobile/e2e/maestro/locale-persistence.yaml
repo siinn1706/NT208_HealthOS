@@ -1,0 +1,16 @@
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp
+- tapOn:
+    id: "tab-me"
+- tapOn:
+    id: "profile-language-row"
+- tapOn:
+    id: "language-option-vi"
+- stopApp
+- launchApp
+- tapOn:
+    id: "tab-me"
+- tapOn:
+    id: "profile-language-row"
+- assertVisible: "Tiếng Việt"

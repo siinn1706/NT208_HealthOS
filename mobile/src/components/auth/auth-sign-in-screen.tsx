@@ -64,21 +64,21 @@ export function AuthSignInScreen() {
   const t = useTheme();
   const { t: i18n } = useTranslation();
   const session = useSession();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<MobileOAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const isValid = email.trim().length > 0 && password.length >= 1;
+  const isValid = identifier.trim().length > 0 && password.length >= 1;
 
   async function handleSignIn() {
-    if (!isValid) { setError(i18n('auth.emailPasswordRequired')); return; }
+    if (!isValid) { setError(i18n('auth.identifierPasswordRequired')); return; }
     setLoading(true);
     setError(null);
     try {
-      const result = await session.signIn(email.trim(), password);
+      const result = await session.signIn(identifier.trim(), password);
       setPassword('');
       if (result.mfaRequired && result.challengeId) {
         router.push({
@@ -126,15 +126,15 @@ export function AuthSignInScreen() {
 
       <View style={styles.fieldGroup}>
         <Input
-          label={i18n('auth.email')}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
+          label={i18n('auth.loginIdentifier')}
+          value={identifier}
+          onChangeText={setIdentifier}
           autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-          placeholder={i18n('auth.emailPlaceholder')}
+          autoComplete="username"
+          textContentType="username"
+          placeholder={i18n('auth.loginIdentifierPlaceholder')}
           leadingIcon={<User size={18} color={t.ink3} />}
+          testID="auth-sign-in-email"
         />
 
         <Input
@@ -148,6 +148,7 @@ export function AuthSignInScreen() {
           leadingIcon={<Lock size={18} color={t.ink3} />}
           trailingText={showPw ? i18n('auth.hidePassword') : i18n('auth.showPassword')}
           onTrailingPress={() => setShowPw((v) => !v)}
+          testID="auth-sign-in-password"
         />
       </View>
 
@@ -157,7 +158,14 @@ export function AuthSignInScreen() {
         </TouchableOpacity>
       </View>
 
-      <Button label={i18n('auth.signIn')} size="lg" loading={loading} onPress={handleSignIn} style={styles.mainBtn} />
+      <Button
+        label={i18n('auth.signIn')}
+        size="lg"
+        loading={loading}
+        onPress={handleSignIn}
+        style={styles.mainBtn}
+        testID="auth-sign-in-submit"
+      />
 
       {/* Divider */}
       <View style={styles.divider}>

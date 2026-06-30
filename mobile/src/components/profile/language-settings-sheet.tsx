@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { UserPreference } from '../../../../shared/api-contracts';
+import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { setStoredLocale } from '../../i18n/language-storage';
+import { normalizeLocale, type SupportedLocale } from '../../i18n/supported-locales';
 import { invalidateApiQuery, useApiQuery } from '../../api/query';
 import { queryKeys } from '../../api/queryKeys';
 import { preferenceService } from '../../api/services/preference-service';
@@ -12,22 +13,17 @@ import { Button } from '../primitives/button';
 import { ApiState } from '../api/api-state';
 import { IconCheck } from '../../icons';
 
-type Locale = UserPreference['locale'];
-
-const LANGUAGE_OPTIONS: { locale: Locale; label: string; description: string }[] = [
-  { locale: 'en', label: 'English', description: 'Use English across the mobile app and AI responses.' },
-  { locale: 'vi', label: 'Vietnamese', description: 'Use Vietnamese across the mobile app and AI responses.' },
+const LANGUAGE_OPTIONS: { locale: SupportedLocale; labelKey: string; descriptionKey: string }[] = [
+  { locale: 'en', labelKey: 'me.languageOptionEnglish', descriptionKey: 'me.languageOptionEnglishDescription' },
+  { locale: 'vi', labelKey: 'me.languageOptionVietnamese', descriptionKey: 'me.languageOptionVietnameseDescription' },
 ];
-
-function normalizeLocale(value?: string | null): Locale {
-  return value?.toLowerCase().startsWith('vi') ? 'vi' : 'en';
-}
 
 export function LanguageSettingsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useTheme();
+  const { t: i18nText } = useTranslation();
   const preferences = useApiQuery(queryKeys.preferences, () => preferenceService.me(), { enabled: visible });
-  const [selected, setSelected] = useState<Locale>(() => normalizeLocale(i18n.language));
-  const [savingLocale, setSavingLocale] = useState<Locale | null>(null);
+  const [selected, setSelected] = useState<SupportedLocale>(() => normalizeLocale(i18n.language));
+  const [savingLocale, setSavingLocale] = useState<SupportedLocale | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const canChooseLanguage = Boolean(preferences.data) || (!preferences.isLoading && !preferences.error);
@@ -37,7 +33,7 @@ export function LanguageSettingsSheet({ visible, onClose }: { visible: boolean; 
     setSelected(normalizeLocale(preferences.data?.locale ?? i18n.language));
   }, [preferences.data?.locale, visible]);
 
-  async function selectLanguage(locale: Locale) {
+  async function selectLanguage(locale: SupportedLocale) {
     if (savingLocale) return;
     const previous = selected;
     setSelected(locale);
@@ -47,14 +43,18 @@ export function LanguageSettingsSheet({ visible, onClose }: { visible: boolean; 
 
     try {
       const updated = await preferenceService.update({ locale });
-      await i18n.changeLanguage(updated.locale);
-      void setStoredLocale(updated.locale as 'vi' | 'en');
+      const updatedLocale = normalizeLocale(updated.locale);
+      await i18n.changeLanguage(updatedLocale);
+      void setStoredLocale(updatedLocale);
       invalidateApiQuery(queryKeys.preferences);
-      setSelected(updated.locale);
-      setSuccess(`Language set to ${LANGUAGE_OPTIONS.find((opt) => opt.locale === updated.locale)?.label ?? updated.locale}.`);
+      setSelected(updatedLocale);
+      const languageLabel = i18nText(
+        LANGUAGE_OPTIONS.find((opt) => opt.locale === updatedLocale)?.labelKey ?? 'me.languageOptionEnglish',
+      );
+      setSuccess(i18nText('me.languageUpdateSuccess', { language: languageLabel }));
     } catch (err) {
       setSelected(previous);
-      setError(err instanceof Error ? err.message : 'Could not save language preference.');
+      setError(err instanceof Error ? err.message : i18nText('me.languageSaveFailed'));
     } finally {
       setSavingLocale(null);
     }
@@ -67,19 +67,19 @@ export function LanguageSettingsSheet({ visible, onClose }: { visible: boolean; 
         <View style={[styles.handle, { backgroundColor: t.border }]} />
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text style={[typography.h3, { color: t.ink }]}>Language</Text>
-            <Text style={[typography.caption, { color: t.ink3 }]}>Saved to your HealthOS preferences.</Text>
+            <Text style={[typography.h3, { color: t.ink }]}>{i18nText('me.languageTitle')}</Text>
+            <Text style={[typography.caption, { color: t.ink3 }]}>{i18nText('me.languageSubtitle')}</Text>
           </View>
-          <Button label="Close" variant="text" size="sm" onPress={onClose} />
+          <Button label={i18nText('common.close')} variant="text" size="sm" onPress={onClose} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {preferences.isLoading && !preferences.data && <ApiState title="Loading language preference" loading />}
+          {preferences.isLoading && !preferences.data && <ApiState title={i18nText('me.languageLoading')} loading />}
           {preferences.error && !preferences.data && (
             <ApiState
-              title="Language preference unavailable"
+              title={i18nText('me.languagePreferenceUnavailable')}
               message={preferences.error.message}
-              actionLabel="Retry"
+              actionLabel={i18nText('common.retry')}
               onAction={preferences.reload}
             />
           )}
@@ -87,14 +87,16 @@ export function LanguageSettingsSheet({ visible, onClose }: { visible: boolean; 
           {canChooseLanguage && LANGUAGE_OPTIONS.map((option) => {
             const isSelected = selected === option.locale;
             const isSaving = savingLocale === option.locale;
+            const label = i18nText(option.labelKey);
             return (
               <Pressable
                 key={option.locale}
                 accessibilityRole="button"
-                accessibilityLabel={`Set language to ${option.label}`}
+                accessibilityLabel={i18nText('me.languageOptionAccessibility', { language: label })}
                 accessibilityState={{ selected: isSelected, disabled: Boolean(savingLocale) }}
                 disabled={Boolean(savingLocale)}
                 onPress={() => selectLanguage(option.locale)}
+                testID={`language-option-${option.locale}`}
                 style={({ pressed }) => [
                   styles.languageRow,
                   { borderColor: isSelected ? t.brand : t.border, backgroundColor: isSelected ? t.brandSoft : t.bgElev },
@@ -102,17 +104,17 @@ export function LanguageSettingsSheet({ visible, onClose }: { visible: boolean; 
                 ]}
               >
                 <View style={styles.languageCopy}>
-                  <Text style={[typography.bodyMed, { color: t.ink }]}>{option.label}</Text>
-                  <Text style={[typography.caption, { color: t.ink3, marginTop: 3 }]}>{option.description}</Text>
+                  <Text style={[typography.bodyMed, { color: t.ink }]}>{label}</Text>
+                  <Text style={[typography.caption, { color: t.ink3, marginTop: 3 }]}>{i18nText(option.descriptionKey)}</Text>
                 </View>
                 {isSelected && !isSaving && <IconCheck size={20} color={t.brand} />}
-                {isSaving && <Text style={[typography.caption, { color: t.brand }]}>Saving</Text>}
+                {isSaving && <Text style={[typography.caption, { color: t.brand }]}>{i18nText('profile.saving')}</Text>}
               </Pressable>
             );
           })}
 
           {success && <Text style={[typography.caption, { color: t.success, textAlign: 'center' }]}>{success}</Text>}
-          {error && <ApiState title="Language update failed" message={error} />}
+          {error && <ApiState title={i18nText('me.languageUpdateFailed')} message={error} />}
         </ScrollView>
       </View>
     </Modal>

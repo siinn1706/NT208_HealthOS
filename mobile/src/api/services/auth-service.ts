@@ -19,6 +19,11 @@ import type {
 export type MobileOAuthProvider = 'google' | 'github';
 
 const DEFAULT_MOBILE_OAUTH_REDIRECT_URI = 'nt208://auth/oauth/callback';
+const HIBP_HASH_PREFIX_LENGTH = 5;
+
+type AvailabilityResponse = { available: boolean };
+type PasswordBreachResult = { breached: boolean; count: number | null };
+type ResetPasswordOptions = { persistToken?: boolean };
 
 async function submitPublicAuthRequest<T>(request: () => Promise<T>): Promise<T> {
   await ensureCoreReachable();
@@ -94,6 +99,22 @@ export function getMobileOAuthRedirectUri(): string {
 
 function encodeBase16(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function parsePwnedPasswordRange(rangeText: string, suffix: string): PasswordBreachResult {
+  const needle = suffix.toUpperCase();
+  const match = rangeText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.toUpperCase().startsWith(`${needle}:`));
+
+  if (!match) return { breached: false, count: 0 };
+
+  const rawCount = Number(match.split(':')[1]);
+  return {
+    breached: true,
+    count: Number.isFinite(rawCount) ? rawCount : null,
+  };
 }
 
 export function createMobileOAuthState(): string {
@@ -272,6 +293,46 @@ export const authService = {
     }));
   },
 
+  async checkEmailAvailability(email: string): Promise<boolean> {
+    const response = await submitPublicAuthRequest(() => apiRequest<AvailabilityResponse>(
+      `/api/v1/auth/check-email?email=${encodeURIComponent(email)}`,
+      {
+        method: 'GET',
+        auth: false,
+        timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+      },
+    ));
+    return response.available;
+  },
+
+  async checkUsernameAvailability(username: string): Promise<boolean> {
+    const response = await submitPublicAuthRequest(() => apiRequest<AvailabilityResponse>(
+      `/api/v1/auth/check-username?username=${encodeURIComponent(username)}`,
+      {
+        method: 'GET',
+        auth: false,
+        timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+      },
+    ));
+    return response.available;
+  },
+
+  async checkPasswordBreach(password: string): Promise<PasswordBreachResult> {
+    if (!password) return { breached: false, count: 0 };
+    const sha1 = (await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA1, password)).toUpperCase();
+    const prefix = sha1.slice(0, HIBP_HASH_PREFIX_LENGTH);
+    const suffix = sha1.slice(HIBP_HASH_PREFIX_LENGTH);
+    const rangeText = await submitPublicAuthRequest(() => apiRequest<string>(
+      `/api/v1/auth/check-password-breach/range/${prefix}`,
+      {
+        method: 'GET',
+        auth: false,
+        timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+      },
+    ));
+    return parsePwnedPasswordRange(rangeText, suffix);
+  },
+
   async verifyOtp(body: VerifyOtpBody) {
     const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken | OtpNextStep>>('/api/v1/auth/verify-otp', {
       method: 'POST',
@@ -285,14 +346,16 @@ export const authService = {
     return response.data;
   },
 
-  async resetPassword(email: string, newPassword: string): Promise<AuthToken> {
+  async resetPassword(email: string, newPassword: string, options: ResetPasswordOptions = {}): Promise<AuthToken> {
     const response = await submitPublicAuthRequest(() => apiRequest<DataResponse<AuthToken>>('/api/v1/auth/reset-password', {
       method: 'POST',
       auth: false,
       json: { email, new_password: newPassword },
       timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     }));
-    await saveAuthToken(response.data);
+    if (options.persistToken !== false) {
+      await saveAuthToken(response.data);
+    }
     return response.data;
   },
 

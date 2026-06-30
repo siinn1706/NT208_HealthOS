@@ -1,0 +1,1582 @@
+{
+  "globalTexts": [
+    "AI",
+    "GitHub",
+    "Google",
+    "HealthOS",
+    "HealthOS AI",
+    "NT208 HealthOS"
+  ],
+  "entries": [
+    {
+      "path": "app/_layout.tsx",
+      "text": "Starting HealthOS...",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "app/care/prescriptions/index.tsx",
+      "text": "Loading prescriptions",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "app/care/prescriptions/index.tsx",
+      "text": "No prescriptions found",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "app/care/prescriptions/index.tsx",
+      "text": "Prescriptions",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "app/care/prescriptions/index.tsx",
+      "text": "Prescriptions appear after a consultation includes medication data.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "app/care/prescriptions/index.tsx",
+      "text": "Prescriptions unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "app/care/prescriptions/index.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/auth/app-lock-provider.tsx",
+      "text": "HealthOS is locked",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/auth/app-lock-provider.tsx",
+      "text": "Use device biometrics to unlock your health data.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/api/offline-banner.tsx",
+      "text": "You're offline - changes may not save",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/api/retry-button.tsx",
+      "text": "Try again",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/auth/auth-mfa-screen.tsx",
+      "text": "123456 or recovery code",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/auth/auth-mfa-screen.tsx",
+      "text": "Enter your 6-digit authenticator code or a recovery code to finish signing in.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/auth/auth-mfa-screen.tsx",
+      "text": "MFA challenge is missing.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/auth/auth-mfa-screen.tsx",
+      "text": "Multi-factor authentication",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-provider-suggestions-sheet.tsx",
+      "text": "Book manually once, then saved providers appear here.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-provider-suggestions-sheet.tsx",
+      "text": "Choose from appointments already saved in Core.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-provider-suggestions-sheet.tsx",
+      "text": "No recent providers",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-provider-suggestions-sheet.tsx",
+      "text": "Recent providers",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-reschedule-sheet.tsx",
+      "text": "HH:mm",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-reschedule-sheet.tsx",
+      "text": "Reschedule appointment",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-reschedule-sheet.tsx",
+      "text": "Unable to reschedule appointment",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/appointment-reschedule-sheet.tsx",
+      "text": "Update the date and time saved for this appointment.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "Clinic or hospital",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "Could not book appointment",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "Doctor name",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "e.g. 2:00 PM",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "e.g. Apr 28",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "e.g. Cardiology",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "e.g. Follow-up on BP medication…",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/create-appointment-screen.tsx",
+      "text": "https://meet.example/room",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/join-video-visit-screen.tsx",
+      "text": "Appointment unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/join-video-visit-screen.tsx",
+      "text": "Loading appointment",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/medical-history-screen.tsx",
+      "text": "Completed appointments will appear here.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/prep-for-visit-card.tsx",
+      "text": "Prep for your visit",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/prescription-detail-screen.tsx",
+      "text": "Instructions",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/prescription-detail-screen.tsx",
+      "text": "Medicines",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/prescription-detail-screen.tsx",
+      "text": "No prescription found",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/prescription-detail-screen.tsx",
+      "text": "No verified prescription payload is attached to this appointment.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Add one concern and one question before finalizing.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Add suggested questions",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Clinical brief unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Clinical visit brief",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Loading clinical brief",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Main concern",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Prepare concerns, questions, routing, and final handoff for this appointment.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-brief-prep-card.tsx",
+      "text": "Visit brief action failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Before your visit",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Checklist not saved",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Checklist saved",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Complete this checklist before your visit",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Get ready",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Loading saved checklist",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/care/visit-prep-screen.tsx",
+      "text": "Saved checklist unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/attachment-link-modal.tsx",
+      "text": "application/pdf",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/attachment-link-modal.tsx",
+      "text": "https://example.com/report.pdf",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/attachment-link-modal.tsx",
+      "text": "Lab report.pdf",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-message-list.tsx",
+      "text": "Loading messages",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-message-list.tsx",
+      "text": "Messages unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-message-list.tsx",
+      "text": "No messages yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-message-list.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-message-list.tsx",
+      "text": "Start the conversation below.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-thread-header.tsx",
+      "text": "Back",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-thread-header.tsx",
+      "text": "More",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-thread-options-modal.tsx",
+      "text": "Close",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-thread-options-modal.tsx",
+      "text": "Options",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/chat/chat-thread-options-modal.tsx",
+      "text": "Refresh",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/error/error-boundary.tsx",
+      "text": "Something went wrong",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/error/error-boundary.tsx",
+      "text": "Try again",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/forms/intake-form.tsx",
+      "text": "+84 xxx xxx xxx",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/home/vitals-detail-screen.tsx",
+      "text": "bpm",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/home/vitals-manual-entry-card.tsx",
+      "text": "Enter diastolic",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/home/vitals-manual-entry-card.tsx",
+      "text": "Enter systolic",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/home/vitals-manual-entry-card.tsx",
+      "text": "Enter value",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/home/vitals-manual-entry-card.tsx",
+      "text": "Manual vitals",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/home/vitals-manual-entry-card.tsx",
+      "text": "Vitals save unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-card.tsx",
+      "text": "Done",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-detail-screen.tsx",
+      "text": "Goal not found",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-detail-screen.tsx",
+      "text": "Recorded days",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-detail-screen.tsx",
+      "text": "Requested goal id does not match current single-goal contract.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-milestones-screen.tsx",
+      "text": "All available milestones are either earned or locked.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-milestones-screen.tsx",
+      "text": "Log Core weight readings to unlock progress milestones.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-milestones-screen.tsx",
+      "text": "No earned milestones yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-milestones-screen.tsx",
+      "text": "No milestones in progress",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-streaks-screen.tsx",
+      "text": "At target",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-streaks-screen.tsx",
+      "text": "Empty",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-streaks-screen.tsx",
+      "text": "Logged",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-streaks-screen.tsx",
+      "text": "RECORDED DAY STREAK",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-log-card.tsx",
+      "text": "Log weight progress",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-log-card.tsx",
+      "text": "Saves a manual Core weight metric used by goal progress, reports, and risk screens.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-log-card.tsx",
+      "text": "Weight save unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-progress-card.tsx",
+      "text": "Loading weekly progress",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-progress-card.tsx",
+      "text": "Log weight metrics from a connected device or profile update to see goal progress.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-progress-card.tsx",
+      "text": "No weight trend yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-progress-card.tsx",
+      "text": "Weekly progress unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-record-list-card.tsx",
+      "text": "Loading weight records",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-record-list-card.tsx",
+      "text": "No weight records yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-record-list-card.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-record-list-card.tsx",
+      "text": "Use Log weight progress to create Core weight metrics for this goal.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/goals/goal-weight-record-list-card.tsx",
+      "text": "Weight records unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/report-detail-screen.tsx",
+      "text": "Derived from medication section values",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/report-detail-screen.tsx",
+      "text": "No report data",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/report-detail-screen.tsx",
+      "text": "No report sections returned for this period.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/report-detail-screen.tsx",
+      "text": "Report not found",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/report-detail-screen.tsx",
+      "text": "Supported report ids: 7d, 30d, 90d.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/report-detail-screen.tsx",
+      "text": "WEEKLY SUMMARY",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/report-export-screen.tsx",
+      "text": "Weekly report preview",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "Core report queries returned the statuses below.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "Core returned no report sections for the selected periods yet. Log health data, then generate a report when enough signals are available.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "Fetching weekly and monthly reports from Core.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "Loading Core reports",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "No demo progress is shown.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "Retry uses the existing Core report endpoints.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "Some data sources failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "Try again",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/reports/reports-hub-screen.tsx",
+      "text": "WEEKLY SUMMARY · NEW",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/prevention-screen.tsx",
+      "text": "Core risk predictions did not return prevention tips yet.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/prevention-screen.tsx",
+      "text": "No prevention actions",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/prevention-screen.tsx",
+      "text": "Prevention plan",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/prevention-screen.tsx",
+      "text": "Prevention plan unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/prevention-screen.tsx",
+      "text": "Saved prevention plan unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/prevention-suggestion-card.tsx",
+      "text": "Effort",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "No factors returned",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "No risk data yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "No risk entries returned by backend.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "No suggestions returned",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "Risk id not present in current prediction payload.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "Risk item not found",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "Risk payload has no factor details.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-detail-screen.tsx",
+      "text": "Risk payload has no tip details.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-driver-trends-card.tsx",
+      "text": "Driver trends unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-driver-trends-card.tsx",
+      "text": "Existing report trends for the drivers that feed this risk score.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-driver-trends-card.tsx",
+      "text": "No trend drivers",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-driver-trends-card.tsx",
+      "text": "This risk payload did not include drivers that map to report trend metrics.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-overview-screen.tsx",
+      "text": "Connect more health signals to generate predictions.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-overview-screen.tsx",
+      "text": "High",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-overview-screen.tsx",
+      "text": "Low",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-overview-screen.tsx",
+      "text": "Moderate",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-overview-screen.tsx",
+      "text": "No risk data yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/insights/risk/risk-overview-screen.tsx",
+      "text": "Recomputing your risk profile",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/add-meal-screen.tsx",
+      "text": "e.g. Grilled chicken rice",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/add-meal-screen.tsx",
+      "text": "Notes, portion, ingredients",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "Backend returned empty meal payload.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "Meal name",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "Missing meal id in route.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "No ingredient breakdown available for this meal.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "Of daily",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "On track for the day",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "One or more micronutrients exceed recommended daily thresholds.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-detail-screen.tsx",
+      "text": "target",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-row.tsx",
+      "text": "kcal",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/meal-scan-analyzing-screen.tsx",
+      "text": "Working…",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meals/nutrition-trends-screen.tsx",
+      "text": "No analyzed meals returned for this period.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "Doctor name",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "e.g. 2024-01-15",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "e.g. 500 mg",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "e.g. Metformin",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "e.g. Take with food",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "MEDICATION NAME",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "Medication not saved",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "NOTES (OPTIONAL)",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/add-medication-screen.tsx",
+      "text": "PRESCRIBED BY (OPTIONAL)",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/archive-med-screen.tsx",
+      "text": "Archive failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/archive-med-screen.tsx",
+      "text": "Archiving moves this medication to your history. Reminders will stop and it will no longer appear in your active list.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/archive-med-screen.tsx",
+      "text": "I understand this will stop all reminders",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-detail-screen.tsx",
+      "text": "Action failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-detail-screen.tsx",
+      "text": "Could not mark dose",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-detail-screen.tsx",
+      "text": "Details",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-detail-screen.tsx",
+      "text": "Dose schedule",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-detail-screen.tsx",
+      "text": "No active dose schedule.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-history-screen.tsx",
+      "text": "Completed, cancelled, and paused medications will appear here.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-history-screen.tsx",
+      "text": "Dose events from the last 30 days will appear here after reminders fire or are marked.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-history-screen.tsx",
+      "text": "No recent dose history",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/medication-history-screen.tsx",
+      "text": "Recent doses",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/missed-dose-screen.tsx",
+      "text": "Could not save choice",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/missed-dose-screen.tsx",
+      "text": "No missed dose found",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/missed-dose-screen.tsx",
+      "text": "No scheduled occurrence is available for this medication today.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Appointment prescription",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Import complete",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Import failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Loading prescription medicines",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "No prescription medicines",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Prescription import unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Select at least one medicine.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "Select medicines to create medication plans and reminders from Core.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "This appointment has no verified prescription medicines to import.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/prescription-import-panel.tsx",
+      "text": "View medications",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/refill-log-screen.tsx",
+      "text": "Back",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/refill-log-screen.tsx",
+      "text": "Refill failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/take-med-confirm-screen.tsx",
+      "text": "Could not log dose",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/take-med-confirm-screen.tsx",
+      "text": "Keep it up!",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/take-med-confirm-screen.tsx",
+      "text": "No dose found",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/take-med-confirm-screen.tsx",
+      "text": "Streak",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/meds/take-med-confirm-screen.tsx",
+      "text": "There is no scheduled occurrence for this medication today.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-deletion-card.tsx",
+      "text": "6-digit code",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-deletion-card.tsx",
+      "text": "Account deletion unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-deletion-card.tsx",
+      "text": "Account password",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-deletion-card.tsx",
+      "text": "Delete account",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-deletion-card.tsx",
+      "text": "Optional",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-deletion-card.tsx",
+      "text": "Schedules account deletion and signs this device out.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-deletion-card.tsx",
+      "text": "Type your email. Use password for password accounts, or request a code for OAuth-only accounts.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-settings-sheet.tsx",
+      "text": "Account data export",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-settings-sheet.tsx",
+      "text": "Account export unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-settings-sheet.tsx",
+      "text": "Archive includes profile, health, medication, and audit data.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-settings-sheet.tsx",
+      "text": "Close",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/account-settings-sheet.tsx",
+      "text": "Settings",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/add-device-screen.tsx",
+      "text": "Add data source",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/add-device-screen.tsx",
+      "text": "All sources",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/add-device-screen.tsx",
+      "text": "Back",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/add-device-screen.tsx",
+      "text": "Connect supported Android health sources. Legacy wearable rows stay visible when Core already has them.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/add-device-screen.tsx",
+      "text": "Could not connect source",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/app-lock-security-card.tsx",
+      "text": "App lock",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/app-lock-security-card.tsx",
+      "text": "Loading app lock",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Add device",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Back",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Connect your first source to start syncing health data.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Connected devices",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Could not load devices",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Device list unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Devices & health data",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Health platforms",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Live sync status from your connected providers",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Loading devices",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "No devices connected",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/devices-hub-screen.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/emergency-card.tsx",
+      "text": "Allergies · contacts · meds - lock-screen ready",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/emergency-card.tsx",
+      "text": "Emergency card",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/emergency-card.tsx",
+      "text": "Share vitals & allergies instantly",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Access logs",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Access logs unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Appearance",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Appearance preference unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Appearance update failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Assistance needed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Close",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Create a token to share your emergency card.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Emergency action failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Emergency Info",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Emergency profile unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "en",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Field visibility",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Loading access logs",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Loading emergency profile",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Loading tokens",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "No access logs yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "No known drug allergies (NKDA)",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "No tokens yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "One-time token",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Preferred communication guidance...",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Public access events will appear here after card scans.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Published",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Saving",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Share tokens",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Share URL",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Sign out?",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Token list unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "Wheelchair, oxygen support...",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/me-screen-modals.tsx",
+      "text": "You will need to sign in again to access your health data.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/password-reset-panel.tsx",
+      "text": "Min 8 characters",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/password-reset-panel.tsx",
+      "text": "Password reset",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/password-reset-panel.tsx",
+      "text": "Password reset failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/password-reset-panel.tsx",
+      "text": "Password reset unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/password-reset-panel.tsx",
+      "text": "Repeat new password",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/password-reset-panel.tsx",
+      "text": "Verify by email before setting a new password.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/password-reset-panel.tsx",
+      "text": "Your session does not include an email address.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Back",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Loading MFA status",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Loading security logs",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "MFA status unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "No security logs yet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "QR code",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Recent security events will appear here.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Recovery",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Recovery codes",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Retry",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Secret key",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Security",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Security action failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Security logs unavailable",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Sign-in",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Store these somewhere safe. They are shown only once by the server.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/profile/security-screen.tsx",
+      "text": "Your health data deserves extra protection. We never print or persist MFA secrets in app logs.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/quiet-hours-ring.tsx",
+      "text": "Active",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/quiet-hours-ring.tsx",
+      "text": "Quiet",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Doctor said skip if side effects occur · consult before skipping multiple doses.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Last 7 days",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Logging a skip keeps your adherence history accurate.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Marked done",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Missing reminder id in route.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Notification preferences",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Reminder action failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Reminder id not present in current list.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Repeats",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Settings",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Skip dose",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Skip this dose?",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Snooze",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Snooze reminder",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-detail-screen.tsx",
+      "text": "Undo",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-preferences-layout.tsx",
+      "text": "Allow notifications",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-preferences-layout.tsx",
+      "text": "Defaults saved to your account.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-preferences-layout.tsx",
+      "text": "Notifications off",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-preferences-layout.tsx",
+      "text": "Quiet window",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-preferences-layout.tsx",
+      "text": "Save failed",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-preferences-layout.tsx",
+      "text": "You'll miss medication reminders, appointment alerts, and care team messages.",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-row.tsx",
+      "text": "Snooze",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminder-timeline-screen.tsx",
+      "text": "Category breakdown",
+      "reason": "existing i18n migration backlog"
+    },
+    {
+      "path": "src/components/reminders/reminders-center-screen.tsx",
+      "text": "Resolved today",
+      "reason": "existing i18n migration backlog"
+    }
+  ],
+  "patterns": [
+    {
+      "pattern": "^[A-Z0-9_./:-]+$",
+      "reason": "technical token"
+    },
+    {
+      "pattern": "^\\d+(?:[.,]\\d+)?\\s?(?:bpm|cm|g|h|k|kcal|kg|L|ml|ms|pts|x|×)?$",
+      "reason": "numeric measurement"
+    }
+  ]
+}

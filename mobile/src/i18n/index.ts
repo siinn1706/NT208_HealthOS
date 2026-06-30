@@ -5,8 +5,9 @@ import { getLocales } from 'expo-localization';
 import vi from './locales/vi.json';
 import en from './locales/en.json';
 import { getStoredLocale } from './language-storage';
+import { DEFAULT_LOCALE, normalizeLocale } from './supported-locales';
 
-const deviceLocale = getLocales()[0]?.languageCode ?? 'vi';
+const deviceLocale = normalizeLocale(getLocales()[0]?.languageCode, DEFAULT_LOCALE);
 
 i18n
   .use(initReactI18next)

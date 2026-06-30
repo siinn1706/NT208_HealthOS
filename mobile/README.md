@@ -98,6 +98,29 @@ your computer through that emulator-only address. See
 [`mobile/.env.example`](./.env.example). Production builds still require
 HTTPS/WSS configuration.
 
+### Android locale E2E
+
+Locale persistence and switching are covered by Maestro flows under
+`e2e/maestro/`. Run them against an installed Android build with the BFF/Core
+stack available and a seeded test account:
+
+```powershell
+$env:MAESTRO_TEST_EMAIL="tester@example.com"
+$env:MAESTRO_TEST_PASSWORD="<password>"
+npm run e2e:android:locale
+```
+
+`MAESTRO_APP_ID` defaults to `com.nt208.healthos`. Override it only when testing
+a differently packaged build. To run one flow while debugging:
+
+```powershell
+npm run e2e:android:locale -- locale-switch-vi.yaml
+```
+
+The flow order is auth login, switch Vietnamese, switch English, then verify
+Vietnamese persists across app restart. Install the Maestro CLI separately; the
+runner fails fast when `maestro` is not on `PATH`.
+
 If Android appears open but Expo cannot control it, verify `adb devices -l`.
 Any `offline` emulator means ADB cannot install/open Expo Go; rerun
 `npm run android` so the preflight can close the stale emulator and let Expo

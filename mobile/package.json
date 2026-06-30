@@ -17,10 +17,12 @@
     "check:release-env": "node scripts/check-release-env.mjs",
     "check:release-env:strict": "node scripts/check-release-env.mjs --strict",
     "build:android:production": "npm run check:release-env:strict && npx eas-cli@latest build --platform android --profile production",
+    "e2e:android:locale": "node scripts/run-maestro-e2e.mjs",
     "check:logo-parity": "node scripts/check-logo-parity.mjs",
     "check:expo-deps": "expo install --check",
     "check:android-native-readiness": "node scripts/android-native-readiness.mjs",
-    "lint:i18n": "node scripts/check-locale-parity.mjs && node scripts/check-missing-i18n-keys.mjs"
+    "check:no-hardcoded-i18n": "node scripts/check-no-hardcoded-i18n-copy.mjs",
+    "lint:i18n": "node scripts/check-locale-parity.mjs && node scripts/check-missing-i18n-keys.mjs && node scripts/check-no-hardcoded-i18n-copy.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",

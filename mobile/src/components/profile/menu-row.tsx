@@ -15,9 +15,10 @@ interface MenuRowProps {
   defaultVal?: boolean;
   onPress?: () => void;
   showDivider?: boolean;
+  testID?: string;
 }
 
-export function MenuRow({ label, icon, type, val, defaultVal = false, onPress, showDivider = true }: MenuRowProps) {
+export function MenuRow({ label, icon, type, val, defaultVal = false, onPress, showDivider = true, testID }: MenuRowProps) {
   const t = useTheme();
   const [toggled, setToggled] = useState(defaultVal);
   const isDanger = type === 'danger';
@@ -29,6 +30,7 @@ export function MenuRow({ label, icon, type, val, defaultVal = false, onPress, s
       accessibilityRole={isToggle ? 'switch' : 'button'}
       accessibilityLabel={label}
       accessibilityState={isToggle ? { checked: toggled } : undefined}
+      testID={testID}
       style={({ pressed }) => [
         styles.row,
         { borderBottomColor: t.border },

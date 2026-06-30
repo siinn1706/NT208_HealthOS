@@ -4,3 +4,7 @@ import { coreProxy } from "@/lib/core-api-proxy";
 export async function GET(req: NextRequest) {
   return coreProxy(req, "/v1/reports");
 }
+
+export async function POST(req: NextRequest) {
+  return coreProxy(req, "/v1/reports", { method: "POST" });
+}

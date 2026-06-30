@@ -4,6 +4,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { AddDeviceScreen } from '../components/profile/add-device-screen';
 import { invalidateApiQuery } from '../api/query';
+import { queryKeys } from '../api/queryKeys';
 import { deviceService } from '../api/services/device-service';
 import {
   getHealthConnectExternalAccountId,
@@ -75,6 +76,22 @@ const mockGetHealthConnectExternalAccountId = getHealthConnectExternalAccountId 
 const mockSaveHealthConnectDeviceId = saveHealthConnectDeviceId as jest.MockedFunction<typeof saveHealthConnectDeviceId>;
 const mockRouterReplace = router.replace as jest.MockedFunction<typeof router.replace>;
 
+function expectHealthDataInvalidated(deviceId: string) {
+  [
+    queryKeys.devices,
+    queryKeys.device(deviceId),
+    queryKeys.deviceSyncState(deviceId),
+    queryKeys.dashboard,
+    queryKeys.riskSummary,
+    queryKeys.healthGoal,
+    'reports.',
+    'goals.progress.',
+    'vitals.timeseries.',
+  ].forEach((prefix) => {
+    expect(invalidateApiQuery).toHaveBeenCalledWith(prefix);
+  });
+}
+
 jest.setTimeout(15000);
 
 beforeEach(() => {
@@ -135,7 +152,7 @@ describe('AddDeviceScreen', () => {
     });
     expect(mockGetGrantedPermissions).toHaveBeenCalledTimes(1);
     expect(mockSyncHealthConnectNow).toHaveBeenCalledWith({ deviceId: 'dev-hc-1' });
-    expect(invalidateApiQuery).toHaveBeenCalledWith('devices.list');
+    expectHealthDataInvalidated('dev-hc-1');
     expect(mockSaveHealthConnectDeviceId).toHaveBeenCalledWith('dev-hc-1');
     expect(mockRouterReplace).toHaveBeenCalledWith('/profile/devices/dev-hc-1');
   });

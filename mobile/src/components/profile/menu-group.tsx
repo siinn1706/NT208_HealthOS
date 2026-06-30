@@ -58,6 +58,7 @@ export function MenuGroup({ title, items, onItemPress }: MenuGroupProps) {
               defaultVal={item.defaultVal}
               onPress={() => onItemPress?.(item.id)}
               showDivider={i < items.length - 1}
+              testID={`profile-${item.id}-row`}
             />
           );
         })}

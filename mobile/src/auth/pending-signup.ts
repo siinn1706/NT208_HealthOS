@@ -1,4 +1,4 @@
-type PendingSignup = { email: string; password: string; name: string; username: string };
+type PendingSignup = { email: string; name?: string; username: string };
 
 let pending: PendingSignup | null = null;
 
